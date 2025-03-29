@@ -55,22 +55,20 @@ namespace RimSharp.ViewModels
             LoadDataAsync();
         }
         
-        private async Task LoadDataAsync()
-        {
-            IsLoading = true;
-            
-            await Task.Run(() =>
-            {
-                _modService.LoadMods();
-                
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    LoadDummyData();
-                });
-            });
-            
-            IsLoading = false;
-        }
+       private async Task LoadDataAsync()
+{
+    IsLoading = true;
+    
+    await Task.Run(() => 
+    {
+        _modService.LoadMods();
+    });
+    
+    // Now on UI thread after await
+    LoadDummyData();
+    
+    IsLoading = false;
+}
         
         private void LoadDummyData()
         {
