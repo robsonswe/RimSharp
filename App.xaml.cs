@@ -38,10 +38,11 @@ namespace RimSharp
         }
         
         protected override void OnStartup(StartupEventArgs e)
-        {
-            var mainWindow = _serviceProvider.GetService<MainWindow>();
-            mainWindow?.Show();
-            base.OnStartup(e);
-        }
+{
+    var mainWindow = _serviceProvider.GetService<MainWindow>();
+    mainWindow?.Show();
+    
+    base.OnStartup(e);
+}
     }
 }
