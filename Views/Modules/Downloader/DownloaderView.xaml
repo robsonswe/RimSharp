@@ -1,0 +1,18 @@
+<!-- Views/Modules/Downloader/DownloaderView.xaml -->
+<UserControl x:Class="RimSharp.Views.Modules.Downloader.DownloaderView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:RimSharp.Views.Modules.Downloader"
+             xmlns:vm="clr-namespace:RimSharp.ViewModels.Modules.Downloader"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:DownloaderViewModel, IsDesignTimeCreatable=True}"
+             d:DesignHeight="450" d:DesignWidth="800">
+    <Grid Background="WhiteSmoke"> <!-- Added background for contrast -->
+         <!-- Using Border like reference -->
+        <Border>
+            <TextBlock Text="WIP" FontSize="48" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="Gray"/>
+        </Border>
+    </Grid>
+</UserControl>
