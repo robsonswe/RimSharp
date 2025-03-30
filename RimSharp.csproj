@@ -6,6 +6,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <WebView2InstallMode>Embed</WebView2InstallMode>
     <RootNamespace>RimSharp</RootNamespace>
+        <ApplicationIcon>icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
