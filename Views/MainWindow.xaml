@@ -1,5 +1,4 @@
-﻿<!-- Views/MainWindow.xaml -->
-<Window x:Class="RimSharp.Views.MainWindow"
+﻿<Window x:Class="RimSharp.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -9,143 +8,104 @@
         xmlns:converters="clr-namespace:RimSharp.Views.Converters"
         mc:Ignorable="d"
         Title="RimSharp - RimWorld Mod Manager" Height="800" Width="1200"
-        MinHeight="600" MinWidth="900"> <!-- Added Min constraints -->
-        <d:Window.DataContext>
-             <!-- Design-time instance for preview -->
-             <vm:MainViewModel/>
-        </d:Window.DataContext>
-
+        MinHeight="600" MinWidth="900"
+        Style="{StaticResource RimworldWindowBackground}"
+        FontFamily="Segoe UI">
     <Window.Resources>
         <ResourceDictionary>
             <!-- Converters -->
-            <!-- TabVisibilityConverter is NOT needed here anymore because we use ContentControl + DataTemplates -->
-            <!-- TabActiveConverter is NOT needed here if using the InequalityConverter approach -->
             <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-            <converters:InequalityConverter x:Key="InequalityConverter"/> <!-- Used for Tab Button Style -->
-
-            <!-- Styles -->
-            <!-- Using the InequalityConverter approach for IsEnabled -->
-             <Style x:Key="TabButtonStyle" TargetType="Button">
-                <Setter Property="Padding" Value="5"/>
-                <Setter Property="Margin" Value="0,0,5,0"/>
-                <Setter Property="MinWidth" Value="80"/>
-                <Setter Property="IsEnabled">
-                     <Setter.Value>
-                        <MultiBinding Converter="{StaticResource InequalityConverter}">
-                            <Binding Path="DataContext.SelectedTab" RelativeSource="{RelativeSource AncestorType={x:Type Window}}"/>
-                            <Binding Path="CommandParameter" RelativeSource="{RelativeSource Self}"/>
-                        </MultiBinding>
-                     </Setter.Value>
-                 </Setter>
-                 <Style.Triggers>
-                      <Trigger Property="IsEnabled" Value="False">
-                           <Setter Property="FontWeight" Value="Bold"/>
-                           <Setter Property="Background" Value="#4a90e2"/> <!-- Color from reference -->
-                           <Setter Property="Foreground" Value="White"/>   <!-- Color from reference -->
-                      </Trigger>
-                      <!-- Optional: Add default background/foreground setters if needed -->
-                 </Style.Triggers>
-            </Style>
-
-             <!-- Placeholder for Top Bar button styles if desired -->
-             <Style TargetType="Button" x:Key="SettingsButtonStyle">
-                 <Setter Property="Width" Value="80"/>
-                 <Setter Property="Margin" Value="0,0,10,0"/>
-             </Style>
-              <Style TargetType="Button" x:Key="PathButtonStyle">
-                 <Setter Property="Width" Value="80"/>
-                 <Setter Property="Margin" Value="0,0,5,0"/>
-             </Style>
-              <Style TargetType="Button" x:Key="BrowseEllipsisButtonStyle">
-                 <Setter Property="Width" Value="30"/>
-                 <Setter Property="Margin" Value="5,0,0,0"/>
-                 <Setter Property="Padding" Value="0"/>
-             </Style>
-
+            <converters:InequalityConverter x:Key="InequalityConverter"/> 
         </ResourceDictionary>
     </Window.Resources>
 
     <DockPanel>
         <!-- Top Settings Bar -->
-        <!-- DataContext for elements inside this Grid should be MainViewModel -->
-        <Grid DockPanel.Dock="Top" Margin="5">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+        <Border DockPanel.Dock="Top" Margin="8" Style="{StaticResource RimworldPanelBorder}" Background="{StaticResource RimworldDarkBeigeBrush}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-            <!-- Row 0: Settings and Version -->
-            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,5">
-                <!-- TODO: Add SettingsCommand to MainViewModel -->
-                <Button Content="Settings" Command="{Binding SettingsCommand}" Style="{StaticResource SettingsButtonStyle}"/>
-                <TextBlock Text="Game version:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                <!-- Bind to PathSettings property within MainViewModel -->
-                <TextBox Text="{Binding PathSettings.GameVersion}" Width="150" IsReadOnly="True" VerticalAlignment="Center"/>
-                <!-- TODO: Add RefreshCommand to MainViewModel (optional, could be inside ModsView) -->
-                <Button Content="Refresh" Command="{Binding RefreshCommand}" Margin="10,0,0,0"/>
-            </StackPanel>
+                <!-- Row 0: Settings and Version -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                    <Button Content="Settings" Command="{Binding SettingsCommand}" 
+                            Style="{StaticResource RimworldButtonStyle}" Width="80" Margin="0,0,12,0"/>
+                    <TextBlock Text="Game version:" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{StaticResource RimworldBrownBrush}"/>
+                    <TextBox Text="{Binding PathSettings.GameVersion}" Width="150" IsReadOnly="True" 
+                             Style="{StaticResource RimworldTextBox}" VerticalAlignment="Center"/>
+                    <Button Content="Refresh" Command="{Binding RefreshCommand}" 
+                            Style="{StaticResource RimworldButtonStyle}" Margin="12,0,0,0"/>
+                </StackPanel>
 
-            <!-- Row 1: Game Folder -->
-            <Grid Grid.Row="1" Margin="0,0,0,5">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <!-- BrowsePathCommand is on MainViewModel -->
-                <Button Grid.Column="0" Content="Game folder" Command="{Binding BrowsePathCommand}" CommandParameter="GamePath" Style="{StaticResource PathButtonStyle}"/>
-                <TextBox Grid.Column="1" Text="{Binding PathSettings.GamePath}" IsReadOnly="False" VerticalAlignment="Center"/> <!-- Made editable -->
-                <Button Grid.Column="2" Content="..." Command="{Binding BrowsePathCommand}" CommandParameter="GamePath" Style="{StaticResource BrowseEllipsisButtonStyle}"/>
+                <!-- Row 1: Game Folder -->
+                <Grid Grid.Row="1" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Column="0" Content="Game folder" Command="{Binding BrowsePathCommand}" CommandParameter="GamePath" 
+                            Style="{StaticResource RimworldButtonStyle}" Width="80" Margin="0,0,8,0"/>
+                    <TextBox Grid.Column="1" Text="{Binding PathSettings.GamePath}" IsReadOnly="False" 
+                             Style="{StaticResource RimworldTextBox}" VerticalAlignment="Center"/>
+                    <Button Grid.Column="2" Content="..." Command="{Binding BrowsePathCommand}" CommandParameter="GamePath" 
+                            Style="{StaticResource RimworldButtonStyle}" Width="30" Margin="8,0,0,0" Padding="0"/>
+                </Grid>
+
+                <!-- Row 2: Config Folder -->
+                <Grid Grid.Row="2" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Column="0" Content="Config folder" Command="{Binding BrowsePathCommand}" CommandParameter="ConfigPath" 
+                            Style="{StaticResource RimworldButtonStyle}" Width="80" Margin="0,0,8,0"/>
+                    <TextBox Grid.Column="1" Text="{Binding PathSettings.ConfigPath}" IsReadOnly="False" 
+                             Style="{StaticResource RimworldTextBox}" VerticalAlignment="Center"/>
+                    <Button Grid.Column="2" Content="..." Command="{Binding BrowsePathCommand}" CommandParameter="ConfigPath" 
+                            Style="{StaticResource RimworldButtonStyle}" Width="30" Margin="8,0,0,0" Padding="0"/>
+                </Grid>
+
+                <!-- Row 3: Mods Folder -->
+                <Grid Grid.Row="3">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <Button Content="Mods" Command="{Binding BrowsePathCommand}" CommandParameter="ModsPath" 
+                                Style="{StaticResource RimworldButtonStyle}" Width="80" Margin="0,0,0,0"/>
+                     </StackPanel>
+                    <TextBox Grid.Column="1" Text="{Binding PathSettings.ModsPath}" IsReadOnly="False" 
+                             Style="{StaticResource RimworldTextBox}" VerticalAlignment="Center"/>
+                    <Button Grid.Column="2" Content="..." Command="{Binding BrowsePathCommand}" CommandParameter="ModsPath" 
+                            Style="{StaticResource RimworldButtonStyle}" Width="30" Margin="8,0,0,0" Padding="0"/>
+                </Grid>
             </Grid>
-
-            <!-- Row 2: Config Folder -->
-            <Grid Grid.Row="2" Margin="0,0,0,5">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <Button Grid.Column="0" Content="Config folder" Command="{Binding BrowsePathCommand}" CommandParameter="ConfigPath" Style="{StaticResource PathButtonStyle}"/>
-                <TextBox Grid.Column="1" Text="{Binding PathSettings.ConfigPath}" IsReadOnly="False" VerticalAlignment="Center"/> <!-- Made editable -->
-                <Button Grid.Column="2" Content="..." Command="{Binding BrowsePathCommand}" CommandParameter="ConfigPath" Style="{StaticResource BrowseEllipsisButtonStyle}"/>
-            </Grid>
-
-            <!-- Row 3: Mods Folder -->
-            <Grid Grid.Row="3">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <Button Content="Mods" Command="{Binding BrowsePathCommand}" CommandParameter="ModsPath" Style="{StaticResource PathButtonStyle}" Margin="0,0,-2,0"/>
-                    <!-- TODO: Add ExpansionsPath handling if needed in PathSettings/ViewModel/BrowsePath -->
-                    <!-- <Button Content="Expansions" Width="80" Margin="0,0,5,0"
-                            Command="{Binding BrowsePathCommand}" CommandParameter="ExpansionsPath"/> -->
-                 </StackPanel>
-                <TextBox Grid.Column="1" Text="{Binding PathSettings.ModsPath}" IsReadOnly="False" VerticalAlignment="Center"/> <!-- Made editable -->
-                <Button Grid.Column="2" Content="..." Command="{Binding BrowsePathCommand}" CommandParameter="ModsPath" Style="{StaticResource BrowseEllipsisButtonStyle}"/>
-            </Grid>
-        </Grid>
+        </Border>
 
         <!-- Mode Tabs -->
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="5,5,5,0" Background="LightGray" Height="35">
-             <Button Content="Mods"
-                    Command="{Binding SwitchTabCommand}" CommandParameter="Mods"
-                    Style="{StaticResource TabButtonStyle}"/>
-            <Button Content="Downloader"
-                    Command="{Binding SwitchTabCommand}" CommandParameter="Downloader"
-                    Style="{StaticResource TabButtonStyle}"/>
-             <!-- Add other tab buttons here -->
-        </StackPanel>
+        <Border DockPanel.Dock="Top" Margin="8,0,8,0" BorderBrush="{StaticResource RimworldBrownBrush}" 
+                BorderThickness="0,0,0,2" Padding="0,0,0,0">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Mods"
+                        Command="{Binding SwitchTabCommand}" CommandParameter="Mods"
+                        Style="{StaticResource RimworldTabButtonStyle}"/>
+                <Button Content="Downloader"
+                        Command="{Binding SwitchTabCommand}" CommandParameter="Downloader"
+                        Style="{StaticResource RimworldTabButtonStyle}"/>
+            </StackPanel>
+        </Border>
 
-        <!-- Main Content Area - THIS IS THE KEY CHANGE FROM REFERENCE -->
-        <!-- Instead of multiple Grids with Visibility converters, we use ONE ContentControl -->
-        <!-- DataTemplates in App.xaml determine which View (ModsView/DownloaderView) is shown -->
-        <ContentControl Content="{Binding CurrentViewModel}" Margin="5"/>
-         <!-- The ProgressBar for loading is now INSIDE ModsView -->
-
+        <!-- Main Content Area -->
+        <Border Margin="8" Style="{StaticResource RimworldPanelBorder}" Background="{StaticResource RimworldBeigeBrush}">
+            <ContentControl Content="{Binding CurrentViewModel}"/>
+        </Border>
     </DockPanel>
 </Window>
