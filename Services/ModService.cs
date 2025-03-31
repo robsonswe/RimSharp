@@ -20,9 +20,17 @@ namespace RimSharp.Services
 
         public IEnumerable<ModItem> GetLoadedMods() => _allMods;
 
-        public void LoadMods()
+                public void LoadMods()
         {
             _allMods.Clear();
+
+            // Check if all required paths are set
+            if (string.IsNullOrEmpty(_pathService.GetGamePath()) || 
+                string.IsNullOrEmpty(_pathService.GetConfigPath()) || 
+                string.IsNullOrEmpty(_pathService.GetModsPath()))
+            {
+                return; // Return empty list if any path is not set
+            }
 
             // Load core mods from game data folder
             LoadCoreMods();
@@ -33,6 +41,7 @@ namespace RimSharp.Services
             // Set active status based on ModsConfig.xml
             SetActiveMods();
         }
+
 
         public async Task LoadModsAsync()
         {
