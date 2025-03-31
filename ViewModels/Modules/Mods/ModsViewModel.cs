@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input; // Namespace for ICommand
 
+
 // Correct Namespace Declaration
 namespace RimSharp.ViewModels.Modules.Mods
 {
@@ -67,22 +68,27 @@ namespace RimSharp.ViewModels.Modules.Mods
         }
 
 
-        private async Task LoadDataAsync()
+                private async Task LoadDataAsync()
         {
             IsLoading = true;
-            ActiveMods.Clear(); // Clear before loading
+            ActiveMods.Clear();
             InactiveMods.Clear();
 
-            await Task.Run(() =>
+            await _modService.LoadModsAsync();
+            
+            var allMods = _modService.GetLoadedMods().ToList();
+            
+            foreach (var mod in allMods.Where(m => m.IsActive).OrderBy(m => m.Name))
             {
-                // _modService.LoadMods(); // Call actual service if implemented
-                // var (active, inactive) = _modService.GetLoadedMods();
-                // TODO: Populate collections properly from service result (needs thread marshalling if service returns directly)
-            });
+                ActiveMods.Add(mod);
+            }
+            
+            foreach (var mod in allMods.Where(m => !m.IsActive).OrderBy(m => m.Name))
+            {
+                InactiveMods.Add(mod);
+            }
 
-            // Using dummy data for now (ensure this runs on UI thread implicitly after await Task.Run)
-            LoadDummyData();
-
+            SelectedMod = ActiveMods.FirstOrDefault() ?? InactiveMods.FirstOrDefault();
             IsLoading = false;
         }
 
@@ -95,7 +101,7 @@ namespace RimSharp.ViewModels.Modules.Mods
             ActiveMods.Add(new ModItem { Name = "Biotech [Official DLC]", IsCore = true });
 
             // Add inactive mods
-            InactiveMods.Add(new ModItem { Name = "(Dirty) Windows", IsDirty = true });
+            InactiveMods.Add(new ModItem { Name = "(Dirty) Windows" });
             InactiveMods.Add(new ModItem { Name = "1-2-3 Personalities M1" });
             InactiveMods.Add(new ModItem { Name = "A Dog Said... Animal Prosthetics" });
             InactiveMods.Add(new ModItem { Name = "Achtung!" });

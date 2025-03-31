@@ -13,6 +13,8 @@
     <UserControl.Resources>
         <!-- Converters needed within this view -->
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <converters:ImagePathConverter x:Key="ImagePathConverter"/>
+
 
         <!-- Style for list header buttons -->
         <Style TargetType="Button"
@@ -78,23 +80,53 @@
                     </Grid.RowDefinitions>
 
                     <!-- Mod Preview (Top Part) -->
-                    <Border Grid.Row="0"
-                            Style="{StaticResource RimworldModInfoHeader}">
-                        <Border Background="#1e3a8a"
-                                CornerRadius="10"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Width="400"
-                                Height="220"
-                                Margin="10">
-                            <TextBlock Text="MOD PREVIEW IMAGE"
-                                       FontSize="18"
-                                       Foreground="LightGray"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       FontStyle="Italic"/>
-                        </Border>
-                    </Border>
+                    <!-- Replace the Mod Preview section with this corrected version -->
+<Border Grid.Row="0">
+    <Border Background="#1e3a8a"
+            CornerRadius="10"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Width="400"
+            Height="220"
+            Margin="10">
+        <Grid>
+            <Image Source="{Binding SelectedMod.PreviewImagePath, Converter={StaticResource ImagePathConverter}}" 
+                   Stretch="UniformToFill"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center">
+                <Image.Style>
+                    <Style TargetType="Image">
+                        <Setter Property="Visibility" Value="Visible"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedMod.PreviewImagePath}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Image.Style>
+            </Image>
+            
+            <TextBlock Text="MOD PREVIEW IMAGE"
+                       FontSize="18"
+                       Foreground="LightGray"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontStyle="Italic">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedMod.PreviewImagePath}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </Grid>
+    </Border>
+</Border>
+
 
                     <!-- Mod Info (Bottom Part) -->
                     <Grid Grid.Row="1"
