@@ -284,40 +284,51 @@
                         </Grid.RowDefinitions>
 
                         <!-- List Header -->
-                        <Border Grid.Row="0"
-                                Style="{StaticResource RimworldListHeaderBorder}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
+<Border Grid.Row="0" Style="{StaticResource RimworldListHeaderBorder}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Title row -->
+<TextBlock Grid.Row="0"
+           FontWeight="Bold"
+           Margin="8,4,0,4"
+           HorizontalAlignment="Left"
+           Foreground="White">
+    <Run Text="Inactive"/>
+    <Run Text=" ["/>
+    <Run Text="{Binding TotalInactiveMods, Mode=OneWay}"/>
+    <Run Text="]"/>
+</TextBlock>
+                   
+        <!-- Search row -->
+        <Grid Grid.Row="1" Margin="8,0,8,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            
+            <TextBox Grid.Column="0"
+                     Tag="Search Inactive..."
+                     Style="{StaticResource RimworldWatermarkTextBox}"
+                     VerticalAlignment="Center"
+                     Text="{Binding InactiveSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                     
+            <Button Grid.Column="1"
+                    Content="Filters"
+                    Style="{StaticResource RimworldButtonStyle}"
+                    Width="50"
+                    Height="22"
+                    FontSize="11"
+                    Padding="0"
+                    Margin="4,0,0,0"
+                    VerticalAlignment="Center"/>
+        </Grid>
+    </Grid>
+</Border>
 
-                                <TextBlock Grid.Column="0"
-                                           Text="Inactive"
-                                           FontWeight="Bold"
-                                           VerticalAlignment="Center"
-                                           Foreground="White"/>
-                                <StackPanel Grid.Column="1"
-                                            Orientation="Horizontal"
-                                            Margin="10,0"
-                                            HorizontalAlignment="Right">
-                                    <TextBox Width="150"
-                                             Tag="Search Inactive..."
-                                             Style="{StaticResource RimworldWatermarkTextBox}"/>
-                                    <Button Content="🔍"
-                                            Style="{StaticResource ListHeaderButtonStyle}"/>
-                                </StackPanel>
-                                <ComboBox Grid.Column="2"
-                                          Width="100"
-                                          SelectedIndex="0"
-                                          VerticalAlignment="Center"
-                                          Style="{StaticResource RimworldComboBox}">
-                                    <ComboBoxItem Content="Name"/>
-                                    <ComboBoxItem Content="Author"/>
-                                </ComboBox>
-                            </Grid>
-                        </Border>
 
                         <!-- Mod Items List -->
                         <ListBox Grid.Row="1"
@@ -351,40 +362,49 @@
                         </Grid.RowDefinitions>
 
                         <!-- List Header -->
-                        <Border Grid.Row="0"
-                                Style="{StaticResource RimworldListHeaderBorder}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <TextBlock Grid.Column="0"
-                                           Text="Active"
-                                           FontWeight="Bold"
-                                           VerticalAlignment="Center"
-                                           Foreground="White"/>
-                                <StackPanel Grid.Column="1"
-                                            Orientation="Horizontal"
-                                            Margin="10,0"
-                                            HorizontalAlignment="Right">
-                                    <TextBox Width="150"
-                                             Tag="Search Active..."
-                                             Style="{StaticResource RimworldWatermarkTextBox}"/>
-                                    <Button Content="🔍"
-                                            Style="{StaticResource ListHeaderButtonStyle}"/>
-                                </StackPanel>
-                                <ComboBox Grid.Column="2"
-                                          Width="100"
-                                          SelectedIndex="0"
-                                          VerticalAlignment="Center"
-                                          Style="{StaticResource RimworldComboBox}">
-                                    <ComboBoxItem Content="Load Order"/>
-                                    <ComboBoxItem Content="Name"/>
-                                </ComboBox>
-                            </Grid>
-                        </Border>
+<Border Grid.Row="0" Style="{StaticResource RimworldListHeaderBorder}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Title row -->
+<TextBlock Grid.Row="0"
+           FontWeight="Bold"
+           Margin="8,4,0,4"
+           HorizontalAlignment="Left"
+           Foreground="White">
+    <Run Text="Active"/>
+    <Run Text=" ["/>
+    <Run Text="{Binding TotalActiveMods, Mode=OneWay}"/>
+    <Run Text="]"/>
+</TextBlock>
+        <!-- Search row -->
+        <Grid Grid.Row="1" Margin="8,0,8,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            
+            <TextBox Grid.Column="0"
+                     Tag="Search Active..."
+                     Style="{StaticResource RimworldWatermarkTextBox}"
+                     VerticalAlignment="Center"
+                     Text="{Binding ActiveSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                     
+            <Button Grid.Column="1"
+                    Content="Filters"
+                    Style="{StaticResource RimworldButtonStyle}"
+                    Width="50"
+                    Height="22"
+                    FontSize="11"
+                    Padding="0"
+                    Margin="4,0,0,0"
+                    VerticalAlignment="Center"/>
+        </Grid>
+    </Grid>
+</Border>
 
                         <!-- Mod Items List -->
                         <ListBox Grid.Row="1"
