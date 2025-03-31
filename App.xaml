@@ -68,76 +68,59 @@
                         </Setter>
                     </Style>
 
-                    <!-- RimWorld-style Button -->
-                    <Style x:Key="RimworldButtonStyle"
-                            TargetType="Button">
-                        <Setter Property="Foreground"
-                                Value="#FFFFFF"/>
-                        <Setter Property="Padding"
-                                Value="8,4"/>
-                        <Setter Property="MinWidth"
-                                Value="80"/>
-                        <Setter Property="MinHeight"
-                                Value="24"/>
-                        <Setter Property="FontWeight"
-                                Value="Medium"/>
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="Button">
-                                    <Grid>
-                                        <!-- Base button with slight offset shadow effect -->
-                                        <Border x:Name="ButtonBackground"
-                                                Background="{StaticResource RimworldBrownBrush}"
-                                                BorderBrush="{StaticResource RimworldDarkBrownBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="3"
-                                                Margin="0,0,0,2">
-                                            <Border.Effect>
-                                                <DropShadowEffect Color="#222222"
-                                                        Direction="320"
-                                                        ShadowDepth="1"
-                                                        BlurRadius="2"
-                                                        Opacity="0.3"/>
-                                            </Border.Effect>
-                                        </Border>
+                   <!-- RimWorld-style Button -->
+<Style x:Key="RimworldButtonStyle" TargetType="Button">
+    <Setter Property="Foreground" Value="#FFFFFF"/>
+    <Setter Property="Padding" Value="8,4"/>
+    <Setter Property="MinWidth" Value="80"/>
+    <Setter Property="MinHeight" Value="24"/>
+    <Setter Property="FontWeight" Value="Medium"/>
+    <Setter Property="Template">
+        <Setter.Value>
+            <ControlTemplate TargetType="Button">
+                <Grid>
+                    <!-- Base button with slight offset shadow effect -->
+                    <Border x:Name="ButtonBackground"
+                            Background="{StaticResource RimworldBrownBrush}"
+                            BorderBrush="{StaticResource RimworldDarkBrownBrush}"
+                            BorderThickness="1"
+                            CornerRadius="3"
+                            Margin="0,0,0,2">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#222222"
+                                    Direction="320"
+                                    ShadowDepth="1"
+                                    BlurRadius="2"
+                                    Opacity="0.3"/>
+                        </Border.Effect>
+                    </Border>
 
-                                        <!-- Content with subtle inner shadow -->
-                                        <Border Background="Transparent"
-                                                BorderBrush="{StaticResource RimworldDarkBrownBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="3"
-                                                Margin="0,0,0,2">
-                                            <ContentPresenter HorizontalAlignment="Center"
-                                                    VerticalAlignment="Center"/>
-                                        </Border>
-                                    </Grid>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver"
-                                                Value="True">
-                                            <Setter Property="Background"
-                                                    TargetName="ButtonBackground"
-                                                    Value="{StaticResource RimworldLightBrownBrush}"/>
-                                        </Trigger>
-                                        <Trigger Property="IsPressed"
-                                                Value="True">
-                                            <Setter Property="Margin"
-                                                    TargetName="ButtonBackground"
-                                                    Value="0,1,0,1"/>
-                                        </Trigger>
-                                        <Trigger Property="IsEnabled"
-                                                Value="False">
-                                            <Setter Property="Background"
-                                                    TargetName="ButtonBackground"
-                                                    Value="{StaticResource RimworldDarkBeigeBrush}"/>
-                                            <Setter Property="Foreground"
-                                                    Value="#999999"/>
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-
+                    <!-- Content with subtle inner shadow -->
+                    <Border Background="Transparent"
+                            BorderBrush="{StaticResource RimworldDarkBrownBrush}"
+                            BorderThickness="1"
+                            CornerRadius="3"
+                            Margin="0,0,0,2">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                VerticalAlignment="Center"/>
+                    </Border>
+                </Grid>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" TargetName="ButtonBackground" Value="{StaticResource RimworldLightBrownBrush}"/>
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter Property="Margin" TargetName="ButtonBackground" Value="0,1,0,1"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Background" TargetName="ButtonBackground" Value="{StaticResource RimworldLightBrownBrush}"/>
+                        <Setter Property="Foreground" Value="{StaticResource RimworldDarkBrownBrush}"/>
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate>
+        </Setter.Value>
+    </Setter>
+</Style>
                     <!-- RimWorld-style Save Button -->
                     <Style x:Key="RimworldSaveButtonStyle"
                             TargetType="Button"

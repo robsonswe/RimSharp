@@ -1,7 +1,6 @@
 using RimSharp.ViewModels;
 using System.Windows;
-using RimSharp.Services;
-using RimSharp.Models;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace RimSharp.Views
 {
@@ -9,12 +8,10 @@ namespace RimSharp.Views
     {
         public MainWindow()
         {
-            // This constructor shouldn't be used, but prevents XAML designer errors
             InitializeComponent();
-            DataContext = new MainViewModel(
-                new ModService(new PathService(new PathSettings())),
-                new PathService(new PathSettings())
-            );
+            
+            // Get the MainViewModel from the service provider
+            DataContext = ((App)Application.Current).ServiceProvider.GetRequiredService<MainViewModel>();
         }
     }
 }

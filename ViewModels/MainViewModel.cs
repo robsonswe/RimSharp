@@ -7,6 +7,8 @@ using System.Windows.Input;
 // Remove Microsoft.Win32 if not used directly here
 using System.Windows.Forms; // Add reference to System.Windows.Forms assembly for FolderBrowserDialog
 using System.IO; // For Directory.Exists
+using System.Diagnostics;
+
 
 namespace RimSharp.ViewModels
 {
@@ -15,6 +17,8 @@ namespace RimSharp.ViewModels
         // Keep services needed by MainViewModel or to pass to module ViewModels
         private readonly IPathService _pathService;
         private readonly IModService _modService; // Keep to pass to ModsViewModel
+        private readonly IConfigService _configService; // Add this
+
 
         private string _selectedTab = "Mods"; // Default tab
         private ViewModelBase _currentViewModel; // Holds the currently displayed module ViewModel
@@ -33,21 +37,44 @@ namespace RimSharp.ViewModels
         public ICommand RefreshCommand { get; }
 
         // Constructor: Instantiate module VMs and set initial state
-        public MainViewModel(IModService modService, IPathService pathService)
+        public MainViewModel(IModService modService, IPathService pathService, IConfigService configService)
         {
             _modService = modService;
             _pathService = pathService;
+             _configService = configService;
 
             // Initialize Path Settings (remains here as it's app-level config)
-            PathSettings = new PathSettings
+                        PathSettings = new PathSettings
             {
-                GameVersion = _pathService.GetGameVersion(), // Initialize with detected values
+                GameVersion = _pathService.GetGameVersion(),
                 GamePath = _pathService.GetGamePath(),
                 ConfigPath = _pathService.GetConfigPath(),
                 ModsPath = _pathService.GetModsPath()
             };
+
             // Listen for changes in PathSettings if they need to trigger updates elsewhere
-            PathSettings.PropertyChanged += (s, e) => OnPropertyChanged(nameof(PathSettings));
+                        PathSettings.PropertyChanged += (s, e) =>
+            {
+                OnPropertyChanged(nameof(PathSettings));
+                
+                // Save to config when paths change
+                switch (e.PropertyName)
+                {
+                    case nameof(PathSettings.GamePath):
+                        _configService.SetConfigValue("game_folder", PathSettings.GamePath);
+                        _configService.SaveConfig();
+                        break;
+                    case nameof(PathSettings.ConfigPath):
+                        _configService.SetConfigValue("config_folder", PathSettings.ConfigPath);
+                        _configService.SaveConfig();
+                        break;
+                    case nameof(PathSettings.ModsPath):
+                        _configService.SetConfigValue("mods_folder", PathSettings.ModsPath);
+                        _configService.SaveConfig();
+                        break;
+                }
+            };
+
 
 
             // Create instances of the module ViewModels, passing dependencies
@@ -64,7 +91,48 @@ namespace RimSharp.ViewModels
             SettingsCommand = new RelayCommand(OpenSettings);
             RefreshCommand = new RelayCommand(RefreshData);
 
+            OpenFolderCommand = new RelayCommand(OpenFolder, CanOpenFolder);
+
+
         }
+
+                private void OpenFolder(object parameter)
+        {
+            var pathType = parameter as string;
+            if (string.IsNullOrEmpty(pathType)) return;
+
+            string path = pathType switch
+            {
+                "GamePath" => PathSettings.GamePath,
+                "ConfigPath" => PathSettings.ConfigPath,
+                "ModsPath" => PathSettings.ModsPath,
+                _ => null
+            };
+
+            if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
+            {
+                Process.Start("explorer.exe", path);
+            }
+        }
+
+        private bool CanOpenFolder(object parameter)
+        {
+            if (parameter is not string pathType) return false;
+            
+            string path = pathType switch
+            {
+                "GamePath" => PathSettings.GamePath,
+                "ConfigPath" => PathSettings.ConfigPath,
+                "ModsPath" => PathSettings.ModsPath,
+                _ => null
+            };
+
+            return !string.IsNullOrEmpty(path) && Directory.Exists(path);
+        }
+
+
+        public ICommand OpenFolderCommand { get; }
+
 
         // Property for the currently active module ViewModel - PUBLIC SETTER
         public ViewModelBase CurrentViewModel
