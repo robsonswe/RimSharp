@@ -211,7 +211,7 @@ namespace RimSharp.ViewModels
                             PathSettings.GamePath = selectedPath;
                             // Update dependent properties like game version
                             PathSettings.GameVersion = _pathService.GetGameVersion(selectedPath);
-                            break;
+                                break;
                         case "ConfigPath":
                             PathSettings.ConfigPath = selectedPath;
                             // Potentially trigger config reload or validation

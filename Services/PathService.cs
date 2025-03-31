@@ -1,5 +1,6 @@
 using RimSharp.Models;
 using System.IO; // Needed for Path operations if doing real detection
+using System;
 
 namespace RimSharp.Services
 {
@@ -28,39 +29,39 @@ namespace RimSharp.Services
         }
 
         // Original method: gets version based on the path currently in _settings
+               public string GetGameVersion(string gamePath)
+        {
+            if (string.IsNullOrEmpty(gamePath))
+                return "N/A - No path specified";
+
+            try
+            {
+                if (!Directory.Exists(gamePath))
+                    return "N/A - Invalid path";
+
+                string versionFilePath = Path.Combine(gamePath, "Version.txt");
+                
+                if (!File.Exists(versionFilePath))
+                    return "N/A - Version.txt not found";
+
+                string versionText = File.ReadAllText(versionFilePath).Trim();
+                
+                if (string.IsNullOrWhiteSpace(versionText))
+                    return "N/A - Empty version file";
+
+                // Additional parsing if needed (e.g., extract just version number)
+                return versionText.Split('\n')[0].Trim(); // Get first line
+            }
+            catch (Exception ex)
+            {
+                return $"N/A - Error reading version: {ex.Message}";
+            }
+        }
+
         public string GetGameVersion()
         {
-             // Could call the specific path version, or return the stored value
-             // Option 1: Return stored value
-             // return _settings.GameVersion;
-             // Option 2: Detect based on current GamePath (if GamePath is set)
-             if (!string.IsNullOrEmpty(_settings.GamePath)) {
-                 return GetGameVersion(_settings.GamePath);
-             }
-             return "N/A"; // Or return stored value if detection isn't desired here
+            return GetGameVersion(_settings.GamePath);
         }
 
-        // New overload: gets version based on the provided path
-        public string GetGameVersion(string gamePath)
-        {
-            // TODO: Implement actual game version detection logic here!
-            // This might involve checking specific file versions (e.g., RimWorldWin64.exe)
-            // or reading a version file within the game directory.
-            if (string.IsNullOrEmpty(gamePath) || !Directory.Exists(gamePath))
-            {
-                return "N/A - Invalid Path";
-            }
-
-            // Placeholder implementation:
-            // In a real app, you'd check file versions, etc.
-            // For example:
-            // string exePath = Path.Combine(gamePath, "RimWorldWin64.exe");
-            // if (File.Exists(exePath)) {
-            //     var versionInfo = System.Diagnostics.FileVersionInfo.GetVersionInfo(exePath);
-            //     return versionInfo.FileVersion ?? "N/A - No Version";
-            // }
-
-            return "1.x.xxxx (Detected)"; // Return a dummy detected version for now
-        }
     }
 }
