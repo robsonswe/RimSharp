@@ -7,27 +7,34 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input; // Namespace for ICommand
 using System.Collections.Generic; // For filtering
-
-
+using System.Xml.Linq; // For XML handling
+using System.IO;
+using System; // For file handling
+using System.Windows; // For MessageBox
+using System.Diagnostics;
 
 // Correct Namespace Declaration
 namespace RimSharp.ViewModels.Modules.Mods
 {
     // Correct Class Name
-    public class ModsViewModel : ViewModelBase // <--- RENAMED CLASS
+    public class ModsViewModel : ViewModelBase
     {
         private readonly IModService _modService;
+        private readonly IPathService _pathService;
 
         private ModItem _selectedMod;
         private bool _isLoading;
-               private string _activeSearchText = "";
-        private string _inactiveSearchText = "";    
+        private string _activeSearchText = "";
+        private string _inactiveSearchText = "";
 
         private List<ModItem> _allActiveMods = new();
         private List<ModItem> _allInactiveMods = new();
 
         public int TotalActiveMods => _allActiveMods.Count;
         public int TotalInactiveMods => _allInactiveMods.Count;
+
+        private List<(ModItem Mod, int LoadOrder)> _virtualActiveMods = new();
+
 
 
 
@@ -47,6 +54,9 @@ namespace RimSharp.ViewModels.Modules.Mods
         public ICommand SaveCommand { get; }
         public ICommand RunGameCommand { get; }
 
+public ICommand OpenUrlCommand { get; }
+
+
         public bool IsLoading
         {
             get => _isLoading;
@@ -60,9 +70,10 @@ namespace RimSharp.ViewModels.Modules.Mods
         }
 
         // Correct Constructor Name
-        public ModsViewModel(IModService modService)
+        public ModsViewModel(IModService modService, IPathService pathService)
         {
             _modService = modService;
+            _pathService = pathService;
             SelectModCommand = new RelayCommand(SelectMod);
 
             // Initialize new commands
@@ -76,37 +87,118 @@ namespace RimSharp.ViewModels.Modules.Mods
             ExportListCommand = new RelayCommand(ExportList);
             SaveCommand = new RelayCommand(SaveMods);
             RunGameCommand = new RelayCommand(RunGame);
+            OpenUrlCommand = new RelayCommand(OpenUrl);
 
             LoadDataAsync();
         }
 
 
-private async Task LoadDataAsync()
+        private async Task LoadDataAsync()
+        {
+            IsLoading = true;
+            try
+            {
+                ActiveMods.Clear();
+                InactiveMods.Clear();
+                _allActiveMods.Clear();
+                _allInactiveMods.Clear();
+                _virtualActiveMods.Clear();
+
+                await _modService.LoadModsAsync();
+
+                var allMods = _modService.GetLoadedMods().ToList();
+                var activeModsFromConfig = GetActiveModsFromConfig();
+
+                // Debug output
+                Console.WriteLine($"Found {activeModsFromConfig.Count} active mods in config");
+                Console.WriteLine($"Found {allMods.Count} total mods");
+
+                // Build virtual active mods list with load order
+                for (int i = 0; i < activeModsFromConfig.Count; i++)
+                {
+                    var packageId = activeModsFromConfig[i];
+                    var mod = allMods.FirstOrDefault(m =>
+                m.PackageId?.ToLowerInvariant() == packageId); // Case-insensitive comparison
+
+                    if (mod != null)
+                    {
+                        _virtualActiveMods.Add((mod, i));
+                        mod.IsActive = true;
+                        Console.WriteLine($"Added active mod: {mod.Name} ({mod.PackageId})");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Could not find mod with packageId: {packageId}");
+                    }
+                }
+
+                // Separate into active and inactive lists
+                _allActiveMods = _virtualActiveMods.Select(x => x.Mod).ToList();
+                _allInactiveMods = allMods.Except(_allActiveMods).OrderBy(m => m.Name).ToList();
+
+                Console.WriteLine($"Active mods count: {_allActiveMods.Count}");
+                Console.WriteLine($"Inactive mods count: {_allInactiveMods.Count}");
+
+                // Notify that the totals have changed
+                OnPropertyChanged(nameof(TotalActiveMods));
+                OnPropertyChanged(nameof(TotalInactiveMods));
+
+                // Apply sorting based on load order
+                FilterActiveMods();
+                FilterInactiveMods();
+
+                SelectedMod = ActiveMods.FirstOrDefault() ?? InactiveMods.FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading mods: {ex.Message}");
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        private void OpenUrl(object parameter)
 {
-    IsLoading = true;
-    ActiveMods.Clear();
-    InactiveMods.Clear();
-    _allActiveMods.Clear();
-    _allInactiveMods.Clear();
-
-    await _modService.LoadModsAsync();
-    
-    var allMods = _modService.GetLoadedMods().ToList();
-    
-    _allActiveMods = allMods.Where(m => m.IsActive).OrderBy(m => m.Name).ToList();
-    _allInactiveMods = allMods.Where(m => !m.IsActive).OrderBy(m => m.Name).ToList();
-    
-    // Notify that the totals have changed
-    OnPropertyChanged(nameof(TotalActiveMods));
-    OnPropertyChanged(nameof(TotalInactiveMods));
-    
-    FilterActiveMods(); // Apply initial filter (shows all when search is empty)
-    FilterInactiveMods();
-
-    SelectedMod = ActiveMods.FirstOrDefault() ?? InactiveMods.FirstOrDefault();
-    IsLoading = false;
+    if (parameter is string url && !string.IsNullOrWhiteSpace(url))
+    {
+        try
+        {
+            // Ensure the URL has a proper scheme
+            var uri = url.StartsWith("http://") || url.StartsWith("https://") 
+                ? new Uri(url) 
+                : new Uri("http://" + url);
+            
+            Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not open URL: {ex.Message}");
+        }
+    }
 }
 
+        private List<string> GetActiveModsFromConfig()
+        {
+            try
+            {
+                var configPath = Path.Combine(_pathService.GetConfigPath(), "ModsConfig.xml");
+                if (!File.Exists(configPath))
+                {
+                    return new List<string>();
+                }
+
+                var doc = XDocument.Load(configPath);
+                return doc.Root?.Element("activeMods")?.Elements("li")
+                    .Select(x => x.Value.ToLowerInvariant()) // Normalize to lowercase
+                    .ToList() ?? new List<string>();
+            }
+            catch
+            {
+                return new List<string>();
+            }
+        }
         private void LoadDummyData()
         {
             // Add core mods
@@ -134,7 +226,7 @@ private async Task LoadDataAsync()
                 }
             }
         }
-        
+
         public string InactiveSearchText
         {
             get => _inactiveSearchText;
@@ -151,22 +243,24 @@ private async Task LoadDataAsync()
         {
             ActiveMods.Clear();
             var filteredMods = string.IsNullOrWhiteSpace(_activeSearchText)
-                ? _allActiveMods
-                : _allActiveMods.Where(m => m.Name.Contains(_activeSearchText, System.StringComparison.OrdinalIgnoreCase));
-                
+                ? _virtualActiveMods.OrderBy(x => x.LoadOrder).Select(x => x.Mod)
+                : _virtualActiveMods.Where(x => x.Mod.Name.Contains(_activeSearchText, StringComparison.OrdinalIgnoreCase))
+                                  .OrderBy(x => x.LoadOrder)
+                                  .Select(x => x.Mod);
+
             foreach (var mod in filteredMods)
             {
                 ActiveMods.Add(mod);
             }
         }
-        
+
         private void FilterInactiveMods()
         {
             InactiveMods.Clear();
             var filteredMods = string.IsNullOrWhiteSpace(_inactiveSearchText)
                 ? _allInactiveMods
                 : _allInactiveMods.Where(m => m.Name.Contains(_inactiveSearchText, System.StringComparison.OrdinalIgnoreCase));
-                
+
             foreach (var mod in filteredMods)
             {
                 InactiveMods.Add(mod);
@@ -189,20 +283,103 @@ private async Task LoadDataAsync()
             return LoadDataAsync();
         }
 
-       private void ClearActiveList(object parameter)
-{
-    // Move all active mods to inactive
-    _allInactiveMods.AddRange(_allActiveMods);
-    _allActiveMods.Clear();
-    
-    // Notify property changes
-    OnPropertyChanged(nameof(TotalActiveMods));
-    OnPropertyChanged(nameof(TotalInactiveMods));
-    
-    // Update the filtered lists
-    FilterActiveMods();
-    FilterInactiveMods();
-}
+        private void ClearActiveList(object parameter)
+        {
+            // Move all active mods to inactive
+            _allInactiveMods.AddRange(_allActiveMods);
+            _allActiveMods.Clear();
+
+            // Notify property changes
+            OnPropertyChanged(nameof(TotalActiveMods));
+            OnPropertyChanged(nameof(TotalInactiveMods));
+
+            // Update the filtered lists
+            FilterActiveMods();
+            FilterInactiveMods();
+        }
+
+        public void MoveModUp(ModItem mod)
+        {
+            var item = _virtualActiveMods.FirstOrDefault(x => x.Mod == mod);
+            if (item != default && item.LoadOrder > 0)
+            {
+                // Swap with the mod above
+                var itemAbove = _virtualActiveMods.First(x => x.LoadOrder == item.LoadOrder - 1);
+                _virtualActiveMods.Remove(item);
+                _virtualActiveMods.Remove(itemAbove);
+
+                _virtualActiveMods.Add((item.Mod, item.LoadOrder - 1));
+                _virtualActiveMods.Add((itemAbove.Mod, itemAbove.LoadOrder + 1));
+
+                // Rebuild the list with correct order
+                _virtualActiveMods = _virtualActiveMods.OrderBy(x => x.LoadOrder).ToList();
+                FilterActiveMods();
+            }
+        }
+
+        public void MoveModDown(ModItem mod)
+        {
+            var item = _virtualActiveMods.FirstOrDefault(x => x.Mod == mod);
+            if (item != default && item.LoadOrder < _virtualActiveMods.Count - 1)
+            {
+                // Swap with the mod below
+                var itemBelow = _virtualActiveMods.First(x => x.LoadOrder == item.LoadOrder + 1);
+                _virtualActiveMods.Remove(item);
+                _virtualActiveMods.Remove(itemBelow);
+
+                _virtualActiveMods.Add((item.Mod, item.LoadOrder + 1));
+                _virtualActiveMods.Add((itemBelow.Mod, itemBelow.LoadOrder - 1));
+
+                // Rebuild the list with correct order
+                _virtualActiveMods = _virtualActiveMods.OrderBy(x => x.LoadOrder).ToList();
+                FilterActiveMods();
+            }
+        }
+
+        public void AddModToActive(ModItem mod)
+        {
+            if (!_virtualActiveMods.Any(x => x.Mod == mod))
+            {
+                _virtualActiveMods.Add((mod, _virtualActiveMods.Count));
+                mod.IsActive = true;
+
+                // Update the lists
+                _allActiveMods = _virtualActiveMods.Select(x => x.Mod).ToList();
+                _allInactiveMods.Remove(mod);
+
+                OnPropertyChanged(nameof(TotalActiveMods));
+                OnPropertyChanged(nameof(TotalInactiveMods));
+                FilterActiveMods();
+                FilterInactiveMods();
+            }
+        }
+
+        public void RemoveModFromActive(ModItem mod)
+        {
+            var item = _virtualActiveMods.FirstOrDefault(x => x.Mod == mod);
+            if (item != default)
+            {
+                _virtualActiveMods.Remove(item);
+                mod.IsActive = false;
+
+                // Update load orders for remaining mods
+                for (int i = 0; i < _virtualActiveMods.Count; i++)
+                {
+                    var existing = _virtualActiveMods[i];
+                    _virtualActiveMods[i] = (existing.Mod, i);
+                }
+
+                // Update the lists
+                _allActiveMods = _virtualActiveMods.Select(x => x.Mod).ToList();
+                _allInactiveMods.Add(mod);
+
+                OnPropertyChanged(nameof(TotalActiveMods));
+                OnPropertyChanged(nameof(TotalInactiveMods));
+                FilterActiveMods();
+                FilterInactiveMods();
+            }
+        }
+
 
         private void SortActiveList(object parameter)
         {
@@ -253,8 +430,30 @@ private async Task LoadDataAsync()
 
         private void SaveMods(object parameter)
         {
-            // TODO: Implement save mods logic
-            System.Windows.MessageBox.Show("Save mods functionality will go here");
+            try
+            {
+                var configPath = Path.Combine(_pathService.GetConfigPath(), "ModsConfig.xml");
+                if (!File.Exists(configPath)) return;
+
+                var doc = XDocument.Load(configPath);
+                var activeModsElement = doc.Root.Element("activeMods");
+
+                // Clear existing active mods
+                activeModsElement?.RemoveAll();
+
+                // Add mods in current load order
+                foreach (var (mod, _) in _virtualActiveMods.OrderBy(x => x.LoadOrder))
+                {
+                    activeModsElement?.Add(new XElement("li", mod.PackageId));
+                }
+
+                doc.Save(configPath);
+                MessageBox.Show("Mods configuration saved successfully!");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error saving mods configuration: {ex.Message}");
+            }
         }
 
         private void RunGame(object parameter)
