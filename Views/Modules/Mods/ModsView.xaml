@@ -9,7 +9,7 @@
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:ModsViewModel, IsDesignTimeCreatable=True}"
              d:DesignHeight="600"
-        d:DesignWidth="1000">
+             d:DesignWidth="1000">
     <UserControl.Resources>
         <!-- Converters needed within this view -->
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
@@ -18,8 +18,8 @@
 
         <!-- Style for list header buttons -->
         <Style TargetType="Button"
-                x:Key="ListHeaderButtonStyle"
-                BasedOn="{StaticResource RimworldButtonStyle}">
+               x:Key="ListHeaderButtonStyle"
+               BasedOn="{StaticResource RimworldButtonStyle}">
             <Setter Property="Width"
                     Value="30"/>
             <Setter Property="Padding"
@@ -30,8 +30,8 @@
 
         <!-- Style for arrow buttons between lists -->
         <Style TargetType="Button"
-                x:Key="ArrowButtonStyle"
-                BasedOn="{StaticResource RimworldButtonStyle}">
+               x:Key="ArrowButtonStyle"
+               BasedOn="{StaticResource RimworldButtonStyle}">
             <Setter Property="Width"
                     Value="30"/>
             <Setter Property="Height"
@@ -50,9 +50,9 @@
         <ProgressBar
             IsIndeterminate="True"
             Height="4"
-                VerticalAlignment="Top"
-                Panel.ZIndex="10"
-                Margin="0"
+            VerticalAlignment="Top"
+            Panel.ZIndex="10"
+            Margin="0"
             Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"
             Foreground="{StaticResource RimworldHighlightBrush}"
             Background="Transparent"
@@ -81,57 +81,63 @@
 
                     <!-- Mod Preview (Top Part) -->
                     <!-- Replace the Mod Preview section with this corrected version -->
-<Border Grid.Row="0">
-    <Border Background="#1e3a8a"
-            CornerRadius="10"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            Width="400"
-            Height="220"
-            Margin="10">
-        <Grid>
-            <Image Source="{Binding SelectedMod.PreviewImagePath, Converter={StaticResource ImagePathConverter}}" 
-                   Stretch="UniformToFill"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center">
-                <Image.Style>
-                    <Style TargetType="Image">
-                        <Setter Property="Visibility" Value="Visible"/>
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding SelectedMod.PreviewImagePath}" Value="{x:Null}">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Image.Style>
-            </Image>
-            
-            <TextBlock Text="MOD PREVIEW IMAGE"
-                       FontSize="18"
-                       Foreground="LightGray"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       FontStyle="Italic">
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock">
-                        <Setter Property="Visibility" Value="Collapsed"/>
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding SelectedMod.PreviewImagePath}" Value="{x:Null}">
-                                <Setter Property="Visibility" Value="Visible"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </TextBlock.Style>
-            </TextBlock>
-        </Grid>
-    </Border>
-</Border>
+                    <Border Grid.Row="0">
+                        <Border Background="#1e3a8a"
+                                CornerRadius="10"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Width="400"
+                                Height="220"
+                                Margin="10">
+                            <Grid>
+                                <Image Source="{Binding SelectedMod.PreviewImagePath, Converter={StaticResource ImagePathConverter}}"
+                                       Stretch="UniformToFill"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center">
+                                    <Image.Style>
+                                        <Style TargetType="Image">
+                                            <Setter Property="Visibility"
+                                                    Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedMod.PreviewImagePath}"
+                                                        Value="{x:Null}">
+                                                    <Setter Property="Visibility"
+                                                            Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Image.Style>
+                                </Image>
+
+                                <TextBlock Text="MOD PREVIEW IMAGE"
+                                           FontSize="18"
+                                           Foreground="LightGray"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontStyle="Italic">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility"
+                                                    Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedMod.PreviewImagePath}"
+                                                        Value="{x:Null}">
+                                                    <Setter Property="Visibility"
+                                                            Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </Border>
+                    </Border>
 
 
                     <!-- Mod Info (Bottom Part) -->
                     <Grid Grid.Row="1"
-                            Margin="10"
-                            DataContext="{Binding SelectedMod}">
+                          Margin="10"
+                          DataContext="{Binding SelectedMod}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
@@ -148,93 +154,93 @@
                             </Grid.RowDefinitions>
 
                             <Grid Grid.Row="0"
-                                    Margin="0,0,0,2">
+                                  Margin="0,0,0,2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0"
-                                        Text="Name:"
-                                        FontWeight="SemiBold"
-                                        Margin="0,0,10,0"
-                                        VerticalAlignment="Top"
-                                        Foreground="{StaticResource RimworldBrownBrush}"/>
+                                           Text="Name:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,10,0"
+                                           VerticalAlignment="Top"
+                                           Foreground="{StaticResource RimworldBrownBrush}"/>
                                 <TextBlock Grid.Column="1"
-                                        Text="{Binding Name}"
-                                        TextWrapping="Wrap"
-                                        Foreground="{StaticResource RimworldBrownBrush}"/>
+                                           Text="{Binding Name}"
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource RimworldBrownBrush}"/>
                             </Grid>
 
                             <Grid Grid.Row="1"
-                                    Margin="0,0,0,2">
+                                  Margin="0,0,0,2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0"
-                                        Text="Authors:"
-                                        FontWeight="SemiBold"
-                                        Margin="0,0,10,0"
-                                        VerticalAlignment="Top"
-                                        Foreground="{StaticResource RimworldBrownBrush}"/>
+                                           Text="Authors:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,10,0"
+                                           VerticalAlignment="Top"
+                                           Foreground="{StaticResource RimworldBrownBrush}"/>
                                 <TextBlock Grid.Column="1"
-                                        Text="{Binding Authors}"
-                                        TextWrapping="Wrap"
-                                        Foreground="{StaticResource RimworldBrownBrush}"/>
+                                           Text="{Binding Authors}"
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource RimworldBrownBrush}"/>
                             </Grid>
 
                             <Grid Grid.Row="2"
-                                    Margin="0,0,0,2">
+                                  Margin="0,0,0,2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0"
-                                        Text="PackageID:"
-                                        FontWeight="SemiBold"
-                                        Margin="0,0,10,0"
-                                        VerticalAlignment="Top"
-                                        Foreground="{StaticResource RimworldBrownBrush}"/>
+                                           Text="PackageID:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,10,0"
+                                           VerticalAlignment="Top"
+                                           Foreground="{StaticResource RimworldBrownBrush}"/>
                                 <TextBlock Grid.Column="1"
-                                        Text="{Binding PackageId}"
-                                        TextWrapping="Wrap"
-                                        Foreground="{StaticResource RimworldBrownBrush}"/>
+                                           Text="{Binding PackageId}"
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource RimworldBrownBrush}"/>
                             </Grid>
 
                             <Grid Grid.Row="3"
-                                    Margin="0,0,0,2">
+                                  Margin="0,0,0,2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0"
-                                        Text="Is Core:"
-                                        FontWeight="SemiBold"
-                                        Margin="0,0,10,0"
-                                        VerticalAlignment="Top"
-                                        Foreground="{StaticResource RimworldBrownBrush}"/>
+                                           Text="Is Core:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,10,0"
+                                           VerticalAlignment="Top"
+                                           Foreground="{StaticResource RimworldBrownBrush}"/>
                                 <TextBlock Grid.Column="1"
-                                        Text="{Binding IsCore}"
-                                        Foreground="{StaticResource RimworldBrownBrush}"/>
+                                           Text="{Binding IsCore}"
+                                           Foreground="{StaticResource RimworldBrownBrush}"/>
                             </Grid>
 
                             <Grid Grid.Row="4"
-                                    Margin="0,0,0,2">
+                                  Margin="0,0,0,2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0"
-                                        Text="Path:"
-                                        FontWeight="SemiBold"
-                                        Margin="0,0,10,0"
-                                        VerticalAlignment="Top"
-                                        Foreground="{StaticResource RimworldBrownBrush}"/>
+                                           Text="Path:"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,10,0"
+                                           VerticalAlignment="Top"
+                                           Foreground="{StaticResource RimworldBrownBrush}"/>
                                 <TextBlock Grid.Column="1"
-                                        Text="{Binding Path}"
-                                        TextWrapping="Wrap"
-                                        ToolTip="{Binding Path}"
-                                        Foreground="{StaticResource RimworldBrownBrush}"/>
+                                           Text="{Binding Path}"
+                                           TextWrapping="Wrap"
+                                           ToolTip="{Binding Path}"
+                                           Foreground="{StaticResource RimworldBrownBrush}"/>
                             </Grid>
                         </Grid>
 
@@ -246,8 +252,8 @@
                                 Padding="0,10,0,0">
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                                 <TextBlock Text="{Binding Description}"
-                                        TextWrapping="Wrap"
-                                        Foreground="{StaticResource RimworldBrownBrush}"/>
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource RimworldBrownBrush}"/>
                             </ScrollViewer>
                         </Border>
                     </Grid>
@@ -256,7 +262,7 @@
 
             <!-- Mod Lists Panel - Now Horizontal Layout -->
             <Grid Grid.Column="1"
-                    Margin="0,0,8,0">
+                  Margin="0,0,8,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <!-- Inactive List -->
@@ -288,25 +294,25 @@
                                 </Grid.ColumnDefinitions>
 
                                 <TextBlock Grid.Column="0"
-                                        Text="Inactive"
-                                        FontWeight="Bold"
-                                        VerticalAlignment="Center"
-                                        Foreground="White"/>
+                                           Text="Inactive"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center"
+                                           Foreground="White"/>
                                 <StackPanel Grid.Column="1"
-                                        Orientation="Horizontal"
-                                        Margin="10,0"
-                                        HorizontalAlignment="Right">
+                                            Orientation="Horizontal"
+                                            Margin="10,0"
+                                            HorizontalAlignment="Right">
                                     <TextBox Width="150"
-                                            Tag="Search Inactive..."
-                                            Style="{StaticResource RimworldWatermarkTextBox}"/>
+                                             Tag="Search Inactive..."
+                                             Style="{StaticResource RimworldWatermarkTextBox}"/>
                                     <Button Content="🔍"
                                             Style="{StaticResource ListHeaderButtonStyle}"/>
                                 </StackPanel>
                                 <ComboBox Grid.Column="2"
-                                        Width="100"
-                                        SelectedIndex="0"
-                                        VerticalAlignment="Center"
-                                        Style="{StaticResource RimworldComboBox}">
+                                          Width="100"
+                                          SelectedIndex="0"
+                                          VerticalAlignment="Center"
+                                          Style="{StaticResource RimworldComboBox}">
                                     <ComboBoxItem Content="Name"/>
                                     <ComboBoxItem Content="Author"/>
                                 </ComboBox>
@@ -315,16 +321,16 @@
 
                         <!-- Mod Items List -->
                         <ListBox Grid.Row="1"
-                                ItemsSource="{Binding InactiveMods}"
-                                SelectedItem="{Binding SelectedMod, Mode=TwoWay}"
+                                 ItemsSource="{Binding InactiveMods}"
+                                 SelectedItem="{Binding SelectedMod, Mode=TwoWay}"
                                  HorizontalContentAlignment="Stretch"
-                                Style="{StaticResource RimworldListBox}">
+                                 Style="{StaticResource RimworldListBox}">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding Name}"
-                                            Margin="5,2"
-                                            ToolTip="{Binding Path}"
-                                            Foreground="{StaticResource RimworldBrownBrush}"/>
+                                               Margin="5,2"
+                                               ToolTip="{Binding Path}"
+                                               Foreground="{StaticResource RimworldBrownBrush}"/>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
@@ -355,25 +361,25 @@
                                 </Grid.ColumnDefinitions>
 
                                 <TextBlock Grid.Column="0"
-                                        Text="Active"
-                                        FontWeight="Bold"
-                                        VerticalAlignment="Center"
-                                        Foreground="White"/>
+                                           Text="Active"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center"
+                                           Foreground="White"/>
                                 <StackPanel Grid.Column="1"
-                                        Orientation="Horizontal"
-                                        Margin="10,0"
-                                        HorizontalAlignment="Right">
+                                            Orientation="Horizontal"
+                                            Margin="10,0"
+                                            HorizontalAlignment="Right">
                                     <TextBox Width="150"
-                                            Tag="Search Active..."
-                                            Style="{StaticResource RimworldWatermarkTextBox}"/>
+                                             Tag="Search Active..."
+                                             Style="{StaticResource RimworldWatermarkTextBox}"/>
                                     <Button Content="🔍"
                                             Style="{StaticResource ListHeaderButtonStyle}"/>
                                 </StackPanel>
                                 <ComboBox Grid.Column="2"
-                                        Width="100"
-                                        SelectedIndex="0"
-                                        VerticalAlignment="Center"
-                                        Style="{StaticResource RimworldComboBox}">
+                                          Width="100"
+                                          SelectedIndex="0"
+                                          VerticalAlignment="Center"
+                                          Style="{StaticResource RimworldComboBox}">
                                     <ComboBoxItem Content="Load Order"/>
                                     <ComboBoxItem Content="Name"/>
                                 </ComboBox>
@@ -382,16 +388,16 @@
 
                         <!-- Mod Items List -->
                         <ListBox Grid.Row="1"
-                                ItemsSource="{Binding ActiveMods}"
-                                SelectedItem="{Binding SelectedMod, Mode=TwoWay}"
+                                 ItemsSource="{Binding ActiveMods}"
+                                 SelectedItem="{Binding SelectedMod, Mode=TwoWay}"
                                  HorizontalContentAlignment="Stretch"
-                                Style="{StaticResource RimworldListBox}">
+                                 Style="{StaticResource RimworldListBox}">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding Name}"
-                                            Margin="5,2"
-                                            ToolTip="{Binding Path}"
-                                            Foreground="{StaticResource RimworldBrownBrush}"/>
+                                               Margin="5,2"
+                                               ToolTip="{Binding Path}"
+                                               Foreground="{StaticResource RimworldBrownBrush}"/>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
@@ -401,8 +407,8 @@
 
             <!-- Right Sidebar Buttons -->
             <StackPanel Grid.Column="2"
-                    Width="130"
-                    Margin="0,0,0,0">
+                        Width="130"
+                        Margin="0,0,0,0">
                 <Button Content="Clear"
                         Command="{Binding ClearActiveListCommand}"
                         Margin="0,0,0,5"
@@ -425,9 +431,9 @@
                         Style="{StaticResource RimworldButtonStyle}"/>
 
                 <TextBlock Text="Mod lists"
-                        FontWeight="Bold"
-                        Margin="0,0,0,5"
-                        Foreground="{StaticResource RimworldBrownBrush}"/>
+                           FontWeight="Bold"
+                           Margin="0,0,0,5"
+                           Foreground="{StaticResource RimworldBrownBrush}"/>
                 <Button Content="Import list"
                         Command="{Binding ImportListCommand}"
                         Margin="0,0,0,5"
