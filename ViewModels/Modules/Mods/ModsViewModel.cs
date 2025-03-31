@@ -6,6 +6,8 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input; // Namespace for ICommand
+using System.Collections.Generic; // For filtering
+
 
 
 // Correct Namespace Declaration
@@ -18,6 +20,17 @@ namespace RimSharp.ViewModels.Modules.Mods
 
         private ModItem _selectedMod;
         private bool _isLoading;
+               private string _activeSearchText = "";
+        private string _inactiveSearchText = "";    
+
+        private List<ModItem> _allActiveMods = new();
+        private List<ModItem> _allInactiveMods = new();
+
+        public int TotalActiveMods => _allActiveMods.Count;
+        public int TotalInactiveMods => _allInactiveMods.Count;
+
+
+
 
         public ObservableCollection<ModItem> ActiveMods { get; } = new();
         public ObservableCollection<ModItem> InactiveMods { get; } = new();
@@ -68,29 +81,31 @@ namespace RimSharp.ViewModels.Modules.Mods
         }
 
 
-                private async Task LoadDataAsync()
-        {
-            IsLoading = true;
-            ActiveMods.Clear();
-            InactiveMods.Clear();
+private async Task LoadDataAsync()
+{
+    IsLoading = true;
+    ActiveMods.Clear();
+    InactiveMods.Clear();
+    _allActiveMods.Clear();
+    _allInactiveMods.Clear();
 
-            await _modService.LoadModsAsync();
-            
-            var allMods = _modService.GetLoadedMods().ToList();
-            
-            foreach (var mod in allMods.Where(m => m.IsActive).OrderBy(m => m.Name))
-            {
-                ActiveMods.Add(mod);
-            }
-            
-            foreach (var mod in allMods.Where(m => !m.IsActive).OrderBy(m => m.Name))
-            {
-                InactiveMods.Add(mod);
-            }
+    await _modService.LoadModsAsync();
+    
+    var allMods = _modService.GetLoadedMods().ToList();
+    
+    _allActiveMods = allMods.Where(m => m.IsActive).OrderBy(m => m.Name).ToList();
+    _allInactiveMods = allMods.Where(m => !m.IsActive).OrderBy(m => m.Name).ToList();
+    
+    // Notify that the totals have changed
+    OnPropertyChanged(nameof(TotalActiveMods));
+    OnPropertyChanged(nameof(TotalInactiveMods));
+    
+    FilterActiveMods(); // Apply initial filter (shows all when search is empty)
+    FilterInactiveMods();
 
-            SelectedMod = ActiveMods.FirstOrDefault() ?? InactiveMods.FirstOrDefault();
-            IsLoading = false;
-        }
+    SelectedMod = ActiveMods.FirstOrDefault() ?? InactiveMods.FirstOrDefault();
+    IsLoading = false;
+}
 
         private void LoadDummyData()
         {
@@ -107,6 +122,55 @@ namespace RimSharp.ViewModels.Modules.Mods
             InactiveMods.Add(new ModItem { Name = "Achtung!" });
 
             SelectedMod = InactiveMods.FirstOrDefault();
+        }
+        public string ActiveSearchText
+        {
+            get => _activeSearchText;
+            set
+            {
+                if (SetProperty(ref _activeSearchText, value))
+                {
+                    FilterActiveMods();
+                }
+            }
+        }
+        
+        public string InactiveSearchText
+        {
+            get => _inactiveSearchText;
+            set
+            {
+                if (SetProperty(ref _inactiveSearchText, value))
+                {
+                    FilterInactiveMods();
+                }
+            }
+        }
+
+        private void FilterActiveMods()
+        {
+            ActiveMods.Clear();
+            var filteredMods = string.IsNullOrWhiteSpace(_activeSearchText)
+                ? _allActiveMods
+                : _allActiveMods.Where(m => m.Name.Contains(_activeSearchText, System.StringComparison.OrdinalIgnoreCase));
+                
+            foreach (var mod in filteredMods)
+            {
+                ActiveMods.Add(mod);
+            }
+        }
+        
+        private void FilterInactiveMods()
+        {
+            InactiveMods.Clear();
+            var filteredMods = string.IsNullOrWhiteSpace(_inactiveSearchText)
+                ? _allInactiveMods
+                : _allInactiveMods.Where(m => m.Name.Contains(_inactiveSearchText, System.StringComparison.OrdinalIgnoreCase));
+                
+            foreach (var mod in filteredMods)
+            {
+                InactiveMods.Add(mod);
+            }
         }
 
         private void SelectMod(object parameter)
@@ -125,11 +189,20 @@ namespace RimSharp.ViewModels.Modules.Mods
             return LoadDataAsync();
         }
 
-        private void ClearActiveList(object parameter)
-        {
-            // TODO: Implement clear active list logic
-            ActiveMods.Clear();
-        }
+       private void ClearActiveList(object parameter)
+{
+    // Move all active mods to inactive
+    _allInactiveMods.AddRange(_allActiveMods);
+    _allActiveMods.Clear();
+    
+    // Notify property changes
+    OnPropertyChanged(nameof(TotalActiveMods));
+    OnPropertyChanged(nameof(TotalInactiveMods));
+    
+    // Update the filtered lists
+    FilterActiveMods();
+    FilterInactiveMods();
+}
 
         private void SortActiveList(object parameter)
         {
