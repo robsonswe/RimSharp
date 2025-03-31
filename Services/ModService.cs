@@ -1,5 +1,6 @@
 // Update ModService.cs
 using RimSharp.Models;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -20,13 +21,13 @@ namespace RimSharp.Services
 
         public IEnumerable<ModItem> GetLoadedMods() => _allMods;
 
-                public void LoadMods()
+        public void LoadMods()
         {
             _allMods.Clear();
 
             // Check if all required paths are set
-            if (string.IsNullOrEmpty(_pathService.GetGamePath()) || 
-                string.IsNullOrEmpty(_pathService.GetConfigPath()) || 
+            if (string.IsNullOrEmpty(_pathService.GetGamePath()) ||
+                string.IsNullOrEmpty(_pathService.GetConfigPath()) ||
                 string.IsNullOrEmpty(_pathService.GetModsPath()))
             {
                 return; // Return empty list if any path is not set
@@ -49,23 +50,30 @@ namespace RimSharp.Services
         }
 
         private void LoadCoreMods()
-        {
-            var coreModsPath = Path.Combine(_pathService.GetGamePath(), "Data");
-            if (!Directory.Exists(coreModsPath)) return;
+{
+    var coreModsPath = Path.Combine(_pathService.GetGamePath(), "Data");
+    if (!Directory.Exists(coreModsPath)) return;
 
-            foreach (var dir in Directory.GetDirectories(coreModsPath))
+    foreach (var dir in Directory.GetDirectories(coreModsPath))
+    {
+        var aboutPath = Path.Combine(dir, "About", "About.xml");
+        if (File.Exists(aboutPath))
+        {
+            var folderName = Path.GetFileName(dir);
+            var mod = ParseAboutXml(aboutPath, folderName);
+            mod.IsCore = true;
+            mod.Path = dir;
+            
+            // Append "[DLC]" to name if it's not the Core mod
+            if (mod.PackageId != "Ludeon.RimWorld" && !string.IsNullOrEmpty(mod.Name))
             {
-                var aboutPath = Path.Combine(dir, "About", "About.xml");
-                if (File.Exists(aboutPath))
-                {
-                    var folderName = Path.GetFileName(dir);
-                    var mod = ParseAboutXml(aboutPath, folderName);
-                    mod.IsCore = true;
-                    mod.Path = dir;
-                    _allMods.Add(mod);
-                }
+                mod.Name = $"{mod.Name} [DLC]";
             }
+            
+            _allMods.Add(mod);
         }
+    }
+}
 
         private void LoadWorkshopMods()
         {
@@ -145,11 +153,13 @@ namespace RimSharp.Services
             if (!File.Exists(configPath)) return;
 
             var doc = XDocument.Load(configPath);
-            var activeMods = doc.Root.Element("activeMods")?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>();
+            var activeMods = doc.Root.Element("activeMods")?.Elements("li")
+                .Select(x => x.Value.ToLowerInvariant()) // Normalize to lowercase
+                .ToList() ?? new List<string>();
 
             foreach (var mod in _allMods)
             {
-                mod.IsActive = activeMods.Contains(mod.PackageId);
+                mod.IsActive = activeMods.Contains(mod.PackageId?.ToLowerInvariant());
             }
         }
     }

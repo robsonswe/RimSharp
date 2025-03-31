@@ -78,7 +78,7 @@ namespace RimSharp.ViewModels
 
 
             // Create instances of the module ViewModels, passing dependencies
-            ModsVM = new ModsViewModel(_modService);
+            ModsVM = new ModsViewModel(_modService, _pathService);
             DownloaderVM = new DownloaderViewModel(/* Pass services if needed */);
 
             // Set the initial view
