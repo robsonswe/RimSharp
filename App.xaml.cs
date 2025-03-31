@@ -11,24 +11,31 @@ namespace RimSharp
 {
     public partial class App : Application
     {
-        private readonly ServiceProvider _serviceProvider;
+        public IServiceProvider ServiceProvider { get; private set; }
         
         public App()
         {
             var services = new ServiceCollection();
             ConfigureServices(services);
-            _serviceProvider = services.BuildServiceProvider();
+            ServiceProvider = services.BuildServiceProvider();  // Store the provider
         }
         
-        private void ConfigureServices(IServiceCollection services)
+                private void ConfigureServices(IServiceCollection services)
         {
-            // Register PathSettings as singleton with default values
-            services.AddSingleton(new PathSettings
+            // Register ConfigService first as it's needed by PathSettings
+            services.AddSingleton<IConfigService, ConfigService>();
+            
+            // Register PathSettings with values from config
+            services.AddSingleton(provider => 
             {
-                GamePath = @"C:\Games\RimWorld\",
-                ModsPath = @"C:\Games\RimWorld\Mods\",
-                ConfigPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RimWorld"),
-                GameVersion = "1.4"
+                var configService = provider.GetRequiredService<IConfigService>();
+                return new PathSettings
+                {
+                    GamePath = configService.GetConfigValue("game_folder"),
+                    ModsPath = configService.GetConfigValue("mods_folder"),
+                    ConfigPath = configService.GetConfigValue("config_folder"),
+                    GameVersion = "1.4" // This will be updated later
+                };
             });
 
             services.AddSingleton<IModService, ModService>();
@@ -36,10 +43,11 @@ namespace RimSharp
             services.AddSingleton<MainViewModel>();
             services.AddSingleton<MainWindow>();
         }
+
         
         protected override void OnStartup(StartupEventArgs e)
 {
-    var mainWindow = _serviceProvider.GetService<MainWindow>();
+            var mainWindow = ServiceProvider.GetService<MainWindow>();
     mainWindow?.Show();
     
     base.OnStartup(e);

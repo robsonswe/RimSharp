@@ -48,12 +48,15 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Button Grid.Column="0" Content="Game folder" Command="{Binding BrowsePathCommand}" CommandParameter="GamePath" 
-                            Style="{StaticResource RimworldButtonStyle}" Width="80" Margin="0,0,8,0"/>
-                    <TextBox Grid.Column="1" Text="{Binding PathSettings.GamePath}" IsReadOnly="False" 
+                    <Button Grid.Column="0" Content="Game folder" 
+                            Command="{Binding OpenFolderCommand}" CommandParameter="GamePath"
+                            Style="{StaticResource RimworldButtonStyle}" Width="80" Margin="0,0,8,0"
+                            ToolTip="Open game folder in Explorer"/>
+                    <TextBox Grid.Column="1" Text="{Binding PathSettings.GamePath, UpdateSourceTrigger=PropertyChanged}" 
                              Style="{StaticResource RimworldTextBox}" VerticalAlignment="Center"/>
                     <Button Grid.Column="2" Content="..." Command="{Binding BrowsePathCommand}" CommandParameter="GamePath" 
-                            Style="{StaticResource RimworldButtonStyle}" Width="30" Margin="8,0,0,0" Padding="0"/>
+                            Style="{StaticResource RimworldButtonStyle}" Width="30" Margin="8,0,0,0" Padding="0"
+                            ToolTip="Browse for game folder"/>
                 </Grid>
 
                 <!-- Row 2: Config Folder -->
@@ -63,12 +66,15 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Button Grid.Column="0" Content="Config folder" Command="{Binding BrowsePathCommand}" CommandParameter="ConfigPath" 
-                            Style="{StaticResource RimworldButtonStyle}" Width="80" Margin="0,0,8,0"/>
-                    <TextBox Grid.Column="1" Text="{Binding PathSettings.ConfigPath}" IsReadOnly="False" 
+                    <Button Grid.Column="0" Content="Config folder" 
+                            Command="{Binding OpenFolderCommand}" CommandParameter="ConfigPath"
+                            Style="{StaticResource RimworldButtonStyle}" Width="80" Margin="0,0,8,0"
+                            ToolTip="Open config folder in Explorer"/>
+                    <TextBox Grid.Column="1" Text="{Binding PathSettings.ConfigPath, UpdateSourceTrigger=PropertyChanged}" 
                              Style="{StaticResource RimworldTextBox}" VerticalAlignment="Center"/>
                     <Button Grid.Column="2" Content="..." Command="{Binding BrowsePathCommand}" CommandParameter="ConfigPath" 
-                            Style="{StaticResource RimworldButtonStyle}" Width="30" Margin="8,0,0,0" Padding="0"/>
+                            Style="{StaticResource RimworldButtonStyle}" Width="30" Margin="8,0,0,0" Padding="0"
+                            ToolTip="Browse for config folder"/>
                 </Grid>
 
                 <!-- Row 3: Mods Folder -->
@@ -78,14 +84,15 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <Button Content="Mods" Command="{Binding BrowsePathCommand}" CommandParameter="ModsPath" 
-                                Style="{StaticResource RimworldButtonStyle}" Width="80" Margin="0,0,0,0"/>
-                     </StackPanel>
-                    <TextBox Grid.Column="1" Text="{Binding PathSettings.ModsPath}" IsReadOnly="False" 
+                    <Button Grid.Column="0" Content="Mods Folder" 
+                            Command="{Binding OpenFolderCommand}" CommandParameter="ModsPath"
+                            Style="{StaticResource RimworldButtonStyle}" Width="80" Margin="0,0,8,0"
+                            ToolTip="Open mods folder in Explorer"/>
+                    <TextBox Grid.Column="1" Text="{Binding PathSettings.ModsPath, UpdateSourceTrigger=PropertyChanged}" 
                              Style="{StaticResource RimworldTextBox}" VerticalAlignment="Center"/>
                     <Button Grid.Column="2" Content="..." Command="{Binding BrowsePathCommand}" CommandParameter="ModsPath" 
-                            Style="{StaticResource RimworldButtonStyle}" Width="30" Margin="8,0,0,0" Padding="0"/>
+                            Style="{StaticResource RimworldButtonStyle}" Width="30" Margin="8,0,0,0" Padding="0"
+                            ToolTip="Browse for mods folder"/>
                 </Grid>
             </Grid>
         </Border>
