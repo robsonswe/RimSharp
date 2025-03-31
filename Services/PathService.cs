@@ -13,21 +13,9 @@ namespace RimSharp.Services
             _settings = settings;
         }
 
-        public string GetGamePath()
-        {
-            return _settings.GamePath;
-        }
-
-        public string GetModsPath()
-        {
-            return _settings.ModsPath;
-        }
-
-        public string GetConfigPath()
-        {
-            return _settings.ConfigPath;
-        }
-
+        public string GetGamePath() => Directory.Exists(_settings.GamePath) ? _settings.GamePath : null;
+        public string GetModsPath() => Directory.Exists(_settings.ModsPath) ? _settings.ModsPath : null;
+        public string GetConfigPath() => Directory.Exists(_settings.ConfigPath) ? _settings.ConfigPath : null;
         // Original method: gets version based on the path currently in _settings
                public string GetGameVersion(string gamePath)
         {
