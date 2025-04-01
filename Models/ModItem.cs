@@ -33,6 +33,7 @@ namespace RimSharp.Models
         public string ExternalUrl { get; set; }
         public string Path { get; set; }
         public bool IsCore { get; set; }
+        public bool IsExpansion { get; set; }
         public bool IsActive { get; set; }
         public string PreviewImagePath { get; set; }
 

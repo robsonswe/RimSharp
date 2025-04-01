@@ -50,30 +50,34 @@ namespace RimSharp.Services
         }
 
         private void LoadCoreMods()
-{
-    var coreModsPath = Path.Combine(_pathService.GetGamePath(), "Data");
-    if (!Directory.Exists(coreModsPath)) return;
-
-    foreach (var dir in Directory.GetDirectories(coreModsPath))
-    {
-        var aboutPath = Path.Combine(dir, "About", "About.xml");
-        if (File.Exists(aboutPath))
         {
-            var folderName = Path.GetFileName(dir);
-            var mod = ParseAboutXml(aboutPath, folderName);
-            mod.IsCore = true;
-            mod.Path = dir;
-            
-            // Append "[DLC]" to name if it's not the Core mod
-            if (mod.PackageId != "Ludeon.RimWorld" && !string.IsNullOrEmpty(mod.Name))
+            var coreModsPath = Path.Combine(_pathService.GetGamePath(), "Data");
+            if (!Directory.Exists(coreModsPath)) return;
+
+            foreach (var dir in Directory.GetDirectories(coreModsPath))
             {
-                mod.Name = $"{mod.Name} [DLC]";
+                var aboutPath = Path.Combine(dir, "About", "About.xml");
+                if (File.Exists(aboutPath))
+                {
+                    var folderName = Path.GetFileName(dir);
+                    var mod = ParseAboutXml(aboutPath, folderName);
+                    mod.Path = dir;
+
+                    // Set core/expansion flags
+                    bool isCoreMod = mod.PackageId == "Ludeon.RimWorld";
+                    mod.IsCore = isCoreMod;
+                    mod.IsExpansion = !isCoreMod;  // All other official mods in Data folder are expansions
+
+                    // Append "[DLC]" to name if it's an expansion
+                    if (mod.IsExpansion && !string.IsNullOrEmpty(mod.Name))
+                    {
+                        mod.Name = $"{mod.Name} [DLC]";
+                    }
+
+                    _allMods.Add(mod);
+                }
             }
-            
-            _allMods.Add(mod);
         }
-    }
-}
 
         private void LoadWorkshopMods()
         {
