@@ -37,6 +37,8 @@ namespace RimSharp.Models
         public bool IsActive { get; set; }
         public string PreviewImagePath { get; set; }
 
+        public bool IsOutdatedRW { get; set; }
+
         public bool HasUrl => !string.IsNullOrEmpty(Url);
         public bool HasSteamUrl => !string.IsNullOrEmpty(SteamUrl);
         public bool HasExternalUrl => !string.IsNullOrEmpty(ExternalUrl);

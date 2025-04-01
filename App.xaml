@@ -25,6 +25,7 @@
                     <Color x:Key="RimworldHighlight">#F7D070</Color>
                     <Color x:Key="RimworldDarkGreen">#2B4933</Color>
                     <Color x:Key="RimworldRed">#9E2A2A</Color>
+                    
 
                     <!-- Brushes -->
                     <SolidColorBrush x:Key="RimworldBrownBrush"
@@ -43,6 +44,8 @@
                             Color="{StaticResource RimworldDarkGreen}"/>
                     <SolidColorBrush x:Key="RimworldRedBrush"
                             Color="{StaticResource RimworldRed}"/>
+        <SolidColorBrush x:Key="RimworldErrorBrush" Color="#b52828"/>
+
 
                     <!-- Custom Border Style for RimWorld-like panels -->
                     <Style x:Key="RimworldPanelBorder"
