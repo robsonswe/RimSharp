@@ -338,20 +338,7 @@ namespace RimSharp.ViewModels.Modules.Mods
 
         public void AddModToActive(ModItem mod)
         {
-            if (!_virtualActiveMods.Any(x => x.Mod == mod))
-            {
-                _virtualActiveMods.Add((mod, _virtualActiveMods.Count));
-                mod.IsActive = true;
-
-                // Update the lists
-                _allActiveMods = _virtualActiveMods.Select(x => x.Mod).ToList();
-                _allInactiveMods.Remove(mod);
-
-                OnPropertyChanged(nameof(TotalActiveMods));
-                OnPropertyChanged(nameof(TotalInactiveMods));
-                FilterActiveMods();
-                FilterInactiveMods();
-            }
+            AddModToActiveAtPosition(mod, _virtualActiveMods.Count);
         }
 
         public void RemoveModFromActive(ModItem mod)
@@ -378,6 +365,63 @@ namespace RimSharp.ViewModels.Modules.Mods
                 FilterActiveMods();
                 FilterInactiveMods();
             }
+        }
+
+
+       public void ReorderActiveMod(ModItem mod, int newIndex)
+{
+    if (mod == null) return;
+    
+    try
+    {
+        var currentItem = _virtualActiveMods.FirstOrDefault(x => x.Mod == mod);
+        if (currentItem == default) return;
+
+        int currentIndex = _virtualActiveMods.IndexOf(currentItem);
+        if (currentIndex == newIndex) return;
+
+        _virtualActiveMods.RemoveAt(currentIndex);
+        newIndex = newIndex > currentIndex ? newIndex - 1 : newIndex;
+        newIndex = Math.Clamp(newIndex, 0, _virtualActiveMods.Count);
+        _virtualActiveMods.Insert(newIndex, (mod, newIndex));
+
+        // Reassign all load orders
+        for (int i = 0; i < _virtualActiveMods.Count; i++)
+        {
+            _virtualActiveMods[i] = (_virtualActiveMods[i].Mod, i);
+        }
+
+        FilterActiveMods();
+        OnPropertyChanged(nameof(ActiveMods));
+    }
+    catch (Exception ex)
+    {
+        Debug.WriteLine($"Reorder error: {ex.Message}");
+    }
+}
+
+        public void AddModToActiveAtPosition(ModItem mod, int position)
+        {
+            if (_virtualActiveMods.Any(x => x.Mod == mod)) return;
+
+            position = Math.Min(Math.Max(0, position), _virtualActiveMods.Count);
+            _virtualActiveMods.Insert(position, (mod, position));
+
+            // Reassign all load orders
+            for (int i = 0; i < _virtualActiveMods.Count; i++)
+            {
+                var existing = _virtualActiveMods[i];
+                _virtualActiveMods[i] = (existing.Mod, i);
+            }
+
+            _allActiveMods = _virtualActiveMods.Select(x => x.Mod).ToList();
+            _allInactiveMods.Remove(mod);
+            mod.IsActive = true;
+
+            OnPropertyChanged(nameof(TotalActiveMods));
+            OnPropertyChanged(nameof(TotalInactiveMods));
+            FilterActiveMods();
+            FilterInactiveMods();
         }
 
 
