@@ -4,7 +4,6 @@ using RimSharp.Handlers;
 using RimSharp.ViewModels.Modules.Mods;       // Import module VM namespace
 using RimSharp.ViewModels.Modules.Downloader; // Import module VM namespace
 using System.Windows.Input;
-// Remove Microsoft.Win32 if not used directly here
 using System.Windows.Forms; // Add reference to System.Windows.Forms assembly for FolderBrowserDialog
 using System.IO; // For Directory.Exists
 using System.Diagnostics;
@@ -237,7 +236,6 @@ namespace RimSharp.ViewModels
 
         private void OpenSettings(object parameter)
         {
-            // TODO: Implement settings dialog opening logic
             System.Windows.MessageBox.Show("Settings dialog will open here");
         }
 
@@ -247,10 +245,5 @@ namespace RimSharp.ViewModels
             _ = ModsVM?.RefreshDataAsync();
         }
 
-
-        // Note: IsLoading is now managed within ModsViewModel
-        // Note: Mod selection properties (SelectedMod) and lists (Active/InactiveMods) are in ModsViewModel
-        // Note: SelectModCommand is in ModsViewModel
-        // Note: LoadDataAsync / LoadDummyData are in ModsViewModel
     }
 }

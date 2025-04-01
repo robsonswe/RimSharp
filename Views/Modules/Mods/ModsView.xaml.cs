@@ -5,6 +5,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using RimSharp.Models;
+using RimSharp.Views.Modules.Mods.DragAdorner;
+using System.Windows.Documents;
 
 namespace RimSharp.Views.Modules.Mods
 {
@@ -14,11 +16,13 @@ namespace RimSharp.Views.Modules.Mods
         private ModItem _draggedItem;
         private Rectangle _insertionLine;
 
+        private AdornerLayer _insertionAdornerLayer;
+        private InsertionAdorner _insertionAdorner;
+
+
         public ModsView()
         {
             InitializeComponent();
-            _insertionLine = new Rectangle { Style = (Style)FindResource("DropInsertionLine") };
-
         }
 
         private void InactiveList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -51,52 +55,61 @@ namespace RimSharp.Views.Modules.Mods
                     _draggedItem = listBox.SelectedItem as ModItem;
                     if (_draggedItem != null)
                     {
-                        DragDrop.DoDragDrop(listBox, _draggedItem, DragDropEffects.Move);
-                        _draggedItem = null;
+                        var container = listBox.ItemContainerGenerator.ContainerFromItem(_draggedItem) as ListBoxItem;
+                        if (container != null)
+                        {
+                            container.Opacity = 0.5;
+                        }
+
+                        try
+                        {
+                            DragDropHelper.StartDrag(listBox, _draggedItem);
+                        }
+                        finally
+                        {
+                            if (container != null)
+                            {
+                                container.Opacity = 1.0;
+                            }
+                            _draggedItem = null;
+                            RemoveInsertionLine();
+                        }
                     }
                 }
             }
         }
-
-
-               private void ListBox_PreviewDragOver(object sender, DragEventArgs e)
+        private void ListBox_PreviewDragOver(object sender, DragEventArgs e)
         {
-            if (_draggedItem == null) return;
+            if (e.Data.GetData(typeof(ModItem)) is not ModItem) return;
 
             var listBox = (ListBox)sender;
             var point = e.GetPosition(listBox);
             var item = GetItemAtPoint(listBox, point);
 
-            // Remove any existing insertion line
-            RemoveInsertionLine(listBox);
+            RemoveInsertionLine();
 
             if (item != null)
             {
                 var itemPos = listBox.ItemContainerGenerator.ContainerFromItem(item) as FrameworkElement;
                 var itemPoint = itemPos.TransformToAncestor(listBox).Transform(new Point(0, 0));
 
-                // Determine if we're inserting above or below the item
                 bool insertAbove = point.Y < itemPoint.Y + itemPos.ActualHeight / 2;
                 int index = listBox.Items.IndexOf(item);
 
                 if (insertAbove)
                 {
-                    // Insert above
                     AddInsertionLine(listBox, itemPos, true);
                 }
                 else
                 {
-                    // Insert below
                     AddInsertionLine(listBox, itemPos, false);
                     index++;
                 }
 
-                // Store the target index for the drop
                 listBox.Tag = index;
             }
             else
             {
-                // Insert at end
                 listBox.Tag = listBox.Items.Count;
                 if (listBox.Items.Count > 0)
                 {
@@ -106,6 +119,7 @@ namespace RimSharp.Views.Modules.Mods
                 }
                 else
                 {
+                    // For empty list, just show at top
                     AddInsertionLine(listBox, listBox, true);
                 }
             }
@@ -114,21 +128,33 @@ namespace RimSharp.Views.Modules.Mods
             e.Handled = true;
         }
 
+
         private void AddInsertionLine(ListBox listBox, FrameworkElement relativeTo, bool above)
         {
-            var panel = FindVisualChild<VirtualizingStackPanel>(listBox);
-            if (panel != null)
+            RemoveInsertionLine();
+
+            _insertionAdornerLayer = AdornerLayer.GetAdornerLayer(listBox);
+            if (_insertionAdornerLayer != null)
             {
-                var pos = relativeTo.TransformToAncestor(panel).Transform(new Point(0, 0));
-                _insertionLine.Margin = new Thickness(0, above ? pos.Y : pos.Y + relativeTo.ActualHeight, 0, 0);
-                panel.Children.Add(_insertionLine);
+                _insertionAdorner = new InsertionAdorner(
+                    listBox,
+                    relativeTo,
+                    above,
+                    Brushes.Gray, // Use your RimworldHighlightBrush here
+                    2.0);
+
+                _insertionAdornerLayer.Add(_insertionAdorner);
             }
         }
 
-        private void RemoveInsertionLine(ListBox listBox)
+
+        private void RemoveInsertionLine()
         {
-            var panel = FindVisualChild<VirtualizingStackPanel>(listBox);
-            panel?.Children.Remove(_insertionLine);
+            if (_insertionAdornerLayer != null && _insertionAdorner != null)
+            {
+                _insertionAdornerLayer.Remove(_insertionAdorner);
+                _insertionAdorner = null;
+            }
         }
 
         private static T FindVisualChild<T>(DependencyObject obj) where T : DependencyObject
@@ -145,35 +171,33 @@ namespace RimSharp.Views.Modules.Mods
             return null;
         }
 
-
         private void ActiveList_Drop(object sender, DragEventArgs e)
         {
-            var listBox = (ListBox)sender;
-            RemoveInsertionLine(listBox);
+            RemoveInsertionLine();
 
-            if (DataContext is ViewModels.Modules.Mods.ModsViewModel vm)
+            if (DataContext is ViewModels.Modules.Mods.ModsViewModel vm &&
+                e.Data.GetData(typeof(ModItem)) is ModItem draggedMod)
             {
+                var listBox = (ListBox)sender;
                 int dropIndex = listBox.Tag is int i ? i : vm.ActiveMods.Count;
 
-                if (e.Data.GetData(typeof(ModItem)) is ModItem draggedMod)
+                if (vm.ActiveMods.Contains(draggedMod))
                 {
-                    if (vm.ActiveMods.Contains(draggedMod))
-                    {
-                        // Reorder within active list
-                        vm.ReorderActiveMod(draggedMod, dropIndex);
-                    }
-                    else
-                    {
-                        // Add from inactive to active
-                        vm.AddModToActiveAtPosition(draggedMod, dropIndex);
-                    }
+                    vm.ReorderActiveMod(draggedMod, dropIndex);
                 }
+                else
+                {
+                    vm.AddModToActiveAtPosition(draggedMod, dropIndex);
+                }
+
+                listBox.SelectedItem = draggedMod;
+                listBox.ScrollIntoView(draggedMod);
             }
         }
 
         private void InactiveList_Drop(object sender, DragEventArgs e)
         {
-            RemoveInsertionLine((ListBox)sender);
+            RemoveInsertionLine();
 
             if (DataContext is ViewModels.Modules.Mods.ModsViewModel vm &&
                 e.Data.GetData(typeof(ModItem)) is ModItem draggedMod &&
@@ -185,10 +209,9 @@ namespace RimSharp.Views.Modules.Mods
 
         private void ListBox_DragLeave(object sender, DragEventArgs e)
         {
-            RemoveInsertionLine((ListBox)sender);
+            RemoveInsertionLine();
         }
 
-        // Helper methods
         private ModItem GetItemAtPoint(ListBox listBox, Point point)
         {
             for (int i = 0; i < listBox.Items.Count; i++)
@@ -202,42 +225,41 @@ namespace RimSharp.Views.Modules.Mods
             }
             return null;
         }
+private void InactiveList_PreviewMouseMove(object sender, MouseEventArgs e)
+{
+    if (e.LeftButton == MouseButtonState.Pressed && _draggedItem == null)
+    {
+        var listBox = (ListBox)sender;
+        var point = e.GetPosition(null);
 
-
-        private void ActiveList_PreviewDrop(object sender, DragEventArgs e)
+        if ((point - _dragStartPoint).Length > 10)
         {
-            if (DataContext is ViewModels.Modules.Mods.ModsViewModel vm &&
-                e.Data.GetData(typeof(Models.ModItem)) is Models.ModItem draggedMod)
+            _draggedItem = listBox.SelectedItem as ModItem;
+            if (_draggedItem != null)
             {
-                var listBox = (ListBox)sender;
-                var dropTarget = listBox.SelectedItem as Models.ModItem;
-                var dropIndex = dropTarget != null ?
-                    vm.ActiveMods.IndexOf(dropTarget) :
-                    vm.ActiveMods.Count;
-
-                // If dragging within active list, reorder
-                if (vm.ActiveMods.Contains(draggedMod))
+                var container = listBox.ItemContainerGenerator.ContainerFromItem(_draggedItem) as ListBoxItem;
+                if (container != null)
                 {
-                    vm.ReorderActiveMod(draggedMod, dropIndex);
+                    container.Opacity = 0.5;
                 }
-                // If dragging from inactive to active, add at position
-                else
+
+                try
                 {
-                    vm.AddModToActiveAtPosition(draggedMod, dropIndex);
+                    DragDropHelper.StartDrag(listBox, _draggedItem);
+                }
+                finally
+                {
+                    if (container != null)
+                    {
+                        container.Opacity = 1.0;
+                    }
+                    _draggedItem = null;
+                    RemoveInsertionLine();
                 }
             }
         }
-
-        private void InactiveList_PreviewDrop(object sender, DragEventArgs e)
-        {
-            if (DataContext is ViewModels.Modules.Mods.ModsViewModel vm &&
-                e.Data.GetData(typeof(Models.ModItem)) is Models.ModItem draggedMod &&
-                vm.ActiveMods.Contains(draggedMod))
-            {
-                vm.RemoveModFromActive(draggedMod);
-            }
-        }
-
+    }
+}
         private void ListBox_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
             _dragStartPoint = e.GetPosition(null);
