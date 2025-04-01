@@ -54,7 +54,7 @@ namespace RimSharp.ViewModels.Modules.Mods
         public ICommand SaveCommand { get; }
         public ICommand RunGameCommand { get; }
 
-public ICommand OpenUrlCommand { get; }
+        public ICommand OpenUrlCommand { get; }
 
 
         public bool IsLoading
@@ -160,24 +160,24 @@ public ICommand OpenUrlCommand { get; }
         }
 
         private void OpenUrl(object parameter)
-{
-    if (parameter is string url && !string.IsNullOrWhiteSpace(url))
-    {
-        try
         {
-            // Ensure the URL has a proper scheme
-            var uri = url.StartsWith("http://") || url.StartsWith("https://") 
-                ? new Uri(url) 
-                : new Uri("http://" + url);
-            
-            Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+            if (parameter is string url && !string.IsNullOrWhiteSpace(url))
+            {
+                try
+                {
+                    // Ensure the URL has a proper scheme
+                    var uri = url.StartsWith("http://") || url.StartsWith("https://")
+                        ? new Uri(url)
+                        : new Uri("http://" + url);
+
+                    Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Could not open URL: {ex.Message}");
+                }
+            }
         }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Could not open URL: {ex.Message}");
-        }
-    }
-}
 
         private List<string> GetActiveModsFromConfig()
         {
@@ -383,15 +383,36 @@ public ICommand OpenUrlCommand { get; }
 
         private void SortActiveList(object parameter)
         {
-            // TODO: Implement sort active list logic
-            var sorted = ActiveMods.OrderBy(m => m.Name).ToList();
-            ActiveMods.Clear();
-            foreach (var mod in sorted)
-            {
-                ActiveMods.Add(mod);
-            }
-        }
+            if (_virtualActiveMods.Count == 0) return;
 
+            // Get the current selected mod to restore selection after sorting
+            var previouslySelected = SelectedMod;
+
+            // Sort the virtual list by mod name while maintaining the load order
+            var sortedMods = _virtualActiveMods
+                .OrderBy(x => x.Mod.Name)
+                .Select((x, index) => (x.Mod, index)) // Reset load order based on sorted position
+                .ToList();
+
+            // Update the virtual list with new load orders
+            _virtualActiveMods = sortedMods;
+
+            // Update the active mods collection
+            _allActiveMods = _virtualActiveMods.Select(x => x.Mod).ToList();
+
+            // Refresh the filtered lists
+            FilterActiveMods();
+            FilterInactiveMods();
+
+            // Restore selection if possible
+            SelectedMod = ActiveMods.Contains(previouslySelected) ? previouslySelected :
+                         InactiveMods.Contains(previouslySelected) ? previouslySelected :
+                         ActiveMods.FirstOrDefault();
+
+            // Notify that the totals have changed (though they shouldn't)
+            OnPropertyChanged(nameof(TotalActiveMods));
+            OnPropertyChanged(nameof(TotalInactiveMods));
+        }
         private void StripMods(object parameter)
         {
             // TODO: Implement strip mods logic
@@ -441,10 +462,13 @@ public ICommand OpenUrlCommand { get; }
                 // Clear existing active mods
                 activeModsElement?.RemoveAll();
 
-                // Add mods in current load order
+                // Add mods in current load order, converting package IDs to lowercase
                 foreach (var (mod, _) in _virtualActiveMods.OrderBy(x => x.LoadOrder))
                 {
-                    activeModsElement?.Add(new XElement("li", mod.PackageId));
+                    if (!string.IsNullOrEmpty(mod.PackageId))
+                    {
+                        activeModsElement?.Add(new XElement("li", mod.PackageId.ToLowerInvariant()));
+                    }
                 }
 
                 doc.Save(configPath);
