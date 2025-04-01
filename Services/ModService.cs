@@ -13,10 +13,13 @@ namespace RimSharp.Services
     {
         private readonly IPathService _pathService;
         private List<ModItem> _allMods = new List<ModItem>();
+        private string _currentMajorVersion;
+
 
         public ModService(IPathService pathService)
         {
             _pathService = pathService;
+            _currentMajorVersion = _pathService.GetMajorGameVersion();
         }
 
         public IEnumerable<ModItem> GetLoadedMods() => _allMods;
@@ -118,6 +121,8 @@ namespace RimSharp.Services
             {
                 name = folderName;
             }
+            var supportedVersions = root.Element("supportedVersions")?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>();
+
             var mod = new ModItem
             {
                 Name = name,
@@ -129,7 +134,9 @@ namespace RimSharp.Services
                 ModIconPath = root.Element("modIconPath")?.Value,
                 Url = root.Element("url")?.Value,
                 SupportedVersions = root.Element("supportedVersions")?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>(),
-                PreviewImagePath = File.Exists(previewImagePath) ? previewImagePath : null
+                PreviewImagePath = File.Exists(previewImagePath) ? previewImagePath : null,
+                IsOutdatedRW = !IsVersionSupported(_currentMajorVersion, supportedVersions) && supportedVersions.Any()
+
             };
 
             // Parse dependencies
@@ -150,6 +157,16 @@ namespace RimSharp.Services
 
             return mod;
         }
+
+        private bool IsVersionSupported(string currentVersion, List<string> supportedVersions)
+        {
+            if (string.IsNullOrEmpty(currentVersion)) return true;
+            if (supportedVersions == null || !supportedVersions.Any()) return true;
+
+            return supportedVersions.Any(v =>
+                string.Equals(v.Trim(), currentVersion.Trim(), StringComparison.OrdinalIgnoreCase));
+        }
+
 
         private void SetActiveMods()
         {
