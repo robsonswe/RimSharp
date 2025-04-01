@@ -79,17 +79,13 @@
     </Style>
 
 
-        <Style x:Key="DropInsertionLine"
-               TargetType="Rectangle">
-            <Setter Property="Height"
-                    Value="2"/>
-            <Setter Property="Fill"
-                    Value="{StaticResource RimworldHighlightBrush}"/>
-            <Setter Property="HorizontalAlignment"
-                    Value="Stretch"/>
-            <Setter Property="Margin"
-                    Value="0,-1,0,-1"/>
-        </Style>
+       <Style x:Key="DropInsertionLine" TargetType="Rectangle">
+    <Setter Property="Height" Value="3"/>
+    <Setter Property="Fill" Value="{StaticResource RimworldHighlightBrush}"/>
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    <Setter Property="Margin" Value="5,0,5,0"/>
+    <Setter Property="Width" Value="Auto"/>
+</Style>
 
 
     </UserControl.Resources>
@@ -466,27 +462,28 @@
                         </Border>
 
                         <!-- Mod Items List -->
-                        <ListBox Grid.Row="1"
-                                 ItemsSource="{Binding InactiveMods}"
-                                 SelectedItem="{Binding SelectedMod, Mode=TwoWay}"
-                                 HorizontalContentAlignment="Stretch"
-                                 Style="{StaticResource RimworldListBox}"
-                                 ItemContainerStyle="{StaticResource ModItemContainerStyle}"
-                                 MouseDoubleClick="InactiveList_MouseDoubleClick"
-                                 AllowDrop="True"
-                                 PreviewDragOver="ListBox_PreviewDragOver"
-                                 Drop="InactiveList_Drop"
-                                 DragLeave="ListBox_DragLeave">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding Name}"
-                                               Margin="5,2"
-                                               ToolTip="{Binding Path}"
-                                               Foreground="{StaticResource RimworldBrownBrush}"/>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                    </Grid>
+<ListBox Grid.Row="1"
+         ItemsSource="{Binding InactiveMods}"
+         SelectedItem="{Binding SelectedMod, Mode=TwoWay}"
+         HorizontalContentAlignment="Stretch"
+         Style="{StaticResource RimworldListBox}"
+         ItemContainerStyle="{StaticResource ModItemContainerStyle}"
+         MouseDoubleClick="InactiveList_MouseDoubleClick"
+         AllowDrop="True"
+         PreviewDragOver="ListBox_PreviewDragOver"
+         Drop="InactiveList_Drop"
+         DragLeave="ListBox_DragLeave"
+         PreviewMouseDown="ListBox_PreviewMouseDown"
+         PreviewMouseMove="InactiveList_PreviewMouseMove">
+    <ListBox.ItemTemplate>
+        <DataTemplate>
+            <TextBlock Text="{Binding Name}"
+                       Margin="5,2"
+                       ToolTip="{Binding Path}"
+                       Foreground="{StaticResource RimworldBrownBrush}"/>
+        </DataTemplate>
+    </ListBox.ItemTemplate>
+</ListBox>                    </Grid>
                 </Border>
 
                 <!-- Active Mods -->
