@@ -14,6 +14,10 @@
         <!-- Converters needed within this view -->
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <converters:ImagePathConverter x:Key="ImagePathConverter"/>
+            <converters:MultiplyValueConverter x:Key="MultiplyValueConverter"/>
+                <converters:ClampValueConverter x:Key="ClampValueConverter"/>
+
+
 
         <!-- Style for list header buttons -->
         <Style TargetType="Button"
@@ -125,57 +129,61 @@
                     </Grid.RowDefinitions>
 
                     <!-- Mod Preview (Top Part) -->
-                    <Border Grid.Row="0">
-                        <Border Background="#1e3a8a"
-                                CornerRadius="10"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Width="400"
-                                Height="220"
-                                Margin="10">
-                            <Grid>
-                                <Image Source="{Binding SelectedMod.PreviewImagePath, Converter={StaticResource ImagePathConverter}}"
-                                       Stretch="UniformToFill"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center">
-                                    <Image.Style>
-                                        <Style TargetType="Image">
-                                            <Setter Property="Visibility"
-                                                    Value="Visible"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding SelectedMod.PreviewImagePath}"
-                                                             Value="{x:Null}">
-                                                    <Setter Property="Visibility"
-                                                            Value="Collapsed"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Image.Style>
-                                </Image>
+<Border Grid.Row="0">
+    <Border Background="#1e3a8a"
+            CornerRadius="10"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            MinWidth="400"
+            MinHeight="220"
+            MaxWidth="560"
+            MaxHeight="308"
+            Width="{Binding RelativeSource={RelativeSource AncestorType=Grid}, Path=ActualWidth, Converter={StaticResource ClampValueConverter}, ConverterParameter='400,560'}"
+            Height="{Binding RelativeSource={RelativeSource AncestorType=Grid}, Path=ActualHeight, Converter={StaticResource ClampValueConverter}, ConverterParameter='220,308'}"
+            Margin="10">
+        <Grid>
+            <Image Source="{Binding SelectedMod.PreviewImagePath, Converter={StaticResource ImagePathConverter}}"
+                   Stretch="UniformToFill"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center">
+                <Image.Style>
+                    <Style TargetType="Image">
+                        <Setter Property="Visibility"
+                                Value="Visible"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedMod.PreviewImagePath}"
+                                         Value="{x:Null}">
+                                <Setter Property="Visibility"
+                                        Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Image.Style>
+            </Image>
 
-                                <TextBlock Text="MOD PREVIEW IMAGE"
-                                           FontSize="18"
-                                           Foreground="LightGray"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           FontStyle="Italic">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Visibility"
-                                                    Value="Collapsed"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding SelectedMod.PreviewImagePath}"
-                                                             Value="{x:Null}">
-                                                    <Setter Property="Visibility"
-                                                            Value="Visible"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                            </Grid>
-                        </Border>
-                    </Border>
+            <TextBlock Text="MOD PREVIEW IMAGE"
+                       FontSize="18"
+                       Foreground="LightGray"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontStyle="Italic">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility"
+                                Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedMod.PreviewImagePath}"
+                                         Value="{x:Null}">
+                                <Setter Property="Visibility"
+                                        Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </Grid>
+    </Border>
+</Border>
 
                     <!-- Mod Info (Bottom Part) -->
                     <Grid Grid.Row="1"
