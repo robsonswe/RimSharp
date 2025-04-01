@@ -1,3 +1,5 @@
+// Update ModsViewModel.cs
+
 using RimSharp.Models;
 using RimSharp.Services;
 using RimSharp.Handlers;         // Namespace for RelayCommand
@@ -27,22 +29,28 @@ namespace RimSharp.ViewModels.Modules.Mods
         private string _activeSearchText = "";
         private string _inactiveSearchText = "";
 
-        private List<ModItem> _allActiveMods = new();
+        private bool _hasUnsavedChanges;
+
+        public bool HasUnsavedChanges
+        {
+            get => _hasUnsavedChanges;
+            private set => SetProperty(ref _hasUnsavedChanges, value);
+        }
+
+
+        private List<ModItem> _allActiveMods = new(); // Derived from _virtualActiveMods
         private List<ModItem> _allInactiveMods = new();
 
         public int TotalActiveMods => _allActiveMods.Count;
         public int TotalInactiveMods => _allInactiveMods.Count;
 
+        // This is the primary source of truth for active mods and their order
         private List<(ModItem Mod, int LoadOrder)> _virtualActiveMods = new();
-
-
-
-
 
         public ObservableCollection<ModItem> ActiveMods { get; } = new();
         public ObservableCollection<ModItem> InactiveMods { get; } = new();
 
-        public ICommand SelectModCommand { get; } // Keep only mod-specific commands
+        public ICommand SelectModCommand { get; }
         public ICommand ClearActiveListCommand { get; }
         public ICommand SortActiveListCommand { get; }
         public ICommand StripModsCommand { get; }
@@ -53,7 +61,6 @@ namespace RimSharp.ViewModels.Modules.Mods
         public ICommand ExportListCommand { get; }
         public ICommand SaveCommand { get; }
         public ICommand RunGameCommand { get; }
-
         public ICommand OpenUrlCommand { get; }
 
 
@@ -69,7 +76,6 @@ namespace RimSharp.ViewModels.Modules.Mods
             set => SetProperty(ref _selectedMod, value);
         }
 
-        // Correct Constructor Name
         public ModsViewModel(IModService modService, IPathService pathService)
         {
             _modService = modService;
@@ -92,7 +98,6 @@ namespace RimSharp.ViewModels.Modules.Mods
             LoadDataAsync();
         }
 
-
         private async Task LoadDataAsync()
         {
             IsLoading = true;
@@ -102,56 +107,51 @@ namespace RimSharp.ViewModels.Modules.Mods
                 InactiveMods.Clear();
                 _allActiveMods.Clear();
                 _allInactiveMods.Clear();
-                _virtualActiveMods.Clear();
+                _virtualActiveMods.Clear(); // Clear the virtual list first
 
                 await _modService.LoadModsAsync();
 
                 var allMods = _modService.GetLoadedMods().ToList();
                 var activeModsFromConfig = GetActiveModsFromConfig();
 
-                // Debug output
-                Console.WriteLine($"Found {activeModsFromConfig.Count} active mods in config");
-                Console.WriteLine($"Found {allMods.Count} total mods");
-
                 // Build virtual active mods list with load order
-                for (int i = 0; i < activeModsFromConfig.Count; i++)
-                {
-                    var packageId = activeModsFromConfig[i];
-                    var mod = allMods.FirstOrDefault(m =>
-                m.PackageId?.ToLowerInvariant() == packageId); // Case-insensitive comparison
+                _virtualActiveMods = activeModsFromConfig
+                    .Select((packageId, index) =>
+                    {
+                        var mod = allMods.FirstOrDefault(m =>
+                            m.PackageId?.Equals(packageId, StringComparison.OrdinalIgnoreCase) == true); // Case-insensitive comparison
+                        return mod != null ? (Mod: mod, LoadOrder: index) : default;
+                    })
+                    .Where(entry => entry.Mod != null) // Filter out any mods not found
+                    .ToList();
 
-                    if (mod != null)
-                    {
-                        _virtualActiveMods.Add((mod, i));
-                        mod.IsActive = true;
-                        Console.WriteLine($"Added active mod: {mod.Name} ({mod.PackageId})");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Could not find mod with packageId: {packageId}");
-                    }
+                // Set IsActive flag for mods in the virtual list
+                foreach (var (mod, _) in _virtualActiveMods)
+                {
+                    mod.IsActive = true;
                 }
 
-                // Separate into active and inactive lists
+                // Separate into active and inactive lists using the virtual list as source
                 _allActiveMods = _virtualActiveMods.Select(x => x.Mod).ToList();
                 _allInactiveMods = allMods.Except(_allActiveMods).OrderBy(m => m.Name).ToList();
-
-                Console.WriteLine($"Active mods count: {_allActiveMods.Count}");
-                Console.WriteLine($"Inactive mods count: {_allInactiveMods.Count}");
 
                 // Notify that the totals have changed
                 OnPropertyChanged(nameof(TotalActiveMods));
                 OnPropertyChanged(nameof(TotalInactiveMods));
 
-                // Apply sorting based on load order
+                // Populate the ObservableCollections for the UI
                 FilterActiveMods();
                 FilterInactiveMods();
 
                 SelectedMod = ActiveMods.FirstOrDefault() ?? InactiveMods.FirstOrDefault();
+
+                HasUnsavedChanges = false;
+
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Error loading mods: {ex.Message}");
+                HasUnsavedChanges = false;
             }
             finally
             {
@@ -194,27 +194,14 @@ namespace RimSharp.ViewModels.Modules.Mods
                     .Select(x => x.Value.ToLowerInvariant()) // Normalize to lowercase
                     .ToList() ?? new List<string>();
             }
-            catch
+            catch (Exception ex)
             {
+                // Log or handle the exception appropriately
+                Debug.WriteLine($"Error reading ModsConfig.xml: {ex.Message}");
                 return new List<string>();
             }
         }
-        private void LoadDummyData()
-        {
-            // Add core mods
-            ActiveMods.Add(new ModItem { Name = "Core", IsCore = true });
-            ActiveMods.Add(new ModItem { Name = "Royalty [Official DLC]", IsCore = true });
-            ActiveMods.Add(new ModItem { Name = "Ideology [Official DLC]", IsCore = true });
-            ActiveMods.Add(new ModItem { Name = "Biotech [Official DLC]", IsCore = true });
 
-            // Add inactive mods
-            InactiveMods.Add(new ModItem { Name = "(Dirty) Windows" });
-            InactiveMods.Add(new ModItem { Name = "1-2-3 Personalities M1" });
-            InactiveMods.Add(new ModItem { Name = "A Dog Said... Animal Prosthetics" });
-            InactiveMods.Add(new ModItem { Name = "Achtung!" });
-
-            SelectedMod = InactiveMods.FirstOrDefault();
-        }
         public string ActiveSearchText
         {
             get => _activeSearchText;
@@ -241,14 +228,14 @@ namespace RimSharp.ViewModels.Modules.Mods
 
         private void FilterActiveMods()
         {
+            // Update the UI list based on the _virtualActiveMods and search text
             ActiveMods.Clear();
             var filteredMods = string.IsNullOrWhiteSpace(_activeSearchText)
-                ? _virtualActiveMods.OrderBy(x => x.LoadOrder).Select(x => x.Mod)
-                : _virtualActiveMods.Where(x => x.Mod.Name.Contains(_activeSearchText, StringComparison.OrdinalIgnoreCase))
-                                  .OrderBy(x => x.LoadOrder)
-                                  .Select(x => x.Mod);
+                ? _virtualActiveMods // Already ordered by LoadOrder
+                : _virtualActiveMods.Where(x => x.Mod.Name.Contains(_activeSearchText, StringComparison.OrdinalIgnoreCase));
+            // Keep original load order even when filtering
 
-            foreach (var mod in filteredMods)
+            foreach (var (mod, _) in filteredMods.OrderBy(x => x.LoadOrder)) // Ensure order is correct
             {
                 ActiveMods.Add(mod);
             }
@@ -256,10 +243,12 @@ namespace RimSharp.ViewModels.Modules.Mods
 
         private void FilterInactiveMods()
         {
+            // Update the UI list based on _allInactiveMods and search text
             InactiveMods.Clear();
             var filteredMods = string.IsNullOrWhiteSpace(_inactiveSearchText)
-                ? _allInactiveMods
-                : _allInactiveMods.Where(m => m.Name.Contains(_inactiveSearchText, System.StringComparison.OrdinalIgnoreCase));
+                ? _allInactiveMods.OrderBy(m => m.Name) // Sort inactive alphabetically
+                : _allInactiveMods.Where(m => m.Name.Contains(_inactiveSearchText, System.StringComparison.OrdinalIgnoreCase))
+                                   .OrderBy(m => m.Name);
 
             foreach (var mod in filteredMods)
             {
@@ -277,258 +266,450 @@ namespace RimSharp.ViewModels.Modules.Mods
 
         public Task RefreshDataAsync()
         {
-            // Consider clearing lists before loading again if service doesn't handle it
-            // ActiveMods.Clear();
-            // InactiveMods.Clear();
             return LoadDataAsync();
         }
 
+        // --- Updated ClearActiveList Method ---
         private void ClearActiveList(object parameter)
         {
-            // Move all active mods to inactive
-            _allInactiveMods.AddRange(_allActiveMods);
-            _allActiveMods.Clear();
+            // Identify mods to remove (not Core or Expansion)
+            var modsToRemove = _virtualActiveMods
+                .Where(entry => !entry.Mod.IsCore && !entry.Mod.IsExpansion)
+                .Select(entry => entry.Mod)
+                .ToList();
 
-            // Notify property changes
+            // If no mods to remove, exit early
+            if (!modsToRemove.Any())
+            {
+                return;
+            }
+
+            // Identify essential mods to keep and maintain their relative order
+            var modsToKeep = _virtualActiveMods
+                .Where(entry => entry.Mod.IsCore || entry.Mod.IsExpansion)
+                // Order by original load order to maintain relative sequence
+                .OrderBy(entry => entry.LoadOrder)
+                // Re-assign new load order starting from 0
+                .Select((entry, newIndex) => (entry.Mod, LoadOrder: newIndex))
+                .ToList();
+
+            // Update the virtual active list
+            _virtualActiveMods = modsToKeep;
+
+            // Update the derived list of active mods
+            _allActiveMods = _virtualActiveMods.Select(x => x.Mod).ToList();
+
+            // Add the removed mods to the inactive list and update their status
+            foreach (var mod in modsToRemove)
+            {
+                mod.IsActive = false;
+                if (!_allInactiveMods.Contains(mod)) // Avoid duplicates if logic gets complex later
+                {
+                    _allInactiveMods.Add(mod);
+                }
+            }
+            // Optional: Re-sort the full inactive list
+            _allInactiveMods = _allInactiveMods.OrderBy(m => m.Name).ToList();
+
+
+            // Notify property changes for counts
             OnPropertyChanged(nameof(TotalActiveMods));
             OnPropertyChanged(nameof(TotalInactiveMods));
 
-            // Update the filtered lists
+            // Refresh the UI lists (ObservableCollections)
             FilterActiveMods();
             FilterInactiveMods();
+
+            // Optional: Select the first remaining active mod or null
+            SelectedMod = ActiveMods.FirstOrDefault();
+
+            HasUnsavedChanges = true;
+
         }
+        // --- End of Updated ClearActiveList Method ---
 
         public void MoveModUp(ModItem mod)
         {
-            var item = _virtualActiveMods.FirstOrDefault(x => x.Mod == mod);
-            if (item != default && item.LoadOrder > 0)
+            var itemIndex = _virtualActiveMods.FindIndex(x => x.Mod == mod);
+            if (itemIndex > 0) // Can move up if not already at the top
             {
-                // Swap with the mod above
-                var itemAbove = _virtualActiveMods.First(x => x.LoadOrder == item.LoadOrder - 1);
-                _virtualActiveMods.Remove(item);
-                _virtualActiveMods.Remove(itemAbove);
+                // Swap load orders logically
+                var itemAbove = _virtualActiveMods[itemIndex - 1];
+                var currentItem = _virtualActiveMods[itemIndex];
 
-                _virtualActiveMods.Add((item.Mod, item.LoadOrder - 1));
-                _virtualActiveMods.Add((itemAbove.Mod, itemAbove.LoadOrder + 1));
+                _virtualActiveMods[itemIndex - 1] = (itemAbove.Mod, currentItem.LoadOrder); // Item above gets current index
+                _virtualActiveMods[itemIndex] = (currentItem.Mod, itemAbove.LoadOrder);   // Current item gets item above's index
 
-                // Rebuild the list with correct order
+                // Re-sort the list by the new LoadOrder to be sure
                 _virtualActiveMods = _virtualActiveMods.OrderBy(x => x.LoadOrder).ToList();
+
+                // Refresh the UI list
                 FilterActiveMods();
+                HasUnsavedChanges = true;
             }
         }
 
+
         public void MoveModDown(ModItem mod)
         {
-            var item = _virtualActiveMods.FirstOrDefault(x => x.Mod == mod);
-            if (item != default && item.LoadOrder < _virtualActiveMods.Count - 1)
+            var itemIndex = _virtualActiveMods.FindIndex(x => x.Mod == mod);
+            if (itemIndex >= 0 && itemIndex < _virtualActiveMods.Count - 1) // Can move down if not already at the bottom
             {
-                // Swap with the mod below
-                var itemBelow = _virtualActiveMods.First(x => x.LoadOrder == item.LoadOrder + 1);
-                _virtualActiveMods.Remove(item);
-                _virtualActiveMods.Remove(itemBelow);
+                // Swap load orders logically
+                var itemBelow = _virtualActiveMods[itemIndex + 1];
+                var currentItem = _virtualActiveMods[itemIndex];
 
-                _virtualActiveMods.Add((item.Mod, item.LoadOrder + 1));
-                _virtualActiveMods.Add((itemBelow.Mod, itemBelow.LoadOrder - 1));
+                _virtualActiveMods[itemIndex + 1] = (itemBelow.Mod, currentItem.LoadOrder); // Item below gets current index
+                _virtualActiveMods[itemIndex] = (currentItem.Mod, itemBelow.LoadOrder);   // Current item gets item below's index
 
-                // Rebuild the list with correct order
+                // Re-sort the list by the new LoadOrder to be sure
                 _virtualActiveMods = _virtualActiveMods.OrderBy(x => x.LoadOrder).ToList();
+
+                // Refresh the UI list
                 FilterActiveMods();
+                HasUnsavedChanges = true;
             }
         }
 
         public void AddModToActive(ModItem mod)
         {
+            // Add to the end of the virtual list
             AddModToActiveAtPosition(mod, _virtualActiveMods.Count);
         }
 
         public void RemoveModFromActive(ModItem mod)
         {
-            var item = _virtualActiveMods.FirstOrDefault(x => x.Mod == mod);
-            if (item != default)
+
+              if (mod.IsCore)
             {
-                _virtualActiveMods.Remove(item);
+                // Optional: Log or show a message if you want feedback, but often silently failing is fine.
+                Debug.WriteLine($"Attempt blocked: Cannot remove the Core mod '{mod.Name}'.");
+                MessageBox.Show($"Cannot remove the Core game.");
+                // Simply exit the method, doing nothing.
+                return;
+            }
+            var itemIndex = _virtualActiveMods.FindIndex(x => x.Mod == mod);
+            if (itemIndex != -1) // Mod found in the virtual active list
+            {
+                // Remove from virtual list
+                _virtualActiveMods.RemoveAt(itemIndex);
                 mod.IsActive = false;
 
-                // Update load orders for remaining mods
+                // Re-index remaining active mods
                 for (int i = 0; i < _virtualActiveMods.Count; i++)
                 {
                     var existing = _virtualActiveMods[i];
-                    _virtualActiveMods[i] = (existing.Mod, i);
+                    _virtualActiveMods[i] = (existing.Mod, i); // Assign new load order index
                 }
 
-                // Update the lists
+                // Update derived active list
                 _allActiveMods = _virtualActiveMods.Select(x => x.Mod).ToList();
-                _allInactiveMods.Add(mod);
 
+                // Add to inactive list if not already there
+                if (!_allInactiveMods.Contains(mod))
+                {
+                    _allInactiveMods.Add(mod);
+                    _allInactiveMods = _allInactiveMods.OrderBy(m => m.Name).ToList(); // Keep inactive sorted
+                }
+
+                // Notify UI
                 OnPropertyChanged(nameof(TotalActiveMods));
                 OnPropertyChanged(nameof(TotalInactiveMods));
                 FilterActiveMods();
                 FilterInactiveMods();
+
+                // Optionally adjust selection
+                SelectedMod = ActiveMods.FirstOrDefault() ?? InactiveMods.FirstOrDefault();
+                HasUnsavedChanges = true;
+
             }
         }
 
-
-       public void ReorderActiveMod(ModItem mod, int newIndex)
-{
-    if (mod == null) return;
-    
-    try
-    {
-        var currentItem = _virtualActiveMods.FirstOrDefault(x => x.Mod == mod);
-        if (currentItem == default) return;
-
-        int currentIndex = _virtualActiveMods.IndexOf(currentItem);
-        if (currentIndex == newIndex) return;
-
-        _virtualActiveMods.RemoveAt(currentIndex);
-        newIndex = newIndex > currentIndex ? newIndex - 1 : newIndex;
-        newIndex = Math.Clamp(newIndex, 0, _virtualActiveMods.Count);
-        _virtualActiveMods.Insert(newIndex, (mod, newIndex));
-
-        // Reassign all load orders
-        for (int i = 0; i < _virtualActiveMods.Count; i++)
+        public void ReorderActiveMod(ModItem mod, int newIndex)
         {
-            _virtualActiveMods[i] = (_virtualActiveMods[i].Mod, i);
+            if (mod == null) return;
+
+            try
+            {
+                var currentItemIndex = _virtualActiveMods.FindIndex(x => x.Mod == mod);
+                if (currentItemIndex == -1)
+                {
+                    Debug.WriteLine($"Reorder error: Mod '{mod.Name}' not found in virtual active list.");
+                    return; // Mod not found
+                }
+
+                // Clamp newIndex to valid range (0 to Count, inclusive for inserting at end)
+                newIndex = Math.Clamp(newIndex, 0, _virtualActiveMods.Count);
+
+                // Determine the effective index where the item *would* be inserted
+                // If moving down, the target index effectively decreases by 1 after removal
+                int effectiveInsertIndex = (newIndex > currentItemIndex) ? newIndex - 1 : newIndex;
+                // Clamp the effective insert index to the valid range *after removal* (0 to Count-1)
+                effectiveInsertIndex = Math.Clamp(effectiveInsertIndex, 0, Math.Max(0, _virtualActiveMods.Count - 1));
+
+                // *** Check if the effective position is actually different ***
+                if (currentItemIndex != effectiveInsertIndex)
+                {
+                    // *** Mark changes as unsaved ONLY if position changes ***
+                    HasUnsavedChanges = true;
+
+                    // Get the item being moved
+                    var itemToMove = _virtualActiveMods[currentItemIndex];
+
+                    // Remove from old position
+                    _virtualActiveMods.RemoveAt(currentItemIndex);
+
+                    // Insert at the *actual* new index (use the original clamped 'newIndex' before adjustment logic)
+                    // Need to recalculate insert index based on list size *after* removal
+                    int actualInsertIndex = Math.Clamp(newIndex, 0, _virtualActiveMods.Count);
+                    // Adjust if the drop target was after the original position
+                    if (newIndex > currentItemIndex)
+                    {
+                        actualInsertIndex = Math.Clamp(newIndex - 1, 0, _virtualActiveMods.Count);
+                    }
+                    else
+                    {
+                        actualInsertIndex = Math.Clamp(newIndex, 0, _virtualActiveMods.Count);
+                    }
+
+
+                    _virtualActiveMods.Insert(actualInsertIndex, itemToMove);
+
+                    // Reassign all load orders sequentially
+                    for (int i = 0; i < _virtualActiveMods.Count; i++)
+                    {
+                        _virtualActiveMods[i] = (_virtualActiveMods[i].Mod, i);
+                    }
+
+                    // Refresh the UI list to reflect the new order
+                    FilterActiveMods();
+                    // Optionally ensure the moved item is visible
+                    // ActiveMods.ScrollIntoView might be needed depending on UI implementation,
+                    // but FilterActiveMods usually handles the update for ObservableCollection.
+                }
+                // Else: No change in effective position, do nothing, HasUnsavedChanges remains false (or its previous state).
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Reorder error: {ex.Message}");
+                // Consider showing an error message to the user
+                MessageBox.Show($"An error occurred during reordering: {ex.Message}", "Reorder Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                // Optional: Consider reloading data as a recovery mechanism if the list state might be corrupted
+                // await LoadDataAsync();
+            }
         }
 
-        FilterActiveMods();
-        OnPropertyChanged(nameof(ActiveMods));
-    }
-    catch (Exception ex)
-    {
-        Debug.WriteLine($"Reorder error: {ex.Message}");
-    }
-}
 
         public void AddModToActiveAtPosition(ModItem mod, int position)
         {
+            // Prevent adding if already active
             if (_virtualActiveMods.Any(x => x.Mod == mod)) return;
 
-            position = Math.Min(Math.Max(0, position), _virtualActiveMods.Count);
-            _virtualActiveMods.Insert(position, (mod, position));
+            // Remove from inactive list first
+            _allInactiveMods.Remove(mod);
 
-            // Reassign all load orders
+            // Clamp position
+            position = Math.Clamp(position, 0, _virtualActiveMods.Count);
+
+            // Insert into virtual list (temporarily without final load order)
+            _virtualActiveMods.Insert(position, (mod, position)); // Use desired position as initial index
+
+            // Reassign all load orders sequentially
             for (int i = 0; i < _virtualActiveMods.Count; i++)
             {
-                var existing = _virtualActiveMods[i];
-                _virtualActiveMods[i] = (existing.Mod, i);
+                _virtualActiveMods[i] = (_virtualActiveMods[i].Mod, i);
             }
 
+            // Update derived list and mod status
             _allActiveMods = _virtualActiveMods.Select(x => x.Mod).ToList();
-            _allInactiveMods.Remove(mod);
             mod.IsActive = true;
 
+            // Notify UI
             OnPropertyChanged(nameof(TotalActiveMods));
             OnPropertyChanged(nameof(TotalInactiveMods));
             FilterActiveMods();
             FilterInactiveMods();
-        }
 
+            // Set selection to the newly added mod
+            SelectedMod = mod;
+            HasUnsavedChanges = true;
+            // Ensure it's visible in the active list UI (handled by FilterActiveMods)
+        }
 
         private void SortActiveList(object parameter)
         {
             if (_virtualActiveMods.Count == 0) return;
 
-            // Get the current selected mod to restore selection after sorting
             var previouslySelected = SelectedMod;
 
-            // Sort the virtual list by mod name while maintaining the load order
-            var sortedMods = _virtualActiveMods
-                .OrderBy(x => x.Mod.Name)
-                .Select((x, index) => (x.Mod, index)) // Reset load order based on sorted position
+            // *** Store the original order of PackageIds (or another unique identifier) ***
+            var originalOrder = _virtualActiveMods
+                                    .Select(x => x.Mod.PackageId?.ToLowerInvariant() ?? Guid.NewGuid().ToString()) // Use PackageId (lowercase) or a fallback unique ID
+                                    .ToList();
+
+            // Sort the virtual list with priority: Core > Expansion > Others, then alphabetically
+            // and assign new sequential load orders
+            _virtualActiveMods = _virtualActiveMods
+                .OrderByDescending(x => x.Mod.IsCore)       // Core mods first (true > false)
+                .ThenByDescending(x => x.Mod.IsExpansion) // Then Expansion mods (true > false)
+                .ThenBy(x => x.Mod.Name, StringComparer.OrdinalIgnoreCase) // Then sort alphabetically by name (case-insensitive)
+                .Select((entry, index) => (entry.Mod, LoadOrder: index)) // Assign new load order index
                 .ToList();
 
-            // Update the virtual list with new load orders
-            _virtualActiveMods = sortedMods;
+            // *** Get the new order of PackageIds ***
+            var newOrder = _virtualActiveMods
+                               .Select(x => x.Mod.PackageId?.ToLowerInvariant() ?? Guid.NewGuid().ToString())
+                               .ToList();
 
-            // Update the active mods collection
+            // *** Check if the order actually changed ***
+            if (!originalOrder.SequenceEqual(newOrder))
+            {
+                // *** Mark changes as unsaved ONLY if the order has changed ***
+                HasUnsavedChanges = true;
+            }
+            // Else: Order is the same, do nothing, HasUnsavedChanges remains false (or its previous state).
+
+
+            // Update the derived active mods list (optional if only using virtual list directly)
             _allActiveMods = _virtualActiveMods.Select(x => x.Mod).ToList();
 
-            // Refresh the filtered lists
-            FilterActiveMods();
-            FilterInactiveMods();
+            // Refresh the filtered UI list for Active Mods
+            FilterActiveMods(); // This will apply the new order from _virtualActiveMods
 
             // Restore selection if possible
-            SelectedMod = ActiveMods.Contains(previouslySelected) ? previouslySelected :
-                         InactiveMods.Contains(previouslySelected) ? previouslySelected :
-                         ActiveMods.FirstOrDefault();
+            // Check if the previously selected mod is still in the (now sorted) virtual list
+            SelectedMod = _virtualActiveMods.Any(x => x.Mod == previouslySelected)
+                          ? previouslySelected
+                          : ActiveMods.FirstOrDefault(); // Fallback to first item in the updated UI list
 
-            // Notify that the totals have changed (though they shouldn't)
-            OnPropertyChanged(nameof(TotalActiveMods));
-            OnPropertyChanged(nameof(TotalInactiveMods));
+            // Notify that counts *might* have changed properties (though sorting shouldn't change counts)
+            // OnPropertyChanged(nameof(TotalActiveMods)); // Count unlikely to change but doesn't hurt
         }
+
+
         private void StripMods(object parameter)
         {
-            // TODO: Implement strip mods logic
-            System.Windows.MessageBox.Show("Strip mods functionality will go here");
+            System.Windows.MessageBox.Show("Strip mods: Functionality not yet implemented.");
         }
 
         private void CreatePack(object parameter)
         {
-            // TODO: Implement create pack logic
-            System.Windows.MessageBox.Show("Create pack functionality will go here");
+            System.Windows.MessageBox.Show("Create pack: Functionality not yet implemented.");
         }
 
         private void FixIntegrity(object parameter)
         {
-            // TODO: Implement fix integrity logic
-            System.Windows.MessageBox.Show("Fix integrity functionality will go here");
+            System.Windows.MessageBox.Show("Fix integrity: Functionality not yet implemented.");
         }
 
         private void ImportList(object parameter)
         {
-            // TODO: Implement import list logic
-            System.Windows.MessageBox.Show("Import list functionality will go here");
+            System.Windows.MessageBox.Show("Import list: Functionality not yet implemented.");
         }
 
         private void ImportSave(object parameter)
         {
-            // TODO: Implement import save logic
-            System.Windows.MessageBox.Show("Import save functionality will go here");
+            System.Windows.MessageBox.Show("Import save: Functionality not yet implemented.");
         }
 
         private void ExportList(object parameter)
         {
-            // TODO: Implement export list logic
-            System.Windows.MessageBox.Show("Export list functionality will go here");
+            System.Windows.MessageBox.Show("Export list: Functionality not yet implemented.");
         }
 
         private void SaveMods(object parameter)
         {
             try
             {
-                var configPath = Path.Combine(_pathService.GetConfigPath(), "ModsConfig.xml");
-                if (!File.Exists(configPath)) return;
+                var configDir = _pathService.GetConfigPath();
+                if (string.IsNullOrEmpty(configDir) || !Directory.Exists(configDir))
+                {
+                    MessageBox.Show("Error: Config directory path is not set or invalid.", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
 
-                var doc = XDocument.Load(configPath);
-                var activeModsElement = doc.Root.Element("activeMods");
+                var configPath = Path.Combine(configDir, "ModsConfig.xml");
+                XDocument doc;
 
-                // Clear existing active mods
-                activeModsElement?.RemoveAll();
+                // Check if the file exists, create a basic structure if not
+                if (!File.Exists(configPath))
+                {
+                    doc = new XDocument(
+                        new XElement("ModsConfigData",
+                            new XElement("version", "1.0"), // Or get current game version if needed
+                            new XElement("activeMods")
+                        )
+                    );
+                    MessageBox.Show($"ModsConfig.xml not found. A new file will be created at: {configPath}", "File Not Found", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    try
+                    {
+                        doc = XDocument.Load(configPath);
+                    }
+                    catch (Exception loadEx)
+                    {
+                        MessageBox.Show($"Error loading existing ModsConfig.xml: {loadEx.Message}\n\nUnable to save.", "Load Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+                }
 
-                // Add mods in current load order, converting package IDs to lowercase
+
+                var activeModsElement = doc.Root?.Element("activeMods");
+
+                // Ensure the activeMods element exists
+                if (activeModsElement == null)
+                {
+                    // Try to add it if the root exists
+                    if (doc.Root != null)
+                    {
+                        activeModsElement = new XElement("activeMods");
+                        doc.Root.Add(activeModsElement);
+                        MessageBox.Show("The 'activeMods' section was missing in ModsConfig.xml and has been added.", "Config Repaired", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Error: ModsConfig.xml seems corrupted (missing root element). Unable to save.", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+                }
+
+                // Clear existing active mods within the XML element
+                activeModsElement.RemoveAll();
+
+                // Add mods in current virtual load order, ensuring PackageId is not null/empty and using lowercase
                 foreach (var (mod, _) in _virtualActiveMods.OrderBy(x => x.LoadOrder))
                 {
                     if (!string.IsNullOrEmpty(mod.PackageId))
                     {
-                        activeModsElement?.Add(new XElement("li", mod.PackageId.ToLowerInvariant()));
+                        activeModsElement.Add(new XElement("li", mod.PackageId.ToLowerInvariant()));
+                    }
+                    else
+                    {
+                        // Optionally warn about mods without PackageId
+                        Debug.WriteLine($"Warning: Mod '{mod.Name}' has no PackageId and was not saved to active mods list.");
                     }
                 }
 
+                // Save the document
                 doc.Save(configPath);
-                MessageBox.Show("Mods configuration saved successfully!");
+                MessageBox.Show("Mods configuration saved successfully!", "Save Successful", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                MessageBox.Show($"Error: Permission denied when trying to save to {Path.Combine(_pathService.GetConfigPath(), "ModsConfig.xml")}.\n\nPlease check file/folder permissions or run the application as administrator.", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error saving mods configuration: {ex.Message}");
+                MessageBox.Show($"An unexpected error occurred while saving mods configuration: {ex.Message}", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
+
         private void RunGame(object parameter)
         {
-            // TODO: Implement run game logic
-            System.Windows.MessageBox.Show("Run game functionality will go here");
+            System.Windows.MessageBox.Show("Run game: Functionality not yet implemented.");
         }
-
     }
 }
