@@ -42,6 +42,56 @@
             <Setter Property="FontSize"
                     Value="14"/>
         </Style>
+
+                <Style x:Key="ModItemContainerStyle" TargetType="ListBoxItem">
+        <Setter Property="Background" Value="Transparent"/> <!-- Use Transparent as base -->
+        <Setter Property="BorderBrush" Value="{StaticResource RimworldBrownBrush}"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="Padding" Value="2"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <!-- Use RimworldLightBrownBrush for selection as in RimworldListBox style -->
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource RimworldLightBrownBrush}"/>
+                            <Setter Property="Foreground" Value="White"/>
+                        </Trigger>
+                         <Trigger Property="IsMouseOver" Value="True">
+                            <!-- Use RimworldDarkBeigeBrush for hover as in RimworldListBox style -->
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource RimworldDarkBeigeBrush}"/>
+                         </Trigger>
+                         <!-- Ensure default Foreground matches ListBox -->
+                         <Trigger Property="IsSelected" Value="False">
+                             <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
+                         </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+        <Style x:Key="DropInsertionLine"
+               TargetType="Rectangle">
+            <Setter Property="Height"
+                    Value="2"/>
+            <Setter Property="Fill"
+                    Value="{StaticResource RimworldHighlightBrush}"/>
+            <Setter Property="HorizontalAlignment"
+                    Value="Stretch"/>
+            <Setter Property="Margin"
+                    Value="0,-1,0,-1"/>
+        </Style>
+
+
     </UserControl.Resources>
 
     <Grid>
@@ -244,41 +294,40 @@
 
                             <!-- URL Links Section -->
                             <Grid Grid.Row="5"
-                                    Margin="0,10,0,0">
+                                  Margin="0,10,0,0">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
                                 <!-- URL -->
-                                <Grid Grid.Row="0"
-                                        Margin="0,0,0,2"
-                                        Visibility="{Binding HasUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0"
-                                               Text="URL:"
-                                               FontWeight="SemiBold"
-                                               Margin="0,0,10,0"
-                                               VerticalAlignment="Top"
-                                               Foreground="{StaticResource RimworldBrownBrush}"/>
-                                    <TextBlock Grid.Column="1">
-        <Hyperlink NavigateUri="{Binding Url}"
-                                        Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                        CommandParameter="{Binding Url}"
-                                        Foreground="{StaticResource RimworldDarkGreenBrush}"
-                                        TextDecorations="None">
+                               <Grid Grid.Row="0"
+      Margin="0,0,0,2"
+      Visibility="{Binding HasUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
+    <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="*"/>
+    </Grid.ColumnDefinitions>
+    <TextBlock Grid.Column="0"
+               Text="URL:"
+               FontWeight="SemiBold"
+               Margin="0,0,10,0"
+               VerticalAlignment="Top"
+               Foreground="{StaticResource RimworldBrownBrush}"/>
+    <TextBlock Grid.Column="1">
+        <Hyperlink Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                   CommandParameter="{Binding Url}"
+                   Foreground="{StaticResource RimworldDarkGreenBrush}"
+                   TextDecorations="None">
             <TextBlock Text="{Binding Url}"/>
         </Hyperlink>
     </TextBlock>
-                                </Grid>
+</Grid>
 
                                 <!-- Steam URL -->
                                 <Grid Grid.Row="1"
-                                        Margin="0,0,0,2"
-                                        Visibility="{Binding HasSteamUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                      Margin="0,0,0,2"
+                                      Visibility="{Binding HasSteamUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
@@ -289,21 +338,21 @@
                                                Margin="0,0,10,0"
                                                VerticalAlignment="Top"
                                                Foreground="{StaticResource RimworldBrownBrush}"/>
+                                    <!-- MODIFIED: Use Command instead of NavigateUri -->
                                     <TextBlock Grid.Column="1">
-        <Hyperlink NavigateUri="{Binding SteamUrl}"
-                                        Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                        CommandParameter="{Binding SteamUrl}"
-                                        Foreground="{StaticResource RimworldDarkGreenBrush}"
-                                        TextDecorations="None">
-            <TextBlock Text="{Binding SteamUrl}"/>
-        </Hyperlink>
-    </TextBlock>
+                                        <Hyperlink Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                   CommandParameter="{Binding SteamUrl}"
+                                                   Foreground="{StaticResource RimworldDarkGreenBrush}"
+                                                   TextDecorations="None">
+                                            <TextBlock Text="{Binding SteamUrl}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SteamUrl}"/>
+                                        </Hyperlink>
+                                    </TextBlock>
                                 </Grid>
 
                                 <!-- External URL -->
                                 <Grid Grid.Row="2"
-                                        Margin="0,0,0,2"
-                                        Visibility="{Binding HasExternalUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                      Margin="0,0,0,2"
+                                      Visibility="{Binding HasExternalUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
@@ -314,19 +363,20 @@
                                                Margin="0,0,10,0"
                                                VerticalAlignment="Top"
                                                Foreground="{StaticResource RimworldBrownBrush}"/>
+                                    <!-- MODIFIED: Use Command instead of NavigateUri -->
                                     <TextBlock Grid.Column="1">
-        <Hyperlink NavigateUri="{Binding ExternalUrl}"
-                                        Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                        CommandParameter="{Binding ExternalUrl}"
-                                        Foreground="{StaticResource RimworldDarkGreenBrush}"
-                                        TextDecorations="None">
-            <TextBlock Text="{Binding ExternalUrl}"/>
-        </Hyperlink>
-    </TextBlock>
+                                        <Hyperlink Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                   CommandParameter="{Binding ExternalUrl}"
+                                                   Foreground="{StaticResource RimworldDarkGreenBrush}"
+                                                   TextDecorations="None">
+                                            <TextBlock Text="{Binding ExternalUrl}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ExternalUrl}"/>
+                                        </Hyperlink>
+                                    </TextBlock>
                                 </Grid>
                             </Grid>
 
                         </Grid>
+
 
                         <!-- Mod Description -->
                         <Border Grid.Row="1"
@@ -390,7 +440,7 @@
 
                                 <!-- Search row -->
                                 <Grid Grid.Row="1"
-                                        Margin="8,0,8,4">
+                                      Margin="8,0,8,4">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
@@ -420,7 +470,13 @@
                                  ItemsSource="{Binding InactiveMods}"
                                  SelectedItem="{Binding SelectedMod, Mode=TwoWay}"
                                  HorizontalContentAlignment="Stretch"
-                                 Style="{StaticResource RimworldListBox}">
+                                 Style="{StaticResource RimworldListBox}"
+                                 ItemContainerStyle="{StaticResource ModItemContainerStyle}"
+                                 MouseDoubleClick="InactiveList_MouseDoubleClick"
+                                 AllowDrop="True"
+                                 PreviewDragOver="ListBox_PreviewDragOver"
+                                 Drop="InactiveList_Drop"
+                                 DragLeave="ListBox_DragLeave">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding Name}"
@@ -466,7 +522,7 @@
                                 </TextBlock>
                                 <!-- Search row -->
                                 <Grid Grid.Row="1"
-                                        Margin="8,0,8,4">
+                                      Margin="8,0,8,4">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
@@ -496,7 +552,15 @@
                                  ItemsSource="{Binding ActiveMods}"
                                  SelectedItem="{Binding SelectedMod, Mode=TwoWay}"
                                  HorizontalContentAlignment="Stretch"
-                                 Style="{StaticResource RimworldListBox}">
+                                 Style="{StaticResource RimworldListBox}"
+                                 ItemContainerStyle="{StaticResource ModItemContainerStyle}"
+                                 MouseDoubleClick="ActiveList_MouseDoubleClick"
+                                 AllowDrop="True"
+                                 PreviewDragOver="ListBox_PreviewDragOver"
+                                 Drop="ActiveList_Drop"
+                                 DragLeave="ListBox_DragLeave"
+                                 PreviewMouseMove="ActiveList_PreviewMouseMove"
+                                 PreviewMouseDown="ListBox_PreviewMouseDown">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding Name}"
