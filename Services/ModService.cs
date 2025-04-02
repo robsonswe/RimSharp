@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using System.Diagnostics; 
 
 namespace RimSharp.Services
 {
@@ -135,9 +136,13 @@ namespace RimSharp.Services
                 Url = root.Element("url")?.Value,
                 SupportedVersions = root.Element("supportedVersions")?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>(),
                 PreviewImagePath = File.Exists(previewImagePath) ? previewImagePath : null,
-                IsOutdatedRW = !IsVersionSupported(_currentMajorVersion, supportedVersions) && supportedVersions.Any()
-
+                IsOutdatedRW = !IsVersionSupported(_currentMajorVersion, supportedVersions) && supportedVersions.Any(),
             };
+            if (mod.IsOutdatedRW) {
+            //Debug.WriteLine($"Mod: {mod.Name}, Outdated: {mod.IsOutdatedRW}, Current Version: {_currentMajorVersion}, Supported Versions: {string.Join(", ", mod.SupportedVersions)}");
+
+            }
+
 
             // Parse dependencies
             mod.ModDependencies = root.Element("modDependencies")?.Elements("li")

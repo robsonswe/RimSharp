@@ -11,12 +11,18 @@
              d:DesignWidth="1000">
     <UserControl.Resources>
 
-        <Style x:Key="DropInsertionLine" TargetType="Rectangle">
-            <Setter Property="Height" Value="3"/>
-            <Setter Property="Fill" Value="{StaticResource RimworldHighlightBrush}"/>
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="Margin" Value="5,0,5,0"/>
-            <Setter Property="Width" Value="Auto"/>
+        <Style x:Key="DropInsertionLine"
+                TargetType="Rectangle">
+            <Setter Property="Height"
+                    Value="3"/>
+            <Setter Property="Fill"
+                    Value="{StaticResource RimworldHighlightBrush}"/>
+            <Setter Property="HorizontalAlignment"
+                    Value="Stretch"/>
+            <Setter Property="Margin"
+                    Value="5,0,5,0"/>
+            <Setter Property="Width"
+                    Value="Auto"/>
         </Style>
 
     </UserControl.Resources>
@@ -37,13 +43,18 @@
         <!-- Main 3-Column Layout for Mods View -->
         <Grid Margin="0,5,0,0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2.25*"/> <!-- Details Panel -->
-                <ColumnDefinition Width="2*"/> <!-- Lists Panel -->
-                <ColumnDefinition Width="Auto"/> <!-- Buttons Panel -->
+                <ColumnDefinition Width="2.25*"/>
+                <!-- Details Panel -->
+                <ColumnDefinition Width="2*"/>
+                <!-- Lists Panel -->
+                <ColumnDefinition Width="Auto"/>
+                <!-- Buttons Panel -->
             </Grid.ColumnDefinitions>
 
             <!-- Mod Details Panel -->
-            <Border Grid.Column="0" Margin="0,0,8,0" Style="{StaticResource RimworldPanelBorder}">
+            <Border Grid.Column="0"
+                    Margin="0,0,8,0"
+                    Style="{StaticResource RimworldPanelBorder}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -52,8 +63,11 @@
 
                     <!-- Mod Preview (Top Part) -->
                     <!-- Consider making the background a standard brush if possible -->
-                    <Border Grid.Row="0" Margin="10" HorizontalAlignment="Stretch" VerticalAlignment="Top">
-                         <Border Background="{StaticResource RimworldDarkBrownBrush}"
+                    <Border Grid.Row="0"
+                            Margin="10"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Top">
+                        <Border Background="{StaticResource RimworldDarkBrownBrush}"
                                 CornerRadius="3"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
@@ -61,18 +75,25 @@
                                 MaxWidth="560"
                                 MaxHeight="308">
                             <!-- Use AspectRatio content container if needed, e.g., a Viewbox -->
-                            <Viewbox Stretch="Uniform" MaxWidth="560" MaxHeight="308">
-                                <Grid MinWidth="400" MinHeight="220"> <!-- Base aspect ratio size -->
+                            <Viewbox Stretch="Uniform"
+                                    MaxWidth="560"
+                                    MaxHeight="308">
+                                <Grid MinWidth="400"
+                                        MinHeight="220">
+                                    <!-- Base aspect ratio size -->
                                     <Image Source="{Binding SelectedMod.PreviewImagePath, Converter={StaticResource ImagePathConverter}, TargetNullValue={x:Null}}"
                                            Stretch="UniformToFill"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center">
-                                         <Image.Style>
+                                        <Image.Style>
                                             <Style TargetType="Image">
-                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Setter Property="Visibility"
+                                                        Value="Visible"/>
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Source, RelativeSource={RelativeSource Self}}" Value="{x:Null}">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <DataTrigger Binding="{Binding Source, RelativeSource={RelativeSource Self}}"
+                                                            Value="{x:Null}">
+                                                        <Setter Property="Visibility"
+                                                                Value="Collapsed"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -94,7 +115,9 @@
 
 
                     <!-- Mod Info (Bottom Part) -->
-                    <Grid Grid.Row="1" Margin="10" DataContext="{Binding SelectedMod}">
+                    <Grid Grid.Row="1"
+                            Margin="10"
+                            DataContext="{Binding SelectedMod}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
@@ -103,68 +126,131 @@
                         <!-- Mod Info Table -->
                         <Grid Grid.Row="0">
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <!-- Simplified using attached properties for labels -->
                             <Grid.Resources>
-                                <Style TargetType="TextBlock" x:Key="InfoLabel">
-                                    <Setter Property="FontWeight" Value="SemiBold"/>
-                                    <Setter Property="Margin" Value="0,0,10,2"/>
-                                    <Setter Property="VerticalAlignment" Value="Top"/>
-                                    <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
+                                <Style TargetType="TextBlock"
+                                        x:Key="InfoLabel">
+                                    <Setter Property="FontWeight"
+                                            Value="SemiBold"/>
+                                    <Setter Property="Margin"
+                                            Value="0,0,10,2"/>
+                                    <Setter Property="VerticalAlignment"
+                                            Value="Top"/>
+                                    <Setter Property="Foreground"
+                                            Value="{StaticResource RimworldBrownBrush}"/>
                                 </Style>
-                                <Style TargetType="TextBlock" x:Key="InfoValue">
-                                    <Setter Property="TextWrapping" Value="Wrap"/>
-                                    <Setter Property="VerticalAlignment" Value="Top"/>
-                                    <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
+                                <Style TargetType="TextBlock"
+                                        x:Key="InfoValue">
+                                    <Setter Property="TextWrapping"
+                                            Value="Wrap"/>
+                                    <Setter Property="VerticalAlignment"
+                                            Value="Top"/>
+                                    <Setter Property="Foreground"
+                                            Value="{StaticResource RimworldBrownBrush}"/>
                                 </Style>
                             </Grid.Resources>
 
-                            <TextBlock Grid.Row="0" Text="Name:" Style="{StaticResource InfoLabel}"/>
-                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Name}" Style="{StaticResource InfoValue}"/>
+                            <TextBlock Grid.Row="0"
+                                    Text="Name:"
+                                    Style="{StaticResource InfoLabel}"/>
+                            <TextBlock Grid.Row="0"
+                                    Grid.Column="1"
+                                    Text="{Binding Name}"
+                                    Style="{StaticResource InfoValue}"/>
 
-                            <TextBlock Grid.Row="1" Text="Authors:" Style="{StaticResource InfoLabel}"/>
-                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Authors}" Style="{StaticResource InfoValue}"/>
+                            <TextBlock Grid.Row="1"
+                                    Text="Authors:"
+                                    Style="{StaticResource InfoLabel}"/>
+                            <TextBlock Grid.Row="1"
+                                    Grid.Column="1"
+                                    Text="{Binding Authors}"
+                                    Style="{StaticResource InfoValue}"/>
 
-                            <TextBlock Grid.Row="2" Text="PackageID:" Style="{StaticResource InfoLabel}"/>
-                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding PackageId}" Style="{StaticResource InfoValue}"/>
+                            <TextBlock Grid.Row="2"
+                                    Text="PackageID:"
+                                    Style="{StaticResource InfoLabel}"/>
+                            <TextBlock Grid.Row="2"
+                                    Grid.Column="1"
+                                    Text="{Binding PackageId}"
+                                    Style="{StaticResource InfoValue}"/>
 
-                            <TextBlock Grid.Row="3" Text="Supported:" Style="{StaticResource InfoLabel}"/>
-                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SupportedVersions, Converter={StaticResource ListToStringConverter}, ConverterParameter=', '}" Style="{StaticResource InfoValue}"/>
+                            <TextBlock Grid.Row="3"
+                                    Text="Supported:"
+                                    Style="{StaticResource InfoLabel}"/>
+                            <TextBlock Grid.Row="3"
+                                    Grid.Column="1"
+                                    Text="{Binding SupportedVersions, Converter={StaticResource ListToStringConverter}, ConverterParameter=', '}"
+                                    Style="{StaticResource InfoValue}"/>
 
-                            <TextBlock Grid.Row="4" Text="Path:" Style="{StaticResource InfoLabel}"/>
-                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Path}" Style="{StaticResource InfoValue}" ToolTip="{Binding Path}" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Grid.Row="4"
+                                    Text="Path:"
+                                    Style="{StaticResource InfoLabel}"/>
+                            <TextBlock Grid.Row="4"
+                                    Grid.Column="1"
+                                    Text="{Binding Path}"
+                                    Style="{StaticResource InfoValue}"
+                                    ToolTip="{Binding Path}"
+                                    TextTrimming="CharacterEllipsis"/>
 
                             <!-- URL Links Section -->
-                            <StackPanel Grid.Row="5" Grid.ColumnSpan="2" Margin="0,10,0,0">
+                            <StackPanel Grid.Row="5"
+                                    Grid.ColumnSpan="2"
+                                    Margin="0,10,0,0">
                                 <!-- URL -->
-                                <DockPanel LastChildFill="True" Margin="0,0,0,2" Visibility="{Binding HasUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                     <TextBlock DockPanel.Dock="Left" Text="URL:" Style="{StaticResource InfoLabel}"/>
-                                     <TextBlock Style="{StaticResource InfoValue}">
+                                <DockPanel LastChildFill="True"
+                                        Margin="0,0,0,2"
+                                        Visibility="{Binding HasUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <TextBlock DockPanel.Dock="Left"
+                                            Text="URL:"
+                                            Style="{StaticResource InfoLabel}"/>
+                                    <TextBlock Style="{StaticResource InfoValue}">
                                          <Hyperlink Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding Url}" Style="{StaticResource RimworldHyperlinkStyle}">
-                                            <TextBlock Text="{Binding Url}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Url}"/>
+                                                    CommandParameter="{Binding Url}"
+                                                Style="{StaticResource RimworldHyperlinkStyle}">
+                                            <TextBlock Text="{Binding Url}"
+                                                    TextTrimming="CharacterEllipsis"
+                                                    ToolTip="{Binding Url}"/>
                                          </Hyperlink>
                                      </TextBlock>
                                 </DockPanel>
                                 <!-- Steam URL -->
-                                <DockPanel LastChildFill="True" Margin="0,0,0,2" Visibility="{Binding HasSteamUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                     <TextBlock DockPanel.Dock="Left" Text="Steam:" Style="{StaticResource InfoLabel}"/>
-                                     <TextBlock Style="{StaticResource InfoValue}">
+                                <DockPanel LastChildFill="True"
+                                        Margin="0,0,0,2"
+                                        Visibility="{Binding HasSteamUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <TextBlock DockPanel.Dock="Left"
+                                            Text="Steam:"
+                                            Style="{StaticResource InfoLabel}"/>
+                                    <TextBlock Style="{StaticResource InfoValue}">
                                         <Hyperlink Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                   CommandParameter="{Binding SteamUrl}" Style="{StaticResource RimworldHyperlinkStyle}">
-                                            <TextBlock Text="{Binding SteamUrl}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SteamUrl}"/>
+                                                   CommandParameter="{Binding SteamUrl}"
+                                                Style="{StaticResource RimworldHyperlinkStyle}">
+                                            <TextBlock Text="{Binding SteamUrl}"
+                                                    TextTrimming="CharacterEllipsis"
+                                                    ToolTip="{Binding SteamUrl}"/>
                                         </Hyperlink>
                                      </TextBlock>
                                 </DockPanel>
                                 <!-- External URL -->
-                                <DockPanel LastChildFill="True" Margin="0,0,0,2" Visibility="{Binding HasExternalUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                     <TextBlock DockPanel.Dock="Left" Text="External:" Style="{StaticResource InfoLabel}"/>
-                                     <TextBlock Style="{StaticResource InfoValue}">
+                                <DockPanel LastChildFill="True"
+                                        Margin="0,0,0,2"
+                                        Visibility="{Binding HasExternalUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <TextBlock DockPanel.Dock="Left"
+                                            Text="External:"
+                                            Style="{StaticResource InfoLabel}"/>
+                                    <TextBlock Style="{StaticResource InfoValue}">
                                         <Hyperlink Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                   CommandParameter="{Binding ExternalUrl}" Style="{StaticResource RimworldHyperlinkStyle}">
-                                            <TextBlock Text="{Binding ExternalUrl}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ExternalUrl}"/>
+                                                   CommandParameter="{Binding ExternalUrl}"
+                                                Style="{StaticResource RimworldHyperlinkStyle}">
+                                            <TextBlock Text="{Binding ExternalUrl}"
+                                                    TextTrimming="CharacterEllipsis"
+                                                    ToolTip="{Binding ExternalUrl}"/>
                                         </Hyperlink>
                                      </TextBlock>
                                 </DockPanel>
@@ -172,9 +258,16 @@
                         </Grid>
 
                         <!-- Mod Description -->
-                        <Border Grid.Row="1" Margin="0,10,0,0" BorderBrush="{StaticResource RimworldLightBrownBrush}" BorderThickness="0,1,0,0" Padding="0,10,0,0">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                                <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Foreground="{StaticResource RimworldBrownBrush}"/>
+                        <Border Grid.Row="1"
+                                Margin="0,10,0,0"
+                                BorderBrush="{StaticResource RimworldLightBrownBrush}"
+                                BorderThickness="0,1,0,0"
+                                Padding="0,10,0,0">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                    HorizontalScrollBarVisibility="Disabled">
+                                <TextBlock Text="{Binding Description}"
+                                        TextWrapping="Wrap"
+                                        Foreground="{StaticResource RimworldBrownBrush}"/>
                             </ScrollViewer>
                         </Border>
                     </Grid>
@@ -182,30 +275,63 @@
             </Border>
 
             <!-- Mod Lists Panel -->
-            <Grid Grid.Column="1" Margin="0,0,8,0">
+            <Grid Grid.Column="1"
+                    Margin="0,0,8,0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/> <!-- Inactive List -->
-                    <ColumnDefinition Width="Auto"/> <!-- Arrow Buttons -->
-                    <ColumnDefinition Width="*"/> <!-- Active List -->
+                    <ColumnDefinition Width="*"/>
+                    <!-- Inactive List -->
+                    <ColumnDefinition Width="Auto"/>
+                    <!-- Arrow Buttons -->
+                    <ColumnDefinition Width="*"/>
+                    <!-- Active List -->
                 </Grid.ColumnDefinitions>
 
                 <!-- Inactive Mods -->
-                <Border Grid.Column="0" Style="{StaticResource RimworldPanelBorder}">
+                <Border Grid.Column="0"
+                        Style="{StaticResource RimworldPanelBorder}">
                     <Grid>
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/> <!-- Header -->
-                            <RowDefinition Height="*"/> <!-- List -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Header -->
+                            <RowDefinition Height="*"/>
+                            <!-- List -->
                         </Grid.RowDefinitions>
-                        <Border Grid.Row="0" Style="{StaticResource RimworldListHeaderBorder}">
-                             <Grid>
-                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" FontWeight="Bold" Margin="4" HorizontalAlignment="Left" Foreground="{StaticResource RimworldWhiteBrush}">
+                        <Border Grid.Row="0"
+                                Style="{StaticResource RimworldListHeaderBorder}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0"
+                                        FontWeight="Bold"
+                                        Margin="4"
+                                        HorizontalAlignment="Left"
+                                        Foreground="{StaticResource RimworldWhiteBrush}">
                                     <Run Text="Inactive"/> <Run Text="["/><Run Text="{Binding TotalInactiveMods, Mode=OneWay}"/><Run Text="]"/>
                                 </TextBlock>
-                                <Grid Grid.Row="1" Margin="4,0,4,4">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                    <TextBox Grid.Column="0" Tag="Search Inactive..." Style="{StaticResource RimworldWatermarkTextBox}" VerticalAlignment="Center" Text="{Binding InactiveSearchText, UpdateSourceTrigger=PropertyChanged}"/>
-                                    <Button Grid.Column="1" Content="Filters" Style="{StaticResource RimworldButtonStyle}" Width="50" Height="22" FontSize="11" Padding="0" Margin="4,0,0,0" VerticalAlignment="Center" Command="{Binding FilterInactiveCommand}" ToolTip="Filter inactive mods"/>
+                                <Grid Grid.Row="1"
+                                        Margin="4,0,4,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0"
+                                            Tag="Search Inactive..."
+                                            Style="{StaticResource RimworldWatermarkTextBox}"
+                                            VerticalAlignment="Center"
+                                            Text="{Binding InactiveSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <Button Grid.Column="1"
+                                            Content="Filters"
+                                            Style="{StaticResource RimworldButtonStyle}"
+                                            Width="50"
+                                            Height="22"
+                                            FontSize="11"
+                                            Padding="0"
+                                            Margin="4,0,0,0"
+                                            VerticalAlignment="Center"
+                                            Command="{Binding FilterInactiveCommand}"
+                                            ToolTip="Filter inactive mods"/>
                                 </Grid>
                             </Grid>
                         </Border>
@@ -215,16 +341,20 @@
                                  SelectedItem="{Binding SelectedMod, Mode=TwoWay}"
                                  Style="{StaticResource RimworldListBox}"
                                  MouseDoubleClick="InactiveList_MouseDoubleClick"
-                                 AllowDrop="True" PreviewDragOver="ListBox_PreviewDragOver"
-                                 Drop="InactiveList_Drop" DragLeave="ListBox_DragLeave"
-                                 PreviewMouseDown="ListBox_PreviewMouseDown" PreviewMouseMove="InactiveList_PreviewMouseMove">
+                                 AllowDrop="True"
+                                PreviewDragOver="ListBox_PreviewDragOver"
+                                 Drop="InactiveList_Drop"
+                                DragLeave="ListBox_DragLeave"
+                                 PreviewMouseDown="ListBox_PreviewMouseDown"
+                                PreviewMouseMove="InactiveList_PreviewMouseMove">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <!-- TextBlock foreground now uses BooleanToColorConverter -->
-                                    <TextBlock Text="{Binding Name}" ToolTip="{Binding Path}"
+                                    <TextBlock Text="{Binding Name}"
                                                Foreground="{Binding IsOutdatedRW,
-                                                           Converter={StaticResource BooleanToColorConverter},
-                                                           ConverterParameter=RimworldErrorRed|RimworldBrown}"/>
+                       Converter={StaticResource BooleanToColorConverter},
+                       ConverterParameter=RimworldErrorRed|RimworldBrown}"/>
+
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
@@ -235,63 +365,132 @@
                 <!-- Removed - They don't seem present in the original screenshot/layout -->
 
                 <!-- Active Mods -->
-                <Border Grid.Column="2" Style="{StaticResource RimworldPanelBorder}">
-                     <Grid>
+                <Border Grid.Column="2"
+                        Style="{StaticResource RimworldPanelBorder}">
+                    <Grid>
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/> <!-- Header -->
-                            <RowDefinition Height="*"/> <!-- List -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Header -->
+                            <RowDefinition Height="*"/>
+                            <!-- List -->
                         </Grid.RowDefinitions>
-                        <Border Grid.Row="0" Style="{StaticResource RimworldListHeaderBorder}">
-                             <Grid>
-                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" FontWeight="Bold" Margin="4" HorizontalAlignment="Left" Foreground="{StaticResource RimworldWhiteBrush}">
+                        <Border Grid.Row="0"
+                                Style="{StaticResource RimworldListHeaderBorder}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0"
+                                        FontWeight="Bold"
+                                        Margin="4"
+                                        HorizontalAlignment="Left"
+                                        Foreground="{StaticResource RimworldWhiteBrush}">
                                     <Run Text="Active"/> <Run Text="["/><Run Text="{Binding TotalActiveMods, Mode=OneWay}"/><Run Text="]"/>
                                 </TextBlock>
-                                <Grid Grid.Row="1" Margin="4,0,4,4">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                    <TextBox Grid.Column="0" Tag="Search Active..." Style="{StaticResource RimworldWatermarkTextBox}" VerticalAlignment="Center" Text="{Binding ActiveSearchText, UpdateSourceTrigger=PropertyChanged}"/>
-                                    <Button Grid.Column="1" Content="Filters" Style="{StaticResource RimworldButtonStyle}" Width="50" Height="22" FontSize="11" Padding="0" Margin="4,0,0,0" VerticalAlignment="Center" Command="{Binding FilterActiveCommand}" ToolTip="Filter active mods"/>
+                                <Grid Grid.Row="1"
+                                        Margin="4,0,4,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0"
+                                            Tag="Search Active..."
+                                            Style="{StaticResource RimworldWatermarkTextBox}"
+                                            VerticalAlignment="Center"
+                                            Text="{Binding ActiveSearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <Button Grid.Column="1"
+                                            Content="Filters"
+                                            Style="{StaticResource RimworldButtonStyle}"
+                                            Width="50"
+                                            Height="22"
+                                            FontSize="11"
+                                            Padding="0"
+                                            Margin="4,0,0,0"
+                                            VerticalAlignment="Center"
+                                            Command="{Binding FilterActiveCommand}"
+                                            ToolTip="Filter active mods"/>
                                 </Grid>
                             </Grid>
                         </Border>
                         <!-- Use global ListBox Style (which includes ItemContainerStyle) -->
-                         <ListBox Grid.Row="1"
+                        <ListBox Grid.Row="1"
                                  ItemsSource="{Binding ActiveMods}"
                                  SelectedItem="{Binding SelectedMod, Mode=TwoWay}"
                                  Style="{StaticResource RimworldListBox}"
                                  MouseDoubleClick="ActiveList_MouseDoubleClick"
-                                 AllowDrop="True" PreviewDragOver="ListBox_PreviewDragOver"
-                                 Drop="ActiveList_Drop" DragLeave="ListBox_DragLeave"
-                                 PreviewMouseMove="ActiveList_PreviewMouseMove" PreviewMouseDown="ListBox_PreviewMouseDown">
-                             <ListBox.ItemTemplate>
-                                 <DataTemplate>
-                                     <!-- TextBlock foreground now uses BooleanToColorConverter -->
-                                     <TextBlock Text="{Binding Name}" ToolTip="{Binding Path}"
-                                                Foreground="{Binding IsOutdatedRW,
+                                 AllowDrop="True"
+                                PreviewDragOver="ListBox_PreviewDragOver"
+                                 Drop="ActiveList_Drop"
+                                DragLeave="ListBox_DragLeave"
+                                 PreviewMouseMove="ActiveList_PreviewMouseMove"
+                                PreviewMouseDown="ListBox_PreviewMouseDown">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <!-- TextBlock foreground now uses BooleanToColorConverter -->
+                                    <TextBlock Text="{Binding Name}"
+                                            ToolTip="{Binding Path}"
+                                               Foreground="{Binding IsOutdatedRW,
                                                             Converter={StaticResource BooleanToColorConverter},
                                                             ConverterParameter=RimworldErrorRed|RimworldBrown}"/>
-                                 </DataTemplate>
-                             </ListBox.ItemTemplate>
-                         </ListBox>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
                     </Grid>
                 </Border>
             </Grid>
 
             <!-- Right Sidebar Buttons -->
-            <StackPanel Grid.Column="2" Width="130" Margin="8,0,0,0"> <!-- Added left margin -->
-                <Button Content="Clear" Command="{Binding ClearActiveListCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
-                <Button Content="Sort" Command="{Binding SortActiveListCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
-                <Button Content="Strip mods" Command="{Binding StripModsCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
-                <Button Content="Create pack" Command="{Binding CreatePackCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
-                <Button Content="Fix integrity" Command="{Binding FixIntegrityCommand}" Margin="0,0,0,20" Style="{StaticResource RimworldButtonStyle}"/>
+            <StackPanel Grid.Column="2"
+                    Width="130"
+                    Margin="8,0,0,0">
+                <!-- Added left margin -->
+                <Button Content="Clear"
+                        Command="{Binding ClearActiveListCommand}"
+                        Margin="0,0,0,5"
+                        Style="{StaticResource RimworldButtonStyle}"/>
+                <Button Content="Sort"
+                        Command="{Binding SortActiveListCommand}"
+                        Margin="0,0,0,5"
+                        Style="{StaticResource RimworldButtonStyle}"/>
+                <Button Content="Strip mods"
+                        Command="{Binding StripModsCommand}"
+                        Margin="0,0,0,5"
+                        Style="{StaticResource RimworldButtonStyle}"/>
+                <Button Content="Create pack"
+                        Command="{Binding CreatePackCommand}"
+                        Margin="0,0,0,5"
+                        Style="{StaticResource RimworldButtonStyle}"/>
+                <Button Content="Fix integrity"
+                        Command="{Binding FixIntegrityCommand}"
+                        Margin="0,0,0,20"
+                        Style="{StaticResource RimworldButtonStyle}"/>
 
-                <TextBlock Text="Mod lists" FontWeight="Bold" Margin="0,0,0,5" Foreground="{StaticResource RimworldBrownBrush}"/>
-                <Button Content="Import list" Command="{Binding ImportListCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
-                <Button Content="Import save" Command="{Binding ImportSaveCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
-                <Button Content="Export list" Command="{Binding ExportListCommand}" Margin="0,0,0,20" Style="{StaticResource RimworldButtonStyle}"/>
+                <TextBlock Text="Mod lists"
+                        FontWeight="Bold"
+                        Margin="0,0,0,5"
+                        Foreground="{StaticResource RimworldBrownBrush}"/>
+                <Button Content="Import list"
+                        Command="{Binding ImportListCommand}"
+                        Margin="0,0,0,5"
+                        Style="{StaticResource RimworldButtonStyle}"/>
+                <Button Content="Import save"
+                        Command="{Binding ImportSaveCommand}"
+                        Margin="0,0,0,5"
+                        Style="{StaticResource RimworldButtonStyle}"/>
+                <Button Content="Export list"
+                        Command="{Binding ExportListCommand}"
+                        Margin="0,0,0,20"
+                        Style="{StaticResource RimworldButtonStyle}"/>
 
-                <Button Content="Save" Command="{Binding SaveCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldSaveButtonStyle}" IsEnabled="{Binding HasUnsavedChanges}"/>
-                <Button Content="Run!" Command="{Binding RunGameCommand}" Style="{StaticResource RimworldRunButtonStyle}"/>
+                <Button Content="Save"
+                        Command="{Binding SaveCommand}"
+                        Margin="0,0,0,5"
+                        Style="{StaticResource RimworldSaveButtonStyle}"
+                        IsEnabled="{Binding HasUnsavedChanges}"/>
+                <Button Content="Run!"
+                        Command="{Binding RunGameCommand}"
+                        Style="{StaticResource RimworldRunButtonStyle}"/>
             </StackPanel>
         </Grid>
     </Grid>
