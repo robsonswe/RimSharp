@@ -63,6 +63,10 @@ namespace RimSharp.ViewModels.Modules.Mods
         public ICommand RunGameCommand { get; }
         public ICommand OpenUrlCommand { get; }
 
+                public ICommand FilterInactiveCommand { get; }
+        public ICommand FilterActiveCommand { get; }
+
+
 
         public bool IsLoading
         {
@@ -94,6 +98,9 @@ namespace RimSharp.ViewModels.Modules.Mods
             SaveCommand = new RelayCommand(SaveMods);
             RunGameCommand = new RelayCommand(RunGame);
             OpenUrlCommand = new RelayCommand(OpenUrl);
+                        FilterInactiveCommand = new RelayCommand(ExecuteFilterInactive);
+            FilterActiveCommand = new RelayCommand(ExecuteFilterActive);
+
 
             LoadDataAsync();
         }
@@ -158,6 +165,20 @@ namespace RimSharp.ViewModels.Modules.Mods
                 IsLoading = false;
             }
         }
+                private void ExecuteFilterInactive(object parameter)
+        {
+            // Placeholder for filter logic
+            System.Windows.MessageBox.Show("Filter Inactive Mods - Not Yet Implemented");
+            // TODO: Implement logic to show/apply filtering options for the inactive list
+        }
+
+        private void ExecuteFilterActive(object parameter)
+        {
+            // Placeholder for filter logic
+            System.Windows.MessageBox.Show("Filter Active Mods - Not Yet Implemented");
+            // TODO: Implement logic to show/apply filtering options for the active list
+        }
+
 
         private void OpenUrl(object parameter)
         {

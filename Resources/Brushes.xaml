@@ -1,0 +1,28 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Colors.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
+    <!-- Brushes -->
+    <SolidColorBrush x:Key="RimworldBrownBrush" Color="{StaticResource RimworldBrown}"/>
+    <SolidColorBrush x:Key="RimworldDarkBrownBrush" Color="{StaticResource RimworldDarkBrown}"/>
+    <SolidColorBrush x:Key="RimworldLightBrownBrush" Color="{StaticResource RimworldLightBrown}"/>
+    <SolidColorBrush x:Key="RimworldBeigeBrush" Color="{StaticResource RimworldBeige}"/>
+    <SolidColorBrush x:Key="RimworldDarkBeigeBrush" Color="{StaticResource RimworldDarkBeige}"/>
+    <SolidColorBrush x:Key="RimworldHighlightBrush" Color="{StaticResource RimworldHighlight}"/>
+    <SolidColorBrush x:Key="RimworldDarkGreenBrush" Color="{StaticResource RimworldDarkGreen}"/>
+    <SolidColorBrush x:Key="RimworldRedBrush" Color="{StaticResource RimworldRed}"/>
+    <SolidColorBrush x:Key="RimworldErrorBrush" Color="{StaticResource RimworldErrorRed}"/>
+    <SolidColorBrush x:Key="RimworldWhiteBrush" Color="{StaticResource RimworldWhite}"/>
+    <SolidColorBrush x:Key="RimworldGrayBrush" Color="{StaticResource RimworldGray}"/>
+
+    <!-- Specific Hover/Disabled/Border Brushes -->
+    <SolidColorBrush x:Key="RimworldDarkGreenHoverBrush" Color="{StaticResource RimworldDarkGreenHover}"/>
+    <SolidColorBrush x:Key="RimworldDarkGreenDisabledBrush" Color="{StaticResource RimworldDarkGreenDisabled}"/>
+    <SolidColorBrush x:Key="RimworldDarkGreenBorderBrush" Color="{StaticResource RimworldDarkGreenBorder}"/>
+    <SolidColorBrush x:Key="RimworldRedHoverBrush" Color="{StaticResource RimworldRedHover}"/>
+    <SolidColorBrush x:Key="RimworldRedDisabledBrush" Color="{StaticResource RimworldRedDisabled}"/>
+    <SolidColorBrush x:Key="RimworldRedBorderBrush" Color="{StaticResource RimworldRedBorder}"/>
+
+</ResourceDictionary>
