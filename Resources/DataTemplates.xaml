@@ -1,0 +1,19 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:vmMods="clr-namespace:RimSharp.ViewModels.Modules.Mods"
+                    xmlns:vMods="clr-namespace:RimSharp.Views.Modules.Mods"
+                    xmlns:vmDownloader="clr-namespace:RimSharp.ViewModels.Modules.Downloader"
+                    xmlns:vDownloader="clr-namespace:RimSharp.Views.Modules.Downloader">
+
+    <!-- DataTemplates to link ViewModels to Views for the ContentControl -->
+    <DataTemplate DataType="{x:Type vmMods:ModsViewModel}">
+        <vMods:ModsView/>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vmDownloader:DownloaderViewModel}">
+        <vDownloader:DownloaderView/>
+    </DataTemplate>
+
+    <!-- Add other ViewModel-View mappings here -->
+
+</ResourceDictionary>

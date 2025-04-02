@@ -8,83 +8,109 @@
              xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:DownloaderViewModel, IsDesignTimeCreatable=True}"
-             d:DesignHeight="450" d:DesignWidth="800">
+             d:DesignHeight="450"
+             d:DesignWidth="800">
     <UserControl.Resources>
-        <Style TargetType="Button" x:Key="DownloaderButtonStyle" BasedOn="{StaticResource RimworldButtonStyle}">
-            <Setter Property="Margin" Value="0,0,5,0"/>
-            <Setter Property="Padding" Value="8,4"/>
-        </Style>
     </UserControl.Resources>
 
     <Grid>
-        <!-- Main 2-Column Layout -->
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="1*"/> <!-- Left Panel (thinner) -->
-            <ColumnDefinition Width="3*"/> <!-- Right Panel -->
+            <ColumnDefinition Width="1*"/>
+            <!-- Left Panel -->
+            <ColumnDefinition Width="3*"/>
+            <!-- Right Panel -->
         </Grid.ColumnDefinitions>
 
         <!-- Left Panel - Mod List -->
-        <Border Grid.Column="0" Margin="0,0,5,0" Style="{StaticResource RimworldPanelBorder}">
+        <Border Grid.Column="0"
+                Margin="0,0,5,0"
+                Style="{StaticResource RimworldPanelBorder}">
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="*"/> <!-- List -->
-                    <RowDefinition Height="Auto"/> <!-- Buttons Row 1 -->
-                    <RowDefinition Height="Auto"/> <!-- Buttons Row 2 -->
+                    <RowDefinition Height="*"/>
+                    <!-- List -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Buttons Area -->
                 </Grid.RowDefinitions>
 
-                <!-- Mod List -->
-                <ListBox Grid.Row="0" ItemsSource="{Binding DownloadList}"
-                         HorizontalContentAlignment="Stretch" Style="{StaticResource RimworldListBox}">
+                <!-- Mod List - Use global RimworldListBox style -->
+                <ListBox Grid.Row="0"
+                         ItemsSource="{Binding DownloadList}"
+                         Style="{StaticResource RimworldListBox}">
+                    <!-- ItemTemplate can be defined here if specific to downloads, or use default -->
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding Name}" Margin="5,2" ToolTip="{Binding Path}" 
-                                       Foreground="{StaticResource RimworldBrownBrush}"/>
+                            <!-- Assuming default text color is fine -->
+                            <TextBlock Text="{Binding Name}"
+                                       ToolTip="{Binding Path}"/>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
 
-                <!-- Buttons Row 1 -->
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,5,0,0" HorizontalAlignment="Stretch">
-                    <Button Content="Setup SteamCMD" Command="{Binding SetupSteamCmdCommand}" 
-                            Style="{StaticResource DownloaderButtonStyle}" HorizontalAlignment="Left"/>
-                    <Button Content="Check for Updates" Command="{Binding CheckUpdatesCommand}" 
-                            Style="{StaticResource DownloaderButtonStyle}" HorizontalAlignment="Left"/>
-                </StackPanel>
-
-                <!-- Buttons Row 2 -->
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,5,0,0" HorizontalAlignment="Stretch">
-                    <Button Content="Download" Command="{Binding DownloadCommand}" 
-                            Style="{StaticResource RimworldSaveButtonStyle}" HorizontalAlignment="Stretch"/>
-                </StackPanel>
+                <!-- Buttons Area - Use WrapPanel for better resizing -->
+                <WrapPanel Grid.Row="1"
+                           Orientation="Horizontal"
+                           Margin="0,5,0,0">
+                    <!-- Use DownloaderButtonStyle from ButtonStyles.xaml or RimworldButtonStyle directly -->
+                    <Button Content="Setup SteamCMD"
+                            Command="{Binding SetupSteamCmdCommand}"
+                            Style="{StaticResource DownloaderButtonStyle}"/>
+                    <Button Content="Check for Updates"
+                            Command="{Binding CheckUpdatesCommand}"
+                            Style="{StaticResource DownloaderButtonStyle}"/>
+                    <Button Content="Download"
+                            Command="{Binding DownloadCommand}"
+                            Style="{StaticResource RimworldSaveButtonStyle}"
+                            Margin="0,0,5,0"/>
+                    <!-- Added margin -->
+                </WrapPanel>
             </Grid>
         </Border>
 
         <!-- Right Panel - Web Browser -->
-        <Border Grid.Column="1" Style="{StaticResource RimworldPanelBorder}">
+        <Border Grid.Column="1"
+                Style="{StaticResource RimworldPanelBorder}">
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/> <!-- Navigation Bar -->
-                    <RowDefinition Height="*"/> <!-- Web Browser -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Navigation Bar -->
+                    <RowDefinition Height="*"/>
+                    <!-- Web Browser -->
                 </Grid.RowDefinitions>
 
                 <!-- Navigation Bar -->
-                <Border Grid.Row="0" Style="{StaticResource RimworldListHeaderBorder}">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch">
-                        <Button Content="←" Command="{Binding GoBackCommand}" 
-                                Style="{StaticResource DownloaderButtonStyle}" Width="40"/>
-                        <Button Content="→" Command="{Binding GoForwardCommand}" 
-                                Style="{StaticResource DownloaderButtonStyle}" Width="40"/>
-                        <Button Content="Home" Command="{Binding GoHomeCommand}" 
-                                Style="{StaticResource DownloaderButtonStyle}" Width="80"/>
-                        <Button Content="Add Mod to List" Command="{Binding AddModCommand}" 
-                                Style="{StaticResource RimworldSaveButtonStyle}" HorizontalAlignment="Stretch"/>
+                <Border Grid.Row="0"
+                        Style="{StaticResource RimworldListHeaderBorder}">
+                    <StackPanel Orientation="Horizontal">
+                        <!-- Use DownloaderButtonStyle or specific ArrowButtonStyle -->
+                        <Button Content="←"
+                                Command="{Binding GoBackCommand}"
+                                Style="{StaticResource ArrowButtonStyle}"
+                                Width="40"
+                                Margin="0,0,5,0"/>
+                        <Button Content="→"
+                                Command="{Binding GoForwardCommand}"
+                                Style="{StaticResource ArrowButtonStyle}"
+                                Width="40"
+                                Margin="0,0,5,0"/>
+                        <Button Content="Home"
+                                Command="{Binding GoHomeCommand}"
+                                Style="{StaticResource DownloaderButtonStyle}"
+                                Width="80"/>
+                        <Button Content="Add Mod to List"
+                                Command="{Binding AddModCommand}"
+                                Style="{StaticResource RimworldSaveButtonStyle}"
+                                Margin="5,0,0,0"/>
                     </StackPanel>
                 </Border>
 
                 <!-- WebView2 Control -->
-                <wv2:WebView2 Grid.Row="1" x:Name="SteamWorkshopBrowser" 
+                <wv2:WebView2 Grid.Row="1"
+                        x:Name="SteamWorkshopBrowser"
                               Source="https://steamcommunity.com/app/294100/workshop/"
-                              HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                              HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"/>
+                <!-- Added handler example -->
             </Grid>
         </Border>
     </Grid>
