@@ -538,54 +538,220 @@ namespace RimSharp.ViewModels.Modules.Mods
 
         private void SortActiveList(object parameter)
         {
-            if (_virtualActiveMods.Count == 0) return;
+            if (_virtualActiveMods.Count <= 1) return; // No sorting needed for 0 or 1 item
 
             var previouslySelected = SelectedMod;
 
-            // *** Store the original order of PackageIds (or another unique identifier) ***
-            var originalOrder = _virtualActiveMods
-                                    .Select(x => x.Mod.PackageId?.ToLowerInvariant() ?? Guid.NewGuid().ToString()) // Use PackageId (lowercase) or a fallback unique ID
+            // Store the original order of PackageIds (lowercase) for change detection
+            var originalOrderIds = _virtualActiveMods
+                                    .Select(x => x.Mod.PackageId?.ToLowerInvariant() ?? Guid.NewGuid().ToString())
                                     .ToList();
 
-            // Sort the virtual list with priority: Core > Expansion > Others, then alphabetically
-            // and assign new sequential load orders
-            _virtualActiveMods = _virtualActiveMods
-                .OrderByDescending(x => x.Mod.IsCore)       // Core mods first (true > false)
-                .ThenByDescending(x => x.Mod.IsExpansion) // Then Expansion mods (true > false)
-                .ThenBy(x => x.Mod.Name, StringComparer.OrdinalIgnoreCase) // Then sort alphabetically by name (case-insensitive)
-                .Select((entry, index) => (entry.Mod, LoadOrder: index)) // Assign new load order index
+            // --- Perform Topological Sort with Integrated Priority ---
+            var sortedMods = TopologicalSortActiveModsWithPriority(); // Use the NEW method
+
+            if (sortedMods == null)
+            {
+                // Topological sort failed (likely a cycle detected)
+                // Error message already shown by TopologicalSortActiveModsWithPriority
+                return;
+            }
+            // --- End Topological Sort ---
+
+            // --- Create the new virtual list with updated LoadOrder ---
+            // The result from TopologicalSortActiveModsWithPriority IS the final order.
+            var newVirtualActiveMods = sortedMods
+                .Select((mod, index) => (Mod: mod, LoadOrder: index))
                 .ToList();
 
-            // *** Get the new order of PackageIds ***
-            var newOrder = _virtualActiveMods
+            // --- Check if the order actually changed ---
+            var newOrderIds = newVirtualActiveMods
                                .Select(x => x.Mod.PackageId?.ToLowerInvariant() ?? Guid.NewGuid().ToString())
                                .ToList();
 
-            // *** Check if the order actually changed ***
-            if (!originalOrder.SequenceEqual(newOrder))
+            bool orderChanged = !originalOrderIds.SequenceEqual(newOrderIds);
+
+            if (orderChanged)
             {
-                // *** Mark changes as unsaved ONLY if the order has changed ***
-                HasUnsavedChanges = true;
+                _virtualActiveMods = newVirtualActiveMods; // Replace the old list
+                _allActiveMods = _virtualActiveMods.Select(x => x.Mod).ToList(); // Update derived list
+                HasUnsavedChanges = true; // Mark changes
+                FilterActiveMods(); // Refresh the UI list
+                Debug.WriteLine($"Active mod list sorted successfully using priority topological sort. Changes detected.");
             }
-            // Else: Order is the same, do nothing, HasUnsavedChanges remains false (or its previous state).
+            else
+            {
+                // Even if the logical order of PackageIds didn't change,
+                // the underlying ModItem instances or LoadOrder numbers might need refreshing in the UI.
+                // Always refresh the UI after a sort attempt.
+                _virtualActiveMods = newVirtualActiveMods; // Ensure LoadOrder numbers are sequential
+                _allActiveMods = _virtualActiveMods.Select(x => x.Mod).ToList();
+                FilterActiveMods(); // Refresh the UI list
+                Debug.WriteLine("Sorting completed. Mod order sequence unchanged, but UI refreshed.");
+                // Keep HasUnsavedChanges false if sequence is identical
+            }
 
-
-            // Update the derived active mods list (optional if only using virtual list directly)
-            _allActiveMods = _virtualActiveMods.Select(x => x.Mod).ToList();
-
-            // Refresh the filtered UI list for Active Mods
-            FilterActiveMods(); // This will apply the new order from _virtualActiveMods
-
-            // Restore selection if possible
-            // Check if the previously selected mod is still in the (now sorted) virtual list
-            SelectedMod = _virtualActiveMods.Any(x => x.Mod == previouslySelected)
-                          ? previouslySelected
-                          : ActiveMods.FirstOrDefault(); // Fallback to first item in the updated UI list
-
-            // Notify that counts *might* have changed properties (though sorting shouldn't change counts)
-            // OnPropertyChanged(nameof(TotalActiveMods)); // Count unlikely to change but doesn't hurt
+            // --- Restore selection if possible ---
+            SelectedMod = _virtualActiveMods.FirstOrDefault(x => x.Mod == previouslySelected).Mod // Find the tuple containing the mod
+                          ?? ActiveMods.FirstOrDefault(); // Fallback to first item in the updated UI list
         }
 
+        // --- NEW Helper method for Topological Sort with Priority Tie-breaking ---
+        private List<ModItem> TopologicalSortActiveModsWithPriority()
+        {
+            if (!_virtualActiveMods.Any()) return new List<ModItem>();
+
+            var sortedResult = new List<ModItem>(_virtualActiveMods.Count);
+            var activeModsOnly = _virtualActiveMods.Select(vm => vm.Mod).ToList();
+
+            // Build PackageId lookup (lowercase keys for dependency resolution)
+            var modLookup = activeModsOnly
+                .Where(m => !string.IsNullOrEmpty(m.PackageId))
+                .ToDictionary(m => m.PackageId.ToLowerInvariant(), m => m, StringComparer.OrdinalIgnoreCase);
+
+            // Build graph: Adjacency list (mod -> mods that must load AFTER it)
+            // and In-degree count (mods that must load BEFORE it)
+            var adj = new Dictionary<ModItem, HashSet<ModItem>>();
+            var inDegree = new Dictionary<ModItem, int>();
+
+            foreach (var mod in activeModsOnly)
+            {
+                adj[mod] = new HashSet<ModItem>();
+                inDegree[mod] = 0;
+            }
+
+            // Populate graph based on rules
+            foreach (var mod in activeModsOnly)
+            {
+                string modPackageIdLower = mod.PackageId?.ToLowerInvariant();
+                if (string.IsNullOrEmpty(modPackageIdLower)) continue; // Skip mods without packageId for rule processing
+
+                // Helper to process dependency lists (LoadAfter, ForceLoadAfter, Dependencies)
+                // Rule: Prerequisite -> Mod (Edge goes FROM prerequisite TO mod)
+                Action<IEnumerable<string>> processLoadAfter = ids =>
+                {
+                    foreach (var prereqId in ids.Where(id => !string.IsNullOrEmpty(id)).Select(id => id.ToLowerInvariant()).Distinct())
+                    {
+                        if (modLookup.TryGetValue(prereqId, out var prereqMod) && prereqMod != mod)
+                        {
+                            if (adj.TryGetValue(prereqMod, out var successors) && successors.Add(mod)) // Add edge prereqMod -> mod
+                            {
+                                inDegree[mod]++;
+                                // Debug.WriteLine($"Graph: Added edge {prereqMod.Name} -> {mod.Name} (LoadAfter/Dep)");
+                            }
+                        }
+                         // Optional: Warn if a dependency isn't in the active list?
+                         // else if (!modLookup.ContainsKey(prereqId)) { Debug.WriteLine($"Warning: Mod '{mod.Name}' requires '{prereqId}', which is not in the active list."); }
+                    }
+                };
+
+                // Helper to process LoadBefore/ForceLoadBefore lists
+                // Rule: Mod -> Successor (Edge goes FROM mod TO successor)
+                Action<IEnumerable<string>> processLoadBefore = ids =>
+                {
+                    foreach (var successorId in ids.Where(id => !string.IsNullOrEmpty(id)).Select(id => id.ToLowerInvariant()).Distinct())
+                    {
+                        if (modLookup.TryGetValue(successorId, out var successorMod) && successorMod != mod)
+                        {
+                            if (adj.TryGetValue(mod, out var successors) && successors.Add(successorMod)) // Add edge mod -> successorMod
+                            {
+                                inDegree[successorMod]++;
+                                // Debug.WriteLine($"Graph: Added edge {mod.Name} -> {successorMod.Name} (LoadBefore)");
+                            }
+                        }
+                         // Optional: Warn if a LoadBefore target isn't active?
+                         // else if (!modLookup.ContainsKey(successorId)) { Debug.WriteLine($"Warning: Mod '{mod.Name}' loads before '{successorId}', which is not in the active list."); }
+                    }
+                };
+
+                // Process rules using helpers
+                processLoadAfter(mod.LoadAfter ?? Enumerable.Empty<string>());
+                processLoadAfter(mod.ForceLoadAfter ?? Enumerable.Empty<string>());
+                processLoadAfter((mod.ModDependencies ?? Enumerable.Empty<ModDependency>()).Select(d => d.PackageId));
+
+                processLoadBefore(mod.LoadBefore ?? Enumerable.Empty<string>());
+                processLoadBefore(mod.ForceLoadBefore ?? Enumerable.Empty<string>());
+            }
+
+            // --- Kahn's Algorithm with Priority Tie-breaking ---
+
+            // Use a List to store nodes ready to be processed (in-degree is 0)
+            var readyNodes = new List<ModItem>(activeModsOnly.Where(m => inDegree[m] == 0));
+
+            // Custom comparer for priority: Core > Expansion > Name
+            Comparison<ModItem> priorityComparer = (modA, modB) =>
+            {
+                // Primary: Core vs Non-Core
+                if (modA.IsCore != modB.IsCore)
+                    return modB.IsCore.CompareTo(modA.IsCore); // Core comes first (true > false)
+
+                // Secondary: Expansion vs Non-Expansion (but only if neither is Core)
+                if (!modA.IsCore && modA.IsExpansion != modB.IsExpansion)
+                     return modB.IsExpansion.CompareTo(modA.IsExpansion); // Expansion comes first (true > false)
+
+                // Tertiary: Name (Alphabetical)
+                 return StringComparer.OrdinalIgnoreCase.Compare(modA.Name, modB.Name);
+            };
+
+
+            // Process ready nodes
+            while (readyNodes.Count > 0)
+            {
+                // Sort the ready nodes based on priority FOR THIS STEP
+                readyNodes.Sort(priorityComparer);
+
+                // Select the highest priority node
+                var current = readyNodes[0];
+                readyNodes.RemoveAt(0);
+
+                sortedResult.Add(current);
+                // Debug.WriteLine($"Topo Sort Step: Added {current.Name}");
+
+
+                // Process neighbors using a stable order (e.g., alphabetical) to avoid unnecessary fluctuations if multiple neighbors become ready simultaneously
+                 var neighbors = adj.TryGetValue(current, out var successorSet)
+                                ? successorSet.OrderBy(n => n.Name, StringComparer.OrdinalIgnoreCase).ToList()
+                                : Enumerable.Empty<ModItem>();
+
+                foreach (var neighbor in neighbors)
+                {
+                    inDegree[neighbor]--;
+                    if (inDegree[neighbor] == 0)
+                    {
+                        readyNodes.Add(neighbor);
+                        // Debug.WriteLine($"    {neighbor.Name} became ready.");
+                    }
+                     else if (inDegree[neighbor] < 0)
+                     {
+                         // This indicates a problem in the graph logic
+                         Debug.WriteLine($"Critical Error: In-degree for {neighbor.Name} became negative during sort. Check graph construction.");
+                         MessageBox.Show($"Internal sorting error: In-degree for {neighbor.Name} became negative. Sorting may be incorrect.", "Sort Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                         // Consider returning null or throwing an exception
+                     }
+                }
+            }
+
+            // Check for cycles
+            if (sortedResult.Count != activeModsOnly.Count)
+            {
+                var cycleMods = activeModsOnly
+                    .Where(m => inDegree[m] > 0) // Mods whose in-degree never reached 0 are part of cycles
+                    .Select(m => m.Name);
+                string cycleModsStr = string.Join(", ", cycleMods);
+                if (string.IsNullOrWhiteSpace(cycleModsStr)) // Fallback if inDegree logic failed
+                {
+                    cycleModsStr = string.Join(", ", activeModsOnly.Except(sortedResult).Select(m => m.Name));
+                }
+
+                //MessageBox.Show($"Sorting failed due to a dependency cycle involving (at least): {cycleModsStr}.\nPlease review the LoadBefore/LoadAfter/Dependencies settings of these mods and potentially others they interact with.",
+                  //              "Mod Dependency Cycle Detected", MessageBoxButton.OK, MessageBoxError);
+                Debug.WriteLine($"Cycle detected. Sorted count: {sortedResult.Count}, Original count: {activeModsOnly.Count}. Mods likely in cycle: {cycleModsStr}");
+                return null; // Indicate failure
+            }
+
+            Debug.WriteLine($"Priority topological sort successful. Final Order: {string.Join(", ", sortedResult.Select(m => m.Name))}");
+            return sortedResult;
+        }
 
         private void StripMods(object parameter)
         {
