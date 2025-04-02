@@ -39,7 +39,7 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Button Grid.Column="0" Content="Game folder"
+                    <Button Grid.Column="0" Content="Game Dir"
                             Command="{Binding OpenFolderCommand}" CommandParameter="GamePath"
                             Style="{StaticResource RimworldButtonStyle}" Width="80" Margin="0,0,8,0"
                             ToolTip="Open game folder in Explorer"/>
@@ -58,7 +58,7 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Button Grid.Column="0" Content="Config folder"
+                    <Button Grid.Column="0" Content="Config Dir"
                             Command="{Binding OpenFolderCommand}" CommandParameter="ConfigPath"
                             Style="{StaticResource RimworldButtonStyle}" Width="80" Margin="0,0,8,0"
                             ToolTip="Open config folder in Explorer"/>
@@ -77,7 +77,7 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Button Grid.Column="0" Content="Mods Folder"
+                    <Button Grid.Column="0" Content="Mods Dir"
                             Command="{Binding OpenFolderCommand}" CommandParameter="ModsPath"
                             Style="{StaticResource RimworldButtonStyle}" Width="80" Margin="0,0,8,0"
                             ToolTip="Open mods folder in Explorer"/>
