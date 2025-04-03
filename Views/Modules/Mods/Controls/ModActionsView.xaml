@@ -12,6 +12,7 @@
     <StackPanel Width="130">
         <Button Content="Clear" Command="{Binding ClearActiveListCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
         <Button Content="Sort" Command="{Binding SortActiveListCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
+        <Button Content="Dependencies" Command="{Binding ResolveDependenciesCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
         <Button Content="Strip mods" Command="{Binding StripModsCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
         <Button Content="Create pack" Command="{Binding CreatePackCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
         <Button Content="Fix integrity" Command="{Binding FixIntegrityCommand}" Margin="0,0,0,20" Style="{StaticResource RimworldButtonStyle}"/>
