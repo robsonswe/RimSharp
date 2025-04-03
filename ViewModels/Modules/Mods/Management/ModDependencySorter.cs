@@ -8,19 +8,11 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
 {
     public class ModDependencySorter
     {
-        public List<ModItem> TopologicalSort(
-            List<ModItem> mods,
-            HashSet<ModItem> hasExplicitLoadBefore,
-            HashSet<ModItem> hasExplicitForceLoadBefore)
+        public List<ModItem> TopologicalSort(List<ModItem> mods, HashSet<ModItem> hasExplicitLoadBefore, HashSet<ModItem> hasExplicitForceLoadBefore)
         {
             if (mods.Count == 0) return new List<ModItem>();
 
-            // Build PackageId lookup for dependency resolution
-            var localModLookup = mods
-                .Where(m => !string.IsNullOrEmpty(m.PackageId))
-                .ToDictionary(m => m.PackageId.ToLowerInvariant(), m => m, StringComparer.OrdinalIgnoreCase);
-
-            // Build dependency graph
+            var localModLookup = mods.ToDictionary(m => m.PackageId.ToLowerInvariant(), m => m, StringComparer.OrdinalIgnoreCase);
             var graph = new Dictionary<ModItem, HashSet<ModItem>>();
             var inDegree = new Dictionary<ModItem, int>();
 
@@ -30,146 +22,123 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
                 inDegree[mod] = 0;
             }
 
-            // Process dependencies
             foreach (var mod in mods)
             {
                 if (string.IsNullOrEmpty(mod.PackageId)) continue;
-
-                // Process "load after" relationships
-                ProcessDependencies(mod,
-                    CombineDependencies(mod.LoadAfter, mod.ForceLoadAfter,
-                        mod.ModDependencies?.Select(d => d.PackageId)),
-                    localModLookup, graph, inDegree, isLoadAfter: true);
-
-                // Process "load before" relationships
-                ProcessDependencies(mod,
-                    CombineDependencies(mod.LoadBefore, mod.ForceLoadBefore),
-                    localModLookup, graph, inDegree, isLoadAfter: false);
+                ProcessDependencies(mod, mod.LoadBefore.Concat(mod.ForceLoadBefore), localModLookup, graph, inDegree, isBefore: true);
+                ProcessDependencies(mod, mod.LoadAfter.Concat(mod.ForceLoadAfter).Concat(mod.ModDependencies.Select(d => d.PackageId)),
+                                    localModLookup, graph, inDegree, isBefore: false);
             }
 
-            return KahnTopologicalSort(mods, graph, inDegree, hasExplicitLoadBefore, hasExplicitForceLoadBefore);
+            var cycle = DetectCycle(graph);
+            if (cycle != null)
+            {
+                Debug.WriteLine($"Cycle detected: {string.Join(" -> ", cycle.Select(m => m.Name))}");
+                return null;
+            }
+
+            return KahnTopologicalSort(mods, graph, inDegree);
         }
 
-        private IEnumerable<string> CombineDependencies(params IEnumerable<string>[] dependencies)
+        private void ProcessDependencies(ModItem mod, IEnumerable<string> dependencies,
+                                         Dictionary<string, ModItem> lookup,
+                                         Dictionary<ModItem, HashSet<ModItem>> graph,
+                                         Dictionary<ModItem, int> inDegree, bool isBefore)
         {
-            return dependencies
-                .Where(dep => dep != null)
-                .SelectMany(dep => dep)
-                .Where(id => !string.IsNullOrEmpty(id))
-                .Select(id => id.ToLowerInvariant())
-                .Distinct();
-        }
-
-        private void ProcessDependencies(
-            ModItem mod,
-            IEnumerable<string> dependencies,
-            Dictionary<string, ModItem> lookup,
-            Dictionary<ModItem, HashSet<ModItem>> graph,
-            Dictionary<ModItem, int> inDegree,
-            bool isLoadAfter)
-        {
-            foreach (var depId in dependencies)
+            foreach (var depId in dependencies.Where(d => !string.IsNullOrEmpty(d)))
             {
                 if (!lookup.TryGetValue(depId, out var otherMod) || otherMod == mod) continue;
 
-                if (isLoadAfter)
+                if (isBefore)
                 {
-                    // otherMod -> mod (mod loads after otherMod)
-                    if (graph[otherMod].Add(mod))
-                    {
-                        inDegree[mod]++;
-                    }
+                    if (graph[mod].Add(otherMod)) inDegree[otherMod]++;
                 }
                 else
                 {
-                    // mod -> otherMod (mod loads before otherMod)
-                    if (graph[mod].Add(otherMod))
-                    {
-                        inDegree[otherMod]++;
-                    }
+                    if (graph[otherMod].Add(mod)) inDegree[mod]++;
                 }
             }
         }
 
         private List<ModItem> KahnTopologicalSort(
-            List<ModItem> mods,
-            Dictionary<ModItem, HashSet<ModItem>> graph,
-            Dictionary<ModItem, int> inDegree,
-            HashSet<ModItem> hasExplicitLoadBefore,
-            HashSet<ModItem> hasExplicitForceLoadBefore)
+    List<ModItem> mods,
+    Dictionary<ModItem, HashSet<ModItem>> graph,
+    Dictionary<ModItem, int> inDegree)
         {
             var result = new List<ModItem>(mods.Count);
-            var pq = new List<ModItem>();
+            var pq = new PriorityQueue<ModItem, (int, string)>();
 
-            // Add nodes with no dependencies to the initial list
-            pq.AddRange(mods.Where(m => inDegree[m] == 0));
-
-            // Initial sort of zero-dependency mods according to priority rules
-            pq.Sort((a, b) => CompareMods(a, b, hasExplicitForceLoadBefore, hasExplicitLoadBefore));
+            foreach (var mod in mods.Where(m => inDegree[m] == 0))
+            {
+                pq.Enqueue(mod, (GetPriority(mod), mod.Name));
+            }
 
             while (pq.Count > 0)
             {
-                var current = pq[0];
-                pq.RemoveAt(0);
+                pq.TryDequeue(out var current, out _);
                 result.Add(current);
 
-                var neighbors = graph[current].ToList();
-                neighbors.Sort((a, b) => CompareMods(a, b, hasExplicitForceLoadBefore, hasExplicitLoadBefore));
-
-                foreach (var neighbor in neighbors)
+                foreach (var neighbor in graph[current])
                 {
                     inDegree[neighbor]--;
                     if (inDegree[neighbor] == 0)
                     {
-                        int insertPos = 0;
-                        while (insertPos < pq.Count &&
-                               CompareMods(pq[insertPos], neighbor, hasExplicitForceLoadBefore, hasExplicitLoadBefore) < 0)
-                        {
-                            insertPos++;
-                        }
-                        pq.Insert(insertPos, neighbor);
+                        pq.Enqueue(neighbor, (GetPriority(neighbor), neighbor.Name));
                     }
                 }
             }
 
-            if (result.Count != mods.Count)
-            {
-                var cycleMods = mods.Except(result).Select(m => m.Name);
-                Debug.WriteLine($"Cycle detected: {string.Join(", ", cycleMods)}");
-                return null;
-            }
-
-            return result;
+            return result.Count == mods.Count ? result : null;
         }
 
-        private int CompareMods(
-            ModItem a,
-            ModItem b,
-            HashSet<ModItem> forceLoadBeforeMods,
-            HashSet<ModItem> loadBeforeMods)
+
+        private List<ModItem> DetectCycle(Dictionary<ModItem, HashSet<ModItem>> graph)
         {
-            bool aHasForceLoadBefore = forceLoadBeforeMods.Contains(a);
-            bool bHasForceLoadBefore = forceLoadBeforeMods.Contains(b);
+            var visited = new HashSet<ModItem>();
+            var stack = new HashSet<ModItem>();
+            var cyclePath = new List<ModItem>();
 
-            if (aHasForceLoadBefore != bHasForceLoadBefore)
-                return aHasForceLoadBefore ? -1 : 1;
+            bool DFS(ModItem node)
+            {
+                if (stack.Contains(node))
+                {
+                    cyclePath.Add(node);
+                    return true;
+                }
+                if (visited.Contains(node)) return false;
 
-            bool aHasLoadBefore = loadBeforeMods.Contains(a);
-            bool bHasLoadBefore = loadBeforeMods.Contains(b);
+                visited.Add(node);
+                stack.Add(node);
 
-            if (aHasLoadBefore != bHasLoadBefore)
-                return aHasLoadBefore ? -1 : 1;
+                foreach (var neighbor in graph[node])
+                {
+                    if (DFS(neighbor))
+                    {
+                        cyclePath.Add(node);
+                        return true;
+                    }
+                }
 
-            if (a.IsCore != b.IsCore)
-                return a.IsCore ? -1 : 1;
+                stack.Remove(node);
+                return false;
+            }
 
-            if (a.IsExpansion != b.IsExpansion)
-                return a.IsExpansion ? -1 : 1;
+            foreach (var mod in graph.Keys)
+            {
+                if (DFS(mod)) return cyclePath.Reverse<ModItem>().ToList();
+            }
 
-            if (a.IsExpansion && b.IsExpansion)
-                return string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
+            return null;
+        }
 
-            return string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
+        private int GetPriority(ModItem mod)
+        {
+            if (mod.ForceLoadBefore.Any()) return 0;
+            if (mod.LoadBefore.Any()) return 1;
+            if (mod.IsCore) return 2;
+            if (mod.IsExpansion) return 3;
+            if (mod.LoadAfter.Any() || mod.ForceLoadAfter.Any() || mod.ModDependencies.Any()) return 4;
+            return 5;
         }
     }
 }
