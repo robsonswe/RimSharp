@@ -168,6 +168,7 @@
         <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/> <!-- Ensure items stretch -->
         <Setter Property="ItemContainerStyle" Value="{StaticResource RimworldListBoxItemStyle}"/>
+        <Setter Property="AllowDrop" Value="True"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBox">
@@ -175,7 +176,7 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="3">
-                        <ScrollViewer Focusable="False" Padding="{TemplateBinding Padding}">
+                        <ScrollViewer Focusable="False" Padding="{TemplateBinding Padding}" CanContentScroll="True">
                             <ItemsPresenter/>
                         </ScrollViewer>
                     </Border>
