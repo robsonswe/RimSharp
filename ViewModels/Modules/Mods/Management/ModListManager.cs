@@ -11,27 +11,31 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
         private readonly List<(ModItem Mod, int LoadOrder)> _virtualActiveMods = new();
         private readonly List<ModItem> _allInactiveMods = new();
         private readonly List<ModItem> _allAvailableMods = new();
-        
+
         // Optimization: Use dictionaries and sets for O(1) lookup operations
         private readonly Dictionary<string, ModItem> _modLookup = new(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<ModItem> _activeModSet = new();
 
+        // Track missing mods
+        private readonly List<string> _missingModIds = new();
+
         public IReadOnlyList<(ModItem Mod, int LoadOrder)> VirtualActiveMods => _virtualActiveMods;
         public IReadOnlyList<ModItem> AllInactiveMods => _allInactiveMods;
+        public IReadOnlyList<string> MissingModIds => _missingModIds;
 
         public event EventHandler ListChanged;
 
         public void Initialize(IEnumerable<ModItem> allAvailableMods, IEnumerable<string> activeModPackageIds)
         {
             if (allAvailableMods == null) throw new ArgumentNullException(nameof(allAvailableMods));
-            
+
             _allAvailableMods.Clear();
             _allAvailableMods.AddRange(allAvailableMods);
-            
+
             var activeIdList = activeModPackageIds?
                 .Where(id => !string.IsNullOrEmpty(id))
                 .Select(id => id.ToLowerInvariant())
-                .ToList() 
+                .ToList()
                 ?? new List<string>();
 
             // Build lookup dictionary for O(1) access
@@ -43,6 +47,9 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
                     _modLookup[mod.PackageId.ToLowerInvariant()] = mod;
                 }
             }
+
+            // Reset missing mods list
+            _missingModIds.Clear();
 
             // Build active mods from config
             _virtualActiveMods.Clear();
@@ -59,6 +66,7 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
                 }
                 else
                 {
+                    _missingModIds.Add(packageId);
                     Debug.WriteLine($"Warning: Active mod ID '{packageId}' from config not found in available mods.");
                 }
             }
@@ -73,12 +81,18 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
                     mod.IsActive = false;
                 }
             }
-            
+
             // Initial sort of inactive mods
             _allInactiveMods.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
 
             RaiseListChanged();
-            Debug.WriteLine($"ModListManager Initialized: {_virtualActiveMods.Count} active, {_allInactiveMods.Count} inactive.");
+            Debug.WriteLine($"ModListManager Initialized: {_virtualActiveMods.Count} active, {_allInactiveMods.Count} inactive, {_missingModIds.Count} missing.");
+
+            // If there are missing mods, log them for debugging
+            if (_missingModIds.Count > 0)
+            {
+                Debug.WriteLine($"Missing mods: {string.Join(", ", _missingModIds)}");
+            }
         }
 
         public void ActivateMod(ModItem mod) => ActivateModAt(mod, _virtualActiveMods.Count);
@@ -89,7 +103,7 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
             if (_activeModSet.Contains(mod)) return;
 
             _allInactiveMods.Remove(mod);
-            
+
             index = Math.Clamp(index, 0, _virtualActiveMods.Count);
             _virtualActiveMods.Insert(index, (mod, -1));
             _activeModSet.Add(mod);
@@ -135,7 +149,7 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
             if (currentIndex == -1) return;
 
             newIndex = Math.Clamp(newIndex, 0, _virtualActiveMods.Count - 1);
-            
+
             // Skip if moving to same position or adjacent position when moving down
             if (newIndex == currentIndex || (newIndex == currentIndex + 1 && newIndex > currentIndex))
             {
@@ -144,7 +158,7 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
 
             var itemToMove = _virtualActiveMods[currentIndex];
             _virtualActiveMods.RemoveAt(currentIndex);
-            
+
             // Adjust index after removal
             int insertIndex = newIndex > currentIndex ? newIndex - 1 : newIndex;
             _virtualActiveMods.Insert(insertIndex, itemToMove);
@@ -175,11 +189,11 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
 
             // Sort by original load order
             modsToKeep.Sort((a, b) => a.LoadOrder.CompareTo(b.LoadOrder));
-            
+
             // Update active list
             _virtualActiveMods.Clear();
             _virtualActiveMods.AddRange(modsToKeep);
-            
+
             // Update tracking collections
             _activeModSet.Clear();
             foreach (var (mod, _) in _virtualActiveMods)
@@ -199,6 +213,9 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
 
             // Sort the inactive list now that many items are added
             _allInactiveMods.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+
+            // Clear missing mods list as we're starting fresh
+            _missingModIds.Clear();
 
             ReIndexVirtualActiveMods();
             RaiseListChanged();
@@ -230,17 +247,24 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
 
             bool orderChanged = !originalOrderIds.SequenceEqual(newOrderIds);
             RaiseListChanged();
-            
-            Debug.WriteLine(orderChanged 
+
+            Debug.WriteLine(orderChanged
                 ? "Active mod list sorted successfully. Order changed."
                 : "Sorting completed. Mod order sequence unchanged.");
-                
+
             return true;
         }
 
         public bool IsModActive(ModItem mod) => mod != null && _activeModSet.Contains(mod);
 
         public IEnumerable<ModItem> GetAllMods() => _allAvailableMods;
+
+        public IEnumerable<string> GetActiveModIds()
+        {
+            return _virtualActiveMods
+                .Select(m => m.Mod.PackageId?.ToLowerInvariant())
+                .Where(id => !string.IsNullOrEmpty(id));
+        }
 
         // Private helper methods
         private void ReIndexVirtualActiveMods()
@@ -295,14 +319,14 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
                 }
 
                 // Process "load after" relationships
-                ProcessDependencies(mod, 
-                    CombineDependencies(mod.LoadAfter, mod.ForceLoadAfter, 
-                        mod.ModDependencies?.Select(d => d.PackageId)), 
+                ProcessDependencies(mod,
+                    CombineDependencies(mod.LoadAfter, mod.ForceLoadAfter,
+                        mod.ModDependencies?.Select(d => d.PackageId)),
                     localModLookup, graph, inDegree, isLoadAfter: true);
 
                 // Process "load before" relationships
-                ProcessDependencies(mod, 
-                    CombineDependencies(mod.LoadBefore, mod.ForceLoadBefore), 
+                ProcessDependencies(mod,
+                    CombineDependencies(mod.LoadBefore, mod.ForceLoadBefore),
                     localModLookup, graph, inDegree, isLoadAfter: false);
             }
 
@@ -321,17 +345,17 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
         }
 
         private void ProcessDependencies(
-            ModItem mod, 
-            IEnumerable<string> dependencies, 
-            Dictionary<string, ModItem> lookup, 
-            Dictionary<ModItem, HashSet<ModItem>> graph, 
-            Dictionary<ModItem, int> inDegree, 
+            ModItem mod,
+            IEnumerable<string> dependencies,
+            Dictionary<string, ModItem> lookup,
+            Dictionary<ModItem, HashSet<ModItem>> graph,
+            Dictionary<ModItem, int> inDegree,
             bool isLoadAfter)
         {
             foreach (var depId in dependencies)
             {
                 if (!lookup.TryGetValue(depId, out var otherMod) || otherMod == mod) continue;
-                
+
                 if (isLoadAfter)
                 {
                     // otherMod -> mod (mod loads after otherMod)
@@ -352,20 +376,20 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
         }
 
         private List<ModItem> KahnTopologicalSort(
-            List<ModItem> mods, 
-            Dictionary<ModItem, HashSet<ModItem>> graph, 
+            List<ModItem> mods,
+            Dictionary<ModItem, HashSet<ModItem>> graph,
             Dictionary<ModItem, int> inDegree,
             HashSet<ModItem> hasExplicitLoadBefore,
             HashSet<ModItem> hasExplicitForceLoadBefore)
         {
             var result = new List<ModItem>(mods.Count);
-            
+
             // Use a custom priority queue implementation
             var pq = new List<ModItem>();
 
             // Add nodes with no dependencies to the initial list
             pq.AddRange(mods.Where(m => inDegree[m] == 0));
-            
+
             // Initial sort of zero-dependency mods according to priority rules
             pq.Sort((a, b) => CompareMods(a, b, hasExplicitForceLoadBefore, hasExplicitLoadBefore));
 
@@ -379,7 +403,7 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
                 // Process neighbors and update inDegree
                 var neighbors = graph[current].ToList();
                 neighbors.Sort((a, b) => CompareMods(a, b, hasExplicitForceLoadBefore, hasExplicitLoadBefore));
-                
+
                 foreach (var neighbor in neighbors)
                 {
                     inDegree[neighbor]--;
@@ -387,7 +411,7 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
                     {
                         // Find the right position to insert based on priority
                         int insertPos = 0;
-                        while (insertPos < pq.Count && 
+                        while (insertPos < pq.Count &&
                                CompareMods(pq[insertPos], neighbor, hasExplicitForceLoadBefore, hasExplicitLoadBefore) < 0)
                         {
                             insertPos++;
@@ -411,36 +435,36 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
         // Custom comparison method implementing the priority rules:
         // force/load before > core > expansion > mod dependency > force/load after > mod name
         private int CompareMods(
-            ModItem a, 
-            ModItem b, 
-            HashSet<ModItem> forceLoadBeforeMods, 
+            ModItem a,
+            ModItem b,
+            HashSet<ModItem> forceLoadBeforeMods,
             HashSet<ModItem> loadBeforeMods)
         {
             // Force/Load Before has highest priority
             bool aHasForceLoadBefore = forceLoadBeforeMods.Contains(a);
             bool bHasForceLoadBefore = forceLoadBeforeMods.Contains(b);
-            
+
             if (aHasForceLoadBefore != bHasForceLoadBefore)
                 return aHasForceLoadBefore ? -1 : 1;
-                
+
             bool aHasLoadBefore = loadBeforeMods.Contains(a);
             bool bHasLoadBefore = loadBeforeMods.Contains(b);
-            
+
             if (aHasLoadBefore != bHasLoadBefore)
                 return aHasLoadBefore ? -1 : 1;
-                
+
             // Core has second highest priority
             if (a.IsCore != b.IsCore)
                 return a.IsCore ? -1 : 1;
-                
+
             // Expansion has third highest priority
             if (a.IsExpansion != b.IsExpansion)
                 return a.IsExpansion ? -1 : 1;
-                
+
             // If both are expansions, sort by name (alphabetically)
             if (a.IsExpansion && b.IsExpansion)
                 return string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
-                
+
             // Otherwise fall back to name
             return string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
         }
