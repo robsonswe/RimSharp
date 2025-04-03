@@ -33,7 +33,7 @@ namespace RimSharp.ViewModels.Modules.Mods.IO
 
                 if (!Directory.Exists(listsDirectory))
                 {
-                    Directory.CreateDirectory(listsDirectory);
+                    await Task.Run(() => Directory.CreateDirectory(listsDirectory));
                     Debug.WriteLine($"Created Lists directory at: {listsDirectory}");
                 }
 
@@ -57,7 +57,7 @@ namespace RimSharp.ViewModels.Modules.Mods.IO
                 XDocument doc;
                 try
                 {
-                    doc = XDocument.Load(filePath);
+                    doc = await Task.Run(() => XDocument.Load(filePath));
                 }
                 catch (Exception ex)
                 {
@@ -85,7 +85,7 @@ namespace RimSharp.ViewModels.Modules.Mods.IO
                 }
 
                 var allMods = _modListManager.GetAllMods().ToList();
-                _modListManager.Initialize(allMods, activeModIds);
+                await Task.Run(() => _modListManager.Initialize(allMods, activeModIds));
 
                 MessageBox.Show($"Successfully imported mod list from {Path.GetFileName(filePath)} with {activeModIds.Count} active mods.",
                     "Import Successful", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -106,7 +106,7 @@ namespace RimSharp.ViewModels.Modules.Mods.IO
 
                 if (!Directory.Exists(listsDirectory))
                 {
-                    Directory.CreateDirectory(listsDirectory);
+                    await Task.Run(() => Directory.CreateDirectory(listsDirectory));
                     Debug.WriteLine($"Created Lists directory at: {listsDirectory}");
                 }
 
@@ -149,7 +149,7 @@ namespace RimSharp.ViewModels.Modules.Mods.IO
                     }
                 }
 
-                doc.Save(filePath);
+                await Task.Run(() => doc.Save(filePath));
 
                 MessageBox.Show($"Mod list exported successfully to {Path.GetFileName(filePath)}!",
                     "Export Successful", MessageBoxButton.OK, MessageBoxImage.Information);
