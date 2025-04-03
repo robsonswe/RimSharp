@@ -61,9 +61,9 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
         }
 
         private List<ModItem> KahnTopologicalSort(
-    List<ModItem> mods,
-    Dictionary<ModItem, HashSet<ModItem>> graph,
-    Dictionary<ModItem, int> inDegree)
+                                         List<ModItem> mods,
+                                         Dictionary<ModItem, HashSet<ModItem>> graph,
+                                         Dictionary<ModItem, int> inDegree)
         {
             var result = new List<ModItem>(mods.Count);
             var pq = new PriorityQueue<ModItem, (int, string)>();
