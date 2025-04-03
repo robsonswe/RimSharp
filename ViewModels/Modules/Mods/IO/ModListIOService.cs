@@ -45,10 +45,26 @@ namespace RimSharp.ViewModels.Modules.Mods.IO
 
                 // Update mods
                 var allMods = _modListManager.GetAllMods().ToList();
-                await Task.Run(() => _modListManager.Initialize(allMods, activeModIds));
+                
+                // Check which mods are missing
+                var availableModIds = allMods
+                    .Where(m => !string.IsNullOrEmpty(m.PackageId))
+                    .Select(m => m.PackageId.ToLowerInvariant())
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                
+                var missingModIds = activeModIds
+                    .Where(id => !availableModIds.Contains(id))
+                    .ToList();
+                
+                // Only pass available mod IDs to the manager
+                var availableActiveModIds = activeModIds
+                    .Where(id => availableModIds.Contains(id))
+                    .ToList();
+                
+                await Task.Run(() => _modListManager.Initialize(allMods, availableActiveModIds));
 
-                MessageBox.Show($"Successfully imported mod list from {Path.GetFileName(filePath)} with {activeModIds.Count} active mods.",
-                    "Import Successful", MessageBoxButton.OK, MessageBoxImage.Information);
+                // Display appropriate message with missing mods if any
+                DisplayImportResults(Path.GetFileName(filePath), availableActiveModIds.Count, missingModIds);
             }
             catch (Exception ex)
             {
@@ -74,8 +90,11 @@ namespace RimSharp.ViewModels.Modules.Mods.IO
 
                 Debug.WriteLine($"Exporting mod list to: {filePath}");
 
+                // Filter out mods without package IDs before saving
+                var validActiveMods = activeMods.Where(m => !string.IsNullOrEmpty(m.PackageId)).ToList();
+                
                 // Create XML document with active mods
-                await SaveModListFileAsync(filePath, activeMods);
+                await SaveModListFileAsync(filePath, validActiveMods);
 
                 MessageBox.Show($"Mod list exported successfully to {Path.GetFileName(filePath)}!",
                     "Export Successful", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -215,6 +234,32 @@ namespace RimSharp.ViewModels.Modules.Mods.IO
             }
 
             await Task.Run(() => doc.Save(filePath));
+        }
+        
+        private void DisplayImportResults(string fileName, int importedCount, List<string> missingModIds)
+        {
+            if (missingModIds.Count == 0)
+            {
+                MessageBox.Show($"Successfully imported mod list from {fileName} with {importedCount} active mods.",
+                    "Import Successful", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var messageBuilder = new System.Text.StringBuilder();
+            messageBuilder.AppendLine($"RimSharp imported {fileName} list.");
+            messageBuilder.AppendLine();
+            messageBuilder.AppendLine("The following mods are not installed and were not imported:");
+            
+            foreach (var modId in missingModIds)
+            {
+                messageBuilder.AppendLine($"- {modId}");
+            }
+            
+            messageBuilder.AppendLine();
+            messageBuilder.AppendLine($"Successfully activated {importedCount} installed mods.");
+
+            MessageBox.Show(messageBuilder.ToString(),
+                "Import Partial Success", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         #endregion

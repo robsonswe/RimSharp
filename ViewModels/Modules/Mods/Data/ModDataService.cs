@@ -47,7 +47,11 @@ namespace RimSharp.ViewModels.Modules.Mods.Data
                 }
 
                 // Load and parse the XML
-                return ParseModsConfigXml(configPath);
+                var allModIds = ParseModsConfigXml(configPath);
+                
+                // We don't filter mod IDs here - let the ModListManager handle that
+                // so it can track which mods are missing for user feedback
+                return allModIds;
             }
             catch (Exception ex) when (ex is ArgumentNullException || ex is DirectoryNotFoundException)
             {
