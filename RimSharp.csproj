@@ -6,7 +6,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <WebView2InstallMode>Embed</WebView2InstallMode>
     <RootNamespace>RimSharp</RootNamespace>
-        <ApplicationIcon>icon.ico</ApplicationIcon>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,4 +16,25 @@
     <PackageReference Include="PInvoke.Shell32" Version="0.7.124" />
     <PackageReference Include="PInvoke.User32" Version="0.7.124" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Lists\**\*" Condition="Exists('Lists\**\*')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="config.cfg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuild">
+    <MakeDir Directories="$(OutputPath)Lists" />
+    <Copy SourceFiles="config.cfg" DestinationFolder="$(OutputPath)"
+      Condition="Exists('config.cfg')" />
+  </Target>
+
+  <Target Name="PostPublish" AfterTargets="Publish">
+    <MakeDir Directories="$(PublishDir)Lists" />
+    <Copy SourceFiles="config.cfg" DestinationFolder="$(PublishDir)"
+      Condition="Exists('config.cfg')" />
+  </Target>
+
 </Project>

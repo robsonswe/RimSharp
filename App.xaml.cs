@@ -34,12 +34,14 @@ namespace RimSharp
                     GamePath = configService.GetConfigValue("game_folder"),
                     ModsPath = configService.GetConfigValue("mods_folder"),
                     ConfigPath = configService.GetConfigValue("config_folder"),
-                    GameVersion = "1.4" // This will be updated later
+                    GameVersion = "1.5"
                 };
             });
 
             services.AddSingleton<IModService, ModService>();
             services.AddSingleton<IPathService, PathService>();
+            services.AddSingleton<ViewModels.Modules.Mods.Management.IModListManager, ViewModels.Modules.Mods.Management.ModListManager>();
+            services.AddTransient<ViewModels.Modules.Mods.ModsViewModel>();
             services.AddSingleton<MainViewModel>();
             services.AddSingleton<MainWindow>();
         }
