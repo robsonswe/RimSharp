@@ -1,5 +1,5 @@
 using RimSharp.Models;
-using RimSharp.Utility; // Add using for BulkObservableCollection and DispatcherExtensions
+using RimSharp.Utility;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -10,91 +10,108 @@ namespace RimSharp.ViewModels.Modules.Mods.Filtering
 {
     public class ModFilterService : IModFilterService
     {
-        // --- Optimization: Use BulkObservableCollection ---
-        public BulkObservableCollection<ModItem> ActiveMods { get; } = new BulkObservableCollection<ModItem>();
-        public BulkObservableCollection<ModItem> InactiveMods { get; } = new BulkObservableCollection<ModItem>();
-        // Expose as the specific type for AddRange access internally if needed,
-        // but interface keeps ObservableCollection for compatibility.
-        ObservableCollection<ModItem> IModFilterService.ActiveMods => ActiveMods;
-        ObservableCollection<ModItem> IModFilterService.InactiveMods => InactiveMods;
-        // ---------------------------------------------------
+        // Store optimized collections for better performance
+        private readonly BulkObservableCollection<ModItem> _activeMods = new();
+        private readonly BulkObservableCollection<ModItem> _inactiveMods = new();
+        
+        // Implement interface properties that expose the collections
+        public ObservableCollection<ModItem> ActiveMods => _activeMods;
+        public ObservableCollection<ModItem> InactiveMods => _inactiveMods;
 
-
+        // Filter state
         private string _activeSearchText = string.Empty;
         private string _inactiveSearchText = string.Empty;
+        
         public string ActiveSearchText => _activeSearchText;
         public string InactiveSearchText => _inactiveSearchText;
 
-        // Store the full lists received from the manager
-        private IEnumerable<(ModItem Mod, int LoadOrder)> _allActiveModsSource = Enumerable.Empty<(ModItem, int)>();
-        private IEnumerable<ModItem> _allInactiveModsSource = Enumerable.Empty<ModItem>();
-
+        // Cache source collections
+        private IEnumerable<(ModItem Mod, int LoadOrder)> _allActiveModsSource = Array.Empty<(ModItem, int)>();
+        private IEnumerable<ModItem> _allInactiveModsSource = Array.Empty<ModItem>();
 
         public void ApplyActiveFilter(string searchText)
         {
             _activeSearchText = searchText ?? string.Empty;
-            UpdateActiveModsCollection(); // Re-filter and update the observable collection
+            UpdateActiveModsCollection();
         }
 
         public void ApplyInactiveFilter(string searchText)
         {
             _inactiveSearchText = searchText ?? string.Empty;
-            UpdateInactiveModsCollection(); // Re-filter and update the observable collection
+            UpdateInactiveModsCollection();
         }
 
-        // Called by ModsViewModel when the ModListManager signals changes
         public void UpdateCollections(IEnumerable<(ModItem Mod, int LoadOrder)> activeMods, IEnumerable<ModItem> inactiveMods)
         {
             _allActiveModsSource = activeMods ?? throw new ArgumentNullException(nameof(activeMods));
             _allInactiveModsSource = inactiveMods ?? throw new ArgumentNullException(nameof(inactiveMods));
 
-            // Update both collections based on the new source data and current filters
             UpdateActiveModsCollection();
             UpdateInactiveModsCollection();
         }
 
         private void UpdateActiveModsCollection()
         {
-            // Use SafeInvoke for thread safety when updating UI-bound collections
-            Application.Current?.Dispatcher.SafeInvoke(UpdateActiveModsCollectionCore);
-        }
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher?.CheckAccess() == false)
+            {
+                dispatcher.SafeInvoke(UpdateActiveModsCollection);
+                return;
+            }
 
-        private void UpdateActiveModsCollectionCore()
-        {
-            // Filter the source list based on the current search text
-            var filteredMods = string.IsNullOrWhiteSpace(_activeSearchText)
-                ? _allActiveModsSource
-                : _allActiveModsSource.Where(x =>
-                    x.Mod.Name.Contains(_activeSearchText, StringComparison.OrdinalIgnoreCase) ||
-                    x.Mod.PackageId.Contains(_activeSearchText, StringComparison.OrdinalIgnoreCase) // Also filter by ID
-                    );
-
-            // --- Optimization: Use ReplaceAll for bulk update ---
-            // Sort by LoadOrder before adding to the collection
-            ActiveMods.ReplaceAll(filteredMods.OrderBy(x => x.LoadOrder).Select(x => x.Mod));
-            // ---------------------------------------------------
+            var filteredMods = FilterActiveMods().ToList();
+            _activeMods.ReplaceAll(filteredMods);
         }
 
         private void UpdateInactiveModsCollection()
         {
-            // Use SafeInvoke for thread safety
-            Application.Current?.Dispatcher.SafeInvoke(UpdateInactiveModsCollectionCore);
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher?.CheckAccess() == false)
+            {
+                dispatcher.SafeInvoke(UpdateInactiveModsCollection);
+                return;
+            }
+
+            var filteredMods = FilterInactiveMods().ToList();
+            _inactiveMods.ReplaceAll(filteredMods);
         }
 
-        private void UpdateInactiveModsCollectionCore()
+        private IEnumerable<ModItem> FilterActiveMods()
         {
-            // Filter the source list
-            var filteredMods = string.IsNullOrWhiteSpace(_inactiveSearchText)
-                ? _allInactiveModsSource
-                : _allInactiveModsSource.Where(m =>
-                    m.Name.Contains(_inactiveSearchText, StringComparison.OrdinalIgnoreCase) ||
-                    m.PackageId.Contains(_inactiveSearchText, StringComparison.OrdinalIgnoreCase) // Also filter by ID
-                    );
+            // If no filter, just sort and return
+            if (string.IsNullOrWhiteSpace(_activeSearchText))
+            {
+                return _allActiveModsSource.OrderBy(x => x.LoadOrder).Select(x => x.Mod);
+            }
 
-            // --- Optimization: Use ReplaceAll for bulk update ---
-            // Sort by Name before adding
-             InactiveMods.ReplaceAll(filteredMods.OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase));
-            // ----------------------------------------------------
+            // Apply filter, sort, and return
+            return _allActiveModsSource
+                .Where(x => ContainsTextIgnoreCase(x.Mod.Name, _activeSearchText) || 
+                           ContainsTextIgnoreCase(x.Mod.PackageId, _activeSearchText))
+                .OrderBy(x => x.LoadOrder)
+                .Select(x => x.Mod);
+        }
+
+        private IEnumerable<ModItem> FilterInactiveMods()
+        {
+            // If no filter, just sort and return
+            if (string.IsNullOrWhiteSpace(_inactiveSearchText))
+            {
+                return _allInactiveModsSource.OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase);
+            }
+
+            // Apply filter, sort, and return
+            return _allInactiveModsSource
+                .Where(m => ContainsTextIgnoreCase(m.Name, _inactiveSearchText) || 
+                           ContainsTextIgnoreCase(m.PackageId, _inactiveSearchText))
+                .OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase);
+        }
+
+        // Optimized string comparison that handles nulls safely
+        private static bool ContainsTextIgnoreCase(string source, string searchText)
+        {
+            return !string.IsNullOrEmpty(source) && 
+                   source.Contains(searchText, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

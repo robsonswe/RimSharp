@@ -25,7 +25,7 @@ namespace RimSharp.ViewModels.Modules.Mods
         private readonly IModListIOService _ioService;
         private readonly IModListManager _modListManager;
 
-        private ModItem _selectedMod;
+        private Models.ModItem _selectedMod;
         private bool _isLoading;
         private bool _hasUnsavedChanges;
 

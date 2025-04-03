@@ -8,12 +8,11 @@ namespace RimSharp.Services
     public class ConfigService : IConfigService
     {
         private readonly string _configPath;
-        private readonly Dictionary<string, string> _configValues;
+        private readonly Dictionary<string, string> _configValues = new();
 
         public ConfigService()
         {
             _configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.cfg");
-            _configValues = new Dictionary<string, string>();
             LoadConfig();
         }
 
@@ -24,39 +23,50 @@ namespace RimSharp.Services
             if (!File.Exists(_configPath))
             {
                 // Create default config file
-                SetConfigValue("game_folder", "");
-                SetConfigValue("config_folder", "");
-                SetConfigValue("mods_folder", "");
+                SetConfigValue("game_folder", string.Empty);
+                SetConfigValue("config_folder", string.Empty);
+                SetConfigValue("mods_folder", string.Empty);
                 SaveConfig();
                 return;
             }
 
-            foreach (var line in File.ReadAllLines(_configPath))
+            try
             {
-                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#")) continue;
-                
-                var parts = line.Split(new[] { '=' }, 2);
-                if (parts.Length == 2)
+                foreach (var line in File.ReadLines(_configPath))
                 {
-                    _configValues[parts[0].Trim()] = parts[1].Trim();
+                    if (string.IsNullOrWhiteSpace(line) || line.StartsWith('#')) 
+                        continue;
+                    
+                    var parts = line.Split('=', 2, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length == 2)
+                    {
+                        _configValues[parts[0].Trim()] = parts[1].Trim();
+                    }
                 }
+            }
+            catch (IOException)
+            {
+                // If file can't be read, use empty values
+                _configValues.Clear();
             }
         }
 
         public void SaveConfig()
         {
-            var lines = _configValues.Select(kv => $"{kv.Key}={kv.Value}");
-            File.WriteAllLines(_configPath, lines);
+            try
+            {
+                File.WriteAllLines(_configPath, _configValues.Select(kv => $"{kv.Key}={kv.Value}"));
+            }
+            catch (IOException)
+            {
+                // Handle file write errors gracefully
+            }
         }
 
-        public string GetConfigValue(string key)
-        {
-            return _configValues.TryGetValue(key, out var value) ? value : string.Empty;
-        }
+        public string GetConfigValue(string key) => 
+            _configValues.TryGetValue(key, out var value) ? value : string.Empty;
 
-        public void SetConfigValue(string key, string value)
-        {
+        public void SetConfigValue(string key, string value) => 
             _configValues[key] = value;
-        }
     }
 }
