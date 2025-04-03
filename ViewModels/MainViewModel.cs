@@ -8,6 +8,11 @@ using System.Windows.Forms; // Add reference to System.Windows.Forms assembly fo
 using System.IO; // For Directory.Exists
 using System.Diagnostics;
 using RimSharp.ViewModels.Modules.Mods.Management;
+using RimSharp.ViewModels.Modules.Mods.Data;
+using RimSharp.ViewModels.Modules.Mods.Filtering;
+using RimSharp.ViewModels.Modules.Mods.Commands;
+using RimSharp.ViewModels.Modules.Mods.IO;
+using System;
 
 namespace RimSharp.ViewModels
 {
@@ -17,7 +22,7 @@ namespace RimSharp.ViewModels
         private readonly IPathService _pathService;
         private readonly IModService _modService; // Keep to pass to ModsViewModel
         private readonly IConfigService _configService; // Add this
-        private readonly IModListManager _modListManager; 
+        private readonly IModListManager _modListManager;
 
         private string _selectedTab = "Mods"; // Default tab
         private ViewModelBase _currentViewModel; // Holds the currently displayed module ViewModel
@@ -36,15 +41,22 @@ namespace RimSharp.ViewModels
         public ICommand RefreshCommand { get; }
 
         // Constructor: Instantiate module VMs and set initial state
-    public MainViewModel(IModService modService, IPathService pathService, IConfigService configService, IModListManager modListManager)
+        public MainViewModel(
+            IModService modService,
+            IPathService pathService,
+            IConfigService configService,
+            IModListManager modListManager,
+            IModDataService modDataService,
+            IModCommandService modCommandService,
+            IModListIOService modListIOService)
         {
             _modService = modService;
             _pathService = pathService;
-             _configService = configService;
-             _modListManager = modListManager;
+            _configService = configService;
+            _modListManager = modListManager;
 
             // Initialize Path Settings (remains here as it's app-level config)
-                        PathSettings = new PathSettings
+            PathSettings = new PathSettings
             {
                 GameVersion = _pathService.GetGameVersion(),
                 GamePath = _pathService.GetGamePath(),
@@ -53,32 +65,38 @@ namespace RimSharp.ViewModels
             };
 
             // Listen for changes in PathSettings if they need to trigger updates elsewhere
-                        PathSettings.PropertyChanged += (s, e) =>
-            {
-                OnPropertyChanged(nameof(PathSettings));
-                
-                // Save to config when paths change
-                switch (e.PropertyName)
-                {
-                    case nameof(PathSettings.GamePath):
-                        _configService.SetConfigValue("game_folder", PathSettings.GamePath);
-                        _configService.SaveConfig();
-                        break;
-                    case nameof(PathSettings.ConfigPath):
-                        _configService.SetConfigValue("config_folder", PathSettings.ConfigPath);
-                        _configService.SaveConfig();
-                        break;
-                    case nameof(PathSettings.ModsPath):
-                        _configService.SetConfigValue("mods_folder", PathSettings.ModsPath);
-                        _configService.SaveConfig();
-                        break;
-                }
-            };
+            PathSettings.PropertyChanged += (s, e) =>
+{
+    OnPropertyChanged(nameof(PathSettings));
+
+    // Save to config when paths change
+    switch (e.PropertyName)
+    {
+        case nameof(PathSettings.GamePath):
+            _configService.SetConfigValue("game_folder", PathSettings.GamePath);
+            _configService.SaveConfig();
+            break;
+        case nameof(PathSettings.ConfigPath):
+            _configService.SetConfigValue("config_folder", PathSettings.ConfigPath);
+            _configService.SaveConfig();
+            break;
+        case nameof(PathSettings.ModsPath):
+            _configService.SetConfigValue("mods_folder", PathSettings.ModsPath);
+            _configService.SaveConfig();
+            break;
+    }
+};
 
 
 
             // Create instances of the module ViewModels, passing dependencies
-            ModsVM = new ModsViewModel(_modService, _pathService, _modListManager);
+            ModsVM = new ModsViewModel(
+                modDataService,
+                new ModFilterService(),
+                modCommandService,
+                modListIOService,
+                modListManager
+            );
             DownloaderVM = new DownloaderViewModel(/* Pass services if needed */);
 
             // Set the initial view
@@ -96,7 +114,7 @@ namespace RimSharp.ViewModels
 
         }
 
-                private void OpenFolder(object parameter)
+        private void OpenFolder(object parameter)
         {
             var pathType = parameter as string;
             if (string.IsNullOrEmpty(pathType)) return;
@@ -118,7 +136,7 @@ namespace RimSharp.ViewModels
         private bool CanOpenFolder(object parameter)
         {
             if (parameter is not string pathType) return false;
-            
+
             string path = pathType switch
             {
                 "GamePath" => PathSettings.GamePath,
@@ -211,7 +229,7 @@ namespace RimSharp.ViewModels
                             PathSettings.GamePath = selectedPath;
                             // Update dependent properties like game version
                             PathSettings.GameVersion = _pathService.GetGameVersion(selectedPath);
-                                break;
+                            break;
                         case "ConfigPath":
                             PathSettings.ConfigPath = selectedPath;
                             // Potentially trigger config reload or validation
@@ -241,22 +259,22 @@ namespace RimSharp.ViewModels
         }
 
         private void RefreshData(object parameter)
-{
-    // If PathService has the RefreshPaths method, call it
-    if (_pathService is PathService pathService)
-    {
-        pathService.RefreshPaths();
-    }
-    
-    // Update PathSettings from the service to ensure consistency
-    PathSettings.GameVersion = _pathService.GetGameVersion();
-    PathSettings.GamePath = _pathService.GetGamePath();
-    PathSettings.ConfigPath = _pathService.GetConfigPath();
-    PathSettings.ModsPath = _pathService.GetModsPath();
-    
-    // Refresh mods data
-    _ = ModsVM?.RefreshDataAsync();
-}
+        {
+            // If PathService has the RefreshPaths method, call it
+            if (_pathService is PathService pathService)
+            {
+                pathService.RefreshPaths();
+            }
+
+            // Update PathSettings from the service to ensure consistency
+            PathSettings.GameVersion = _pathService.GetGameVersion();
+            PathSettings.GamePath = _pathService.GetGamePath();
+            PathSettings.ConfigPath = _pathService.GetConfigPath();
+            PathSettings.ModsPath = _pathService.GetModsPath();
+
+            // Refresh mods data
+            _ = ModsVM?.RefreshDataAsync();
+        }
 
 
     }
