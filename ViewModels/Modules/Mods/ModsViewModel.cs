@@ -1,46 +1,39 @@
+using RimSharp.Handlers;
 using RimSharp.Models;
 using RimSharp.Services;
-using RimSharp.Handlers;
-using RimSharp.ViewModels.Modules.Mods.Management; // Added namespace
+using RimSharp.ViewModels.Modules.Mods.Commands;
+using RimSharp.ViewModels.Modules.Mods.Data;
+using RimSharp.ViewModels.Modules.Mods.Filtering;
+using RimSharp.ViewModels.Modules.Mods.IO;
+using RimSharp.ViewModels.Modules.Mods.Management;
+using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Windows.Input;
-using System.Collections.Generic;
-using System.Xml.Linq;
-using System.IO;
-using System;
 using System.Windows;
-using System.Diagnostics;
-
-public class DropModArgs
-{
-    public ModItem DroppedItem { get; set; }
-    public string TargetListName { get; set; }
-    public int DropIndex { get; set; }
-}
+using System.Windows.Input;
 
 namespace RimSharp.ViewModels.Modules.Mods
 {
-    public class ModsViewModel : ViewModelBase, IDisposable // Implement IDisposable if subscribing to events
+    public class ModsViewModel : ViewModelBase, IDisposable
     {
-        private readonly IModService _modService;
-        private readonly IPathService _pathService;
-        private readonly IModListManager _modListManager; // Injected dependency
+        private readonly IModDataService _dataService;
+        private readonly IModFilterService _filterService;
+        private readonly IModCommandService _commandService;
+        private readonly IModListIOService _ioService;
+        private readonly IModListManager _modListManager;
 
         private ModItem _selectedMod;
         private bool _isLoading;
-        private string _activeSearchText = "";
-        private string _inactiveSearchText = "";
         private bool _hasUnsavedChanges;
 
-        // ObservableCollections remain for UI binding
-        public ObservableCollection<ModItem> ActiveMods { get; } = new();
-        public ObservableCollection<ModItem> InactiveMods { get; } = new();
+        public ObservableCollection<ModItem> ActiveMods => _filterService.ActiveMods;
+        public ObservableCollection<ModItem> InactiveMods => _filterService.InactiveMods;
 
-        // Properties bound to UI (Counts are derived now)
-        public int TotalActiveMods => ActiveMods.Count; // Or get from _modListManager if filtering is complex
-        public int TotalInactiveMods => InactiveMods.Count; // Or get from _modListManager
+        public int TotalActiveMods => ActiveMods.Count;
+        public int TotalInactiveMods => InactiveMods.Count;
 
         public bool IsLoading
         {
@@ -56,30 +49,23 @@ namespace RimSharp.ViewModels.Modules.Mods
 
         public string ActiveSearchText
         {
-            get => _activeSearchText;
+            get => _filterService.ActiveSearchText;
             set
             {
-                if (SetProperty(ref _activeSearchText, value))
-                {
-                    FilterAndUpdateActiveMods(); // Update filtering method name
-                }
+                _filterService.ApplyActiveFilter(value);
+                OnPropertyChanged(nameof(ActiveSearchText));
+                OnPropertyChanged(nameof(TotalActiveMods));
             }
-        }
-
-        public async Task RefreshDataAsync()
-        {
-            await LoadDataAsync();
         }
 
         public string InactiveSearchText
         {
-            get => _inactiveSearchText;
+            get => _filterService.InactiveSearchText;
             set
             {
-                if (SetProperty(ref _inactiveSearchText, value))
-                {
-                    FilterAndUpdateInactiveMods(); // Update filtering method name
-                }
+                _filterService.ApplyInactiveFilter(value);
+                OnPropertyChanged(nameof(InactiveSearchText));
+                OnPropertyChanged(nameof(TotalInactiveMods));
             }
         }
 
@@ -89,601 +75,324 @@ namespace RimSharp.ViewModels.Modules.Mods
             private set => SetProperty(ref _hasUnsavedChanges, value);
         }
 
+        public ICommand SelectModCommand { get; private set; }
+        public ICommand ClearActiveListCommand { get; private set; }
+        public ICommand SortActiveListCommand { get; private set; }
+        public ICommand StripModsCommand { get; private set; }
+        public ICommand CreatePackCommand { get; private set; }
+        public ICommand FixIntegrityCommand { get; private set; }
+        public ICommand ImportListCommand { get; private set; }
+        public ICommand ExportListCommand { get; private set; }
+        public ICommand SaveCommand { get; private set; }
+        public ICommand RunGameCommand { get; private set; }
+        public ICommand OpenUrlCommand { get; private set; }
+        public ICommand FilterInactiveCommand { get; private set; }
+        public ICommand FilterActiveCommand { get; private set; }
+        public ICommand ActivateModCommand { get; private set; }
+        public ICommand DeactivateModCommand { get; private set; }
+        public ICommand DropModCommand { get; private set; }
 
-        // Commands (Declaration remains similar)
-        public ICommand SelectModCommand { get; }
-        public ICommand ClearActiveListCommand { get; }
-        public ICommand SortActiveListCommand { get; }
-        public ICommand StripModsCommand { get; } // Keep stubbed commands here
-        public ICommand CreatePackCommand { get; }
-        public ICommand FixIntegrityCommand { get; }
-        public ICommand ImportListCommand { get; }
-        public ICommand ExportListCommand { get; }
-        public ICommand SaveCommand { get; }
-        public ICommand RunGameCommand { get; }
-        public ICommand OpenUrlCommand { get; }
-        public ICommand FilterInactiveCommand { get; }
-        public ICommand FilterActiveCommand { get; }
-        public ICommand ActivateModCommand { get; }
-        public ICommand DeactivateModCommand { get; }
-        public ICommand DropModCommand { get; }
-
-
-        // Constructor - Inject IModListManager
-        public ModsViewModel(IModService modService, IPathService pathService, IModListManager modListManager)
+        public ModsViewModel(
+            IModDataService dataService,
+            IModFilterService filterService,
+            IModCommandService commandService,
+            IModListIOService ioService,
+            IModListManager modListManager)
         {
-            _modService = modService ?? throw new ArgumentNullException(nameof(modService));
-            _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
-            _modListManager = modListManager ?? throw new ArgumentNullException(nameof(modListManager));
+            // DI remains the same
+            _dataService = dataService;
+            _filterService = filterService;
+            _commandService = commandService;
+            _ioService = ioService;
+            _modListManager = modListManager;
 
-            // Subscribe to changes from the manager
-            _modListManager.ListChanged += OnModListChanged;
+            _modListManager.ListChanged += OnModListManagerChanged;
 
-            // Initialize Commands
-            SelectModCommand = new RelayCommand(SelectMod);
-            ClearActiveListCommand = new RelayCommand(ExecuteClearActiveList); // Rename methods
-            SortActiveListCommand = new RelayCommand(ExecuteSortActiveList);
-            SaveCommand = new RelayCommand(ExecuteSaveMods);
-            DropModCommand = new RelayCommand<DropModArgs>(ExecuteDropMod);
-            ActivateModCommand = new RelayCommand<ModItem>(mod => _modListManager.ActivateMod(mod)); // Delegate directly
-            DeactivateModCommand = new RelayCommand<ModItem>(mod => _modListManager.DeactivateMod(mod)); // Delegate directly
-            OpenUrlCommand = new RelayCommand(OpenUrl);
-
-            // Stubbed/Placeholder commands
-            StripModsCommand = new RelayCommand(StripMods);
-            CreatePackCommand = new RelayCommand(CreatePack);
-            FixIntegrityCommand = new RelayCommand(FixIntegrity);
-            ImportListCommand = new RelayCommand(ImportList);
-            ExportListCommand = new RelayCommand(ExportList);
-            RunGameCommand = new RelayCommand(RunGame);
-            FilterInactiveCommand = new RelayCommand(ExecuteFilterInactive);
-            FilterActiveCommand = new RelayCommand(ExecuteFilterActive);
-
-
-            // Load data asynchronously
-            _ = LoadDataAsync(); // Use discard _ for fire-and-forget async void pattern in constructor
+            InitializeCommands();
+            _ = LoadDataAsync();
         }
 
-        // --- Data Loading and Initialization ---
+        private void InitializeCommands()
+        {
+            SelectModCommand = new RelayCommand(SelectMod);
+            ClearActiveListCommand = new RelayCommand(async _ => await ExecuteClearActiveList(), _ => !_isLoading);
+            SortActiveListCommand = new RelayCommand(async _ => await ExecuteSortActiveList(), _ => !_isLoading);
+            SaveCommand = new RelayCommand(_ => ExecuteSaveMods(), _ => HasUnsavedChanges && !_isLoading);
+            DropModCommand = new RelayCommand<DropModArgs>(async args => await ExecuteDropMod(args), args => !_isLoading);
+            ActivateModCommand = new RelayCommand<ModItem>(mod => { _modListManager.ActivateMod(mod); HasUnsavedChanges = true; }, mod => mod != null && !_isLoading);
+            DeactivateModCommand = new RelayCommand<ModItem>(mod => { _modListManager.DeactivateMod(mod); HasUnsavedChanges = true; }, mod => mod != null && !mod.IsCore && !_isLoading); // Prevent deactivating Core via button
+            OpenUrlCommand = new RelayCommand(OpenUrl, _ => SelectedMod != null); // Example condition
+            ImportListCommand = new RelayCommand(async _ => await ExecuteImport(), _ => !_isLoading);
+            ExportListCommand = new RelayCommand(async _ => await ExecuteExport(), _ => !_isLoading && _modListManager.VirtualActiveMods.Any()); // Condition export has active mods
+
+            // Stubbed commands (consider adding CanExecute)
+            StripModsCommand = new RelayCommand(StripMods, _ => !_isLoading);
+            CreatePackCommand = new RelayCommand(CreatePack, _ => !_isLoading);
+            FixIntegrityCommand = new RelayCommand(FixIntegrity, _ => !_isLoading);
+            RunGameCommand = new RelayCommand(RunGame, _ => !_isLoading);
+            FilterInactiveCommand = new RelayCommand(ExecuteFilterInactive, _ => !_isLoading);
+            FilterActiveCommand = new RelayCommand(ExecuteFilterActive, _ => !_isLoading);
+        }
+
+
+        public async Task RefreshDataAsync()
+        {
+            await LoadDataAsync();
+        }
+
         private async Task LoadDataAsync()
         {
             IsLoading = true;
+            // Consider disabling commands while loading
+            CommandManager.InvalidateRequerySuggested(); // Added for consistency
             try
             {
-                // Clear UI lists immediately
-                ActiveMods.Clear();
-                InactiveMods.Clear();
-                OnPropertyChanged(nameof(TotalActiveMods));
-                OnPropertyChanged(nameof(TotalInactiveMods));
+                // Filter service collections are automatically cleared by UpdateCollections
+                // ActiveMods.Clear();
+                // InactiveMods.Clear();
 
-                await _modService.LoadModsAsync();
+                var allMods = await _dataService.LoadAllModsAsync();
+                var activeIdsFromConfig = _dataService.LoadActiveModIdsFromConfig();
 
-                var allMods = _modService.GetLoadedMods().ToList();
-                var activeIdsFromConfig = GetActiveModsFromConfig();
-
-                // Initialize the manager with the loaded data
+                // Manager initializes its state and fires ListChanged, which triggers OnModListManagerChanged
                 _modListManager.Initialize(allMods, activeIdsFromConfig);
 
-                // The OnModListChanged handler will populate the collections
+                // Selection logic can remain, potentially select Core mod if available
+                SelectedMod = _modListManager.VirtualActiveMods.FirstOrDefault(m => m.Mod.IsCore).Mod
+                             ?? _modListManager.VirtualActiveMods.FirstOrDefault().Mod
+                             ?? _modListManager.AllInactiveMods.FirstOrDefault();
 
-                SelectedMod = ActiveMods.FirstOrDefault() ?? InactiveMods.FirstOrDefault();
-                HasUnsavedChanges = false; // Initial load doesn't count as unsaved change
-
+                // --- ENSURE THIS IS HERE ---
+                // Explicitly reset flag AFTER Initialize (which might have triggered ListChanged
+                // and incorrectly set HasUnsavedChanges = true via the modified handler)
+                HasUnsavedChanges = false;
+                // ---------------------------
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error loading mods: {ex.Message}", "Loading Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                HasUnsavedChanges = false;
+                // Log error properly
+                Debug.WriteLine($"Error loading mods: {ex}");
+                RunOnUIThread(() => MessageBox.Show($"Error loading mods: {ex.Message}", "Loading Error", MessageBoxButton.OK, MessageBoxImage.Error));
+                HasUnsavedChanges = false; // Also ensure it's false on error
             }
             finally
             {
                 IsLoading = false;
+                // Re-evaluate CanExecute for commands
+                CommandManager.InvalidateRequerySuggested();
             }
         }
 
-        // Helper to read config (remains in VM as it uses PathService)
-        private List<string> GetActiveModsFromConfig()
+
+
+        private void OnModListManagerChanged(object sender, EventArgs e)
         {
-            try
-            {
-                var configPathDir = _pathService.GetConfigPath();
-                if (string.IsNullOrEmpty(configPathDir))
-                {
-                    Debug.WriteLine("Config path is empty or null. Cannot read ModsConfig.xml.");
-                    return new List<string>();
-                }
+            // The manager's state changed, update the filter service's source data
+            // This will cause the filter service to update its ObservableCollections
+            _filterService.UpdateCollections(
+                _modListManager.VirtualActiveMods,
+                _modListManager.AllInactiveMods
+            );
 
-                var configPath = Path.Combine(configPathDir, "ModsConfig.xml");
-                if (!File.Exists(configPath))
-                {
-                    Debug.WriteLine($"ModsConfig.xml does not exist at path: {configPath}");
-                    return new List<string>();
-                }
+            // Update properties that depend on the counts (these are bound to filter service counts)
+            OnPropertyChanged(nameof(TotalActiveMods));
+            OnPropertyChanged(nameof(TotalInactiveMods));
 
-                var doc = XDocument.Load(configPath);
-                return doc.Root?.Element("activeMods")?.Elements("li")
-                    .Select(x => x.Value.ToLowerInvariant()) // Already normalized
-                    .ToList() ?? new List<string>();
-            }
-            catch (ArgumentNullException ex)
-            {
-                Debug.WriteLine($"Null argument error reading ModsConfig.xml: {ex.Message}");
-                MessageBox.Show($"Warning: Could not read active mods from ModsConfig.xml.\nReason: Path is not set properly.\nStarting with an empty active list.",
-                               "Config Read Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return new List<string>();
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error reading ModsConfig.xml: {ex.Message}");
-                MessageBox.Show($"Warning: Could not read active mods from ModsConfig.xml.\nReason: {ex.Message}\nStarting with an empty active list.",
-                               "Config Read Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return new List<string>();
-            }
+            // --- CHANGE HERE ---
+            // Set HasUnsavedChanges whenever the list changes via the manager.
+            // The initial load case is handled by explicitly setting it to false
+            // at the end of LoadDataAsync.
+            HasUnsavedChanges = true;
+            // -------------------
+
+            // Re-evaluate command states
+            RunOnUIThread(CommandManager.InvalidateRequerySuggested);
+
+            Debug.WriteLine("ModsViewModel handled ModListManager ListChanged event.");
         }
 
-        // --- Event Handler for Manager Changes ---
-        private void OnModListChanged(object sender, EventArgs e)
-        {
-            // Update the ObservableCollections based on the manager's current state
-            FilterAndUpdateActiveMods();
-            FilterAndUpdateInactiveMods();
-
-            // Set unsaved changes flag (unless it was the initial load, handled in LoadDataAsync)
-            // We might need a flag to ignore the first event if LoadDataAsync triggers it implicitly
-            // Or, set HasUnsavedChanges = true only within command handlers that call manager methods. Let's do that.
-            // HasUnsavedChanges = true; // Set this in the command handlers instead
-        }
-
-        // --- Filtering and UI Update ---
-
-        private void FilterAndUpdateActiveMods()
-        {
-            var previouslySelected = SelectedMod; // Preserve selection
-
-            ActiveMods.Clear(); // Clear the UI list
-
-            // Get the source list from the manager
-            var sourceMods = _modListManager.VirtualActiveMods;
-
-            // Apply search filter
-            var filteredMods = string.IsNullOrWhiteSpace(_activeSearchText)
-                ? sourceMods
-                : sourceMods.Where(x => x.Mod.Name.Contains(_activeSearchText, StringComparison.OrdinalIgnoreCase));
-
-            // Add filtered and ordered mods to the ObservableCollection
-            foreach (var (mod, _) in filteredMods.OrderBy(x => x.LoadOrder))
-            {
-                ActiveMods.Add(mod);
-            }
-
-            OnPropertyChanged(nameof(TotalActiveMods)); // Update count property
-
-            // Restore selection if possible
-            if (ActiveMods.Contains(previouslySelected))
-            {
-                SelectedMod = previouslySelected;
-            }
-            // Don't reset selection if not found, it might be in the other list
-        }
-
-        private void FilterAndUpdateInactiveMods()
-        {
-            var previouslySelected = SelectedMod;
-
-            InactiveMods.Clear();
-
-            // Get source from manager
-            var sourceMods = _modListManager.AllInactiveMods;
-
-            // Apply search filter (inactive list is already sorted alphabetically by manager)
-            var filteredMods = string.IsNullOrWhiteSpace(_inactiveSearchText)
-                ? sourceMods
-                : sourceMods.Where(m => m.Name.Contains(_inactiveSearchText, System.StringComparison.OrdinalIgnoreCase));
-            // .OrderBy(m => m.Name); // Manager should already keep it sorted
-
-            foreach (var mod in filteredMods)
-            {
-                InactiveMods.Add(mod);
-            }
-
-            OnPropertyChanged(nameof(TotalInactiveMods)); // Update count property
-
-            if (InactiveMods.Contains(previouslySelected))
-            {
-                SelectedMod = previouslySelected;
-            }
-        }
-
-
-        // --- Command Implementations (Delegating or Simple) ---
 
         private void SelectMod(object parameter)
         {
             if (parameter is ModItem mod) SelectedMod = mod;
         }
 
-        private void ExecuteDropMod(DropModArgs args)
+        private async Task ExecuteDropMod(DropModArgs args)
         {
-            if (args?.DroppedItem == null || string.IsNullOrEmpty(args.TargetListName)) return;
-
-            ModItem draggedMod = args.DroppedItem;
-            int dropIndex = args.DropIndex;
-            string targetList = args.TargetListName;
-            bool changeMade = false;
-
-            Debug.WriteLine($"Drop executed: Item '{draggedMod.Name}', Target: {targetList}, Index: {dropIndex}");
-
-            if (targetList.Equals("Active", StringComparison.OrdinalIgnoreCase))
-            {
-                // Check if the mod is currently active using the manager's list
-                bool isCurrentlyActive = _modListManager.VirtualActiveMods.Any(x => x.Mod == draggedMod);
-
-                if (isCurrentlyActive)
-                {
-                    // Reorder within active list
-                    Debug.WriteLine($"Reordering active mod '{draggedMod.Name}' to index {dropIndex}");
-                    _modListManager.ReorderMod(draggedMod, dropIndex); // Manager handles logic
-                    changeMade = true; // Assuming ReorderMod indicates change via event or return value if needed
-                }
-                else
-                {
-                    // Activate at specific position
-                    Debug.WriteLine($"Adding inactive mod '{draggedMod.Name}' to active list at index {dropIndex}");
-                    _modListManager.ActivateModAt(draggedMod, dropIndex);
-                    changeMade = true;
-                }
-            }
-            else if (targetList.Equals("Inactive", StringComparison.OrdinalIgnoreCase))
-            {
-                // Check if the mod is currently active using the manager's list
-                bool isCurrentlyActive = _modListManager.VirtualActiveMods.Any(x => x.Mod == draggedMod);
-
-                if (isCurrentlyActive)
-                {
-                    // Deactivate
-                    Debug.WriteLine($"Removing active mod '{draggedMod.Name}' (dropped onto inactive)");
-                    _modListManager.DeactivateMod(draggedMod);
-                    changeMade = true;
-                }
-                else
-                {
-                    // Dropping inactive onto inactive = no-op
-                    Debug.WriteLine($"Mod '{draggedMod.Name}' dropped onto inactive list, but it was already inactive. No action taken.");
-                }
-            }
-            else { Debug.WriteLine($"Drop target list name '{targetList}' not recognized."); }
-
-            if (changeMade) HasUnsavedChanges = true;
-
-            // Selection update (optional, UI might handle this via binding update)
-            // Check BOTH lists after the potential change
-            if (ActiveMods.Contains(draggedMod)) SelectedMod = draggedMod;
-            else if (InactiveMods.Contains(draggedMod)) SelectedMod = draggedMod;
+            // Assume CommandService handles interaction with ModListManager
+            await _commandService.HandleDropCommand(args);
+            // CommandService should ideally trigger ListChanged via manager, setting HasUnsavedChanges
+            // If not, set it here: HasUnsavedChanges = true;
         }
 
-
-        private void ExecuteClearActiveList(object parameter)
+        private async Task ExecuteClearActiveList()
         {
-            // Confirmation dialog? Recommended for destructive actions.
-            var result = MessageBox.Show("This will remove all non-Core and non-Expansion mods from the active list.\nAre you sure?",
-                                        "Confirm Clear", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (result != MessageBoxResult.Yes) return;
-
-            _modListManager.ClearActiveList(); // Delegate to manager
-            HasUnsavedChanges = true; // Mark change
-                                      // Event handler updates UI collections
-            SelectedMod = ActiveMods.FirstOrDefault(); // Select first remaining active mod
+            // Assume CommandService handles interaction with ModListManager
+            await _commandService.ClearActiveModsAsync();
+            // CommandService should trigger ListChanged via manager, setting HasUnsavedChanges
+            // If not, set it here: HasUnsavedChanges = true;
         }
-
-
-        private void ExecuteSortActiveList(object parameter)
+        private async Task ExecuteSortActiveList()
         {
-            bool orderChanged = _modListManager.SortActiveList(); // Delegate to manager
-
-            if (orderChanged)
-            {
-                HasUnsavedChanges = true; // Mark change
-                MessageBox.Show("Active mods sorted based on defined rules.", "Sort Successful", MessageBoxButton.OK, MessageBoxImage.Information);
-                SelectedMod = ActiveMods.FirstOrDefault(); // Reselect first after sort
-            }
-            else
-            {
-                // Check if sorting failed (e.g., cycle detected) - manager might need to expose status
-                // For now, assume failure means no change or message shown by manager internally/logged
-                MessageBox.Show("Mods are already correctly sorted or a sorting error occurred (check logs for cycles).",
-                               "Sort Complete", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            // Event handler updates UI collections
-        }
-
-
-        private void ExecuteSaveMods(object parameter)
-        {
+            IsLoading = true; // Indicate activity
+            CommandManager.InvalidateRequerySuggested(); // Disable buttons during sort
             try
             {
-                var configDir = _pathService.GetConfigPath();
-                if (string.IsNullOrEmpty(configDir) || !Directory.Exists(configDir))
-                {
-                    MessageBox.Show("Error: Config directory path is not set or invalid.", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
+                // CORRECTED: Don't try to assign the result to bool if the method returns Task (void)
+                // The command service method should internally call _modListManager.SortActiveList()
+                // which will trigger the ListChanged event if necessary.
+                await Task.Run(() => _commandService.SortActiveModsAsync());
 
-                var configPath = Path.Combine(configDir, "ModsConfig.xml");
-                XDocument doc;
-                bool fileExisted = File.Exists(configPath);
-
-                // Load or Create XML Document Logic (same as before)
-                if (!fileExisted)
-                { /* Create new doc */
-                    doc = new XDocument(new XElement("ModsConfigData", new XElement("version", "1.0"), new XElement("activeMods")));
-                }
-                else
-                {
-                    try { doc = XDocument.Load(configPath); }
-                    catch (Exception loadEx)
-                    {
-                        // Ask to overwrite if corrupted etc. (same logic as before)
-                        var result = MessageBox.Show($"Error loading existing ModsConfig.xml: {loadEx.Message}\n\nOverwrite with the current active mod list?", "Load Error", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-                        if (result == MessageBoxResult.Yes)
-                        {
-                            doc = new XDocument(new XElement("ModsConfigData", new XElement("version", "1.0"), new XElement("activeMods")));
-                            fileExisted = false;
-                        }
-                        else { return; } // Abort
-                    }
-                }
-                // Find/Create activeMods element (same logic as before)
-                var activeModsElement = doc.Root?.Element("activeMods");
-                if (activeModsElement == null)
-                { /* Try to create it or error */
-                    if (doc.Root != null)
-                    {
-                        activeModsElement = new XElement("activeMods");
-                        doc.Root.Add(activeModsElement);
-                    }
-                    else
-                    {
-                        MessageBox.Show("Error: ModsConfig.xml structure invalid.", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error); return;
-                    }
-                }
-
-                // --- Get active mods from MANAGER ---
-                activeModsElement.RemoveAll(); // Clear existing
-                foreach (var (mod, _) in _modListManager.VirtualActiveMods.OrderBy(x => x.LoadOrder)) // Use manager's list
-                {
-                    if (!string.IsNullOrEmpty(mod.PackageId))
-                    {
-                        activeModsElement.Add(new XElement("li", mod.PackageId.ToLowerInvariant()));
-                    }
-                    else
-                    {
-                        Debug.WriteLine($"Warning: Mod '{mod.Name}' has no PackageId and was not saved.");
-                    }
-                }
-
-                // Save the document
-                doc.Save(configPath);
-                HasUnsavedChanges = false; // Reset flag on successful save!
-
-                // Show confirmation message (same as before)
-                MessageBox.Show($"Mods configuration saved successfully{(fileExisted ? "!" : " to new file")}!", "Save Successful", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                MessageBox.Show($"Error: Permission denied saving to {Path.Combine(_pathService.GetConfigPath(), "ModsConfig.xml")}.", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                // The HasUnsavedChanges flag is set within the OnModListManagerChanged event handler
+                // based on the ListChanged event triggered by the sort operation within the command service.
+                Debug.WriteLine("Sort operation completed.");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"An unexpected error occurred saving mods configuration: {ex.Message}", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Debug.WriteLine($"Error sorting mods: {ex}");
+                RunOnUIThread(() =>
+                   MessageBox.Show($"Error sorting mods: {ex.Message}", "Sort Error", // Changed title slightly
+                                 MessageBoxButton.OK, MessageBoxImage.Error));
             }
+            finally
+            {
+                IsLoading = false;
+                CommandManager.InvalidateRequerySuggested(); // Re-enable buttons
+            }
+        }
+
+
+        private void ExecuteSaveMods()
+        {
+            IsLoading = true; // Indicate activity
+            try
+            {
+                // --- CORRECTION: Save the state from the ModListManager ---
+                var activeIdsToSave = _modListManager.VirtualActiveMods
+                                        .Select(entry => entry.Mod.PackageId)
+                                        .Where(id => !string.IsNullOrEmpty(id)) // Ensure no null/empty IDs
+                                        .ToList();
+
+                _dataService.SaveActiveModIdsToConfig(activeIdsToSave);
+                // -----------------------------------------------------------
+                HasUnsavedChanges = false;
+                Debug.WriteLine("Mod list saved successfully.");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error saving mods config: {ex}");
+                RunOnUIThread(() => MessageBox.Show($"Failed to save mod list: {ex.Message}", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error));
+                // Optionally leave HasUnsavedChanges = true if save failed?
+            }
+            finally
+            {
+                IsLoading = false;
+                CommandManager.InvalidateRequerySuggested();
+            }
+        }
+
+        private async Task ExecuteImport()
+        {
+            // Assume IOService interacts with ModListManager appropriately
+            await _ioService.ImportModListAsync();
+            // IOService should trigger ListChanged via manager, setting HasUnsavedChanges
+            // If not, set it here: HasUnsavedChanges = true;
+        }
+        private async Task ExecuteExport()
+        {
+            // --- CORRECTION: Export the definitive list from the ModListManager ---
+            var activeModsToExport = _modListManager.VirtualActiveMods.Select(entry => entry.Mod).ToList();
+            if (!activeModsToExport.Any())
+            {
+                MessageBox.Show("There are no active mods to export.", "Export List", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            await _ioService.ExportModListAsync(activeModsToExport);
+            // --------------------------------------------------------------------
         }
 
         private void OpenUrl(object parameter)
-{
-    if (parameter is string target && !string.IsNullOrWhiteSpace(target))
-    {
-        try
         {
-            // Check if this is a filesystem path
-            if (Path.IsPathRooted(target) || target.StartsWith(".\\") || target.StartsWith("..\\"))
+            string target = null;
+            if (parameter is string urlParam) // Use specific type check
             {
-                // Handle as filesystem path
-                var fullPath = Path.GetFullPath(target);
-                
-                if (!File.Exists(fullPath) && !Directory.Exists(Path.GetDirectoryName(fullPath)))
+                target = urlParam;
+            }
+            else if (SelectedMod != null)
+            {
+                // Prioritize the explicit Url field from About.xml if present
+                target = SelectedMod.Url;
+
+                // CORRECTED: Use 'Path' instead of 'DirectoryPath'
+                // If Url is empty, fall back to the local installation Path
+                // Also check if the Path property itself is valid (not null or whitespace)
+                if (string.IsNullOrWhiteSpace(target) && !string.IsNullOrWhiteSpace(SelectedMod.Path))
                 {
-                    MessageBox.Show($"The path does not exist:\n{fullPath}", "Path Not Found", 
-                                  MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
+                    target = SelectedMod.Path; // Assign the local Path
                 }
-
-                // Open in Explorer with file selected
-                Process.Start("explorer.exe", $"/select,\"{fullPath}\"");
             }
-            else
+
+            if (string.IsNullOrWhiteSpace(target))
             {
-                // Handle as URL
-                var uri = target.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
-                         target.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
-                    ? target
-                    : "http://" + target;
+                Debug.WriteLine("OpenUrl: No target specified or derived.");
+                MessageBox.Show("No URL or local path available for the selected mod.", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
 
-                Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true });
+            try
+            {
+                // Use Directory.Exists for checking local paths robustly
+                // Need System.IO namespace for Path and Directory
+                if (Directory.Exists(target)) // Check if the target *is* an existing directory
+                {
+                    string fullPath = Path.GetFullPath(target); // Ensure canonical path
+                                                                // Option 1: Open the folder in Explorer
+                    ProcessStartInfo psi = new ProcessStartInfo(fullPath) { UseShellExecute = true };
+                    // Option 2: Select the folder in Explorer (shows containing folder)
+                    // ProcessStartInfo psi = new ProcessStartInfo("explorer.exe", $"/select,\"{fullPath}\"");
+                    Process.Start(psi);
+                }
+                // Optional: Add check for file paths if 'target' could be a file
+                // else if (File.Exists(target)) { ... Process.Start($"explorer.exe /select,\"{target}\""); ... }
+                else // Assume it's a URL if not a known local directory/file
+                {
+                    // Ensure it looks like a URL
+                    var uriString = target;
+                    if (!uriString.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                        !uriString.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Simple check: if it contains common URL characters or top-level domains, prepend http://
+                        // This is a basic heuristic and might not cover all cases perfectly.
+                        if (uriString.Contains('.') && !uriString.Contains(" ") && !uriString.Contains("\\")) // Basic check if it might be a domain
+                        {
+                            uriString = "http://" + uriString;
+                        }
+                        else
+                        {
+                            // If it doesn't look like a URL and isn't a directory, show an error
+                            throw new InvalidOperationException($"Target '{target}' is not a recognized directory or URL format.");
+                        }
+                    }
+
+                    Process.Start(new ProcessStartInfo(uriString) { UseShellExecute = true });
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Could not open path/URL '{target}': {ex}");
+                MessageBox.Show($"Could not open path/URL: {ex.Message}", "Error",
+                              MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Could not open path/URL: {ex.Message}", "Error", 
-                          MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-}
+
+        // Stubbed methods remain the same...
         private void ExecuteFilterInactive(object parameter) => MessageBox.Show("Filter Inactive Mods - Not Yet Implemented");
         private void ExecuteFilterActive(object parameter) => MessageBox.Show("Filter Active Mods - Not Yet Implemented");
         private void StripMods(object parameter) => MessageBox.Show("Strip mods: Functionality not yet implemented.");
         private void CreatePack(object parameter) => MessageBox.Show("Create pack: Functionality not yet implemented.");
         private void FixIntegrity(object parameter) => MessageBox.Show("Fix integrity: Functionality not yet implemented.");
-        private void ImportList(object parameter)
-        {
-            try
-            {
-                // Set up the Lists directory
-                string appDirectory = AppDomain.CurrentDomain.BaseDirectory;
-                string listsDirectory = Path.Combine(appDirectory, "Lists");
-
-                if (!Directory.Exists(listsDirectory))
-                {
-                    Directory.CreateDirectory(listsDirectory);
-                    Debug.WriteLine($"Created Lists directory at: {listsDirectory}");
-                }
-
-                // Create OpenFileDialog
-                var openFileDialog = new Microsoft.Win32.OpenFileDialog
-                {
-                    Title = "Import Mod List",
-                    Filter = "XML Files (*.xml)|*.xml|All Files (*.*)|*.*",
-                    InitialDirectory = listsDirectory,
-                    CheckFileExists = true
-                };
-
-                if (openFileDialog.ShowDialog() != true)
-                {
-                    Debug.WriteLine("Import cancelled by user");
-                    return;
-                }
-
-                string filePath = openFileDialog.FileName;
-                Debug.WriteLine($"Importing mod list from: {filePath}");
-
-                // Load the XML file
-                XDocument doc;
-                try
-                {
-                    doc = XDocument.Load(filePath);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Error loading XML file: {ex.Message}", "Import Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-
-                // Extract the active mod IDs
-                var activeModsElement = doc.Root?.Element("activeMods");
-                if (activeModsElement == null)
-                {
-                    MessageBox.Show("The selected file does not contain a valid mod list format.",
-                        "Invalid File Format", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-
-                var activeModIds = activeModsElement.Elements("li")
-                    .Select(e => e.Value.ToLowerInvariant())
-                    .ToList();
-
-                if (activeModIds.Count == 0)
-                {
-                    MessageBox.Show("The file contains an empty mod list.",
-                        "Import Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                // Reinitialize the mod list manager with the imported active mods
-                var allMods = _modService.GetLoadedMods().ToList();
-                _modListManager.Initialize(allMods, activeModIds);
-
-                HasUnsavedChanges = true; // Mark as unsaved since we modified the active list
-
-                // The OnModListChanged handler will update the UI collections
-
-                MessageBox.Show($"Successfully imported mod list from {Path.GetFileName(filePath)} with {activeModIds.Count} active mods.",
-                    "Import Successful", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"An unexpected error occurred during import: {ex.Message}",
-                    "Import Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private void ExportList(object parameter)
-        {
-            try
-            {
-                // Set up the Lists directory
-                string appDirectory = AppDomain.CurrentDomain.BaseDirectory;
-                string listsDirectory = Path.Combine(appDirectory, "Lists");
-
-                if (!Directory.Exists(listsDirectory))
-                {
-                    Directory.CreateDirectory(listsDirectory);
-                    Debug.WriteLine($"Created Lists directory at: {listsDirectory}");
-                }
-
-                // Create SaveFileDialog
-                var saveFileDialog = new Microsoft.Win32.SaveFileDialog
-                {
-                    Title = "Export Mod List",
-                    Filter = "XML Files (*.xml)|*.xml|All Files (*.*)|*.*",
-                    InitialDirectory = listsDirectory,
-                    DefaultExt = ".xml",
-                    FileName = $"ModList_{DateTime.Now:yyyyMMdd}.xml"
-                };
-
-                if (saveFileDialog.ShowDialog() != true)
-                {
-                    Debug.WriteLine("Export cancelled by user");
-                    return;
-                }
-
-                string filePath = saveFileDialog.FileName;
-                Debug.WriteLine($"Exporting mod list to: {filePath}");
-
-                // Create XML document
-                var doc = new XDocument(
-                    new XElement("ModsConfigData",
-                        new XElement("version", "1.0"),
-                        new XElement("activeMods")
-                    )
-                );
-
-                var activeModsElement = doc.Root.Element("activeMods");
-
-                // Add active mods to the XML
-                foreach (var (mod, _) in _modListManager.VirtualActiveMods.OrderBy(x => x.LoadOrder))
-                {
-                    if (!string.IsNullOrEmpty(mod.PackageId))
-                    {
-                        activeModsElement.Add(new XElement("li", mod.PackageId.ToLowerInvariant()));
-                    }
-                    else
-                    {
-                        Debug.WriteLine($"Warning: Mod '{mod.Name}' has no PackageId and was not exported.");
-                    }
-                }
-
-                // Save the document
-                doc.Save(filePath);
-
-                // Unlike the SaveMods command, we don't change HasUnsavedChanges here
-                // since this is just an export operation
-
-                MessageBox.Show($"Mod list exported successfully to {Path.GetFileName(filePath)}!",
-                    "Export Successful", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                MessageBox.Show($"Error: Permission denied when saving the file.",
-                    "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"An unexpected error occurred during export: {ex.Message}",
-                    "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
         private void RunGame(object parameter) => MessageBox.Show("Run game: Functionality not yet implemented.");
 
-        // --- IDisposable for event unsubscription ---
         public void Dispose()
         {
             Dispose(true);
@@ -694,13 +403,10 @@ namespace RimSharp.ViewModels.Modules.Mods
         {
             if (disposing)
             {
-                // Unsubscribe from the manager's event
-                if (_modListManager != null)
-                {
-                    _modListManager.ListChanged -= OnModListChanged;
-                }
+                _modListManager.ListChanged -= OnModListManagerChanged; // Use correct handler name
             }
         }
+
 
         ~ModsViewModel()
         {

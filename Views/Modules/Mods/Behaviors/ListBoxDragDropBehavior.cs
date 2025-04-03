@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using RimSharp.ViewModels.Modules.Mods.Commands;
 
 namespace RimSharp.Views.Modules.Mods.Behaviors
 {
