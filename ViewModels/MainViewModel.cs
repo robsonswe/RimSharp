@@ -7,7 +7,7 @@ using System.Windows.Input;
 using System.Windows.Forms; // Add reference to System.Windows.Forms assembly for FolderBrowserDialog
 using System.IO; // For Directory.Exists
 using System.Diagnostics;
-
+using RimSharp.ViewModels.Modules.Mods.Management;
 
 namespace RimSharp.ViewModels
 {
@@ -17,7 +17,7 @@ namespace RimSharp.ViewModels
         private readonly IPathService _pathService;
         private readonly IModService _modService; // Keep to pass to ModsViewModel
         private readonly IConfigService _configService; // Add this
-
+        private readonly IModListManager _modListManager; 
 
         private string _selectedTab = "Mods"; // Default tab
         private ViewModelBase _currentViewModel; // Holds the currently displayed module ViewModel
@@ -36,11 +36,12 @@ namespace RimSharp.ViewModels
         public ICommand RefreshCommand { get; }
 
         // Constructor: Instantiate module VMs and set initial state
-        public MainViewModel(IModService modService, IPathService pathService, IConfigService configService)
+    public MainViewModel(IModService modService, IPathService pathService, IConfigService configService, IModListManager modListManager)
         {
             _modService = modService;
             _pathService = pathService;
              _configService = configService;
+             _modListManager = modListManager;
 
             // Initialize Path Settings (remains here as it's app-level config)
                         PathSettings = new PathSettings
@@ -77,7 +78,7 @@ namespace RimSharp.ViewModels
 
 
             // Create instances of the module ViewModels, passing dependencies
-            ModsVM = new ModsViewModel(_modService, _pathService);
+            ModsVM = new ModsViewModel(_modService, _pathService, _modListManager);
             DownloaderVM = new DownloaderViewModel(/* Pass services if needed */);
 
             // Set the initial view

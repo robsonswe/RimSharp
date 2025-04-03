@@ -18,7 +18,6 @@
 
         <TextBlock Text="Mod lists" FontWeight="Bold" Margin="0,0,0,5" Foreground="{StaticResource RimworldBrownBrush}"/>
         <Button Content="Import list" Command="{Binding ImportListCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
-        <Button Content="Import save" Command="{Binding ImportSaveCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
         <Button Content="Export list" Command="{Binding ExportListCommand}" Margin="0,0,0,20" Style="{StaticResource RimworldButtonStyle}"/>
 
         <Button Content="Save" Command="{Binding SaveCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldSaveButtonStyle}" IsEnabled="{Binding HasUnsavedChanges}"/>
