@@ -12,21 +12,24 @@ namespace RimSharp
     public partial class App : Application
     {
         public IServiceProvider ServiceProvider { get; private set; }
-        
+
         public App()
         {
             var services = new ServiceCollection();
             ConfigureServices(services);
             ServiceProvider = services.BuildServiceProvider();  // Store the provider
         }
-        
-                private void ConfigureServices(IServiceCollection services)
+
+        private void ConfigureServices(IServiceCollection services)
         {
             // Register ConfigService first as it's needed by PathSettings
             services.AddSingleton<IConfigService, ConfigService>();
-            
+
+            services.AddSingleton<IPathService, PathService>(provider =>
+                new PathService(provider.GetRequiredService<IConfigService>()));
+
             // Register PathSettings with values from config
-            services.AddSingleton(provider => 
+            services.AddSingleton(provider =>
             {
                 var configService = provider.GetRequiredService<IConfigService>();
                 return new PathSettings
@@ -46,13 +49,13 @@ namespace RimSharp
             services.AddSingleton<MainWindow>();
         }
 
-        
+
         protected override void OnStartup(StartupEventArgs e)
-{
+        {
             var mainWindow = ServiceProvider.GetService<MainWindow>();
-    mainWindow?.Show();
-    
-    base.OnStartup(e);
-}
+            mainWindow?.Show();
+
+            base.OnStartup(e);
+        }
     }
 }

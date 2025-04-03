@@ -6,16 +6,48 @@ namespace RimSharp.Services
 {
     public class PathService : IPathService
     {
+        private readonly IConfigService _configService;
         private PathSettings _settings;
 
-        public PathService(PathSettings settings)
+        public PathService(IConfigService configService)
         {
-            _settings = settings;
+            _configService = configService ?? throw new ArgumentNullException(nameof(configService));
+            
+            // Initialize PathSettings from ConfigService
+            _settings = new PathSettings
+            {
+                GamePath = _configService.GetConfigValue("game_folder"),
+                ConfigPath = _configService.GetConfigValue("config_folder"),
+                ModsPath = _configService.GetConfigValue("mods_folder")
+            };
         }
 
-        public string GetGamePath() => Directory.Exists(_settings.GamePath) ? _settings.GamePath : null;
-        public string GetModsPath() => Directory.Exists(_settings.ModsPath) ? _settings.ModsPath : null;
-        public string GetConfigPath() => Directory.Exists(_settings.ConfigPath) ? _settings.ConfigPath : null;
+        // Method to refresh paths from config service
+        public void RefreshPaths()
+        {
+            _settings.GamePath = _configService.GetConfigValue("game_folder");
+            _settings.ConfigPath = _configService.GetConfigValue("config_folder");
+            _settings.ModsPath = _configService.GetConfigValue("mods_folder");
+        }
+
+        public string GetGamePath()
+        {
+            RefreshPaths(); // Always get the latest values
+            return Directory.Exists(_settings.GamePath) ? _settings.GamePath : null;
+        }
+        
+        public string GetModsPath()
+        {
+            RefreshPaths(); // Always get the latest values
+            return Directory.Exists(_settings.ModsPath) ? _settings.ModsPath : null;
+        }
+        
+        public string GetConfigPath()
+        {
+            RefreshPaths(); // Always get the latest values
+            return Directory.Exists(_settings.ConfigPath) ? _settings.ConfigPath : null;
+        }
+
         // Original method: gets version based on the path currently in _settings
         public string GetGameVersion(string gamePath)
         {
@@ -48,6 +80,7 @@ namespace RimSharp.Services
 
         public string GetGameVersion()
         {
+            RefreshPaths(); // Always get the latest values
             return GetGameVersion(_settings.GamePath);
         }
 
@@ -59,6 +92,7 @@ namespace RimSharp.Services
 
         public string GetMajorGameVersion()
         {
+            RefreshPaths(); // Always get the latest values
             return GetMajorGameVersion(_settings.GamePath);
         }
 
@@ -86,7 +120,5 @@ namespace RimSharp.Services
                 return fullVersion; // Fallback if parsing fails
             }
         }
-
-
     }
 }

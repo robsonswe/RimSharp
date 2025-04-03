@@ -182,27 +182,44 @@ namespace RimSharp.ViewModels.Modules.Mods
         }
 
         // Helper to read config (remains in VM as it uses PathService)
-        private List<string> GetActiveModsFromConfig()
+private List<string> GetActiveModsFromConfig()
+{
+    try
+    {
+        var configPathDir = _pathService.GetConfigPath();
+        if (string.IsNullOrEmpty(configPathDir))
         {
-            try
-            {
-                var configPath = Path.Combine(_pathService.GetConfigPath(), "ModsConfig.xml");
-                if (!File.Exists(configPath)) return new List<string>();
-
-                var doc = XDocument.Load(configPath);
-                return doc.Root?.Element("activeMods")?.Elements("li")
-                    .Select(x => x.Value.ToLowerInvariant()) // Already normalized
-                    .ToList() ?? new List<string>();
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error reading ModsConfig.xml: {ex.Message}");
-                // Consider showing a warning to the user here as well
-                MessageBox.Show($"Warning: Could not read active mods from ModsConfig.xml.\nReason: {ex.Message}\nStarting with an empty active list.",
-                               "Config Read Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return new List<string>();
-            }
+            Debug.WriteLine("Config path is empty or null. Cannot read ModsConfig.xml.");
+            return new List<string>();
         }
+
+        var configPath = Path.Combine(configPathDir, "ModsConfig.xml");
+        if (!File.Exists(configPath))
+        {
+            Debug.WriteLine($"ModsConfig.xml does not exist at path: {configPath}");
+            return new List<string>();
+        }
+
+        var doc = XDocument.Load(configPath);
+        return doc.Root?.Element("activeMods")?.Elements("li")
+            .Select(x => x.Value.ToLowerInvariant()) // Already normalized
+            .ToList() ?? new List<string>();
+    }
+    catch (ArgumentNullException ex)
+    {
+        Debug.WriteLine($"Null argument error reading ModsConfig.xml: {ex.Message}");
+        MessageBox.Show($"Warning: Could not read active mods from ModsConfig.xml.\nReason: Path is not set properly.\nStarting with an empty active list.",
+                       "Config Read Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+        return new List<string>();
+    }
+    catch (Exception ex)
+    {
+        Debug.WriteLine($"Error reading ModsConfig.xml: {ex.Message}");
+        MessageBox.Show($"Warning: Could not read active mods from ModsConfig.xml.\nReason: {ex.Message}\nStarting with an empty active list.",
+                       "Config Read Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+        return new List<string>();
+    }
+}
 
         // --- Event Handler for Manager Changes ---
         private void OnModListChanged(object sender, EventArgs e)
@@ -483,8 +500,164 @@ namespace RimSharp.ViewModels.Modules.Mods
         private void StripMods(object parameter) => MessageBox.Show("Strip mods: Functionality not yet implemented.");
         private void CreatePack(object parameter) => MessageBox.Show("Create pack: Functionality not yet implemented.");
         private void FixIntegrity(object parameter) => MessageBox.Show("Fix integrity: Functionality not yet implemented.");
-        private void ImportList(object parameter) => MessageBox.Show("Import list: Functionality not yet implemented.");
-        private void ExportList(object parameter) => MessageBox.Show("Export list: Functionality not yet implemented.");
+        private void ImportList(object parameter)
+        {
+            try
+            {
+                // Set up the Lists directory
+                string appDirectory = AppDomain.CurrentDomain.BaseDirectory;
+                string listsDirectory = Path.Combine(appDirectory, "Lists");
+
+                if (!Directory.Exists(listsDirectory))
+                {
+                    Directory.CreateDirectory(listsDirectory);
+                    Debug.WriteLine($"Created Lists directory at: {listsDirectory}");
+                }
+
+                // Create OpenFileDialog
+                var openFileDialog = new Microsoft.Win32.OpenFileDialog
+                {
+                    Title = "Import Mod List",
+                    Filter = "XML Files (*.xml)|*.xml|All Files (*.*)|*.*",
+                    InitialDirectory = listsDirectory,
+                    CheckFileExists = true
+                };
+
+                if (openFileDialog.ShowDialog() != true)
+                {
+                    Debug.WriteLine("Import cancelled by user");
+                    return;
+                }
+
+                string filePath = openFileDialog.FileName;
+                Debug.WriteLine($"Importing mod list from: {filePath}");
+
+                // Load the XML file
+                XDocument doc;
+                try
+                {
+                    doc = XDocument.Load(filePath);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error loading XML file: {ex.Message}", "Import Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // Extract the active mod IDs
+                var activeModsElement = doc.Root?.Element("activeMods");
+                if (activeModsElement == null)
+                {
+                    MessageBox.Show("The selected file does not contain a valid mod list format.",
+                        "Invalid File Format", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                var activeModIds = activeModsElement.Elements("li")
+                    .Select(e => e.Value.ToLowerInvariant())
+                    .ToList();
+
+                if (activeModIds.Count == 0)
+                {
+                    MessageBox.Show("The file contains an empty mod list.",
+                        "Import Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Reinitialize the mod list manager with the imported active mods
+                var allMods = _modService.GetLoadedMods().ToList();
+                _modListManager.Initialize(allMods, activeModIds);
+
+                HasUnsavedChanges = true; // Mark as unsaved since we modified the active list
+
+                // The OnModListChanged handler will update the UI collections
+
+                MessageBox.Show($"Successfully imported mod list from {Path.GetFileName(filePath)} with {activeModIds.Count} active mods.",
+                    "Import Successful", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"An unexpected error occurred during import: {ex.Message}",
+                    "Import Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ExportList(object parameter)
+        {
+            try
+            {
+                // Set up the Lists directory
+                string appDirectory = AppDomain.CurrentDomain.BaseDirectory;
+                string listsDirectory = Path.Combine(appDirectory, "Lists");
+
+                if (!Directory.Exists(listsDirectory))
+                {
+                    Directory.CreateDirectory(listsDirectory);
+                    Debug.WriteLine($"Created Lists directory at: {listsDirectory}");
+                }
+
+                // Create SaveFileDialog
+                var saveFileDialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Title = "Export Mod List",
+                    Filter = "XML Files (*.xml)|*.xml|All Files (*.*)|*.*",
+                    InitialDirectory = listsDirectory,
+                    DefaultExt = ".xml",
+                    FileName = $"ModList_{DateTime.Now:yyyyMMdd}.xml"
+                };
+
+                if (saveFileDialog.ShowDialog() != true)
+                {
+                    Debug.WriteLine("Export cancelled by user");
+                    return;
+                }
+
+                string filePath = saveFileDialog.FileName;
+                Debug.WriteLine($"Exporting mod list to: {filePath}");
+
+                // Create XML document
+                var doc = new XDocument(
+                    new XElement("ModsConfigData",
+                        new XElement("version", "1.0"),
+                        new XElement("activeMods")
+                    )
+                );
+
+                var activeModsElement = doc.Root.Element("activeMods");
+
+                // Add active mods to the XML
+                foreach (var (mod, _) in _modListManager.VirtualActiveMods.OrderBy(x => x.LoadOrder))
+                {
+                    if (!string.IsNullOrEmpty(mod.PackageId))
+                    {
+                        activeModsElement.Add(new XElement("li", mod.PackageId.ToLowerInvariant()));
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"Warning: Mod '{mod.Name}' has no PackageId and was not exported.");
+                    }
+                }
+
+                // Save the document
+                doc.Save(filePath);
+
+                // Unlike the SaveMods command, we don't change HasUnsavedChanges here
+                // since this is just an export operation
+
+                MessageBox.Show($"Mod list exported successfully to {Path.GetFileName(filePath)}!",
+                    "Export Successful", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                MessageBox.Show($"Error: Permission denied when saving the file.",
+                    "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"An unexpected error occurred during export: {ex.Message}",
+                    "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
         private void RunGame(object parameter) => MessageBox.Show("Run game: Functionality not yet implemented.");
 
         // --- IDisposable for event unsubscription ---

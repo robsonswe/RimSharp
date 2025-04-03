@@ -241,10 +241,23 @@ namespace RimSharp.ViewModels
         }
 
         private void RefreshData(object parameter)
-        {
-            // Refresh mods data
-            _ = ModsVM?.RefreshDataAsync();
-        }
+{
+    // If PathService has the RefreshPaths method, call it
+    if (_pathService is PathService pathService)
+    {
+        pathService.RefreshPaths();
+    }
+    
+    // Update PathSettings from the service to ensure consistency
+    PathSettings.GameVersion = _pathService.GetGameVersion();
+    PathSettings.GamePath = _pathService.GetGamePath();
+    PathSettings.ConfigPath = _pathService.GetConfigPath();
+    PathSettings.ModsPath = _pathService.GetModsPath();
+    
+    // Refresh mods data
+    _ = ModsVM?.RefreshDataAsync();
+}
+
 
     }
 }
