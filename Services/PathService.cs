@@ -1,54 +1,62 @@
-using RimSharp.Models;
-using System.IO; // Needed for Path operations if doing real detection
+#nullable enable
 using System;
+using System.IO;
 
 namespace RimSharp.Services
 {
     public class PathService : IPathService
     {
         private readonly IConfigService _configService;
-        private PathSettings _settings;
+        private string? _cachedGamePath;
+        private string? _cachedConfigPath;
+        private string? _cachedModsPath;
+        private string? _cachedGameVersion;
+        private string? _cachedMajorGameVersion;
 
         public PathService(IConfigService configService)
         {
             _configService = configService ?? throw new ArgumentNullException(nameof(configService));
-            
-            // Initialize PathSettings from ConfigService
-            _settings = new PathSettings
-            {
-                GamePath = _configService.GetConfigValue("game_folder"),
-                ConfigPath = _configService.GetConfigValue("config_folder"),
-                ModsPath = _configService.GetConfigValue("mods_folder")
-            };
-        }
-
-        // Method to refresh paths from config service
-        public void RefreshPaths()
-        {
-            _settings.GamePath = _configService.GetConfigValue("game_folder");
-            _settings.ConfigPath = _configService.GetConfigValue("config_folder");
-            _settings.ModsPath = _configService.GetConfigValue("mods_folder");
         }
 
         public string GetGamePath()
         {
-            RefreshPaths(); // Always get the latest values
-            return Directory.Exists(_settings.GamePath) ? _settings.GamePath : null;
-        }
-        
-        public string GetModsPath()
-        {
-            RefreshPaths(); // Always get the latest values
-            return Directory.Exists(_settings.ModsPath) ? _settings.ModsPath : null;
-        }
-        
-        public string GetConfigPath()
-        {
-            RefreshPaths(); // Always get the latest values
-            return Directory.Exists(_settings.ConfigPath) ? _settings.ConfigPath : null;
+            if (_cachedGamePath is null)
+            {
+                var path = _configService.GetConfigValue("game_folder");
+                _cachedGamePath = Directory.Exists(path) ? path : string.Empty;
+            }
+            return _cachedGamePath;
         }
 
-        // Original method: gets version based on the path currently in _settings
+        public string GetModsPath()
+        {
+            if (_cachedModsPath is null)
+            {
+                var path = _configService.GetConfigValue("mods_folder");
+                _cachedModsPath = Directory.Exists(path) ? path : string.Empty;
+            }
+            return _cachedModsPath;
+        }
+
+        public string GetConfigPath()
+        {
+            if (_cachedConfigPath is null)
+            {
+                var path = _configService.GetConfigValue("config_folder");
+                _cachedConfigPath = Directory.Exists(path) ? path : string.Empty;
+            }
+            return _cachedConfigPath;
+        }
+
+        public string GetGameVersion()
+        {
+            if (_cachedGameVersion is null)
+            {
+                _cachedGameVersion = GetGameVersion(GetGamePath());
+            }
+            return _cachedGameVersion;
+        }
+
         public string GetGameVersion(string gamePath)
         {
             if (string.IsNullOrEmpty(gamePath))
@@ -56,21 +64,17 @@ namespace RimSharp.Services
 
             try
             {
-                if (!Directory.Exists(gamePath))
-                    return "N/A - Invalid path";
-
-                string versionFilePath = Path.Combine(gamePath, "Version.txt");
+                var versionFilePath = Path.Combine(gamePath, "Version.txt");
 
                 if (!File.Exists(versionFilePath))
                     return "N/A - Version.txt not found";
 
-                string versionText = File.ReadAllText(versionFilePath).Trim();
+                using var reader = new StreamReader(versionFilePath);
+                var firstLine = reader.ReadLine()?.Trim() ?? string.Empty;
 
-                if (string.IsNullOrWhiteSpace(versionText))
-                    return "N/A - Empty version file";
-
-                // Additional parsing if needed (e.g., extract just version number)
-                return versionText.Split('\n')[0].Trim(); // Get first line
+                return string.IsNullOrWhiteSpace(firstLine)
+                    ? "N/A - Empty version file"
+                    : firstLine;
             }
             catch (Exception ex)
             {
@@ -78,47 +82,51 @@ namespace RimSharp.Services
             }
         }
 
-        public string GetGameVersion()
-        {
-            RefreshPaths(); // Always get the latest values
-            return GetGameVersion(_settings.GamePath);
-        }
-
-        public string GetMajorGameVersion(string gamePath)
-        {
-            string fullVersion = GetGameVersion(gamePath);
-            return ExtractMajorVersion(fullVersion);
-        }
-
         public string GetMajorGameVersion()
         {
-            RefreshPaths(); // Always get the latest values
-            return GetMajorGameVersion(_settings.GamePath);
+            if (_cachedMajorGameVersion is null)
+            {
+                _cachedMajorGameVersion = ExtractMajorVersion(GetGameVersion());
+            }
+            return _cachedMajorGameVersion;
         }
 
-        private string ExtractMajorVersion(string fullVersion)
-        {
-            if (string.IsNullOrEmpty(fullVersion))
-                return string.Empty;
+        public string GetMajorGameVersion(string gamePath) =>
+            ExtractMajorVersion(GetGameVersion(gamePath));
 
-            // Handle cases where version starts with "N/A"
-            if (fullVersion.StartsWith("N/A"))
+        private static string ExtractMajorVersion(string fullVersion)
+        {
+            if (string.IsNullOrEmpty(fullVersion) || fullVersion.StartsWith("N/A"))
                 return fullVersion;
 
-            try
-            {
-                // Extract just the first two numbers (e.g., "1.5" from "1.5.4409 rev1118")
-                var versionParts = fullVersion.Split('.');
-                if (versionParts.Length >= 2)
-                {
-                    return $"{versionParts[0]}.{versionParts[1].Split(' ')[0].Split('-')[0]}";
-                }
-                return fullVersion; // Fallback if we can't parse it
-            }
-            catch
-            {
-                return fullVersion; // Fallback if parsing fails
-            }
+            var versionParts = fullVersion.Split('.');
+            if (versionParts.Length < 2)
+                return fullVersion;
+
+            var secondPart = versionParts[1].Split(new[] { ' ', '-' }, StringSplitOptions.RemoveEmptyEntries)[0];
+            return $"{versionParts[0]}.{secondPart}";
         }
+
+        // Method to invalidate caches when configs change
+        public void InvalidateCache()
+        {
+            _cachedGamePath = null;
+            _cachedConfigPath = null;
+            _cachedModsPath = null;
+            _cachedGameVersion = null;
+            _cachedMajorGameVersion = null;
+        }
+
+        public void RefreshPaths()
+        {
+            // Invalidate cache and reload paths
+            InvalidateCache();
+            // Force refresh by accessing properties
+            var _ = GetGamePath();
+            var __ = GetModsPath();
+            var ___ = GetConfigPath();
+            var ____ = GetGameVersion();
+        }
+
     }
 }

@@ -1,7 +1,6 @@
 using RimSharp.Models;
 using RimSharp.ViewModels.Modules.Mods.Management;
 using System;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows;
 
@@ -13,61 +12,66 @@ namespace RimSharp.ViewModels.Modules.Mods.Commands
 
         public ModCommandService(IModListManager modListManager)
         {
-            _modListManager = modListManager;
+            _modListManager = modListManager ?? throw new ArgumentNullException(nameof(modListManager));
         }
 
         public Task HandleDropCommand(DropModArgs args)
         {
-            if (args?.DroppedItem == null || string.IsNullOrEmpty(args.TargetListName)) 
+            if (args?.DroppedItem == null || string.IsNullOrEmpty(args.TargetListName))
                 return Task.CompletedTask;
 
-            ModItem draggedMod = args.DroppedItem;
-            int dropIndex = args.DropIndex;
-            string targetList = args.TargetListName;
-            
-            Debug.WriteLine($"Drop executed: Item '{draggedMod.Name}', Target: {targetList}, Index: {dropIndex}");
-
-            if (targetList.Equals("Active", StringComparison.OrdinalIgnoreCase))
+            switch (args.TargetListName.ToLowerInvariant())
             {
-                bool isCurrentlyActive = _modListManager.IsModActive(draggedMod);
+                case "active":
+                    HandleDropOnActiveList(args.DroppedItem, args.DropIndex);
+                    break;
                 
-                if (isCurrentlyActive)
-                {
-                    Debug.WriteLine($"Reordering active mod '{draggedMod.Name}' to index {dropIndex}");
-                    _modListManager.ReorderMod(draggedMod, dropIndex);
-                }
-                else
-                {
-                    Debug.WriteLine($"Adding inactive mod '{draggedMod.Name}' to active list at index {dropIndex}");
-                    _modListManager.ActivateModAt(draggedMod, dropIndex);
-                }
-            }
-            else if (targetList.Equals("Inactive", StringComparison.OrdinalIgnoreCase))
-            {
-                bool isCurrentlyActive = _modListManager.IsModActive(draggedMod);
+                case "inactive":
+                    HandleDropOnInactiveList(args.DroppedItem);
+                    break;
                 
-                if (isCurrentlyActive)
-                {
-                    Debug.WriteLine($"Removing active mod '{draggedMod.Name}' (dropped onto inactive)");
-                    _modListManager.DeactivateMod(draggedMod);
-                }
-                else
-                {
-                    Debug.WriteLine($"Mod '{draggedMod.Name}' dropped onto inactive list, but it was already inactive. No action taken.");
-                }
-            }
-            else 
-            { 
-                Debug.WriteLine($"Drop target list name '{targetList}' not recognized."); 
+                default:
+                    // Log unrecognized target list
+                    break;
             }
 
             return Task.CompletedTask;
         }
 
+        private void HandleDropOnActiveList(ModItem draggedMod, int dropIndex)
+        {
+            bool isCurrentlyActive = _modListManager.IsModActive(draggedMod);
+            
+            if (isCurrentlyActive)
+            {
+                // Reorder within active list
+                _modListManager.ReorderMod(draggedMod, dropIndex);
+            }
+            else
+            {
+                // Add inactive mod to active list at specific position
+                _modListManager.ActivateModAt(draggedMod, dropIndex);
+            }
+        }
+
+        private void HandleDropOnInactiveList(ModItem draggedMod)
+        {
+            if (_modListManager.IsModActive(draggedMod))
+            {
+                // Remove from active list
+                _modListManager.DeactivateMod(draggedMod);
+            }
+            // If already inactive, no action needed
+        }
+
         public async Task ClearActiveModsAsync()
         {
-            var result = MessageBox.Show("This will remove all non-Core and non-Expansion mods from the active list.\nAre you sure?",
-                                    "Confirm Clear", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            var result = MessageBox.Show(
+                "This will remove all non-Core and non-Expansion mods from the active list.\nAre you sure?",
+                "Confirm Clear", 
+                MessageBoxButton.YesNo, 
+                MessageBoxImage.Warning);
+                
             if (result != MessageBoxResult.Yes) return;
 
             await Task.Run(() => _modListManager.ClearActiveList());
@@ -77,15 +81,13 @@ namespace RimSharp.ViewModels.Modules.Mods.Commands
         {
             bool orderChanged = await Task.Run(() => _modListManager.SortActiveList());
 
-            if (orderChanged)
-            {
-                MessageBox.Show("Active mods sorted based on defined rules.", "Sort Successful", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            else
-            {
-                MessageBox.Show("Mods are already correctly sorted or a sorting error occurred (check logs for cycles).",
-                               "Sort Complete", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
+            MessageBox.Show(
+                orderChanged 
+                    ? "Active mods sorted based on defined rules." 
+                    : "Mods are already correctly sorted or a sorting error occurred (check logs for cycles).",
+                "Sort Complete", 
+                MessageBoxButton.OK, 
+                MessageBoxImage.Information);
         }
     }
 }

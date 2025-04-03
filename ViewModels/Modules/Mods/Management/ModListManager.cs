@@ -8,114 +8,94 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
 {
     public class ModListManager : IModListManager
     {
-        private List<(ModItem Mod, int LoadOrder)> _virtualActiveMods = new();
-        private List<ModItem> _allInactiveMods = new();
-        private List<ModItem> _allAvailableMods = new(); // Keep original reference
+        private readonly List<(ModItem Mod, int LoadOrder)> _virtualActiveMods = new();
+        private readonly List<ModItem> _allInactiveMods = new();
+        private readonly List<ModItem> _allAvailableMods = new();
+        
+        // Optimization: Use dictionaries and sets for O(1) lookup operations
+        private readonly Dictionary<string, ModItem> _modLookup = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<ModItem> _activeModSet = new();
 
-        // --- Optimization Fields ---
-        // Lookup for all available mods by lowercase packageId for O(1) average access
-        private Dictionary<string, ModItem> _modLookup = new(StringComparer.OrdinalIgnoreCase);
-        // Set of currently active mods for O(1) average containment checks
-        private HashSet<ModItem> _activeModSet = new();
-        // --------------------------
-
-        public IReadOnlyList<(ModItem Mod, int LoadOrder)> VirtualActiveMods => _virtualActiveMods.AsReadOnly();
-        public IReadOnlyList<ModItem> AllInactiveMods => _allInactiveMods.AsReadOnly(); // Sort happens only when list changes significantly
+        public IReadOnlyList<(ModItem Mod, int LoadOrder)> VirtualActiveMods => _virtualActiveMods;
+        public IReadOnlyList<ModItem> AllInactiveMods => _allInactiveMods;
 
         public event EventHandler ListChanged;
 
         public void Initialize(IEnumerable<ModItem> allAvailableMods, IEnumerable<string> activeModPackageIds)
         {
-            _allAvailableMods = allAvailableMods?.ToList() ?? new List<ModItem>();
-            var activeIdList = activeModPackageIds?.Select(id => id?.ToLowerInvariant()) // Ensure lowercase and handle potential nulls
-                                                .Where(id => id != null)
-                                                .ToList() ?? new List<string>();
+            if (allAvailableMods == null) throw new ArgumentNullException(nameof(allAvailableMods));
+            
+            _allAvailableMods.Clear();
+            _allAvailableMods.AddRange(allAvailableMods);
+            
+            var activeIdList = activeModPackageIds?
+                .Where(id => !string.IsNullOrEmpty(id))
+                .Select(id => id.ToLowerInvariant())
+                .ToList() 
+                ?? new List<string>();
 
-            // --- Optimization: Build Lookup First ---
-            _modLookup = _allAvailableMods
-                .Where(m => !string.IsNullOrEmpty(m.PackageId))
-                .GroupBy(m => m.PackageId, StringComparer.OrdinalIgnoreCase) // Handle potential duplicates gracefully (take first)
-                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
-            // ---------------------------------------
+            // Build lookup dictionary for O(1) access
+            _modLookup.Clear();
+            foreach (var mod in _allAvailableMods.Where(m => !string.IsNullOrEmpty(m.PackageId)))
+            {
+                if (!_modLookup.ContainsKey(mod.PackageId.ToLowerInvariant()))
+                {
+                    _modLookup[mod.PackageId.ToLowerInvariant()] = mod;
+                }
+            }
 
-            // Build virtual active mods list with load order based on config
-            var activeModsFromConfig = new List<(ModItem Mod, int LoadOrder)>();
-            _activeModSet.Clear(); // Clear previous state
+            // Build active mods from config
+            _virtualActiveMods.Clear();
+            _activeModSet.Clear();
 
             for (int index = 0; index < activeIdList.Count; index++)
             {
                 string packageId = activeIdList[index];
-                // --- Optimization: Use Lookup ---
                 if (_modLookup.TryGetValue(packageId, out var mod))
-                // ---------------------------------
                 {
-                    activeModsFromConfig.Add((Mod: mod, LoadOrder: index));
-                    _activeModSet.Add(mod); // Add to the fast lookup set
+                    _virtualActiveMods.Add((Mod: mod, LoadOrder: index));
+                    _activeModSet.Add(mod);
+                    mod.IsActive = true;
                 }
                 else
                 {
-                     Debug.WriteLine($"Warning: Active mod ID '{packageId}' from config not found in available mods.");
+                    Debug.WriteLine($"Warning: Active mod ID '{packageId}' from config not found in available mods.");
                 }
-            }
-            _virtualActiveMods = activeModsFromConfig;
-
-
-            // Set IsActive flag on active mods (redundant if ModItem state is reliable, but safe)
-            foreach (var (mod, _) in _virtualActiveMods)
-            {
-                mod.IsActive = true;
             }
 
             // Determine inactive mods
-            // --- Optimization: Use HashSet for faster check ---
-            _allInactiveMods = _allAvailableMods
-                .Where(mod => !_activeModSet.Contains(mod))
-                .OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase) // Initial sort
-                .ToList();
-            // ------------------------------------------------
-
-            // Ensure inactive mods have IsActive = false
-            foreach (var inactiveMod in _allInactiveMods)
+            _allInactiveMods.Clear();
+            foreach (var mod in _allAvailableMods)
             {
-                inactiveMod.IsActive = false;
+                if (!_activeModSet.Contains(mod))
+                {
+                    _allInactiveMods.Add(mod);
+                    mod.IsActive = false;
+                }
             }
+            
+            // Initial sort of inactive mods
+            _allInactiveMods.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
 
-            RaiseListChanged(); // Notify listeners of the initial state
+            RaiseListChanged();
             Debug.WriteLine($"ModListManager Initialized: {_virtualActiveMods.Count} active, {_allInactiveMods.Count} inactive.");
         }
 
-        public void ActivateMod(ModItem mod)
-        {
-            ActivateModAt(mod, _virtualActiveMods.Count); // Add to end
-        }
+        public void ActivateMod(ModItem mod) => ActivateModAt(mod, _virtualActiveMods.Count);
 
         public void ActivateModAt(ModItem mod, int index)
         {
             if (mod == null) return;
+            if (_activeModSet.Contains(mod)) return;
 
-            // --- Optimization: Use HashSet ---
-            if (_activeModSet.Contains(mod))
-            // ---------------------------------
-            {
-                Debug.WriteLine($"ActivateModAt: Mod '{mod.Name}' is already active.");
-                return;
-            }
-
-            // Remove from inactive list (O(n), unavoidable with List unless index known)
-            bool removedFromInactive = _allInactiveMods.Remove(mod);
-            if (!removedFromInactive)
-            {
-                // This might happen if the mod wasn't in the initial _allAvailableMods or state is inconsistent
-                Debug.WriteLine($"Warning: Mod '{mod.Name}' activated but wasn't found in the internal inactive list.");
-            }
-
+            _allInactiveMods.Remove(mod);
+            
             index = Math.Clamp(index, 0, _virtualActiveMods.Count);
-
-            _virtualActiveMods.Insert(index, (mod, -1)); // Insert with temp load order (O(n))
-            _activeModSet.Add(mod); // Add to set (O(1))
+            _virtualActiveMods.Insert(index, (mod, -1));
+            _activeModSet.Add(mod);
             mod.IsActive = true;
 
-            ReIndexVirtualActiveMods(); // Assign proper sequential load orders (O(n))
+            ReIndexVirtualActiveMods();
             RaiseListChanged();
             Debug.WriteLine($"Activated mod '{mod.Name}' at index {index}.");
         }
@@ -123,363 +103,346 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
         public void DeactivateMod(ModItem mod)
         {
             if (mod == null) return;
-
             if (mod.IsCore)
             {
                 Debug.WriteLine($"Attempt blocked: Cannot deactivate the Core mod '{mod.Name}'.");
                 return;
             }
 
-            // FindIndex is O(n), RemoveAt is O(n)
-            var itemIndex = _virtualActiveMods.FindIndex(x => x.Mod == mod);
-            if (itemIndex != -1)
-            {
-                _virtualActiveMods.RemoveAt(itemIndex);
-                bool removedFromSet = _activeModSet.Remove(mod); // O(1)
-                if (!removedFromSet) Debug.WriteLine($"Warning: Deactivated mod '{mod.Name}' was not found in the active set tracker.");
-                mod.IsActive = false;
+            int itemIndex = _virtualActiveMods.FindIndex(x => x.Mod == mod);
+            if (itemIndex == -1) return;
 
-                // Add to inactive list (O(1) amortized), but don't sort here.
-                // Sorting the whole inactive list on every deactivation is inefficient.
-                // We sort it initially and when clearing the list. If UI needs sorted inactive, FilterService handles it.
-                 if (!_allInactiveMods.Contains(mod)) // O(n) check, maybe accept duplicates and filter later if needed? Or use a HashSet for inactive check too? Let's keep it simple for now.
-                 {
-                      _allInactiveMods.Add(mod);
-                      // --- Optimization: Removed Sort ---
-                      // _allInactiveMods.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.Name, b.Name));
-                 }
+            _virtualActiveMods.RemoveAt(itemIndex);
+            _activeModSet.Remove(mod);
+            mod.IsActive = false;
 
-                ReIndexVirtualActiveMods(); // Re-index remaining active mods (O(n))
-                RaiseListChanged();
-                Debug.WriteLine($"Deactivated mod '{mod.Name}'.");
-            }
-            else
+            if (!_allInactiveMods.Contains(mod))
             {
-                // --- Optimization: Use HashSet for faster check if it *should* be active ---
-                if (_activeModSet.Contains(mod))
-                {
-                     Debug.WriteLine($"Critical Warning: Mod '{mod.Name}' found in active set but not in virtual list! State inconsistency.");
-                     // Attempt recovery? Or just log. For now, log.
-                     _activeModSet.Remove(mod); // Try to correct the set
-                }
-                // -----------------------------------------------------------------------------
-                Debug.WriteLine($"DeactivateMod: Mod '{mod.Name}' not found in virtual active list.");
+                _allInactiveMods.Add(mod);
+                // Note: Not sorting here for performance reasons
             }
+
+            ReIndexVirtualActiveMods();
+            RaiseListChanged();
+            Debug.WriteLine($"Deactivated mod '{mod.Name}'.");
         }
 
         public void ReorderMod(ModItem mod, int newIndex)
         {
             if (mod == null) return;
 
-            // FindIndex is O(n)
-            var currentItemIndex = _virtualActiveMods.FindIndex(x => x.Mod == mod);
-            if (currentItemIndex == -1)
+            int currentIndex = _virtualActiveMods.FindIndex(x => x.Mod == mod);
+            if (currentIndex == -1) return;
+
+            newIndex = Math.Clamp(newIndex, 0, _virtualActiveMods.Count - 1);
+            
+            // Skip if moving to same position or adjacent position when moving down
+            if (newIndex == currentIndex || (newIndex == currentIndex + 1 && newIndex > currentIndex))
             {
-                Debug.WriteLine($"Reorder error: Mod '{mod.Name}' not found in virtual active list.");
                 return;
             }
 
-            // Clamp target index
-            // Note: The original calculation for targetInsertIndex had potential issues when moving
-            // items downwards. Clamping before adjusting for removal is safer.
-            int targetClampedIndex = Math.Clamp(newIndex, 0, _virtualActiveMods.Count);
+            var itemToMove = _virtualActiveMods[currentIndex];
+            _virtualActiveMods.RemoveAt(currentIndex);
+            
+            // Adjust index after removal
+            int insertIndex = newIndex > currentIndex ? newIndex - 1 : newIndex;
+            _virtualActiveMods.Insert(insertIndex, itemToMove);
 
-            // Check if the *effective* position is the same.
-            // E.g. Moving item at index 2 to index 3 is a no-op after removal adjustment.
-            int effectiveTargetIndex = (targetClampedIndex > currentItemIndex) ? targetClampedIndex - 1 : targetClampedIndex;
-            effectiveTargetIndex = Math.Clamp(effectiveTargetIndex, 0, _virtualActiveMods.Count -1); //Clamp against new size
-
-            if (effectiveTargetIndex == currentItemIndex) {
-                 Debug.WriteLine($"Reorder request for '{mod.Name}' to index {newIndex} results in no change (current: {currentItemIndex}).");
-                 // Even if no move, re-index might be needed if target index was out of bounds initially?
-                 // No, if effective position is same, list content/order identical. Return early.
-                 return;
-            }
-
-
-            Debug.WriteLine($"Reordering '{mod.Name}' from {currentItemIndex} to effective index {effectiveTargetIndex}");
-
-            var itemToMove = _virtualActiveMods[currentItemIndex];
-            _virtualActiveMods.RemoveAt(currentItemIndex); // O(n)
-            _virtualActiveMods.Insert(effectiveTargetIndex, itemToMove); // O(n)
-
-            ReIndexVirtualActiveMods(); // Re-assign all load orders (O(n))
+            ReIndexVirtualActiveMods();
             RaiseListChanged();
+            Debug.WriteLine($"Reordered '{mod.Name}' from {currentIndex} to {insertIndex}");
         }
-
 
         public void ClearActiveList()
         {
-            // Identify mods to remove (not Core or Expansion)
             var modsToRemove = new List<ModItem>();
             var modsToKeep = new List<(ModItem Mod, int LoadOrder)>();
 
-            // Iterate once to partition
-            foreach (var entry in _virtualActiveMods)
+            foreach (var (mod, loadOrder) in _virtualActiveMods)
             {
-                if (!entry.Mod.IsCore && !entry.Mod.IsExpansion)
+                if (!mod.IsCore && !mod.IsExpansion)
                 {
-                    modsToRemove.Add(entry.Mod);
+                    modsToRemove.Add(mod);
                 }
                 else
                 {
-                    modsToKeep.Add(entry); // Keep original tuple to preserve relative order info briefly
+                    modsToKeep.Add((mod, loadOrder));
                 }
             }
 
-            if (!modsToRemove.Any()) return; // Nothing to clear
+            if (modsToRemove.Count == 0) return;
 
-            // Sort modsToKeep by their original LoadOrder to maintain relative order
-             modsToKeep.Sort((a, b) => a.LoadOrder.CompareTo(b.LoadOrder));
-
-            // Update the virtual active list (rebuild)
-            _virtualActiveMods = modsToKeep;
-
-            // Update active set and inactive list
-            _activeModSet.Clear(); // Faster to clear and rebuild
+            // Sort by original load order
+            modsToKeep.Sort((a, b) => a.LoadOrder.CompareTo(b.LoadOrder));
+            
+            // Update active list
+            _virtualActiveMods.Clear();
+            _virtualActiveMods.AddRange(modsToKeep);
+            
+            // Update tracking collections
+            _activeModSet.Clear();
             foreach (var (mod, _) in _virtualActiveMods)
             {
-                 _activeModSet.Add(mod); // Rebuild the set O(k) where k is kept mods
+                _activeModSet.Add(mod);
             }
 
+            // Update inactive list
             foreach (var mod in modsToRemove)
             {
                 mod.IsActive = false;
-                // Avoid adding duplicates if ClearActiveList is called multiple times or state is odd
-                if (!_allInactiveMods.Contains(mod)) // O(n) check
+                if (!_allInactiveMods.Contains(mod))
                 {
-                     _allInactiveMods.Add(mod); // O(1) amortized
+                    _allInactiveMods.Add(mod);
                 }
             }
 
-            // Re-sort the *entire* inactive list now that many items were added
-            _allInactiveMods.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.Name, b.Name)); // O(m log m)
+            // Sort the inactive list now that many items are added
+            _allInactiveMods.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
 
-            ReIndexVirtualActiveMods(); // Re-index the remaining active mods (O(k))
+            ReIndexVirtualActiveMods();
             RaiseListChanged();
             Debug.WriteLine($"Cleared active list, removed {modsToRemove.Count} mods.");
         }
-
 
         public bool SortActiveList()
         {
             if (_virtualActiveMods.Count <= 1) return false;
 
             var originalOrderIds = _virtualActiveMods
-                                    .Select(x => x.Mod.PackageId?.ToLowerInvariant() ?? Guid.NewGuid().ToString())
-                                    .ToList();
-
-            // Topological sort logic remains the same internally
-            var sortedMods = TopologicalSortActiveModsWithPriority();
-
-            if (sortedMods == null)
-            {
-                Debug.WriteLine("Sorting failed due to conflicting mod rules (cycle detected).");
-                return false; // Indicate failure
-            }
-
-            // Rebuild the virtual active list with new order and indices
-            _virtualActiveMods = sortedMods
-                .Select((mod, index) => (Mod: mod, LoadOrder: index))
+                .Select(x => x.Mod.PackageId?.ToLowerInvariant() ?? Guid.NewGuid().ToString())
                 .ToList();
 
-            // ActiveSet doesn't need update as the *content* is the same, just order changed.
+            // Perform topological sort
+            var sortedMods = TopologicalSortActiveModsWithPriority();
+            if (sortedMods == null) return false;
+
+            // Rebuild the virtual active list with new order
+            _virtualActiveMods.Clear();
+            for (int i = 0; i < sortedMods.Count; i++)
+            {
+                _virtualActiveMods.Add((sortedMods[i], i));
+            }
 
             var newOrderIds = _virtualActiveMods
-                               .Select(x => x.Mod.PackageId?.ToLowerInvariant() ?? Guid.NewGuid().ToString())
-                               .ToList();
+                .Select(x => x.Mod.PackageId?.ToLowerInvariant() ?? Guid.NewGuid().ToString())
+                .ToList();
 
             bool orderChanged = !originalOrderIds.SequenceEqual(newOrderIds);
-
-            // Always raise ListChanged after sort to update UI with new LoadOrder numbers, even if sequence is same
             RaiseListChanged();
-
-            if (orderChanged)
-            {
-                Debug.WriteLine("Active mod list sorted successfully. Order changed.");
-                return true;
-            }
-            else
-            {
-                Debug.WriteLine("Sorting completed. Mod order sequence unchanged (but load order numbers refreshed).");
-                // Return true because the list *was* processed and re-indexed, even if sequence didn't change.
-                // Or return false if only sequence change matters? Let's return true as an action occurred.
-                return true;
-            }
+            
+            Debug.WriteLine(orderChanged 
+                ? "Active mod list sorted successfully. Order changed."
+                : "Sorting completed. Mod order sequence unchanged.");
+                
+            return true;
         }
 
+        public bool IsModActive(ModItem mod) => mod != null && _activeModSet.Contains(mod);
 
-        // --- Private Helpers ---
+        public IEnumerable<ModItem> GetAllMods() => _allAvailableMods;
 
+        // Private helper methods
         private void ReIndexVirtualActiveMods()
         {
-            // O(n) operation where n is the number of active mods
             for (int i = 0; i < _virtualActiveMods.Count; i++)
             {
-                _virtualActiveMods[i] = (_virtualActiveMods[i].Mod, i); // Assign sequential load order
+                _virtualActiveMods[i] = (_virtualActiveMods[i].Mod, i);
             }
         }
 
-        private void RaiseListChanged()
-        {
-            // Consider dispatching if called from non-UI thread, although currently seems UI-driven
-            ListChanged?.Invoke(this, EventArgs.Empty);
-        }
+        private void RaiseListChanged() => ListChanged?.Invoke(this, EventArgs.Empty);
 
-        // --- Topological Sort Logic (Internal - largely unchanged) ---
         private List<ModItem> TopologicalSortActiveModsWithPriority()
         {
-             // Uses _virtualActiveMods as source. Builds its own lookup scoped to active mods.
-
-            if (!_virtualActiveMods.Any()) return new List<ModItem>();
+            if (_virtualActiveMods.Count == 0) return new List<ModItem>();
 
             var sortedResult = new List<ModItem>(_virtualActiveMods.Count);
             var activeModsOnly = _virtualActiveMods.Select(vm => vm.Mod).ToList();
 
-            // Build PackageId lookup (lowercase keys for dependency resolution within active mods)
-            // Use manager's lookup for potentially faster checks if needed, but this local one is fine.
+            // Build PackageId lookup for dependency resolution
             var localModLookup = activeModsOnly
                 .Where(m => !string.IsNullOrEmpty(m.PackageId))
                 .ToDictionary(m => m.PackageId.ToLowerInvariant(), m => m, StringComparer.OrdinalIgnoreCase);
 
-            var adj = new Dictionary<ModItem, HashSet<ModItem>>();
+            // Build dependency graph
+            var graph = new Dictionary<ModItem, HashSet<ModItem>>();
             var inDegree = new Dictionary<ModItem, int>();
+
+            // Track "LoadBefore" relationships for priority determination
+            var hasExplicitLoadBefore = new HashSet<ModItem>();
+            var hasExplicitForceLoadBefore = new HashSet<ModItem>();
 
             foreach (var mod in activeModsOnly)
             {
-                adj[mod] = new HashSet<ModItem>();
+                graph[mod] = new HashSet<ModItem>();
                 inDegree[mod] = 0;
             }
 
-            // Populate graph based on rules
+            // Process dependencies
             foreach (var mod in activeModsOnly)
             {
-                // string modPackageIdLower = mod.PackageId?.ToLowerInvariant(); // Already handled by localModLookup keys
-                // if (string.IsNullOrEmpty(modPackageIdLower)) continue; // Handled by lookup check
+                if (string.IsNullOrEmpty(mod.PackageId)) continue;
 
-                Action<IEnumerable<string>> processLoadAfter = ids =>
+                // Track mods with explicit LoadBefore/ForceLoadBefore
+                if (mod.LoadBefore?.Count > 0 || mod.ForceLoadBefore?.Count > 0)
                 {
-                    foreach (var prereqId in ids.Where(id => !string.IsNullOrEmpty(id)).Select(id => id.ToLowerInvariant()).Distinct())
+                    hasExplicitLoadBefore.Add(mod);
+                    if (mod.ForceLoadBefore?.Count > 0)
                     {
-                        // Use local lookup for dependencies within the active set
-                        if (localModLookup.TryGetValue(prereqId, out var prereqMod) && prereqMod != mod)
-                        {
-                            if (adj.TryGetValue(prereqMod, out var successors) && successors.Add(mod))
-                            {
-                                inDegree[mod]++;
-                            }
-                        }
+                        hasExplicitForceLoadBefore.Add(mod);
                     }
-                };
+                }
 
-                Action<IEnumerable<string>> processLoadBefore = ids =>
-                {
-                    foreach (var successorId in ids.Where(id => !string.IsNullOrEmpty(id)).Select(id => id.ToLowerInvariant()).Distinct())
-                    {
-                         if (localModLookup.TryGetValue(successorId, out var successorMod) && successorMod != mod)
-                        {
-                            if (adj.TryGetValue(mod, out var successors) && successors.Add(successorMod))
-                            {
-                                inDegree[successorMod]++;
-                            }
-                        }
-                    }
-                };
+                // Process "load after" relationships
+                ProcessDependencies(mod, 
+                    CombineDependencies(mod.LoadAfter, mod.ForceLoadAfter, 
+                        mod.ModDependencies?.Select(d => d.PackageId)), 
+                    localModLookup, graph, inDegree, isLoadAfter: true);
 
-                // Process rules using helpers
-                processLoadAfter(mod.LoadAfter ?? Enumerable.Empty<string>());
-                processLoadAfter(mod.ForceLoadAfter ?? Enumerable.Empty<string>());
-                processLoadAfter((mod.ModDependencies ?? Enumerable.Empty<ModDependency>()).Select(d => d.PackageId));
-
-                processLoadBefore(mod.LoadBefore ?? Enumerable.Empty<string>());
-                processLoadBefore(mod.ForceLoadBefore ?? Enumerable.Empty<string>());
+                // Process "load before" relationships
+                ProcessDependencies(mod, 
+                    CombineDependencies(mod.LoadBefore, mod.ForceLoadBefore), 
+                    localModLookup, graph, inDegree, isLoadAfter: false);
             }
 
-            // --- Kahn's Algorithm with Priority Tie-breaking ---
-            var readyNodes = new List<ModItem>(activeModsOnly.Where(m => inDegree[m] == 0));
+            // Priority-based topological sort
+            return KahnTopologicalSort(activeModsOnly, graph, inDegree, hasExplicitLoadBefore, hasExplicitForceLoadBefore);
+        }
 
-            // Comparer prioritizes Core, then Expansions, then alphabetically by Name
-             Comparison<ModItem> priorityComparer = (modA, modB) =>
-             {
-                 int coreCompare = modB.IsCore.CompareTo(modA.IsCore); // True (1) comes before False (0)
-                 if (coreCompare != 0) return coreCompare;
+        private IEnumerable<string> CombineDependencies(params IEnumerable<string>[] dependencies)
+        {
+            return dependencies
+                .Where(dep => dep != null)
+                .SelectMany(dep => dep)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .Select(id => id.ToLowerInvariant())
+                .Distinct();
+        }
 
-                 int expansionCompare = modB.IsExpansion.CompareTo(modA.IsExpansion); // True before False
-                 if (expansionCompare != 0) return expansionCompare;
-
-                 // Fallback to name comparison
-                 return StringComparer.OrdinalIgnoreCase.Compare(modA.Name, modB.Name);
-             };
-
-
-            while (readyNodes.Count > 0)
+        private void ProcessDependencies(
+            ModItem mod, 
+            IEnumerable<string> dependencies, 
+            Dictionary<string, ModItem> lookup, 
+            Dictionary<ModItem, HashSet<ModItem>> graph, 
+            Dictionary<ModItem, int> inDegree, 
+            bool isLoadAfter)
+        {
+            foreach (var depId in dependencies)
             {
-                readyNodes.Sort(priorityComparer); // Sort ready nodes based on priority
-                var current = readyNodes[0];
-                readyNodes.RemoveAt(0);
-                sortedResult.Add(current);
+                if (!lookup.TryGetValue(depId, out var otherMod) || otherMod == mod) continue;
+                
+                if (isLoadAfter)
+                {
+                    // otherMod -> mod (mod loads after otherMod)
+                    if (graph[otherMod].Add(mod))
+                    {
+                        inDegree[mod]++;
+                    }
+                }
+                else
+                {
+                    // mod -> otherMod (mod loads before otherMod)
+                    if (graph[mod].Add(otherMod))
+                    {
+                        inDegree[otherMod]++;
+                    }
+                }
+            }
+        }
 
-                // Use OrderBy for deterministic neighbor processing (helps consistency)
-                var neighbors = adj.TryGetValue(current, out var successorSet)
-                               ? successorSet.OrderBy(n => n.Name, StringComparer.OrdinalIgnoreCase).ToList()
-                               : new List<ModItem>();
+        private List<ModItem> KahnTopologicalSort(
+            List<ModItem> mods, 
+            Dictionary<ModItem, HashSet<ModItem>> graph, 
+            Dictionary<ModItem, int> inDegree,
+            HashSet<ModItem> hasExplicitLoadBefore,
+            HashSet<ModItem> hasExplicitForceLoadBefore)
+        {
+            var result = new List<ModItem>(mods.Count);
+            
+            // Use a custom priority queue implementation
+            var pq = new List<ModItem>();
 
+            // Add nodes with no dependencies to the initial list
+            pq.AddRange(mods.Where(m => inDegree[m] == 0));
+            
+            // Initial sort of zero-dependency mods according to priority rules
+            pq.Sort((a, b) => CompareMods(a, b, hasExplicitForceLoadBefore, hasExplicitLoadBefore));
+
+            while (pq.Count > 0)
+            {
+                // Take the highest priority mod
+                var current = pq[0];
+                pq.RemoveAt(0);
+                result.Add(current);
+
+                // Process neighbors and update inDegree
+                var neighbors = graph[current].ToList();
+                neighbors.Sort((a, b) => CompareMods(a, b, hasExplicitForceLoadBefore, hasExplicitLoadBefore));
+                
                 foreach (var neighbor in neighbors)
                 {
-                    if (inDegree.ContainsKey(neighbor))
+                    inDegree[neighbor]--;
+                    if (inDegree[neighbor] == 0)
                     {
-                        inDegree[neighbor]--;
-                        if (inDegree[neighbor] == 0)
+                        // Find the right position to insert based on priority
+                        int insertPos = 0;
+                        while (insertPos < pq.Count && 
+                               CompareMods(pq[insertPos], neighbor, hasExplicitForceLoadBefore, hasExplicitLoadBefore) < 0)
                         {
-                            readyNodes.Add(neighbor);
+                            insertPos++;
                         }
-                        else if (inDegree[neighbor] < 0)
-                        {
-                             // This indicates a flaw in the algorithm or graph state.
-                            Debug.WriteLine($"Critical Error: In-degree for {neighbor.Name} became negative during sort.");
-                            // Cycle detection should catch the overall failure.
-                        }
-                    }
-                    else {
-                         Debug.WriteLine($"Warning: Neighbor {neighbor.Name} of {current.Name} not found in inDegree map during sort.");
+                        pq.Insert(insertPos, neighbor);
                     }
                 }
             }
 
             // Check for cycles
-            if (sortedResult.Count != activeModsOnly.Count)
+            if (result.Count != mods.Count)
             {
-                var cycleMods = activeModsOnly.Except(sortedResult).Select(m => m.Name);
-                var remainingInDegrees = inDegree.Where(kvp => kvp.Value > 0).Select(kvp => $"{kvp.Key.Name}({kvp.Value})");
-                Debug.WriteLine($"Cycle detected during sort. Mods likely involved: {string.Join(", ", cycleMods)}. Remaining dependencies: {string.Join(", ", remainingInDegrees)}");
-                return null; // Indicate failure
+                var cycleMods = mods.Except(result).Select(m => m.Name);
+                Debug.WriteLine($"Cycle detected: {string.Join(", ", cycleMods)}");
+                return null;
             }
 
-            Debug.WriteLine($"Priority topological sort successful."); // Final Order logged by caller if needed
-            return sortedResult;
+            return result;
         }
 
-        // --- Optimization: O(1) average check ---
-        public bool IsModActive(ModItem mod)
+        // Custom comparison method implementing the priority rules:
+        // force/load before > core > expansion > mod dependency > force/load after > mod name
+        private int CompareMods(
+            ModItem a, 
+            ModItem b, 
+            HashSet<ModItem> forceLoadBeforeMods, 
+            HashSet<ModItem> loadBeforeMods)
         {
-            // Check the hash set for fast lookup
-            return mod != null && _activeModSet.Contains(mod);
+            // Force/Load Before has highest priority
+            bool aHasForceLoadBefore = forceLoadBeforeMods.Contains(a);
+            bool bHasForceLoadBefore = forceLoadBeforeMods.Contains(b);
+            
+            if (aHasForceLoadBefore != bHasForceLoadBefore)
+                return aHasForceLoadBefore ? -1 : 1;
+                
+            bool aHasLoadBefore = loadBeforeMods.Contains(a);
+            bool bHasLoadBefore = loadBeforeMods.Contains(b);
+            
+            if (aHasLoadBefore != bHasLoadBefore)
+                return aHasLoadBefore ? -1 : 1;
+                
+            // Core has second highest priority
+            if (a.IsCore != b.IsCore)
+                return a.IsCore ? -1 : 1;
+                
+            // Expansion has third highest priority
+            if (a.IsExpansion != b.IsExpansion)
+                return a.IsExpansion ? -1 : 1;
+                
+            // If both are expansions, sort by name (alphabetically)
+            if (a.IsExpansion && b.IsExpansion)
+                return string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
+                
+            // Otherwise fall back to name
+            return string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
         }
-        // ----------------------------------------
-
-        public IEnumerable<ModItem> GetAllMods()
-        {
-            // Returns the original list provided during initialization
-            return _allAvailableMods;
-        }
-
-        // Added helper to get mod by package ID using the lookup
-        public ModItem GetModByPackageId(string packageId)
-        {
-            if (string.IsNullOrEmpty(packageId)) return null;
-            _modLookup.TryGetValue(packageId, out var mod);
-            return mod;
-        }
-
     }
 }

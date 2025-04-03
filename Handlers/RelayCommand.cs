@@ -3,11 +3,13 @@ using System.Windows.Input;
 
 namespace RimSharp.Handlers
 {
-    // Non-generic RelayCommand
+    /// <summary>
+    /// A command whose sole purpose is to relay its functionality to other
+    /// objects by invoking delegates.
+    /// </summary>
     public class RelayCommand : ICommand
     {
         private readonly Action<object> _execute;
-        private readonly Action _executeNoParam;
         private readonly Func<object, bool> _canExecute;
         
         public event EventHandler CanExecuteChanged
@@ -16,44 +18,33 @@ namespace RimSharp.Handlers
             remove => CommandManager.RequerySuggested -= value;
         }
         
-        // Constructor for commands with parameters
         public RelayCommand(Action<object> execute, Func<object, bool> canExecute = null)
         {
             _execute = execute ?? throw new ArgumentNullException(nameof(execute));
             _canExecute = canExecute;
         }
         
-        // Constructor for parameterless commands
         public RelayCommand(Action execute, Func<bool> canExecute = null)
+            : this(
+                _ => execute(), 
+                canExecute == null ? null : _ => canExecute())
         {
-            _executeNoParam = execute ?? throw new ArgumentNullException(nameof(execute));
-            _canExecute = canExecute != null ? _ => canExecute() : (Func<object, bool>)null;
         }
         
-        public bool CanExecute(object parameter)
-        {
-            if (_canExecute == null) return true;
-            return _canExecute(parameter);
-        }
+        public bool CanExecute(object parameter) => _canExecute?.Invoke(parameter) ?? true;
         
-        public void Execute(object parameter)
-        {
-            if (_executeNoParam != null)
-            {
-                _executeNoParam();
-            }
-            else
-            {
-                _execute(parameter);
-            }
-        }
+        public void Execute(object parameter) => _execute(parameter);
+        
+        public void RaiseCanExecuteChanged() => CommandManager.InvalidateRequerySuggested();
     }
 
-    // Generic RelayCommand<T>
+    /// <summary>
+    /// A generic command implementation that provides type safety for its parameters.
+    /// </summary>
     public class RelayCommand<T> : ICommand
     {
         private readonly Action<T> _execute;
-        private readonly Func<T, bool> _canExecute;
+        private readonly Predicate<T> _canExecute;
 
         public event EventHandler CanExecuteChanged
         {
@@ -61,7 +52,7 @@ namespace RimSharp.Handlers
             remove => CommandManager.RequerySuggested -= value;
         }
 
-        public RelayCommand(Action<T> execute, Func<T, bool> canExecute = null)
+        public RelayCommand(Action<T> execute, Predicate<T> canExecute = null)
         {
             _execute = execute ?? throw new ArgumentNullException(nameof(execute));
             _canExecute = canExecute;
@@ -70,12 +61,17 @@ namespace RimSharp.Handlers
         public bool CanExecute(object parameter)
         {
             if (_canExecute == null) return true;
-            return _canExecute((T)parameter);
+            return parameter is T typedParameter && _canExecute(typedParameter);
         }
 
         public void Execute(object parameter)
         {
-            _execute((T)parameter);
+            if (parameter is T typedParameter)
+            {
+                _execute(typedParameter);
+            }
         }
+        
+        public void RaiseCanExecuteChanged() => CommandManager.InvalidateRequerySuggested();
     }
 }
