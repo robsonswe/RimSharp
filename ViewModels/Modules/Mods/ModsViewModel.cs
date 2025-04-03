@@ -182,44 +182,44 @@ namespace RimSharp.ViewModels.Modules.Mods
         }
 
         // Helper to read config (remains in VM as it uses PathService)
-private List<string> GetActiveModsFromConfig()
-{
-    try
-    {
-        var configPathDir = _pathService.GetConfigPath();
-        if (string.IsNullOrEmpty(configPathDir))
+        private List<string> GetActiveModsFromConfig()
         {
-            Debug.WriteLine("Config path is empty or null. Cannot read ModsConfig.xml.");
-            return new List<string>();
-        }
+            try
+            {
+                var configPathDir = _pathService.GetConfigPath();
+                if (string.IsNullOrEmpty(configPathDir))
+                {
+                    Debug.WriteLine("Config path is empty or null. Cannot read ModsConfig.xml.");
+                    return new List<string>();
+                }
 
-        var configPath = Path.Combine(configPathDir, "ModsConfig.xml");
-        if (!File.Exists(configPath))
-        {
-            Debug.WriteLine($"ModsConfig.xml does not exist at path: {configPath}");
-            return new List<string>();
-        }
+                var configPath = Path.Combine(configPathDir, "ModsConfig.xml");
+                if (!File.Exists(configPath))
+                {
+                    Debug.WriteLine($"ModsConfig.xml does not exist at path: {configPath}");
+                    return new List<string>();
+                }
 
-        var doc = XDocument.Load(configPath);
-        return doc.Root?.Element("activeMods")?.Elements("li")
-            .Select(x => x.Value.ToLowerInvariant()) // Already normalized
-            .ToList() ?? new List<string>();
-    }
-    catch (ArgumentNullException ex)
-    {
-        Debug.WriteLine($"Null argument error reading ModsConfig.xml: {ex.Message}");
-        MessageBox.Show($"Warning: Could not read active mods from ModsConfig.xml.\nReason: Path is not set properly.\nStarting with an empty active list.",
-                       "Config Read Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
-        return new List<string>();
-    }
-    catch (Exception ex)
-    {
-        Debug.WriteLine($"Error reading ModsConfig.xml: {ex.Message}");
-        MessageBox.Show($"Warning: Could not read active mods from ModsConfig.xml.\nReason: {ex.Message}\nStarting with an empty active list.",
-                       "Config Read Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
-        return new List<string>();
-    }
-}
+                var doc = XDocument.Load(configPath);
+                return doc.Root?.Element("activeMods")?.Elements("li")
+                    .Select(x => x.Value.ToLowerInvariant()) // Already normalized
+                    .ToList() ?? new List<string>();
+            }
+            catch (ArgumentNullException ex)
+            {
+                Debug.WriteLine($"Null argument error reading ModsConfig.xml: {ex.Message}");
+                MessageBox.Show($"Warning: Could not read active mods from ModsConfig.xml.\nReason: Path is not set properly.\nStarting with an empty active list.",
+                               "Config Read Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return new List<string>();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error reading ModsConfig.xml: {ex.Message}");
+                MessageBox.Show($"Warning: Could not read active mods from ModsConfig.xml.\nReason: {ex.Message}\nStarting with an empty active list.",
+                               "Config Read Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return new List<string>();
+            }
+        }
 
         // --- Event Handler for Manager Changes ---
         private void OnModListChanged(object sender, EventArgs e)
@@ -478,23 +478,46 @@ private List<string> GetActiveModsFromConfig()
             }
         }
 
-        // --- Other Commands (Remain largely the same or are simple) ---
-
         private void OpenUrl(object parameter)
+{
+    if (parameter is string target && !string.IsNullOrWhiteSpace(target))
+    {
+        try
         {
-            if (parameter is string url && !string.IsNullOrWhiteSpace(url))
-            { /* ... Process.Start logic ... */
-                try
+            // Check if this is a filesystem path
+            if (Path.IsPathRooted(target) || target.StartsWith(".\\") || target.StartsWith("..\\"))
+            {
+                // Handle as filesystem path
+                var fullPath = Path.GetFullPath(target);
+                
+                if (!File.Exists(fullPath) && !Directory.Exists(Path.GetDirectoryName(fullPath)))
                 {
-                    var uri = url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
-                        ? new Uri(url)
-                        : new Uri("http://" + url);
-                    Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+                    MessageBox.Show($"The path does not exist:\n{fullPath}", "Path Not Found", 
+                                  MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
                 }
-                catch (Exception ex) { MessageBox.Show($"Could not open URL: {ex.Message}"); }
+
+                // Open in Explorer with file selected
+                Process.Start("explorer.exe", $"/select,\"{fullPath}\"");
+            }
+            else
+            {
+                // Handle as URL
+                var uri = target.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
+                         target.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+                    ? target
+                    : "http://" + target;
+
+                Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true });
             }
         }
-
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not open path/URL: {ex.Message}", "Error", 
+                          MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+}
         private void ExecuteFilterInactive(object parameter) => MessageBox.Show("Filter Inactive Mods - Not Yet Implemented");
         private void ExecuteFilterActive(object parameter) => MessageBox.Show("Filter Active Mods - Not Yet Implemented");
         private void StripMods(object parameter) => MessageBox.Show("Strip mods: Functionality not yet implemented.");

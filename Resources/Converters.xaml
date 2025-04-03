@@ -11,5 +11,6 @@
     <converters:BooleanToColorConverter x:Key="BooleanToColorConverter"/>
     <converters:ListToStringConverter x:Key="ListToStringConverter"/>
     <converters:IsNotNullOrEmptyConverter x:Key="IsNotNullOrEmptyConverter"/>
+    <converters:PathToExplorerFormatConverter x:Key="PathToExplorerFormatConverter"/>
 
 </ResourceDictionary>
