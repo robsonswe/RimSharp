@@ -20,5 +20,9 @@ public interface IModListManager
     // Add these new methods
     bool IsModActive(ModItem mod);
     IEnumerable<ModItem> GetAllMods();
-}
+
+    (List<ModItem> addedMods, List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)> missingDependencies) 
+    ResolveDependencies();
+
+    }
 }

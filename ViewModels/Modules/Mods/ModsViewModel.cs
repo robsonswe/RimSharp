@@ -92,6 +92,9 @@ namespace RimSharp.ViewModels.Modules.Mods
         public ICommand DeactivateModCommand { get; private set; }
         public ICommand DropModCommand { get; private set; }
 
+        public ICommand ResolveDependenciesCommand { get; private set; }
+
+
         public ModsViewModel(
             IModDataService dataService,
             IModFilterService filterService,
@@ -132,6 +135,7 @@ namespace RimSharp.ViewModels.Modules.Mods
             RunGameCommand = new RelayCommand(RunGame, _ => !_isLoading);
             FilterInactiveCommand = new RelayCommand(ExecuteFilterInactive, _ => !_isLoading);
             FilterActiveCommand = new RelayCommand(ExecuteFilterActive, _ => !_isLoading);
+            ResolveDependenciesCommand = new RelayCommand(async _ => await ExecuteResolveDependencies(), _ => !_isLoading);
         }
 
 
@@ -182,6 +186,79 @@ namespace RimSharp.ViewModels.Modules.Mods
                 CommandManager.InvalidateRequerySuggested();
             }
         }
+
+
+        private async Task ExecuteResolveDependencies()
+{
+    IsLoading = true;
+    try
+    {
+        var (addedMods, missingDependencies) = await Task.Run(() => _modListManager.ResolveDependencies());
+        
+        if (addedMods.Count > 0)
+        {
+            HasUnsavedChanges = true;
+        }
+        
+        // Force UI refresh before showing message box
+        CommandManager.InvalidateRequerySuggested();
+        Application.Current.Dispatcher.Invoke(CommandManager.InvalidateRequerySuggested, 
+            System.Windows.Threading.DispatcherPriority.Background);
+
+        if (missingDependencies.Count > 0)
+        {
+            var message = new System.Text.StringBuilder();
+            message.AppendLine("The following dependencies are missing:");
+            message.AppendLine();
+            
+            foreach (var dep in missingDependencies)
+            {
+                message.AppendLine($"- {dep.displayName} ({dep.packageId})");
+                message.AppendLine($"  Required by: {string.Join(", ", dep.requiredBy)}");
+                if (!string.IsNullOrEmpty(dep.steamUrl))
+                {
+                    message.AppendLine($"  Workshop URL: {dep.steamUrl}");
+                }
+                message.AppendLine();
+            }
+            
+            RunOnUIThread(() => 
+            {
+                MessageBox.Show(message.ToString(), "Missing Dependencies", MessageBoxButton.OK, MessageBoxImage.Warning);
+                // Force refresh after message box closes
+                CommandManager.InvalidateRequerySuggested();
+            });
+        }
+        else if (addedMods.Count == 0)
+        {
+            RunOnUIThread(() => 
+            {
+                MessageBox.Show("No missing dependencies found.", "Dependencies Check", MessageBoxButton.OK, MessageBoxImage.Information);
+                // Force refresh after message box closes
+                CommandManager.InvalidateRequerySuggested();
+            });
+        }
+    }
+    catch (Exception ex)
+    {
+        Debug.WriteLine($"Error resolving dependencies: {ex}");
+        RunOnUIThread(() => 
+        {
+            MessageBox.Show($"Error resolving dependencies: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            // Force refresh after message box closes
+            CommandManager.InvalidateRequerySuggested();
+        });
+    }
+    finally
+    {
+        IsLoading = false;
+        // Final refresh to ensure UI is updated
+        CommandManager.InvalidateRequerySuggested();
+        Application.Current.Dispatcher.Invoke(CommandManager.InvalidateRequerySuggested, 
+            System.Windows.Threading.DispatcherPriority.Background);
+    }
+}
+
 
 
 

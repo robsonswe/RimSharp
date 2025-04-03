@@ -163,5 +163,103 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
         public IEnumerable<ModItem> GetAllMods() => _allAvailableMods;
 
         private void RaiseListChanged() => ListChanged?.Invoke(this, EventArgs.Empty);
+
+        public (List<ModItem> addedMods, List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)> missingDependencies) ResolveDependencies()
+        {
+            var addedMods = new List<ModItem>();
+            var missingDependencies = new List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)>();
+
+            // Get non-core/expansion active mods
+            var activeMods = VirtualActiveMods
+                .Select(x => x.Mod)
+                .Where(m => !m.IsCore && !m.IsExpansion)
+                .ToList();
+
+            // Get all inactive mods
+            var inactiveMods = AllInactiveMods.ToList();
+
+            // Get all available mods (for lookup)
+            var allMods = _allAvailableMods.ToList();
+
+            // Track processed package IDs to avoid duplicates
+            var processedPackageIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            // Queue for BFS approach to dependency resolution
+            var queue = new Queue<(ModItem mod, int level)>();
+
+            // Enqueue all active mods as level 0
+            foreach (var mod in activeMods)
+            {
+                queue.Enqueue((mod, 0));
+            }
+
+            while (queue.Count > 0)
+            {
+                var (currentMod, level) = queue.Dequeue();
+
+                // Process dependencies
+                foreach (var dependency in currentMod.ModDependencies)
+                {
+                    var packageId = dependency.PackageId;
+
+                    // Skip if already processed
+                    if (processedPackageIds.Contains(packageId))
+                        continue;
+
+                    processedPackageIds.Add(packageId);
+
+                    // Fix: Check if dependency is already active by packageId
+                    bool isActive = _lookupService.TryGetMod(packageId, out var activeMod) &&
+                                   _stateTracker.IsModActive(activeMod);
+
+                    if (isActive)
+                        continue;
+
+                    // Try to find the dependency in inactive mods
+                    var dependencyMod = inactiveMods.FirstOrDefault(m =>
+                        string.Equals(m.PackageId, packageId, StringComparison.OrdinalIgnoreCase));
+
+                    if (dependencyMod != null)
+                    {
+                        // Activate the dependency
+                        _stateTracker.Activate(dependencyMod);
+                        _orderService.AddMod(dependencyMod, _orderService.VirtualActiveMods.Count);
+                        addedMods.Add(dependencyMod);
+
+                        // Enqueue the new mod to process its dependencies
+                        queue.Enqueue((dependencyMod, level + 1));
+                    }
+                    else
+                    {
+                        // Check if we already have this missing dependency in our list
+                        var existingMissing = missingDependencies.FirstOrDefault(m =>
+                            string.Equals(m.packageId, packageId, StringComparison.OrdinalIgnoreCase));
+
+                        if (existingMissing != default)
+                        {
+                            existingMissing.requiredBy.Add(currentMod.Name);
+                        }
+                        else
+                        {
+                            missingDependencies.Add((
+                                displayName: dependency.DisplayName ?? packageId,
+                                packageId: packageId,
+                                steamUrl: dependency.SteamWorkshopUrl,
+                                requiredBy: new List<string> { currentMod.Name }
+                            ));
+                        }
+                    }
+                }
+            }
+
+            if (addedMods.Count > 0 || missingDependencies.Count > 0)
+            {
+                RaiseListChanged();
+            }
+
+            return (addedMods, missingDependencies);
+        }
+
+
     }
 }
