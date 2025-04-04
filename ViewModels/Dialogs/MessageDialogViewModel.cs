@@ -1,4 +1,7 @@
 using RimSharp.Handlers; // Ensure RelayCommand is accessible
+using System;
+using System.Diagnostics;
+using System.Windows;
 using System.Windows.Input;
 
 namespace RimSharp.ViewModels.Dialogs
@@ -31,12 +34,16 @@ namespace RimSharp.ViewModels.Dialogs
         // public bool ShowYesButton { get; set; } = false;
         // public bool ShowNoButton { get; set; } = false;
 
+        public bool ShowCopyButton { get; set; }
+
+
         // Specific commands binding to CloseDialog with appropriate result
         public ICommand OkCommand { get; }
         public ICommand CancelCommand { get; }
         // public ICommand YesCommand { get; }
         // public ICommand NoCommand { get; }
 
+        public ICommand CopyToClipboardCommand { get; }
 
         public MessageDialogViewModel(string title, string message, MessageDialogType type = MessageDialogType.Information)
             : base(title)
@@ -50,7 +57,9 @@ namespace RimSharp.ViewModels.Dialogs
             // YesCommand = new RelayCommand(_ => CloseDialog(MessageDialogResult.Yes));
             // NoCommand = new RelayCommand(_ => CloseDialog(MessageDialogResult.No));
 
-             // Configure default buttons based on type (optional refinement)
+            CopyToClipboardCommand = new RelayCommand(_ => CopyToClipboard());
+
+            // Configure default buttons based on type (optional refinement)
             if (type == MessageDialogType.Question)
             {
                 ShowOkButton = false;
@@ -58,5 +67,19 @@ namespace RimSharp.ViewModels.Dialogs
                 // ShowNoButton = true;
             }
         }
+        private void CopyToClipboard()
+        {
+            try
+            {
+                Clipboard.SetText(Message);
+                // Optionally show a brief confirmation
+                // You could use a separate dialog service call here if needed
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to copy to clipboard: {ex}");
+            }
+        }
+
     }
 }

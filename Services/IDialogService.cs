@@ -13,6 +13,9 @@ namespace RimSharp.Services
         // Confirmation (blocking, returns result)
         MessageDialogResult ShowConfirmation(string title, string message, bool showCancel = false);
 
+        void ShowMessageWithCopy(string title, string message, MessageDialogType dialogType = MessageDialogType.Information);
+
+
         // More generic method (optional)
         // TResult ShowDialog<TResult>(DialogViewModelBase<TResult> viewModel);
     }
