@@ -460,7 +460,7 @@ namespace RimSharp.ViewModels.Modules.Mods
                 // -----------------------------------------------------------
                 HasUnsavedChanges = false;
                 Debug.WriteLine("Mod list saved successfully.");
-                RunOnUIThread(() => _dialogService.ShowInformation("Save Successful", "Mod list saved successfully."));
+                //RunOnUIThread(() => _dialogService.ShowInformation("Save Successful", "Mod list saved successfully."));
             }
             catch (Exception ex)
             {
