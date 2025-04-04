@@ -1,10 +1,10 @@
 using RimSharp.ViewModels.Modules.Mods.Management;
-using System;
+using RimSharp.Views.Dialogs;
 using System.Windows;
 
 namespace RimSharp.Views.Modules.Mods.Dialogs
 {
-    public partial class ModIncompatibilityDialogView : Window
+    public partial class ModIncompatibilityDialogView : BaseDialog
     {
         public ModIncompatibilityDialogView()
         {

@@ -23,6 +23,10 @@ namespace RimSharp.ViewModels
         private readonly IModService _modService; // Keep to pass to ModsViewModel
         private readonly IConfigService _configService; // Add this
         private readonly IModListManager _modListManager;
+        private readonly IDialogService _dialogService; // Renamed and will be initialized
+        private readonly IModFilterService _modFilterService; // Added for DI consistency
+
+        // Remove this line: IDialogService dialogService;
 
         private string _selectedTab = "Mods"; // Default tab
         private ViewModelBase _currentViewModel; // Holds the currently displayed module ViewModel
@@ -39,6 +43,7 @@ namespace RimSharp.ViewModels
         public ICommand BrowsePathCommand { get; }
         public ICommand SettingsCommand { get; }
         public ICommand RefreshCommand { get; }
+        public ICommand OpenFolderCommand { get; } // Moved declaration up
 
         // Constructor: Instantiate module VMs and set initial state
         public MainViewModel(
@@ -49,12 +54,17 @@ namespace RimSharp.ViewModels
             IModDataService modDataService,
             IModCommandService modCommandService,
             IModListIOService modListIOService,
-            IModIncompatibilityService incompatibilityService)
+            IModIncompatibilityService incompatibilityService,
+            IDialogService dialogService, // Added missing parameter
+            IModFilterService modFilterService // Added for DI consistency
+            )
         {
             _modService = modService;
             _pathService = pathService;
             _configService = configService;
             _modListManager = modListManager;
+            _dialogService = dialogService; // Initialize the field
+            _modFilterService = modFilterService; // Initialize the field
 
             // Initialize Path Settings (remains here as it's app-level config)
             PathSettings = new PathSettings
@@ -67,37 +77,36 @@ namespace RimSharp.ViewModels
 
             // Listen for changes in PathSettings if they need to trigger updates elsewhere
             PathSettings.PropertyChanged += (s, e) =>
-{
-    OnPropertyChanged(nameof(PathSettings));
+            {
+                OnPropertyChanged(nameof(PathSettings));
 
-    // Save to config when paths change
-    switch (e.PropertyName)
-    {
-        case nameof(PathSettings.GamePath):
-            _configService.SetConfigValue("game_folder", PathSettings.GamePath);
-            _configService.SaveConfig();
-            break;
-        case nameof(PathSettings.ConfigPath):
-            _configService.SetConfigValue("config_folder", PathSettings.ConfigPath);
-            _configService.SaveConfig();
-            break;
-        case nameof(PathSettings.ModsPath):
-            _configService.SetConfigValue("mods_folder", PathSettings.ModsPath);
-            _configService.SaveConfig();
-            break;
-    }
-};
-
-
+                // Save to config when paths change
+                switch (e.PropertyName)
+                {
+                    case nameof(PathSettings.GamePath):
+                        _configService.SetConfigValue("game_folder", PathSettings.GamePath);
+                        _configService.SaveConfig();
+                        break;
+                    case nameof(PathSettings.ConfigPath):
+                        _configService.SetConfigValue("config_folder", PathSettings.ConfigPath);
+                        _configService.SaveConfig();
+                        break;
+                    case nameof(PathSettings.ModsPath):
+                        _configService.SetConfigValue("mods_folder", PathSettings.ModsPath);
+                        _configService.SaveConfig();
+                        break;
+                }
+            };
 
             // Create instances of the module ViewModels, passing dependencies
             ModsVM = new ModsViewModel(
                 modDataService,
-                new ModFilterService(),
+                _modFilterService, // Pass the injected filter service
                 modCommandService,
                 modListIOService,
                 modListManager,
-                incompatibilityService 
+                incompatibilityService,
+                _dialogService // Pass the initialized dialog service
             );
             DownloaderVM = new DownloaderViewModel(/* Pass services if needed */);
 
@@ -107,13 +116,10 @@ namespace RimSharp.ViewModels
 
             // Initialize commands
             SwitchTabCommand = new RelayCommand(SwitchTab);
-            BrowsePathCommand = new RelayCommand(BrowsePath, CanBrowsePath); // Add CanExecute
+            BrowsePathCommand = new RelayCommand(BrowsePath, CanBrowsePath);
             SettingsCommand = new RelayCommand(OpenSettings);
             RefreshCommand = new RelayCommand(RefreshData);
-
             OpenFolderCommand = new RelayCommand(OpenFolder, CanOpenFolder);
-
-
         }
 
         private void OpenFolder(object parameter)
@@ -133,7 +139,13 @@ namespace RimSharp.ViewModels
             {
                 Process.Start("explorer.exe", path);
             }
+            else
+            {
+                // Inform the user if the path doesn't exist
+                _dialogService.ShowWarning("Path Not Found", $"The path '{path}' does not exist.");
+            }
         }
+
 
         private bool CanOpenFolder(object parameter)
         {
@@ -151,7 +163,6 @@ namespace RimSharp.ViewModels
         }
 
 
-        public ICommand OpenFolderCommand { get; }
 
 
         // Property for the currently active module ViewModel - PUBLIC SETTER
@@ -257,9 +268,9 @@ namespace RimSharp.ViewModels
 
         private void OpenSettings(object parameter)
         {
-            System.Windows.MessageBox.Show("Settings dialog will open here");
+            // Use dialog service instead of MessageBox
+            _dialogService.ShowInformation("Settings", "Settings dialog will open here (Not implemented)");
         }
-
         private void RefreshData(object parameter)
         {
             // If PathService has the RefreshPaths method, call it

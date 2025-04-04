@@ -30,6 +30,7 @@ namespace RimSharp
         {
             // Register ConfigService first as it's needed by PathSettings
             services.AddSingleton<IConfigService, ConfigService>();
+            services.AddSingleton<IDialogService, DialogService>();
 
             // Register PathService with dependency on ConfigService
             services.AddSingleton<IPathService, PathService>(provider =>
@@ -54,7 +55,7 @@ namespace RimSharp
 
             // Register new modular services
             services.AddSingleton<IModDataService, ModDataService>();
-            services.AddSingleton<IModFilterService, ModFilterService>();
+            services.AddSingleton<IModFilterService, ModFilterService>(); // Ensure this is registered
             services.AddSingleton<IModCommandService, ModCommandService>();
             services.AddSingleton<IModListIOService, ModListIOService>();
             services.AddSingleton<ModLookupService>();
@@ -63,18 +64,21 @@ namespace RimSharp
             services.AddSingleton<IModIncompatibilityService, ModIncompatibilityService>();
 
             // Register ViewModels with their dependencies
+            // Transient for ModsViewModel might be okay, or Singleton if you prefer it keeps state across tab switches
             services.AddTransient<ViewModels.Modules.Mods.ModsViewModel>(provider =>
                 new ViewModels.Modules.Mods.ModsViewModel(
                     provider.GetRequiredService<IModDataService>(),
-                    provider.GetRequiredService<IModFilterService>(),
+                    provider.GetRequiredService<IModFilterService>(), // Use the registered service
                     provider.GetRequiredService<IModCommandService>(),
                     provider.GetRequiredService<IModListIOService>(),
                     provider.GetRequiredService<IModListManager>(),
-                    provider.GetRequiredService<IModIncompatibilityService>() 
+                    provider.GetRequiredService<IModIncompatibilityService>(),
+                    provider.GetRequiredService<IDialogService>()
                 ));
 
-            services.AddSingleton<DownloaderViewModel>();
+            services.AddSingleton<DownloaderViewModel>(); // Assuming it needs no constructor args for now
 
+            // Register MainViewModel as Singleton
             services.AddSingleton<MainViewModel>(provider =>
             new MainViewModel(
                 provider.GetRequiredService<IModService>(),
@@ -84,7 +88,9 @@ namespace RimSharp
                 provider.GetRequiredService<IModDataService>(),
                 provider.GetRequiredService<IModCommandService>(),
                 provider.GetRequiredService<IModListIOService>(),
-                provider.GetRequiredService<IModIncompatibilityService>()
+                provider.GetRequiredService<IModIncompatibilityService>(),
+                provider.GetRequiredService<IDialogService>(),
+                provider.GetRequiredService<IModFilterService>()
             ));
 
 

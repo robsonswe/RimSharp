@@ -1,157 +1,144 @@
-<Window x:Class="RimSharp.Views.Modules.Mods.Dialogs.ModIncompatibilityDialogView"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:RimSharp.Views.Modules.Mods.Dialogs"
-        mc:Ignorable="d"
-        Title="Resolve Mod Incompatibilities" 
-        Width="750" 
-        Height="550"
-        MinWidth="700"
-        MinHeight="450"
-        WindowStartupLocation="CenterOwner"
-        Style="{StaticResource RimworldWindowStyle}">
-    <Window.Resources>
-        <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-            <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
-            <Setter Property="FontFamily" Value="Segoe UI"/>
-        </Style>
-    </Window.Resources>
-    
-    <Grid Margin="10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
-        
-        <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,10">
-            <TextBlock Text="Incompatible Mods Detected" 
-                       FontSize="20" 
+<!-- ModIncompatibilityDialogView.xaml -->
+<local:BaseDialog x:Class="RimSharp.Views.Modules.Mods.Dialogs.ModIncompatibilityDialogView"
+                  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                  xmlns:local="clr-namespace:RimSharp.Views.Dialogs"
+                  mc:Ignorable="d"
+                  Title="Resolve Mod Incompatibilities">
+
+    <!-- Header Content -->
+    <local:BaseDialog.HeaderContent>
+        <StackPanel Margin="0,0,0,10">
+            <TextBlock Text="Incompatible Mods Detected"
+                       FontSize="20"
                        FontWeight="Bold"
                        Foreground="{StaticResource RimworldDarkBrownBrush}"/>
-                       
-            <TextBlock Text="Select which mod to keep in each incompatibility group. Related mods will be automatically removed." 
-                       FontSize="13" 
+
+            <TextBlock Text="Select which mod to keep in each incompatibility group. Related mods will be automatically removed."
+                       FontSize="13"
                        TextWrapping="Wrap"
                        Margin="0,5,0,0"/>
         </StackPanel>
-        
-        <!-- Scrollable content area -->
-        <Border Grid.Row="1" 
-                BorderBrush="{StaticResource RimworldBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="3"
-                Background="{StaticResource RimworldLightBackgroundBrush}"
-                Padding="1">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="5">
-                <ItemsControl ItemsSource="{Binding IncompatibilityGroups}" Margin="0,0,5,0">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border BorderThickness="1" 
-                                    BorderBrush="{StaticResource RimworldBorderBrush}" 
-                                    Background="{StaticResource RimworldBeigeBrush}"
-                                    Margin="0,0,0,15" 
-                                    Padding="0"
-                                    CornerRadius="3">
-                                <StackPanel>
-                                    <Border Background="{StaticResource RimworldLightBrownBrush}"
-                                            CornerRadius="3,3,0,0"
-                                            Padding="10,8"
-                                            BorderThickness="0,0,0,1"
-                                            BorderBrush="{StaticResource RimworldBorderBrush}">
-                                        <TextBlock Text="Incompatibility Group" 
-                                                   FontWeight="Bold"
-                                                   FontSize="14"/>
-                                    </Border>
-                                    
-                                    <ItemsControl ItemsSource="{Binding ResolutionOptions}" Margin="10,10,10,5">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Border Margin="0,0,0,10"
-                                                        Padding="10"
-                                                        Background="{StaticResource RimworldLightBackgroundBrush}"
-                                                        CornerRadius="3"
-                                                        BorderThickness="1"
-                                                        BorderBrush="{StaticResource RimworldBorderBrush}">
-                                                    <StackPanel>
-                                                        <RadioButton IsChecked="{Binding IsSelected}" 
-                                                                     GroupName="{Binding ParentGroup.GroupName}"
-                                                                     Style="{StaticResource {x:Type RadioButton}}">
-                                                            <StackPanel>
-                                                                <TextBlock FontWeight="SemiBold" FontSize="13">
-                                                                    <Run Text="Keep: " Foreground="{StaticResource RimworldDarkBrownBrush}"/>
-                                                                    <Run Text="{Binding ModToKeep.Name}" Foreground="{StaticResource RimworldDarkGreenBrush}"/>
-                                                                </TextBlock>
-                                                                
-                                                                <StackPanel Margin="20,8,0,0">
-                                                                    <TextBlock Text="Will remove the following mods:" 
-                                                                               FontSize="12"
-                                                                               Margin="0,0,0,5"/>
-                                                                    
-                                                                    <!-- Mods to remove with reasons -->
-                                                                    <ItemsControl ItemsSource="{Binding RemovalReasons}" Margin="10,0,0,0">
-                                                                        <ItemsControl.ItemTemplate>
-                                                                            <DataTemplate>
-                                                                                <Border BorderBrush="{StaticResource RimworldBorderBrush}" 
-                                                                                        BorderThickness="0,0,0,1" 
-                                                                                        Padding="0,5,0,5" 
-                                                                                        Margin="0,0,0,5">
-                                                                                    <StackPanel>
-                                                                                        <!-- The Key is the mod to be removed -->
-                                                                                        <TextBlock FontWeight="Bold" 
-                                                                                                Foreground="{StaticResource RimworldRedBrush}" 
-                                                                                                Text="{Binding Key.Name}"
-                                                                                                Margin="0,0,0,3"/>
-                                                                                        
-                                                                                        <!-- Incompatibility reasons -->
-                                                                                        <ItemsControl ItemsSource="{Binding Value}" Margin="15,0,0,0">
-                                                                                            <ItemsControl.ItemTemplate>
-                                                                                                <DataTemplate>
-                                                                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
-                                                                                                        <TextBlock Text="• " Foreground="{StaticResource RimworldLightBrownBrush}"/>
-                                                                                                        <TextBlock Text="{Binding Reason}" 
-                                                                                                                Foreground="{StaticResource RimworldDarkBrownBrush}"
-                                                                                                                TextWrapping="Wrap"/>
-                                                                                                    </StackPanel>
-                                                                                                </DataTemplate>
-                                                                                            </ItemsControl.ItemTemplate>
-                                                                                        </ItemsControl>
-                                                                                    </StackPanel>
-                                                                                </Border>
-                                                                            </DataTemplate>
-                                                                        </ItemsControl.ItemTemplate>
-                                                                    </ItemsControl>
-                                                                </StackPanel>
+    </local:BaseDialog.HeaderContent>
+
+    <!-- Main Content -->
+    <local:BaseDialog.MainContent>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="700">
+            <ItemsControl ItemsSource="{Binding IncompatibilityGroups}"
+                    Margin="0,0,5,0">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border BorderThickness="1"
+                                BorderBrush="{StaticResource RimworldBorderBrush}"
+                                Background="{StaticResource RimworldBeigeBrush}"
+                                Margin="0,0,0,15"
+                                Padding="0"
+                                CornerRadius="3">
+                            <StackPanel>
+                                <Border Background="{StaticResource RimworldLightBrownBrush}"
+                                        CornerRadius="3,3,0,0"
+                                        Padding="10,8"
+                                        BorderThickness="0,0,0,1"
+                                        BorderBrush="{StaticResource RimworldBorderBrush}">
+                                    <TextBlock Text="Incompatibility Group"
+                                               FontWeight="Bold"
+                                               FontSize="14"/>
+                                </Border>
+                                <ItemsControl ItemsSource="{Binding ResolutionOptions}"
+                                        Margin="10,10,10,5">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="0,0,0,10"
+                                                    Padding="10"
+                                                    Background="{StaticResource RimworldLightBackgroundBrush}"
+                                                    CornerRadius="3"
+                                                    BorderThickness="1"
+                                                    BorderBrush="{StaticResource RimworldBorderBrush}">
+                                                <StackPanel>
+                                                    <RadioButton IsChecked="{Binding IsSelected}"
+                                                                 GroupName="{Binding ParentGroup.GroupName}"
+                                                                 Style="{StaticResource {x:Type RadioButton}}">
+                                                        <StackPanel>
+                                                            <TextBlock FontWeight="SemiBold"
+                                                                    FontSize="13">
+                                                                        <Run Text="Keep: "
+                                                                        Foreground="{StaticResource RimworldDarkBrownBrush}"/>
+                                                                        <Run Text="{Binding ModToKeep.Name}"
+                                                                        Foreground="{StaticResource RimworldDarkGreenBrush}"/>
+                                                            </TextBlock>
+                                                            <StackPanel Margin="20,8,0,0">
+                                                                <TextBlock Text="Will remove the following mods:"
+                                                                           FontSize="12"
+                                                                           Margin="0,0,0,5"/>
+                                                                <!-- Mods to remove with reasons -->
+                                                                <ItemsControl ItemsSource="{Binding RemovalReasons}"
+                                                                        Margin="10,0,0,0">
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate>
+                                                                            <Border BorderBrush="{StaticResource RimworldBorderBrush}"
+                                                                                    BorderThickness="0,0,0,1"
+                                                                                    Padding="0,5,0,5"
+                                                                                    Margin="0,0,0,5">
+                                                                                <StackPanel>
+                                                                                    <!-- The Key is the mod to be removed -->
+                                                                                    <TextBlock FontWeight="Bold"
+                                                                                               Foreground="{StaticResource RimworldRedBrush}"
+                                                                                               Text="{Binding Key.Name}"
+                                                                                               Margin="0,0,0,3"/>
+                                                                                    <!-- Incompatibility reasons -->
+                                                                                    <ItemsControl ItemsSource="{Binding Value}"
+                                                                                            Margin="15,0,0,0">
+                                                                                        <ItemsControl.ItemTemplate>
+                                                                                            <DataTemplate>
+                                                                                                <StackPanel Orientation="Horizontal"
+                                                                                                        Margin="0,0,0,3">
+                                                                                                    <TextBlock Text="• "
+                                                                                                            Foreground="{StaticResource RimworldLightBrownBrush}"/>
+                                                                                                    <TextBlock Text="{Binding Reason}"
+                                                                                                               Foreground="{StaticResource RimworldDarkBrownBrush}"
+                                                                                                               TextWrapping="Wrap"/>
+                                                                                                </StackPanel>
+                                                                                            </DataTemplate>
+                                                                                        </ItemsControl.ItemTemplate>
+                                                                                    </ItemsControl>
+                                                                                </StackPanel>
+                                                                            </Border>
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
                                                             </StackPanel>
-                                                        </RadioButton>
-                                                    </StackPanel>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
-        </Border>
-        
-        <!-- Buttons -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
-            <Button Content="Cancel" 
-                    Command="{Binding CancelCommand}" 
+                                                        </StackPanel>
+                                                    </RadioButton>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </local:BaseDialog.MainContent>
+
+    <!-- Button Content -->
+    <local:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal"
+                HorizontalAlignment="Right"
+                Margin="0,15,0,0">
+            <Button Content="Cancel"
+                    Command="{Binding CancelCommand}"
                     IsEnabled="{Binding IsCancelEnabled}"
-                    Width="100" 
-                    Margin="0,0,10,0" 
+                    Width="100"
+                    Margin="0,0,10,0"
                     Style="{StaticResource RimworldButtonStyle}"/>
-            <Button Content="Apply Changes" 
-                    Command="{Binding ApplyResolutionsCommand}" 
-                    Width="120" 
+            <Button Content="Apply Changes"
+                    Command="{Binding ApplyResolutionsCommand}"
+                    Width="120"
                     Style="{StaticResource RimworldSaveButtonStyle}"/>
         </StackPanel>
-    </Grid>
-</Window>
+    </local:BaseDialog.ButtonContent>
+</local:BaseDialog>

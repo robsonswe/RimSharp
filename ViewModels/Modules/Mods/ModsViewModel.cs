@@ -27,6 +27,8 @@ namespace RimSharp.ViewModels.Modules.Mods
         private readonly IModListIOService _ioService;
         private readonly IModListManager _modListManager;
 
+        private readonly IDialogService _dialogService;
+
         private readonly IModIncompatibilityService _incompatibilityService;
 
         private ModItem _selectedMod;
@@ -106,7 +108,8 @@ namespace RimSharp.ViewModels.Modules.Mods
             IModCommandService commandService,
             IModListIOService ioService,
             IModListManager modListManager,
-            IModIncompatibilityService incompatibilityService)
+            IModIncompatibilityService incompatibilityService,
+            IDialogService dialogService)
         {
             // DI remains the same
             _dataService = dataService;
@@ -115,6 +118,7 @@ namespace RimSharp.ViewModels.Modules.Mods
             _ioService = ioService;
             _modListManager = modListManager;
             _incompatibilityService = incompatibilityService;
+            _dialogService = dialogService;
 
 
             _modListManager.ListChanged += OnModListManagerChanged;
@@ -185,7 +189,7 @@ namespace RimSharp.ViewModels.Modules.Mods
             {
                 // Log error properly
                 Debug.WriteLine($"Error loading mods: {ex}");
-                RunOnUIThread(() => MessageBox.Show($"Error loading mods: {ex.Message}", "Loading Error", MessageBoxButton.OK, MessageBoxImage.Error));
+                RunOnUIThread(() => _dialogService.ShowError("Loading Error", $"Error loading mods: {ex.Message}"));
                 HasUnsavedChanges = false; // Also ensure it's false on error
             }
             finally
@@ -210,9 +214,9 @@ namespace RimSharp.ViewModels.Modules.Mods
                 }
 
                 // Force UI refresh before showing message box
-                CommandManager.InvalidateRequerySuggested();
-                Application.Current.Dispatcher.Invoke(CommandManager.InvalidateRequerySuggested,
-                    System.Windows.Threading.DispatcherPriority.Background);
+                //CommandManager.InvalidateRequerySuggested();
+                //Application.Current.Dispatcher.Invoke(CommandManager.InvalidateRequerySuggested,
+                //    System.Windows.Threading.DispatcherPriority.Background);
 
                 if (missingDependencies.Count > 0)
                 {
@@ -233,7 +237,8 @@ namespace RimSharp.ViewModels.Modules.Mods
 
                     RunOnUIThread(() =>
                     {
-                        MessageBox.Show(message.ToString(), "Missing Dependencies", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        //MessageBox.Show(message.ToString(), "Missing Dependencies", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        _dialogService.ShowWarning("Missing Dependencies", message.ToString());
                         // Force refresh after message box closes
                         CommandManager.InvalidateRequerySuggested();
                     });
@@ -242,7 +247,8 @@ namespace RimSharp.ViewModels.Modules.Mods
                 {
                     RunOnUIThread(() =>
                     {
-                        MessageBox.Show("No missing dependencies found.", "Dependencies Check", MessageBoxButton.OK, MessageBoxImage.Information);
+                        //MessageBox.Show("No missing dependencies found.", "Dependencies Check", MessageBoxButton.OK, MessageBoxImage.Information);
+                        _dialogService.ShowInformation("Dependencies Check", "No missing dependencies found.");
                         // Force refresh after message box closes
                         CommandManager.InvalidateRequerySuggested();
                     });
@@ -253,7 +259,8 @@ namespace RimSharp.ViewModels.Modules.Mods
                 Debug.WriteLine($"Error resolving dependencies: {ex}");
                 RunOnUIThread(() =>
                 {
-                    MessageBox.Show($"Error resolving dependencies: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    //MessageBox.Show($"Error resolving dependencies: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    _dialogService.ShowError("Resolution Error", $"Error resolving dependencies: {ex.Message}");
                     // Force refresh after message box closes
                     CommandManager.InvalidateRequerySuggested();
                 });
@@ -262,9 +269,9 @@ namespace RimSharp.ViewModels.Modules.Mods
             {
                 IsLoading = false;
                 // Final refresh to ensure UI is updated
-                CommandManager.InvalidateRequerySuggested();
-                Application.Current.Dispatcher.Invoke(CommandManager.InvalidateRequerySuggested,
-                    System.Windows.Threading.DispatcherPriority.Background);
+                //CommandManager.InvalidateRequerySuggested();
+                //Application.Current.Dispatcher.Invoke(CommandManager.InvalidateRequerySuggested,
+                //    System.Windows.Threading.DispatcherPriority.Background);
             }
         }
 
@@ -283,10 +290,12 @@ namespace RimSharp.ViewModels.Modules.Mods
 
                 if (incompatibilities.Count == 0)
                 {
-                    RunOnUIThread(() => MessageBox.Show("No incompatibilities found between active mods.",
-                                                       "Compatibility Check",
-                                                       MessageBoxButton.OK,
-                                                       MessageBoxImage.Information));
+                    // RunOnUIThread(() => MessageBox.Show("No incompatibilities found between active mods.",
+                    //                                    "Compatibility Check",
+                    //                                    MessageBoxButton.OK,
+                    //                                    MessageBoxImage.Information));
+                    _dialogService.ShowInformation("Compatibility Check", "No incompatibilities found between active mods.");
+
                     return;
                 }
 
@@ -296,10 +305,11 @@ namespace RimSharp.ViewModels.Modules.Mods
                 if (groups.Count == 0)
                 {
                     // This shouldn't typically happen if incompatibilities > 0, but handle it just in case
-                    RunOnUIThread(() => MessageBox.Show("No incompatibility groups to resolve.",
-                                                       "Compatibility Check",
-                                                       MessageBoxButton.OK,
-                                                       MessageBoxImage.Information));
+                    //RunOnUIThread(() => MessageBox.Show("No incompatibility groups to resolve.",
+                    //                                   "Compatibility Check",
+                    //                                   MessageBoxButton.OK,
+                    //                                   MessageBoxImage.Information));
+                    _dialogService.ShowInformation("Compatibility Check", "No incompatibility groups to resolve.");
                     return;
                 }
 
@@ -309,10 +319,11 @@ namespace RimSharp.ViewModels.Modules.Mods
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error checking mod incompatibilities: {ex}");
-                RunOnUIThread(() => MessageBox.Show($"Error checking mod incompatibilities: {ex.Message}",
-                                                   "Compatibility Error",
-                                                   MessageBoxButton.OK,
-                                                   MessageBoxImage.Error));
+                //RunOnUIThread(() => MessageBox.Show($"Error checking mod incompatibilities: {ex.Message}",
+                //                                   "Compatibility Error",
+                //                                   MessageBoxButton.OK,
+                //                                   MessageBoxImage.Error));
+                _dialogService.ShowError("Compatibility Error", $"Error checking mod incompatibilities: {ex.Message}");
             }
             finally
             {
@@ -360,18 +371,20 @@ namespace RimSharp.ViewModels.Modules.Mods
                 // Set the unsaved changes flag
                 HasUnsavedChanges = true;
 
-                MessageBox.Show($"Successfully resolved incompatibilities by deactivating {modsToRemove.Count} mods.",
-                               "Incompatibilities Resolved",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Information);
+                //MessageBox.Show($"Successfully resolved incompatibilities by deactivating {modsToRemove.Count} mods.",
+                //               "Incompatibilities Resolved",
+                //              MessageBoxButton.OK,
+                //               MessageBoxImage.Information);
+                _dialogService.ShowInformation("Incompatibilities Resolved", $"Successfully resolved incompatibilities by deactivating {modsToRemove.Count} mods.");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error applying incompatibility resolutions: {ex}");
-                MessageBox.Show($"Error applying incompatibility resolutions: {ex.Message}",
-                               "Resolution Error",
-                               MessageBoxButton.OK,
-                               MessageBoxImage.Error);
+                //MessageBox.Show($"Error applying incompatibility resolutions: {ex.Message}",
+                //               "Resolution Error",
+                //                MessageBoxButton.OK,
+                //               MessageBoxImage.Error);
+                _dialogService.ShowError("Resolution Error", $"Error applying incompatibility resolutions: {ex.Message}");
             }
         }
 
@@ -442,8 +455,11 @@ namespace RimSharp.ViewModels.Modules.Mods
             {
                 Debug.WriteLine($"Error sorting mods: {ex}");
                 RunOnUIThread(() =>
-                   MessageBox.Show($"Error sorting mods: {ex.Message}", "Sort Error", // Changed title slightly
-                                 MessageBoxButton.OK, MessageBoxImage.Error));
+                   // --- REPLACE MessageBox ---
+                   // MessageBox.Show($"Error sorting mods: {ex.Message}", "Sort Error", MessageBoxButton.OK, MessageBoxImage.Error));
+                   _dialogService.ShowError("Sort Error", $"Error sorting mods: {ex.Message}")
+                // -------------------------
+                );
             }
             finally
             {
@@ -468,12 +484,17 @@ namespace RimSharp.ViewModels.Modules.Mods
                 // -----------------------------------------------------------
                 HasUnsavedChanges = false;
                 Debug.WriteLine("Mod list saved successfully.");
+                RunOnUIThread(() => _dialogService.ShowInformation("Save Successful", "Mod list saved successfully."));
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error saving mods config: {ex}");
-                RunOnUIThread(() => MessageBox.Show($"Failed to save mod list: {ex.Message}", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error));
-                // Optionally leave HasUnsavedChanges = true if save failed?
+                RunOnUIThread(() =>
+                                   // --- REPLACE MessageBox ---
+                                   // MessageBox.Show($"Failed to save mod list: {ex.Message}", "Save Error", MessageBoxButton.OK, MessageBoxError));
+                                   _dialogService.ShowError("Save Error", $"Failed to save mod list: {ex.Message}")
+                               // -------------------------
+                               );                // Optionally leave HasUnsavedChanges = true if save failed?
             }
             finally
             {
@@ -495,7 +516,8 @@ namespace RimSharp.ViewModels.Modules.Mods
             var activeModsToExport = _modListManager.VirtualActiveMods.Select(entry => entry.Mod).ToList();
             if (!activeModsToExport.Any())
             {
-                MessageBox.Show("There are no active mods to export.", "Export List", MessageBoxButton.OK, MessageBoxImage.Information);
+                // MessageBox.Show("There are no active mods to export.", "Export List", MessageBoxButton.OK, MessageBoxImage.Information);
+                 _dialogService.ShowInformation("Export List", "There are no active mods to export.");
                 return;
             }
             await _ioService.ExportModListAsync(activeModsToExport);
@@ -526,7 +548,8 @@ namespace RimSharp.ViewModels.Modules.Mods
             if (string.IsNullOrWhiteSpace(target))
             {
                 Debug.WriteLine("OpenUrl: No target specified or derived.");
-                MessageBox.Show("No URL or local path available for the selected mod.", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                // MessageBox.Show("No URL or local path available for the selected mod.", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                 _dialogService.ShowInformation("Information", "No URL or local path available for the selected mod.");
                 return;
             }
 
@@ -571,18 +594,26 @@ namespace RimSharp.ViewModels.Modules.Mods
             catch (Exception ex)
             {
                 Debug.WriteLine($"Could not open path/URL '{target}': {ex}");
-                MessageBox.Show($"Could not open path/URL: {ex.Message}", "Error",
-                              MessageBoxButton.OK, MessageBoxImage.Error);
+                // MessageBox.Show($"Could not open path/URL: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                 _dialogService.ShowError("Error", $"Could not open path/URL: {ex.Message}");
             }
         }
 
-        // Stubbed methods remain the same...
+        // Stubbed methods
+        /*
         private void ExecuteFilterInactive(object parameter) => MessageBox.Show("Filter Inactive Mods - Not Yet Implemented");
         private void ExecuteFilterActive(object parameter) => MessageBox.Show("Filter Active Mods - Not Yet Implemented");
         private void StripMods(object parameter) => MessageBox.Show("Strip mods: Functionality not yet implemented.");
         private void CreatePack(object parameter) => MessageBox.Show("Create pack: Functionality not yet implemented.");
         private void FixIntegrity(object parameter) => MessageBox.Show("Fix integrity: Functionality not yet implemented.");
         private void RunGame(object parameter) => MessageBox.Show("Run game: Functionality not yet implemented.");
+*/
+        private void ExecuteFilterInactive(object parameter) => _dialogService.ShowInformation("Not Implemented", "Filter Inactive Mods - Not Yet Implemented");
+        private void ExecuteFilterActive(object parameter) => _dialogService.ShowInformation("Not Implemented", "Filter Active Mods - Not Yet Implemented");
+        private void StripMods(object parameter) => _dialogService.ShowInformation("Not Implemented", "Strip mods: Functionality not yet implemented.");
+        private void CreatePack(object parameter) => _dialogService.ShowInformation("Not Implemented", "Create pack: Functionality not yet implemented.");
+        private void FixIntegrity(object parameter) => _dialogService.ShowInformation("Not Implemented", "Fix integrity: Functionality not yet implemented.");
+        private void RunGame(object parameter) => _dialogService.ShowInformation("Not Implemented", "Run game: Functionality not yet implemented.");
 
         public void Dispose()
         {

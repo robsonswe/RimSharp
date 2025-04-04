@@ -1,0 +1,107 @@
+<dialogs:BaseDialog x:Class="RimSharp.Views.Dialogs.MessageDialogView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:dialogs="clr-namespace:RimSharp.Views.Dialogs"
+        xmlns:vmDialogs="clr-namespace:RimSharp.ViewModels.Dialogs"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vmDialogs:MessageDialogViewModel, IsDesignTimeCreatable=True}"
+        Title="{Binding Title}"
+        SizeToContent="Height"
+        Width="450" MinWidth="350" MaxWidth="600"
+        MinHeight="150" MaxHeight="400"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize">
+    
+    <!-- Define Main Content -->
+    <dialogs:BaseDialog.MainContent>
+        <Border Style="{StaticResource RimworldPanelBorder}">
+            <Grid Margin="15,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                
+                <!-- Icon -->
+                <Border Grid.Column="0" 
+                        Width="40" 
+                        Height="40" 
+                        CornerRadius="20" 
+                        Background="{StaticResource RimworldLightBackgroundBrush}"
+                        BorderBrush="{StaticResource RimworldBorderBrush}" 
+                        BorderThickness="1"
+                        Margin="0,0,15,0">
+                    <TextBlock x:Name="IconText" 
+                               HorizontalAlignment="Center" 
+                               VerticalAlignment="Center" 
+                               FontFamily="Segoe UI Symbol" 
+                               FontSize="22"
+                               FontWeight="SemiBold">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding DialogType}" Value="{x:Static vmDialogs:MessageDialogType.Information}">
+                                        <Setter Property="Text" Value="ℹ️"/>
+                                        <Setter Property="Foreground" Value="{StaticResource RimworldDarkGreenBrush}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding DialogType}" Value="{x:Static vmDialogs:MessageDialogType.Warning}">
+                                        <Setter Property="Text" Value="⚠️"/>
+                                        <Setter Property="Foreground" Value="{StaticResource RimworldHighlightBrush}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding DialogType}" Value="{x:Static vmDialogs:MessageDialogType.Error}">
+                                        <Setter Property="Text" Value="❌"/>
+                                        <Setter Property="Foreground" Value="{StaticResource RimworldErrorBrush}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding DialogType}" Value="{x:Static vmDialogs:MessageDialogType.Question}">
+                                        <Setter Property="Text" Value="❓"/>
+                                        <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Border>
+                
+                <!-- Message -->
+                <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                    <TextBlock Text="{Binding Message}"
+                               TextWrapping="Wrap"
+                               FontSize="14"
+                               LineHeight="22"
+                               VerticalAlignment="Center"
+                               Foreground="{StaticResource RimworldDarkBrownBrush}"/>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </dialogs:BaseDialog.MainContent>
+
+    <!-- Define Button Content -->
+    <dialogs:BaseDialog.ButtonContent>
+        <Grid Margin="0,12,0,5">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <!-- OK Button -->
+                <Button Content="OK"
+                        Command="{Binding OkCommand}"
+                        Style="{StaticResource RimworldSaveButtonStyle}"
+                        IsDefault="True"
+                        MinWidth="80" 
+                        Height="30"
+                        Margin="5,0,5,0"
+                        Visibility="{Binding ShowOkButton, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                <!-- Cancel Button with red style -->
+                <Button Content="Cancel"
+                        Command="{Binding CancelCommand}"
+                        Style="{StaticResource RimworldRunButtonStyle}"
+                        IsCancel="True"
+                        MinWidth="80" 
+                        Height="30"
+                        Margin="5,0,0,0"
+                        Visibility="{Binding ShowCancelButton, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+            </StackPanel>
+        </Grid>
+    </dialogs:BaseDialog.ButtonContent>
+
+</dialogs:BaseDialog>
