@@ -60,5 +60,15 @@ namespace RimSharp.Services
 
             return ShowDialogInternal(viewModel);
         }
+
+        public void ShowMessageWithCopy(string title, string message, MessageDialogType dialogType = MessageDialogType.Information)
+        {
+            var viewModel = new MessageDialogViewModel(title, message, dialogType)
+            {
+                ShowCopyButton = true // We'll add this property to the ViewModel
+            };
+            ShowDialogInternal(viewModel);
+        }
+
     }
 }

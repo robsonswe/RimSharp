@@ -1,6 +1,7 @@
 using RimSharp.Handlers;
 using RimSharp.Models;
 using RimSharp.Services;
+using RimSharp.ViewModels.Dialogs;
 using RimSharp.ViewModels.Modules.Mods.Commands;
 using RimSharp.ViewModels.Modules.Mods.Data;
 using RimSharp.ViewModels.Modules.Mods.Filtering;
@@ -204,24 +205,32 @@ namespace RimSharp.ViewModels.Modules.Mods
         private async Task ExecuteResolveDependencies()
         {
             IsLoading = true;
-            CommandManager.InvalidateRequerySuggested(); // Disable buttons during processing
+            CommandManager.InvalidateRequerySuggested();
             try
             {
-                // Make this operation truly asynchronous by wrapping the CPU-bound work
                 var result = await Task.Run(() => _modListManager.ResolveDependencies());
                 var (addedMods, missingDependencies) = result;
 
+                var message = new System.Text.StringBuilder();
+
+                // Show added dependencies if any
                 if (addedMods.Count > 0)
                 {
                     HasUnsavedChanges = true;
+                    message.AppendLine("The following dependencies were automatically added:");
+                    message.AppendLine();
+                    foreach (var mod in addedMods)
+                    {
+                        message.AppendLine($"- {mod.Name} ({mod.PackageId})");
+                    }
+                    message.AppendLine();
                 }
 
+                // Show missing dependencies if any
                 if (missingDependencies.Count > 0)
                 {
-                    var message = new System.Text.StringBuilder();
                     message.AppendLine("The following dependencies are missing:");
                     message.AppendLine();
-
                     foreach (var dep in missingDependencies)
                     {
                         message.AppendLine($"- {dep.displayName} ({dep.packageId})");
@@ -232,18 +241,34 @@ namespace RimSharp.ViewModels.Modules.Mods
                         }
                         message.AppendLine();
                     }
-
-                    RunOnUIThread(() =>
-                    {
-                        _dialogService.ShowWarning("Missing Dependencies", message.ToString());
-                        CommandManager.InvalidateRequerySuggested();
-                    });
                 }
-                else if (addedMods.Count == 0)
+
+                // Show appropriate message based on results
+                if (message.Length == 0)
                 {
                     RunOnUIThread(() =>
                     {
-                        _dialogService.ShowInformation("Dependencies Check", "No missing dependencies found.");
+                        _dialogService.ShowInformation("Dependencies Check",
+                            "No missing dependencies found and no new dependencies were added.");
+                        CommandManager.InvalidateRequerySuggested();
+                    });
+                }
+                else if (missingDependencies.Count == 0)
+                {
+                    RunOnUIThread(() =>
+                    {
+                        _dialogService.ShowInformation("Dependencies Added",
+                            message.ToString().TrimEnd());
+                        CommandManager.InvalidateRequerySuggested();
+                    });
+                }
+                else
+                {
+                    RunOnUIThread(() =>
+                    {
+                        _dialogService.ShowMessageWithCopy("Dependencies Status",
+                            message.ToString().TrimEnd(),
+                            MessageDialogType.Warning);
                         CommandManager.InvalidateRequerySuggested();
                     });
                 }
@@ -253,7 +278,8 @@ namespace RimSharp.ViewModels.Modules.Mods
                 Debug.WriteLine($"Error resolving dependencies: {ex}");
                 RunOnUIThread(() =>
                 {
-                    _dialogService.ShowError("Resolution Error", $"Error resolving dependencies: {ex.Message}");
+                    _dialogService.ShowError("Resolution Error",
+                        $"Error resolving dependencies: {ex.Message}");
                     CommandManager.InvalidateRequerySuggested();
                 });
             }
