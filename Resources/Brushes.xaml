@@ -24,5 +24,8 @@
     <SolidColorBrush x:Key="RimworldRedHoverBrush" Color="{StaticResource RimworldRedHover}"/>
     <SolidColorBrush x:Key="RimworldRedDisabledBrush" Color="{StaticResource RimworldRedDisabled}"/>
     <SolidColorBrush x:Key="RimworldRedBorderBrush" Color="{StaticResource RimworldRedBorder}"/>
+        <SolidColorBrush x:Key="RimworldBackgroundBrush" Color="{StaticResource RimworldBeige}"/>
+        <SolidColorBrush x:Key="RimworldBorderBrush" Color="{StaticResource RimworldBrown}"/>
+        <SolidColorBrush x:Key="RimworldLightBackgroundBrush" Color="{StaticResource RimworldDarkBeige}"/>
 
 </ResourceDictionary>

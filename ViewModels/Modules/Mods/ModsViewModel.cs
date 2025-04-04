@@ -6,7 +6,9 @@ using RimSharp.ViewModels.Modules.Mods.Data;
 using RimSharp.ViewModels.Modules.Mods.Filtering;
 using RimSharp.ViewModels.Modules.Mods.IO;
 using RimSharp.ViewModels.Modules.Mods.Management;
+using RimSharp.Views.Modules.Mods.Dialogs;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -25,7 +27,9 @@ namespace RimSharp.ViewModels.Modules.Mods
         private readonly IModListIOService _ioService;
         private readonly IModListManager _modListManager;
 
-        private Models.ModItem _selectedMod;
+        private readonly IModIncompatibilityService _incompatibilityService;
+
+        private ModItem _selectedMod;
         private bool _isLoading;
         private bool _hasUnsavedChanges;
 
@@ -93,6 +97,7 @@ namespace RimSharp.ViewModels.Modules.Mods
         public ICommand DropModCommand { get; private set; }
 
         public ICommand ResolveDependenciesCommand { get; private set; }
+        public ICommand CheckIncompatibilitiesCommand { get; private set; }
 
 
         public ModsViewModel(
@@ -100,7 +105,8 @@ namespace RimSharp.ViewModels.Modules.Mods
             IModFilterService filterService,
             IModCommandService commandService,
             IModListIOService ioService,
-            IModListManager modListManager)
+            IModListManager modListManager,
+            IModIncompatibilityService incompatibilityService)
         {
             // DI remains the same
             _dataService = dataService;
@@ -108,6 +114,8 @@ namespace RimSharp.ViewModels.Modules.Mods
             _commandService = commandService;
             _ioService = ioService;
             _modListManager = modListManager;
+            _incompatibilityService = incompatibilityService;
+
 
             _modListManager.ListChanged += OnModListManagerChanged;
 
@@ -127,6 +135,7 @@ namespace RimSharp.ViewModels.Modules.Mods
             OpenUrlCommand = new RelayCommand(OpenUrl, _ => SelectedMod != null); // Example condition
             ImportListCommand = new RelayCommand(async _ => await ExecuteImport(), _ => !_isLoading);
             ExportListCommand = new RelayCommand(async _ => await ExecuteExport(), _ => !_isLoading && _modListManager.VirtualActiveMods.Any()); // Condition export has active mods
+            CheckIncompatibilitiesCommand = new RelayCommand(async _ => await ExecuteCheckIncompatibilities(), _ => !_isLoading && _modListManager.VirtualActiveMods.Any());
 
             // Stubbed commands (consider adding CanExecute)
             StripModsCommand = new RelayCommand(StripMods, _ => !_isLoading);
@@ -189,77 +198,182 @@ namespace RimSharp.ViewModels.Modules.Mods
 
 
         private async Task ExecuteResolveDependencies()
-{
-    IsLoading = true;
-    try
-    {
-        var (addedMods, missingDependencies) = await Task.Run(() => _modListManager.ResolveDependencies());
-        
-        if (addedMods.Count > 0)
         {
-            HasUnsavedChanges = true;
-        }
-        
-        // Force UI refresh before showing message box
-        CommandManager.InvalidateRequerySuggested();
-        Application.Current.Dispatcher.Invoke(CommandManager.InvalidateRequerySuggested, 
-            System.Windows.Threading.DispatcherPriority.Background);
-
-        if (missingDependencies.Count > 0)
-        {
-            var message = new System.Text.StringBuilder();
-            message.AppendLine("The following dependencies are missing:");
-            message.AppendLine();
-            
-            foreach (var dep in missingDependencies)
+            IsLoading = true;
+            try
             {
-                message.AppendLine($"- {dep.displayName} ({dep.packageId})");
-                message.AppendLine($"  Required by: {string.Join(", ", dep.requiredBy)}");
-                if (!string.IsNullOrEmpty(dep.steamUrl))
+                var (addedMods, missingDependencies) = await Task.Run(() => _modListManager.ResolveDependencies());
+
+                if (addedMods.Count > 0)
                 {
-                    message.AppendLine($"  Workshop URL: {dep.steamUrl}");
+                    HasUnsavedChanges = true;
                 }
-                message.AppendLine();
+
+                // Force UI refresh before showing message box
+                CommandManager.InvalidateRequerySuggested();
+                Application.Current.Dispatcher.Invoke(CommandManager.InvalidateRequerySuggested,
+                    System.Windows.Threading.DispatcherPriority.Background);
+
+                if (missingDependencies.Count > 0)
+                {
+                    var message = new System.Text.StringBuilder();
+                    message.AppendLine("The following dependencies are missing:");
+                    message.AppendLine();
+
+                    foreach (var dep in missingDependencies)
+                    {
+                        message.AppendLine($"- {dep.displayName} ({dep.packageId})");
+                        message.AppendLine($"  Required by: {string.Join(", ", dep.requiredBy)}");
+                        if (!string.IsNullOrEmpty(dep.steamUrl))
+                        {
+                            message.AppendLine($"  Workshop URL: {dep.steamUrl}");
+                        }
+                        message.AppendLine();
+                    }
+
+                    RunOnUIThread(() =>
+                    {
+                        MessageBox.Show(message.ToString(), "Missing Dependencies", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        // Force refresh after message box closes
+                        CommandManager.InvalidateRequerySuggested();
+                    });
+                }
+                else if (addedMods.Count == 0)
+                {
+                    RunOnUIThread(() =>
+                    {
+                        MessageBox.Show("No missing dependencies found.", "Dependencies Check", MessageBoxButton.OK, MessageBoxImage.Information);
+                        // Force refresh after message box closes
+                        CommandManager.InvalidateRequerySuggested();
+                    });
+                }
             }
-            
-            RunOnUIThread(() => 
+            catch (Exception ex)
             {
-                MessageBox.Show(message.ToString(), "Missing Dependencies", MessageBoxButton.OK, MessageBoxImage.Warning);
-                // Force refresh after message box closes
-                CommandManager.InvalidateRequerySuggested();
-            });
-        }
-        else if (addedMods.Count == 0)
-        {
-            RunOnUIThread(() => 
+                Debug.WriteLine($"Error resolving dependencies: {ex}");
+                RunOnUIThread(() =>
+                {
+                    MessageBox.Show($"Error resolving dependencies: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    // Force refresh after message box closes
+                    CommandManager.InvalidateRequerySuggested();
+                });
+            }
+            finally
             {
-                MessageBox.Show("No missing dependencies found.", "Dependencies Check", MessageBoxButton.OK, MessageBoxImage.Information);
-                // Force refresh after message box closes
+                IsLoading = false;
+                // Final refresh to ensure UI is updated
                 CommandManager.InvalidateRequerySuggested();
-            });
+                Application.Current.Dispatcher.Invoke(CommandManager.InvalidateRequerySuggested,
+                    System.Windows.Threading.DispatcherPriority.Background);
+            }
         }
-    }
-    catch (Exception ex)
-    {
-        Debug.WriteLine($"Error resolving dependencies: {ex}");
-        RunOnUIThread(() => 
-        {
-            MessageBox.Show($"Error resolving dependencies: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            // Force refresh after message box closes
-            CommandManager.InvalidateRequerySuggested();
-        });
-    }
-    finally
-    {
-        IsLoading = false;
-        // Final refresh to ensure UI is updated
-        CommandManager.InvalidateRequerySuggested();
-        Application.Current.Dispatcher.Invoke(CommandManager.InvalidateRequerySuggested, 
-            System.Windows.Threading.DispatcherPriority.Background);
-    }
-}
 
 
+        private async Task ExecuteCheckIncompatibilities()
+        {
+            IsLoading = true;
+            CommandManager.InvalidateRequerySuggested(); // Disable buttons during processing
+            try
+            {
+                // Get current active mods from the manager
+                var activeMods = _modListManager.VirtualActiveMods.Select(entry => entry.Mod).ToList();
+
+                // Find incompatibilities
+                var incompatibilities = await Task.Run(() => _incompatibilityService.FindIncompatibilities(activeMods));
+
+                if (incompatibilities.Count == 0)
+                {
+                    RunOnUIThread(() => MessageBox.Show("No incompatibilities found between active mods.",
+                                                       "Compatibility Check",
+                                                       MessageBoxButton.OK,
+                                                       MessageBoxImage.Information));
+                    return;
+                }
+
+                // Group incompatibilities for resolution
+                var groups = await Task.Run(() => _incompatibilityService.GroupIncompatibilities(incompatibilities));
+
+                if (groups.Count == 0)
+                {
+                    // This shouldn't typically happen if incompatibilities > 0, but handle it just in case
+                    RunOnUIThread(() => MessageBox.Show("No incompatibility groups to resolve.",
+                                                       "Compatibility Check",
+                                                       MessageBoxButton.OK,
+                                                       MessageBoxImage.Information));
+                    return;
+                }
+
+                // Open the resolution dialog on the UI thread
+                RunOnUIThread(() => ShowIncompatibilityDialog(groups));
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error checking mod incompatibilities: {ex}");
+                RunOnUIThread(() => MessageBox.Show($"Error checking mod incompatibilities: {ex.Message}",
+                                                   "Compatibility Error",
+                                                   MessageBoxButton.OK,
+                                                   MessageBoxImage.Error));
+            }
+            finally
+            {
+                IsLoading = false;
+                CommandManager.InvalidateRequerySuggested(); // Re-enable buttons
+            }
+        }
+
+        // Add method to show the incompatibility dialog
+        private void ShowIncompatibilityDialog(List<IncompatibilityGroup> groups)
+        {
+            // Create the dialog view model (this part is fine)
+            var dialogViewModel = new ModIncompatibilityDialogViewModel(
+                groups,
+                ApplyIncompatibilityResolutions,
+                () => { /* Cancel handler if needed */ }
+            );
+
+            // Instantiate the View using the constructor that takes the ViewModel
+            var dialog = new ModIncompatibilityDialogView(dialogViewModel)
+            {
+                // DataContext is now set by the constructor, so no need to set it here again.
+                Owner = Application.Current.MainWindow,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+
+            dialog.ShowDialog(); // Show modally
+        }
+
+
+        // Add method to handle applying resolutions
+        private void ApplyIncompatibilityResolutions(List<ModItem> modsToRemove)
+        {
+            if (modsToRemove == null || modsToRemove.Count == 0)
+                return;
+
+            try
+            {
+                // Deactivate the mods that should be removed
+                foreach (var mod in modsToRemove)
+                {
+                    _modListManager.DeactivateMod(mod);
+                }
+
+                // Set the unsaved changes flag
+                HasUnsavedChanges = true;
+
+                MessageBox.Show($"Successfully resolved incompatibilities by deactivating {modsToRemove.Count} mods.",
+                               "Incompatibilities Resolved",
+                               MessageBoxButton.OK,
+                               MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error applying incompatibility resolutions: {ex}");
+                MessageBox.Show($"Error applying incompatibility resolutions: {ex.Message}",
+                               "Resolution Error",
+                               MessageBoxButton.OK,
+                               MessageBoxImage.Error);
+            }
+        }
 
 
         private void OnModListManagerChanged(object sender, EventArgs e)

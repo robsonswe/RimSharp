@@ -48,7 +48,8 @@ namespace RimSharp.ViewModels
             IModListManager modListManager,
             IModDataService modDataService,
             IModCommandService modCommandService,
-            IModListIOService modListIOService)
+            IModListIOService modListIOService,
+            IModIncompatibilityService incompatibilityService)
         {
             _modService = modService;
             _pathService = pathService;
@@ -95,7 +96,8 @@ namespace RimSharp.ViewModels
                 new ModFilterService(),
                 modCommandService,
                 modListIOService,
-                modListManager
+                modListManager,
+                incompatibilityService 
             );
             DownloaderVM = new DownloaderViewModel(/* Pass services if needed */);
 
