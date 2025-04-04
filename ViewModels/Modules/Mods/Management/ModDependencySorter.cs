@@ -16,6 +16,9 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
             var graph = new Dictionary<ModItem, HashSet<ModItem>>();
             var inDegree = new Dictionary<ModItem, int>();
 
+            var coreMod = mods.FirstOrDefault(m => m.IsCore);
+            var expansionMods = mods.Where(m => m.IsExpansion).ToList();
+
             foreach (var mod in mods)
             {
                 graph[mod] = new HashSet<ModItem>();
@@ -25,9 +28,31 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
             foreach (var mod in mods)
             {
                 if (string.IsNullOrEmpty(mod.PackageId)) continue;
+
                 ProcessDependencies(mod, mod.LoadBefore.Concat(mod.ForceLoadBefore), localModLookup, graph, inDegree, isBefore: true);
-                ProcessDependencies(mod, mod.LoadAfter.Concat(mod.ForceLoadAfter).Concat(mod.ModDependencies.Select(d => d.PackageId)),
-                                    localModLookup, graph, inDegree, isBefore: false);
+                ProcessDependencies(mod, mod.LoadAfter.Concat(mod.ForceLoadAfter).Concat(mod.ModDependencies.Select(d => d.PackageId)), localModLookup, graph, inDegree, isBefore: false);
+            }
+
+            if (coreMod != null)
+            {
+                AddImplicitDependencies(mods, coreMod, graph, inDegree);
+            }
+
+            foreach (var expansionMod in expansionMods)
+            {
+                AddImplicitDependencies(mods, expansionMod, graph, inDegree);
+            }
+
+            if (coreMod != null)
+            {
+                foreach (var expansionMod in expansionMods)
+                {
+                    if (!HasExplicitOrImpliedBeforeDependency(expansionMod, coreMod))
+                    {
+                        if (graph[coreMod].Add(expansionMod))
+                            inDegree[expansionMod]++;
+                    }
+                }
             }
 
             var cycle = DetectCycle(graph);
@@ -38,6 +63,40 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
             }
 
             return KahnTopologicalSort(mods, graph, inDegree);
+        }
+
+        private void AddImplicitDependencies(List<ModItem> mods, ModItem specialMod,
+                                     Dictionary<ModItem, HashSet<ModItem>> graph,
+                                     Dictionary<ModItem, int> inDegree)
+        {
+            foreach (var mod in mods)
+            {
+                // Avoid forcing Core to come after anything
+                if (mod == specialMod || mod.IsCore) continue;
+
+                if (HasExplicitOrImpliedBeforeDependency(mod, specialMod)) continue;
+
+                if (graph[specialMod].Add(mod))
+                    inDegree[mod]++;
+            }
+        }
+
+
+        private bool HasExplicitBeforeDependency(ModItem mod, ModItem target)
+        {
+            return mod.LoadBefore.Contains(target.PackageId, StringComparer.OrdinalIgnoreCase) ||
+                   mod.ForceLoadBefore.Contains(target.PackageId, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private bool HasExplicitOrImpliedBeforeDependency(ModItem mod, ModItem target)
+        {
+            if (HasExplicitBeforeDependency(mod, target)) return true;
+
+            if (target.IsExpansion &&
+                mod.LoadBefore.Contains("ludeon.rimworld", StringComparer.OrdinalIgnoreCase))
+                return true;
+
+            return false;
         }
 
         private void ProcessDependencies(ModItem mod, IEnumerable<string> dependencies,
@@ -90,7 +149,6 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
 
             return result.Count == mods.Count ? result : null;
         }
-
 
         private List<ModItem> DetectCycle(Dictionary<ModItem, HashSet<ModItem>> graph)
         {
