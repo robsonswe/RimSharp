@@ -1,8 +1,8 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Collections.Generic;
-using System.Windows;
-using System;
+using System.Threading.Tasks;
 using RimSharp.Utility;
 
 namespace RimSharp.ViewModels
@@ -13,8 +13,8 @@ namespace RimSharp.ViewModels
 
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
-            // Use SafeInvoke extension method for cleaner code
-            Application.Current?.Dispatcher.SafeInvoke(() =>
+            // Use ThreadHelper for UI thread safety
+            ThreadHelper.EnsureUiThread(() =>
             {
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             });
@@ -24,15 +24,36 @@ namespace RimSharp.ViewModels
         {
             if (EqualityComparer<T>.Default.Equals(field, value)) return false;
             field = value;
-            OnPropertyChanged(propertyName); // OnPropertyChanged already handles threading
+            OnPropertyChanged(propertyName);
             return true;
         }
 
         // Helper method for dispatching actions to UI thread
         protected void RunOnUIThread(Action action)
         {
-            // Use SafeInvoke extension method
-            Application.Current?.Dispatcher.SafeInvoke(action);
+            ThreadHelper.EnsureUiThread(action);
+        }
+
+        // Helper for safely running background operations that update the UI when complete
+        protected async Task RunAsync(Func<Task> asyncOperation)
+        {
+            try
+            {
+                await asyncOperation();
+            }
+            catch (Exception ex)
+            {
+                // Log the exception
+                System.Diagnostics.Debug.WriteLine($"Error in async operation: {ex}");
+                // Optionally re-throw or handle it depending on your error handling strategy
+                throw;
+            }
+        }
+
+        // Helper for running CPU-intensive operations on a background thread
+        protected async Task<T> RunWithResultAsync<T>(Func<T> operation)
+        {
+            return await ThreadHelper.RunOnBackgroundThreadAsync(operation);
         }
     }
 }
