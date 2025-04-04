@@ -3,7 +3,8 @@ using RimSharp.ViewModels.Modules.Mods.Management;
 using System;
 using System.Threading.Tasks;
 using RimSharp.Services; // Added for IDialogService
-using RimSharp.ViewModels.Dialogs; // Added for MessageDialogResult
+using RimSharp.ViewModels.Dialogs;
+using System.Diagnostics; // Added for MessageDialogResult
 
 namespace RimSharp.ViewModels.Modules.Mods.Commands
 {
@@ -75,7 +76,7 @@ namespace RimSharp.ViewModels.Modules.Mods.Commands
                 "Confirm Clear",
                 "This will remove all non-Core and non-Expansion mods from the active list.\nAre you sure?",
                 showCancel: true); // Show OK and Cancel buttons
-                // -------------------------
+                                   // -------------------------
 
             // Assuming OK maps to Yes, Cancel maps to No for this confirmation
             if (result != MessageDialogResult.OK) return; // Use MessageDialogResult.OK
@@ -85,16 +86,35 @@ namespace RimSharp.ViewModels.Modules.Mods.Commands
 
         public async Task SortActiveModsAsync()
         {
-            bool orderChanged = await Task.Run(() => _modListManager.SortActiveList());
+            try
+            {
+                bool orderChanged = await Task.Run(() => _modListManager.SortActiveList());
 
-            // --- Replaced MessageBox ---
-            _dialogService.ShowInformation(
-                "Sort Complete",
-                orderChanged
-                    ? "Active mods sorted based on defined rules."
-                    : "Mods are already correctly sorted or a sorting error occurred (check logs for cycles)."
-            );
-            // -------------------------
+                if (orderChanged)
+                {
+                    _dialogService.ShowInformation(
+                        "Sort Complete",
+                        "Active mods have been successfully sorted based on dependency rules."
+                    );
+                }
+                else
+                {
+                    _dialogService.ShowInformation(
+                        "Sort Complete",
+                        "Mods are already in the correct order based on dependency rules."
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error sorting mods: {ex}");
+                _dialogService.ShowError(
+                    "Sorting Error",
+                    $"Failed to sort mods due to an error: {ex.Message}\n\n" +
+                    "This might be caused by circular dependencies between mods. " +
+                    "Please check the logs for more details."
+                );
+            }
         }
     }
 }
