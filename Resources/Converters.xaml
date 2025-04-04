@@ -12,5 +12,5 @@
     <converters:ListToStringConverter x:Key="ListToStringConverter"/>
     <converters:IsNotNullOrEmptyConverter x:Key="IsNotNullOrEmptyConverter"/>
     <converters:PathToExplorerFormatConverter x:Key="PathToExplorerFormatConverter"/>
-
+    <converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
 </ResourceDictionary>

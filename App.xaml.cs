@@ -50,13 +50,17 @@ namespace RimSharp
 
             // Register core services
             services.AddSingleton<IModService, ModService>();
-            services.AddSingleton<IModListManager, ViewModels.Modules.Mods.Management.ModListManager>();
+            services.AddSingleton<IModListManager, ModListManager>();
 
             // Register new modular services
-            services.AddSingleton<IModDataService, ViewModels.Modules.Mods.Data.ModDataService>();
-            services.AddSingleton<IModFilterService, ViewModels.Modules.Mods.Filtering.ModFilterService>();
-            services.AddSingleton<IModCommandService, ViewModels.Modules.Mods.Commands.ModCommandService>();
-            services.AddSingleton<IModListIOService, ViewModels.Modules.Mods.IO.ModListIOService>();
+            services.AddSingleton<IModDataService, ModDataService>();
+            services.AddSingleton<IModFilterService, ModFilterService>();
+            services.AddSingleton<IModCommandService, ModCommandService>();
+            services.AddSingleton<IModListIOService, ModListIOService>();
+            services.AddSingleton<ModLookupService>();
+
+            // Register IModIncompatibilityService
+            services.AddSingleton<IModIncompatibilityService, ModIncompatibilityService>();
 
             // Register ViewModels with their dependencies
             services.AddTransient<ViewModels.Modules.Mods.ModsViewModel>(provider =>
@@ -65,7 +69,8 @@ namespace RimSharp
                     provider.GetRequiredService<IModFilterService>(),
                     provider.GetRequiredService<IModCommandService>(),
                     provider.GetRequiredService<IModListIOService>(),
-                    provider.GetRequiredService<IModListManager>()
+                    provider.GetRequiredService<IModListManager>(),
+                    provider.GetRequiredService<IModIncompatibilityService>() 
                 ));
 
             services.AddSingleton<DownloaderViewModel>();
@@ -78,7 +83,8 @@ namespace RimSharp
                 provider.GetRequiredService<IModListManager>(),
                 provider.GetRequiredService<IModDataService>(),
                 provider.GetRequiredService<IModCommandService>(),
-                provider.GetRequiredService<IModListIOService>()
+                provider.GetRequiredService<IModListIOService>(),
+                provider.GetRequiredService<IModIncompatibilityService>()
             ));
 
 
