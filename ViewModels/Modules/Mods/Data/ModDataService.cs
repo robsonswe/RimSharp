@@ -6,8 +6,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Windows;
+// Removed: using System.Windows; // No longer needed for MessageBox
 using System.Xml.Linq;
+using RimSharp.ViewModels.Dialogs; // Added for MessageDialogResult
 
 namespace RimSharp.ViewModels.Modules.Mods.Data
 {
@@ -15,12 +16,15 @@ namespace RimSharp.ViewModels.Modules.Mods.Data
     {
         private readonly IModService _modService;
         private readonly IPathService _pathService;
+        private readonly IDialogService _dialogService; // Added
         private const string CONFIG_FILENAME = "ModsConfig.xml";
 
-        public ModDataService(IModService modService, IPathService pathService)
+        // Updated Constructor
+        public ModDataService(IModService modService, IPathService pathService, IDialogService dialogService)
         {
             _modService = modService ?? throw new ArgumentNullException(nameof(modService));
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
+            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService)); // Added
         }
 
         public async Task<List<ModItem>> LoadAllModsAsync()
@@ -48,7 +52,7 @@ namespace RimSharp.ViewModels.Modules.Mods.Data
 
                 // Load and parse the XML
                 var allModIds = ParseModsConfigXml(configPath);
-                
+
                 // We don't filter mod IDs here - let the ModListManager handle that
                 // so it can track which mods are missing for user feedback
                 return allModIds;
@@ -75,8 +79,9 @@ namespace RimSharp.ViewModels.Modules.Mods.Data
                 var configDir = _pathService.GetConfigPath();
                 if (string.IsNullOrEmpty(configDir) || !Directory.Exists(configDir))
                 {
-                    MessageBox.Show("Error: Config directory path is not set or invalid.",
-                        "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    // --- Replaced MessageBox ---
+                    _dialogService.ShowError("Save Error", "Error: Config directory path is not set or invalid.");
+                    // -------------------------
                     return;
                 }
 
@@ -89,18 +94,21 @@ namespace RimSharp.ViewModels.Modules.Mods.Data
 
                 // Save the document
                 doc.Save(configPath);
-                MessageBox.Show($"Mods configuration saved successfully{(fileExisted ? "!" : " to new file")}!",
-                    "Save Successful", MessageBoxButton.OK, MessageBoxImage.Information);
+                 // --- Replaced MessageBox ---
+                _dialogService.ShowInformation("Save Successful", $"Mods configuration saved successfully{(fileExisted ? "!" : " to new file")}!");
+                // -------------------------
             }
             catch (UnauthorizedAccessException)
             {
-                MessageBox.Show($"Error: Permission denied saving to {Path.Combine(_pathService.GetConfigPath(), CONFIG_FILENAME)}.",
-                    "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                // --- Replaced MessageBox ---
+                _dialogService.ShowError("Save Error", $"Error: Permission denied saving to {Path.Combine(_pathService.GetConfigPath(), CONFIG_FILENAME)}.");
+                // -------------------------
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"An unexpected error occurred saving mods configuration: {ex.Message}",
-                    "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                // --- Replaced MessageBox ---
+                _dialogService.ShowError("Save Error", $"An unexpected error occurred saving mods configuration: {ex.Message}");
+                // -------------------------
             }
         }
 
@@ -117,8 +125,9 @@ namespace RimSharp.ViewModels.Modules.Mods.Data
         private void DisplayConfigError(string message)
         {
             Debug.WriteLine(message);
-            MessageBox.Show($"Warning: Could not read active mods from ModsConfig.xml.\nReason: {message}\nStarting with an empty active list.",
-                           "Config Read Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+            // --- Replaced MessageBox ---
+            _dialogService.ShowWarning("Config Read Warning", $"Warning: Could not read active mods from ModsConfig.xml.\nReason: {message}\nStarting with an empty active list.");
+            // -------------------------
         }
 
         private List<string> ParseModsConfigXml(string configPath)
@@ -145,11 +154,15 @@ namespace RimSharp.ViewModels.Modules.Mods.Data
             }
             catch (Exception loadEx)
             {
-                var result = MessageBox.Show(
+                // --- Replaced MessageBox ---
+                var dialogResult = _dialogService.ShowConfirmation(
+                    "Load Error",
                     $"Error loading existing ModsConfig.xml: {loadEx.Message}\n\nOverwrite with the current active mod list?",
-                    "Load Error", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                    showCancel: true); // Show OK and Cancel
+                // -------------------------
 
-                if (result == MessageBoxResult.Yes)
+                // Assuming OK maps to Yes, Cancel maps to No
+                if (dialogResult == MessageDialogResult.OK) // Use MessageDialogResult.OK
                 {
                     fileExisted = false;
                     return CreateNewModsConfigDocument();

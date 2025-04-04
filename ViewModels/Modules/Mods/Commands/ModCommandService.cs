@@ -2,17 +2,21 @@ using RimSharp.Models;
 using RimSharp.ViewModels.Modules.Mods.Management;
 using System;
 using System.Threading.Tasks;
-using System.Windows;
+using RimSharp.Services; // Added for IDialogService
+using RimSharp.ViewModels.Dialogs; // Added for MessageDialogResult
 
 namespace RimSharp.ViewModels.Modules.Mods.Commands
 {
     public class ModCommandService : IModCommandService
     {
         private readonly IModListManager _modListManager;
+        private readonly IDialogService _dialogService; // Added
 
-        public ModCommandService(IModListManager modListManager)
+        // Updated Constructor
+        public ModCommandService(IModListManager modListManager, IDialogService dialogService)
         {
             _modListManager = modListManager ?? throw new ArgumentNullException(nameof(modListManager));
+            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService)); // Added
         }
 
         public Task HandleDropCommand(DropModArgs args)
@@ -25,11 +29,11 @@ namespace RimSharp.ViewModels.Modules.Mods.Commands
                 case "active":
                     HandleDropOnActiveList(args.DroppedItem, args.DropIndex);
                     break;
-                
+
                 case "inactive":
                     HandleDropOnInactiveList(args.DroppedItem);
                     break;
-                
+
                 default:
                     // Log unrecognized target list
                     break;
@@ -41,7 +45,7 @@ namespace RimSharp.ViewModels.Modules.Mods.Commands
         private void HandleDropOnActiveList(ModItem draggedMod, int dropIndex)
         {
             bool isCurrentlyActive = _modListManager.IsModActive(draggedMod);
-            
+
             if (isCurrentlyActive)
             {
                 // Reorder within active list
@@ -66,13 +70,15 @@ namespace RimSharp.ViewModels.Modules.Mods.Commands
 
         public async Task ClearActiveModsAsync()
         {
-            var result = MessageBox.Show(
+            // --- Replaced MessageBox ---
+            var result = _dialogService.ShowConfirmation(
+                "Confirm Clear",
                 "This will remove all non-Core and non-Expansion mods from the active list.\nAre you sure?",
-                "Confirm Clear", 
-                MessageBoxButton.YesNo, 
-                MessageBoxImage.Warning);
-                
-            if (result != MessageBoxResult.Yes) return;
+                showCancel: true); // Show OK and Cancel buttons
+                // -------------------------
+
+            // Assuming OK maps to Yes, Cancel maps to No for this confirmation
+            if (result != MessageDialogResult.OK) return; // Use MessageDialogResult.OK
 
             await Task.Run(() => _modListManager.ClearActiveList());
         }
@@ -81,13 +87,14 @@ namespace RimSharp.ViewModels.Modules.Mods.Commands
         {
             bool orderChanged = await Task.Run(() => _modListManager.SortActiveList());
 
-            MessageBox.Show(
-                orderChanged 
-                    ? "Active mods sorted based on defined rules." 
-                    : "Mods are already correctly sorted or a sorting error occurred (check logs for cycles).",
-                "Sort Complete", 
-                MessageBoxButton.OK, 
-                MessageBoxImage.Information);
+            // --- Replaced MessageBox ---
+            _dialogService.ShowInformation(
+                "Sort Complete",
+                orderChanged
+                    ? "Active mods sorted based on defined rules."
+                    : "Mods are already correctly sorted or a sorting error occurred (check logs for cycles)."
+            );
+            // -------------------------
         }
     }
 }
