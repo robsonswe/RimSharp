@@ -1,6 +1,8 @@
 using RimSharp.Models;
 using RimSharp.ViewModels.Modules.Mods.Management;
 using System;
+using System.Collections.Generic; // Required for List
+using System.Linq; // Required for Linq
 using System.Threading.Tasks;
 using RimSharp.Services; // Added for IDialogService
 using RimSharp.ViewModels.Dialogs;
@@ -11,75 +13,100 @@ namespace RimSharp.ViewModels.Modules.Mods.Commands
     public class ModCommandService : IModCommandService
     {
         private readonly IModListManager _modListManager;
-        private readonly IDialogService _dialogService; // Added
+        private readonly IDialogService _dialogService;
 
-        // Updated Constructor
         public ModCommandService(IModListManager modListManager, IDialogService dialogService)
         {
             _modListManager = modListManager ?? throw new ArgumentNullException(nameof(modListManager));
-            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService)); // Added
+            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
         }
 
         public Task HandleDropCommand(DropModArgs args)
         {
-            if (args?.DroppedItem == null || string.IsNullOrEmpty(args.TargetListName))
+            // Updated Check: Use DroppedItems list
+            if (args?.DroppedItems == null || !args.DroppedItems.Any() || string.IsNullOrEmpty(args.TargetListName))
+            {
+                Debug.WriteLine("HandleDropCommand: Invalid arguments (null/empty list or missing target).");
                 return Task.CompletedTask;
+            }
+
+            Debug.WriteLine($"HandleDropCommand: Processing {args.DroppedItems.Count} items for target '{args.TargetListName}' at index {args.DropIndex}.");
 
             switch (args.TargetListName.ToLowerInvariant())
             {
                 case "active":
-                    HandleDropOnActiveList(args.DroppedItem, args.DropIndex);
+                    HandleDropOnActiveList(args.DroppedItems, args.DropIndex);
                     break;
 
                 case "inactive":
-                    HandleDropOnInactiveList(args.DroppedItem);
+                    HandleDropOnInactiveList(args.DroppedItems);
                     break;
 
                 default:
-                    // Log unrecognized target list
+                    Debug.WriteLine($"HandleDropCommand: Unrecognized target list name '{args.TargetListName}'.");
                     break;
             }
 
             return Task.CompletedTask;
         }
 
-        private void HandleDropOnActiveList(ModItem draggedMod, int dropIndex)
+        // Updated to handle List<ModItem>
+        private void HandleDropOnActiveList(List<ModItem> draggedMods, int dropIndex)
         {
-            bool isCurrentlyActive = _modListManager.IsModActive(draggedMod);
+            // Determine if this is primarily a reorder operation within the active list
+            // This is true if ALL dragged mods are ALREADY active.
+            bool allDraggedModsAreActive = draggedMods.All(mod => _modListManager.IsModActive(mod));
 
-            if (isCurrentlyActive)
+            if (allDraggedModsAreActive)
             {
                 // Reorder within active list
-                _modListManager.ReorderMod(draggedMod, dropIndex);
+                Debug.WriteLine($"HandleDropOnActiveList: Reordering {draggedMods.Count} active mods to index {dropIndex}.");
+                _modListManager.ReorderMods(draggedMods, dropIndex); // Requires implementation in ModListManager
             }
             else
             {
-                // Add inactive mod to active list at specific position
-                _modListManager.ActivateModAt(draggedMod, dropIndex);
+                // Activate mods (add inactive mods and potentially reposition existing active ones)
+                // Filter out any mods that might already be active if the logic should only add inactive ones.
+                // Or, simpler: just ask the manager to ensure all these mods are active at the specified position.
+                 var modsToActivate = draggedMods; // Or filter: .Where(m => !_modListManager.IsModActive(m)).ToList();
+                if (modsToActivate.Any())
+                {
+                     Debug.WriteLine($"HandleDropOnActiveList: Activating {modsToActivate.Count} mods at index {dropIndex}.");
+                    _modListManager.ActivateModsAt(modsToActivate, dropIndex); // Requires implementation in ModListManager
+                }
+                else
+                {
+                    Debug.WriteLine("HandleDropOnActiveList: No mods needed activation.");
+                }
             }
         }
 
-        private void HandleDropOnInactiveList(ModItem draggedMod)
+        // Updated to handle List<ModItem>
+        private void HandleDropOnInactiveList(List<ModItem> draggedMods)
         {
-            if (_modListManager.IsModActive(draggedMod))
+            // Deactivate any of the dragged mods that are currently active.
+            var modsToDeactivate = draggedMods.Where(mod => _modListManager.IsModActive(mod)).ToList();
+
+            if (modsToDeactivate.Any())
             {
-                // Remove from active list
-                _modListManager.DeactivateMod(draggedMod);
+                Debug.WriteLine($"HandleDropOnInactiveList: Deactivating {modsToDeactivate.Count} mods.");
+                _modListManager.DeactivateMods(modsToDeactivate); // Requires implementation in ModListManager
             }
-            // If already inactive, no action needed
+            else
+            {
+                Debug.WriteLine("HandleDropOnInactiveList: No active mods in the dragged list to deactivate.");
+            }
         }
+
 
         public async Task ClearActiveModsAsync()
         {
-            // --- Replaced MessageBox ---
             var result = _dialogService.ShowConfirmation(
                 "Confirm Clear",
                 "This will remove all non-Core and non-Expansion mods from the active list.\nAre you sure?",
-                showCancel: true); // Show OK and Cancel buttons
-                                   // -------------------------
+                showCancel: true);
 
-            // Assuming OK maps to Yes, Cancel maps to No for this confirmation
-            if (result != MessageDialogResult.OK) return; // Use MessageDialogResult.OK
+            if (result != MessageDialogResult.OK) return;
 
             await Task.Run(() => _modListManager.ClearActiveList());
         }
@@ -88,7 +115,9 @@ namespace RimSharp.ViewModels.Modules.Mods.Commands
         {
             try
             {
+                 Debug.WriteLine("SortActiveModsAsync: Requesting sort from ModListManager.");
                 bool orderChanged = await Task.Run(() => _modListManager.SortActiveList());
+                 Debug.WriteLine($"SortActiveModsAsync: ModListManager returned orderChanged={orderChanged}");
 
                 if (orderChanged)
                 {
