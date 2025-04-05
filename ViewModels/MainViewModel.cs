@@ -106,7 +106,8 @@ namespace RimSharp.ViewModels
                 modListIOService,
                 modListManager,
                 incompatibilityService,
-                _dialogService // Pass the initialized dialog service
+                _dialogService, // Pass the initialized dialog service
+                _modService  
             );
             DownloaderVM = new DownloaderViewModel(/* Pass services if needed */);
 

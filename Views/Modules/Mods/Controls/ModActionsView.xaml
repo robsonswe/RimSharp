@@ -18,6 +18,10 @@
         Margin="0,0,0,5" 
         Style="{StaticResource RimworldButtonStyle}"
         />
+        <Button Content="Duplicates" 
+        Command="{Binding CheckDuplicatesCommand}" 
+        Margin="0,0,0,5" 
+        Style="{StaticResource RimworldButtonStyle}"/>
 
         <Button Content="Strip mods" Command="{Binding StripModsCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
         <Button Content="Create pack" Command="{Binding CreatePackCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
