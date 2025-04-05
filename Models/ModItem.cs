@@ -1,4 +1,3 @@
-// Update ModItem.cs
 using System.Collections.Generic;
 
 namespace RimSharp.Models

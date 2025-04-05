@@ -73,7 +73,8 @@ namespace RimSharp
                     provider.GetRequiredService<IModListIOService>(),
                     provider.GetRequiredService<IModListManager>(),
                     provider.GetRequiredService<IModIncompatibilityService>(),
-                    provider.GetRequiredService<IDialogService>()
+                    provider.GetRequiredService<IDialogService>(),
+                    provider.GetRequiredService<IModService>() 
                 ));
 
             services.AddSingleton<DownloaderViewModel>(); // Assuming it needs no constructor args for now

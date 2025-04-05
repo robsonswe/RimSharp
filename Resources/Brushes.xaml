@@ -27,5 +27,6 @@
         <SolidColorBrush x:Key="RimworldBackgroundBrush" Color="{StaticResource RimworldBeige}"/>
         <SolidColorBrush x:Key="RimworldBorderBrush" Color="{StaticResource RimworldBrown}"/>
         <SolidColorBrush x:Key="RimworldLightBackgroundBrush" Color="{StaticResource RimworldDarkBeige}"/>
+        <SolidColorBrush x:Key="RimworldSelectedBackgroundBrush" Color="#FFE8D8B0"/>
 
 </ResourceDictionary>
