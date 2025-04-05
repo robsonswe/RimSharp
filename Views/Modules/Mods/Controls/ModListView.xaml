@@ -56,6 +56,7 @@
                      MouseDoubleClick="InternalListBox_MouseDoubleClick"
                      AllowDrop="True"
                      Background="Transparent"
+                     SelectionMode="Extended"
                      >
                      <!-- AllowDrop must be true for behavior's drop events to fire -->
 
@@ -68,13 +69,36 @@
 
                 <ListBox.ItemTemplate>
                     <DataTemplate DataType="{x:Type models:ModItem}">
-                        <TextBlock Text="{Binding Name}"
-                                   ToolTip="{Binding Path}"
-                                   Foreground="{Binding IsOutdatedRW,
-                                                Converter={StaticResource BooleanToColorConverter},
-                                                ConverterParameter=RimworldErrorRed|RimworldBrown}"/>
+                        <!-- Use a container that fills width for better hit testing -->
+                        <Border Background="Transparent">
+                            <TextBlock Text="{Binding Name}"
+                                       ToolTip="{Binding Path}"
+                                       Margin="2,1"
+                                       Foreground="{Binding IsOutdatedRW,
+                                                    Converter={StaticResource BooleanToColorConverter},
+                                                    ConverterParameter=RimworldErrorRed|RimworldBrown}"/>
+                        </Border>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
+
+                 <!-- Style to visually indicate selected items better -->
+                 <ListBox.ItemContainerStyle>
+                     <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                         <Setter Property="Padding" Value="0"/> <!-- Remove default padding if using Border in template -->
+                         <Style.Triggers>
+                             <Trigger Property="IsSelected" Value="True">
+                                 <!-- Keep default selection visual or customize -->
+                                 <Setter Property="Background" Value="{StaticResource RimworldHighlightBrush}"/>
+                                 <Setter Property="Foreground" Value="{StaticResource RimworldBlackBrush}"/>
+                             </Trigger>
+                             <!-- Optional: Trigger for dragged item opacity -->
+                             <Trigger Property="Tag" Value="Dragging">
+                                 <Setter Property="Opacity" Value="0.5"/>
+                             </Trigger>
+                         </Style.Triggers>
+                     </Style>
+                 </ListBox.ItemContainerStyle>
+
             </ListBox>
         </Grid>
     </Border>

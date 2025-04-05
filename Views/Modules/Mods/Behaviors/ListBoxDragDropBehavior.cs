@@ -2,7 +2,10 @@ using Microsoft.Xaml.Behaviors;
 using RimSharp.Models; // For ModItem
 using RimSharp.Views.Modules.Mods.DragAdorner; // For Adorners
 using System;
+using System.Collections; // For IEnumerable
+using System.Collections.Generic; // For List<>
 using System.Diagnostics;
+using System.Linq; // For Linq extensions like OfType, ToList
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -16,7 +19,9 @@ namespace RimSharp.Views.Modules.Mods.Behaviors
     {
         private Point _dragStartPoint;
         private bool _isDragging = false;
-        private ModItem _draggedData; // Store the actual ModItem being dragged
+        // private ModItem _draggedData; // Replaced
+        private List<ModItem> _draggedItems; // Store the actual ModItems being dragged
+        private List<ListBoxItem> _draggedItemContainers; // Store original containers for visual feedback
 
         // Adorner fields
         private AdornerLayer _adornerLayer;
@@ -24,6 +29,9 @@ namespace RimSharp.Views.Modules.Mods.Behaviors
         private InsertionAdorner _insertionAdorner;
         private static readonly Brush InsertionBrush = Brushes.Gray; // Or use your RimworldHighlightBrush
         private const double InsertionThickness = 2.0;
+
+        // Define a custom data format string
+        private const string DraggedItemsFormat = "RimSharpModItemList";
 
         #region Dependency Properties
 
@@ -37,7 +45,7 @@ namespace RimSharp.Views.Modules.Mods.Behaviors
             set { SetValue(DropCommandProperty, value); }
         }
 
-        // The Type of item being dragged (e.g., typeof(ModItem))
+        // The Type of *individual* item allowed (e.g., typeof(ModItem))
         public static readonly DependencyProperty DragItemTypeProperty =
             DependencyProperty.Register(nameof(DragItemType), typeof(Type), typeof(ListBoxDragDropBehavior), new PropertyMetadata(null));
 
@@ -67,6 +75,7 @@ namespace RimSharp.Views.Modules.Mods.Behaviors
             this.AssociatedObject.PreviewMouseLeftButtonDown += AssociatedObject_PreviewMouseLeftButtonDown;
             this.AssociatedObject.PreviewMouseMove += AssociatedObject_PreviewMouseMove;
             this.AssociatedObject.PreviewMouseLeftButtonUp += AssociatedObject_PreviewMouseLeftButtonUp; // Handle drag end without drop
+            this.AssociatedObject.PreviewDragEnter += AssociatedObject_PreviewDragEnter; // Use Enter instead of Over for initial check/adorner layer
             this.AssociatedObject.PreviewDragOver += AssociatedObject_PreviewDragOver;
             this.AssociatedObject.PreviewDrop += AssociatedObject_PreviewDrop;
             this.AssociatedObject.PreviewDragLeave += AssociatedObject_PreviewDragLeave;
@@ -81,6 +90,7 @@ namespace RimSharp.Views.Modules.Mods.Behaviors
                 this.AssociatedObject.PreviewMouseLeftButtonDown -= AssociatedObject_PreviewMouseLeftButtonDown;
                 this.AssociatedObject.PreviewMouseMove -= AssociatedObject_PreviewMouseMove;
                 this.AssociatedObject.PreviewMouseLeftButtonUp -= AssociatedObject_PreviewMouseLeftButtonUp;
+                this.AssociatedObject.PreviewDragEnter -= AssociatedObject_PreviewDragEnter;
                 this.AssociatedObject.PreviewDragOver -= AssociatedObject_PreviewDragOver;
                 this.AssociatedObject.PreviewDrop -= AssociatedObject_PreviewDrop;
                 this.AssociatedObject.PreviewDragLeave -= AssociatedObject_PreviewDragLeave;
@@ -95,11 +105,27 @@ namespace RimSharp.Views.Modules.Mods.Behaviors
             // Only process if the item type is set
             if (DragItemType == null) return;
 
+            ListBox listBox = AssociatedObject;
+            var clickedItemContainer = FindVisualParent<ListBoxItem>(e.OriginalSource as DependencyObject);
+
+            // Check if clicking on a selected item in a multi-selection
+            if (clickedItemContainer != null)
+            {
+                var clickedItem = listBox.ItemContainerGenerator.ItemFromContainer(clickedItemContainer);
+                if (clickedItem != null && listBox.SelectedItems.Count > 1 && listBox.SelectedItems.Contains(clickedItem))
+                {
+                    // Prevent the ListBox from changing selection on click
+                    e.Handled = true;
+                }
+            }
+
             _dragStartPoint = e.GetPosition(null); // Position relative to screen/window
                                                    // Reset drag state in case a previous drag was aborted
             _isDragging = false;
-            _draggedData = null;
+            _draggedItems = null;
+            _draggedItemContainers = null;
         }
+
 
         private void AssociatedObject_PreviewMouseMove(object sender, MouseEventArgs e)
         {
@@ -111,129 +137,187 @@ namespace RimSharp.Views.Modules.Mods.Behaviors
             Vector dragVector = currentPosition - _dragStartPoint;
 
             // Start dragging only if the mouse has moved beyond a threshold
-            // Use SystemParameters for sensitivity if desired
             if (dragVector.Length > SystemParameters.MinimumHorizontalDragDistance ||
                 dragVector.Length > SystemParameters.MinimumVerticalDragDistance)
             {
                 ListBox listBox = AssociatedObject;
-                var draggedItem = FindVisualParent<ListBoxItem>(e.OriginalSource as DependencyObject);
+                var clickedItemContainer = FindVisualParent<ListBoxItem>(e.OriginalSource as DependencyObject);
 
-                if (draggedItem != null)
+                // Ensure the click was on a ListBoxItem
+                if (clickedItemContainer == null) return;
+
+                // Get the data item associated with the clicked container
+                var clickedItemData = listBox.ItemContainerGenerator.ItemFromContainer(clickedItemContainer);
+
+                // --- REVISED CHECK ---
+                // 1. Check if the item clicked is valid (not null, correct type).
+                // 2. Check if this clicked item is *part of the current selection*.
+                if (clickedItemData != null && DragItemType.IsInstanceOfType(clickedItemData) && listBox.SelectedItems.Contains(clickedItemData))
                 {
-                    // Ensure the item being dragged is actually selected or directly clicked
-                    if (listBox.SelectedItem == null || listBox.ItemContainerGenerator.ItemFromContainer(draggedItem) != listBox.SelectedItem)
+                    // The key fix: make sure we properly collect ALL selected items
+                    var currentSelectedMods = new List<ModItem>();
+                    foreach (var item in listBox.SelectedItems)
                     {
-                        // If the clicked item wasn't selected, select it now before dragging
-                        var itemData = listBox.ItemContainerGenerator.ItemFromContainer(draggedItem);
-                        if (itemData != null && itemData.GetType() == DragItemType)
+                        if (item is ModItem modItem)
                         {
-                            listBox.SelectedItem = itemData;
-                        }
-                        else
-                        {
-                            return; // Clicked on something else (scrollbar?) or wrong item type
+                            currentSelectedMods.Add(modItem);
                         }
                     }
 
 
-                    _draggedData = listBox.SelectedItem as ModItem; // Assuming ModItem for now
-
-                    if (_draggedData != null && _draggedData.GetType() == DragItemType)
+                    if (currentSelectedMods.Any())
                     {
+                        _draggedItems = currentSelectedMods;
                         _isDragging = true;
-                        Debug.WriteLine($"Starting drag for item: {_draggedData.Name} from list: {ListGroupName}");
+                        Debug.WriteLine($"Starting drag for {_draggedItems.Count} item(s) from list: {ListGroupName}");
+
+                        // Store original containers for visual feedback
+                        _draggedItemContainers = new List<ListBoxItem>();
+                        foreach (var item in _draggedItems) // Use the behavior's field
+                        {
+                            var container = listBox.ItemContainerGenerator.ContainerFromItem(item) as ListBoxItem;
+                            if (container != null)
+                            {
+                                _draggedItemContainers.Add(container);
+                            }
+                        }
 
                         // --- Adorner Setup ---
-                        _adornerLayer = AdornerLayer.GetAdornerLayer(listBox);
+                        UIElement elementForAdorner = Application.Current.MainWindow as Window ?? (UIElement)AssociatedObject;
+
+                        _adornerLayer = AdornerLayer.GetAdornerLayer(elementForAdorner);
+
                         if (_adornerLayer != null)
                         {
-                            // Use ListBox ItemTemplate for the drag adorner
-                            _dragAdorner = new DragAdorner.DragAdorner(listBox, _draggedData, listBox.ItemTemplate);
+                            // Pass the behavior's field _draggedItems
+                            _dragAdorner = new DragAdorner.DragAdorner(elementForAdorner, _draggedItems, listBox.ItemTemplate);
                             _adornerLayer.Add(_dragAdorner);
-                            UpdateDragAdornerPosition(e.GetPosition(listBox)); // Initial position
+                            UpdateDragAdornerPosition(e.GetPosition(elementForAdorner));
                         }
                         else
                         {
-                            Debug.WriteLine("Could not find AdornerLayer for drag adorner.");
+                            // *** LOG FIX *** Log the element type we tried
+                            Debug.WriteLine($"Could not find AdornerLayer for element '{elementForAdorner?.GetType().Name}'. Drag adorner not shown.");
                         }
 
-                        // Apply visual feedback to original item (optional)
-                        draggedItem.Opacity = 0.5;
+                        // Apply visual feedback to original items
+                        SetItemsDraggingVisualState(true);
 
                         // --- Start Drag Operation ---
-                        var dragData = new DataObject(DragItemType, _draggedData);
+                        var dragData = new DataObject(DraggedItemsFormat, _draggedItems); // Pass the behavior's field
+
                         try
                         {
-                            DragDropEffects finalEffect = DragDrop.DoDragDrop(listBox, dragData, DragDropEffects.Move | DragDropEffects.Copy); // Allow Move
-                                                                                                                                               // Cleanup happens after DoDragDrop returns (in Up, Leave, Drop, or QueryContinueDrag)
-                            Debug.WriteLine($"DoDragDrop finished for {_draggedData?.Name} with effect {finalEffect}");
-
+                            DragDropEffects finalEffect = DragDrop.DoDragDrop(listBox, dragData, DragDropEffects.Move | DragDropEffects.Copy);
+                            Debug.WriteLine($"DoDragDrop finished for {_draggedItems?.Count} items with effect {finalEffect}");
                         }
                         catch (Exception ex)
                         {
                             Debug.WriteLine($"Error during DragDrop.DoDragDrop: {ex.Message}");
-                            // Ensure cleanup even if DoDragDrop throws
-                            CleanupDragDrop(draggedItem);
+                            CleanupDragDrop();
                         }
                         finally
                         {
-                            // Final cleanup just in case other handlers didn't catch it
-                            CleanupDragDrop(draggedItem);
+                            if (_isDragging)
+                            {
+                                Debug.WriteLine("DoDragDrop finished block calling Cleanup.");
+                                CleanupDragDrop();
+                            }
                         }
                     }
                     else
                     {
-                        Debug.WriteLine($"Drag start failed: SelectedItem is null, not a ModItem, or doesn't match DragItemType ({DragItemType?.Name}).");
-                        _isDragging = false; // Reset flag
+                        // This case means the clicked item WAS selected, but OfType<ModItem> returned nothing
+                        // which implies SelectedItems contains non-ModItem objects, or is empty unexpectedly.
+                        Debug.WriteLine($"Drag start check failed: Clicked item was selected, but no ModItems found in SelectedItems.");
+                        _isDragging = false; // Ensure flag is reset
+                        _draggedItems = null;
+                        _draggedItemContainers = null;
                     }
+                }
+                else
+                {
+                    // Drag didn't start because the clicked item wasn't selected or wasn't valid.
+                    // This is normal if clicking on empty space or an unselected item without modifiers.
+                    // Debug.WriteLine($"Drag condition not met: ClickedItemData is null, wrong type, or not selected.");
                 }
             }
         }
 
+
+
         private void AssociatedObject_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            // If the mouse is released *before* a drag operation started, clean up potential partial state
-            // This also handles the case where DoDragDrop finishes without a drop (e.g., outside window)
+            // If the mouse is released *before* a drag operation started (no movement threshold met),
+            // or if DoDragDrop returns because the button was released outside a valid target.
             if (_isDragging)
             {
-                Debug.WriteLine("MouseUp detected during drag - cleaning up.");
-                // Find the original item container if possible to reset opacity
-                ListBoxItem itemContainer = null;
-                if (AssociatedObject != null && _draggedData != null)
-                {
-                    itemContainer = AssociatedObject.ItemContainerGenerator.ContainerFromItem(_draggedData) as ListBoxItem;
-                }
-                CleanupDragDrop(itemContainer);
+                // This case is less common now, as DoDragDrop's finally block or PreviewDrop handles most cleanup.
+                // However, keep it as a safety net.
+                Debug.WriteLine("MouseUp detected while IsDragging was true - cleaning up (Safety Net).");
+                CleanupDragDrop();
             }
+            // Reset flags even if drag didn't start
             _isDragging = false;
-            _draggedData = null;
+            _draggedItems = null;
+            _draggedItemContainers = null;
         }
+
+        private void AssociatedObject_PreviewDragEnter(object sender, DragEventArgs e)
+        {
+            // Get the adorner layer early if possible
+            if (_adornerLayer == null)
+            {
+                // Don't use MainWindow - use the AssociatedObject (the ListBox) directly
+                _adornerLayer = AdornerLayer.GetAdornerLayer(AssociatedObject);
+                if (_adornerLayer == null)
+                {
+                    Debug.WriteLine($"PreviewDragEnter: Could not find AdornerLayer for ListBox '{ListGroupName}'.");
+                }
+            }
+
+            // Check data format immediately
+            if (!e.Data.GetDataPresent(DraggedItemsFormat))
+            {
+                e.Effects = DragDropEffects.None;
+                e.Handled = true;
+                Debug.WriteLine($"DragEnter on {ListGroupName}: Invalid data format.");
+                return;
+            }
+            Debug.WriteLine($"DragEnter on {ListGroupName}: Valid data format detected.");
+            e.Effects = DragDropEffects.Move; // Tentatively allow move
+            e.Handled = true;
+        }
+
+
 
 
         private void AssociatedObject_PreviewDragOver(object sender, DragEventArgs e)
         {
-            e.Handled = true;
+            e.Handled = true; // Handle the event
 
-            // Check if the data being dragged is of the expected type
-            if (!e.Data.GetDataPresent(DragItemType))
+            // Double-check data format (might be redundant if Enter handled it, but safe)
+            if (!e.Data.GetDataPresent(DraggedItemsFormat))
             {
                 e.Effects = DragDropEffects.None;
-                e.Handled = true;
-                RemoveInsertionAdorner(); // Remove line if dragging wrong type over
+                RemoveInsertionAdorner();
+                Debug.WriteLine($"DragOver on {ListGroupName}: Invalid data format.");
                 return;
             }
 
-            // Check if source and target allow the move (e.g., prevent dropping Core onto Inactive)
-            // Basic check: Allow Move by default
+            // Allow Move effect
             e.Effects = DragDropEffects.Move;
-            e.Handled = true;
-
 
             ListBox listBox = AssociatedObject;
-            Point currentPosition = e.GetPosition(listBox);
+            Point currentPositionInListBox = e.GetPosition(listBox); // Position relative to the ListBox
 
-            // Update drag adorner position
-            UpdateDragAdornerPosition(currentPosition);
+            // Update drag adorner position (relative to its adorned element)
+            if (_dragAdorner != null)
+            {
+                Point currentPositionInAdorned = e.GetPosition(_dragAdorner.AdornedElement);
+                _dragAdorner.SetPosition(currentPositionInAdorned.X, currentPositionInAdorned.Y);
+            }
+
 
             // --- Insertion Adorner Logic ---
             ListBoxItem targetItemContainer = FindVisualParent<ListBoxItem>(e.OriginalSource as DependencyObject);
@@ -242,94 +326,129 @@ namespace RimSharp.Views.Modules.Mods.Behaviors
 
             if (targetItemContainer != null)
             {
-                // Get the data item associated with the container under the mouse
-                var itemUnderMouse = listBox.ItemContainerGenerator.ItemFromContainer(targetItemContainer);
-                if (itemUnderMouse != null)
-                {
-                    Point itemRelativePos = e.GetPosition(targetItemContainer);
-                    insertAbove = itemRelativePos.Y < targetItemContainer.ActualHeight / 2;
-                    insertionIndex = listBox.ItemContainerGenerator.IndexFromContainer(targetItemContainer);
+                Point itemRelativePos = e.GetPosition(targetItemContainer);
+                insertAbove = itemRelativePos.Y < targetItemContainer.ActualHeight / 2;
+                insertionIndex = listBox.ItemContainerGenerator.IndexFromContainer(targetItemContainer);
 
-                    if (!insertAbove)
-                    {
-                        insertionIndex++;
-                    }
-                    AddInsertionLine(listBox, targetItemContainer, insertAbove);
-                }
-                else
+                if (!insertAbove)
                 {
-                    // Dragging over empty space below last item?
-                    insertionIndex = listBox.Items.Count;
-                    AddInsertionLine(listBox, listBox, false); // Show at bottom
+                    insertionIndex++;
                 }
+                AddInsertionLine(listBox, targetItemContainer, insertAbove);
             }
             else
             {
-                // Dragging over empty space (or header/footer?)
-                // If list has items, insert at the end. If empty, insert at the top (index 0).
-                insertionIndex = listBox.Items.Count;
-                if (listBox.Items.Count > 0)
+                // Dragging over empty space or header/footer
+                insertionIndex = CalculateIndexFromEmptySpace(listBox, currentPositionInListBox);
+                if (insertionIndex == 0 && listBox.Items.Count > 0)
                 {
-                    var lastContainer = listBox.ItemContainerGenerator.ContainerFromIndex(listBox.Items.Count - 1) as FrameworkElement;
-                    if (lastContainer != null) AddInsertionLine(listBox, lastContainer, false); // Below last item
-                    else AddInsertionLine(listBox, listBox, true); // Fallback: Top of listbox
+                    // Near top but not over an item, insert above first item
+                    var firstContainer = listBox.ItemContainerGenerator.ContainerFromIndex(0) as FrameworkElement;
+                    if (firstContainer != null) AddInsertionLine(listBox, firstContainer, true);
+                    else AddInsertionLine(listBox, listBox, true); // Fallback
                 }
-                else
+                else if (insertionIndex == listBox.Items.Count && listBox.Items.Count > 0)
                 {
-                    AddInsertionLine(listBox, listBox, true); // Top of empty listbox
+                    // Near bottom but not over an item, insert below last item
+                    var lastContainer = listBox.ItemContainerGenerator.ContainerFromIndex(listBox.Items.Count - 1) as FrameworkElement;
+                    if (lastContainer != null) AddInsertionLine(listBox, lastContainer, false);
+                    else AddInsertionLine(listBox, listBox, false); // Fallback
+                }
+                else // Empty list or truly empty space
+                {
+                    AddInsertionLine(listBox, listBox, true); // Default to top for empty list
                 }
             }
 
-            // Store the calculated index (e.g., in Tag) for the Drop handler
-            listBox.Tag = insertionIndex; // Use Tag to pass index to Drop event
+            // Store the calculated index
+            listBox.Tag = insertionIndex;
+        }
+
+        private int CalculateIndexFromEmptySpace(ListBox listBox, Point positionInListBox)
+        {
+            if (listBox.Items.Count == 0) return 0;
+
+            // Check if position is above the first item
+            var firstContainer = listBox.ItemContainerGenerator.ContainerFromIndex(0) as ListBoxItem;
+            if (firstContainer != null)
+            {
+                Point firstItemPos = firstContainer.TranslatePoint(new Point(0, 0), listBox);
+                if (positionInListBox.Y < firstItemPos.Y) return 0;
+            }
+
+            // Check if position is below the last item
+            var lastContainer = listBox.ItemContainerGenerator.ContainerFromIndex(listBox.Items.Count - 1) as ListBoxItem;
+            if (lastContainer != null)
+            {
+                Point lastItemPos = lastContainer.TranslatePoint(new Point(0, 0), listBox);
+                if (positionInListBox.Y > lastItemPos.Y + lastContainer.ActualHeight) return listBox.Items.Count;
+            }
+
+            // If between items (but not directly over one), find the closest insertion point
+            // This is more complex, often defaulting to the end works ok here if not over an item.
+            // For simplicity, if not above first or below last, assume end.
+            return listBox.Items.Count;
         }
 
         private void AssociatedObject_PreviewDrop(object sender, DragEventArgs e)
         {
-            Debug.WriteLine($"=== DROP START ===");
-            Debug.WriteLine($"Drop detected on list: {ListGroupName}");
-            Debug.WriteLine($"Data present: {e.Data.GetDataPresent(DragItemType)}");
+            Debug.WriteLine($"=== DROP START on {ListGroupName} ===");
+            e.Handled = true; // Handle the drop event
+            RemoveInsertionAdorner(); // Clean up insertion line
 
-            if (e.Data.GetData(DragItemType) is ModItem item)
+            // Verify data format
+            if (!e.Data.GetDataPresent(DraggedItemsFormat))
             {
-                Debug.WriteLine($"Dropped item: {item.Name}");
-            }
-
-            Debug.WriteLine($"Drop detected on list: {ListGroupName}");
-            e.Handled = true;
-            RemoveInsertionAdorner(); // Clean up insertion line first
-
-            if (!e.Data.GetDataPresent(DragItemType))
-            {
-                Debug.WriteLine("Drop failed: Data type mismatch.");
-                CleanupDragDrop(); // Clean up drag adorner too
-                return;
-            }
-
-            var droppedData = e.Data.GetData(DragItemType) as ModItem;
-            if (droppedData == null)
-            {
-                Debug.WriteLine("Drop failed: Could not cast data to ModItem.");
+                Debug.WriteLine("Drop failed: Data format mismatch.");
                 CleanupDragDrop();
                 return;
             }
 
+            // Extract the data
+            var droppedData = e.Data.GetData(DraggedItemsFormat) as List<ModItem>;
+            if (droppedData == null || !droppedData.Any())
+            {
+                Debug.WriteLine("Drop failed: Could not cast data to List<ModItem> or list is empty.");
+                CleanupDragDrop();
+                return;
+            }
+            Debug.WriteLine($"Dropped {droppedData.Count} items.");
+
+
             ListBox listBox = AssociatedObject;
             // Retrieve the index calculated during DragOver
             int dropIndex = listBox.Tag is int idx ? idx : -1;
-            if (dropIndex == -1) // Should ideally always be set by DragOver
+
+            // If dropIndex is -1 (wasn't over listbox area that calculated index),
+            // determine index based on drop position relative to items.
+            if (dropIndex == -1)
             {
-                Debug.WriteLine("Warning: Drop index not found in ListBox.Tag. Defaulting to end of list.");
-                dropIndex = listBox.Items.Count; // Fallback
+                Point dropPosition = e.GetPosition(listBox);
+                var targetContainer = FindVisualParent<ListBoxItem>(e.OriginalSource as DependencyObject);
+                if (targetContainer != null)
+                {
+                    Point itemRelativePos = e.GetPosition(targetContainer);
+                    bool insertAbove = itemRelativePos.Y < targetContainer.ActualHeight / 2;
+                    dropIndex = listBox.ItemContainerGenerator.IndexFromContainer(targetContainer);
+                    if (!insertAbove) dropIndex++;
+                }
+                else
+                {
+                    // Dropped on empty space, calculate index again
+                    dropIndex = CalculateIndexFromEmptySpace(listBox, dropPosition);
+                    Debug.WriteLine($"Drop index calculated from empty space: {dropIndex}");
+                }
             }
+
             // Clamp index just in case
             dropIndex = Math.Clamp(dropIndex, 0, listBox.Items.Count);
+            Debug.WriteLine($"Final Drop Index: {dropIndex}");
 
 
             // Create arguments for the command
             var args = new DropModArgs
             {
-                DroppedItem = droppedData,
+                DroppedItems = droppedData, // Use the list
                 TargetListName = this.ListGroupName,
                 DropIndex = dropIndex
             };
@@ -337,105 +456,72 @@ namespace RimSharp.Views.Modules.Mods.Behaviors
             // Execute the command
             if (DropCommand != null && DropCommand.CanExecute(args))
             {
-                Debug.WriteLine($"Executing DropCommand: Item='{args.DroppedItem.Name}', Target='{args.TargetListName}', Index={args.DropIndex}");
+                Debug.WriteLine($"Executing DropCommand: {args.DroppedItems.Count} Items, Target='{args.TargetListName}', Index={args.DropIndex}");
                 DropCommand.Execute(args);
-                e.Handled = true;
             }
             else
             {
                 Debug.WriteLine("DropCommand is null or cannot execute.");
             }
 
-            // Find the original item container if possible to reset opacity
-            ListBoxItem originalItemContainer = null;
-            // Note: Finding the original container might be tricky if the drag originated
-            // from a *different* ListBox. We only reliably know the container if the
-            // source and target are the same AssociatedObject.
-            // For now, we'll attempt cleanup assuming the source might be this list.
-            // The _draggedData field holds the item regardless of source list.
-            if (AssociatedObject != null && _draggedData != null)
-            {
-                originalItemContainer = AssociatedObject.ItemContainerGenerator.ContainerFromItem(_draggedData) as ListBoxItem;
-            }
-
-            CleanupDragDrop(originalItemContainer); // General cleanup after drop
+            // Cleanup occurs AFTER command execution
+            Debug.WriteLine("Drop finished, calling CleanupDragDrop.");
+            CleanupDragDrop(); // General cleanup after drop
         }
 
         private void AssociatedObject_PreviewDragLeave(object sender, DragEventArgs e)
         {
             // Remove insertion adorner if the mouse leaves the ListBox bounds
-            // Check if the mouse position is truly outside the ListBox
             Point pos = e.GetPosition(AssociatedObject);
             Rect bounds = new Rect(0, 0, AssociatedObject.ActualWidth, AssociatedObject.ActualHeight);
             if (!bounds.Contains(pos))
             {
                 RemoveInsertionAdorner();
-                // Do NOT clean up the drag adorner here, it should follow the mouse
                 AssociatedObject.Tag = null; // Clear stored index
                 Debug.WriteLine($"DragLeave detected from list: {ListGroupName}");
             }
+            // Don't cleanup drag adorner here, it follows the mouse
         }
 
         private void AssociatedObject_QueryContinueDrag(object sender, QueryContinueDragEventArgs e)
-{
-    // Optional: Keep updating drag adorner position continuously if button is pressed
-    if (e.KeyStates.HasFlag(DragDropKeyStates.LeftMouseButton))
-    {
-        if (_dragAdorner != null)
         {
-            Point currentPos = GetMousePosition(AssociatedObject); // Helper needed
-            UpdateDragAdornerPosition(currentPos);
-        }
-        // Keep default action (Continue) if button is pressed
-        e.Action = DragAction.Continue;
-        // Don't handle here, let system continue
-        // e.Handled = true; // REMOVE THIS from general continuation
-    }
-    else // Mouse button is NOT pressed OR Escape is pressed
-    {
-        if (e.EscapePressed)
-        {
-            Debug.WriteLine("Drag cancelled by Escape key.");
-            e.Action = DragAction.Cancel;
-            // Find the original item container if possible
-            ListBoxItem itemContainer = null;
-            if (AssociatedObject != null && _draggedData != null)
+            // Update drag adorner continuously if button is pressed
+            if (e.KeyStates.HasFlag(DragDropKeyStates.LeftMouseButton))
             {
-                itemContainer = AssociatedObject.ItemContainerGenerator.ContainerFromItem(_draggedData) as ListBoxItem;
+                if (_dragAdorner != null)
+                {
+                    // Need position relative to the element the adorner is attached to
+                    Point currentPos = GetMousePosition(_dragAdorner.AdornedElement);
+                    _dragAdorner.SetPosition(currentPos.X, currentPos.Y);
+                }
+                e.Action = DragAction.Continue;
             }
-            CleanupDragDrop(itemContainer); // Clean up everything on cancel
-            e.Handled = true; // IMPORTANT: Set handled ONLY for explicit cancel
+            else // Mouse button is NOT pressed OR Escape is pressed
+            {
+                if (e.EscapePressed)
+                {
+                    Debug.WriteLine("Drag cancelled by Escape key.");
+                    e.Action = DragAction.Cancel;
+                    CleanupDragDrop(); // Clean up everything on cancel
+                    e.Handled = true; // Prevent further processing for cancel
+                }
+                else // Button released (not Escape) - let PreviewDrop or MouseUp handle it
+                {
+                    Debug.WriteLine("Drag ended (mouse button released or drop occurred). Action determined by Drop/Leave/Up handlers.");
+                    e.Action = DragAction.Continue; // Let framework determine Drop or Cancel based on target
+                                                    // Cleanup will happen in PreviewDrop or PreviewMouseLeftButtonUp/DoDragDrop finally block
+                }
+            }
         }
-        else // Button released (not Escape) - Let the framework decide Drop or Cancel
-        {
-             Debug.WriteLine("Drag ended (mouse button released). Action will be determined by Drop/Leave handlers.");
-             // Do NOT set e.Action here.
-             // Do NOT set e.Handled = true here. The framework needs to proceed
-             // to check for a valid drop target and raise PreviewDrop.
-             // The cleanup will happen in PreviewDrop or PreviewMouseLeftButtonUp.
-        }
-    }
-
-    // Only set it inside the Escape block.
-}
 
 
-        // --- Adorner Helper Methods ---
+        // --- Adorner and Visual State Helper Methods ---
 
         private void AddInsertionLine(ListBox listBox, FrameworkElement relativeTo, bool above)
         {
+            if (_adornerLayer == null) { /* Already logged in DragEnter */ return; }
+
             RemoveInsertionAdorner(); // Remove previous one first
-
-            if (_adornerLayer == null)
-            {
-                _adornerLayer = AdornerLayer.GetAdornerLayer(listBox);
-                if (_adornerLayer == null)
-                {
-                    Debug.WriteLine("Cannot add insertion line: AdornerLayer not found.");
-                    return;
-                }
-            }
-
 
             _insertionAdorner = new InsertionAdorner(
                 listBox,        // Adorned Element (the ListBox itself)
@@ -452,77 +538,69 @@ namespace RimSharp.Views.Modules.Mods.Behaviors
         {
             if (_insertionAdorner != null && _adornerLayer != null)
             {
-                try
-                {
-                    _adornerLayer.Remove(_insertionAdorner);
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Error removing insertion adorner: {ex.Message}");
-                    // Attempt to clear references anyway
-                }
-                finally
-                {
-                    _insertionAdorner = null;
-                }
+                try { _adornerLayer.Remove(_insertionAdorner); }
+                catch (Exception ex) { Debug.WriteLine($"Error removing insertion adorner: {ex.Message}"); }
+                finally { _insertionAdorner = null; }
             }
-            // Don't clear _adornerLayer here, might be needed by drag adorner
         }
 
-
-        private void UpdateDragAdornerPosition(Point currentPosition)
+        private void UpdateDragAdornerPosition(Point positionInAdornedElement)
         {
-            if (_dragAdorner != null)
-            {
-                // Position adorner relative to the ListBox top-left
-                _dragAdorner.SetPosition(currentPosition.X, currentPosition.Y);
-            }
+            _dragAdorner?.SetPosition(positionInAdornedElement.X, positionInAdornedElement.Y);
         }
+
 
         private void RemoveDragAdorner()
         {
             if (_dragAdorner != null && _adornerLayer != null)
             {
-                try
-                {
-                    _adornerLayer.Remove(_dragAdorner);
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Error removing drag adorner: {ex.Message}");
-                }
-                finally
-                {
-                    _dragAdorner = null;
-                }
+                try { _adornerLayer.Remove(_dragAdorner); }
+                catch (Exception ex) { Debug.WriteLine($"Error removing drag adorner: {ex.Message}"); }
+                finally { _dragAdorner = null; }
             }
-            // Don't clear _adornerLayer here, might be needed by insertion adorner
         }
 
-        private void CleanupDragDrop(ListBoxItem originalItemContainer = null)
+        // Sets/Resets visual state (e.g., opacity) for dragged items
+        private void SetItemsDraggingVisualState(bool isDragging)
         {
-            Debug.WriteLine($"CleanupDragDrop called. Dragging: {_isDragging}");
+            if (_draggedItemContainers == null) return;
+
+            foreach (var container in _draggedItemContainers)
+            {
+                if (container != null)
+                {
+                    // Option 1: Direct Opacity
+                    // container.Opacity = isDragging ? 0.5 : 1.0;
+
+                    // Option 2: Using Tag and Style Trigger (as defined in XAML)
+                    container.Tag = isDragging ? "Dragging" : null;
+                }
+            }
+        }
+
+        private void CleanupDragDrop()
+        {
+            if (!_isDragging && _dragAdorner == null && _insertionAdorner == null)
+            {
+                // Avoid redundant cleanup if already cleaned or drag never started fully
+                // Debug.WriteLine("CleanupDragDrop skipped (already clean or drag didn't fully start).");
+                return;
+            }
+
+            Debug.WriteLine($"CleanupDragDrop called. Current IsDragging: {_isDragging}");
             RemoveInsertionAdorner();
             RemoveDragAdorner();
 
-
-            // Reset opacity of the original item if provided
-            if (originalItemContainer != null)
-            {
-                originalItemContainer.Opacity = 1.0;
-            }
-            else if (AssociatedObject != null && _draggedData != null && _isDragging) // Try finding it again if needed
-            {
-                var container = AssociatedObject.ItemContainerGenerator.ContainerFromItem(_draggedData) as ListBoxItem;
-                if (container != null) container.Opacity = 1.0;
-            }
-
+            // Reset visual state of original items
+            SetItemsDraggingVisualState(false);
 
             // Clear state variables
             if (AssociatedObject != null) AssociatedObject.Tag = null; // Clear stored index
             _isDragging = false;
-            _draggedData = null; // Clear the reference to the dragged data
-            // _adornerLayer = null; // Avoid clearing this unless detaching behavior
+            _draggedItems = null; // Clear the reference to the dragged data
+            _draggedItemContainers = null; // Clear container references
+                                           // _adornerLayer reference can persist, it's often shared/reused.
+            Debug.WriteLine($"CleanupDragDrop finished.");
         }
 
 
@@ -530,6 +608,7 @@ namespace RimSharp.Views.Modules.Mods.Behaviors
 
         private static T FindVisualParent<T>(DependencyObject child) where T : DependencyObject
         {
+            if (child == null) return null;
             DependencyObject parentObject = VisualTreeHelper.GetParent(child);
             if (parentObject == null) return null;
             T parent = parentObject as T;
@@ -540,14 +619,51 @@ namespace RimSharp.Views.Modules.Mods.Behaviors
         }
 
         // Helper to get mouse position relative to an element
-        // Required because DragEventArgs.GetPosition gives position relative to the event source,
-        // which might not be the element we want (e.g., if dragging over textblock inside listboxitem)
-        private static Point GetMousePosition(Visual relativeTo)
+        private static Point GetMousePosition(Visual relativeTo) // Keep Visual here is okay
         {
             Win32Point w32Mouse = new Win32Point();
             NativeMethods.GetCursorPos(ref w32Mouse);
-            return relativeTo.PointFromScreen(new Point(w32Mouse.X, w32Mouse.Y));
+            Point screenPoint = new Point(w32Mouse.X, w32Mouse.Y);
+
+            // Check if relativeTo is connected to presentation source (visual tree)
+            PresentationSource source = PresentationSource.FromVisual(relativeTo);
+
+            if (source?.RootVisual != null)
+            {
+                try
+                {
+                    // Transform screen coords to coords relative to the visual element
+                    return source.RootVisual.TransformToDescendant(relativeTo).Transform(screenPoint);
+                    // Alternative using PointFromScreen if the visual is a UIElement directly connected
+                    // return relativeTo.PointFromScreen(screenPoint);
+                }
+                catch (InvalidOperationException ex) // May happen if transforms are not possible
+                {
+                    Debug.WriteLine($"Warning: GetMousePosition transform failed for {relativeTo.GetType().Name}: {ex.Message}. Returning screen coordinates relative to RootVisual or Screen.");
+                    try
+                    {
+                        // Fallback: Position relative to the root visual of the source
+                        return source.RootVisual.PointFromScreen(screenPoint);
+                    }
+                    catch
+                    {
+                        return screenPoint; // Absolute fallback: Screen coordinates
+                    }
+                }
+                catch (Exception ex) // Catch other potential exceptions
+                {
+                    Debug.WriteLine($"Warning: GetMousePosition general error for {relativeTo.GetType().Name}: {ex.Message}. Returning screen coordinates.");
+                    return screenPoint; // Absolute fallback: Screen coordinates
+                }
+            }
+            else
+            {
+                Debug.WriteLine($"Warning: GetMousePosition could not find PresentationSource for {relativeTo.GetType().Name}. Returning screen coordinates.");
+                // If not connected, PointFromScreen will fail. Return raw screen coords.
+                return screenPoint;
+            }
         }
+
 
         // P/Invoke helpers for GetCursorPos
         private struct Win32Point { public int X; public int Y; };
