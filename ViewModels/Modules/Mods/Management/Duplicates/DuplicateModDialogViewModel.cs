@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
@@ -65,7 +64,6 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
             try
             {
                 var pathsToDelete = new List<string>();
-                // ... (logic to populate pathsToDelete based on selections, same as before) ...
                 foreach (var group in DuplicateGroups)
                 {
                     if (group == null || group.IsIgnored)
@@ -83,8 +81,6 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
                     }
                 }
 
-
-                // --- Final Safety Check & Debugging ---
                 var finalPathsToDelete = pathsToDelete?.Where(p => p != null).ToList() ?? new List<string>();
 
                 Debug.WriteLine($"[ApplyResolutions] Preparing to call callback. Calculated {finalPathsToDelete.Count} paths for deletion:");
@@ -99,8 +95,6 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
                 {
                     Debug.WriteLine("[ApplyResolutions] !!! WARNING: finalPathsToDelete contains NULL before callback !!!");
                 }
-                // --- End Debugging ---
-
 
                 if (_applyCallback == null)
                 {
@@ -115,14 +109,13 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
                     try
                     {
                         Debug.WriteLine($"[ApplyResolutions] Invoking callback (Line ~127) with {finalPathsToDelete.Count} paths.");
-                        _applyCallback(finalPathsToDelete); // Line 127 (approx)
+                        _applyCallback(finalPathsToDelete);
                         CloseDialog(true);
                     }
                     catch (Exception ex)
                     {
-                        // Error is caught here from the callback execution!
                         Debug.WriteLine($"[ApplyResolutions] !!! ERROR during callback execution: {ex}");
-                        MessageBox.Show($"Failed to apply duplicate mod resolutions during callback execution: {ex.Message}", // Typo fixed: reference, instance
+                        MessageBox.Show($"Failed to apply duplicate mod resolutions during callback execution: {ex.Message}",
                             "Callback Execution Error", MessageBoxButton.OK, MessageBoxImage.Error);
                         CloseDialog(false);
                     }
@@ -136,8 +129,6 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
                 CloseDialog(false);
             }
         }
-
-
 
         private void Cancel()
         {
@@ -154,128 +145,6 @@ namespace RimSharp.ViewModels.Modules.Mods.Management
                     CloseDialog(false);
                 }
             });
-        }
-    }
-
-    public class DuplicateModGroupViewModel : ViewModelBase
-    {
-        public ObservableCollection<ModItemWrapper> Mods { get; } = new ObservableCollection<ModItemWrapper>();
-        public string PackageId { get; }
-        public string GroupName { get; }
-
-
-        private bool _isIgnored;
-        public bool IsIgnored
-        {
-            get => _isIgnored;
-            set
-            {
-                if (SetProperty(ref _isIgnored, value))
-                {
-                    if (value)
-                    {
-                        foreach (var mod in Mods)
-                        {
-                            mod.IsActive = false;
-                        }
-                    }
-                }
-            }
-        }
-
-        public DuplicateModGroupViewModel(IGrouping<string, ModItem> group)
-        {
-            PackageId = group.Key;
-            GroupName = $"DuplicateGroup_{group.GetHashCode()}";
-            _isIgnored = false;
-
-            foreach (var mod in group)
-            {
-                if (mod != null)
-                {
-                    var wrapper = new ModItemWrapper(mod, this);
-                    Mods.Add(wrapper);
-                }
-            }
-
-            var defaultMod = group.OrderByDescending(m => m?.IsActive ?? false)
-                  .ThenByDescending(m => m?.SupportedVersions?.FirstOrDefault())
-                  .FirstOrDefault();
-
-            if (defaultMod != null)
-            {
-                var wrapper = Mods.FirstOrDefault(w => w?.Original == defaultMod);
-                if (wrapper != null)
-                {
-                    wrapper.IsActive = true;
-                }
-            }
-        }
-
-        public ModItem GetSelectedModToKeep()
-        {
-            return Mods.FirstOrDefault(m => m?.IsActive == true)?.Original;
-        }
-
-        public void UpdateSelection(ModItemWrapper selected)
-        {
-            IsIgnored = false;
-
-            foreach (var mod in Mods)
-            {
-                if (mod != null && mod != selected)
-                {
-                    mod.IsActive = false;
-                }
-            }
-        }
-    }
-
-    public class ModItemWrapper : ViewModelBase
-    {
-        private bool _isActive;
-        public bool IsActive
-        {
-            get => _isActive;
-            set
-            {
-                if (SetProperty(ref _isActive, value))
-                {
-                    if (value)
-                    {
-                        ParentGroup?.UpdateSelection(this);
-                        Original.IsActive = true;
-                    }
-                    else
-                    {
-                        Original.IsActive = false;
-                    }
-                }
-            }
-        }
-
-        public ModItem Original { get; }
-        public DuplicateModGroupViewModel ParentGroup { get; }
-
-        public string Name => Original?.Name;
-        public string Authors => Original?.Authors;
-        public string ModVersion => Original?.ModVersion;
-        public string Path => Original?.Path;
-        public string SteamId => Original?.SteamId;
-        public string Url => Original?.Url;
-        public string SteamUrl => Original?.SteamUrl;
-        public string ExternalUrl => Original?.ExternalUrl;
-
-        public string SupportedVersions => Original?.SupportedVersions != null && Original.SupportedVersions.Any()
-    ? string.Join(", ", Original.SupportedVersions)
-    : "Unknown";
-
-
-        public ModItemWrapper(ModItem original, DuplicateModGroupViewModel parentGroup)
-        {
-            Original = original ?? throw new ArgumentNullException(nameof(original));
-            ParentGroup = parentGroup ?? throw new ArgumentNullException(nameof(parentGroup));
-            _isActive = original.IsActive;
         }
     }
 }

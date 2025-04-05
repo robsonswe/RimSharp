@@ -19,6 +19,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 
+
 namespace RimSharp.ViewModels.Modules.Mods
 {
     public class ModsViewModel : ViewModelBase, IDisposable
@@ -33,7 +34,7 @@ namespace RimSharp.ViewModels.Modules.Mods
 
         private readonly IModIncompatibilityService _incompatibilityService;
 
-        private readonly IModService _modService;
+        //private readonly IModService _modService;
 
         private ModItem _selectedMod;
         private bool _isLoading;
@@ -236,144 +237,144 @@ namespace RimSharp.ViewModels.Modules.Mods
             }
         }
 
-private async void DeleteDuplicateMods(List<string> pathsToDelete) // Make async void for refresh call
-{
-    // --- Enhanced Debugging START ---
-    if (pathsToDelete == null)
-    {
-        Debug.WriteLine("[DeleteDuplicateMods] ERROR: Received a null list.");
-        _dialogService.ShowWarning("Deletion Warning", "Cannot perform deletion: received a null list of paths.");
-        return;
-    }
-    Debug.WriteLine($"[DeleteDuplicateMods] Received list with {pathsToDelete.Count} items.");
-    // ... (rest of existing debug logs) ...
-    // --- Enhanced Debugging END ---
-
-    // --- Information Gathering for Report ---
-    var successfullyDeletedMods = new List<ModItem>(); // Store info of mods actually deleted
-    var errorMessages = new List<string>(); // Store specific error messages
-    var allModsLookup = _modListManager.GetAllMods() // Get all mods to look up details by path
-                         .Where(m => !string.IsNullOrEmpty(m.Path))
-                         .ToDictionary(m => m.Path, m => m, StringComparer.OrdinalIgnoreCase); // Use case-insensitive for Windows paths
-    // ----------------------------------------
-
-    foreach (var path in pathsToDelete)
-    {
-        // --- Critical Null Check ---
-        if (path == null)
+        private async void DeleteDuplicateMods(List<string> pathsToDelete) // Make async void for refresh call
         {
-            Debug.WriteLine("[DeleteDuplicateMods] !!! CRITICAL ERROR: Encountered a NULL path in the list during iteration !!!");
-            // _dialogService.ShowError("Deletion Error", "A null path was encountered during deletion. Skipping this entry."); // Let's collect errors instead
-            errorMessages.Add("Internal Error: Encountered a null path reference during deletion process.");
-            continue; // Skip this null entry
-        }
-        // --- End Critical Null Check ---
-
-        Debug.WriteLine($"[DeleteDuplicateMods] Processing path: '{path}'");
-        allModsLookup.TryGetValue(path, out ModItem modInfo); // Try to get mod info for reporting
-        string modIdentifier = modInfo != null ? $"{modInfo.Name} ({modInfo.PackageId})" : $"'{path}'";
-
-        try
-        {
-            if (Directory.Exists(path))
+            // --- Enhanced Debugging START ---
+            if (pathsToDelete == null)
             {
-                Debug.WriteLine($"[DeleteDuplicateMods] Directory exists. Attempting to delete {modIdentifier}...");
-                Directory.Delete(path, true); // Recursive delete
-                Debug.WriteLine($"[DeleteDuplicateMods] Successfully deleted {modIdentifier}.");
-                if (modInfo != null) // Add to success list only if we know what mod it was
+                Debug.WriteLine("[DeleteDuplicateMods] ERROR: Received a null list.");
+                _dialogService.ShowWarning("Deletion Warning", "Cannot perform deletion: received a null list of paths.");
+                return;
+            }
+            Debug.WriteLine($"[DeleteDuplicateMods] Received list with {pathsToDelete.Count} items.");
+            // ... (rest of existing debug logs) ...
+            // --- Enhanced Debugging END ---
+
+            // --- Information Gathering for Report ---
+            var successfullyDeletedMods = new List<ModItem>(); // Store info of mods actually deleted
+            var errorMessages = new List<string>(); // Store specific error messages
+            var allModsLookup = _modListManager.GetAllMods() // Get all mods to look up details by path
+                                 .Where(m => !string.IsNullOrEmpty(m.Path))
+                                 .ToDictionary(m => m.Path, m => m, StringComparer.OrdinalIgnoreCase); // Use case-insensitive for Windows paths
+                                                                                                       // ----------------------------------------
+
+            foreach (var path in pathsToDelete)
+            {
+                // --- Critical Null Check ---
+                if (path == null)
                 {
-                    successfullyDeletedMods.Add(modInfo);
+                    Debug.WriteLine("[DeleteDuplicateMods] !!! CRITICAL ERROR: Encountered a NULL path in the list during iteration !!!");
+                    // _dialogService.ShowError("Deletion Error", "A null path was encountered during deletion. Skipping this entry."); // Let's collect errors instead
+                    errorMessages.Add("Internal Error: Encountered a null path reference during deletion process.");
+                    continue; // Skip this null entry
                 }
-                else
+                // --- End Critical Null Check ---
+
+                Debug.WriteLine($"[DeleteDuplicateMods] Processing path: '{path}'");
+                allModsLookup.TryGetValue(path, out ModItem modInfo); // Try to get mod info for reporting
+                string modIdentifier = modInfo != null ? $"{modInfo.Name} ({modInfo.PackageId})" : $"'{path}'";
+
+                try
                 {
-                     // If we deleted a path but couldn't find its mod info (unlikely but possible), log it
-                     Debug.WriteLine($"[DeleteDuplicateMods] WARNING: Deleted path '{path}' but couldn't find associated ModItem info.");
+                    if (Directory.Exists(path))
+                    {
+                        Debug.WriteLine($"[DeleteDuplicateMods] Directory exists. Attempting to delete {modIdentifier}...");
+                        Directory.Delete(path, true); // Recursive delete
+                        Debug.WriteLine($"[DeleteDuplicateMods] Successfully deleted {modIdentifier}.");
+                        if (modInfo != null) // Add to success list only if we know what mod it was
+                        {
+                            successfullyDeletedMods.Add(modInfo);
+                        }
+                        else
+                        {
+                            // If we deleted a path but couldn't find its mod info (unlikely but possible), log it
+                            Debug.WriteLine($"[DeleteDuplicateMods] WARNING: Deleted path '{path}' but couldn't find associated ModItem info.");
+                        }
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[DeleteDuplicateMods] Directory does not exist or is not accessible, skipping: {modIdentifier}");
+                        // Optionally add a warning if non-existence is unexpected
+                        // errorMessages.Add($"Could not delete {modIdentifier}: Path not found or inaccessible.");
+                    }
                 }
+                catch (IOException ioEx)
+                {
+                    Debug.WriteLine($"[DeleteDuplicateMods] IO Error deleting {modIdentifier}: {ioEx.Message}");
+                    errorMessages.Add($"I/O Error deleting {modIdentifier}: {ioEx.Message}");
+                }
+                catch (UnauthorizedAccessException authEx)
+                {
+                    Debug.WriteLine($"[DeleteDuplicateMods] Access Error deleting {modIdentifier}: {authEx.Message}");
+                    errorMessages.Add($"Access Error deleting {modIdentifier}: {authEx.Message}");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[DeleteDuplicateMods] General Error deleting {modIdentifier}: {ex}");
+                    errorMessages.Add($"Error deleting {modIdentifier}: {ex.Message}");
+                }
+            }
+
+            Debug.WriteLine($"[DeleteDuplicateMods] Finished deletion attempts. Successes: {successfullyDeletedMods.Count}, Errors: {errorMessages.Count}");
+
+            // --- Generate and Show Report ---
+            var reportTitle = errorMessages.Any() ? "Deletion Complete with Errors" : "Deletion Complete";
+            var reportMessage = new StringBuilder();
+            var dialogType = MessageDialogType.Information; // Default to Information
+
+            if (successfullyDeletedMods.Any())
+            {
+                reportMessage.AppendLine($"Successfully deleted {successfullyDeletedMods.Count} duplicate mod(s):");
+                foreach (var mod in successfullyDeletedMods)
+                {
+                    reportMessage.AppendLine($"  - {mod.Name ?? "Unknown Name"}");
+                    reportMessage.AppendLine($"    ID: {mod.PackageId ?? "N/A"}, Supported Versions: {GetSupportedVersionsString(mod)}, SteamID: {mod.SteamId ?? "N/A"}");
+                    // reportMessage.AppendLine($"    Path: {mod.Path}"); // Optional: include path if helpful
+                }
+                reportMessage.AppendLine(); // Add a blank line for separation
             }
             else
             {
-                Debug.WriteLine($"[DeleteDuplicateMods] Directory does not exist or is not accessible, skipping: {modIdentifier}");
-                // Optionally add a warning if non-existence is unexpected
-                // errorMessages.Add($"Could not delete {modIdentifier}: Path not found or inaccessible.");
+                // Only report "no items deleted" if there were also no errors.
+                // If there were errors, the error section will explain why nothing might have been deleted.
+                if (!errorMessages.Any())
+                {
+                    reportMessage.AppendLine("No duplicate mods were deleted.");
+                    reportMessage.AppendLine();
+                }
             }
+
+            if (errorMessages.Any())
+            {
+                dialogType = MessageDialogType.Warning; // Change dialog type if errors occurred
+                reportMessage.AppendLine("Errors encountered during deletion:");
+                foreach (var error in errorMessages)
+                {
+                    reportMessage.AppendLine($"  - {error}");
+                }
+                reportMessage.AppendLine();
+            }
+
+            // Use RunOnUIThread as _dialogService might need it, although it often handles it internally.
+            // Also, the refresh needs to happen after the dialog is closed.
+            RunOnUIThread(() =>
+            {
+                _dialogService.ShowMessageWithCopy(reportTitle, reportMessage.ToString().Trim(), dialogType);
+
+                // --- Refresh the mod list AFTER the dialog is closed ---
+                // Use _ = to fire-and-forget the async refresh operation.
+                // Ensure IsLoading states are handled within RefreshDataAsync.
+                _ = RefreshDataAsync();
+                Debug.WriteLine("[DeleteDuplicateMods] Mod list refresh initiated after dialog.");
+            });
         }
-        catch (IOException ioEx)
+
+        private string GetSupportedVersionsString(ModItem mod)
         {
-            Debug.WriteLine($"[DeleteDuplicateMods] IO Error deleting {modIdentifier}: {ioEx.Message}");
-            errorMessages.Add($"I/O Error deleting {modIdentifier}: {ioEx.Message}");
+            if (mod.SupportedVersions == null || !mod.SupportedVersions.Any())
+                return "N/A";
+            return string.Join(", ", mod.SupportedVersions);
         }
-        catch (UnauthorizedAccessException authEx)
-        {
-            Debug.WriteLine($"[DeleteDuplicateMods] Access Error deleting {modIdentifier}: {authEx.Message}");
-            errorMessages.Add($"Access Error deleting {modIdentifier}: {authEx.Message}");
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[DeleteDuplicateMods] General Error deleting {modIdentifier}: {ex}");
-            errorMessages.Add($"Error deleting {modIdentifier}: {ex.Message}");
-        }
-    }
-
-    Debug.WriteLine($"[DeleteDuplicateMods] Finished deletion attempts. Successes: {successfullyDeletedMods.Count}, Errors: {errorMessages.Count}");
-
-    // --- Generate and Show Report ---
-    var reportTitle = errorMessages.Any() ? "Deletion Complete with Errors" : "Deletion Complete";
-    var reportMessage = new StringBuilder();
-    var dialogType = MessageDialogType.Information; // Default to Information
-
-    if (successfullyDeletedMods.Any())
-    {
-        reportMessage.AppendLine($"Successfully deleted {successfullyDeletedMods.Count} duplicate mod(s):");
-        foreach (var mod in successfullyDeletedMods)
-        {
-            reportMessage.AppendLine($"  - {mod.Name ?? "Unknown Name"}");
-            reportMessage.AppendLine($"    ID: {mod.PackageId ?? "N/A"}, Supported Versions: {GetSupportedVersionsString(mod)}, SteamID: {mod.SteamId ?? "N/A"}");
-            // reportMessage.AppendLine($"    Path: {mod.Path}"); // Optional: include path if helpful
-        }
-        reportMessage.AppendLine(); // Add a blank line for separation
-    }
-    else
-    {
-        // Only report "no items deleted" if there were also no errors.
-        // If there were errors, the error section will explain why nothing might have been deleted.
-        if (!errorMessages.Any())
-        {
-            reportMessage.AppendLine("No duplicate mods were deleted.");
-            reportMessage.AppendLine();
-        }
-    }
-
-    if (errorMessages.Any())
-    {
-        dialogType = MessageDialogType.Warning; // Change dialog type if errors occurred
-        reportMessage.AppendLine("Errors encountered during deletion:");
-        foreach (var error in errorMessages)
-        {
-            reportMessage.AppendLine($"  - {error}");
-        }
-        reportMessage.AppendLine();
-    }
-
-    // Use RunOnUIThread as _dialogService might need it, although it often handles it internally.
-    // Also, the refresh needs to happen after the dialog is closed.
-    RunOnUIThread(() =>
-    {
-        _dialogService.ShowMessageWithCopy(reportTitle, reportMessage.ToString().Trim(), dialogType);
-
-        // --- Refresh the mod list AFTER the dialog is closed ---
-        // Use _ = to fire-and-forget the async refresh operation.
-        // Ensure IsLoading states are handled within RefreshDataAsync.
-         _ = RefreshDataAsync();
-         Debug.WriteLine("[DeleteDuplicateMods] Mod list refresh initiated after dialog.");
-    });
-}
-
-private string GetSupportedVersionsString(ModItem mod)
-{
-    if (mod.SupportedVersions == null || !mod.SupportedVersions.Any())
-        return "N/A";
-    return string.Join(", ", mod.SupportedVersions);
-}
 
 
 
