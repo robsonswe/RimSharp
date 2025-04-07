@@ -34,6 +34,8 @@ namespace RimSharp.Shared.Models
         public bool IsCore { get; set; }
         public bool IsExpansion { get; set; }
         public bool IsActive { get; set; }
+
+        public bool LoadBottom { get; set; }
         public string PreviewImagePath { get; set; }
 
         public bool IsOutdatedRW { get; set; }

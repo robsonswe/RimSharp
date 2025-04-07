@@ -2,11 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using RimSharp.Features.ModManager.Services.Mangement;
-using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 
-namespace RimShaRimSharp.Infrastructure.Mods.Validation.Incompatibilities
+namespace RimSharp.Infrastructure.Mods.Validation.Incompatibilities
 {
     /// <summary>
     /// Group of related incompatibility relations that need to be resolved together
