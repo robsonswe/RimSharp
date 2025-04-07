@@ -10,15 +10,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-  <ApplicationDefinition Include="MyApp\AppFiles\App.xaml">
-    <Generator>MSBuild:Compile</Generator>
-    <SubType>Designer</SubType>
-  </ApplicationDefinition>
-  <Compile Update="MyApp\AppFiles\App.xaml.cs">
-    <DependentUpon>MyApp\AppFiles\App.xaml</DependentUpon>
-    <SubType>Code</SubType>
-  </Compile>
-</ItemGroup>
+    <ApplicationDefinition Include="MyApp\AppFiles\App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </ApplicationDefinition>
+    <Compile Update="MyApp\AppFiles\App.xaml.cs">
+      <DependentUpon>MyApp\AppFiles\App.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.3" />
@@ -27,25 +27,48 @@
     <PackageReference Include="PInvoke.Shell32" Version="0.7.124" />
     <PackageReference Include="PInvoke.User32" Version="0.7.124" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="Lists\**\*" Condition="Exists('Lists\**\*')">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="config.cfg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
+<ItemGroup>
+  <!-- Add this for the Rules folder -->
+  <None Include="Rules\**\*">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </None>
 
-  <Target Name="PostBuild" AfterTargets="PostBuild">
-    <MakeDir Directories="$(OutputPath)Lists" />
-    <Copy SourceFiles="config.cfg" DestinationFolder="$(OutputPath)"
-      Condition="Exists('config.cfg')" />
-  </Target>
+  <!-- Create a default rules.json if it doesn't exist -->
+  <None Include="Rules\rules.json" Condition="!Exists('Rules\rules.json')">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Content>{"rules":{}}</Content>
+  </None>
 
-  <Target Name="PostPublish" AfterTargets="Publish">
-    <MakeDir Directories="$(PublishDir)Lists" />
-    <Copy SourceFiles="config.cfg" DestinationFolder="$(PublishDir)"
-      Condition="Exists('config.cfg')" />
-  </Target>
+  <!-- Your existing items -->
+  <None Include="Lists\**\*" Condition="Exists('Lists\**\*')">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </None>
+  <None Include="config.cfg">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </None>
+</ItemGroup>
 
+<Target Name="EnsureRulesDirectoryExists" BeforeTargets="PrepareForBuild">
+  <MakeDir Directories="$(ProjectDir)Rules" Condition="!Exists('$(ProjectDir)Rules')" />
+  <!-- Create a default rules.json if it doesn't exist -->
+  <WriteLinesToFile File="$(ProjectDir)Rules\rules.json" 
+                    Lines='{"rules":{}}' 
+                    Overwrite="false" 
+                    Condition="!Exists('$(ProjectDir)Rules\rules.json')" />
+</Target>
+
+<Target Name="PostBuild" AfterTargets="PostBuild">
+  <!-- Create directories and copy files -->
+  <MakeDir Directories="$(OutputPath)Rules" />
+  <MakeDir Directories="$(OutputPath)Lists" />
+
+  <!-- Copy Rules folder contents - without condition to ensure it always tries -->
+  <Copy SourceFiles="@(None)" 
+        DestinationFiles="@(None->'$(OutputPath)%(RelativeDir)%(Filename)%(Extension)')" 
+        Condition="'%(None.RelativeDir)' != '' AND '%(None.RelativeDir)'.StartsWith('Rules\')" />
+
+  <!-- Copy config file -->
+  <Copy SourceFiles="config.cfg" DestinationFolder="$(OutputPath)"
+    Condition="Exists('config.cfg')" />
+</Target>
 </Project>

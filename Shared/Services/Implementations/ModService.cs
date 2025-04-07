@@ -17,6 +17,9 @@ namespace RimSharp.Shared.Services.Implementations
         private readonly List<ModItem> _allMods = new();
         private string _currentMajorVersion = string.Empty;
 
+        private readonly IModRulesService _rulesService;
+
+
         public ModService(IPathService pathService)
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
@@ -34,8 +37,8 @@ namespace RimSharp.Shared.Services.Implementations
             var configPath = _pathService.GetConfigPath();
             var modsPath = _pathService.GetModsPath();
 
-            if (string.IsNullOrEmpty(gamePath) || 
-                string.IsNullOrEmpty(configPath) || 
+            if (string.IsNullOrEmpty(gamePath) ||
+                string.IsNullOrEmpty(configPath) ||
                 string.IsNullOrEmpty(modsPath))
             {
                 return; // Return empty list if any path is not set
@@ -51,6 +54,12 @@ namespace RimSharp.Shared.Services.Implementations
             SetActiveMods(configPath);
         }
 
+        public ModService(IPathService pathService, IModRulesService rulesService)
+        {
+            _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
+            _rulesService = rulesService ?? throw new ArgumentNullException(nameof(rulesService));
+        }
+
         public async Task LoadModsAsync()
         {
             var gamePath = _pathService.GetGamePath();
@@ -58,8 +67,8 @@ namespace RimSharp.Shared.Services.Implementations
             var modsPath = _pathService.GetModsPath();
             _currentMajorVersion = _pathService.GetMajorGameVersion();
 
-            if (string.IsNullOrEmpty(gamePath) || 
-                string.IsNullOrEmpty(configPath) || 
+            if (string.IsNullOrEmpty(gamePath) ||
+                string.IsNullOrEmpty(configPath) ||
                 string.IsNullOrEmpty(modsPath))
             {
                 _allMods.Clear();
@@ -77,6 +86,9 @@ namespace RimSharp.Shared.Services.Implementations
             // Update the main collection
             _allMods.Clear();
             _allMods.AddRange(mods);
+
+            // Apply rules to all mods at once
+            _rulesService.ApplyRulesToMods(_allMods);
 
             // Set active status based on ModsConfig.xml
             await Task.Run(() => SetActiveMods(configPath));
@@ -120,14 +132,14 @@ namespace RimSharp.Shared.Services.Implementations
 
             // Get all directories first to avoid file system bottlenecks
             var directories = Directory.GetDirectories(coreModsPath);
-            
-            await Task.WhenAll(directories.Select(async dir => 
+
+            await Task.WhenAll(directories.Select(async dir =>
             {
                 var aboutPath = Path.Combine(dir, "About", "About.xml");
                 if (!File.Exists(aboutPath)) return;
 
                 var folderName = Path.GetFileName(dir);
-                
+
                 // Parse on a separate thread to avoid XML parsing bottlenecks
                 var mod = await Task.Run(() => ParseAboutXml(aboutPath, folderName));
                 if (mod == null) return;
@@ -180,14 +192,14 @@ namespace RimSharp.Shared.Services.Implementations
 
             // Get all directories first to avoid file system bottlenecks
             var directories = Directory.GetDirectories(modsPath);
-            
-            await Task.WhenAll(directories.Select(async dir => 
+
+            await Task.WhenAll(directories.Select(async dir =>
             {
                 var aboutPath = Path.Combine(dir, "About", "About.xml");
                 if (!File.Exists(aboutPath)) return;
 
                 var folderName = Path.GetFileName(dir);
-                
+
                 // Parse on a separate thread to avoid XML parsing bottlenecks
                 var mod = await Task.Run(() => ParseAboutXml(aboutPath, folderName));
                 if (mod == null) return;
@@ -253,6 +265,9 @@ namespace RimSharp.Shared.Services.Implementations
                 // Parse load order rules using a more efficient approach
                 ParseLoadOrderRules(root, mod);
 
+                // Rules are applied in batch later
+                // _rulesService.ApplyRulesToMod(mod); - Remove this line
+
                 return mod;
             }
             catch
@@ -276,7 +291,7 @@ namespace RimSharp.Shared.Services.Implementations
             if (string.IsNullOrEmpty(currentVersion)) return true;
             if (supportedVersions == null || !supportedVersions.Any()) return true;
 
-            return supportedVersions.Any(v => 
+            return supportedVersions.Any(v =>
                 string.Equals(v.Trim(), currentVersion.Trim(), StringComparison.OrdinalIgnoreCase));
         }
 
@@ -288,14 +303,14 @@ namespace RimSharp.Shared.Services.Implementations
             try
             {
                 var doc = XDocument.Load(configPath);
-                
+
                 // Create a lookup dictionary for faster mod searches
                 var packageIdLookup = _allMods.ToDictionary(
-                    m => m.PackageId?.ToLowerInvariant() ?? string.Empty, 
+                    m => m.PackageId?.ToLowerInvariant() ?? string.Empty,
                     m => m,
                     StringComparer.OrdinalIgnoreCase
                 );
-                
+
                 // Get active mod IDs and set IsActive efficiently
                 var activeMods = doc.Root?.Element("activeMods")?.Elements("li")
                     .Select(x => x.Value.ToLowerInvariant())

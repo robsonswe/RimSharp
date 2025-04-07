@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using RimShaRimSharp.Infrastructure.Mods.Validation.Incompatibilities;
+using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
 using RimSharp.Shared.Models;
 
 namespace RimSharp.Features.ModManager.Dialogs.Incompatibilities

@@ -1,4 +1,4 @@
-using RimShaRimSharp.Infrastructure.Mods.Validation.Incompatibilities;
+using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
 using RimSharp.Core.Commands;
 using RimSharp.Features.ModManager.Dialogs.DuplicateMods;
 using RimSharp.Features.ModManager.Dialogs.Incompatibilities;

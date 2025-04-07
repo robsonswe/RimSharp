@@ -3,12 +3,11 @@ using System.Collections.Generic; // Required for List
 using System.Linq; // Required for Linq
 using System.Threading.Tasks;
 using System.Diagnostics;
-using RimSharp.Features.ModManager.Services.Commands;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.MyApp.Dialogs;
 using RimSharp.Shared.Models;
 
-namespace RimShaRimSharp.Features.ModManager.Services.Commands
+namespace RimSharp.Features.ModManager.Services.Commands
 {
     public class ModCommandService : IModCommandService
     {
