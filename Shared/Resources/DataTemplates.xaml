@@ -1,0 +1,15 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:vmMods="clr-namespace:RimSharp.Features.ModManager.ViewModels"
+                    xmlns:vMods="clr-namespace:RimSharp.Features.ModManager.Views"
+                    xmlns:vmDownloader="clr-namespace:RimSharp.Features.WorkshopDownloader.ViewModels"
+                    xmlns:vDownloader="clr-namespace:RimSharp.Features.WorkshopDownloader.Views">
+
+    <DataTemplate DataType="{x:Type vmMods:ModsViewModel}">
+        <vMods:ModsView/>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vmDownloader:DownloaderViewModel}">
+        <vDownloader:DownloaderView/>
+    </DataTemplate>
+</ResourceDictionary>

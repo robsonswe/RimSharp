@@ -1,0 +1,40 @@
+<UserControl x:Class="RimSharp.Features.ModManager.Components.ModActions.ModActionsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:RimSharp.Features.ModManager.Components.ModActions"
+             xmlns:vm="clr-namespace:RimSharp.Features.ModManager.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:ModsViewModel, IsDesignTimeCreatable=True}"
+             d:DesignHeight="450" d:DesignWidth="150">
+    <!-- DataContext should be the ModsViewModel -->
+    <StackPanel Width="130">
+        <TextBlock Text="Optimize" FontWeight="Bold" Margin="0,0,0,5" Foreground="{StaticResource RimworldBrownBrush}"/>
+
+        <Button Content="Clear" Command="{Binding ClearActiveListCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
+        <Button Content="Sort" Command="{Binding SortActiveListCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
+        <Button Content="Dependencies" Command="{Binding ResolveDependenciesCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
+        <Button Command="{Binding CheckIncompatibilitiesCommand}" 
+        Content="Incompatibilities" 
+        Margin="0,0,0,5" 
+        Style="{StaticResource RimworldButtonStyle}"
+        />
+        <Button Content="Duplicates" 
+        Command="{Binding CheckDuplicatesCommand}" 
+        Margin="0,0,0,5" 
+        Style="{StaticResource RimworldButtonStyle}"/>
+
+        <TextBlock Text="Misc" FontWeight="Bold" Margin="0,0,0,5" Foreground="{StaticResource RimworldBrownBrush}"/>
+        <Button Content="Strip mods" Command="{Binding StripModsCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
+        <Button Content="Create pack" Command="{Binding CreatePackCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
+        <Button Content="Fix integrity" Command="{Binding FixIntegrityCommand}" Margin="0,0,0,20" Style="{StaticResource RimworldButtonStyle}"/>
+
+        <TextBlock Text="Mod lists" FontWeight="Bold" Margin="0,0,0,5" Foreground="{StaticResource RimworldBrownBrush}"/>
+        <Button Content="Import list" Command="{Binding ImportListCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
+        <Button Content="Export list" Command="{Binding ExportListCommand}" Margin="0,0,0,20" Style="{StaticResource RimworldButtonStyle}"/>
+
+        <Button Content="Save" Command="{Binding SaveCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldSaveButtonStyle}" IsEnabled="{Binding HasUnsavedChanges}"/>
+        <Button Content="Run!" Command="{Binding RunGameCommand}" Style="{StaticResource RimworldRunButtonStyle}"/>
+    </StackPanel>
+</UserControl>
