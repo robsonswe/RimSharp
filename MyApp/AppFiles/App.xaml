@@ -1,0 +1,27 @@
+﻿<Application x:Class="RimSharp.MyApp.AppFiles.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:RimSharp.MyApp.AppFiles">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Core Resources -->
+                <ResourceDictionary Source="/Shared/Resources/Colors.xaml"/>
+                <ResourceDictionary Source="/Shared/Resources/Brushes.xaml"/>
+                <ResourceDictionary Source="/Shared/Resources/Converters.xaml"/>
+
+                <!-- Base UI Element Styles -->
+                <ResourceDictionary Source="/Shared/Resources/BaseStyles.xaml"/>
+
+                <!-- Specific Styles -->
+                <ResourceDictionary Source="/Shared/Resources/ButtonStyles.xaml"/>
+                <ResourceDictionary Source="/Infrastructure/Dialog/DialogTemplates.xaml"/>
+
+                <!-- ViewModel to View Mappings -->
+                <ResourceDictionary Source="/Shared/Resources/DataTemplates.xaml"/>
+
+            </ResourceDictionary.MergedDictionaries>
+
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

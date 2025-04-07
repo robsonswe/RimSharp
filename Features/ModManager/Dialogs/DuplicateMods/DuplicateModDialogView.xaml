@@ -1,0 +1,152 @@
+<local:BaseDialog x:Class="RimSharp.Features.ModManager.Dialogs.DuplicateMods.DuplicateModDialogView"
+                  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                  xmlns:local="clr-namespace:RimSharp.Infrastructure.Dialog"
+                  mc:Ignorable="d"
+                  Title="Resolve Duplicate Mods">
+
+    <!-- Header Content -->
+    <local:BaseDialog.HeaderContent>
+        <StackPanel Margin="0,0,0,10">
+            <TextBlock Text="Duplicate Mods Detected"
+                       FontSize="20"
+                       FontWeight="Bold"
+                       Foreground="{StaticResource RimworldDarkBrownBrush}"/>
+
+            <TextBlock Text="Select which version to keep for each duplicate mod, or choose 'Ignore' to keep all versions. The other versions will be deleted unless ignored."
+                       FontSize="13"
+                       TextWrapping="Wrap"
+                       Margin="0,5,0,0"/>
+        </StackPanel>
+    </local:BaseDialog.HeaderContent>
+
+    <!-- Main Content -->
+    <local:BaseDialog.MainContent>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="700">
+            <ItemsControl ItemsSource="{Binding DuplicateGroups}"
+                    Margin="0,0,5,0">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border BorderThickness="1"
+                                BorderBrush="{StaticResource RimworldBorderBrush}"
+                                Background="{StaticResource RimworldBeigeBrush}"
+                                Margin="0,0,0,15"
+                                Padding="0"
+                                CornerRadius="3">
+                            <StackPanel>
+                                <Border Background="{StaticResource RimworldLightBrownBrush}"
+                                        CornerRadius="3,3,0,0"
+                                        Padding="10,8"
+                                        BorderThickness="0,0,0,1"
+                                        BorderBrush="{StaticResource RimworldBorderBrush}">
+                                    <TextBlock Text="{Binding PackageId}"
+                                               FontWeight="Bold"
+                                               FontSize="14"/>
+                                </Border>
+                                
+                                <!-- Ignore Option -->
+                                <Border Margin="10,10,10,0"
+                                        Padding="10"
+                                        Background="{Binding IsIgnored, Converter={StaticResource BooleanToBrushConverter}, ConverterParameter='RimworldLightBackgroundBrush|RimworldSelectedBackgroundBrush'}"
+                                        CornerRadius="3"
+                                        BorderThickness="1"
+                                        BorderBrush="{StaticResource RimworldBorderBrush}">
+                                    <RadioButton IsChecked="{Binding IsIgnored}" 
+                                                 GroupName="{Binding GroupName}">
+                                        <StackPanel>
+                                            <TextBlock FontWeight="SemiBold"
+                                                       FontSize="13">
+                                                <Run Text="Ignore: "
+                                                     Foreground="{StaticResource RimworldDarkBrownBrush}"/>
+                                                <Run Text="Keep all versions of this mod"
+                                                     Foreground="{StaticResource RimworldDarkGreenBrush}"/>
+                                            </TextBlock>
+                                            <TextBlock Margin="20,4,0,0" 
+                                                       FontSize="12" 
+                                                       TextWrapping="Wrap" 
+                                                       Foreground="{StaticResource RimworldDarkBrownBrush}">
+                                                No mods in this group will be deleted.
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </RadioButton>
+                                </Border>
+                                
+                                <ItemsControl ItemsSource="{Binding Mods}"
+                                        Margin="10,10,10,5">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="0,0,0,10"
+                                                    Padding="10"
+                                                    Background="{Binding IsActive, Converter={StaticResource BooleanToBrushConverter}, ConverterParameter='RimworldLightBackgroundBrush|RimworldSelectedBackgroundBrush'}"
+                                                    CornerRadius="3"
+                                                    BorderThickness="1"
+                                                    BorderBrush="{StaticResource RimworldBorderBrush}">
+                                                <RadioButton IsChecked="{Binding IsActive}" 
+                                                    GroupName="{Binding ParentGroup.GroupName}"
+                                                    Style="{StaticResource {x:Type RadioButton}}">
+                                                    <StackPanel>
+                                                        <TextBlock FontWeight="SemiBold"
+                                                                FontSize="13">
+                                                                    <Run Text="Keep: "
+                                                                    Foreground="{StaticResource RimworldDarkBrownBrush}"/>
+                                                                    <Run Text="{Binding Name, Mode=OneWay}"
+                                                                    Foreground="{StaticResource RimworldDarkGreenBrush}"/>
+                                                        </TextBlock>
+                                                        <StackPanel Margin="20,8,0,0">
+                                                            <TextBlock Text="{Binding Authors}" FontSize="12"/>
+                                                            <TextBlock Text="{Binding SupportedVersions}" FontSize="12"/>
+                                                            <TextBlock Text="{Binding Path}" FontSize="12" TextWrapping="Wrap"/>
+                                                            <TextBlock Text="{Binding SteamId}" FontSize="12"
+                                                                       Visibility="{Binding SteamId, Converter={StaticResource IsNotNullOrEmptyConverter}}"/> <!-- Hide if SteamId is empty -->
+
+                                                            <!-- Use IsNotNullOrEmptyConverter for Visibility -->
+                                                                                                                        <TextBlock Visibility="{Binding Url, Converter={StaticResource IsNotNullOrEmptyConverter}}" FontSize="12">
+                                                                <Hyperlink NavigateUri="{Binding Url, Converter={StaticResource StringToUriConverter}}" RequestNavigate="Hyperlink_RequestNavigate">
+                                                                    <TextBlock Text="{Binding Url}"/>
+                                                                </Hyperlink>
+                                                            </TextBlock>
+                                                            <TextBlock Visibility="{Binding SteamUrl, Converter={StaticResource IsNotNullOrEmptyConverter}}" FontSize="12">
+                                                                <Hyperlink NavigateUri="{Binding SteamUrl, Converter={StaticResource StringToUriConverter}}" RequestNavigate="Hyperlink_RequestNavigate">
+                                                                    <TextBlock Text="{Binding SteamUrl}"/>
+                                                                </Hyperlink>
+                                                            </TextBlock>
+                                                            <TextBlock Visibility="{Binding ExternalUrl, Converter={StaticResource IsNotNullOrEmptyConverter}}" FontSize="12">
+                                                                <Hyperlink NavigateUri="{Binding ExternalUrl, Converter={StaticResource StringToUriConverter}}" RequestNavigate="Hyperlink_RequestNavigate">
+                                                                    <TextBlock Text="{Binding ExternalUrl}"/>
+                                                                </Hyperlink>
+                                                            </TextBlock>
+
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </RadioButton>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </local:BaseDialog.MainContent>
+
+    <!-- Button Content -->
+    <local:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal"
+                HorizontalAlignment="Right"
+                Margin="0,15,0,0">
+            <Button Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    Width="100"
+                    Margin="0,0,10,0"
+                    Style="{StaticResource RimworldButtonStyle}"/>
+            <Button Content="Apply Changes"
+                    Command="{Binding ApplyResolutionsCommand}"
+                    Width="120"
+                    Style="{StaticResource RimworldSaveButtonStyle}"/>
+        </StackPanel>
+    </local:BaseDialog.ButtonContent>
+</local:BaseDialog>

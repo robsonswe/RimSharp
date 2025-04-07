@@ -1,0 +1,153 @@
+<UserControl x:Class="RimSharp.Features.ModManager.Components.ModDetails.ModDetailsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:RimSharp.Features.ModManager.Components.ModDetails"
+             xmlns:models="clr-namespace:RimSharp.Shared.Models"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=models:ModItem, IsDesignTimeCreatable=False}"
+             d:DesignHeight="500" d:DesignWidth="400">
+    <!-- DataContext should be a ModItem instance -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Mod Preview (Top Part) -->
+        <Border Grid.Row="0"
+                Margin="10"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Top">
+            <Border Background="{StaticResource RimworldDarkBrownBrush}"
+                    CornerRadius="3"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    SnapsToDevicePixels="True"
+                    MaxWidth="560" MaxHeight="308">
+                <Viewbox Stretch="Uniform" MaxWidth="560" MaxHeight="308">
+                    <Grid MinWidth="400" MinHeight="220">
+                        <Image Source="{Binding PreviewImagePath, Converter={StaticResource ImagePathConverter}, TargetNullValue={x:Null}}"
+                               Stretch="UniformToFill"
+                               HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Image.Style>
+                                <Style TargetType="Image">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Source, RelativeSource={RelativeSource Self}}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Image.Style>
+                        </Image>
+                        <TextBlock Text="NO PREVIEW IMAGE" FontSize="18"
+                                   Foreground="{StaticResource RimworldLightBrownBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   FontStyle="Italic"
+                                   Visibility="{Binding PreviewImagePath, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=InvertIfNull}"/>
+                    </Grid>
+                </Viewbox>
+            </Border>
+        </Border>
+
+        <!-- Mod Info (Bottom Part) -->
+        <Grid Grid.Row="1" Margin="10">
+            <!-- DataContext is already the ModItem from the UserControl level -->
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Mod Info Table -->
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.Resources>
+                     <Style TargetType="TextBlock" x:Key="InfoLabel">
+                         <Setter Property="FontWeight" Value="SemiBold"/>
+                         <Setter Property="Margin" Value="0,0,10,2"/>
+                         <Setter Property="VerticalAlignment" Value="Top"/>
+                         <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
+                     </Style>
+                    <Style TargetType="TextBlock" x:Key="InfoValue">
+                         <Setter Property="TextWrapping" Value="Wrap"/>
+                         <Setter Property="VerticalAlignment" Value="Top"/>
+                         <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
+                     </Style>
+                </Grid.Resources>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Name:" Style="{StaticResource InfoLabel}"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Name}" Style="{StaticResource InfoValue}"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Authors:" Style="{StaticResource InfoLabel}"/>
+                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Authors}" Style="{StaticResource InfoValue}"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="PackageID:" Style="{StaticResource InfoLabel}"/>
+                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding PackageId}" Style="{StaticResource InfoValue}"/>
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Supported:" Style="{StaticResource InfoLabel}"/>
+                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SupportedVersions, Converter={StaticResource ListToStringConverter}, ConverterParameter=', '}" Style="{StaticResource InfoValue}"/>
+
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="Path:" Style="{StaticResource InfoLabel}"/>
+                <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource InfoValue}" TextTrimming="CharacterEllipsis">
+                    <Hyperlink Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}, AncestorLevel=2}}"
+                            CommandParameter="{Binding Path}"
+                            Style="{StaticResource RimworldHyperlinkStyle}">
+                        <TextBlock Text="{Binding Path}" ToolTip="{Binding Path}"/>
+                    </Hyperlink>
+                </TextBlock>
+
+                <!-- URL Links Section -->
+                <StackPanel Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,10,0,0">
+                    <!-- URL -->
+                    <DockPanel LastChildFill="True" Margin="0,0,0,2" Visibility="{Binding HasUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock DockPanel.Dock="Left" Text="URL:" Style="{StaticResource InfoLabel}"/>
+                        <TextBlock Style="{StaticResource InfoValue}">
+                            <!-- Need AncestorType=UserControl *if* command is on parent VM -->
+                            <!-- Assuming command is on the main VM passed down -->
+                             <Hyperlink Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}, AncestorLevel=2}}"
+                                        CommandParameter="{Binding Url}" Style="{StaticResource RimworldHyperlinkStyle}">
+                                <TextBlock Text="{Binding Url}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Url}"/>
+                             </Hyperlink>
+                         </TextBlock>
+                    </DockPanel>
+                    <!-- Steam URL -->
+                    <DockPanel LastChildFill="True" Margin="0,0,0,2" Visibility="{Binding HasSteamUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock DockPanel.Dock="Left" Text="Steam:" Style="{StaticResource InfoLabel}"/>
+                        <TextBlock Style="{StaticResource InfoValue}">
+                             <Hyperlink Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}, AncestorLevel=2}}"
+                                        CommandParameter="{Binding SteamUrl}" Style="{StaticResource RimworldHyperlinkStyle}">
+                                <TextBlock Text="{Binding SteamUrl}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SteamUrl}"/>
+                            </Hyperlink>
+                         </TextBlock>
+                    </DockPanel>
+                    <!-- External URL -->
+                    <DockPanel LastChildFill="True" Margin="0,0,0,2" Visibility="{Binding HasExternalUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock DockPanel.Dock="Left" Text="External:" Style="{StaticResource InfoLabel}"/>
+                        <TextBlock Style="{StaticResource InfoValue}">
+                             <Hyperlink Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}, AncestorLevel=2}}"
+                                        CommandParameter="{Binding ExternalUrl}" Style="{StaticResource RimworldHyperlinkStyle}">
+                                <TextBlock Text="{Binding ExternalUrl}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ExternalUrl}"/>
+                            </Hyperlink>
+                         </TextBlock>
+                    </DockPanel>
+                </StackPanel>
+            </Grid>
+
+            <!-- Mod Description -->
+            <Border Grid.Row="1" Margin="0,10,0,0" BorderBrush="{StaticResource RimworldLightBrownBrush}" BorderThickness="0,1,0,0" Padding="0,10,0,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Foreground="{StaticResource RimworldBrownBrush}"/>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

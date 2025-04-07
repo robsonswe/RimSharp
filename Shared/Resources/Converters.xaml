@@ -1,0 +1,18 @@
+<!-- Converters.xaml -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:converters="clr-namespace:RimSharp.Core.Converters">
+    <!-- Global Converters -->
+    <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    <converters:InequalityConverter x:Key="InequalityConverter"/>
+    <converters:ImagePathConverter x:Key="ImagePathConverter"/>
+    <converters:MultiplyValueConverter x:Key="MultiplyValueConverter"/>
+    <converters:ClampValueConverter x:Key="ClampValueConverter"/>
+    <converters:BooleanToColorConverter x:Key="BooleanToColorConverter"/>
+    <converters:ListToStringConverter x:Key="ListToStringConverter"/>
+    <converters:IsNotNullOrEmptyConverter x:Key="IsNotNullOrEmptyConverter"/>
+    <converters:PathToExplorerFormatConverter x:Key="PathToExplorerFormatConverter"/>
+    <converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
+    <converters:BooleanToBrushConverter x:Key="BooleanToBrushConverter"/>
+    <converters:StringToUriConverter x:Key="StringToUriConverter"/>
+</ResourceDictionary>
