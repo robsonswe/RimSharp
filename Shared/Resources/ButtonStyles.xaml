@@ -166,6 +166,25 @@
             </Setter.Value>
         </Setter>
     </Style>
+        <!-- Remove Icon Style -->
+        <Style x:Key="RemoveButtonStyle" TargetType="Button" BasedOn="{StaticResource SmallUtilityButtonStyle}">
+            <Setter Property="Foreground" Value="{StaticResource RimworldRedBrush}"/>
+            <Setter Property="Content" Value="✕"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
     <!-- RimWorld-style Tab Buttons -->
     <Style x:Key="RimworldTabButtonStyle" TargetType="Button">

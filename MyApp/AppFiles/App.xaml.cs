@@ -16,6 +16,7 @@ using RimSharp.Features.ModManager.ViewModels;
 using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
 using RimSharp.Shared.Models;
 using System;
+using RimSharp.Features.WorkshopDownloader.Services;
 
 namespace RimSharp.MyApp.AppFiles
 {
@@ -58,12 +59,12 @@ namespace RimSharp.MyApp.AppFiles
             services.AddSingleton<IModRulesService, ModRulesService>();
 
             // Register core services - Update ModService to include IModRulesService
-            services.AddSingleton<IModService>(provider => 
+            services.AddSingleton<IModService>(provider =>
                 new ModService(
                     provider.GetRequiredService<IPathService>(),
                     provider.GetRequiredService<IModRulesService>()
                 ));
-            
+
             services.AddSingleton<IModListManager, ModListManager>();
 
             // Register modular services
@@ -87,22 +88,32 @@ namespace RimSharp.MyApp.AppFiles
                     provider.GetRequiredService<IModService>()
                 ));
 
-            services.AddSingleton<DownloaderViewModel>();
+            services.AddSingleton<IWebNavigationService, WebNavigationService>();
+            services.AddSingleton<IDownloadQueueService, DownloadQueueService>();
+
+            services.AddTransient<DownloaderViewModel>(provider =>
+                new DownloaderViewModel(
+                    provider.GetRequiredService<IWebNavigationService>(),
+                    provider.GetRequiredService<IDownloadQueueService>()
+                ));
+
 
             // Register MainViewModel as Singleton
             services.AddSingleton<MainViewModel>(provider =>
-                new MainViewModel(
-                    provider.GetRequiredService<IModService>(),
-                    provider.GetRequiredService<IPathService>(),
-                    provider.GetRequiredService<IConfigService>(),
-                    provider.GetRequiredService<IModListManager>(),
-                    provider.GetRequiredService<IModDataService>(),
-                    provider.GetRequiredService<IModCommandService>(),
-                    provider.GetRequiredService<IModListIOService>(),
-                    provider.GetRequiredService<IModIncompatibilityService>(),
-                    provider.GetRequiredService<IDialogService>(),
-                    provider.GetRequiredService<IModFilterService>()
-                ));
+    new MainViewModel(
+        provider.GetRequiredService<IModService>(),
+        provider.GetRequiredService<IPathService>(),
+        provider.GetRequiredService<IConfigService>(),
+        provider.GetRequiredService<IModListManager>(),
+        provider.GetRequiredService<IModDataService>(),
+        provider.GetRequiredService<IModCommandService>(),
+        provider.GetRequiredService<IModListIOService>(),
+        provider.GetRequiredService<IModIncompatibilityService>(),
+        provider.GetRequiredService<IDialogService>(),
+        provider.GetRequiredService<IModFilterService>(),
+        provider.GetRequiredService<DownloaderViewModel>()
+    ));
+
 
             services.AddSingleton<MainWindow>();
         }
