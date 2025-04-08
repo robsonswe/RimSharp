@@ -12,7 +12,8 @@ using System.Collections.Generic; // Required for List
 using System.Threading.Tasks;
 using System.Linq;
 using RimSharp.Shared.Models;
-using RimSharp.MyApp.Dialogs; // Required for Task
+using RimSharp.MyApp.Dialogs;
+using System.Threading; // Required for Task
 
 namespace RimSharp.Features.WorkshopDownloader.ViewModels
 {
@@ -27,7 +28,10 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
         private readonly IModService _modService; // To get the list of installed mods
         private readonly IDialogService _dialogService; // To show the update check dialog
         private readonly IWorkshopUpdateCheckerService _updateCheckerService; // To perform the update check
+        private readonly ISteamCmdService _steamCmdService;
+
         private Microsoft.Web.WebView2.Wpf.WebView2 _webView;
+        private CancellationTokenSource _currentOperationCts; 
 
         public string StatusMessage
         {
@@ -40,6 +44,7 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
         public bool CanGoBack => _navigationService.CanGoBack;
         public bool CanGoForward => _navigationService.CanGoForward;
         public bool IsValidModUrl => _navigationService.IsValidModUrl;
+        public bool IsSteamCmdReady => _steamCmdService?.IsSetupComplete ?? false; 
 
         // Browser Navigation Commands
         public ICommand GoBackCommand { get; }
@@ -53,22 +58,22 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
         public ICommand DownloadCommand { get; }
         public ICommand RemoveItemCommand { get; }
         public ICommand NavigateToUrlCommand { get; }
-
+        public ICommand CancelOperationCommand { get; }
 
         public DownloaderViewModel(
     IWebNavigationService navigationService,
     IDownloadQueueService queueService,
     IModService modService, // Add IModService
     IDialogService dialogService, // Add IDialogService
-    IWorkshopUpdateCheckerService updateCheckerService // Add IWorkshopUpdateCheckerService
-    )
+    IWorkshopUpdateCheckerService updateCheckerService, // Add IWorkshopUpdateCheckerService
+    ISteamCmdService steamCmdService)
         {
             _navigationService = navigationService;
             _queueService = queueService;
             _modService = modService; // Store injected service
             _dialogService = dialogService; // Store injected service
             _updateCheckerService = updateCheckerService; // Store injected service
-
+            _steamCmdService = steamCmdService;
 
             // Set up event handlers
             _navigationService.StatusChanged += (s, message) => StatusMessage = message;
@@ -101,8 +106,9 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             NavigateToUrlCommand = new RelayCommand(ExecuteNavigateToUrlCommand);
 
             // Stub commands for future implementation
-            SetupSteamCmdCommand = new RelayCommand(_ => { StatusMessage = "Setup SteamCMD: Not implemented"; });
-            DownloadCommand = new RelayCommand(_ => { StatusMessage = "Download All: Not implemented"; });
+            SetupSteamCmdCommand = new RelayCommand(async _ => await ExecuteSetupSteamCmdCommand(), CanExecuteSetupSteamCmd);
+            DownloadCommand = new RelayCommand(async _ => await ExecuteDownloadCommand(), CanExecuteDownload);
+            CancelOperationCommand = new RelayCommand(ExecuteCancelOperation, CanExecuteCancelOperation); // <<< NEW
 
             _queueService.Items.CollectionChanged += (s, e) => ((RelayCommand)DownloadCommand).RaiseCanExecuteChanged();
             ((RelayCommand)DownloadCommand).RaiseCanExecuteChanged(); // Initial check
@@ -125,6 +131,206 @@ public void SetWebView(Microsoft.Web.WebView2.Wpf.WebView2 webView)
     _extractorService = new ModExtractorService(webView);
     ((RelayCommand)CheckUpdatesCommand).RaiseCanExecuteChanged();
 }
+        private async Task UpdateSteamCmdReadyStatus()
+        {
+             await _steamCmdService.CheckSetupAsync(); // Ensure service state is fresh
+             RunOnUIThread(() => {
+                OnPropertyChanged(nameof(IsSteamCmdReady));
+                // Re-evaluate commands that depend on SteamCMD status
+                ((RelayCommand)DownloadCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)SetupSteamCmdCommand).RaiseCanExecuteChanged();
+             });
+        }
+
+        private bool CanExecuteSetupSteamCmd(object parameter)
+        {
+            // Can always try to set up, unless an operation is already running
+            return _currentOperationCts == null;
+        }
+
+        private async Task ExecuteSetupSteamCmdCommand()
+        {
+            if (_currentOperationCts != null) return; // Prevent concurrent operations
+
+            ProgressDialogViewModel? progressDialog = null;
+            _currentOperationCts = new CancellationTokenSource();
+            ((RelayCommand)SetupSteamCmdCommand).RaiseCanExecuteChanged(); // Disable setup btn
+            ((RelayCommand)DownloadCommand).RaiseCanExecuteChanged(); // Disable download btn
+            ((RelayCommand)CancelOperationCommand).RaiseCanExecuteChanged(); // Enable cancel btn
+
+
+            try
+            {
+                progressDialog = _dialogService.ShowProgressDialog(
+                    "SteamCMD Setup",
+                    "Starting setup...",
+                    true); // Can Cancel
+
+                 // Link progress dialog cancellation to our token
+                 progressDialog.Cancelled += (s, e) => _currentOperationCts?.Cancel();
+
+                 var progressReporter = new Progress<string>(message =>
+                 {
+                     if (progressDialog != null) progressDialog.Message = message;
+                     StatusMessage = message; // Update main status bar too
+                 });
+
+                 StatusMessage = "Running SteamCMD Setup...";
+                 bool success = await _steamCmdService.SetupAsync(progressReporter, _currentOperationCts.Token);
+
+                 if (success)
+                 {
+                     progressDialog?.Complete("Setup completed successfully!");
+                     StatusMessage = "SteamCMD setup successful.";
+                     _dialogService.ShowInformation("Setup Complete", "SteamCMD has been set up successfully.");
+                 }
+                 else if (!_currentOperationCts.IsCancellationRequested)
+                 {
+                      // Failure message already shown by service or progress reporter
+                     progressDialog?.Cancel("Setup failed. See previous messages for details.");
+                     StatusMessage = "SteamCMD setup failed.";
+                 } else {
+                      // Cancellation message
+                     progressDialog?.Cancel("Setup cancelled by user.");
+                     StatusMessage = "SteamCMD setup cancelled.";
+                 }
+            }
+            catch (OperationCanceledException)
+            {
+                 progressDialog?.Cancel("Setup cancelled by user.");
+                 StatusMessage = "SteamCMD setup cancelled.";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error during SteamCMD setup: {ex.Message}";
+                progressDialog?.Cancel($"Error: {ex.Message}");
+                _dialogService.ShowError("Setup Error", $"An unexpected error occurred during setup: {ex.Message}");
+            }
+            finally
+            {
+                _currentOperationCts?.Dispose();
+                _currentOperationCts = null;
+                 await UpdateSteamCmdReadyStatus(); // Refresh IsSteamCmdReady property
+                 RunOnUIThread(() => { // Re-enable buttons
+                    ((RelayCommand)SetupSteamCmdCommand).RaiseCanExecuteChanged();
+                    ((RelayCommand)DownloadCommand).RaiseCanExecuteChanged();
+                    ((RelayCommand)CancelOperationCommand).RaiseCanExecuteChanged();
+                 });
+                 progressDialog?.ForceClose(); // Ensure dialog closes if not already
+            }
+        }
+
+
+        private bool CanExecuteDownload(object parameter)
+        {
+            // Need items in the queue AND SteamCMD setup AND no operation running
+            return DownloadList.Any() && IsSteamCmdReady && _currentOperationCts == null;
+        }
+
+        private async Task ExecuteDownloadCommand()
+        {
+             if (_currentOperationCts != null) return; // Prevent concurrent operations
+
+            if (!IsSteamCmdReady)
+            {
+                var result = _dialogService.ShowConfirmation("SteamCMD Not Ready", "SteamCMD setup is not detected or incomplete. Do you want to run the setup now?", showCancel: true);
+                if (result == MessageDialogResult.OK || result == MessageDialogResult.Yes) // Assuming OK is the positive action for confirmation
+                {
+                    await ExecuteSetupSteamCmdCommand();
+                    // If setup was successful, try download again? Or just let user click again.
+                    // Let user click again for simplicity.
+                    return;
+                }
+                else
+                {
+                    StatusMessage = "Download cancelled: SteamCMD setup required.";
+                    return;
+                }
+            }
+
+            var idsToDownload = DownloadList.Select(item => item.SteamId).ToList();
+            if (!idsToDownload.Any())
+            {
+                StatusMessage = "Download queue is empty.";
+                return;
+            }
+
+            ProgressDialogViewModel? progressDialog = null;
+            _currentOperationCts = new CancellationTokenSource();
+             ((RelayCommand)SetupSteamCmdCommand).RaiseCanExecuteChanged(); // Disable setup btn
+            ((RelayCommand)DownloadCommand).RaiseCanExecuteChanged(); // Disable download btn
+            ((RelayCommand)CancelOperationCommand).RaiseCanExecuteChanged(); // Enable cancel btn
+
+
+            try
+            {
+                 progressDialog = _dialogService.ShowProgressDialog(
+                    "Downloading Mods",
+                    $"Preparing to download {idsToDownload.Count} mod(s)...",
+                    true); // Can Cancel
+
+                 progressDialog.Cancelled += (s, e) => _currentOperationCts?.Cancel();
+
+                 var progressReporter = new Progress<string>(message =>
+                 {
+                     if (progressDialog != null) progressDialog.Message = message;
+                     StatusMessage = message; // Update main status bar too
+                 });
+
+                 StatusMessage = $"Downloading {idsToDownload.Count} mod(s) via SteamCMD...";
+                 bool success = await _steamCmdService.DownloadModsAsync(idsToDownload, false, progressReporter, _currentOperationCts.Token);
+
+                 if (success)
+                 {
+                     progressDialog?.Complete("Downloads completed successfully!");
+                     StatusMessage = "Mod downloads finished.";
+                      _dialogService.ShowInformation("Download Complete", $"Successfully processed {idsToDownload.Count} mod(s) with SteamCMD.");
+                     // Clear queue on success
+                     RunOnUIThread(() => {
+                         // Create a copy to avoid modification issues while iterating/clearing
+                         var itemsToRemove = DownloadList.ToList();
+                         foreach(var item in itemsToRemove) {
+                             _queueService.RemoveFromQueue(item);
+                         }
+                     });
+                 }
+                 else if (!_currentOperationCts.IsCancellationRequested)
+                 {
+                      // Failure message already shown by service or progress reporter
+                     progressDialog?.Cancel("Download failed. Check SteamCMD output for details.");
+                     StatusMessage = "Mod download failed. See log/output.";
+                      _dialogService.ShowWarning("Download Failed", "SteamCMD reported errors during the download process. Check the output in the progress dialog or status messages for details.");
+                 } else {
+                      // Cancellation message
+                     progressDialog?.Cancel("Download cancelled by user.");
+                     StatusMessage = "Mod download cancelled.";
+                 }
+            }
+            catch (OperationCanceledException)
+            {
+                 progressDialog?.Cancel("Download cancelled by user.");
+                 StatusMessage = "Mod download cancelled.";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error during download: {ex.Message}";
+                progressDialog?.Cancel($"Error: {ex.Message}");
+                _dialogService.ShowError("Download Error", $"An unexpected error occurred during download: {ex.Message}");
+            }
+            finally
+            {
+                _currentOperationCts?.Dispose();
+                _currentOperationCts = null;
+                 RunOnUIThread(() => { // Re-enable buttons
+                    ((RelayCommand)SetupSteamCmdCommand).RaiseCanExecuteChanged();
+                    ((RelayCommand)DownloadCommand).RaiseCanExecuteChanged();
+                    ((RelayCommand)CancelOperationCommand).RaiseCanExecuteChanged();
+                 });
+                  progressDialog?.ForceClose(); // Ensure dialog closes
+            }
+        }
+
+
 
         private async void ExecuteAddModCommand(object parameter)
         {
@@ -317,6 +523,22 @@ public void SetWebView(Microsoft.Web.WebView2.Wpf.WebView2 webView)
         progressDialog?.Cancel();
     }
 }
+
+        private bool CanExecuteCancelOperation(object parameter)
+        {
+            return _currentOperationCts != null && !_currentOperationCts.IsCancellationRequested;
+        }
+
+        private void ExecuteCancelOperation(object parameter)
+        {
+            if (_currentOperationCts != null && !_currentOperationCts.IsCancellationRequested)
+            {
+                StatusMessage = "Attempting to cancel operation...";
+                _currentOperationCts.Cancel();
+                RunOnUIThread(() => ((RelayCommand)CancelOperationCommand).RaiseCanExecuteChanged()); // Disable cancel button immediately
+            }
+        }
+
 
     }
 }
