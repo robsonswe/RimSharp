@@ -54,5 +54,6 @@ namespace RimSharp.Shared.Services.Contracts
         /// <param name="gamePath">The specific game installation path to check.</param>
         /// <returns>The major version string (e.g., "1.5"), or the original full version/error message if parsing fails.</returns>
         string GetMajorGameVersion(string gamePath);
+        void RefreshPaths();
     }
 }

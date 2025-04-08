@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using RimSharp.MyApp.Dialogs; // If you want async wrappers later
+using RimSharp.Features.WorkshopDownloader.ViewModels;
 
 namespace RimSharp.Shared.Services.Contracts
 {
@@ -14,6 +15,10 @@ namespace RimSharp.Shared.Services.Contracts
         MessageDialogResult ShowConfirmation(string title, string message, bool showCancel = false);
 
         void ShowMessageWithCopy(string title, string message, MessageDialogType dialogType = MessageDialogType.Information);
+
+        UpdateCheckDialogResult ShowUpdateCheckDialog(UpdateCheckDialogViewModel viewModel);
+
+        ProgressDialogViewModel ShowProgressDialog(string title, string message, bool canCancel = false, bool isIndeterminate = true);
 
 
         // More generic method (optional)

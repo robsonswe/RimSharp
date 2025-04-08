@@ -1,6 +1,8 @@
 using System.Windows;
 using RimSharp.MyApp.Dialogs;
 using RimSharp.Shared.Services.Contracts;
+using RimSharp.Features.WorkshopDownloader.Views;
+using RimSharp.Features.WorkshopDownloader.ViewModels;
 
 namespace RimSharp.Infrastructure.Dialog
 {
@@ -32,14 +34,14 @@ namespace RimSharp.Infrastructure.Dialog
         {
             var viewModel = new MessageDialogViewModel(title, message, MessageDialogType.Warning);
             ShowDialogInternal(viewModel);
-             // Result ignored
+            // Result ignored
         }
 
         public void ShowError(string title, string message)
         {
             var viewModel = new MessageDialogViewModel(title, message, MessageDialogType.Error);
             ShowDialogInternal(viewModel);
-             // Result ignored
+            // Result ignored
         }
 
         public MessageDialogResult ShowConfirmation(string title, string message, bool showCancel = false)
@@ -61,6 +63,21 @@ namespace RimSharp.Infrastructure.Dialog
             return ShowDialogInternal(viewModel);
         }
 
+        public UpdateCheckDialogResult ShowUpdateCheckDialog(UpdateCheckDialogViewModel viewModel)
+        {
+            var dialog = new UpdateCheckDialogView(viewModel)
+            {
+                Owner = Application.Current?.MainWindow, // Ensure it's modal to the main window
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+
+            dialog.ShowDialog(); // Shows modally and blocks execution
+
+            // Return the result from the ViewModel (set when Update/Cancel commands are executed)
+            return viewModel.DialogResult;
+        }
+
+
         public void ShowMessageWithCopy(string title, string message, MessageDialogType dialogType = MessageDialogType.Information)
         {
             var viewModel = new MessageDialogViewModel(title, message, dialogType)
@@ -68,6 +85,22 @@ namespace RimSharp.Infrastructure.Dialog
                 ShowCopyButton = true // We'll add this property to the ViewModel
             };
             ShowDialogInternal(viewModel);
+        }
+
+        public ProgressDialogViewModel ShowProgressDialog(string title, string message, bool canCancel = false, bool isIndeterminate = true)
+        {
+            var viewModel = new ProgressDialogViewModel(title, message, canCancel, isIndeterminate);
+
+            var dialog = new ProgressDialogView(viewModel)
+            {
+                Owner = Application.Current?.MainWindow,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+
+            // Show the dialog non-modally
+            dialog.Show();
+
+            return viewModel;
         }
 
     }
