@@ -13,7 +13,6 @@ namespace RimSharp.Features.WorkshopDownloader.Views
         {
             // This call MUST be first in the constructor for a XAML-based control
             InitializeComponent();
-
             // Call InitializeAsync using discard with async Task is correct for fire-and-forget
             _ = InitializeAsync();
         }

@@ -7,6 +7,9 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Shared.Models;
+using System.Diagnostics;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace RimSharp.Shared.Services.Implementations
 {
@@ -222,8 +225,10 @@ namespace RimSharp.Shared.Services.Implementations
             try
             {
                 var doc = XDocument.Load(aboutPath);
-                var aboutFolder = Path.GetDirectoryName(aboutPath);
-                var previewImagePath = Path.Combine(aboutFolder, "Preview.png");
+                var aboutFolder = new DirectoryInfo(aboutPath).FullName;
+                var aboutFolderPath = Path.GetDirectoryName(aboutFolder);
+                var modRootFolder = Directory.GetParent(aboutFolderPath)?.FullName;
+                var previewImagePath = Path.Combine(aboutFolderPath, "Preview.png");
 
                 var root = doc.Element("ModMetaData");
                 if (root == null) return null;
@@ -261,6 +266,67 @@ namespace RimSharp.Shared.Services.Implementations
                         DisplayName = x.Element("displayName")?.Value,
                         SteamWorkshopUrl = x.Element("steamWorkshopUrl")?.Value
                     }).ToList() ?? new List<ModDependency>();
+
+
+                if (!string.IsNullOrEmpty(modRootFolder))
+                {
+                    var dateStampPath = Path.Combine(modRootFolder, "DateStamp");
+                    if (File.Exists(dateStampPath))
+                    {
+                        mod.DateStamp = File.ReadAllText(dateStampPath).Trim();
+                    }
+                }
+
+                var timestampPath = Path.Combine(aboutFolder, "timestamp.txt");
+                if (File.Exists(timestampPath))
+                {
+                    try
+                    {
+                        var raw = File.ReadAllText(timestampPath).Trim();
+                        mod.UpdateDate = DateTime.ParseExact(raw, "dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                                    .ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture);
+
+                        // Debug.WriteLine($"Mod {mod.PackageId} has UpdateDate from timestamp.txt: {mod.UpdateDate}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Failed to parse timestamp.txt for mod {mod.PackageId}: {ex.Message}");
+                    }
+                }
+                else if (!string.IsNullOrEmpty(mod.DateStamp))
+                {
+                    try
+                    {
+                        var cleaned = mod.DateStamp.Replace("@", "").Trim();
+
+                        // Normalize to single space and uppercase AM/PM
+                        cleaned = Regex.Replace(cleaned, @"\s+", " ");
+                        cleaned = Regex.Replace(cleaned, @"\b(am|pm)\b", m => m.Value.ToUpperInvariant());
+
+                        string[] formats = {
+            "dd MMM, yyyy h:mmtt",     // 27 May, 2024 12:43AM
+            "dd MMM, yyyy hh:mmtt",    // zero-padded hour
+            "d MMM, yyyy h:mmtt",      // single-digit day
+        };
+
+                        if (DateTime.TryParseExact(cleaned, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
+                        {
+                            mod.UpdateDate = parsedDate.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture);
+                            Debug.WriteLine($"Mod {mod.PackageId} has UpdateDate from DateStamp: {mod.UpdateDate}");
+                        }
+                        else
+                        {
+                            Debug.WriteLine($"Unrecognized DateStamp format for mod {mod.PackageId}: '{mod.DateStamp}'");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Failed to parse DateStamp for mod {mod.PackageId}: {ex.Message}");
+                    }
+                }
+
+
+
 
                 // Parse load order rules using a more efficient approach
                 ParseLoadOrderRules(root, mod);

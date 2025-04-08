@@ -1,0 +1,69 @@
+<dialogs:BaseDialog x:Class="RimSharp.MyApp.Dialogs.ProgressDialogView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+        xmlns:vmDialogs="clr-namespace:RimSharp.MyApp.Dialogs"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vmDialogs:ProgressDialogViewModel, IsDesignTimeCreatable=True}"
+        Title="{Binding Title}"
+        SizeToContent="Height"
+        Width="450" MinWidth="350" MaxWidth="600"
+        MinHeight="150" MaxHeight="400"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize">
+    
+    <dialogs:BaseDialog.MainContent>
+        <Border Style="{StaticResource RimworldPanelBorder}">
+            <Grid Margin="15,10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <!-- Message -->
+                <TextBlock Grid.Row="0" 
+                           Text="{Binding Message}"
+                           TextWrapping="Wrap"
+                           FontSize="14"
+                           LineHeight="22"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource RimworldDarkBrownBrush}"
+                           Margin="0,0,0,15"/>
+
+                <!-- Progress Bar -->
+                <ProgressBar Grid.Row="1" 
+                             Value="{Binding Progress}"
+                             IsIndeterminate="{Binding IsIndeterminate}"
+                             Height="20"
+                             Margin="0,0,0,15"/>
+
+                <!-- Progress Text -->
+                <TextBlock Grid.Row="2" 
+                           Text="{Binding Progress, StringFormat={}{0}%}"
+                           HorizontalAlignment="Center"
+                           Foreground="{StaticResource RimworldDarkBrownBrush}"
+                           Visibility="{Binding IsIndeterminate, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=invert}"/>
+            </Grid>
+        </Border>
+    </dialogs:BaseDialog.MainContent>
+
+    <dialogs:BaseDialog.ButtonContent>
+        <Grid Margin="0,12,0,5">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <!-- Cancel Button -->
+                <Button Content="Cancel"
+                        Command="{Binding CancelCommand}"
+                        Style="{StaticResource RimworldRunButtonStyle}"
+                        IsCancel="True"
+                        MinWidth="80" 
+                        Height="30"
+                        Margin="5,0,5,0"
+                        Visibility="{Binding CanCancel, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+            </StackPanel>
+        </Grid>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

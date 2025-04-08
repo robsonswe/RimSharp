@@ -113,14 +113,27 @@
                                FontWeight="Medium"/>
                 </Border>
 
-                <ListBox DockPanel.Dock="Bottom"
-                         ItemsSource="{Binding DownloadList}"
-                         Style="{StaticResource RimworldListBoxNoHover}"
-                         Margin="0,1,0,0"
-                         ScrollViewer.VerticalScrollBarVisibility="Auto"
-                         SelectionMode="Single">
-
-                    <ListBox.ItemTemplate>
+<ListBox x:Name="DownloadQueueListBox"
+         ItemsSource="{Binding DownloadList}"
+         Style="{StaticResource RimworldListBoxNoHover}"
+         Margin="0,1,0,0"
+         ScrollViewer.VerticalScrollBarVisibility="Auto"
+         SelectionMode="Single">
+    <ListBox.Resources>
+        <ContextMenu x:Key="ItemContextMenu">
+            <MenuItem Header="Open in Browser"
+                    Command="{Binding Path=DataContext.NavigateToUrlCommand, 
+                            RelativeSource={RelativeSource AncestorType=UserControl}}"
+                    CommandParameter="{Binding Url}"/>
+        </ContextMenu>
+    </ListBox.Resources>
+    
+    <ListBox.ItemContainerStyle>
+        <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+            <Setter Property="ContextMenu" Value="{StaticResource ItemContextMenu}"/>
+        </Style>
+    </ListBox.ItemContainerStyle>
+    <ListBox.ItemTemplate>
     <DataTemplate>
         <Grid Margin="0,2">
             <Grid.ColumnDefinitions>
@@ -157,7 +170,7 @@
                 <TextBlock Text="Updated: "
                            FontSize="11"
                            Foreground="{StaticResource RimworldLightBrownBrush}"/>
-                <TextBlock Text="{Binding StandardDate}"
+                <TextBlock Text="{Binding PublishDate}"
                            FontSize="11"
                            Foreground="{StaticResource RimworldLightBrownBrush}"
                            ToolTip="{Binding PublishDate}"/>

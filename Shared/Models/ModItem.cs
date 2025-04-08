@@ -44,6 +44,11 @@ namespace RimSharp.Shared.Models
         public bool HasSteamUrl => !string.IsNullOrEmpty(SteamUrl);
         public bool HasExternalUrl => !string.IsNullOrEmpty(ExternalUrl);
 
+        public string DateStamp { get; set; }
+        public string UpdateDate { get; set; }
+
+
+
     }
 
     public class ModDependency

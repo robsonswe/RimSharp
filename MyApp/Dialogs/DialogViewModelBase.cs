@@ -2,10 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Windows.Input;
 using RimSharp.Core.Commands;
+using RimSharp.MyApp.AppFiles;
 
 namespace RimSharp.MyApp.Dialogs
 {
-    public abstract class DialogViewModelBase
+    public abstract class DialogViewModelBase : ViewModelBase
     {
         public string Title { get; protected set; }
 
