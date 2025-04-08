@@ -18,6 +18,7 @@ using RimSharp.MyApp.MainPage;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Shared.Services.Implementations;
+using RimSharp.Infrastructure.Workshop;
 
 namespace RimSharp.MyApp.AppFiles
 {
@@ -90,6 +91,7 @@ namespace RimSharp.MyApp.AppFiles
 
             // Register HttpClient and API Client (for Check Updates)
             services.AddHttpClient(); // Registers IHttpClientFactory and related services
+            services.AddSingleton<ISteamCmdService, SteamCmdService>();
             services.AddSingleton<ISteamApiClient, SteamApiClient>(); // Uses HttpClient/Factory
 
             // Register Update Checker Service (for Check Updates)
@@ -118,7 +120,8 @@ namespace RimSharp.MyApp.AppFiles
                     provider.GetRequiredService<IDownloadQueueService>(),
                     provider.GetRequiredService<IModService>(),          // Added
                     provider.GetRequiredService<IDialogService>(),         // Added
-                    provider.GetRequiredService<IWorkshopUpdateCheckerService>() // Added
+                    provider.GetRequiredService<IWorkshopUpdateCheckerService>(),
+                    provider.GetRequiredService<ISteamCmdService>() // Added
                 ));
 
             // MainViewModel (Shell) - Ensure it gets the required ViewModels/Services

@@ -12,6 +12,8 @@ namespace RimSharp.MyApp.Dialogs
         private bool _isIndeterminate;
         private bool _canCancel;
 
+        public event EventHandler Cancelled;
+
         public string Title
         {
             get => _title;
@@ -43,6 +45,31 @@ namespace RimSharp.MyApp.Dialogs
         }
 
         public ICommand CancelCommand { get; }
+
+        public void Complete(string message = null)
+        {
+            if (!string.IsNullOrEmpty(message))
+            {
+                Message = message;
+            }
+            CloseDialog(true);
+        }
+
+        public void Cancel(string message = null)
+        {
+            if (!string.IsNullOrEmpty(message))
+            {
+                Message = message;
+            }
+            Cancelled?.Invoke(this, EventArgs.Empty);
+            CloseDialog(false);
+        }
+
+        public void ForceClose()
+        {
+            CloseDialog(false);
+        }
+
 
         public ProgressDialogViewModel(string title, string message, bool canCancel = false, bool isIndeterminate = true)
             : base(title)
