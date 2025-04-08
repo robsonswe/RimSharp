@@ -15,4 +15,5 @@
     <converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
     <converters:BooleanToBrushConverter x:Key="BooleanToBrushConverter"/>
     <converters:StringToUriConverter x:Key="StringToUriConverter"/>
+    <converters:CountToBooleanConverter x:Key="CountToBooleanConverter"/>
 </ResourceDictionary>

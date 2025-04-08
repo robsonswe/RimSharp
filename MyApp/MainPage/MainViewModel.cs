@@ -52,8 +52,9 @@ namespace RimSharp.MyApp.MainPage
             IModCommandService modCommandService,
             IModListIOService modListIOService,
             IModIncompatibilityService incompatibilityService,
-            IDialogService dialogService, // Added missing parameter
-            IModFilterService modFilterService // Added for DI consistency
+            IDialogService dialogService,
+            IModFilterService modFilterService,
+            DownloaderViewModel downloaderViewModel
             )
         {
             _modService = modService;
@@ -106,7 +107,7 @@ namespace RimSharp.MyApp.MainPage
                 _dialogService, // Pass the initialized dialog service
                 _modService  
             );
-            DownloaderVM = new DownloaderViewModel(/* Pass services if needed */);
+            DownloaderVM = downloaderViewModel;
 
             // Set the initial view
             CurrentViewModel = ModsVM; // Start with the Mods view

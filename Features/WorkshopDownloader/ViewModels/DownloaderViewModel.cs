@@ -1,21 +1,21 @@
 using System;
-using System.ComponentModel;
-using System.Windows.Input;
-using Microsoft.Web.WebView2.Wpf;
-using Microsoft.Web.WebView2.Core;
 using System.Collections.ObjectModel;
+using System.Windows.Input;
+using Microsoft.Web.WebView2.Wpf; // <<< CHANGED
 using RimSharp.Core.Commands;
+using RimSharp.Features.WorkshopDownloader.Models;
+using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.MyApp.AppFiles;
 
 namespace RimSharp.Features.WorkshopDownloader.ViewModels
 {
     public class DownloaderViewModel : ViewModelBase
     {
-        private WebView2 _webView;
+        private readonly IWebNavigationService _navigationService;
+        private readonly IDownloadQueueService _queueService;
+        // Keep IModExtractorService interface, the implementation detail changes
+        private IModExtractorService _extractorService;
         private string _statusMessage;
-        private ObservableCollection<DownloadItem> _downloadList;
-        private bool _canGoBack;
-        private bool _canGoForward;
 
         public string StatusMessage
         {
@@ -23,193 +23,107 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             set => SetProperty(ref _statusMessage, value);
         }
 
-        public ObservableCollection<DownloadItem> DownloadList
-        {
-            get => _downloadList;
-            set => SetProperty(ref _downloadList, value);
-        }
+        public ObservableCollection<DownloadItem> DownloadList => _queueService.Items;
 
-        // Add properties with notification - we'll still keep these for informational purposes
-        public bool CanGoBack
-        {
-            get => _canGoBack;
-            private set => SetProperty(ref _canGoBack, value);
-        }
+        public bool CanGoBack => _navigationService.CanGoBack;
+        public bool CanGoForward => _navigationService.CanGoForward;
+        public bool IsValidModUrl => _navigationService.IsValidModUrl;
 
-        public bool CanGoForward
-        {
-            get => _canGoForward;
-            private set => SetProperty(ref _canGoForward, value);
-        }
-
-        // Browser Navigation Commands - removing condition checks
+        // Browser Navigation Commands
         public ICommand GoBackCommand { get; }
         public ICommand GoForwardCommand { get; }
         public ICommand GoHomeCommand { get; }
 
-        // Other commands (stubs)
+        // Other commands
         public ICommand AddModCommand { get; }
         public ICommand SetupSteamCmdCommand { get; }
         public ICommand CheckUpdatesCommand { get; }
         public ICommand DownloadCommand { get; }
+        public ICommand RemoveItemCommand { get; }
 
-        public DownloaderViewModel()
+        public DownloaderViewModel(
+            IWebNavigationService navigationService,
+            IDownloadQueueService queueService)
         {
-            // Initialize collections
-            _downloadList = new ObservableCollection<DownloadItem>();
+            _navigationService = navigationService;
+            _queueService = queueService;
 
-            // Initialize browser commands - modified to remove CanExecute conditions
-            GoBackCommand = new RelayCommand(
-                _ => ExecuteGoBackCommand(),
-                null); // Removed condition so button is always enabled
+            // Set up event handlers
+            _navigationService.StatusChanged += (s, message) => StatusMessage = message;
+            _navigationService.NavigationStateChanged += (s, e) => {
+                OnPropertyChanged(nameof(CanGoBack));
+                OnPropertyChanged(nameof(CanGoForward));
+            };
+            _navigationService.ModUrlValidityChanged += (s, valid) => {
+                OnPropertyChanged(nameof(IsValidModUrl));
+                // Need to raise CanExecuteChanged for commands depending on IsValidModUrl
+                ((RelayCommand)AddModCommand).RaiseCanExecuteChanged();
+            };
 
-            GoForwardCommand = new RelayCommand(
-                _ => ExecuteGoForwardCommand(),
-                null); // Removed condition so button is always enabled
+            _queueService.StatusChanged += (s, message) => StatusMessage = message;
 
-            GoHomeCommand = new RelayCommand(
-                ExecuteGoHome);
+            // Initialize commands
+            GoBackCommand = new RelayCommand(_ => _navigationService.GoBack(), _ => CanGoBack);
+            GoForwardCommand = new RelayCommand(_ => _navigationService.GoForward(), _ => CanGoForward);
+            GoHomeCommand = new RelayCommand(_ => _navigationService.GoHome());
 
-            // Initialize other commands as stubs
-            AddModCommand = new RelayCommand(_ => { });
-            SetupSteamCmdCommand = new RelayCommand(_ => { });
-            CheckUpdatesCommand = new RelayCommand(_ => { });
-            DownloadCommand = new RelayCommand(_ => { });
-        }
+            AddModCommand = new RelayCommand(
+                ExecuteAddModCommand,
+                _ => IsValidModUrl); // Predicate based on property
 
-        public void SetWebView(WebView2 webView)
-        {
-            _webView = webView;
+            RemoveItemCommand = new RelayCommand(
+                param => _queueService.RemoveFromQueue(param as DownloadItem));
 
-            if (_webView != null)
+            // Stub commands for future implementation
+            SetupSteamCmdCommand = new RelayCommand(_ => { StatusMessage = "Setup SteamCMD: Not implemented"; });
+            CheckUpdatesCommand = new RelayCommand(_ => { StatusMessage = "Check Updates: Not implemented"; });
+            DownloadCommand = new RelayCommand(_ => { StatusMessage = "Download All: Not implemented"; });
+
+             // Re-evaluate command states when navigation changes might affect them
+            _navigationService.NavigationStateChanged += (s, e) =>
             {
-                // Subscribe to navigation events
-                _webView.NavigationStarting += WebView_NavigationStarting;
-                _webView.NavigationCompleted += WebView_NavigationCompleted;
-
-                // Add a source changed event handler
-                _webView.SourceChanged += (s, e) => UpdateNavigationState();
-
-                // Initial state update
-                UpdateNavigationState();
-            }
+                ((RelayCommand)GoBackCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)GoForwardCommand).RaiseCanExecuteChanged();
+            };
         }
 
-        private void WebView_NavigationStarting(object sender, CoreWebView2NavigationStartingEventArgs e)
+        // Change the parameter type to the WPF WebView2
+        public void SetWebView(Microsoft.Web.WebView2.Wpf.WebView2 webView) // <<< CHANGED
         {
-            // You might want to update status or perform other actions here
-            StatusMessage = $"Loading: {e.Uri}";
+            _navigationService.SetWebView(webView);
+            // Pass the WPF WebView2 to the extractor service (ensure it's updated too)
+            _extractorService = new ModExtractorService(webView);
         }
 
-        private void WebView_NavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
+        private async void ExecuteAddModCommand(object parameter)
         {
-            // Update navigation state after navigation completes
-            UpdateNavigationState();
-            StatusMessage = e.IsSuccess
-                ? $"Loaded: {_webView.Source}"
-                : $"Failed to load page: {e.WebErrorStatus}";
-        }
-
-        public void UpdateNavigationState()
-        {
-            if (_webView != null && _webView.CoreWebView2 != null)
-            {
-                // We'll still update these properties for informational purposes
-                CanGoBack = _webView.CoreWebView2.CanGoBack;
-                CanGoForward = _webView.CoreWebView2.CanGoForward;
-            }
-        }
-
-        #region Browser Command Methods
-
-        private void ExecuteGoBackCommand()
-        {
+             if (_extractorService == null)
+             {
+                 StatusMessage = "Error: Browser component not fully initialized.";
+                 return;
+             }
             try
             {
-                if (_webView?.CoreWebView2 != null)
+                StatusMessage = "Extracting mod info...";
+                var modInfo = await _extractorService.ExtractFullModInfo();
+                if (modInfo != null)
                 {
-                    // We'll still check if we can go back before executing
-                    // to prevent errors, but the button will always be enabled
-                    if (_webView.CoreWebView2.CanGoBack)
-                    {
-                        _webView.CoreWebView2.GoBack();
-                    }
-                    UpdateNavigationState();
+                   if(!_queueService.AddToQueue(modInfo))
+                   {
+                       // Status message already set by QueueService if adding failed (e.g., duplicate)
+                   }
+                   // Status message set by QueueService on success too
+                }
+                else
+                {
+                     StatusMessage = "Could not extract mod info from the current page.";
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error going back: {ex.Message}";
+                StatusMessage = $"Error adding mod: {ex.Message}";
+                Console.WriteLine($"Error adding mod: {ex}"); // Log detailed error
             }
-        }
-
-        private void ExecuteGoForwardCommand()
-        {
-            try
-            {
-                if (_webView?.CoreWebView2 != null)
-                {
-                    // We'll still check if we can go forward before executing
-                    // to prevent errors, but the button will always be enabled
-                    if (_webView.CoreWebView2.CanGoForward)
-                    {
-                        _webView.CoreWebView2.GoForward();
-                    }
-                    UpdateNavigationState();
-                }
-            }
-            catch (Exception ex)
-            {
-                StatusMessage = $"Error going forward: {ex.Message}";
-            }
-        }
-
-        private void ExecuteGoHome(object parameter)
-        {
-            try
-            {
-                _webView?.CoreWebView2?.Navigate("https://steamcommunity.com/app/294100/workshop/");
-                UpdateNavigationState();
-            }
-            catch (Exception ex)
-            {
-                StatusMessage = $"Error navigating home: {ex.Message}";
-            }
-        }
-
-        #endregion
-    }
-
-    // Supporting class for the DownloadList
-    public class DownloadItem : ViewModelBase
-    {
-        private string _name;
-        private string _url;
-        private double _progress;
-        private string _status;
-
-        public string Name
-        {
-            get => _name;
-            set => SetProperty(ref _name, value);
-        }
-
-        public string Url
-        {
-            get => _url;
-            set => SetProperty(ref _url, value);
-        }
-
-        public double Progress
-        {
-            get => _progress;
-            set => SetProperty(ref _progress, value);
-        }
-
-        public string Status
-        {
-            get => _status;
-            set => SetProperty(ref _status, value);
         }
     }
 }
