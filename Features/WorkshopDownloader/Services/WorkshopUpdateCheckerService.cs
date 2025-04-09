@@ -188,7 +188,8 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                     Name = details.Title ?? mod.Name,
                     SteamId = mod.SteamId,
                     Url = $"https://steamcommunity.com/sharedfiles/filedetails/?id={mod.SteamId}",
-                    PublishDate = apiUpdateTimeUtc.ToString("d MMM yyyy @ h:mmtt", CultureInfo.InvariantCulture),
+                    // Changed format to include comma after month
+                    PublishDate = apiUpdateTimeUtc.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture),
                     StandardDate = apiUpdateTimeUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
                 };
 
@@ -197,6 +198,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                     _downloadQueueService.AddToQueue(modInfo);
                 });
             }
+
 
         }
         private bool TryParseLocalDate(string dateString, out DateTime utcDateTime)

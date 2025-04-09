@@ -91,7 +91,7 @@ namespace RimSharp.Shared.Services.Implementations
 
                 var modDir = Path.Combine(modsPath, steamId);
                 var aboutDir = Path.Combine(modDir, "About");
-                var dateStampPath = Path.Combine(aboutDir, "DateStamp");
+                var dateStampPath = Path.Combine(modDir, "DateStamp");
                 var timestampPath = Path.Combine(aboutDir, "timestamp.txt");
 
                 // Ensure the target directory exists
