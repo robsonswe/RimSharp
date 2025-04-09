@@ -95,7 +95,7 @@ namespace RimSharp.Shared.Services.Implementations
 
                 if (rules.TryGetValue(packageIdLower, out var rule))
                 {
-                    Console.WriteLine($"[DEBUG] Found rule for mod: {mod.PackageId} / {packageIdLower}");
+                    //Console.WriteLine($"[DEBUG] Found rule for mod: {mod.PackageId} / {packageIdLower}");
 
                     // Apply loadBefore rules
                     foreach (var target in rule.LoadBefore.Keys)
@@ -103,7 +103,7 @@ namespace RimSharp.Shared.Services.Implementations
                         if (!mod.LoadBefore.Contains(target))
                         {
                             mod.LoadBefore.Add(target);
-                            Console.WriteLine($"[DEBUG] Added LoadBefore: {mod.PackageId} -> {target}");
+                            //Console.WriteLine($"[DEBUG] Added LoadBefore: {mod.PackageId} -> {target}");
                         }
                     }
 
@@ -113,7 +113,7 @@ namespace RimSharp.Shared.Services.Implementations
                         if (!mod.LoadAfter.Contains(target))
                         {
                             mod.LoadAfter.Add(target);
-                            Console.WriteLine($"[DEBUG] Added LoadAfter: {mod.PackageId} -> {target}");
+                            //Console.WriteLine($"[DEBUG] Added LoadAfter: {mod.PackageId} -> {target}");
                         }
                     }
 
@@ -141,7 +141,7 @@ namespace RimSharp.Shared.Services.Implementations
                     var matchingKey = rules.Keys.FirstOrDefault(k => string.Equals(k, mod.PackageId, StringComparison.OrdinalIgnoreCase));
                     if (matchingKey != null)
                     {
-                        Console.WriteLine($"[DEBUG] Case-sensitive mismatch for {mod.PackageId}. Found rule with key: {matchingKey}");
+                       // Console.WriteLine($"[DEBUG] Case-sensitive mismatch for {mod.PackageId}. Found rule with key: {matchingKey}");
                     }
                 }
             }

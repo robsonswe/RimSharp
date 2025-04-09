@@ -369,7 +369,7 @@ namespace RimSharp.Shared.Services.Implementations
                         if (DateTime.TryParseExact(cleaned, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
                         {
                             mod.UpdateDate = parsedDate.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture);
-                            Debug.WriteLine($"Mod {mod.PackageId} has UpdateDate from DateStamp: {mod.UpdateDate}");
+                            //Debug.WriteLine($"Mod {mod.PackageId} has UpdateDate from DateStamp: {mod.UpdateDate}");
                         }
                         else
                         {

@@ -45,7 +45,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             _webView = webView;
         }
 
-                private void CheckAndNotifyModInfoAvailability()
+        private void CheckAndNotifyModInfoAvailability()
         {
             bool currentState = IsModInfoAvailable;
             if (currentState != _lastReportedModInfoAvailableState)
@@ -141,12 +141,12 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         // No changes needed in ConvertToStandardDate, ExtractFullModInfo, or UnwrapJsonString
         // as they don't directly use the IsMod...Available properties.
 
-        public async Task<string> ConvertToStandardDate(string dateString)
+        public Task<string> ConvertToStandardDate(string dateString)
         {
             if (string.IsNullOrWhiteSpace(dateString))
             {
                 Console.WriteLine("[ConvertToStandardDate] Input date string was null or empty");
-                return string.Empty;
+                return Task.FromResult(string.Empty);
             }
 
             Console.WriteLine($"[ConvertToStandardDate] Starting conversion for: '{dateString}'");
@@ -173,15 +173,15 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 // Try parsing with different formats (comma formats first)
                 var formats = new[]
                 {
-                    "d MMM, yyyy @ h:mmtt",    // 7 Apr, 2025 @ 2:17am
-                    "d MMMM, yyyy @ h:mmtt",   // 7 April, 2025 @ 2:17am
-                    "d MMM yyyy @ h:mmtt",     // Fallback without comma
-                    "d MMMM yyyy @ h:mmtt",    // Fallback without comma
-                    "d MMM, yyyy",             // Fallback without time
-                    "d MMMM, yyyy",            // Fallback without time
-                    "d MMM yyyy",              // Fallback without comma or time
-                    "d MMMM yyyy"             // Fallback without comma or time
-                };
+            "d MMM, yyyy @ h:mmtt",    // 7 Apr, 2025 @ 2:17am
+            "d MMMM, yyyy @ h:mmtt",   // 7 April, 2025 @ 2:17am
+            "d MMM yyyy @ h:mmtt",     // Fallback without comma
+            "d MMMM yyyy @ h:mmtt",    // Fallback without comma
+            "d MMM, yyyy",             // Fallback without time
+            "d MMMM, yyyy",            // Fallback without time
+            "d MMM yyyy",              // Fallback without comma or time
+            "d MMMM yyyy"             // Fallback without comma or time
+        };
 
                 if (DateTime.TryParseExact(dateString, formats,
                     System.Globalization.CultureInfo.InvariantCulture,
@@ -189,7 +189,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 {
                     var result = date.ToString("dd/MM/yyyy HH:mm:ss");
                     Console.WriteLine($"[ConvertToStandardDate] Successfully converted to: '{result}'");
-                    return result;
+                    return Task.FromResult(result);
                 }
 
                 Console.WriteLine($"[ConvertToStandardDate] All parsing attempts failed, trying DateTime.Parse");
@@ -197,23 +197,23 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 {
                     var result = fallbackDate.ToString("dd/MM/yyyy HH:mm:ss");
                     Console.WriteLine($"[ConvertToStandardDate] Fallback parse succeeded: '{result}'");
-                    return result;
+                    return Task.FromResult(result);
                 }
 
                 Console.WriteLine($"[ConvertToStandardDate] All parsing methods failed");
-                return dateString;
+                return Task.FromResult(dateString);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[ConvertToStandardDate] Error: {ex.Message}");
-                return dateString;
+                return Task.FromResult(dateString);
             }
         }
 
-         public async Task<ModInfoDto> ExtractFullModInfo()
+        public async Task<ModInfoDto> ExtractFullModInfo()
         {
             // (Existing checks for URL, ID etc remain)
-             if (_webView?.Source == null || _webView.CoreWebView2 == null) return null;
+            if (_webView?.Source == null || _webView.CoreWebView2 == null) return null;
 
             var url = _webView.Source.ToString();
             // Use Uri class for robust parsing
@@ -226,7 +226,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             }
             var queryParams = System.Web.HttpUtility.ParseQueryString(uri.Query);
             var id = queryParams["id"];
-             if (string.IsNullOrEmpty(id))
+            if (string.IsNullOrEmpty(id))
             {
                 Console.WriteLine($"Could not extract 'id' from URL: {url}");
                 return null;
@@ -237,9 +237,9 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             string dateInfo = await ExtractModDateInfo();
             string standardDate = await ConvertToStandardDate(dateInfo);
 
-             if (string.IsNullOrEmpty(modName)) modName = $"Mod {id}";
-             if (string.IsNullOrEmpty(dateInfo)) dateInfo = "Unknown Date";
-             if (string.IsNullOrEmpty(standardDate)) standardDate = dateInfo;
+            if (string.IsNullOrEmpty(modName)) modName = $"Mod {id}";
+            if (string.IsNullOrEmpty(dateInfo)) dateInfo = "Unknown Date";
+            if (string.IsNullOrEmpty(standardDate)) standardDate = dateInfo;
 
 
             return new ModInfoDto

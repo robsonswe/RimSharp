@@ -106,10 +106,10 @@ namespace RimSharp.MyApp.MainPage
                     // Trigger refresh if needed AFTER saving
                     if (refreshNeeded)
                     {
-                         // Trigger the refresh logic (e.g., call RefreshData or specific refresh on ModsVM)
-                         // Use Task.Run for long ops, ensure UI updates on UI thread.
-                         // Using the RefreshCommand is a good way to centralize this.
-                         if (RefreshCommand.CanExecute(null)) RefreshCommand.Execute(null);
+                        // Trigger the refresh logic (e.g., call RefreshData or specific refresh on ModsVM)
+                        // Use Task.Run for long ops, ensure UI updates on UI thread.
+                        // Using the RefreshCommand is a good way to centralize this.
+                        if (RefreshCommand.CanExecute(null)) RefreshCommand.Execute(null);
                     }
                     // Also notify CanExecuteChanged for commands depending on path validity
                     ((RelayCommand)OpenFolderCommand).RaiseCanExecuteChanged();
@@ -128,7 +128,7 @@ namespace RimSharp.MyApp.MainPage
             OpenFolderCommand = new RelayCommand(OpenFolder, CanOpenFolder);
 
             // Initial CanExecute check for OpenFolderCommand
-             ((RelayCommand)OpenFolderCommand).RaiseCanExecuteChanged();
+            ((RelayCommand)OpenFolderCommand).RaiseCanExecuteChanged();
         }
         // --- END UPDATED CONSTRUCTOR ---
 
@@ -161,7 +161,7 @@ namespace RimSharp.MyApp.MainPage
                 }
                 catch (Exception ex)
                 {
-                     _dialogService.ShowError("Error Opening Folder", $"Could not open folder '{path}'.\nError: {ex.Message}");
+                    _dialogService.ShowError("Error Opening Folder", $"Could not open folder '{path}'.\nError: {ex.Message}");
                 }
             }
             else
@@ -286,40 +286,40 @@ namespace RimSharp.MyApp.MainPage
         {
             StatusMessage = "Refreshing paths and mod data..."; // Use StatusMessage if MainViewModel has one
 
-             // 1. Refresh paths from config (in case config was edited externally)
-             // Optional: Add a method to ConfigService to reload if needed, or assume PathService gets latest on request
-             _pathService.RefreshPaths(); // Assuming PathService can refresh its internal state from ConfigService
+            // 1. Refresh paths from config (in case config was edited externally)
+            _pathService.RefreshPaths(); // Assuming PathService can refresh its internal state from ConfigService
 
-             // 2. Update PathSettings properties from the refreshed service state
-             // Use temporary variables to avoid excessive PropertyChanged triggers if values are the same
-             string tempGame = _pathService.GetGamePath();
-             string tempConfig = _pathService.GetConfigPath();
-             string tempMods = _pathService.GetModsPath();
-             string tempVersion = _pathService.GetGameVersion(tempGame); // Get version based on potentially new path
+            // 2. Update PathSettings properties from the refreshed service state
+            // Use temporary variables to avoid excessive PropertyChanged triggers if values are the same
+            string tempGame = _pathService.GetGamePath();
+            string tempConfig = _pathService.GetConfigPath();
+            string tempMods = _pathService.GetModsPath();
+            string tempVersion = _pathService.GetGameVersion(tempGame); // Get version based on potentially new path
 
-             bool changed = false;
-             if (PathSettings.GamePath != tempGame) { PathSettings.GamePath = tempGame; changed = true; }
-             if (PathSettings.ConfigPath != tempConfig) { PathSettings.ConfigPath = tempConfig; changed = true; }
-             if (PathSettings.ModsPath != tempMods) { PathSettings.ModsPath = tempMods; changed = true; }
-             if (PathSettings.GameVersion != tempVersion) { PathSettings.GameVersion = tempVersion; changed = true; } // Update version display
+            // Assign properties. The PropertyChanged event will only fire if the value *actually* changes.
+            // No need for the 'changed' flag here if subsequent actions always run.
+            if (PathSettings.GamePath != tempGame) { PathSettings.GamePath = tempGame; }
+            if (PathSettings.ConfigPath != tempConfig) { PathSettings.ConfigPath = tempConfig; }
+            if (PathSettings.ModsPath != tempMods) { PathSettings.ModsPath = tempMods; }
+            if (PathSettings.GameVersion != tempVersion) { PathSettings.GameVersion = tempVersion; } // Update version display
 
             // 3. Trigger data refresh in the relevant sub-viewmodel (ModsVM)
             // Use async void is acceptable for top-level command handlers if you handle loading state in ModsVM
             _ = ModsVM?.RefreshDataAsync();
 
             // 4. Update CanExecute state for commands dependent on paths
-             ((RelayCommand)OpenFolderCommand).RaiseCanExecuteChanged();
+            ((RelayCommand)OpenFolderCommand).RaiseCanExecuteChanged();
 
-             StatusMessage = "Refresh complete."; // Update status
-             Console.WriteLine("RefreshData executed."); // Debug log
+            StatusMessage = "Refresh complete."; // Update status
+            Console.WriteLine("RefreshData executed."); // Debug log
         }
 
         // Optional: Add a StatusMessage property if MainViewModel controls a status bar
-         private string _statusMessage = "Ready";
-         public string StatusMessage
-         {
-             get => _statusMessage;
-             set => SetProperty(ref _statusMessage, value);
-         }
+        private string _statusMessage = "Ready";
+        public string StatusMessage
+        {
+            get => _statusMessage;
+            set => SetProperty(ref _statusMessage, value);
+        }
     }
 }

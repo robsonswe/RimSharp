@@ -1,3 +1,4 @@
+#nullable enable
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using RimSharp.Shared.JsonConverters; // Or your actual namespace for the converter

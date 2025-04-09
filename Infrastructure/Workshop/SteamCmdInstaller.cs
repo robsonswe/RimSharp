@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -22,8 +23,8 @@ namespace RimSharp.Infrastructure.Workshop
         private readonly SteamCmdPlatformInfo _platformInfo;
 
         public SteamCmdInstaller(
-            ISteamCmdPathService pathService, 
-            IPathService gamePathService, 
+            ISteamCmdPathService pathService,
+            IPathService gamePathService,
             IDialogService dialogService,
             IHttpClientFactory httpClientFactory,
             ISteamCmdFileSystem fileSystem,
@@ -42,8 +43,8 @@ namespace RimSharp.Infrastructure.Workshop
             string? exePath = _pathService.SteamCmdExePath;
             if (string.IsNullOrEmpty(exePath))
                 return false;
-                
-            return File.Exists(exePath);
+
+            return await Task.FromResult(File.Exists(exePath));
         }
 
         public async Task<bool> SetupAsync(IProgress<string>? progress = null, CancellationToken cancellationToken = default)
@@ -107,18 +108,18 @@ namespace RimSharp.Infrastructure.Workshop
                 progress?.Report($"  Target (SteamCMD Downloads): {steamCmdWorkshopLinkPath}");
 
                 bool linkCreated = await _fileSystem.CreateWorkshopLinkAsync(
-                    localModsPath, 
-                    steamCmdWorkshopLinkPath, 
-                    progress, 
+                    localModsPath,
+                    steamCmdWorkshopLinkPath,
+                    progress,
                     cancellationToken);
-                    
+
                 if (!linkCreated)
                 {
                     progress?.Report("Failed to create the required link/junction. Downloads may not go to your mods folder.");
-                    _dialogService.ShowWarning("Symlink Failed", 
-                        $"Could not create the link/junction from:\n{steamCmdWorkshopLinkPath}\n\n" + 
-                        $"To your mods folder:\n{localModsPath}\n\n" + 
-                        "SteamCMD downloads might not appear in your configured mods folder. " + 
+                    _dialogService.ShowWarning("Symlink Failed",
+                        $"Could not create the link/junction from:\n{steamCmdWorkshopLinkPath}\n\n" +
+                        $"To your mods folder:\n{localModsPath}\n\n" +
+                        "SteamCMD downloads might not appear in your configured mods folder. " +
                         "This might require administrator privileges on Windows.");
                 }
                 else
@@ -136,7 +137,7 @@ namespace RimSharp.Infrastructure.Workshop
                 else
                 {
                     progress?.Report("Setup finished, but SteamCMD executable check failed.");
-                    _dialogService.ShowError("Setup Failed", 
+                    _dialogService.ShowError("Setup Failed",
                         $"Setup process finished, but could not verify the SteamCMD executable at:\n{_pathService.SteamCmdExePath}");
                     return false;
                 }
@@ -149,14 +150,14 @@ namespace RimSharp.Infrastructure.Workshop
             catch (UnauthorizedAccessException ex)
             {
                 progress?.Report($"Setup failed: Permission denied. {ex.Message}");
-                _dialogService.ShowError("Setup Failed", 
+                _dialogService.ShowError("Setup Failed",
                     $"Permission denied during setup. Try running the application as administrator.\n\nError: {ex.Message}");
                 return false;
             }
             catch (Exception ex)
             {
                 progress?.Report($"Setup failed: {ex.Message}");
-                _dialogService.ShowError("Setup Failed", 
+                _dialogService.ShowError("Setup Failed",
                     $"An unexpected error occurred during SteamCMD setup:\n\n{ex.Message}");
                 return false;
             }
@@ -172,9 +173,9 @@ namespace RimSharp.Infrastructure.Workshop
         }
 
         private async Task ExtractArchiveAsync(
-            string archivePath, 
-            string destinationPath, 
-            IProgress<string>? progress, 
+            string archivePath,
+            string destinationPath,
+            IProgress<string>? progress,
             CancellationToken cancellationToken)
         {
             // Clear directory before extracting (doesn't always overwrite cleanly)
@@ -193,7 +194,7 @@ namespace RimSharp.Infrastructure.Workshop
                 using FileStream tarStream = File.OpenRead(archivePath);
                 using var gzipStream = new System.IO.Compression.GZipStream(tarStream, CompressionMode.Decompress);
                 await System.Formats.Tar.TarFile.ExtractToDirectoryAsync(gzipStream, destinationPath, true, cancellationToken);
-                
+
                 // Make steamcmd.sh executable on Linux/macOS
                 if (_platformInfo.IsPosix && _pathService.SteamCmdExePath != null && File.Exists(_pathService.SteamCmdExePath))
                 {
@@ -211,14 +212,14 @@ namespace RimSharp.Infrastructure.Workshop
                 RedirectStandardError = true,
                 CreateNoWindow = true
             };
-            
+
             using var process = Process.Start(psi);
             if (process == null)
             {
                 progress?.Report($"Warning: Failed to start chmod process for {filePath}");
                 return;
             }
-            
+
             await process.WaitForExitAsync(cancellationToken);
             if (process.ExitCode != 0)
             {

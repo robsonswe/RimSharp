@@ -78,7 +78,7 @@ namespace RimSharp.Infrastructure.Mods.Rules
                 {
                     string keyLower = entry.Key.ToLowerInvariant();
                     _cachedRules[keyLower] = entry.Value;
-                    Console.WriteLine($"[DEBUG] Added rule for mod: {keyLower}, HasLoadBottom: {entry.Value.LoadBottom != null}");
+                    //Console.WriteLine($"[DEBUG] Added rule for mod: {keyLower}, HasLoadBottom: {entry.Value.LoadBottom != null}");
                 }
 
                 _rulesLoaded = true;

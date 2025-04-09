@@ -76,9 +76,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             }
         }
 
-        public event EventHandler<bool> ModInfoAvailabilityChanged;
-
-
         public string CurrentUrl => _webView?.Source?.ToString();
 
         public event EventHandler<string> StatusChanged;
