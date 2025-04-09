@@ -7,6 +7,7 @@
     <WebView2InstallMode>Embed</WebView2InstallMode>
     <RootNamespace>RimSharp</RootNamespace>
     <ApplicationIcon>icon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>
