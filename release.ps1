@@ -53,7 +53,7 @@ if ($PreRelease) {
 Set-Content -Path $versionFile -Value $finalVersion
 
 # Commit, tag, and push
-git add $versionFile
+git add -A
 git commit -am "Release: $finalVersion"
 git tag $finalVersion
 git push origin HEAD
