@@ -10,7 +10,7 @@
              mc:Ignorable="d"
              x:Name="RootModListView"
              d:DesignHeight="400"
-        d:DesignWidth="300">
+             d:DesignWidth="300">
     <Border Style="{StaticResource RimworldPanelBorder}">
         <Grid>
             <Grid.RowDefinitions>
@@ -84,102 +84,137 @@
                 </b:Interaction.Behaviors>
 
                 <ListBox.ItemTemplate>
-    <DataTemplate DataType="{x:Type models:ModItem}">
-        <!-- Use a container that fills width for better hit testing -->
-        <Border Background="Transparent" Tag="{Binding DataContext, ElementName=RootModListView}">
-            <Border.ContextMenu>
-                <ContextMenu>
-                    <ContextMenu.Style>
-                        <Style TargetType="ContextMenu">
-                            <Setter Property="Visibility" Value="Visible"/>
-                            <Style.Triggers>
-                                <!-- DataContext here is ModItem -->
-                                <DataTrigger Binding="{Binding IsCore}" Value="True">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ContextMenu.Style>
+                    <DataTemplate DataType="{x:Type models:ModItem}">
+                        <!-- Use a container that fills width for better hit testing -->
+                        <Border Background="Transparent" Tag="{Binding DataContext, ElementName=RootModListView}">
+                            <Border.ContextMenu>
+                                <ContextMenu>
+                                    <!-- Use the same shared style for menu items -->
+                                    <ContextMenu.Resources>
+                                       <Style TargetType="MenuItem">
+                                           <Setter Property="Padding" Value="6,2,6,2"/>
+                                           <Setter Property="Template">
+                                               <Setter.Value>
+                                                   <ControlTemplate TargetType="MenuItem">
+                                                       <Border x:Name="Bd" Padding="{TemplateBinding Padding}" Background="Transparent">
+                                                            <Grid>
+                                                               <Grid.ColumnDefinitions>
+                                                                   <ColumnDefinition Width="Auto" MinWidth="24"/>
+                                                                   <ColumnDefinition Width="*"/>
+                                                               </Grid.ColumnDefinitions>
+                                                               <ContentPresenter Grid.Column="0"
+                                                                               Content="{TemplateBinding Icon}"
+                                                                               Margin="0,0,6,0"
+                                                                               VerticalAlignment="Center"/>
+                                                               <ContentPresenter Grid.Column="1"
+                                                                               Content="{TemplateBinding Header}"
+                                                                               VerticalAlignment="Center"/>
+                                                            </Grid>
+                                                       </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsHighlighted" Value="True">
+                                                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource RimworldHighlightBrush}"/>
+                                                                <Setter Property="Foreground" Value="{StaticResource RimworldBlackBrush}"/>
+                                                            </Trigger>
+                                                            <Trigger Property="IsEnabled" Value="False">
+                                                                <Setter Property="Foreground" Value="Gray"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                   </ControlTemplate>
+                                               </Setter.Value>
+                                           </Setter>
+                                       </Style>
+                                    </ContextMenu.Resources>
 
-                    <ContextMenu.Resources>
-                       <!-- Your MenuItem Style -->
-                       <Style TargetType="MenuItem">
-                           <Setter Property="Padding" Value="6,2,6,2"/>
-                           <Setter Property="Template">
-                               <Setter.Value>
-                                   <ControlTemplate TargetType="MenuItem">
-                                       <Grid>
-                                           <Grid.ColumnDefinitions>
-                                               <ColumnDefinition Width="Auto" MinWidth="24"/>
-                                               <ColumnDefinition Width="*"/>
-                                           </Grid.ColumnDefinitions>
-                                           
-                                           <ContentPresenter Grid.Column="0" 
-                                                           Content="{TemplateBinding Icon}" 
-                                                           Margin="0,0,6,0"
-                                                           VerticalAlignment="Center"/>
-                                           
-                                           <ContentPresenter Grid.Column="1" 
-                                                           Content="{TemplateBinding Header}" 
-                                                           VerticalAlignment="Center"/>
-                                       </Grid>
-                                   </ControlTemplate>
-                               </Setter.Value>
-                           </Setter>
-                       </Style>
-                    </ContextMenu.Resources>
+                                    <!-- Existing Menu Items -->
+                                    <MenuItem Header="Open Mod Folder"
+                                              Command="{Binding PlacementTarget.Tag.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding Path}">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="📁" FontSize="14"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Open URL"
+                                              Command="{Binding PlacementTarget.Tag.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding Url}"
+                                              Visibility="{Binding HasUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="🔗" FontSize="14"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Open Workshop Page"
+                                              Command="{Binding PlacementTarget.Tag.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding SteamUrl}"
+                                              Visibility="{Binding HasSteamUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="☁️" FontSize="14"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Open Other URL"
+                                              Command="{Binding PlacementTarget.Tag.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding ExternalUrl}"
+                                              Visibility="{Binding HasExternalUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="🌐" FontSize="14"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
 
-                    <!-- Open Mod Folder -->
-                    <MenuItem Header="Open Mod Folder"
-                            Command="{Binding PlacementTarget.Tag.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                            CommandParameter="{Binding Path}">
-                        <MenuItem.Icon>
-                            <TextBlock Text="📁" FontSize="14"/>
-                        </MenuItem.Icon>
-                    </MenuItem>
+                                    <!-- Separator -->
+                                    <Separator Margin="2"> <!-- REMOVED the inline Style attribute -->
+                                         <Separator.Style>
+                                            <Style TargetType="Separator" BasedOn="{StaticResource {x:Static MenuItem.SeparatorStyleKey}}">
+                                                <!-- Default Visibility is Visible -->
+                                                <Style.Triggers>
+                                                    <!-- Hide Separator if Delete Mod is collapsed -->
+                                                    <DataTrigger Binding="{Binding IsCore}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsExpansion}" Value="True">
+                                                         <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Separator.Style>
+                                    </Separator>
 
-                    <!-- External URL -->
-                    <MenuItem Header="Open URL"
-                            Command="{Binding PlacementTarget.Tag.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                            CommandParameter="{Binding Url}"
-                            Visibility="{Binding HasUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <MenuItem.Icon>
-                            <TextBlock Text="🔗" FontSize="14"/>
-                        </MenuItem.Icon>
-                    </MenuItem>
+                                    <!-- NEW: Delete Mod -->
+                                    <!-- NEW: Delete Mod -->
+<MenuItem Header="Delete Mod"
+          Command="{Binding PlacementTarget.Tag.DeleteModCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+          CommandParameter="{Binding}">
+    <MenuItem.Icon>
+        <TextBlock Text="🗑️" FontSize="14"/>
+    </MenuItem.Icon>
+    <MenuItem.Style>
+        <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+            <!-- *** CORRECTED LINE *** -->
+            <Setter Property="Foreground" Value="{StaticResource RimworldErrorRedBrush}"/>
+            <Setter Property="Visibility" Value="Visible"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsCore}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsExpansion}" Value="True">
+                     <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </MenuItem.Style>
+</MenuItem>
 
-                    <!-- Steam URL -->
-                    <MenuItem Header="Open Workshop Page"
-                            Command="{Binding PlacementTarget.Tag.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                            CommandParameter="{Binding SteamUrl}"
-                            Visibility="{Binding HasSteamUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <MenuItem.Icon>
-                            <TextBlock Text="☁️" FontSize="14"/>
-                        </MenuItem.Icon>
-                    </MenuItem>
+                                </ContextMenu>
+                            </Border.ContextMenu>
 
-                    <!-- External URL -->
-                    <MenuItem Header="Open Other URL"
-                            Command="{Binding PlacementTarget.Tag.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                            CommandParameter="{Binding ExternalUrl}"
-                            Visibility="{Binding HasExternalUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <MenuItem.Icon>
-                            <TextBlock Text="🌐" FontSize="14"/>
-                        </MenuItem.Icon>
-                    </MenuItem>
-                </ContextMenu>
-            </Border.ContextMenu>
-
-            <TextBlock Text="{Binding Name}"
-                       ToolTip="{Binding Path}"
-                       Margin="2,1"
-                       Foreground="{Binding IsOutdatedRW,
-                                    Converter={StaticResource BooleanToColorConverter},
-                                    ConverterParameter=RimworldErrorRed|RimworldBrown}">
-                <!-- ContextMenu removed from here -->
-            </TextBlock>
-        </Border>
-    </DataTemplate>
+                            <TextBlock Text="{Binding Name}"
+                                       ToolTip="{Binding Path}"
+                                       Margin="2,1"
+                                       Foreground="{Binding IsOutdatedRW,
+                                                    Converter={StaticResource BooleanToColorConverter},
+                                                    ConverterParameter=RimworldErrorRed|RimworldBrown}">
+                                <!-- ContextMenu removed from here -->
+                            </TextBlock>
+                        </Border>
+                    </DataTemplate>
                 </ListBox.ItemTemplate>
 
                 <!-- Style to visually indicate selected items better -->

@@ -101,6 +101,7 @@ namespace RimSharp.Features.ModManager.ViewModels
         public ICommand ActivateModCommand { get; private set; }
         public ICommand DeactivateModCommand { get; private set; }
         public ICommand DropModCommand { get; private set; }
+        public ICommand DeleteModCommand { get; private set; }
 
         public ICommand ResolveDependenciesCommand { get; private set; }
         public ICommand CheckIncompatibilitiesCommand { get; private set; }
@@ -142,6 +143,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             DropModCommand = new RelayCommand<DropModArgs>(async args => await ExecuteDropMod(args), args => !_isLoading);
             ActivateModCommand = new RelayCommand<ModItem>(mod => { _modListManager.ActivateMod(mod); HasUnsavedChanges = true; }, mod => mod != null && !_isLoading);
             DeactivateModCommand = new RelayCommand<ModItem>(mod => { _modListManager.DeactivateMod(mod); HasUnsavedChanges = true; }, mod => mod != null && !mod.IsCore && !_isLoading); // Prevent deactivating Core via button
+            DeleteModCommand = new RelayCommand<ModItem>(async mod => await ExecuteDeleteModAsync(mod), CanExecuteDeleteMod);
             OpenUrlCommand = new RelayCommand(OpenUrl, _ => SelectedMod != null); // Example condition
             ImportListCommand = new RelayCommand(async _ => await ExecuteImport(), _ => !_isLoading);
             ExportListCommand = new RelayCommand(async _ => await ExecuteExport(), _ => !_isLoading && _modListManager.VirtualActiveMods.Any()); // Condition export has active mods
@@ -161,51 +163,134 @@ namespace RimSharp.Features.ModManager.ViewModels
 
         public async Task RefreshDataAsync()
         {
+            Debug.WriteLine("[RefreshDataAsync] Starting refresh...");
+            // IsLoading state is handled within LoadDataAsync
             await LoadDataAsync();
+            Debug.WriteLine("[RefreshDataAsync] Refresh complete.");
         }
+
 
         private async Task LoadDataAsync()
         {
             IsLoading = true;
-            // Consider disabling commands while loading
-            CommandManager.InvalidateRequerySuggested(); // Added for consistency
+            CommandManager.InvalidateRequerySuggested();
             try
             {
-                // Filter service collections are automatically cleared by UpdateCollections
-                // ActiveMods.Clear();
-                // InactiveMods.Clear();
-
                 var allMods = await _dataService.LoadAllModsAsync();
                 var activeIdsFromConfig = _dataService.LoadActiveModIdsFromConfig();
-
-                // Manager initializes its state and fires ListChanged, which triggers OnModListManagerChanged
                 _modListManager.Initialize(allMods, activeIdsFromConfig);
-
-                // Selection logic can remain, potentially select Core mod if available
                 SelectedMod = _modListManager.VirtualActiveMods.FirstOrDefault(m => m.Mod.IsCore).Mod
                              ?? _modListManager.VirtualActiveMods.FirstOrDefault().Mod
                              ?? _modListManager.AllInactiveMods.FirstOrDefault();
-
-                // --- ENSURE THIS IS HERE ---
-                // Explicitly reset flag AFTER Initialize (which might have triggered ListChanged
-                // and incorrectly set HasUnsavedChanges = true via the modified handler)
-                HasUnsavedChanges = false;
-                // ---------------------------
+                HasUnsavedChanges = false; // Reset after initial load
             }
             catch (Exception ex)
             {
-                // Log error properly
                 Debug.WriteLine($"Error loading mods: {ex}");
                 RunOnUIThread(() => _dialogService.ShowError("Loading Error", $"Error loading mods: {ex.Message}"));
-                HasUnsavedChanges = false; // Also ensure it's false on error
+                HasUnsavedChanges = false;
             }
             finally
             {
-                IsLoading = false;
-                // Re-evaluate CanExecute for commands
-                CommandManager.InvalidateRequerySuggested();
+                IsLoading = false; // *** Ensure this is here ***
+                CommandManager.InvalidateRequerySuggested(); // Re-evaluate commands
+                                                             // Re-evaluate delete command specifically after load completes and path check is possible
+                (DeleteModCommand as RelayCommand<ModItem>)?.RaiseCanExecuteChanged();
             }
         }
+
+        private bool CanExecuteDeleteMod(ModItem mod)
+        {
+            // Can delete if:
+            // 1. Mod exists
+            // 2. It's not Core
+            // 3. It's not an Expansion
+            // 4. We are not currently loading/busy
+            // 5. The path exists (important!)
+            return mod != null
+                && !mod.IsCore
+                && !mod.IsExpansion
+                && !string.IsNullOrEmpty(mod.Path) // Check if path is valid
+                && Directory.Exists(mod.Path)     // Check if directory actually exists
+                && !_isLoading;
+        }
+
+        private async Task ExecuteDeleteModAsync(ModItem mod)
+        {
+            // Double-check conditions (belt and suspenders)
+            if (!CanExecuteDeleteMod(mod))
+            {
+                Debug.WriteLine($"[ExecuteDeleteModAsync] Precondition failed for mod '{mod?.Name}'. Path: '{mod?.Path}' Exists: {Directory.Exists(mod?.Path ?? "")}");
+                _dialogService.ShowWarning("Deletion Blocked", $"Cannot delete mod '{mod?.Name}'. It might be Core/DLC, already deleted, or the application is busy.");
+                return;
+            }
+
+            // Confirmation Dialog
+            var result = _dialogService.ShowConfirmation(
+                "Confirm Deletion",
+                $"Are you sure you want to permanently delete the mod '{mod.Name}'?\n\nThis action cannot be undone.\n\nPath: {mod.Path}",
+                showCancel: true);
+
+            if (result != MessageDialogResult.OK) // Assuming OK means Yes/Confirm
+            {
+                Debug.WriteLine($"[ExecuteDeleteModAsync] Deletion cancelled by user for mod '{mod.Name}'.");
+                return;
+            }
+
+            // --- Perform Deletion and Refresh ---
+            IsLoading = true; // Indicate busy state
+            CommandManager.InvalidateRequerySuggested(); // Disable buttons
+
+            bool deletionSuccess = false;
+            try
+            {
+                Debug.WriteLine($"[ExecuteDeleteModAsync] Attempting to delete directory: {mod.Path}");
+                await Task.Run(() => Directory.Delete(mod.Path, recursive: true));
+                deletionSuccess = true;
+                Debug.WriteLine($"[ExecuteDeleteModAsync] Successfully deleted directory: {mod.Path}");
+                // Optionally show success message (might be annoying if deleting many)
+                _dialogService.ShowInformation("Deletion Successful", $"Mod '{mod.Name}' was deleted.");
+            }
+            catch (UnauthorizedAccessException authEx)
+            {
+                Debug.WriteLine($"[ExecuteDeleteModAsync] Authorization error deleting '{mod.Path}': {authEx.Message}");
+                _dialogService.ShowError("Deletion Error", $"Permission denied when trying to delete mod '{mod.Name}'.\nCheck file permissions or if the folder is in use.\n\nError: {authEx.Message}");
+            }
+            catch (IOException ioEx)
+            {
+                Debug.WriteLine($"[ExecuteDeleteModAsync] IO error deleting '{mod.Path}': {ioEx.Message}");
+                _dialogService.ShowError("Deletion Error", $"Could not delete mod '{mod.Name}'. The folder might be open or in use by another process.\n\nError: {ioEx.Message}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ExecuteDeleteModAsync] General error deleting '{mod.Path}': {ex}");
+                _dialogService.ShowError("Deletion Error", $"An unexpected error occurred while deleting mod '{mod.Name}'.\n\nError: {ex.Message}");
+            }
+            finally
+            {
+                // Regardless of deletion success/failure, attempt to refresh the list.
+                // The refresh will pick up the change if deletion succeeded.
+                if (deletionSuccess)
+                {
+                    Debug.WriteLine("[ExecuteDeleteModAsync] Deletion successful, initiating mod list refresh.");
+                    await RefreshDataAsync(); // RefreshDataAsync handles setting IsLoading = false
+                }
+                else
+                {
+                    // If deletion failed, still reset loading state here
+                    IsLoading = false;
+                    CommandManager.InvalidateRequerySuggested();
+                    Debug.WriteLine("[ExecuteDeleteModAsync] Deletion failed, resetting loading state without full refresh.");
+                }
+            }
+        }
+
+        private bool CanExecuteActivateDeactivate(ModItem mod)
+        {
+            return mod != null && !_isLoading;
+        }
+
+
 
         private void CheckForDuplicates()
         {
@@ -593,7 +678,13 @@ namespace RimSharp.Features.ModManager.ViewModels
             // -------------------
 
             // Re-evaluate command states
-            RunOnUIThread(CommandManager.InvalidateRequerySuggested);
+            RunOnUIThread(() =>
+            {
+                CommandManager.InvalidateRequerySuggested();
+                // Explicitly update CanExecute for delete command as its conditions might change
+                // (e.g., a mod becomes active/inactive, though path existence is the main external factor)
+                (DeleteModCommand as RelayCommand<ModItem>)?.RaiseCanExecuteChanged();
+            });
 
             Debug.WriteLine("ModsViewModel handled ModListManager ListChanged event.");
         }
