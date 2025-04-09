@@ -17,7 +17,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
-
+using System.Collections;
 
 namespace RimSharp.Features.ModManager.ViewModels
 {
@@ -28,12 +28,8 @@ namespace RimSharp.Features.ModManager.ViewModels
         private readonly IModCommandService _commandService;
         private readonly IModListIOService _ioService;
         private readonly IModListManager _modListManager;
-
         private readonly IDialogService _dialogService;
-
         private readonly IModIncompatibilityService _incompatibilityService;
-
-        //private readonly IModService _modService;
 
         private ModItem _selectedMod;
         private bool _isLoading;
@@ -102,11 +98,16 @@ namespace RimSharp.Features.ModManager.ViewModels
         public ICommand DeactivateModCommand { get; private set; }
         public ICommand DropModCommand { get; private set; }
         public ICommand DeleteModCommand { get; private set; }
-
         public ICommand ResolveDependenciesCommand { get; private set; }
         public ICommand CheckIncompatibilitiesCommand { get; private set; }
-
         public ICommand CheckDuplicatesCommand { get; private set; }
+
+        // New Commands for Multiple Items
+        public ICommand OpenModFoldersCommand { get; private set; }
+        public ICommand OpenUrlsCommand { get; private set; }
+        public ICommand OpenWorkshopPagesCommand { get; private set; }
+        public ICommand OpenOtherUrlsCommand { get; private set; }
+        public ICommand DeleteModsCommand { get; private set; }
 
         public ModsViewModel(
             IModDataService dataService,
@@ -118,7 +119,6 @@ namespace RimSharp.Features.ModManager.ViewModels
             IDialogService dialogService,
             IModService modService)
         {
-            // DI remains the same
             _dataService = dataService;
             _filterService = filterService;
             _commandService = commandService;
@@ -126,7 +126,6 @@ namespace RimSharp.Features.ModManager.ViewModels
             _modListManager = modListManager;
             _incompatibilityService = incompatibilityService;
             _dialogService = dialogService;
-
 
             _modListManager.ListChanged += OnModListManagerChanged;
 
@@ -142,15 +141,13 @@ namespace RimSharp.Features.ModManager.ViewModels
             SaveCommand = new RelayCommand(_ => ExecuteSaveMods(), _ => HasUnsavedChanges && !_isLoading);
             DropModCommand = new RelayCommand<DropModArgs>(async args => await ExecuteDropMod(args), args => !_isLoading);
             ActivateModCommand = new RelayCommand<ModItem>(mod => { _modListManager.ActivateMod(mod); HasUnsavedChanges = true; }, mod => mod != null && !_isLoading);
-            DeactivateModCommand = new RelayCommand<ModItem>(mod => { _modListManager.DeactivateMod(mod); HasUnsavedChanges = true; }, mod => mod != null && !mod.IsCore && !_isLoading); // Prevent deactivating Core via button
+            DeactivateModCommand = new RelayCommand<ModItem>(mod => { _modListManager.DeactivateMod(mod); HasUnsavedChanges = true; }, mod => mod != null && !mod.IsCore && !_isLoading);
             DeleteModCommand = new RelayCommand<ModItem>(async mod => await ExecuteDeleteModAsync(mod), CanExecuteDeleteMod);
-            OpenUrlCommand = new RelayCommand(OpenUrl, _ => SelectedMod != null); // Example condition
+            OpenUrlCommand = new RelayCommand(OpenUrl, _ => SelectedMod != null);
             ImportListCommand = new RelayCommand(async _ => await ExecuteImport(), _ => !_isLoading);
-            ExportListCommand = new RelayCommand(async _ => await ExecuteExport(), _ => !_isLoading && _modListManager.VirtualActiveMods.Any()); // Condition export has active mods
+            ExportListCommand = new RelayCommand(async _ => await ExecuteExport(), _ => !_isLoading && _modListManager.VirtualActiveMods.Any());
             CheckIncompatibilitiesCommand = new RelayCommand(async _ => await ExecuteCheckIncompatibilities(), _ => !_isLoading && _modListManager.VirtualActiveMods.Any());
             CheckDuplicatesCommand = new RelayCommand(_ => CheckForDuplicates());
-
-            // Stubbed commands (consider adding CanExecute)
             StripModsCommand = new RelayCommand(StripMods, _ => !_isLoading);
             CreatePackCommand = new RelayCommand(CreatePack, _ => !_isLoading);
             FixIntegrityCommand = new RelayCommand(FixIntegrity, _ => !_isLoading);
@@ -158,17 +155,21 @@ namespace RimSharp.Features.ModManager.ViewModels
             FilterInactiveCommand = new RelayCommand(ExecuteFilterInactive, _ => !_isLoading);
             FilterActiveCommand = new RelayCommand(ExecuteFilterActive, _ => !_isLoading);
             ResolveDependenciesCommand = new RelayCommand(async _ => await ExecuteResolveDependencies(), _ => !_isLoading);
-        }
 
+            // Initialize New Commands
+            OpenModFoldersCommand = new RelayCommand<IList>(OpenModFolders, selectedItems => selectedItems != null && selectedItems.Count > 0);
+            OpenUrlsCommand = new RelayCommand<IList>(OpenUrls, selectedItems => selectedItems != null && selectedItems.Count > 0);
+            OpenWorkshopPagesCommand = new RelayCommand<IList>(OpenWorkshopPages, selectedItems => selectedItems != null && selectedItems.Count > 0);
+            OpenOtherUrlsCommand = new RelayCommand<IList>(OpenOtherUrls, selectedItems => selectedItems != null && selectedItems.Count > 0);
+            DeleteModsCommand = new RelayCommand<IList>(async selectedItems => await ExecuteDeleteModsAsync(selectedItems), selectedItems => selectedItems != null && selectedItems.Count > 0 && !_isLoading);
+        }
 
         public async Task RefreshDataAsync()
         {
             Debug.WriteLine("[RefreshDataAsync] Starting refresh...");
-            // IsLoading state is handled within LoadDataAsync
             await LoadDataAsync();
             Debug.WriteLine("[RefreshDataAsync] Refresh complete.");
         }
-
 
         private async Task LoadDataAsync()
         {
@@ -182,7 +183,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                 SelectedMod = _modListManager.VirtualActiveMods.FirstOrDefault(m => m.Mod.IsCore).Mod
                              ?? _modListManager.VirtualActiveMods.FirstOrDefault().Mod
                              ?? _modListManager.AllInactiveMods.FirstOrDefault();
-                HasUnsavedChanges = false; // Reset after initial load
+                HasUnsavedChanges = false;
             }
             catch (Exception ex)
             {
@@ -192,32 +193,24 @@ namespace RimSharp.Features.ModManager.ViewModels
             }
             finally
             {
-                IsLoading = false; // *** Ensure this is here ***
-                CommandManager.InvalidateRequerySuggested(); // Re-evaluate commands
-                                                             // Re-evaluate delete command specifically after load completes and path check is possible
+                IsLoading = false;
+                CommandManager.InvalidateRequerySuggested();
                 (DeleteModCommand as RelayCommand<ModItem>)?.RaiseCanExecuteChanged();
             }
         }
 
         private bool CanExecuteDeleteMod(ModItem mod)
         {
-            // Can delete if:
-            // 1. Mod exists
-            // 2. It's not Core
-            // 3. It's not an Expansion
-            // 4. We are not currently loading/busy
-            // 5. The path exists (important!)
             return mod != null
                 && !mod.IsCore
                 && !mod.IsExpansion
-                && !string.IsNullOrEmpty(mod.Path) // Check if path is valid
-                && Directory.Exists(mod.Path)     // Check if directory actually exists
+                && !string.IsNullOrEmpty(mod.Path)
+                && Directory.Exists(mod.Path)
                 && !_isLoading;
         }
 
         private async Task ExecuteDeleteModAsync(ModItem mod)
         {
-            // Double-check conditions (belt and suspenders)
             if (!CanExecuteDeleteMod(mod))
             {
                 Debug.WriteLine($"[ExecuteDeleteModAsync] Precondition failed for mod '{mod?.Name}'. Path: '{mod?.Path}' Exists: {Directory.Exists(mod?.Path ?? "")}");
@@ -225,21 +218,19 @@ namespace RimSharp.Features.ModManager.ViewModels
                 return;
             }
 
-            // Confirmation Dialog
             var result = _dialogService.ShowConfirmation(
                 "Confirm Deletion",
                 $"Are you sure you want to permanently delete the mod '{mod.Name}'?\n\nThis action cannot be undone.\n\nPath: {mod.Path}",
                 showCancel: true);
 
-            if (result != MessageDialogResult.OK) // Assuming OK means Yes/Confirm
+            if (result != MessageDialogResult.OK)
             {
                 Debug.WriteLine($"[ExecuteDeleteModAsync] Deletion cancelled by user for mod '{mod.Name}'.");
                 return;
             }
 
-            // --- Perform Deletion and Refresh ---
-            IsLoading = true; // Indicate busy state
-            CommandManager.InvalidateRequerySuggested(); // Disable buttons
+            IsLoading = true;
+            CommandManager.InvalidateRequerySuggested();
 
             bool deletionSuccess = false;
             try
@@ -248,7 +239,6 @@ namespace RimSharp.Features.ModManager.ViewModels
                 await Task.Run(() => Directory.Delete(mod.Path, recursive: true));
                 deletionSuccess = true;
                 Debug.WriteLine($"[ExecuteDeleteModAsync] Successfully deleted directory: {mod.Path}");
-                // Optionally show success message (might be annoying if deleting many)
                 _dialogService.ShowInformation("Deletion Successful", $"Mod '{mod.Name}' was deleted.");
             }
             catch (UnauthorizedAccessException authEx)
@@ -268,16 +258,13 @@ namespace RimSharp.Features.ModManager.ViewModels
             }
             finally
             {
-                // Regardless of deletion success/failure, attempt to refresh the list.
-                // The refresh will pick up the change if deletion succeeded.
                 if (deletionSuccess)
                 {
                     Debug.WriteLine("[ExecuteDeleteModAsync] Deletion successful, initiating mod list refresh.");
-                    await RefreshDataAsync(); // RefreshDataAsync handles setting IsLoading = false
+                    await RefreshDataAsync();
                 }
                 else
                 {
-                    // If deletion failed, still reset loading state here
                     IsLoading = false;
                     CommandManager.InvalidateRequerySuggested();
                     Debug.WriteLine("[ExecuteDeleteModAsync] Deletion failed, resetting loading state without full refresh.");
@@ -285,12 +272,200 @@ namespace RimSharp.Features.ModManager.ViewModels
             }
         }
 
-        private bool CanExecuteActivateDeactivate(ModItem mod)
+        private void OpenModFolders(IList selectedItems)
         {
-            return mod != null && !_isLoading;
+            var mods = selectedItems.Cast<ModItem>().ToList();
+            var opened = new List<string>();
+            var notOpened = new List<string>();
+
+            foreach (var mod in mods)
+            {
+                if (!string.IsNullOrWhiteSpace(mod.Path) && Directory.Exists(mod.Path))
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo(mod.Path) { UseShellExecute = true });
+                        opened.Add(mod.Name);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Could not open folder for {mod.Name}: {ex}");
+                        notOpened.Add($"{mod.Name}: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    notOpened.Add($"{mod.Name}: Folder does not exist");
+                }
+            }
+
+            if (notOpened.Count > 0)
+            {
+                var message = $"Opened folders for {opened.Count} mods.\n\nCould not open folders for the following mods:\n" + string.Join("\n", notOpened);
+                _dialogService.ShowWarning("Open Folders", message);
+            }
         }
 
+        private void OpenUrls(IList selectedItems)
+        {
+            var mods = selectedItems.Cast<ModItem>().ToList();
+            var opened = new List<string>();
+            var notOpened = new List<string>();
 
+            foreach (var mod in mods)
+            {
+                if (!string.IsNullOrWhiteSpace(mod.Url))
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo(mod.Url) { UseShellExecute = true });
+                        opened.Add(mod.Name);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Could not open URL for {mod.Name}: {ex}");
+                        notOpened.Add($"{mod.Name}: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    notOpened.Add($"{mod.Name}: No URL available");
+                }
+            }
+
+            if (notOpened.Count > 0)
+            {
+                var message = $"Opened URLs for {opened.Count} mods.\n\nCould not open URLs for the following mods:\n" + string.Join("\n", notOpened);
+                _dialogService.ShowWarning("Open URLs", message);
+            }
+        }
+
+        private void OpenWorkshopPages(IList selectedItems)
+        {
+            var mods = selectedItems.Cast<ModItem>().ToList();
+            var opened = new List<string>();
+            var notOpened = new List<string>();
+
+            foreach (var mod in mods)
+            {
+                if (!string.IsNullOrWhiteSpace(mod.SteamUrl))
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo(mod.SteamUrl) { UseShellExecute = true });
+                        opened.Add(mod.Name);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Could not open workshop page for {mod.Name}: {ex}");
+                        notOpened.Add($"{mod.Name}: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    notOpened.Add($"{mod.Name}: No workshop URL");
+                }
+            }
+
+            if (notOpened.Count > 0)
+            {
+                var message = $"Opened workshop pages for {opened.Count} mods.\n\nCould not open workshop pages for the following mods:\n" + string.Join("\n", notOpened);
+                _dialogService.ShowWarning("Open Workshop Pages", message);
+            }
+        }
+
+        private void OpenOtherUrls(IList selectedItems)
+        {
+            var mods = selectedItems.Cast<ModItem>().ToList();
+            var opened = new List<string>();
+            var notOpened = new List<string>();
+
+            foreach (var mod in mods)
+            {
+                if (!string.IsNullOrWhiteSpace(mod.ExternalUrl))
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo(mod.ExternalUrl) { UseShellExecute = true });
+                        opened.Add(mod.Name);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Could not open external URL for {mod.Name}: {ex}");
+                        notOpened.Add($"{mod.Name}: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    notOpened.Add($"{mod.Name}: No external URL");
+                }
+            }
+
+            if (notOpened.Count > 0)
+            {
+                var message = $"Opened external URLs for {opened.Count} mods.\n\nCould not open external URLs for the following mods:\n" + string.Join("\n", notOpened);
+                _dialogService.ShowWarning("Open External URLs", message);
+            }
+        }
+
+        private async Task ExecuteDeleteModsAsync(IList selectedItems)
+        {
+            var mods = selectedItems.Cast<ModItem>().ToList();
+            var deletableMods = mods.Where(m => !m.IsCore && !m.IsExpansion && !string.IsNullOrEmpty(m.Path) && Directory.Exists(m.Path)).ToList();
+            var nonDeletableMods = mods.Except(deletableMods).ToList();
+
+            if (deletableMods.Count == 0)
+            {
+                _dialogService.ShowWarning("Deletion Blocked", "None of the selected mods can be deleted. They might be core or expansion mods, or their folders do not exist.");
+                return;
+            }
+
+            var confirmationMessage = new StringBuilder();
+            confirmationMessage.AppendLine("Are you sure you want to permanently delete the following mods?");
+            confirmationMessage.AppendLine();
+            foreach (var mod in deletableMods)
+            {
+                confirmationMessage.AppendLine($"- {mod.Name}");
+            }
+            if (nonDeletableMods.Count > 0)
+            {
+                confirmationMessage.AppendLine();
+                confirmationMessage.AppendLine("The following mods cannot be deleted because they are core or expansion mods, or their folders do not exist:");
+                foreach (var mod in nonDeletableMods)
+                {
+                    confirmationMessage.AppendLine($"- {mod.Name}");
+                }
+            }
+
+            var result = _dialogService.ShowConfirmation("Confirm Deletion", confirmationMessage.ToString(), showCancel: true);
+            if (result != MessageDialogResult.OK)
+            {
+                return;
+            }
+
+            IsLoading = true;
+            CommandManager.InvalidateRequerySuggested();
+
+            var deletionResults = new List<string>();
+            foreach (var mod in deletableMods)
+            {
+                try
+                {
+                    await Task.Run(() => Directory.Delete(mod.Path, recursive: true));
+                    deletionResults.Add($"Successfully deleted {mod.Name}");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Failed to delete {mod.Name}: {ex}");
+                    deletionResults.Add($"Failed to delete {mod.Name}: {ex.Message}");
+                }
+            }
+
+            await RefreshDataAsync();
+
+            var summaryMessage = string.Join("\n", deletionResults);
+            _dialogService.ShowInformation("Deletion Summary", summaryMessage);
+        }
 
         private void CheckForDuplicates()
         {
@@ -307,7 +482,6 @@ namespace RimSharp.Features.ModManager.ViewModels
                     pathsToDelete => DeleteDuplicateMods(pathsToDelete),
                     () => { /* Cancel callback */ });
 
-                // Show the dialog directly instead of showing an information message first
                 var view = new DuplicateModDialogView(dialog)
                 {
                     Owner = Application.Current.MainWindow,
@@ -321,9 +495,8 @@ namespace RimSharp.Features.ModManager.ViewModels
             }
         }
 
-        private async void DeleteDuplicateMods(List<string> pathsToDelete) // Make async void for refresh call
+        private async void DeleteDuplicateMods(List<string> pathsToDelete)
         {
-            // --- Enhanced Debugging START ---
             if (pathsToDelete == null)
             {
                 Debug.WriteLine("[DeleteDuplicateMods] ERROR: Received a null list.");
@@ -331,31 +504,24 @@ namespace RimSharp.Features.ModManager.ViewModels
                 return;
             }
             Debug.WriteLine($"[DeleteDuplicateMods] Received list with {pathsToDelete.Count} items.");
-            // ... (rest of existing debug logs) ...
-            // --- Enhanced Debugging END ---
 
-            // --- Information Gathering for Report ---
-            var successfullyDeletedMods = new List<ModItem>(); // Store info of mods actually deleted
-            var errorMessages = new List<string>(); // Store specific error messages
-            var allModsLookup = _modListManager.GetAllMods() // Get all mods to look up details by path
+            var successfullyDeletedMods = new List<ModItem>();
+            var errorMessages = new List<string>();
+            var allModsLookup = _modListManager.GetAllMods()
                                  .Where(m => !string.IsNullOrEmpty(m.Path))
-                                 .ToDictionary(m => m.Path, m => m, StringComparer.OrdinalIgnoreCase); // Use case-insensitive for Windows paths
-                                                                                                       // ----------------------------------------
+                                 .ToDictionary(m => m.Path, m => m, StringComparer.OrdinalIgnoreCase);
 
             foreach (var path in pathsToDelete)
             {
-                // --- Critical Null Check ---
                 if (path == null)
                 {
                     Debug.WriteLine("[DeleteDuplicateMods] !!! CRITICAL ERROR: Encountered a NULL path in the list during iteration !!!");
-                    // _dialogService.ShowError("Deletion Error", "A null path was encountered during deletion. Skipping this entry."); // Let's collect errors instead
                     errorMessages.Add("Internal Error: Encountered a null path reference during deletion process.");
-                    continue; // Skip this null entry
+                    continue;
                 }
-                // --- End Critical Null Check ---
 
                 Debug.WriteLine($"[DeleteDuplicateMods] Processing path: '{path}'");
-                allModsLookup.TryGetValue(path, out ModItem modInfo); // Try to get mod info for reporting
+                allModsLookup.TryGetValue(path, out ModItem modInfo);
                 string modIdentifier = modInfo != null ? $"{modInfo.Name} ({modInfo.PackageId})" : $"'{path}'";
 
                 try
@@ -363,23 +529,20 @@ namespace RimSharp.Features.ModManager.ViewModels
                     if (Directory.Exists(path))
                     {
                         Debug.WriteLine($"[DeleteDuplicateMods] Directory exists. Attempting to delete {modIdentifier}...");
-                        await Task.Run(() => Directory.Delete(path, true));  // Recursive delete
+                        await Task.Run(() => Directory.Delete(path, true));
                         Debug.WriteLine($"[DeleteDuplicateMods] Successfully deleted {modIdentifier}.");
-                        if (modInfo != null) // Add to success list only if we know what mod it was
+                        if (modInfo != null)
                         {
                             successfullyDeletedMods.Add(modInfo);
                         }
                         else
                         {
-                            // If we deleted a path but couldn't find its mod info (unlikely but possible), log it
                             Debug.WriteLine($"[DeleteDuplicateMods] WARNING: Deleted path '{path}' but couldn't find associated ModItem info.");
                         }
                     }
                     else
                     {
                         Debug.WriteLine($"[DeleteDuplicateMods] Directory does not exist or is not accessible, skipping: {modIdentifier}");
-                        // Optionally add a warning if non-existence is unexpected
-                        // errorMessages.Add($"Could not delete {modIdentifier}: Path not found or inaccessible.");
                     }
                 }
                 catch (IOException ioEx)
@@ -401,10 +564,9 @@ namespace RimSharp.Features.ModManager.ViewModels
 
             Debug.WriteLine($"[DeleteDuplicateMods] Finished deletion attempts. Successes: {successfullyDeletedMods.Count}, Errors: {errorMessages.Count}");
 
-            // --- Generate and Show Report ---
             var reportTitle = errorMessages.Any() ? "Deletion Complete with Errors" : "Deletion Complete";
             var reportMessage = new StringBuilder();
-            var dialogType = MessageDialogType.Information; // Default to Information
+            var dialogType = MessageDialogType.Information;
 
             if (successfullyDeletedMods.Any())
             {
@@ -413,24 +575,18 @@ namespace RimSharp.Features.ModManager.ViewModels
                 {
                     reportMessage.AppendLine($"  - {mod.Name ?? "Unknown Name"}");
                     reportMessage.AppendLine($"    ID: {mod.PackageId ?? "N/A"}, Supported Versions: {GetSupportedVersionsString(mod)}, SteamID: {mod.SteamId ?? "N/A"}");
-                    // reportMessage.AppendLine($"    Path: {mod.Path}"); // Optional: include path if helpful
                 }
-                reportMessage.AppendLine(); // Add a blank line for separation
+                reportMessage.AppendLine();
             }
-            else
+            else if (!errorMessages.Any())
             {
-                // Only report "no items deleted" if there were also no errors.
-                // If there were errors, the error section will explain why nothing might have been deleted.
-                if (!errorMessages.Any())
-                {
-                    reportMessage.AppendLine("No duplicate mods were deleted.");
-                    reportMessage.AppendLine();
-                }
+                reportMessage.AppendLine("No duplicate mods were deleted.");
+                reportMessage.AppendLine();
             }
 
             if (errorMessages.Any())
             {
-                dialogType = MessageDialogType.Warning; // Change dialog type if errors occurred
+                dialogType = MessageDialogType.Warning;
                 reportMessage.AppendLine("Errors encountered during deletion:");
                 foreach (var error in errorMessages)
                 {
@@ -439,15 +595,9 @@ namespace RimSharp.Features.ModManager.ViewModels
                 reportMessage.AppendLine();
             }
 
-            // Use RunOnUIThread as _dialogService might need it, although it often handles it internally.
-            // Also, the refresh needs to happen after the dialog is closed.
             RunOnUIThread(() =>
             {
                 _dialogService.ShowMessageWithCopy(reportTitle, reportMessage.ToString().Trim(), dialogType);
-
-                // --- Refresh the mod list AFTER the dialog is closed ---
-                // Use _ = to fire-and-forget the async refresh operation.
-                // Ensure IsLoading states are handled within RefreshDataAsync.
                 _ = RefreshDataAsync();
                 Debug.WriteLine("[DeleteDuplicateMods] Mod list refresh initiated after dialog.");
             });
@@ -460,8 +610,6 @@ namespace RimSharp.Features.ModManager.ViewModels
             return string.Join(", ", mod.SupportedVersions);
         }
 
-
-
         private async Task ExecuteResolveDependencies()
         {
             IsLoading = true;
@@ -471,9 +619,8 @@ namespace RimSharp.Features.ModManager.ViewModels
                 var result = await Task.Run(() => _modListManager.ResolveDependencies());
                 var (addedMods, missingDependencies) = result;
 
-                var message = new System.Text.StringBuilder();
+                var message = new StringBuilder();
 
-                // Show added dependencies if any
                 if (addedMods.Count > 0)
                 {
                     HasUnsavedChanges = true;
@@ -486,7 +633,6 @@ namespace RimSharp.Features.ModManager.ViewModels
                     message.AppendLine();
                 }
 
-                // Show missing dependencies if any
                 if (missingDependencies.Count > 0)
                 {
                     message.AppendLine("The following dependencies are missing:");
@@ -503,7 +649,6 @@ namespace RimSharp.Features.ModManager.ViewModels
                     }
                 }
 
-                // Show appropriate message based on results
                 if (message.Length == 0)
                 {
                     RunOnUIThread(() =>
@@ -550,17 +695,13 @@ namespace RimSharp.Features.ModManager.ViewModels
             }
         }
 
-
         private async Task ExecuteCheckIncompatibilities()
         {
             IsLoading = true;
-            CommandManager.InvalidateRequerySuggested(); // Disable buttons during processing
+            CommandManager.InvalidateRequerySuggested();
             try
             {
-                // Get current active mods from the manager
                 var activeMods = _modListManager.VirtualActiveMods.Select(entry => entry.Mod).ToList();
-
-                // Find incompatibilities - wrap in Task.Run since it may be CPU-intensive
                 var incompatibilities = await Task.Run(() => _incompatibilityService.FindIncompatibilities(activeMods));
 
                 if (incompatibilities.Count == 0)
@@ -571,7 +712,6 @@ namespace RimSharp.Features.ModManager.ViewModels
                     return;
                 }
 
-                // Group incompatibilities for resolution - may also be CPU-intensive
                 var groups = await Task.Run(() => _incompatibilityService.GroupIncompatibilities(incompatibilities));
 
                 if (groups.Count == 0)
@@ -582,7 +722,6 @@ namespace RimSharp.Features.ModManager.ViewModels
                     return;
                 }
 
-                // Open the resolution dialog on the UI thread
                 RunOnUIThread(() => ShowIncompatibilityDialog(groups));
             }
             catch (Exception ex)
@@ -595,34 +734,27 @@ namespace RimSharp.Features.ModManager.ViewModels
             finally
             {
                 IsLoading = false;
-                CommandManager.InvalidateRequerySuggested(); // Re-enable buttons
+                CommandManager.InvalidateRequerySuggested();
             }
         }
 
-
-        // Add method to show the incompatibility dialog
         private void ShowIncompatibilityDialog(List<IncompatibilityGroup> groups)
         {
-            // Create the dialog view model (this part is fine)
             var dialogViewModel = new ModIncompatibilityDialogViewModel(
                 groups,
                 ApplyIncompatibilityResolutions,
                 () => { /* Cancel handler if needed */ }
             );
 
-            // Instantiate the View using the constructor that takes the ViewModel
             var dialog = new ModIncompatibilityDialogView(dialogViewModel)
             {
-                // DataContext is now set by the constructor, so no need to set it here again.
                 Owner = Application.Current.MainWindow,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner
             };
 
-            dialog.ShowDialog(); // Show modally
+            dialog.ShowDialog();
         }
 
-
-        // Add method to handle applying resolutions
         private void ApplyIncompatibilityResolutions(List<ModItem> modsToRemove)
         {
             if (modsToRemove == null || modsToRemove.Count == 0)
@@ -630,65 +762,41 @@ namespace RimSharp.Features.ModManager.ViewModels
 
             try
             {
-                // Deactivate the mods that should be removed
                 foreach (var mod in modsToRemove)
                 {
                     _modListManager.DeactivateMod(mod);
                 }
 
-                // Set the unsaved changes flag
                 HasUnsavedChanges = true;
-
-                //MessageBox.Show($"Successfully resolved incompatibilities by deactivating {modsToRemove.Count} mods.",
-                //               "Incompatibilities Resolved",
-                //              MessageBoxButton.OK,
-                //               MessageBoxImage.Information);
                 _dialogService.ShowInformation("Incompatibilities Resolved", $"Successfully resolved incompatibilities by deactivating {modsToRemove.Count} mods.");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error applying incompatibility resolutions: {ex}");
-                //MessageBox.Show($"Error applying incompatibility resolutions: {ex.Message}",
-                //               "Resolution Error",
-                //                MessageBoxButton.OK,
-                //               MessageBoxImage.Error);
                 _dialogService.ShowError("Resolution Error", $"Error applying incompatibility resolutions: {ex.Message}");
             }
         }
 
-
         private void OnModListManagerChanged(object sender, EventArgs e)
         {
-            // The manager's state changed, update the filter service's source data
-            // This will cause the filter service to update its ObservableCollections
             _filterService.UpdateCollections(
                 _modListManager.VirtualActiveMods,
                 _modListManager.AllInactiveMods
             );
 
-            // Update properties that depend on the counts (these are bound to filter service counts)
             OnPropertyChanged(nameof(TotalActiveMods));
             OnPropertyChanged(nameof(TotalInactiveMods));
 
-            // --- CHANGE HERE ---
-            // Set HasUnsavedChanges whenever the list changes via the manager.
-            // The initial load case is handled by explicitly setting it to false
-            // at the end of LoadDataAsync.
             HasUnsavedChanges = true;
-            // -------------------
 
-            // Re-evaluate command states
             RunOnUIThread(() =>
             {
                 CommandManager.InvalidateRequerySuggested();
-                // Explicitly update CanExecute for delete command as its conditions might change
-                // (e.g., a mod becomes active/inactive, though path existence is the main external factor)
                 (DeleteModCommand as RelayCommand<ModItem>)?.RaiseCanExecuteChanged();
             });
 
             Debug.WriteLine("ModsViewModel handled ModListManager ListChanged event.");
         }
-
 
         private void SelectMod(object parameter)
         {
@@ -697,30 +805,21 @@ namespace RimSharp.Features.ModManager.ViewModels
 
         private async Task ExecuteDropMod(DropModArgs args)
         {
-            // Assume CommandService handles interaction with ModListManager
             await _commandService.HandleDropCommand(args);
-            // CommandService should ideally trigger ListChanged via manager, setting HasUnsavedChanges
-            // If not, set it here: HasUnsavedChanges = true;
         }
 
         private async Task ExecuteClearActiveList()
         {
-            // Assume CommandService handles interaction with ModListManager
             await _commandService.ClearActiveModsAsync();
-            // CommandService should trigger ListChanged via manager, setting HasUnsavedChanges
-            // If not, set it here: HasUnsavedChanges = true;
         }
+
         private async Task ExecuteSortActiveList()
         {
-            IsLoading = true; // Indicate activity
-            CommandManager.InvalidateRequerySuggested(); // Disable buttons during sort
+            IsLoading = true;
+            CommandManager.InvalidateRequerySuggested();
             try
             {
-                // Directly await the async method instead of wrapping it in Task.Run()
                 await _commandService.SortActiveModsAsync();
-
-                // The HasUnsavedChanges flag is set within the OnModListManagerChanged event handler
-                // based on the ListChanged event triggered by the sort operation within the command service.
                 Debug.WriteLine("Sort operation completed.");
             }
             catch (Exception ex)
@@ -733,36 +832,30 @@ namespace RimSharp.Features.ModManager.ViewModels
             finally
             {
                 IsLoading = false;
-                CommandManager.InvalidateRequerySuggested(); // Re-enable buttons
+                CommandManager.InvalidateRequerySuggested();
             }
         }
 
         private void ExecuteSaveMods()
         {
-            IsLoading = true; // Indicate activity
+            IsLoading = true;
             try
             {
-                // --- CORRECTION: Save the state from the ModListManager ---
                 var activeIdsToSave = _modListManager.VirtualActiveMods
                                         .Select(entry => entry.Mod.PackageId)
-                                        .Where(id => !string.IsNullOrEmpty(id)) // Ensure no null/empty IDs
+                                        .Where(id => !string.IsNullOrEmpty(id))
                                         .ToList();
 
                 _dataService.SaveActiveModIdsToConfig(activeIdsToSave);
-                // -----------------------------------------------------------
                 HasUnsavedChanges = false;
                 Debug.WriteLine("Mod list saved successfully.");
-                //RunOnUIThread(() => _dialogService.ShowInformation("Save Successful", "Mod list saved successfully."));
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error saving mods config: {ex}");
                 RunOnUIThread(() =>
-                                   // --- REPLACE MessageBox ---
-                                   // MessageBox.Show($"Failed to save mod list: {ex.Message}", "Save Error", MessageBoxButton.OK, MessageBoxError));
-                                   _dialogService.ShowError("Save Error", $"Failed to save mod list: {ex.Message}")
-                               // -------------------------
-                               );                // Optionally leave HasUnsavedChanges = true if save failed?
+                    _dialogService.ShowError("Save Error", $"Failed to save mod list: {ex.Message}")
+                );
             }
             finally
             {
@@ -773,85 +866,62 @@ namespace RimSharp.Features.ModManager.ViewModels
 
         private async Task ExecuteImport()
         {
-            // Assume IOService interacts with ModListManager appropriately
             await _ioService.ImportModListAsync();
-            // IOService should trigger ListChanged via manager, setting HasUnsavedChanges
-            // If not, set it here: HasUnsavedChanges = true;
         }
+
         private async Task ExecuteExport()
         {
-            // --- CORRECTION: Export the definitive list from the ModListManager ---
             var activeModsToExport = _modListManager.VirtualActiveMods.Select(entry => entry.Mod).ToList();
             if (!activeModsToExport.Any())
             {
-                // MessageBox.Show("There are no active mods to export.", "Export List", MessageBoxButton.OK, MessageBoxImage.Information);
                 _dialogService.ShowInformation("Export List", "There are no active mods to export.");
                 return;
             }
             await _ioService.ExportModListAsync(activeModsToExport);
-            // --------------------------------------------------------------------
         }
 
         private void OpenUrl(object parameter)
         {
             string target = null;
-            if (parameter is string urlParam) // Use specific type check
+            if (parameter is string urlParam)
             {
                 target = urlParam;
             }
             else if (SelectedMod != null)
             {
-                // Prioritize the explicit Url field from About.xml if present
                 target = SelectedMod.Url;
-
-                // CORRECTED: Use 'Path' instead of 'DirectoryPath'
-                // If Url is empty, fall back to the local installation Path
-                // Also check if the Path property itself is valid (not null or whitespace)
                 if (string.IsNullOrWhiteSpace(target) && !string.IsNullOrWhiteSpace(SelectedMod.Path))
                 {
-                    target = SelectedMod.Path; // Assign the local Path
+                    target = SelectedMod.Path;
                 }
             }
 
             if (string.IsNullOrWhiteSpace(target))
             {
                 Debug.WriteLine("OpenUrl: No target specified or derived.");
-                // MessageBox.Show("No URL or local path available for the selected mod.", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
                 _dialogService.ShowInformation("Information", "No URL or local path available for the selected mod.");
                 return;
             }
 
             try
             {
-                // Use Directory.Exists for checking local paths robustly
-                // Need System.IO namespace for Path and Directory
-                if (Directory.Exists(target)) // Check if the target *is* an existing directory
+                if (Directory.Exists(target))
                 {
-                    string fullPath = Path.GetFullPath(target); // Ensure canonical path
-                                                                // Option 1: Open the folder in Explorer
-                    ProcessStartInfo psi = new ProcessStartInfo(fullPath) { UseShellExecute = true };
-                    // Option 2: Select the folder in Explorer (shows containing folder)
-                    // ProcessStartInfo psi = new ProcessStartInfo("explorer.exe", $"/select,\"{fullPath}\"");
-                    Process.Start(psi);
+                    string fullPath = Path.GetFullPath(target);
+                    Process.Start(new ProcessStartInfo(fullPath) { UseShellExecute = true });
                 }
-                // Optional: Add check for file paths if 'target' could be a file
-                // else if (File.Exists(target)) { ... Process.Start($"explorer.exe /select,\"{target}\""); ... }
-                else // Assume it's a URL if not a known local directory/file
+                else
                 {
-                    // Ensure it looks like a URL
                     var uriString = target;
                     if (!uriString.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
                         !uriString.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Simple check: if it contains common URL characters or top-level domains, prepend http://
-                        // This is a basic heuristic and might not cover all cases perfectly.
-                        if (uriString.Contains('.') && !uriString.Contains(" ") && !uriString.Contains("\\")) // Basic check if it might be a domain
+                        if (uriString.Contains('.') && !uriString.Contains(" ") && !uriString.Contains("\\"))
                         {
                             uriString = "http://" + uriString;
                         }
                         else
                         {
-                            // If it doesn't look like a URL and isn't a directory, show an error
                             throw new InvalidOperationException($"Target '{target}' is not a recognized directory or URL format.");
                         }
                     }
@@ -862,20 +932,10 @@ namespace RimSharp.Features.ModManager.ViewModels
             catch (Exception ex)
             {
                 Debug.WriteLine($"Could not open path/URL '{target}': {ex}");
-                // MessageBox.Show($"Could not open path/URL: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 _dialogService.ShowError("Error", $"Could not open path/URL: {ex.Message}");
             }
         }
 
-        // Stubbed methods
-        /*
-        private void ExecuteFilterInactive(object parameter) => MessageBox.Show("Filter Inactive Mods - Not Yet Implemented");
-        private void ExecuteFilterActive(object parameter) => MessageBox.Show("Filter Active Mods - Not Yet Implemented");
-        private void StripMods(object parameter) => MessageBox.Show("Strip mods: Functionality not yet implemented.");
-        private void CreatePack(object parameter) => MessageBox.Show("Create pack: Functionality not yet implemented.");
-        private void FixIntegrity(object parameter) => MessageBox.Show("Fix integrity: Functionality not yet implemented.");
-        private void RunGame(object parameter) => MessageBox.Show("Run game: Functionality not yet implemented.");
-*/
         private void ExecuteFilterInactive(object parameter) => _dialogService.ShowInformation("Not Implemented", "Filter Inactive Mods - Not Yet Implemented");
         private void ExecuteFilterActive(object parameter) => _dialogService.ShowInformation("Not Implemented", "Filter Active Mods - Not Yet Implemented");
         private void StripMods(object parameter) => _dialogService.ShowInformation("Not Implemented", "Strip mods: Functionality not yet implemented.");
@@ -893,10 +953,9 @@ namespace RimSharp.Features.ModManager.ViewModels
         {
             if (disposing)
             {
-                _modListManager.ListChanged -= OnModListManagerChanged; // Use correct handler name
+                _modListManager.ListChanged -= OnModListManagerChanged;
             }
         }
-
 
         ~ModsViewModel()
         {

@@ -1,8 +1,9 @@
 using System;
-using System.Collections; // For IEnumerable
+using System.Collections; // For IEnumerable and IList
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Linq;
 
 namespace RimSharp.Features.ModManager.Components.ModList
 {
@@ -41,7 +42,6 @@ namespace RimSharp.Features.ModManager.Components.ModList
         }
         public static readonly DependencyProperty HeaderTextProperty =
             DependencyProperty.Register("HeaderText", typeof(string), typeof(ModListView), new PropertyMetadata("Items", OnHeaderTextChanged));
-
 
         public int ItemCount
         {
@@ -84,7 +84,6 @@ namespace RimSharp.Features.ModManager.Components.ModList
         public static readonly DependencyProperty GroupNameProperty =
             DependencyProperty.Register("GroupName", typeof(string), typeof(ModListView), new PropertyMetadata("DefaultGroup"));
 
-
         // --- Dependency Properties needed by the Behavior ---
         public ICommand DropCommand
         {
@@ -102,7 +101,6 @@ namespace RimSharp.Features.ModManager.Components.ModList
         public static readonly DependencyProperty DragItemTypeProperty =
             DependencyProperty.Register("DragItemType", typeof(Type), typeof(ModListView), new PropertyMetadata(null));
 
-
         // --- Derived Read-only Dependency Properties for UI ---
 
         private static readonly DependencyPropertyKey SearchPlaceholderPropertyKey =
@@ -113,7 +111,6 @@ namespace RimSharp.Features.ModManager.Components.ModList
             get { return (string)GetValue(SearchPlaceholderProperty); }
             private set { SetValue(SearchPlaceholderPropertyKey, value); }
         }
-
 
         private static readonly DependencyPropertyKey FilterToolTipPropertyKey =
             DependencyProperty.RegisterReadOnly("FilterToolTip", typeof(string), typeof(ModListView), new PropertyMetadata("Filter items"));
@@ -134,7 +131,6 @@ namespace RimSharp.Features.ModManager.Components.ModList
             }
         }
 
-
         // --- Event Handlers ---
 
         private void InternalListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -144,9 +140,7 @@ namespace RimSharp.Features.ModManager.Components.ModList
 
             if (item != null && DoubleClickCommand != null)
             {
-                 // Get the data item (ModItem)
-                 // Note: SelectedItem might not be updated yet on double-click event,
-                 // so using item.DataContext (or listbox.ItemContainerGenerator.ItemFromContainer(item)) is safer.
+                // Get the data item (ModItem)
                 object dataItem = item.DataContext;
                 if (dataItem != null && DoubleClickCommand.CanExecute(dataItem))
                 {
@@ -155,14 +149,20 @@ namespace RimSharp.Features.ModManager.Components.ModList
             }
         }
 
-         // Optional: Helper to scroll item into view when selected
-         protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
-         {
-             base.OnPropertyChanged(e);
-             if (e.Property == SelectedItemProperty && e.NewValue != null)
-             {
-                 InternalListBox.ScrollIntoView(e.NewValue);
-             }
-         }
+        private void InternalListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var holder = (SelectedItemsHolder)Resources["selectedItemsHolder"];
+            holder.SelectedItems = InternalListBox.SelectedItems.Cast<object>().ToList();
+        }
+
+        // Optional: Helper to scroll item into view when selected
+        protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
+        {
+            base.OnPropertyChanged(e);
+            if (e.Property == SelectedItemProperty && e.NewValue != null)
+            {
+                InternalListBox.ScrollIntoView(e.NewValue);
+            }
+        }
     }
 }
