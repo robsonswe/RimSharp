@@ -9,37 +9,54 @@
              xmlns:behaviors="clr-namespace:RimSharp.Features.ModManager.Behaviors"
              mc:Ignorable="d"
              x:Name="RootModListView"
-             d:DesignHeight="400" d:DesignWidth="300">
+             d:DesignHeight="400"
+        d:DesignWidth="300">
     <Border Style="{StaticResource RimworldPanelBorder}">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/> <!-- Header -->
-                <RowDefinition Height="*"/>    <!-- List -->
+                <RowDefinition Height="Auto"/>
+                <!-- Header -->
+                <RowDefinition Height="*"/>
+                <!-- List -->
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <Border Grid.Row="0" Style="{StaticResource RimworldListHeaderBorder}">
+            <Border Grid.Row="0"
+                    Style="{StaticResource RimworldListHeaderBorder}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" FontWeight="Bold" Margin="4" HorizontalAlignment="Left" Foreground="{StaticResource RimworldWhiteBrush}">
+                    <TextBlock Grid.Row="0"
+                            FontWeight="Bold"
+                            Margin="4"
+                            HorizontalAlignment="Left"
+                            Foreground="{StaticResource RimworldWhiteBrush}">
                          <Run Text="{Binding HeaderText, ElementName=RootModListView}"/>
                          <Run Text=" ["/>
                          <Run Text="{Binding ItemCount, ElementName=RootModListView, Mode=OneWay}"/>
                          <Run Text="]"/>
                     </TextBlock>
-                    <Grid Grid.Row="1" Margin="4,0,4,4">
+                    <Grid Grid.Row="1"
+                            Margin="4,0,4,4">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0" Tag="{Binding SearchPlaceholder, ElementName=RootModListView}"
-                                 Style="{StaticResource RimworldWatermarkTextBox}" VerticalAlignment="Center"
+                        <TextBox Grid.Column="0"
+                                Tag="{Binding SearchPlaceholder, ElementName=RootModListView}"
+                                 Style="{StaticResource RimworldWatermarkTextBox}"
+                                VerticalAlignment="Center"
                                  Text="{Binding SearchText, ElementName=RootModListView, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"/>
-                        <Button Grid.Column="1" Content="Filters" Style="{StaticResource RimworldButtonStyle}"
-                                Width="50" Height="22" FontSize="11" Padding="0" Margin="4,0,0,0"
+                        <Button Grid.Column="1"
+                                Content="Filters"
+                                Style="{StaticResource RimworldButtonStyle}"
+                                Width="50"
+                                Height="22"
+                                FontSize="11"
+                                Padding="0"
+                                Margin="4,0,0,0"
                                 VerticalAlignment="Center"
                                 Command="{Binding FilterCommand, ElementName=RootModListView}"
                                 ToolTip="{Binding FilterToolTip, ElementName=RootModListView}"/>
@@ -56,9 +73,8 @@
                      MouseDoubleClick="InternalListBox_MouseDoubleClick"
                      AllowDrop="True"
                      Background="Transparent"
-                     SelectionMode="Extended"
-                     >
-                     <!-- AllowDrop must be true for behavior's drop events to fire -->
+                     SelectionMode="Extended">
+                <!-- AllowDrop must be true for behavior's drop events to fire -->
 
                 <b:Interaction.Behaviors>
                     <behaviors:ListBoxDragDropBehavior
@@ -68,37 +84,129 @@
                 </b:Interaction.Behaviors>
 
                 <ListBox.ItemTemplate>
-                    <DataTemplate DataType="{x:Type models:ModItem}">
-                        <!-- Use a container that fills width for better hit testing -->
-                        <Border Background="Transparent">
-                            <TextBlock Text="{Binding Name}"
-                                       ToolTip="{Binding Path}"
-                                       Margin="2,1"
-                                       Foreground="{Binding IsOutdatedRW,
-                                                    Converter={StaticResource BooleanToColorConverter},
-                                                    ConverterParameter=RimworldErrorRed|RimworldBrown}"/>
-                        </Border>
-                    </DataTemplate>
+    <DataTemplate DataType="{x:Type models:ModItem}">
+        <!-- Use a container that fills width for better hit testing -->
+        <Border Background="Transparent" Tag="{Binding DataContext, ElementName=RootModListView}">
+            <Border.ContextMenu>
+                <ContextMenu>
+                    <ContextMenu.Style>
+                        <Style TargetType="ContextMenu">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <!-- DataContext here is ModItem -->
+                                <DataTrigger Binding="{Binding IsCore}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ContextMenu.Style>
+
+                    <ContextMenu.Resources>
+                       <!-- Your MenuItem Style -->
+                       <Style TargetType="MenuItem">
+                           <Setter Property="Padding" Value="6,2,6,2"/>
+                           <Setter Property="Template">
+                               <Setter.Value>
+                                   <ControlTemplate TargetType="MenuItem">
+                                       <Grid>
+                                           <Grid.ColumnDefinitions>
+                                               <ColumnDefinition Width="Auto" MinWidth="24"/>
+                                               <ColumnDefinition Width="*"/>
+                                           </Grid.ColumnDefinitions>
+                                           
+                                           <ContentPresenter Grid.Column="0" 
+                                                           Content="{TemplateBinding Icon}" 
+                                                           Margin="0,0,6,0"
+                                                           VerticalAlignment="Center"/>
+                                           
+                                           <ContentPresenter Grid.Column="1" 
+                                                           Content="{TemplateBinding Header}" 
+                                                           VerticalAlignment="Center"/>
+                                       </Grid>
+                                   </ControlTemplate>
+                               </Setter.Value>
+                           </Setter>
+                       </Style>
+                    </ContextMenu.Resources>
+
+                    <!-- Open Mod Folder -->
+                    <MenuItem Header="Open Mod Folder"
+                            Command="{Binding PlacementTarget.Tag.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                            CommandParameter="{Binding Path}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="📁" FontSize="14"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+
+                    <!-- External URL -->
+                    <MenuItem Header="Open URL"
+                            Command="{Binding PlacementTarget.Tag.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                            CommandParameter="{Binding Url}"
+                            Visibility="{Binding HasUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="🔗" FontSize="14"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+
+                    <!-- Steam URL -->
+                    <MenuItem Header="Open Workshop Page"
+                            Command="{Binding PlacementTarget.Tag.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                            CommandParameter="{Binding SteamUrl}"
+                            Visibility="{Binding HasSteamUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="☁️" FontSize="14"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+
+                    <!-- External URL -->
+                    <MenuItem Header="Open Other URL"
+                            Command="{Binding PlacementTarget.Tag.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                            CommandParameter="{Binding ExternalUrl}"
+                            Visibility="{Binding HasExternalUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="🌐" FontSize="14"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                </ContextMenu>
+            </Border.ContextMenu>
+
+            <TextBlock Text="{Binding Name}"
+                       ToolTip="{Binding Path}"
+                       Margin="2,1"
+                       Foreground="{Binding IsOutdatedRW,
+                                    Converter={StaticResource BooleanToColorConverter},
+                                    ConverterParameter=RimworldErrorRed|RimworldBrown}">
+                <!-- ContextMenu removed from here -->
+            </TextBlock>
+        </Border>
+    </DataTemplate>
                 </ListBox.ItemTemplate>
 
-                 <!-- Style to visually indicate selected items better -->
-                 <ListBox.ItemContainerStyle>
-                     <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
-                         <Setter Property="Padding" Value="0"/> <!-- Remove default padding if using Border in template -->
-                         <Style.Triggers>
-                             <Trigger Property="IsSelected" Value="True">
-                                 <!-- Keep default selection visual or customize -->
-                                 <Setter Property="Background" Value="{StaticResource RimworldHighlightBrush}"/>
-                                 <Setter Property="Foreground" Value="{StaticResource RimworldBlackBrush}"/>
-                             </Trigger>
-                             <!-- Optional: Trigger for dragged item opacity -->
-                             <Trigger Property="Tag" Value="Dragging">
-                                 <Setter Property="Opacity" Value="0.5"/>
-                             </Trigger>
-                         </Style.Triggers>
-                     </Style>
-                 </ListBox.ItemContainerStyle>
-
+                <!-- Style to visually indicate selected items better -->
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem"
+                            BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                        <Setter Property="Padding"
+                                Value="0"/>
+                        <!-- Remove default padding if using Border in template -->
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected"
+                                    Value="True">
+                                <!-- Keep default selection visual or customize -->
+                                <Setter Property="Background"
+                                        Value="{StaticResource RimworldHighlightBrush}"/>
+                                <Setter Property="Foreground"
+                                        Value="{StaticResource RimworldBlackBrush}"/>
+                            </Trigger>
+                            <!-- Optional: Trigger for dragged item opacity -->
+                            <Trigger Property="Tag"
+                                    Value="Dragging">
+                                <Setter Property="Opacity"
+                                        Value="0.5"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListBox.ItemContainerStyle>
             </ListBox>
         </Grid>
     </Border>

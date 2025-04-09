@@ -68,7 +68,7 @@
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Grid.Resources>
                      <Style TargetType="TextBlock" x:Key="InfoLabel">
@@ -105,41 +105,7 @@
                     </Hyperlink>
                 </TextBlock>
 
-                <!-- URL Links Section -->
-                <StackPanel Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,10,0,0">
-                    <!-- URL -->
-                    <DockPanel LastChildFill="True" Margin="0,0,0,2" Visibility="{Binding HasUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <TextBlock DockPanel.Dock="Left" Text="URL:" Style="{StaticResource InfoLabel}"/>
-                        <TextBlock Style="{StaticResource InfoValue}">
-                            <!-- Need AncestorType=UserControl *if* command is on parent VM -->
-                            <!-- Assuming command is on the main VM passed down -->
-                             <Hyperlink Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}, AncestorLevel=2}}"
-                                        CommandParameter="{Binding Url}" Style="{StaticResource RimworldHyperlinkStyle}">
-                                <TextBlock Text="{Binding Url}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Url}"/>
-                             </Hyperlink>
-                         </TextBlock>
-                    </DockPanel>
-                    <!-- Steam URL -->
-                    <DockPanel LastChildFill="True" Margin="0,0,0,2" Visibility="{Binding HasSteamUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <TextBlock DockPanel.Dock="Left" Text="Steam:" Style="{StaticResource InfoLabel}"/>
-                        <TextBlock Style="{StaticResource InfoValue}">
-                             <Hyperlink Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}, AncestorLevel=2}}"
-                                        CommandParameter="{Binding SteamUrl}" Style="{StaticResource RimworldHyperlinkStyle}">
-                                <TextBlock Text="{Binding SteamUrl}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SteamUrl}"/>
-                            </Hyperlink>
-                         </TextBlock>
-                    </DockPanel>
-                    <!-- External URL -->
-                    <DockPanel LastChildFill="True" Margin="0,0,0,2" Visibility="{Binding HasExternalUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <TextBlock DockPanel.Dock="Left" Text="External:" Style="{StaticResource InfoLabel}"/>
-                        <TextBlock Style="{StaticResource InfoValue}">
-                             <Hyperlink Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}, AncestorLevel=2}}"
-                                        CommandParameter="{Binding ExternalUrl}" Style="{StaticResource RimworldHyperlinkStyle}">
-                                <TextBlock Text="{Binding ExternalUrl}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ExternalUrl}"/>
-                            </Hyperlink>
-                         </TextBlock>
-                    </DockPanel>
-                </StackPanel>
+                <!-- Removed URL Links Section -->
             </Grid>
 
             <!-- Mod Description -->
