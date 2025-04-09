@@ -6,7 +6,6 @@ namespace RimSharp.MyApp.Dialogs
 {
     public class ProgressDialogViewModel : DialogViewModelBase<bool>
     {
-        private string _title;
         private string _message;
         private int _progress;
         private bool _isIndeterminate;
@@ -14,15 +13,11 @@ namespace RimSharp.MyApp.Dialogs
 
         public event EventHandler Cancelled;
 
-        public string Title
-        {
-            get => _title;
-            set => SetProperty(ref _title, value);
-        }
-
         public string Message
         {
             get => _message;
+            // Make sure ViewModelBase and SetProperty are accessible
+            // If ViewModelBase is in RimSharp.MyApp.AppFiles, add: using RimSharp.MyApp.AppFiles;
             set => SetProperty(ref _message, value);
         }
 
@@ -46,51 +41,58 @@ namespace RimSharp.MyApp.Dialogs
 
         public ICommand CancelCommand { get; }
 
-        public void Complete(string message = null)
-        {
-            if (!string.IsNullOrEmpty(message))
-            {
-                Message = message;
-            }
-            CloseDialog(true);
-        }
-
-        public void Cancel(string message = null)
-        {
-            if (!string.IsNullOrEmpty(message))
-            {
-                Message = message;
-            }
-            Cancelled?.Invoke(this, EventArgs.Empty);
-            CloseDialog(false);
-        }
-
-        public void ForceClose()
-        {
-            CloseDialog(false);
-        }
-
-
+        // Constructor: Calls base(title) to set the inherited Title property
         public ProgressDialogViewModel(string title, string message, bool canCancel = false, bool isIndeterminate = true)
-            : base(title)
+            : base(title) // This sets the inherited Title property
         {
-            Title = title;
+
+
             Message = message;
             CanCancel = canCancel;
             IsIndeterminate = isIndeterminate;
             Progress = 0;
 
-            CancelCommand = new RelayCommand(_ => Cancel());
+            CancelCommand = new RelayCommand(_ => OnCancel()); // Changed to call OnCancel method
         }
 
-        public void Cancel()
+        public void UpdateProgress(int value, string message = null)
         {
-            CloseDialog(false);
+             Progress = value;
+             if(message != null)
+             {
+                 Message = message;
+             }
+             IsIndeterminate = false; // Typically switch off indeterminate when progress is reported
         }
 
-        public void Complete()
+
+        public void CompleteOperation(string message = null) // Renamed from Complete to avoid conflict
         {
-            CloseDialog(true);
+            if (!string.IsNullOrEmpty(message))
+            {
+                Message = message;
+            }
+            CloseDialog(true); // Use the base class method to close with result
+        }
+
+        // Renamed from Cancel to avoid conflict with property/event names if any ambiguity
+        // Also matches the CancelCommand action
+        public void OnCancel(string message = null)
+        {
+            if (!string.IsNullOrEmpty(message))
+            {
+                Message = message;
+            }
+            // Raise the Cancelled event *before* closing
+            Cancelled?.Invoke(this, EventArgs.Empty);
+            CloseDialog(false); // Use the base class method to close with result
+        }
+
+        // Kept for cases where external code needs to force close without triggering Cancelled event logic
+        public void ForceClose()
+        {
+             // Directly close using the base class mechanism with a 'false' result
+             CloseDialog(false);
         }
     }
 }

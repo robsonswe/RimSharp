@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -6,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Features.WorkshopDownloader.Models;
 using RimSharp.Shared.Models; // For ModItem
+using System.Diagnostics; // For Debug.WriteLine
 
 namespace RimSharp.Features.WorkshopDownloader.Services
 {
@@ -17,7 +19,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         // Define the exact format of your UpdateDate string
         private const string LocalDateFormat = "dd/MM/yyyy HH:mm:ss";
         // Maximum number of parallel operations
-        private const int MaxParallelOperations = 10;
+        private const int MaxParallelOperations = 5; // Reduced slightly for API calls
 
         public WorkshopUpdateCheckerService(ISteamApiClient steamApiClient, IDownloadQueueService downloadQueueService)
         {
@@ -25,13 +27,16 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             _downloadQueueService = downloadQueueService ?? throw new ArgumentNullException(nameof(downloadQueueService));
         }
 
+        // Overload to maintain compatibility if called without progress/token
         public async Task<UpdateCheckResult> CheckForUpdatesAsync(IEnumerable<ModItem> modsToCheck)
         {
-            return await CheckForUpdatesAsync(modsToCheck, null);
+            return await CheckForUpdatesAsync(modsToCheck, null, default);
         }
 
+        // Main implementation now accepting CancellationToken
         public async Task<UpdateCheckResult> CheckForUpdatesAsync(IEnumerable<ModItem> modsToCheck,
-            IProgress<(int current, int total, string modName)> progress)
+            IProgress<(int current, int total, string modName)>? progress, // Nullable progress
+            CancellationToken cancellationToken = default) // <--- ADDED Parameter
         {
             var result = new UpdateCheckResult();
             if (modsToCheck == null) return result;
@@ -43,40 +48,94 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                        long.TryParse(mod.SteamId, out _))
                 .ToList();
 
-            // Use SemaphoreSlim to limit concurrent operations
+            if (!validMods.Any()) return result; // Nothing to check
+
+            // Use SemaphoreSlim to limit concurrent API calls
             using var semaphore = new SemaphoreSlim(MaxParallelOperations);
 
             var tasks = new List<Task>();
-            var errorMessages = new List<string>();
+            // Use ConcurrentBag for thread-safe error message collection
+            var errorMessages = new System.Collections.Concurrent.ConcurrentBag<string>();
 
             int totalMods = validMods.Count;
             int completedMods = 0;
 
+            progress?.Report((0, totalMods, "Starting update check...")); // Initial progress report
+
             foreach (var mod in validMods)
             {
-                await semaphore.WaitAsync();
+                // Check for cancellation before starting work on a new mod
+                cancellationToken.ThrowIfCancellationRequested();
 
+                // Wait asynchronously for the semaphore, respecting cancellation
+                await semaphore.WaitAsync(cancellationToken);
+
+                // Add the task processing this mod
                 tasks.Add(Task.Run(async () =>
                 {
                     try
                     {
-                        progress?.Report((completedMods, totalMods, mod.Name));
-                        await CheckModForUpdateAsync(mod, result, errorMessages);
+                        // Check cancellation again inside the task
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        int currentCount = Interlocked.Increment(ref completedMods); // Increment first for reporting
+                        progress?.Report((currentCount, totalMods, mod.Name));
+
+                        // Pass cancellation token down
+                        await CheckModForUpdateAsync(mod, result, errorMessages, cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Don't increment errors if cancelled, just stop processing this mod
+                        Debug.WriteLine($"[CheckModForUpdateAsync Task] Cancelled for mod {mod.Name} ({mod.SteamId}).");
+                        // Optional: Add a specific cancellation message if needed, but often just stopping is enough
+                    }
+                    catch (Exception ex)
+                    {
+                         // Catch unexpected errors within the task execution itself
+                         result.IncrementErrorsEncountered();
+                         errorMessages.Add($"Unexpected task error for '{mod.Name}' ({mod.SteamId}): {ex.Message}");
+                         Debug.WriteLine($"[CheckModForUpdateAsync Task] Error for {mod.Name} ({mod.SteamId}): {ex}");
                     }
                     finally
                     {
-                        semaphore.Release();
-                        Interlocked.Increment(ref completedMods);
-                        progress?.Report((completedMods, totalMods, mod.Name));
+                         semaphore.Release();
+                         // Report final progress for this item if needed (already reported when starting)
+                         // int finalCount = completedMods; // Read the potentially updated value
+                         // progress?.Report((finalCount, totalMods, $"{mod.Name} check finished"));
                     }
-                }));
+                }, cancellationToken)); // Pass token to Task.Run to prevent starting if already cancelled
             }
 
-            await Task.WhenAll(tasks);
+            try
+            {
+                 // Wait for all tasks to complete or be cancelled/fault
+                 await Task.WhenAll(tasks);
+            }
+            catch (OperationCanceledException)
+            {
+                 // This catches cancellation that might occur during Task.WhenAll itself
+                 Debug.WriteLine("[CheckForUpdatesAsync] Operation cancelled while waiting for tasks.");
+                 // Tasks themselves handle internal cancellation checks
+            }
+            catch (Exception ex)
+            {
+                 // Catch potential aggregation errors from Task.WhenAll, though individual task errors are handled above
+                 Debug.WriteLine($"[CheckForUpdatesAsync] Error during Task.WhenAll: {ex}");
+                 // Report a general error? Individual errors are already captured.
+                 // result.IncrementErrorsEncountered(); // Maybe not needed if task errors are caught
+                 // errorMessages.Add($"General error waiting for update tasks: {ex.Message}");
+            }
 
-            result.ModsChecked = completedMods;
-            result.ErrorsEncountered = errorMessages.Count;
+
+            // Populate results after all tasks are processed
+            result.ModsChecked = completedMods; // Number of mods actually processed (started)
+            // UpdatesFound and ErrorsEncountered are incremented atomically within CheckModForUpdateAsync
+
+            // Add collected error messages
             result.ErrorMessages.AddRange(errorMessages);
+
+            progress?.Report((totalMods, totalMods, "Update check finished.")); // Final progress report
 
             return result;
         }
@@ -84,31 +143,37 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         private async Task CheckModForUpdateAsync(
             ModItem mod,
             UpdateCheckResult result,
-            List<string> errorMessages)
+            System.Collections.Concurrent.ConcurrentBag<string> errorMessages, // Use ConcurrentBag
+            CancellationToken cancellationToken) // <--- ADDED Parameter
         {
-            SteamApiResponse apiResponse = null;
+            SteamApiResponse? apiResponse = null; // Nullable
             try
             {
-                apiResponse = await _steamApiClient.GetFileDetailsAsync(mod.SteamId);
+                 // Check cancellation before making the API call
+                cancellationToken.ThrowIfCancellationRequested();
+
+                apiResponse = await _steamApiClient.GetFileDetailsAsync(mod.SteamId, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine($"[CheckModForUpdateAsync] API call cancelled for {mod.Name} ({mod.SteamId}).");
+                throw; // Re-throw cancellation to be caught by the Task.Run catch block
             }
             catch (Exception ex)
             {
                 result.IncrementErrorsEncountered();
-                lock (errorMessages)
-                {
-                    errorMessages.Add($"Failed API call for '{mod.Name}' ({mod.SteamId}): {ex.Message}");
-                }
-                Console.WriteLine($"Error during API call for {mod.SteamId}: {ex}");
-                return;
+                errorMessages.Add($"Failed API call for '{mod.Name}' ({mod.SteamId}): {ex.Message}");
+                Debug.WriteLine($"Error during API call for {mod.SteamId}: {ex}");
+                return; // Exit processing for this mod on API error
             }
+
+            // Check cancellation after the API call returns
+            cancellationToken.ThrowIfCancellationRequested();
 
             if (apiResponse?.Response?.PublishedFileDetails == null || !apiResponse.Response.PublishedFileDetails.Any())
             {
                 result.IncrementErrorsEncountered();
-                lock (errorMessages)
-                {
-                    errorMessages.Add($"No details returned for '{mod.Name}' ({mod.SteamId}). Mod might be removed or hidden.");
-                }
+                errorMessages.Add($"No details returned for '{mod.Name}' ({mod.SteamId}). Mod might be removed or hidden.");
                 return;
             }
 
@@ -117,70 +182,44 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             if (details.Result != 1)
             {
                 result.IncrementErrorsEncountered();
-                lock (errorMessages)
-                {
-                    errorMessages.Add($"API indicated failure retrieving details for '{mod.Name}' ({mod.SteamId}).");
-                }
+                errorMessages.Add($"API indicated failure retrieving details for '{mod.Name}' ({mod.SteamId}). Result Code: {details.Result}");
                 return;
             }
 
+            // Optional: Check AppID (already present, seems fine)
             if (details.ConsumerAppId.ToString() != RimWorldAppId)
             {
-                result.IncrementErrorsEncountered();
-                lock (errorMessages)
-                {
-                    errorMessages.Add($"Mod '{details.Title}' ({mod.SteamId}) is not a RimWorld ({RimWorldAppId}) mod (AppID: {details.ConsumerAppId}). Skipping.");
-                }
-                return;
+                 result.IncrementErrorsEncountered();
+                 errorMessages.Add($"Mod '{details.Title}' ({mod.SteamId}) is not a RimWorld ({RimWorldAppId}) mod (AppID: {details.ConsumerAppId}). Skipping.");
+                 return;
             }
+
 
             if (string.IsNullOrWhiteSpace(mod.UpdateDate))
             {
-                Console.WriteLine($"Skipping update check for '{mod.Name}' ({mod.SteamId}) due to missing local UpdateDate.");
+                // This is not necessarily an error, just can't compare
+                Debug.WriteLine($"Skipping update check for '{mod.Name}' ({mod.SteamId}) due to missing local UpdateDate.");
                 return;
             }
 
             if (!TryParseLocalDate(mod.UpdateDate, out DateTime localUpdateTimeUtc))
             {
                 result.IncrementErrorsEncountered();
-                lock (errorMessages)
-                {
-                    errorMessages.Add($"Could not parse local date '{mod.UpdateDate}' for mod '{mod.Name}' ({mod.SteamId}). Skipping update check.");
-                }
+                errorMessages.Add($"Could not parse local date '{mod.UpdateDate}' for mod '{mod.Name}' ({mod.SteamId}). Format expected: '{LocalDateFormat}'.");
                 return;
             }
 
-            DateTimeOffset apiUpdateTimeUtc = DateTimeOffset.FromUnixTimeSeconds(details.TimeUpdated);
-            var apiTime = apiUpdateTimeUtc.UtcDateTime;
-            var localTime = localUpdateTimeUtc;
+            // Check cancellation before comparison and adding to queue
+            cancellationToken.ThrowIfCancellationRequested();
 
-            TimeSpan rawDifference = apiTime - localTime;
-            DateTime apiTimeOnly = new DateTime(1, 1, 1, apiTime.Hour, apiTime.Minute, 0);
-            DateTime localTimeOnly = new DateTime(1, 1, 1, localTime.Hour, localTime.Minute, 0);
+            DateTimeOffset apiUpdateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(details.TimeUpdated);
+            DateTime apiUpdateTimeUtc = apiUpdateTimeOffset.UtcDateTime;
 
-            int minutesDifference = (int)Math.Abs((apiTimeOnly - localTimeOnly).TotalMinutes);
-            if (minutesDifference > 12 * 60)
+            // Compare UTC times directly - adding a small buffer (e.g., 1 minute) can account for minor sync issues or rounding
+            const double toleranceMinutes = 1.0;
+            if (apiUpdateTimeUtc > localUpdateTimeUtc.AddMinutes(toleranceMinutes))
             {
-                minutesDifference = 24 * 60 - minutesDifference;
-            }
-
-            bool isLikelyTimezoneArtifact = false;
-            if (minutesDifference % 60 == 0)
-            {
-                isLikelyTimezoneArtifact = true;
-            }
-            else if (minutesDifference % 60 == 30)
-            {
-                isLikelyTimezoneArtifact = true;
-            }
-            else if (minutesDifference % 60 == 45)
-            {
-                isLikelyTimezoneArtifact = true;
-            }
-
-            if (apiTime > localTime && !isLikelyTimezoneArtifact)
-            {
-                Console.WriteLine($"Update found for '{details.Title}' ({mod.SteamId}). API: {apiUpdateTimeUtc}, Local: {localUpdateTimeUtc}");
+                Debug.WriteLine($"Update found for '{details.Title}' ({mod.SteamId}). API UTC: {apiUpdateTimeUtc:O}, Local UTC: {localUpdateTimeUtc:O}");
                 result.IncrementUpdatesFound();
 
                 var modInfo = new ModInfoDto
@@ -188,19 +227,33 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                     Name = details.Title ?? mod.Name,
                     SteamId = mod.SteamId,
                     Url = $"https://steamcommunity.com/sharedfiles/filedetails/?id={mod.SteamId}",
-                    // Changed format to include comma after month
-                    PublishDate = apiUpdateTimeUtc.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture),
-                    StandardDate = apiUpdateTimeUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                    PublishDate = apiUpdateTimeOffset.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture), // Use API Offset for original TZ if needed, or UTC
+                    StandardDate = apiUpdateTimeUtc.ToString(LocalDateFormat, CultureInfo.InvariantCulture) // Store consistent format (UTC recommended)
                 };
 
-                await Task.Run(() =>
+                try
                 {
-                    _downloadQueueService.AddToQueue(modInfo);
-                });
+                     // Add to queue (Assuming AddToQueue is thread-safe or handled appropriately by the service)
+                     // This operation should ideally be quick. If not, consider making it async and cancellable too.
+                     _downloadQueueService.AddToQueue(modInfo);
+                }
+                catch (Exception ex)
+                {
+                     // Handle potential errors adding to the queue
+                     result.IncrementErrorsEncountered();
+                     errorMessages.Add($"Failed to add updated mod '{mod.Name}' ({mod.SteamId}) to queue: {ex.Message}");
+                     Debug.WriteLine($"Error adding mod {mod.SteamId} to queue: {ex}");
+                     // Decrement updates found since it wasn't successfully queued? Optional, depends on desired reporting.
+                     // result.DecrementUpdatesFound(); // Need to implement DecrementUpdatesFound if needed
+                }
             }
-
-
+            else
+            {
+                 Debug.WriteLine($"Mod '{details.Title}' ({mod.SteamId}) is up-to-date. API UTC: {apiUpdateTimeUtc:O}, Local UTC: {localUpdateTimeUtc:O}");
+            }
         }
+
+        // (TryParseLocalDate method remains the same)
         private bool TryParseLocalDate(string dateString, out DateTime utcDateTime)
         {
             utcDateTime = default;
@@ -215,18 +268,18 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 }
                 else
                 {
-                    Console.WriteLine($"Failed to parse date string '{dateString}' with format '{LocalDateFormat}'.");
+                    Debug.WriteLine($"Failed to parse date string '{dateString}' with format '{LocalDateFormat}'.");
                     return false;
                 }
             }
             catch (FormatException ex)
             {
-                Console.WriteLine($"Format exception parsing date '{dateString}': {ex.Message}");
+                Debug.WriteLine($"Format exception parsing date '{dateString}': {ex.Message}");
                 return false;
             }
             catch (Exception ex) // Catch other potential exceptions during parsing/conversion
             {
-                Console.WriteLine($"Unexpected error parsing date '{dateString}': {ex.Message}");
+                Debug.WriteLine($"Unexpected error parsing date '{dateString}': {ex.Message}");
                 return false;
             }
         }

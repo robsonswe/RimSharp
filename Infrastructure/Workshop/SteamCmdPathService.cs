@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.IO;
 using System.Threading.Tasks;
@@ -63,8 +64,9 @@ namespace RimSharp.Infrastructure.Workshop
             if (string.IsNullOrWhiteSpace(prefixPath)) return;
             _steamCmdPrefixPath = prefixPath;
             _configService.SetConfigValue(SteamCmdPrefixConfigKey, prefixPath);
-            _configService.SaveConfig(); // Persist change
+            await Task.Run(() => _configService.SaveConfig()); // Make config saving asynchronous
             InitializePaths(); // Re-calculate all derived paths
         }
+
     }
 }

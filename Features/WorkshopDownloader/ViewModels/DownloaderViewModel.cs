@@ -1,40 +1,44 @@
+#nullable enable
 using System;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
-using Microsoft.Web.WebView2.Wpf; // <<< CHANGED
+using Microsoft.Web.WebView2.Wpf;
 using RimSharp.Core.Commands;
 using RimSharp.Features.WorkshopDownloader.Models;
 using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.MyApp.AppFiles;
-using RimSharp.Shared.Services.Contracts; // Add this for IModService, IDialogService
-using System.Net.Http; // Required if injecting HttpClient directly, better via factory if possible
-using System.Collections.Generic; // Required for List
+using RimSharp.Shared.Services.Contracts;
+using System.Net.Http;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
 using RimSharp.Shared.Models;
 using RimSharp.MyApp.Dialogs;
-using System.Threading; // Required for Task
-using RimSharp.Infrastructure.Workshop; // <<< ADDED for SteamCmdDownloadResult
-using System.Diagnostics; // <<< For Debug.WriteLine
+using System.Threading;
+using RimSharp.Infrastructure.Workshop;
+using System.Diagnostics;
 
 namespace RimSharp.Features.WorkshopDownloader.ViewModels
 {
     public class DownloaderViewModel : ViewModelBase
     {
         private readonly IWebNavigationService _navigationService;
-        private readonly IDownloadQueueService _queueService;
-        // Keep IModExtractorService interface, the implementation detail changes
-        private IModExtractorService _extractorService;
-        private string _statusMessage;
+        private readonly IDownloadQueueService _queueService = null!;
 
-        private readonly IModService _modService; // To get the list of installed mods
-        private readonly IDialogService _dialogService; // To show the update check dialog
-        private readonly IWorkshopUpdateCheckerService _updateCheckerService; // To perform the update check
+        private IModExtractorService? _extractorService;
+        private string _statusMessage = string.Empty; // Initialize with empty string
+
+        private readonly IModService _modService;
+        private readonly IDialogService _dialogService;
+        private readonly IWorkshopUpdateCheckerService _updateCheckerService;
         private readonly ISteamCmdService _steamCmdService;
 
-        private Microsoft.Web.WebView2.Wpf.WebView2 _webView;
-        private CancellationTokenSource _currentOperationCts;
+        // Make WebView nullable since it's set after construction
+        private Microsoft.Web.WebView2.Wpf.WebView2? _webView;
+        // Make CancellationTokenSource nullable
+        private CancellationTokenSource? _currentOperationCts;
 
+        // Use null conditional operator for safe access to possibly null _extractorService
         public bool IsModInfoAvailable => _extractorService?.IsModInfoAvailable ?? false;
 
         public bool IsOperationInProgress => _currentOperationCts != null;
@@ -67,7 +71,8 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
         public ICommand CancelOperationCommand { get; }
         private static int _canExecuteCheckCounter = 0;
 
-                public DownloaderViewModel(
+
+        public DownloaderViewModel(
             IWebNavigationService navigationService,
             IDownloadQueueService queueService,
             IModService modService,
@@ -84,15 +89,17 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
 
             // --- Event Handlers ---
             _navigationService.StatusChanged += (s, message) => StatusMessage = message;
+
+            // Fix event handler method signatures to handle nullable sender
             _navigationService.NavigationStateChanged += NavigationService_NavigationStateChanged;
             _navigationService.ModUrlValidityChanged += NavigationService_ModUrlValidityChanged;
             _navigationService.NavigationSucceededAndUrlValid += NavigationService_NavigationSucceededAndUrlValid;
 
-            // REMOVED: _navigationService.ModInfoAvailabilityChanged += (s, available) => { ... }
-
             _queueService.StatusChanged += (s, message) => StatusMessage = message;
-            _queueService.Items.CollectionChanged += (s, e) => ((RelayCommand)DownloadCommand).RaiseCanExecuteChanged();
-
+            if (_queueService?.Items != null && DownloadCommand is RelayCommand relayCommand)
+            {
+                _queueService.Items.CollectionChanged += (s, e) => relayCommand.RaiseCanExecuteChanged();
+            }
 
             // --- Initialize Commands ---
             GoBackCommand = new RelayCommand(_ => _navigationService.GoBack(), _ => CanGoBack && !IsOperationInProgress);
@@ -102,11 +109,14 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             // CanExecute logic remains the same, but the notification mechanism changes
             AddModCommand = new RelayCommand(ExecuteAddModCommand, _ => CanExecuteAddModCommand());
 
-
-
             RemoveItemCommand = new RelayCommand(
-                param => _queueService.RemoveFromQueue(param as DownloadItem),
+                param =>
+                {
+                    if (_queueService is not null && param is DownloadItem item)
+                        _queueService.RemoveFromQueue(item);
+                },
                 _ => !IsOperationInProgress);
+
             CheckUpdatesCommand = new RelayCommand(
                 async _ => await ExecuteCheckUpdatesCommand(),
                 param => CanExecuteCheckUpdates(param) && !IsOperationInProgress);
@@ -120,11 +130,9 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             CancelOperationCommand = new RelayCommand(ExecuteCancelOperation, CanExecuteCancelOperation);
 
             // --- Initial State ---
-             ((RelayCommand)DownloadCommand).RaiseCanExecuteChanged(); // Initial check
-             // UpdateSteamCmdReadyStatus(); // Call this async potentially after constructor
-             Task.Run(UpdateSteamCmdReadyStatus); // Fire and forget check on startup
+            ((RelayCommand)DownloadCommand).RaiseCanExecuteChanged(); // Initial check
+            Task.Run(UpdateSteamCmdReadyStatus); // Fire and forget check on startup
         }
-
 
         private bool CanExecuteAddModCommand()
         {
@@ -138,21 +146,21 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             bool isOperationRunning = this.IsOperationInProgress; // Check the property
 
             // Log the values
-            Debug.WriteLine($"[CanExecuteAddMod #{checkId}] Checking...");
-            Debug.WriteLine($"    --> IsValidModUrl:       {isValidUrl}");
-            Debug.WriteLine($"    --> IsModInfoAvailable:  {isInfoAvailable}");
-            Debug.WriteLine($"    --> IsOperationInProgress: {isOperationRunning}"); // Log the property value
+           // Debug.WriteLine($"[CanExecuteAddMod #{checkId}] Checking...");
+           // Debug.WriteLine($"    --> IsValidModUrl:       {isValidUrl}");
+            //Debug.WriteLine($"    --> IsModInfoAvailable:  {isInfoAvailable}");
+            //Debug.WriteLine($"    --> IsOperationInProgress: {isOperationRunning}"); // Log the property value
 
             // Calculate the result
             bool canExecute = isValidUrl && isInfoAvailable && !isOperationRunning;
 
             // Log the final result
-            Debug.WriteLine($"    ==> Result:              {canExecute}");
+            //Debug.WriteLine($"    ==> Result:              {canExecute}");
 
             return canExecute;
         }
 
-        private async void NavigationService_NavigationSucceededAndUrlValid(object sender, string url)
+        private async void NavigationService_NavigationSucceededAndUrlValid(object? sender, string url)
         {
             // This event means we are on a page that *could* contain mod info
             // Let's try and extract it now.
@@ -186,30 +194,29 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             }
             else
             {
-                 Debug.WriteLine("[DownloaderVM] Warning: NavigationSucceededAndUrlValid fired but _extractorService is null.");
+                Debug.WriteLine("[DownloaderVM] Warning: NavigationSucceededAndUrlValid fired but _extractorService is null.");
             }
         }
 
-
-                   private void SetOperationInProgress(bool inProgress)
+        private void SetOperationInProgress(bool inProgress)
         {
-            CancellationTokenSource previousCts = _currentOperationCts;
+            CancellationTokenSource? previousCts = _currentOperationCts;
 
             bool changed = false;
             if (inProgress && _currentOperationCts == null)
             {
-                 _currentOperationCts = new CancellationTokenSource();
-                 changed = true;
-                 Debug.WriteLine("[DownloaderVM] SetOperationInProgress(true)");
+                _currentOperationCts = new CancellationTokenSource();
+                changed = true;
+                Debug.WriteLine("[DownloaderVM] SetOperationInProgress(true)");
             }
             else if (!inProgress && _currentOperationCts != null)
             {
-                 _currentOperationCts = null; // Set to null *before* notifying property change
-                 changed = true;
-                 Debug.WriteLine("[DownloaderVM] SetOperationInProgress(false)");
+                _currentOperationCts = null; // Set to null *before* notifying property change
+                changed = true;
+                Debug.WriteLine("[DownloaderVM] SetOperationInProgress(false)");
             }
 
-            if(changed)
+            if (changed)
             {
                 OnPropertyChanged(nameof(IsOperationInProgress));
                 Debug.WriteLine("[DownloaderVM] IsOperationInProgress changed. Refreshing command states...");
@@ -218,63 +225,59 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             }
         }
 
-
         private void RefreshCommandStates()
         {
-             RunOnUIThread(() => // Ensure UI thread for command updates
-             {
-                                Debug.WriteLine("[DownloaderVM] Refreshing all command states...");
-                 ((RelayCommand)GoBackCommand).RaiseCanExecuteChanged();
-                 ((RelayCommand)GoForwardCommand).RaiseCanExecuteChanged();
-                 ((RelayCommand)GoHomeCommand).RaiseCanExecuteChanged();
-                 ((RelayCommand)AddModCommand).RaiseCanExecuteChanged();
-                 ((RelayCommand)RemoveItemCommand).RaiseCanExecuteChanged();
-                 ((RelayCommand)CheckUpdatesCommand).RaiseCanExecuteChanged();
-                 ((RelayCommand)NavigateToUrlCommand).RaiseCanExecuteChanged();
-                 ((RelayCommand)SetupSteamCmdCommand).RaiseCanExecuteChanged();
-                 ((RelayCommand)DownloadCommand).RaiseCanExecuteChanged();
-                 ((RelayCommand)CancelOperationCommand).RaiseCanExecuteChanged();
-             });
+            RunOnUIThread(() => // Ensure UI thread for command updates
+            {
+                Debug.WriteLine("[DownloaderVM] Refreshing all command states...");
+                ((RelayCommand)GoBackCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)GoForwardCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)GoHomeCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)AddModCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)RemoveItemCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)CheckUpdatesCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)NavigateToUrlCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)SetupSteamCmdCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)DownloadCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)CancelOperationCommand).RaiseCanExecuteChanged();
+            });
         }
 
-
-        private void NavigationService_NavigationStateChanged(object sender, EventArgs e)
+        private void NavigationService_NavigationStateChanged(object? sender, EventArgs e)
         {
-             RunOnUIThread(() => // Ensure UI thread for property changes
-             {
-                 OnPropertyChanged(nameof(CanGoBack));
-                 OnPropertyChanged(nameof(CanGoForward));
-                 ((RelayCommand)GoBackCommand).RaiseCanExecuteChanged();
-                 ((RelayCommand)GoForwardCommand).RaiseCanExecuteChanged();
-             });
+            RunOnUIThread(() => // Ensure UI thread for property changes
+            {
+                OnPropertyChanged(nameof(CanGoBack));
+                OnPropertyChanged(nameof(CanGoForward));
+                ((RelayCommand)GoBackCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)GoForwardCommand).RaiseCanExecuteChanged();
+            });
         }
 
-        private void NavigationService_ModUrlValidityChanged(object sender, bool isValid)
+        private void NavigationService_ModUrlValidityChanged(object? sender, bool isValid)
         {
-             RunOnUIThread(() => // Ensure UI thread
-             {
-                 OnPropertyChanged(nameof(IsValidModUrl));
-                 // Need to raise CanExecuteChanged for commands depending on IsValidModUrl
-                 Debug.WriteLine($"[DownloaderVM] ModUrlValidityChanged: {isValid}. Raising CanExecuteChanged for AddModCommand.");
-                 ((RelayCommand)AddModCommand).RaiseCanExecuteChanged();
-             });
+            RunOnUIThread(() => // Ensure UI thread
+            {
+                OnPropertyChanged(nameof(IsValidModUrl));
+                // Need to raise CanExecuteChanged for commands depending on IsValidModUrl
+                Debug.WriteLine($"[DownloaderVM] ModUrlValidityChanged: {isValid}. Raising CanExecuteChanged for AddModCommand.");
+                ((RelayCommand)AddModCommand).RaiseCanExecuteChanged();
+            });
         }
 
         // NEW Handler for the extractor service event
-        private void ExtractorService_IsModInfoAvailableChanged(object sender, EventArgs e)
+        private void ExtractorService_IsModInfoAvailableChanged(object? sender, EventArgs e)
         {
-             RunOnUIThread(() => // Ensure UI thread
-             {
-                 OnPropertyChanged(nameof(IsModInfoAvailable));
-                 Debug.WriteLine($"[DownloaderVM] ExtractorService_IsModInfoAvailableChanged: {IsModInfoAvailable}. Raising CanExecuteChanged for AddModCommand.");
-                 ((RelayCommand)AddModCommand).RaiseCanExecuteChanged();
-             });
+            RunOnUIThread(() => // Ensure UI thread
+            {
+                OnPropertyChanged(nameof(IsModInfoAvailable));
+                Debug.WriteLine($"[DownloaderVM] ExtractorService_IsModInfoAvailableChanged: {IsModInfoAvailable}. Raising CanExecuteChanged for AddModCommand.");
+                ((RelayCommand)AddModCommand).RaiseCanExecuteChanged();
+            });
         }
 
-
-
         // Change the parameter type to the WPF WebView2
-                public void SetWebView(Microsoft.Web.WebView2.Wpf.WebView2 webView)
+        public void SetWebView(Microsoft.Web.WebView2.Wpf.WebView2 webView)
         {
             _webView = webView;
             _navigationService.SetWebView(webView); // Navigation service still needs it
@@ -312,7 +315,7 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             });
         }
 
-        private bool CanExecuteSetupSteamCmd(object parameter) => !IsOperationInProgress;
+        private bool CanExecuteSetupSteamCmd(object? parameter) => !IsOperationInProgress;
 
         private async Task ExecuteSetupSteamCmdCommand()
         {
@@ -321,11 +324,13 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             ProgressDialogViewModel? progressDialog = null;
             SetOperationInProgress(true);
 
-            _currentOperationCts = new CancellationTokenSource();
-            ((RelayCommand)SetupSteamCmdCommand).RaiseCanExecuteChanged(); // Disable setup btn
-            ((RelayCommand)DownloadCommand).RaiseCanExecuteChanged(); // Disable download btn
-            ((RelayCommand)CancelOperationCommand).RaiseCanExecuteChanged(); // Enable cancel btn
-
+            // _currentOperationCts = new CancellationTokenSource(); // SetOperationInProgress(true) handles this
+            RunOnUIThread(() =>
+            { // Use RunOnUIThread for command state changes affecting UI
+                ((RelayCommand)SetupSteamCmdCommand).RaiseCanExecuteChanged(); // Disable setup btn
+                ((RelayCommand)DownloadCommand).RaiseCanExecuteChanged(); // Disable download btn
+                ((RelayCommand)CancelOperationCommand).RaiseCanExecuteChanged(); // Enable cancel btn
+            });
 
             try
             {
@@ -335,6 +340,7 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
                     true); // Can Cancel
 
                 // Link progress dialog cancellation to our token
+                // The Cancelled event is raised by OnCancel BEFORE closing
                 progressDialog.Cancelled += (s, e) => _currentOperationCts?.Cancel();
 
                 var progressReporter = new Progress<string>(message =>
@@ -344,56 +350,57 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
                 });
 
                 StatusMessage = "Running SteamCMD Setup...";
-                bool success = await _steamCmdService.SetupAsync(progressReporter, _currentOperationCts.Token);
+                // Ensure _currentOperationCts is not null here
+                bool success = await _steamCmdService.SetupAsync(progressReporter, _currentOperationCts!.Token); // Use null-forgiving operator
 
                 if (success)
                 {
-                    progressDialog?.Complete("Setup completed successfully!");
+                    // Use the renamed method
+                    progressDialog?.CompleteOperation("Setup completed successfully!");
                     StatusMessage = "SteamCMD setup successful.";
                     _dialogService.ShowInformation("Setup Complete", "SteamCMD has been set up successfully.");
                 }
-                else if (!_currentOperationCts.IsCancellationRequested)
+                else if (_currentOperationCts?.IsCancellationRequested != true)
                 {
                     // Failure message already shown by service or progress reporter
-                    progressDialog?.Cancel("Setup failed. See previous messages for details.");
+                    // Use the renamed method
+                    progressDialog?.OnCancel("Setup failed. See previous messages for details.");
                     StatusMessage = "SteamCMD setup failed.";
                 }
                 else
                 {
                     // Cancellation message
-                    progressDialog?.Cancel("Setup cancelled by user.");
+                    // Use the renamed method
+                    progressDialog?.OnCancel("Setup cancelled by user.");
                     StatusMessage = "SteamCMD setup cancelled.";
                 }
             }
             catch (OperationCanceledException)
             {
-                progressDialog?.Cancel("Setup cancelled by user.");
+                // Use the renamed method
+                progressDialog?.OnCancel("Setup cancelled by user.");
                 StatusMessage = "SteamCMD setup cancelled.";
             }
             catch (Exception ex)
             {
                 StatusMessage = $"Error during SteamCMD setup: {ex.Message}";
-                progressDialog?.Cancel($"Error: {ex.Message}");
+                // Use the renamed method
+                progressDialog?.OnCancel($"Error: {ex.Message}");
                 _dialogService.ShowError("Setup Error", $"An unexpected error occurred during setup: {ex.Message}");
             }
             finally
             {
-                _currentOperationCts?.Dispose();
-                _currentOperationCts = null;
+                // _currentOperationCts?.Dispose(); // SetOperationInProgress(false) handles this
+                // _currentOperationCts = null;    // SetOperationInProgress(false) handles this
                 await UpdateSteamCmdReadyStatus(); // Refresh IsSteamCmdReady property
-                RunOnUIThread(() =>
-                { // Re-enable buttons
-                    ((RelayCommand)SetupSteamCmdCommand).RaiseCanExecuteChanged();
-                    ((RelayCommand)DownloadCommand).RaiseCanExecuteChanged();
-                    ((RelayCommand)CancelOperationCommand).RaiseCanExecuteChanged();
-                });
-                SetOperationInProgress(false);
-                progressDialog?.ForceClose(); // Ensure dialog closes if not already
+                SetOperationInProgress(false); // This handles CTS disposal and command refresh
+                // Use ForceClose in finally to ensure closure without re-triggering Cancelled event
+                progressDialog?.ForceClose();
             }
         }
 
 
-        private bool CanExecuteDownload(object parameter) => DownloadList.Any() && IsSteamCmdReady && !IsOperationInProgress; 
+        private bool CanExecuteDownload(object? parameter) => DownloadList.Any() && IsSteamCmdReady && !IsOperationInProgress;
 
         private async Task ExecuteDownloadCommand()
         {
@@ -561,9 +568,7 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             }
         }
 
-
-
-        private async void ExecuteAddModCommand(object parameter)
+        private async void ExecuteAddModCommand(object? parameter)
         {
             if (_extractorService == null)
             {
@@ -571,7 +576,7 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
                 return;
             }
             StatusMessage = "Extracting mod info...";
-            ModInfoDto modInfo = null; // Initialize
+            ModInfoDto? modInfo = null; // Initialize and make nullable
             try
             {
                 modInfo = await _extractorService.ExtractFullModInfo();
@@ -596,7 +601,7 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             }
         }
 
-        private void ExecuteNavigateToUrlCommand(object url)
+        private void ExecuteNavigateToUrlCommand(object? url)
         {
             Console.WriteLine($"Command received: {url} (type: {url?.GetType().Name})");
 
@@ -620,7 +625,7 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             }
         }
 
-        private bool CanExecuteCheckUpdates(object parameter)
+        private bool CanExecuteCheckUpdates(object? parameter)
         {
             // Enable if the mod service has loaded some mods
             // More specific: enable if there are workshop mods loaded
@@ -636,13 +641,12 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             }
         }
 
-
         private async Task ExecuteCheckUpdatesCommand()
         {
             StatusMessage = "Gathering installed workshop mods...";
             List<ModItem> workshopMods;
             if (IsOperationInProgress) return;
-            SetOperationInProgress(true);
+            SetOperationInProgress(true); // This now sets _currentOperationCts and refreshes commands
 
             try
             {
@@ -655,7 +659,8 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             catch (Exception ex)
             {
                 StatusMessage = $"Error loading mod list: {ex.Message}";
-                Console.WriteLine($"Error getting mods for update check: {ex}");
+                Debug.WriteLine($"Error getting mods for update check: {ex}");
+                SetOperationInProgress(false); // Ensure state is reset on early exit
                 return;
             }
 
@@ -663,6 +668,7 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             {
                 StatusMessage = "No installed Steam Workshop mods found to check.";
                 _dialogService.ShowInformation("Check Updates", "No installed Steam Workshop mods were found in your mods folder.");
+                SetOperationInProgress(false); // Ensure state is reset on early exit
                 return;
             }
 
@@ -673,6 +679,7 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             if (dialogResult != UpdateCheckDialogResult.CheckUpdates)
             {
                 StatusMessage = "Update check cancelled.";
+                SetOperationInProgress(false); // Ensure state is reset on early exit
                 return;
             }
 
@@ -680,95 +687,126 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             if (!selectedMods.Any())
             {
                 StatusMessage = "No mods were selected for update check.";
+                SetOperationInProgress(false); // Ensure state is reset on early exit
                 return;
             }
 
             StatusMessage = $"Checking {selectedMods.Count} mod(s) for updates...";
 
             // Create and show progress dialog
-            ProgressDialogViewModel progressDialog = null;
-            IProgress<(int current, int total, string modName)> progress = null;
+            ProgressDialogViewModel? progressDialog = null;
+            IProgress<(int current, int total, string modName)>? progress = null;
+
+            // Link dialog cancellation to the CTS (SetOperationInProgress created _currentOperationCts)
+            _currentOperationCts!.Token.Register(() => progressDialog?.OnCancel("Update check cancelled by user."));
+
 
             try
             {
                 progressDialog = _dialogService.ShowProgressDialog(
                     "Checking for Updates",
                     "Preparing to check mods...",
-                    true);
+                    true); // Can Cancel
+
+                // Link progress dialog's *explicit* cancel button click to our token source
+                progressDialog.Cancelled += (s, e) => _currentOperationCts?.Cancel();
+
 
                 progress = new Progress<(int current, int total, string modName)>(update =>
                 {
-                    progressDialog.Message = $"Checking {update.modName}... ({update.current}/{update.total})";
-                    progressDialog.Progress = (int)((double)update.current / update.total * 100);
+                    if (progressDialog != null)
+                    {
+                        progressDialog.Message = $"Checking {update.modName}... ({update.current}/{update.total})";
+                        progressDialog.Progress = (int)((double)update.current / update.total * 100);
+                        progressDialog.IsIndeterminate = false; // Show determinate progress
+                    }
 
                     // Update status message in main window too
                     StatusMessage = $"Checking {update.modName} ({update.current} of {update.total})...";
                 });
 
-                // Perform the update check
-                var updateResult = await _updateCheckerService.CheckForUpdatesAsync(selectedMods, progress);
+                // Perform the update check (Ensure _currentOperationCts is not null)
+                var updateResult = await _updateCheckerService.CheckForUpdatesAsync(selectedMods, progress, _currentOperationCts!.Token); // Pass token
 
-                // Close progress dialog
-                progressDialog.Complete();
-                progressDialog = null;
-
-                // Report results
-                string summary = $"Update check complete. Checked: {updateResult.ModsChecked}. Updates found: {updateResult.UpdatesFound}.";
-                if (updateResult.ErrorsEncountered > 0)
+                // Close progress dialog ONLY IF NOT CANCELLED
+                if (_currentOperationCts?.IsCancellationRequested != true)
                 {
-                    summary += $" Errors: {updateResult.ErrorsEncountered}.";
+                    // Use the renamed method
+                    progressDialog?.CompleteOperation("Update check finished."); // FIX HERE
+                }
+                // No need to explicitly null progressDialog here, the try-finally handles it
 
-                    // Show first 3 errors if there are many
-                    var errorSample = updateResult.ErrorMessages.Take(3).ToList();
-                    var errorMessage = string.Join("\n", errorSample);
-
-                    if (updateResult.ErrorMessages.Count > 3)
+                // Report results (only if not cancelled)
+                if (_currentOperationCts?.IsCancellationRequested != true)
+                {
+                    string summary = $"Update check complete. Checked: {updateResult.ModsChecked}. Updates found: {updateResult.UpdatesFound}.";
+                    if (updateResult.ErrorsEncountered > 0)
                     {
-                        errorMessage += $"\n(and {updateResult.ErrorsEncountered - 3} more errors...)";
+                        summary += $" Errors: {updateResult.ErrorsEncountered}.";
+
+                        // Show first 3 errors if there are many
+                        var errorSample = updateResult.ErrorMessages.Take(3).ToList();
+                        var errorMessage = string.Join("\n", errorSample);
+
+                        if (updateResult.ErrorMessages.Count > 3)
+                        {
+                            errorMessage += $"\n(and {updateResult.ErrorMessages.Count - 3} more errors...)";
+                        }
+
+                        _dialogService.ShowWarning("Update Check Errors",
+                            $"Encountered {updateResult.ErrorsEncountered} error(s) during the update check.\n\n{errorMessage}");
                     }
 
-                    _dialogService.ShowWarning("Update Check Errors",
-                        $"Encountered {updateResult.ErrorsEncountered} error(s) during the update check.\n\n{errorMessage}");
-                }
+                    StatusMessage = summary;
 
-                StatusMessage = summary;
-
-                if (updateResult.UpdatesFound > 0)
-                {
-                    _dialogService.ShowInformation("Updates Found",
-                        $"Found {updateResult.UpdatesFound} mod(s) with updates available. They have been added to the download queue.");
+                    if (updateResult.UpdatesFound > 0)
+                    {
+                        _dialogService.ShowInformation("Updates Found",
+                            $"Found {updateResult.UpdatesFound} mod(s) with updates available. They have been added to the download queue.");
+                    }
+                    else
+                    {
+                        _dialogService.ShowInformation("No Updates Found",
+                            "All selected mods are up to date.");
+                    }
                 }
                 else
                 {
-                    _dialogService.ShowInformation("No Updates Found",
-                        "All selected mods are up to date.");
+                    // Was cancelled
+                    StatusMessage = "Update check cancelled.";
+                    _dialogService.ShowInformation("Cancelled", "The update check was cancelled.");
                 }
+
+
             }
             catch (OperationCanceledException)
             {
-                // User cancelled the operation
-                progressDialog?.Cancel();
+                // User cancelled the operation (via button or token)
+                // Use the renamed method
+                progressDialog?.OnCancel("Update check was cancelled."); // FIX HERE
                 StatusMessage = "Update check was cancelled.";
                 _dialogService.ShowInformation("Cancelled", "The update check was cancelled.");
             }
             catch (Exception ex)
             {
-                progressDialog?.Cancel();
+                // Use the renamed method
+                progressDialog?.OnCancel($"Error: {ex.Message}"); // FIX HERE
                 StatusMessage = $"An error occurred during the update check process: {ex.Message}";
-                Console.WriteLine($"Error executing update check: {ex}");
+                Debug.WriteLine($"Error executing update check: {ex}");
                 _dialogService.ShowError("Update Check Failed", $"An unexpected error occurred: {ex.Message}");
             }
             finally
             {
-                SetOperationInProgress(false);
-                progressDialog?.Cancel();
+                SetOperationInProgress(false); // Handles CTS disposal and command refresh
+                // Use ForceClose in finally to ensure closure without re-triggering Cancelled event
+                progressDialog?.ForceClose(); // FIX HERE (Replaces Cancel)
             }
         }
 
-        private bool CanExecuteCancelOperation(object parameter) => IsOperationInProgress && _currentOperationCts != null && !_currentOperationCts.IsCancellationRequested; // Simplified check
 
+        private bool CanExecuteCancelOperation(object? parameter) => IsOperationInProgress && _currentOperationCts != null && !_currentOperationCts.IsCancellationRequested;
 
-        private void ExecuteCancelOperation(object parameter)
+        private void ExecuteCancelOperation(object? parameter)
         {
             if (_currentOperationCts != null && !_currentOperationCts.IsCancellationRequested)
             {
@@ -805,11 +843,9 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
                 }
                 finally
                 {
-                    RunOnUIThread(() => ((RelayCommand)CancelOperationCommand).RaiseCanExecuteChanged()); // Disable button after requesting
+                    RunOnUIThread(() => ((RelayCommand)CancelOperationCommand).RaiseCanExecuteChanged());
                 }
             }
         }
-
-
     }
 }

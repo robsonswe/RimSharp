@@ -278,7 +278,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                     if (Directory.Exists(path))
                     {
                         Debug.WriteLine($"[DeleteDuplicateMods] Directory exists. Attempting to delete {modIdentifier}...");
-                        Directory.Delete(path, true); // Recursive delete
+                        await Task.Run(() => Directory.Delete(path, true));  // Recursive delete
                         Debug.WriteLine($"[DeleteDuplicateMods] Successfully deleted {modIdentifier}.");
                         if (modInfo != null) // Add to success list only if we know what mod it was
                         {
