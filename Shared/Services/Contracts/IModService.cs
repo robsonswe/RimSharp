@@ -32,5 +32,6 @@ namespace RimSharp.Shared.Services.Contracts
         /// </summary>
         /// <returns>A <see cref="Task"/> representing the asynchronous loading operation.</returns>
         Task LoadModsAsync();
+        Task CreateTimestampFilesAsync(string steamId, string publishDate, string standardDate);
     }
 }
