@@ -62,8 +62,15 @@ jobs:
           -p:PublishReadyToRun=true `
           -p:EnableCompressionInSingleFile=true `
           --output ./publish
+
+        $folderName = "RimSharp"
         $zipName = "RimSharp_${{ steps.extract_tag.outputs.tag_name }}.zip"
-        Compress-Archive -Path ./publish/* -DestinationPath $zipName
+
+        New-Item -ItemType Directory -Path $folderName
+        Copy-Item -Path ./publish/* -Destination $folderName -Recurse
+
+        Compress-Archive -Path $folderName -DestinationPath $zipName
+
         echo "zip_name=$zipName" >> $env:GITHUB_OUTPUT
       id: publish
       shell: pwsh
