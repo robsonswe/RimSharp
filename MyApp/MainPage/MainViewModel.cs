@@ -9,7 +9,8 @@ using RimSharp.Shared.Services.Contracts;
 using RimSharp.Features.ModManager.ViewModels;
 using RimSharp.Features.WorkshopDownloader.ViewModels;
 using RimSharp.Shared.Models;
-using RimSharp.Infrastructure.Configuration; // Likely not needed if PathService handles config interaction
+using RimSharp.Infrastructure.Configuration;
+using System.Threading.Tasks; // Likely not needed if PathService handles config interaction
 
 namespace RimSharp.MyApp.MainPage
 {
@@ -56,6 +57,10 @@ namespace RimSharp.MyApp.MainPage
             ModsVM = modsViewModel;
             DownloaderVM = downloaderViewModel;
             // --- No longer creating ModsVM here ---
+            if (DownloaderVM != null)
+            {
+                DownloaderVM.DownloadCompletedAndRefreshNeeded += DownloaderVM_DownloadCompletedAndRefreshNeeded;
+            }
 
             // Initialize Path Settings (remains here as it's app-level config)
             PathSettings = new PathSettings
@@ -68,53 +73,7 @@ namespace RimSharp.MyApp.MainPage
             };
 
             // Listen for changes in PathSettings if they need to trigger updates elsewhere
-            PathSettings.PropertyChanged += (s, e) =>
-            {
-                OnPropertyChanged(nameof(PathSettings)); // Notify UI about PathSettings change
-
-                // Save to config when paths change via UI
-                string key = null;
-                string value = null;
-                bool refreshNeeded = false;
-
-                switch (e.PropertyName)
-                {
-                    case nameof(PathSettings.GamePath):
-                        key = "game_folder";
-                        value = PathSettings.GamePath;
-                        // Update derived setting
-                        PathSettings.GameVersion = _pathService.GetGameVersion(value);
-                        refreshNeeded = true; // Changing game path likely requires mod refresh
-                        break;
-                    case nameof(PathSettings.ConfigPath):
-                        key = "config_folder";
-                        value = PathSettings.ConfigPath;
-                        refreshNeeded = true; // Changing config path requires reading new ModsConfig.xml
-                        break;
-                    case nameof(PathSettings.ModsPath):
-                        key = "mods_folder";
-                        value = PathSettings.ModsPath;
-                        refreshNeeded = true; // Changing mods path requires mod refresh
-                        break;
-                }
-
-                if (key != null)
-                {
-                    _configService.SetConfigValue(key, value);
-                    _configService.SaveConfig(); // Consider debouncing saves if changes are frequent
-
-                    // Trigger refresh if needed AFTER saving
-                    if (refreshNeeded)
-                    {
-                        // Trigger the refresh logic (e.g., call RefreshData or specific refresh on ModsVM)
-                        // Use Task.Run for long ops, ensure UI updates on UI thread.
-                        // Using the RefreshCommand is a good way to centralize this.
-                        if (RefreshCommand.CanExecute(null)) RefreshCommand.Execute(null);
-                    }
-                    // Also notify CanExecuteChanged for commands depending on path validity
-                    ((RelayCommand)OpenFolderCommand).RaiseCanExecuteChanged();
-                }
-            };
+            PathSettings.PropertyChanged += PathSettings_PropertyChanged; 
 
             // Set the initial view
             CurrentViewModel = ModsVM; // Start with the Mods view
@@ -131,6 +90,80 @@ namespace RimSharp.MyApp.MainPage
             ((RelayCommand)OpenFolderCommand).RaiseCanExecuteChanged();
         }
         // --- END UPDATED CONSTRUCTOR ---
+
+        private void PathSettings_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(PathSettings));
+
+            string key = null;
+            string value = null;
+            bool refreshNeeded = false;
+
+            switch (e.PropertyName)
+            {
+                case nameof(PathSettings.GamePath):
+                    key = "game_folder";
+                    value = PathSettings.GamePath;
+                    PathSettings.GameVersion = _pathService.GetGameVersion(value);
+                    refreshNeeded = true;
+                    break;
+                case nameof(PathSettings.ConfigPath):
+                    key = "config_folder";
+                    value = PathSettings.ConfigPath;
+                    refreshNeeded = true;
+                    break;
+                case nameof(PathSettings.ModsPath):
+                    key = "mods_folder";
+                    value = PathSettings.ModsPath;
+                    refreshNeeded = true;
+                    break;
+            }
+
+            if (key != null && value != null) // Ensure value is not null before saving
+            {
+                _configService.SetConfigValue(key, value);
+                _configService.SaveConfig();
+
+                if (refreshNeeded)
+                {
+                    // Use Task.Run for potentially long-running refresh, but ensure ModsVM handles UI updates correctly
+                    // Calling the command ensures the status updates etc. happen too
+                     if (RefreshCommand.CanExecute(null)) RefreshCommand.Execute(null);
+                    // Alternative: Direct call if RefreshCommand has other side effects you want to avoid here
+                    // _ = ModsVM?.RefreshDataAsync();
+                }
+                ((RelayCommand)OpenFolderCommand).RaiseCanExecuteChanged();
+            }
+        }
+
+
+        private void DownloaderVM_DownloadCompletedAndRefreshNeeded(object? sender, EventArgs e)
+        {
+            // This event might be raised on a background thread from DownloaderVM.
+            // RefreshDataAsync in ModsVM should be designed to handle this (e.g., use Dispatcher for UI updates).
+            StatusMessage = "Download complete. Refreshing mod list...";
+            Console.WriteLine("[MainViewModel] Received DownloadCompletedAndRefreshNeeded event. Triggering ModsVM refresh.");
+
+            // Trigger the refresh logic. Calling the RefreshCommand ensures consistent behavior (status updates, etc.)
+            // Ensure RefreshCommand's Execute method (RefreshData) eventually calls ModsVM.RefreshDataAsync()
+            if (RefreshCommand.CanExecute(null))
+            {
+                // Execute the command. Consider if RefreshData does too much (like path reloads)
+                // If RefreshData is heavy, call ModsVM refresh directly:
+                 _ = ModsVM?.RefreshDataAsync();
+                 StatusMessage = "Mod list refresh initiated."; // Update status after triggering
+            }
+            else
+            {
+                Console.WriteLine("[MainViewModel] RefreshCommand cannot execute, attempting direct refresh.");
+                 // Fallback to direct call if command can't execute for some reason
+                _ = ModsVM?.RefreshDataAsync();
+                StatusMessage = "Mod list refresh initiated (direct call).";
+            }
+
+            // Maybe add a small delay before clearing the status message
+            Task.Delay(2000).ContinueWith(t => { if (StatusMessage == "Mod list refresh initiated." || StatusMessage == "Mod list refresh initiated (direct call).") StatusMessage = "Ready"; }, TaskScheduler.FromCurrentSynchronizationContext());
+        }
 
 
         private void OpenFolder(object parameter)
@@ -282,37 +315,41 @@ namespace RimSharp.MyApp.MainPage
         }
 
         // Centralized refresh logic
-        private void RefreshData(object parameter)
+                private void RefreshData(object? parameter) // Make parameter nullable
         {
-            StatusMessage = "Refreshing paths and mod data..."; // Use StatusMessage if MainViewModel has one
+            StatusMessage = "Refreshing paths and mod data...";
+            Console.WriteLine("[MainViewModel] RefreshData executing..."); // Debug log
 
-            // 1. Refresh paths from config (in case config was edited externally)
-            _pathService.RefreshPaths(); // Assuming PathService can refresh its internal state from ConfigService
+            // 1. Refresh paths (Optional here if only mods changed, but good for consistency)
+             _pathService.RefreshPaths();
 
             // 2. Update PathSettings properties from the refreshed service state
-            // Use temporary variables to avoid excessive PropertyChanged triggers if values are the same
             string tempGame = _pathService.GetGamePath();
             string tempConfig = _pathService.GetConfigPath();
             string tempMods = _pathService.GetModsPath();
-            string tempVersion = _pathService.GetGameVersion(tempGame); // Get version based on potentially new path
+            string tempVersion = _pathService.GetGameVersion(tempGame);
 
-            // Assign properties. The PropertyChanged event will only fire if the value *actually* changes.
-            // No need for the 'changed' flag here if subsequent actions always run.
-            if (PathSettings.GamePath != tempGame) { PathSettings.GamePath = tempGame; }
-            if (PathSettings.ConfigPath != tempConfig) { PathSettings.ConfigPath = tempConfig; }
-            if (PathSettings.ModsPath != tempMods) { PathSettings.ModsPath = tempMods; }
-            if (PathSettings.GameVersion != tempVersion) { PathSettings.GameVersion = tempVersion; } // Update version display
+            bool pathChanged = false;
+             if (PathSettings.GamePath != tempGame) { PathSettings.GamePath = tempGame; pathChanged = true; }
+             if (PathSettings.ConfigPath != tempConfig) { PathSettings.ConfigPath = tempConfig; pathChanged = true; }
+             if (PathSettings.ModsPath != tempMods) { PathSettings.ModsPath = tempMods; pathChanged = true; }
+             if (PathSettings.GameVersion != tempVersion) { PathSettings.GameVersion = tempVersion; } // Always update version display
 
-            // 3. Trigger data refresh in the relevant sub-viewmodel (ModsVM)
-            // Use async void is acceptable for top-level command handlers if you handle loading state in ModsVM
-            _ = ModsVM?.RefreshDataAsync();
+            // 3. Trigger data refresh in the ModsViewModel
+            // The ModsVM refresh should handle loading mods based on the *current* paths
+            _ = ModsVM?.RefreshDataAsync(); // Fire and forget async call
 
             // 4. Update CanExecute state for commands dependent on paths
-            ((RelayCommand)OpenFolderCommand).RaiseCanExecuteChanged();
+             if(pathChanged) // Only update if paths actually changed during THIS refresh
+             {
+                ((RelayCommand)OpenFolderCommand).RaiseCanExecuteChanged();
+             }
 
-            StatusMessage = "Refresh complete."; // Update status
-            Console.WriteLine("RefreshData executed."); // Debug log
+            // Clear status after a short delay
+            Task.Delay(1500).ContinueWith(t => { if (StatusMessage == "Refreshing paths and mod data...") StatusMessage = "Refresh complete."; }, TaskScheduler.FromCurrentSynchronizationContext());
+            Console.WriteLine("[MainViewModel] RefreshData finished."); // Debug log
         }
+
 
         // Optional: Add a StatusMessage property if MainViewModel controls a status bar
         private string _statusMessage = "Ready";

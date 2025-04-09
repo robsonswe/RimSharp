@@ -70,7 +70,7 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
         public ICommand NavigateToUrlCommand { get; }
         public ICommand CancelOperationCommand { get; }
         private static int _canExecuteCheckCounter = 0;
-
+        public event EventHandler? DownloadCompletedAndRefreshNeeded;
 
         public DownloaderViewModel(
             IWebNavigationService navigationService,
@@ -441,6 +441,7 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
 
             SteamCmdDownloadResult? downloadResult = null;
             bool validateDownloads = false; // Or get from settings/UI if needed
+            bool refreshIsNeeded = false;
 
             try
             {
@@ -477,6 +478,7 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
                             );
                             Debug.WriteLine($"Timestamp files task created for {successItem.Name} ({successItem.SteamId})");
                             successCount++;
+                            refreshIsNeeded = true; 
 
                             // Remove from the queue ON THE UI THREAD
                             RunOnUIThread(() => _queueService.RemoveFromQueue(successItem));
@@ -494,6 +496,13 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
 
                 // Failed items are already determined by SteamCmdDownloader (those not in SucceededItems)
                 failCount = downloadResult.FailedItems.Count; // Use the count from the result
+
+                if (refreshIsNeeded)
+                {
+                    Debug.WriteLine("Raising DownloadCompletedAndRefreshNeeded event.");
+                    DownloadCompletedAndRefreshNeeded?.Invoke(this, EventArgs.Empty);
+                }
+
 
                 // --- Final Reporting ---
                 string summary;
