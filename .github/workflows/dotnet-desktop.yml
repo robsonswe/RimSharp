@@ -1,0 +1,96 @@
+name: .NET Core WPF Build and Release - RimSharp
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      Project_Path: rimsharp/RimSharp.csproj
+    outputs:
+      tag_name: ${{ steps.extract_tag.outputs.tag_name }}
+      is_prerelease: ${{ steps.check_prerelease.outputs.is_prerelease }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Extract Tag Name
+      id: extract_tag
+      run: echo "tag_name=${{ github.ref_name }}" >> $env:GITHUB_OUTPUT
+      shell: pwsh
+
+    - name: Check for Pre-release
+      id: check_prerelease
+      run: |
+        if ("${{ github.ref_name }}" -match "-(alpha|beta|rc)") {
+          echo "is_prerelease=true" >> $env:GITHUB_OUTPUT
+        } else {
+          echo "is_prerelease=false" >> $env:GITHUB_OUTPUT
+        }
+      shell: pwsh
+
+    - name: Restore dependencies
+      run: dotnet restore $env:Project_Path
+
+    - name: Build solution
+      run: dotnet build $env:Project_Path --configuration Release --no-restore
+
+    - name: Execute unit tests
+      run: dotnet test $env:Project_Path --configuration Release --no-build
+
+    - name: Publish Release
+      run: |
+        dotnet publish $env:Project_Path `
+          -r win-x64 `
+          -c Release `
+          --self-contained true `
+          -p:PublishSingleFile=true `
+          -p:PublishReadyToRun=true `
+          -p:EnableCompressionInSingleFile=true `
+          --output ./publish
+        $zipName = "RimSharp_${{ steps.extract_tag.outputs.tag_name }}.zip"
+        Compress-Archive -Path ./publish/* -DestinationPath $zipName
+        echo "zip_name=$zipName" >> $env:GITHUB_OUTPUT
+      id: publish
+      shell: pwsh
+
+    - name: Upload Release Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: RimSharp_${{ steps.extract_tag.outputs.tag_name }}
+        path: ${{ steps.publish.outputs.zip_name }}
+
+  create-release:
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+    - name: Download Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: RimSharp_${{ needs.build.outputs.tag_name }}
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ needs.build.outputs.tag_name }}
+        name: RimSharp Release ${{ needs.build.outputs.tag_name }}
+        body: |
+          RimSharp WPF Application
+          Tag: ${{ needs.build.outputs.tag_name }}
+        prerelease: ${{ needs.build.outputs.is_prerelease == 'true' }}
+        files: RimSharp_${{ needs.build.outputs.tag_name }}.zip
