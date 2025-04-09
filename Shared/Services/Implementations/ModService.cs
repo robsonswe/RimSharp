@@ -62,6 +62,63 @@ namespace RimSharp.Shared.Services.Implementations
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
             _rulesService = rulesService ?? throw new ArgumentNullException(nameof(rulesService));
         }
+        #region Timestamp File Creation
+
+        /// <summary>
+        /// Creates the DateStamp and timestamp.txt files for a successfully downloaded mod.
+        /// </summary>
+        public async Task CreateTimestampFilesAsync(string steamId, string publishDate, string standardDate)
+        {
+            if (string.IsNullOrWhiteSpace(steamId) || !long.TryParse(steamId, out _))
+            {
+                Debug.WriteLine($"[CreateTimestampFilesAsync] Invalid SteamId provided: '{steamId}'");
+                return; // Invalid input
+            }
+
+            // Normalize dates to prevent issues, use fallback if null/empty
+            string finalPublishDate = string.IsNullOrWhiteSpace(publishDate) ? DateTime.UtcNow.ToString("d MMM yyyy @ h:mmtt", CultureInfo.InvariantCulture) : publishDate.Trim();
+            string finalStandardDate = string.IsNullOrWhiteSpace(standardDate) ? DateTime.UtcNow.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture) : standardDate.Trim();
+
+
+            try
+            {
+                var modsPath = _pathService.GetModsPath();
+                if (string.IsNullOrEmpty(modsPath) || !Directory.Exists(modsPath))
+                {
+                    Debug.WriteLine($"[CreateTimestampFilesAsync] Mods path is not set or does not exist: '{modsPath}'");
+                    return; // Mods path needed
+                }
+
+                var modDir = Path.Combine(modsPath, steamId);
+                var aboutDir = Path.Combine(modDir, "About");
+                var dateStampPath = Path.Combine(aboutDir, "DateStamp");
+                var timestampPath = Path.Combine(aboutDir, "timestamp.txt");
+
+                // Ensure the target directory exists
+                Directory.CreateDirectory(aboutDir); // Creates 'About' if needed (modDir should exist from download)
+
+                // Write the files asynchronously
+                await File.WriteAllTextAsync(dateStampPath, finalPublishDate);
+                await File.WriteAllTextAsync(timestampPath, finalStandardDate);
+
+                Debug.WriteLine($"[CreateTimestampFilesAsync] Successfully created timestamp files for mod {steamId} in {aboutDir}");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                 Debug.WriteLine($"[CreateTimestampFilesAsync] Permission error writing timestamp files for mod {steamId}: {ex.Message}");
+                 // Potentially inform the user via a different mechanism if critical
+            }
+            catch (IOException ex)
+            {
+                Debug.WriteLine($"[CreateTimestampFilesAsync] IO error writing timestamp files for mod {steamId}: {ex.Message}");
+            }
+            catch (Exception ex) // Catch unexpected errors
+            {
+                 Debug.WriteLine($"[CreateTimestampFilesAsync] Unexpected error writing timestamp files for mod {steamId}: {ex.Message}");
+            }
+        }
+
+        #endregion
 
         public async Task LoadModsAsync()
         {
@@ -398,5 +455,6 @@ namespace RimSharp.Shared.Services.Implementations
                 // Ignore errors parsing ModsConfig.xml
             }
         }
+        
     }
 }

@@ -2,8 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using RimSharp.Features.WorkshopDownloader.Models;
+using RimSharp.Infrastructure.Workshop;
 
 public interface ISteamCmdDownloader
 {
-    Task<bool> DownloadModsAsync(IEnumerable<string> workshopIds, bool validate, IProgress<string>? progress = null, CancellationToken cancellationToken = default);
+    Task<SteamCmdDownloadResult> DownloadModsAsync(
+        IEnumerable<DownloadItem> itemsToDownload,
+        bool validate,
+        // bool showWindow = false, // Parameter less relevant now, always true behavior
+        CancellationToken cancellationToken = default);
 }
