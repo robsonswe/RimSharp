@@ -1,5 +1,6 @@
-﻿using System;
-using System.Net.Http; // <<< ADDED for HttpClient
+﻿// App.xaml.cs
+using System;
+using System.Net.Http; // <<< Keep this
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using RimSharp.Features.ModManager.Services.Commands;
@@ -7,7 +8,7 @@ using RimSharp.Features.ModManager.Services.Data;
 using RimSharp.Features.ModManager.Services.Filtering;
 using RimSharp.Features.ModManager.Services.Mangement;
 using RimSharp.Features.ModManager.ViewModels;
-using RimSharp.Features.WorkshopDownloader.Services; // <<< ADDED for Workshop services
+using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Features.WorkshopDownloader.ViewModels;
 using RimSharp.Infrastructure.Configuration;
 using RimSharp.Infrastructure.Dialog;
@@ -37,13 +38,11 @@ namespace RimSharp.MyApp.AppFiles
         {
             // --- Base Infrastructure & Configuration ---
             services.AddSingleton<IConfigService, ConfigService>();
-            services.AddSingleton<IDialogService, DialogService>(); // Dialogs (used by many)
+            services.AddSingleton<IDialogService, DialogService>();
 
-            // PathService depends on ConfigService
             services.AddSingleton<IPathService, PathService>(provider =>
                 new PathService(provider.GetRequiredService<IConfigService>()));
 
-            // PathSettings (not directly injected often, but PathService uses it internally)
             services.AddSingleton(provider =>
             {
                 var configService = provider.GetRequiredService<IConfigService>();
@@ -52,55 +51,63 @@ namespace RimSharp.MyApp.AppFiles
                     GamePath = configService.GetConfigValue("game_folder"),
                     ModsPath = configService.GetConfigValue("mods_folder"),
                     ConfigPath = configService.GetConfigValue("config_folder"),
-                    GameVersion = "1.5" // Consider making this dynamic later
+                    GameVersion = "1.5"
                 };
             });
 
             // --- Mod Rules ---
-            services.AddSingleton<IModRulesRepository, JsonModRulesRepository>(); // Or use Factory if needed
+            services.AddSingleton<IModRulesRepository, JsonModRulesRepository>();
             services.AddSingleton<IModRulesService, ModRulesService>();
 
             // --- Core Mod Services ---
-            // ModService depends on PathService and RulesService
             services.AddSingleton<IModService>(provider =>
                 new ModService(
                     provider.GetRequiredService<IPathService>(),
                     provider.GetRequiredService<IModRulesService>()
                 ));
-
-            // ModListManager (and its internal helpers)
-            services.AddSingleton<IModListManager, ModListManager>(); // Manages active/inactive lists
-            services.AddSingleton<ModLookupService>(); // Helper for ModListManager (if needed elsewhere)
+            services.AddSingleton<IModListManager, ModListManager>();
+            services.AddSingleton<ModLookupService>();
 
             // --- Mod Manager Feature Services ---
-            // ModDataService depends on ModService, PathService, DialogService
             services.AddSingleton<IModDataService>(provider =>
                 new ModDataService(
                     provider.GetRequiredService<IModService>(),
                     provider.GetRequiredService<IPathService>(),
-                    provider.GetRequiredService<IDialogService>() // Added DialogService dependency
+                    provider.GetRequiredService<IDialogService>()
                 ));
             services.AddSingleton<IModFilterService, ModFilterService>();
-            services.AddSingleton<IModCommandService, ModCommandService>(); // Handles mod actions (activate, etc.)
-            services.AddSingleton<IModListIOService, ModListIOService>(); // Handles saving/loading mod lists
+            services.AddSingleton<IModCommandService, ModCommandService>();
+            services.AddSingleton<IModListIOService, ModListIOService>();
             services.AddSingleton<IModIncompatibilityService, ModIncompatibilityService>();
 
             // --- Workshop Downloader Feature Services ---
             services.AddSingleton<IWebNavigationService, WebNavigationService>();
             services.AddSingleton<IDownloadQueueService, DownloadQueueService>();
-
-            // Register HttpClient and API Client (for Check Updates)
-            services.AddHttpClient(); // Registers IHttpClientFactory and related services
-            services.AddSingleton<ISteamCmdService, SteamCmdService>();
-            services.AddSingleton<ISteamApiClient, SteamApiClient>(); // Uses HttpClient/Factory
-
-            // Register Update Checker Service (for Check Updates)
+            services.AddHttpClient(); // Registers IHttpClientFactory
+            services.AddSingleton<ISteamApiClient, SteamApiClient>();
             services.AddSingleton<IWorkshopUpdateCheckerService, WorkshopUpdateCheckerService>();
 
+            // --- SteamCMD Infrastructure --- <<<< ADD THIS SECTION >>>>
+            services.AddSingleton<SteamCmdPlatformInfo>(); // Platform helper
+
+            // Register ISteamCmdPathService with its factory because it needs platform info
+            services.AddSingleton<ISteamCmdPathService>(provider =>
+            {
+                var configService = provider.GetRequiredService<IConfigService>();
+                var platformInfo = provider.GetRequiredService<SteamCmdPlatformInfo>();
+                return new SteamCmdPathService(configService, platformInfo.SteamCmdExeName);
+            });
+
+            // Register the other SteamCMD components (assuming they only need registered services)
+            services.AddSingleton<ISteamCmdFileSystem, SteamCmdFileSystem>();
+            services.AddSingleton<ISteamCmdInstaller, SteamCmdInstaller>();
+            services.AddSingleton<ISteamCmdDownloader, SteamCmdDownloader>();
+
+            // Register the Facade Service (now its dependencies can be resolved)
+            services.AddSingleton<ISteamCmdService, SteamCmdService>();
+            // --- End SteamCMD Infrastructure Section ---
 
             // --- ViewModels ---
-
-            // ModsViewModel (Mod Manager Tab)
             services.AddTransient<ModsViewModel>(provider =>
                 new ModsViewModel(
                     provider.GetRequiredService<IModDataService>(),
@@ -113,35 +120,24 @@ namespace RimSharp.MyApp.AppFiles
                     provider.GetRequiredService<IModService>()
                 ));
 
-            // DownloaderViewModel (Workshop Downloader Tab) - <<< UPDATED
             services.AddTransient<DownloaderViewModel>(provider =>
                 new DownloaderViewModel(
                     provider.GetRequiredService<IWebNavigationService>(),
                     provider.GetRequiredService<IDownloadQueueService>(),
-                    provider.GetRequiredService<IModService>(),          // Added
-                    provider.GetRequiredService<IDialogService>(),         // Added
+                    provider.GetRequiredService<IModService>(),
+                    provider.GetRequiredService<IDialogService>(),
                     provider.GetRequiredService<IWorkshopUpdateCheckerService>(),
-                    provider.GetRequiredService<ISteamCmdService>() // Added
+                    provider.GetRequiredService<ISteamCmdService>() // This should now resolve correctly
                 ));
 
-            // MainViewModel (Shell) - Ensure it gets the required ViewModels/Services
-                     services.AddSingleton<MainViewModel>(provider =>
-            new MainViewModel(
-                // Inject services MainViewModel DIRECTLY depends on
-                provider.GetRequiredService<IPathService>(),
-                provider.GetRequiredService<IConfigService>(),
-                provider.GetRequiredService<IDialogService>(),
-
-                // Inject the already-configured sub-viewmodels
-                provider.GetRequiredService<ModsViewModel>(),
-                provider.GetRequiredService<DownloaderViewModel>()
-            ));
-
-             // --- NOTE: MainViewModel constructor signature might need adjustment based on how it uses ModsViewModel/DownloaderViewModel ---
-             // If MainViewModel just holds references to them, the above works.
-             // If it needs OTHER services that those ViewModels ALSO need, inject them directly into MainViewModel too.
-             // The previous MainViewModel registration looked overly complex, injecting almost everything. Simplify if possible.
-
+            services.AddSingleton<MainViewModel>(provider =>
+                new MainViewModel(
+                    provider.GetRequiredService<IPathService>(),
+                    provider.GetRequiredService<IConfigService>(),
+                    provider.GetRequiredService<IDialogService>(),
+                    provider.GetRequiredService<ModsViewModel>(),
+                    provider.GetRequiredService<DownloaderViewModel>()
+                ));
 
             // --- Application Shell ---
             services.AddSingleton<MainWindow>();
@@ -149,11 +145,17 @@ namespace RimSharp.MyApp.AppFiles
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            // Ensure the MainViewModel is created early if needed, otherwise MainWindow creation will trigger it.
+            // var mainViewModel = ServiceProvider.GetRequiredService<MainViewModel>();
+
             var mainWindow = ServiceProvider.GetService<MainWindow>();
-            // Optionally resolve and set the DataContext here if not done in MainWindow constructor/XAML
-             // mainWindow.DataContext = ServiceProvider.GetService<MainViewModel>();
             mainWindow?.Show();
             base.OnStartup(e);
+
+            // Initialize paths AFTER config is potentially loaded/available
+            // Optional: Trigger path initialization here if needed before UI fully loads
+            // var pathService = ServiceProvider.GetRequiredService<ISteamCmdPathService>();
+            // pathService.InitializePaths();
         }
     }
 }
