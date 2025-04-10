@@ -50,7 +50,9 @@ if ($PreRelease) {
 }
 
 # Write new version
-Set-Content -Path $versionFile -Value $finalVersion
+$writer = [System.IO.StreamWriter]::new($versionFile, $false, [System.Text.Encoding]::UTF8)
+$writer.Write($finalVersion)
+$writer.Close()
 
 # Commit, tag, and push
 git add $versionFile
