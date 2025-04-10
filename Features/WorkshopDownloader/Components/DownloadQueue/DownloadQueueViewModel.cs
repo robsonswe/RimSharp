@@ -18,6 +18,7 @@ using RimSharp.Infrastructure.Workshop;
 using RimSharp.Features.WorkshopDownloader.Components.Browser;
 // Ensure correct namespace for dialogs
 using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
+using System.Collections.Specialized;
 
 namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 {
@@ -30,12 +31,13 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
         private readonly ISteamCmdService _steamCmdService;
         private readonly BrowserViewModel _browserViewModel; // <<< We already have this reference
         private readonly Func<CancellationToken> _getCancellationToken; // Function to get token from parent
-
+        private readonly IModListManager _modListManager;
         private bool _isOperationInProgress; // Controlled by parent
+        private Dictionary<string, ModItem> _localModLookupBySteamId = new();
 
         // To allow unsubscribing from lambda-based events
         private EventHandler<string>? _queueServiceStatusHandler;
-        private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _queueServiceItemsHandler;
+        private NotifyCollectionChangedEventHandler? _queueServiceItemsHandler;
 
         // --- Properties for Binding ---
         public ObservableCollection<DownloadItem> DownloadList => _queueService.Items;
@@ -77,7 +79,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             IWorkshopUpdateCheckerService updateCheckerService,
             ISteamCmdService steamCmdService,
             BrowserViewModel browserViewModel,
-            Func<CancellationToken> getCancellationToken) // Inject delegate to get token
+            Func<CancellationToken> getCancellationToken,
+            IModListManager modListManager)
         {
             _queueService = queueService ?? throw new ArgumentNullException(nameof(queueService));
             _modService = modService ?? throw new ArgumentNullException(nameof(modService));
@@ -86,6 +89,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             _steamCmdService = steamCmdService ?? throw new ArgumentNullException(nameof(steamCmdService));
             _browserViewModel = browserViewModel ?? throw new ArgumentNullException(nameof(browserViewModel));
             _getCancellationToken = getCancellationToken ?? (() => CancellationToken.None); // Store delegate, provide default
+            _modListManager = modListManager ?? throw new ArgumentNullException(nameof(modListManager));
 
             // --- Subscribe to Service/Child VM Events ---
             _queueServiceStatusHandler = (s, msg) => StatusChanged?.Invoke(this, msg);
@@ -108,19 +112,113 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
             // --- Initial State ---
             Task.Run(UpdateSteamCmdReadyStatus); // Fire and forget
+            // RefreshLocalModLookup(); // <<< Build initial lookup (Called within EnrichAll now)
+            EnrichAllDownloadItems(); // <<< Enrich existing items (will refresh lookup first)
             RefreshCommandStates(); // Initial check
         }
 
-        // --- Event Handlers (Omitted for brevity - no changes here) ---
-        private void QueueService_ItemsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        private void RefreshLocalModLookup()
+        {
+            try
+            {
+                // Use SteamID as the key, ignoring case for safety, filter out mods without SteamID
+                var allMods = _modListManager.GetAllMods();
+                Debug.WriteLine($"[QueueVM] Refreshing local mod lookup. Found {allMods.Count()} total mods reported by manager.");
+
+                _localModLookupBySteamId = allMods
+                    .Where(m => !string.IsNullOrEmpty(m.SteamId))
+                    .GroupBy(m => m.SteamId, StringComparer.OrdinalIgnoreCase) // Group to handle potential duplicates (take first)
+                    .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+                Debug.WriteLine($"[QueueVM] Refreshed local mod lookup, stored {_localModLookupBySteamId.Count} mods with SteamIDs.");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[QueueVM] Error refreshing local mod lookup: {ex.Message}");
+                _localModLookupBySteamId.Clear(); // Ensure lookup is empty on error
+            }
+        }
+
+        // --- NEW METHOD: Enrich a single DownloadItem ---
+        private void EnrichDownloadItem(DownloadItem item)
+        {
+            if (item == null || string.IsNullOrEmpty(item.SteamId)) return;
+
+            if (_localModLookupBySteamId.TryGetValue(item.SteamId, out var localMod))
+            {
+                 Debug.WriteLine($"[QueueVM] Enriching item '{item.Name}' ({item.SteamId}): Found local match.");
+                // Found the mod locally
+                item.IsInstalled = true;
+                item.LocalDateStamp = localMod.DateStamp; // Assuming ModItem has DateStamp property
+                item.IsActive = _modListManager.IsModActive(localMod);
+                item.IsLocallyOutdatedRW = localMod.IsOutdatedRW; // Assuming ModItem has IsOutdatedRW
+            }
+            else
+            {
+                Debug.WriteLine($"[QueueVM] Enriching item '{item.Name}' ({item.SteamId}): No local match found.");
+                // Mod not found locally
+                item.ClearLocalInfo(); // Use helper to reset properties
+            }
+        }
+
+        // --- MODIFIED METHOD: Enrich all items in the list ---
+        private void EnrichAllDownloadItems()
+        {
+            RefreshLocalModLookup(); // <<< Ensure lookup is fresh before enriching all
+            Debug.WriteLine($"[QueueVM] Enriching all {DownloadList.Count} download items using refreshed lookup...");
+            foreach (var item in DownloadList)
+            {
+                EnrichDownloadItem(item);
+            }
+            Debug.WriteLine($"[QueueVM] Enrichment complete.");
+        }
+
+        // --- MODIFIED Event Handler ---
+        private void QueueService_ItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             RunOnUIThread(() =>
             {
-                OnPropertyChanged(nameof(DownloadList)); // May affect count display
+                if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems != null)
+                {
+                    // *** FIX: Refresh the lookup BEFORE enriching new items ***
+                    RefreshLocalModLookup();
+
+                    // Enrich only the newly added items
+                    Debug.WriteLine($"[QueueVM] Items added, enriching {e.NewItems.Count} new item(s) using refreshed lookup...");
+                    foreach (DownloadItem newItem in e.NewItems)
+                    {
+                        EnrichDownloadItem(newItem);
+                    }
+                }
+                else if (e.Action == NotifyCollectionChangedAction.Reset)
+                {
+                    // If the whole list was cleared, maybe refresh lookup? Not strictly necessary unless local mods changed too.
+                    Debug.WriteLine("[QueueVM] Download list reset.");
+                    // When list is reset, enrichment happens on load or manual refresh.
+                }
+                else if (e.Action == NotifyCollectionChangedAction.Remove)
+                {
+                     Debug.WriteLine("[QueueVM] Item removed from download list.");
+                     // No enrichment needed, just update commands potentially
+                }
+
+                // Always refresh potentially affected properties/commands
+                OnPropertyChanged(nameof(DownloadList)); // Affects UI list itself
                 OnPropertyChanged(nameof(CanDownload));
                 ((AsyncRelayCommand)DownloadCommand).RaiseCanExecuteChanged();
             });
         }
+
+        public void RefreshLocalModInfo()
+        {
+            RunOnUIThread(() =>
+            {
+                Debug.WriteLine("[QueueVM] External request to refresh local mod info.");
+                // RefreshLocalModLookup(); // Already done by EnrichAllDownloadItems
+                EnrichAllDownloadItems();
+            });
+        }
+
 
         private void BrowserViewModel_ModInfoAvailabilityChanged(object? sender, EventArgs e)
         {
@@ -142,7 +240,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                     ((AsyncRelayCommand)AddModCommand).RaiseCanExecuteChanged();
                 });
             }
-             // Potentially react to other properties if needed
+            // Potentially react to other properties if needed
         }
 
         private void SteamCmdService_SetupStateChanged(object? sender, bool isSetup)
@@ -181,8 +279,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             try { return !IsOperationInProgress && (_modService?.GetLoadedMods().Any(m => !string.IsNullOrEmpty(m.SteamId) && long.TryParse(m.SteamId, out _)) ?? false); }
             catch (Exception ex)
             {
-                 Debug.WriteLine($"Error checking CanExecuteCheckUpdates: {ex.Message}");
-                 return false;
+                Debug.WriteLine($"Error checking CanExecuteCheckUpdates: {ex.Message}");
+                return false;
             }
         }
 
@@ -283,6 +381,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             var itemsToDownload = DownloadList.ToList(); // Snapshot the queue
             SteamCmdDownloadResult? downloadResult = null;
             bool refreshIsNeeded = false;
+            bool localInfoRefreshNeeded = false;
 
             try
             {
@@ -317,6 +416,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
                             successCount++;
                             refreshIsNeeded = true;
+                            localInfoRefreshNeeded = true; // <<< Mark that local info *definitely* changed
                             // Remove from the queue ON THE UI THREAD
                             RunOnUIThread(() => _queueService.RemoveFromQueue(successItem));
                         }
@@ -369,22 +469,48 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                     _dialogService.ShowWarning("Download Finished", summary);
                 }
 
-                // Trigger refresh in parent if needed
+                // --- Trigger Refresh Actions ---
+                if (localInfoRefreshNeeded) // Refresh local info if any success or potential change occurred
+                {
+                    // Even if cancelled, some items might have completed post-processing
+                    Debug.WriteLine("[QueueVM] Local mod info potentially changed, triggering refresh.");
+                    // Don't call RefreshLocalModInfo directly here if the parent handles it via the event
+                    // It *will* be called by the parent via the DownloadCompletedAndRefreshNeeded handler flow
+                }
+                else
+                {
+                     // Maybe still refresh failed items? They might have become installed via other means.
+                     // Let's enrich *all* items again just to be sure the display is consistent
+                     // after the operation, even if no downloads succeeded.
+                     Debug.WriteLine("[QueueVM] No successful downloads, but re-enriching queue items for consistency.");
+                     EnrichAllDownloadItems();
+                }
+
+
                 if (refreshIsNeeded && !token.IsCancellationRequested)
                 {
+                    Debug.WriteLine("[QueueVM] Download completed with successes, requesting parent refresh.");
                     DownloadCompletedAndRefreshNeeded?.Invoke(this, EventArgs.Empty);
+                    // The event handler in DownloaderViewModel will trigger QueueViewModel.RefreshLocalModInfo()
                 }
+
             }
             catch (OperationCanceledException)
             {
                 StatusChanged?.Invoke(this, "Download operation cancelled by user.");
                 _dialogService.ShowInformation("Cancelled", "Download operation cancelled. Partially downloaded items may exist but were not fully processed.");
+                 // Even on cancellation, re-enrich to reflect any partial successes before cancel took effect
+                 Debug.WriteLine("[QueueVM] Download cancelled, re-enriching queue items.");
+                 EnrichAllDownloadItems();
             }
             catch (Exception ex)
             {
                 StatusChanged?.Invoke(this, $"Error during download process: {ex.Message}");
                 Debug.WriteLine($"[ExecuteDownloadCommand] Exception: {ex}");
                 _dialogService.ShowError("Download Error", $"An unexpected error occurred during the download: {ex.Message}");
+                 // On error, re-enrich to ensure queue reflects current known state
+                 Debug.WriteLine("[QueueVM] Download error occurred, re-enriching queue items.");
+                 EnrichAllDownloadItems();
             }
             finally
             {
@@ -401,36 +527,38 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             StatusChanged?.Invoke(this, "Extracting mod info from browser...");
             try
             {
-                 // Call method on BrowserViewModel to get info
-                 ModInfoDto? modInfo = await _browserViewModel.GetCurrentModInfoAsync(token); // Pass actual token
+                // Call method on BrowserViewModel to get info
+                ModInfoDto? modInfo = await _browserViewModel.GetCurrentModInfoAsync(token); // Pass actual token
 
-                 if (token.IsCancellationRequested)
-                 {
-                     StatusChanged?.Invoke(this, "Add mod cancelled.");
-                     return;
-                 }
+                if (token.IsCancellationRequested)
+                {
+                    StatusChanged?.Invoke(this, "Add mod cancelled.");
+                    return;
+                }
 
-                 if (modInfo != null)
-                 {
-                     // AddToQueue handles status update on failure (e.g., already exists)
-                     if (_queueService.AddToQueue(modInfo))
-                     {
-                         // Use correct property name 'Name'
-                         StatusChanged?.Invoke(this, $"Added '{modInfo.Name}' to queue.");
-                     }
-                 }
-                 else
-                 {
-                     StatusChanged?.Invoke(this, "Could not extract mod info from the current page.");
-                     // Optionally show a dialog if this is unexpected
-                     // _dialogService.ShowWarning("Extraction Failed", "Could not get mod details from the current page. Ensure it's a valid Steam Workshop item page.");
-                 }
+                if (modInfo != null)
+                {
+                    // AddToQueue handles status update on failure (e.g., already exists)
+                    // AddToQueue will trigger CollectionChanged -> QueueService_ItemsChanged -> RefreshLocalModLookup -> EnrichDownloadItem
+                    if (_queueService.AddToQueue(modInfo))
+                    {
+                        // Use correct property name 'Name'
+                        // Status update is handled by AddToQueue and ItemsChanged->Enrich now
+                        // StatusChanged?.Invoke(this, $"Added '{modInfo.Name}' to queue."); // Redundant
+                    }
+                }
+                else
+                {
+                    StatusChanged?.Invoke(this, "Could not extract mod info from the current page.");
+                    // Optionally show a dialog if this is unexpected
+                    // _dialogService.ShowWarning("Extraction Failed", "Could not get mod details from the current page. Ensure it's a valid Steam Workshop item page.");
+                }
             }
-            catch(OperationCanceledException)
+            catch (OperationCanceledException)
             {
                 StatusChanged?.Invoke(this, "Add mod cancelled.");
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 StatusChanged?.Invoke(this, $"Error adding mod: {ex.Message}");
                 Debug.WriteLine($"[ExecuteAddModCommand] Error: {ex}");
@@ -438,7 +566,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             }
             finally
             {
-                 // No OperationStarted/Completed needed for this quick action unless extraction is slow
+                // No OperationStarted/Completed needed for this quick action unless extraction is slow
             }
         }
 
@@ -450,14 +578,14 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             if (parameter is DownloadItem item)
             {
                 _queueService.RemoveFromQueue(item); // Service handles status update/logging
-                StatusChanged?.Invoke(this, $"Removed '{item.Name}' from queue.");
+                // Status update handled by service now
+                // StatusChanged?.Invoke(this, $"Removed '{item.Name}' from queue.");
             }
         }
 
-        // *** CHANGED HERE ***
         private void ExecuteNavigateToUrlCommand(object? url)
         {
-             if (IsOperationInProgress) return; // Don't navigate during other operations
+            if (IsOperationInProgress) return; // Don't navigate during other operations
 
             if (url is string urlString && !string.IsNullOrEmpty(urlString))
             {
@@ -473,45 +601,46 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                     }
                     else
                     {
-                         StatusChanged?.Invoke(this, "Browser cannot navigate now (possibly busy).");
-                         Debug.WriteLine($"[QueueVM] BrowserViewModel.NavigateToUrlCommand cannot execute for {urlString}");
+                        StatusChanged?.Invoke(this, "Browser cannot navigate now (possibly busy).");
+                        Debug.WriteLine($"[QueueVM] BrowserViewModel.NavigateToUrlCommand cannot execute for {urlString}");
                     }
                 }
                 catch (Exception ex)
                 {
-                     StatusChanged?.Invoke(this, $"Failed to initiate browser navigation: {ex.Message}");
-                     _dialogService.ShowError("Navigation Error", $"Could not navigate the internal browser: {ex.Message}");
-                     Debug.WriteLine($"Error executing NavigateToUrlCommand via BrowserVM: {ex}");
+                    StatusChanged?.Invoke(this, $"Failed to initiate browser navigation: {ex.Message}");
+                    _dialogService.ShowError("Navigation Error", $"Could not navigate the internal browser: {ex.Message}");
+                    Debug.WriteLine($"Error executing NavigateToUrlCommand via BrowserVM: {ex}");
                 }
             }
             else
             {
-                 StatusChanged?.Invoke(this, "Invalid URL provided for navigation.");
+                StatusChanged?.Invoke(this, "Invalid URL provided for navigation.");
             }
         }
-        // *** END OF CHANGE ***
 
         // ExecuteCheckUpdatesCommand (Omitted for brevity - no changes here)
         private async Task ExecuteCheckUpdatesCommand(CancellationToken ignoredToken)
         {
-             if (IsOperationInProgress) return;
-             CancellationToken token = _getCancellationToken();
-             if (token.IsCancellationRequested) return;
+            if (IsOperationInProgress) return;
+            CancellationToken token = _getCancellationToken();
+            if (token.IsCancellationRequested) return;
 
             List<ModItem> workshopMods;
             try
             {
-                 StatusChanged?.Invoke(this, "Gathering installed workshop mods...");
-                 workshopMods = _modService.GetLoadedMods()
-                    .Where(m => !string.IsNullOrEmpty(m.SteamId) && long.TryParse(m.SteamId, out _))
-                    .OrderBy(m => m.Name)
-                    .ToList();
+                StatusChanged?.Invoke(this, "Gathering installed workshop mods...");
+                 // Refresh local mod info just before check, ensuring IModService is up-to-date
+                await _modService.LoadModsAsync(); // Assuming LoadModsAsync refreshes the list used by GetLoadedMods
+                workshopMods = _modService.GetLoadedMods()
+                   .Where(m => !string.IsNullOrEmpty(m.SteamId) && long.TryParse(m.SteamId, out _))
+                   .OrderBy(m => m.Name)
+                   .ToList();
             }
             catch (Exception ex)
             {
                 StatusChanged?.Invoke(this, $"Error loading mod list: {ex.Message}");
                 Debug.WriteLine($"Error getting mods for update check: {ex}");
-                 _dialogService.ShowError("Mod Load Error", $"Failed to load installed mods: {ex.Message}");
+                _dialogService.ShowError("Mod Load Error", $"Failed to load installed mods: {ex.Message}");
                 return;
             }
 
@@ -562,47 +691,52 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                         progressDialog.Progress = (int)((double)update.current / update.total * 100);
                         progressDialog.IsIndeterminate = false;
                     }
-                     // Update status bar regardless of dialog state
-                     StatusChanged?.Invoke(this, $"Checking {update.modName} ({update.current} of {update.total})...");
+                    // Update status bar regardless of dialog state
+                    StatusChanged?.Invoke(this, $"Checking {update.modName} ({update.current} of {update.total})...");
                 });
 
                 // Perform the update check
                 updateResult = await _updateCheckerService.CheckForUpdatesAsync(selectedMods, progress, token); // Pass actual token
 
                 // --- Report Results (only if not cancelled) ---
-                 if (token.IsCancellationRequested)
-                 {
-                     progressDialog?.OnCancel("Update check cancelled by user.");
-                     StatusChanged?.Invoke(this, "Update check cancelled.");
-                     // Don't show dialog, user initiated cancel
-                 }
-                 else
-                 {
-                     progressDialog?.CompleteOperation("Update check finished."); // Close dialog nicely
-                     string summary = $"Update check complete. Checked: {updateResult.ModsChecked}. Updates found: {updateResult.UpdatesFound}.";
-                     if (updateResult.ErrorsEncountered > 0)
-                     {
-                         summary += $" Errors: {updateResult.ErrorsEncountered}.";
-                          // Show limited errors in a separate warning dialog
-                           var errorSample = updateResult.ErrorMessages.Take(3).ToList();
-                           var errorMessage = string.Join("\n", errorSample);
-                           if (updateResult.ErrorMessages.Count > 3) { errorMessage += $"\n(and {updateResult.ErrorMessages.Count - 3} more errors...)"; }
-                           _dialogService.ShowWarning("Update Check Errors", $"Encountered {updateResult.ErrorsEncountered} error(s) during the update check.\nCheck status messages or logs for details.\n\nSample:\n{errorMessage}");
-                     }
+                if (token.IsCancellationRequested)
+                {
+                    progressDialog?.OnCancel("Update check cancelled by user.");
+                    StatusChanged?.Invoke(this, "Update check cancelled.");
+                    // Don't show dialog, user initiated cancel
+                }
+                else
+                {
+                    progressDialog?.CompleteOperation("Update check finished."); // Close dialog nicely
+                    string summary = $"Update check complete. Checked: {updateResult.ModsChecked}. Updates found: {updateResult.UpdatesFound}.";
+                    if (updateResult.ErrorsEncountered > 0)
+                    {
+                        summary += $" Errors: {updateResult.ErrorsEncountered}.";
+                        // Show limited errors in a separate warning dialog
+                        var errorSample = updateResult.ErrorMessages.Take(3).ToList();
+                        var errorMessage = string.Join("\n", errorSample);
+                        if (updateResult.ErrorMessages.Count > 3) { errorMessage += $"\n(and {updateResult.ErrorMessages.Count - 3} more errors...)"; }
+                        _dialogService.ShowWarning("Update Check Errors", $"Encountered {updateResult.ErrorsEncountered} error(s) during the update check.\nCheck status messages or logs for details.\n\nSample:\n{errorMessage}");
+                    }
 
-                     StatusChanged?.Invoke(this, summary); // Update status bar with summary
+                    StatusChanged?.Invoke(this, summary); // Update status bar with summary
 
-                     // Show appropriate final dialog
-                     if (updateResult.UpdatesFound > 0)
-                     {
-                         _dialogService.ShowInformation("Updates Found", $"Found {updateResult.UpdatesFound} mod(s) with updates available. They have been added to the download queue.");
-                     }
-                     else if (updateResult.ErrorsEncountered == 0) // Only show "no updates" if no errors occurred
-                     {
-                         _dialogService.ShowInformation("No Updates Found", "All selected mods are up to date.");
-                     }
-                     // If only errors occurred, the warning dialog about errors serves as notification
-                 }
+                    // Show appropriate final dialog
+                    if (updateResult.UpdatesFound > 0)
+                    {
+                        _dialogService.ShowInformation("Updates Found", $"Found {updateResult.UpdatesFound} mod(s) with updates available. They have been added to the download queue.");
+                        // The AddToQueue calls within the update checker will trigger enrichment via CollectionChanged
+                    }
+                    else if (updateResult.ErrorsEncountered == 0) // Only show "no updates" if no errors occurred
+                    {
+                        _dialogService.ShowInformation("No Updates Found", "All selected mods are up to date.");
+                    }
+                    // If only errors occurred, the warning dialog about errors serves as notification
+
+                    // Re-enrich the entire list *after* the update check, in case mods were added to the queue
+                    Debug.WriteLine("[QueueVM] Update check finished, re-enriching queue items.");
+                    EnrichAllDownloadItems();
+                }
             }
             catch (OperationCanceledException)
             {
@@ -637,10 +771,10 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
         public void Cleanup()
         {
             // Unsubscribe from all events to prevent memory leaks
-             if (_queueServiceStatusHandler != null)
-                 _queueService.StatusChanged -= _queueServiceStatusHandler;
-             if (_queueServiceItemsHandler != null)
-                 _queueService.Items.CollectionChanged -= _queueServiceItemsHandler;
+            if (_queueServiceStatusHandler != null)
+                _queueService.StatusChanged -= _queueServiceStatusHandler;
+            if (_queueServiceItemsHandler != null)
+                _queueService.Items.CollectionChanged -= _queueServiceItemsHandler;
 
             _browserViewModel.ModInfoAvailabilityChanged -= BrowserViewModel_ModInfoAvailabilityChanged;
             _browserViewModel.PropertyChanged -= BrowserViewModel_PropertyChanged;

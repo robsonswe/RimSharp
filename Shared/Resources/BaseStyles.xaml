@@ -24,6 +24,16 @@
         </Setter>
     </Style>
 
+    <Style x:Key="RimworldToolTip" TargetType="ToolTip">
+        <!-- Style Setters go here -->
+        <Setter Property="Background" Value="{StaticResource RimworldDarkBackgroundBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource RimworldWhiteBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource RimworldBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="5"/>
+        <!-- Add other setters as needed -->
+    </Style>
+
     <!-- RimWorld-style TextBox -->
     <Style x:Key="RimworldTextBox" TargetType="TextBox">
         <Setter Property="Background" Value="{StaticResource RimworldBeigeBrush}"/>

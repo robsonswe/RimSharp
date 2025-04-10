@@ -29,7 +29,8 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
         // Services
         private readonly ISteamCmdService _steamCmdService;
         private readonly IDialogService _dialogService;
-        private readonly IModService _modService; // Keep although not used directly, might be needed later or for context
+        private readonly IModService _modService;
+        private readonly IModListManager _modListManager;
 
         // Operational state
         private CancellationTokenSource? _currentOperationCts;
@@ -56,11 +57,13 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             IModService modService,
             IDialogService dialogService,
             IWorkshopUpdateCheckerService updateCheckerService,
-            ISteamCmdService steamCmdService)
+            ISteamCmdService steamCmdService,
+            IModListManager modListManager)
         {
             _modService = modService;
             _dialogService = dialogService;
             _steamCmdService = steamCmdService;
+            _modListManager = modListManager;
 
             // Initialize child ViewModels
             BrowserViewModel = new BrowserViewModel(navigationService, this);
@@ -71,7 +74,8 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
                 updateCheckerService,
                 steamCmdService,
                 BrowserViewModel,
-                GetCancellationToken // Pass delegate to get token
+                GetCancellationToken,
+                _modListManager
             );
             StatusBarViewModel = new StatusBarViewModel();
 
@@ -107,10 +111,16 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
         // --- Event handler to forward the event ---
         private void QueueViewModel_DownloadCompletedAndRefreshNeeded(object? sender, EventArgs e)
         {
-            Debug.WriteLine("[DownloaderVM] Received DownloadCompletedAndRefreshNeeded from QueueVM. Forwarding...");
-            // Forward the event to listeners of DownloaderViewModel (like MainViewModel)
+            Debug.WriteLine("[DownloaderVM] Received DownloadCompletedAndRefreshNeeded from QueueVM.");
             DownloadCompletedAndRefreshNeeded?.Invoke(this, e);
+            RunOnUIThread(async () =>
+            {
+                await Task.Delay(100); // Small delay to allow potential parent reload
+                Debug.WriteLine("[DownloaderVM] Triggering QueueViewModel.RefreshLocalModInfo().");
+                QueueViewModel.RefreshLocalModInfo();
+            });
         }
+
 
         private void SteamCmdService_SetupStateChanged(object? sender, bool isSetup)
         {
@@ -118,9 +128,9 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             {
                 OnPropertyChanged(nameof(IsSteamCmdReady));
                 // Refresh commands in children that depend on this state
-                 QueueViewModel.RefreshCommandStates();
-                 // Potentially refresh this VM's commands if any depend on it directly
-                 // ((RelayCommand)SomeCommand).RaiseCanExecuteChanged();
+                QueueViewModel.RefreshCommandStates();
+                // Potentially refresh this VM's commands if any depend on it directly
+                // ((RelayCommand)SomeCommand).RaiseCanExecuteChanged();
             });
         }
 
@@ -130,7 +140,8 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             BrowserViewModel.SetWebView(webView);
 
             // Initial command state update
-            RunOnUIThread(() => {
+            RunOnUIThread(() =>
+            {
                 OnPropertyChanged(nameof(IsOperationInProgress));
                 RefreshCommandStates(); // Initial refresh after setup
             });
@@ -168,18 +179,21 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
 
             if (changed)
             {
-                 RunOnUIThread(() => {
+                Debug.WriteLine($"[DownloaderVM.SetOperationInProgress] Notifying QueueVM.IsOperationInProgress = {inProgress}");
+                RunOnUIThread(() =>
+                {
                     OnPropertyChanged(nameof(IsOperationInProgress));
-                    QueueViewModel.IsOperationInProgress = inProgress; // Notify child VM
-                    Debug.WriteLine("[DownloaderVM] IsOperationInProgress changed. Refreshing command states...");
+                    QueueViewModel.IsOperationInProgress = inProgress; // Notify child VM <<< ADD DEBUG BEFORE/AFTER THIS
+                    Debug.WriteLine($"[DownloaderVM.SetOperationInProgress] QueueVM notified. Refreshing command states...");
                     RefreshCommandStates(); // Refresh commands on this VM and children
-                 });
+                });
             }
-             // Ensure previousCts is disposed even if state didn't change (edge case?)
-             else if (!inProgress && previousCts != null && previousCts != _currentOperationCts)
-             {
-                 previousCts.Dispose();
-             }
+
+            // Ensure previousCts is disposed even if state didn't change (edge case?)
+            else if (!inProgress && previousCts != null && previousCts != _currentOperationCts)
+            {
+                previousCts.Dispose();
+            }
         }
 
 
@@ -231,7 +245,7 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
                 }
                 finally
                 {
-                     // Re-evaluate CanExecute after cancellation attempt
+                    // Re-evaluate CanExecute after cancellation attempt
                     RunOnUIThread(() => ((RelayCommand)CancelOperationCommand).RaiseCanExecuteChanged());
                 }
             }
@@ -262,7 +276,7 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             BrowserViewModel.Cleanup();
             QueueViewModel.Cleanup();
 
-             // Dispose CTS if it exists
+            // Dispose CTS if it exists
             _currentOperationCts?.Cancel();
             _currentOperationCts?.Dispose();
             _currentOperationCts = null;

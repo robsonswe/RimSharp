@@ -4,12 +4,20 @@ namespace RimSharp.Features.WorkshopDownloader.Models
 {
     public class DownloadItem : ViewModelBase
     {
+        // Existing properties
         private string _name;
         private string _url;
         private string _steamId;
-        private string _publishDate;
-        private string _standardDate;
+        private string _publishDate; // Date from Workshop
+        private string _standardDate; // Parsed Workshop Date
 
+        // --- NEW PROPERTIES ---
+        private bool _isInstalled;
+        private string? _localDateStamp; // Date from local timestamp file
+        private bool _isActive;
+        private bool _isLocallyOutdatedRW; // Based on ModItem.IsOutdatedRW
+
+        // Existing Property Accessors (Getters/Setters using SetProperty)
         public string Name
         {
             get => _name;
@@ -28,16 +36,50 @@ namespace RimSharp.Features.WorkshopDownloader.Models
             set => SetProperty(ref _steamId, value);
         }
 
-        public string PublishDate
+        public string PublishDate // Workshop Publish Date
         {
             get => _publishDate;
             set => SetProperty(ref _publishDate, value);
         }
 
-        public string StandardDate
+        public string StandardDate // Workshop Publish Date (Standard Format)
         {
             get => _standardDate;
             set => SetProperty(ref _standardDate, value);
+        }
+
+        // --- NEW PROPERTY ACCESSORS ---
+        public bool IsInstalled
+        {
+            get => _isInstalled;
+            set => SetProperty(ref _isInstalled, value);
+        }
+
+        public string? LocalDateStamp // Local Timestamp Date
+        {
+            get => _localDateStamp;
+            set => SetProperty(ref _localDateStamp, value);
+        }
+
+        public bool IsActive
+        {
+            get => _isActive;
+            set => SetProperty(ref _isActive, value);
+        }
+
+        public bool IsLocallyOutdatedRW
+        {
+            get => _isLocallyOutdatedRW;
+            set => SetProperty(ref _isLocallyOutdatedRW, value);
+        }
+
+        // --- Helper to reset local info ---
+        public void ClearLocalInfo()
+        {
+            IsInstalled = false;
+            LocalDateStamp = null;
+            IsActive = false;
+            IsLocallyOutdatedRW = false;
         }
     }
 }
