@@ -10,60 +10,284 @@
         Title="{Binding Title}"
         SizeToContent="Height"
         Width="450" MinWidth="350" MaxWidth="600"
-        MinHeight="150" MaxHeight="400"
+        MinHeight="180" MaxHeight="400"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="NoResize">
     
+    <dialogs:BaseDialog.Resources>
+        <!-- Custom Progress Bar Style -->
+        <Style x:Key="RimworldProgressBarStyle" TargetType="ProgressBar">
+            <Setter Property="Background" Value="{StaticResource RimworldDarkBeigeBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource RimworldDarkGreenBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource RimworldBrownBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Grid>
+                            <!-- Track Background with Enhanced Depth Effect -->
+                            <Border x:Name="PART_Track" 
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="3">
+                                <Border.Effect>
+                                    <DropShadowEffect ShadowDepth="1" 
+                                                    Direction="270" 
+                                                    Color="#22000000" 
+                                                    BlurRadius="3" 
+                                                    Opacity="0.4"/>
+                                </Border.Effect>
+                                <!-- Inner Shadow for Depth -->
+                                <Border Background="#10000000" 
+                                        CornerRadius="2" 
+                                        Margin="1" 
+                                        Height="3" 
+                                        VerticalAlignment="Top"/>
+                            </Border>
+                            
+                            <!-- Progress Indicator for Determinate Mode -->
+                            <Border x:Name="PART_Indicator" 
+                                    HorizontalAlignment="Left" 
+                                    CornerRadius="2" 
+                                    Margin="1">
+                                <Border.Width>
+                                    <MultiBinding Converter="{StaticResource MultiplyMultiValueConverter}">
+                                        <Binding Path="Value" RelativeSource="{RelativeSource TemplatedParent}"/>
+                                        <Binding Path="ActualWidth" ElementName="PART_Track"/>
+                                        <Binding Source="0.01"/>
+                                    </MultiBinding>
+                                </Border.Width>
+                                
+                                <!-- Progress Bar Gradient Overlay with Improved Coloring -->
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                        <GradientStop Color="#3C5F46" Offset="0"/>
+                                        <GradientStop Color="#2B4933" Offset="0.5"/>
+                                        <GradientStop Color="#223D2A" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                
+                                <!-- Highlight Line at Top of Progress -->
+                                <Border Height="2" 
+                                        VerticalAlignment="Top" 
+                                        Background="#80FFFFFF" 
+                                        Margin="1,1,1,0" 
+                                        CornerRadius="1"/>
+                            </Border>
+                            
+                            <!-- NEW Indeterminate Animation Implementation -->
+                            <Canvas x:Name="PART_IndeterminateCanvas" 
+                                    Visibility="Collapsed"
+                                    ClipToBounds="True"
+                                    Margin="1">
+                                
+                                <!-- First Moving Stripe -->
+                                <Rectangle x:Name="IndeterminateRect1"
+                                        Height="{Binding ActualHeight, ElementName=PART_Track}"
+                                        Width="120"
+                                        RadiusX="2" RadiusY="2">
+                                    <Rectangle.Fill>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                            <GradientStop Color="Transparent" Offset="0.0"/>
+                                            <GradientStop Color="#703C5F46" Offset="0.2"/>
+                                            <GradientStop Color="#A03C5F46" Offset="0.5"/>
+                                            <GradientStop Color="#703C5F46" Offset="0.8"/>
+                                            <GradientStop Color="Transparent" Offset="1.0"/>
+                                        </LinearGradientBrush>
+                                    </Rectangle.Fill>
+                                </Rectangle>
+                                
+                                <!-- Second Moving Stripe (offset) -->
+                                <Rectangle x:Name="IndeterminateRect2"
+                                        Height="{Binding ActualHeight, ElementName=PART_Track}"
+                                        Width="120"
+                                        RadiusX="2" RadiusY="2">
+                                    <Rectangle.Fill>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                            <GradientStop Color="Transparent" Offset="0.0"/>
+                                            <GradientStop Color="#503C5F46" Offset="0.2"/>
+                                            <GradientStop Color="#903C5F46" Offset="0.5"/>
+                                            <GradientStop Color="#503C5F46" Offset="0.8"/>
+                                            <GradientStop Color="Transparent" Offset="1.0"/>
+                                        </LinearGradientBrush>
+                                    </Rectangle.Fill>
+                                </Rectangle>
+                            </Canvas>
+                            
+                            <!-- Percentage Text Overlay -->
+                            <TextBlock Text="{Binding Progress, StringFormat={}{0}%}"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    FontWeight="Medium"
+                                    FontSize="13"
+                                    Foreground="{StaticResource RimworldWhiteBrush}"
+                                    Visibility="{Binding IsIndeterminate, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=invert}">
+                                <TextBlock.Effect>
+                                    <DropShadowEffect ShadowDepth="1" 
+                                                    BlurRadius="2" 
+                                                    Opacity="0.6" 
+                                                    Color="{StaticResource RimworldShadow}"/>
+                                </TextBlock.Effect>
+                            </TextBlock>
+                        </Grid>
+                        
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsIndeterminate" Value="True">
+                                <Setter Property="Visibility" TargetName="PART_Indicator" Value="Collapsed"/>
+                                <Setter Property="Visibility" TargetName="PART_IndeterminateCanvas" Value="Visible"/>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard RepeatBehavior="Forever">
+                                            <!-- Animation for first stripe -->
+                                            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="IndeterminateRect1" 
+                                                                        Storyboard.TargetProperty="(Canvas.Left)">
+                                                <LinearDoubleKeyFrame KeyTime="0:0:0" Value="-120"/>
+                                                <LinearDoubleKeyFrame KeyTime="0:0:2" Value="450"/>
+                                            </DoubleAnimationUsingKeyFrames>
+                                            
+                                            <!-- Animation for second stripe (offset) -->
+                                            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="IndeterminateRect2" 
+                                                                        Storyboard.TargetProperty="(Canvas.Left)">
+                                                <LinearDoubleKeyFrame KeyTime="0:0:0" Value="-270"/>
+                                                <LinearDoubleKeyFrame KeyTime="0:0:2" Value="300"/>
+                                            </DoubleAnimationUsingKeyFrames>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+    
+    </dialogs:BaseDialog.Resources>
+    
     <dialogs:BaseDialog.MainContent>
         <Border Style="{StaticResource RimworldPanelBorder}">
-            <Grid Margin="15,10">
+            <Grid Margin="20,18">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 
-                <!-- Message -->
+                <!-- Message with Enhanced Typography -->
                 <TextBlock Grid.Row="0" 
                            Text="{Binding Message}"
                            TextWrapping="Wrap"
-                           FontSize="14"
+                           FontSize="15"
                            LineHeight="22"
                            VerticalAlignment="Center"
                            Foreground="{StaticResource RimworldDarkBrownBrush}"
-                           Margin="0,0,0,15"/>
+                           Margin="0,0,0,22">
+                    <TextBlock.Effect>
+                        <DropShadowEffect ShadowDepth="1" 
+                                          BlurRadius="1" 
+                                          Opacity="0.2" 
+                                          Color="{StaticResource RimworldShadow}"/>
+                    </TextBlock.Effect>
+                </TextBlock>
 
-                <!-- Progress Bar -->
-                <ProgressBar Grid.Row="1" 
-                             Value="{Binding Progress}"
-                             IsIndeterminate="{Binding IsIndeterminate}"
-                             Height="20"
-                             Margin="0,0,0,15"/>
-
-                <!-- Progress Text -->
-                <TextBlock Grid.Row="2" 
-                           Text="{Binding Progress, StringFormat={}{0}%}"
-                           HorizontalAlignment="Center"
-                           Foreground="{StaticResource RimworldDarkBrownBrush}"
-                           Visibility="{Binding IsIndeterminate, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=invert}"/>
+                <!-- Progress Bar Container with Improved Layout -->
+                <Grid Grid.Row="1" Margin="0,0,0,20">
+                    <!-- Outer Shadow for Progress Bar -->
+                    <Border CornerRadius="4" 
+                            BorderThickness="0"
+                            Margin="-1,-1,1,1"
+                            Padding="0">
+                        <Border.Effect>
+                            <DropShadowEffect ShadowDepth="1" 
+                                              Direction="315"
+                                              BlurRadius="2" 
+                                              Opacity="0.25" 
+                                              Color="{StaticResource RimworldShadow}"/>
+                        </Border.Effect>
+                    </Border>
+                    
+                    <!-- Progress Bar -->
+                    <ProgressBar Value="{Binding Progress}"
+                                IsIndeterminate="{Binding IsIndeterminate}"
+                                Style="{StaticResource RimworldProgressBarStyle}"/>
+                                
+                    <!-- Progress Percentage Overlay with Enhanced Text Style -->
+                    <TextBlock Text="{Binding Progress, StringFormat={}{0}%}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontWeight="Medium"
+                               FontSize="13"
+                               Foreground="{StaticResource RimworldWhiteBrush}"
+                               Visibility="{Binding IsIndeterminate, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=invert}">
+                        <TextBlock.Effect>
+                            <DropShadowEffect ShadowDepth="1" 
+                                              BlurRadius="2" 
+                                              Opacity="0.6" 
+                                              Color="{StaticResource RimworldShadow}"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
+                </Grid>
+                
+                <!-- Status Message with Enhanced Styling -->
+                <Border Grid.Row="2" 
+                        Background="{StaticResource RimworldDarkBeigeBrush}" 
+                        BorderBrush="{StaticResource RimworldBrownBrush}"
+                        BorderThickness="1" 
+                        CornerRadius="3"
+                        Padding="8,5" 
+                        Margin="0,0,0,2"
+                        Visibility="{Binding IsIndeterminate, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="1" 
+                                          BlurRadius="2" 
+                                          Opacity="0.2" 
+                                          Color="{StaticResource RimworldShadow}"/>
+                    </Border.Effect>
+                    
+                    <TextBlock Text="Operation in progress..."
+                               HorizontalAlignment="Center"
+                               Foreground="{StaticResource RimworldDarkBrownBrush}"
+                               FontStyle="Italic"
+                               FontSize="12"/>
+                </Border>
             </Grid>
         </Border>
     </dialogs:BaseDialog.MainContent>
 
     <dialogs:BaseDialog.ButtonContent>
-        <Grid Margin="0,12,0,5">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <!-- Cancel Button -->
+        <Border Margin="0,15,0,5" 
+                Background="Transparent" 
+                BorderThickness="0">
+            <StackPanel Orientation="Horizontal" 
+                       HorizontalAlignment="Right">
+                <!-- Cancel Button with Enhanced Styling -->
                 <Button Content="Cancel"
                         Command="{Binding CancelCommand}"
                         Style="{StaticResource RimworldRunButtonStyle}"
                         IsCancel="True"
-                        MinWidth="80" 
-                        Height="30"
+                        MinWidth="100" 
+                        Height="36"
                         Margin="5,0,5,0"
-                        Visibility="{Binding CanCancel, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        Visibility="{Binding CanCancel, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Button.Effect>
+                        <DropShadowEffect ShadowDepth="2" 
+                                         BlurRadius="3" 
+                                         Opacity="0.3" 
+                                         Color="{StaticResource RimworldShadow}"/>
+                    </Button.Effect>
+                    <!-- Button Content with Enhanced Font -->
+                    <Button.ContentTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" 
+                                       FontWeight="Medium" 
+                                       FontSize="14"/>
+                        </DataTemplate>
+                    </Button.ContentTemplate>
+                </Button>
             </StackPanel>
-        </Grid>
+        </Border>
     </dialogs:BaseDialog.ButtonContent>
 </dialogs:BaseDialog>

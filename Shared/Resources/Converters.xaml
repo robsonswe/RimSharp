@@ -7,6 +7,7 @@
     <converters:InequalityConverter x:Key="InequalityConverter"/>
     <converters:ImagePathConverter x:Key="ImagePathConverter"/>
     <converters:MultiplyValueConverter x:Key="MultiplyValueConverter"/>
+    <converters:MultiplyMultiValueConverter x:Key="MultiplyMultiValueConverter"/>
     <converters:ClampValueConverter x:Key="ClampValueConverter"/>
     <converters:BooleanToColorConverter x:Key="BooleanToColorConverter"/>
     <converters:ListToStringConverter x:Key="ListToStringConverter"/>
@@ -17,5 +18,6 @@
     <converters:StringToUriConverter x:Key="StringToUriConverter"/>
     <converters:CountToBooleanConverter x:Key="CountToBooleanConverter"/>
     <converters:BooleanToTextConverter x:Key="BooleanToTextConverter"/>
+    <converters:DarkenColorConverter x:Key="DarkenColorConverter" />
 
 </ResourceDictionary>
