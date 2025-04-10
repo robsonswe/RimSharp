@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
+using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
 using RimSharp.MyApp.Dialogs; // If you want async wrappers later
-using RimSharp.Features.WorkshopDownloader.ViewModels;
 
 namespace RimSharp.Shared.Services.Contracts
 {

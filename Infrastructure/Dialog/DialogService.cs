@@ -1,8 +1,7 @@
 using System.Windows;
 using RimSharp.MyApp.Dialogs;
 using RimSharp.Shared.Services.Contracts;
-using RimSharp.Features.WorkshopDownloader.Views;
-using RimSharp.Features.WorkshopDownloader.ViewModels;
+using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
 
 namespace RimSharp.Infrastructure.Dialog
 {

@@ -9,7 +9,7 @@ using RimSharp.Core.Commands;
 using RimSharp.MyApp.Dialogs;
 using RimSharp.Shared.Models;
 
-namespace RimSharp.Features.WorkshopDownloader.ViewModels
+namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
 {
     public enum UpdateCheckDialogResult
     {
