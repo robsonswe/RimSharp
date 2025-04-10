@@ -30,6 +30,7 @@ namespace RimSharp.Infrastructure.Workshop
             _installer = installer;
             _downloader = downloader;
             _fileSystem = fileSystem;
+            SetupStateChanged = delegate { };
         }
 
 
@@ -38,7 +39,7 @@ namespace RimSharp.Infrastructure.Workshop
         public string SteamCmdInstallPath => _pathService.SteamCmdInstallPath;
         public string SteamCmdWorkshopContentPath => _pathService.SteamCmdWorkshopContentPath;
         public bool IsSetupComplete => _installer.CheckSetupAsync().GetAwaiter().GetResult();
-        public event EventHandler<bool> SetupStateChanged;
+        public event EventHandler<bool>? SetupStateChanged;
 
         /// <summary>
         /// Checks if SteamCMD is present at the configured location.
