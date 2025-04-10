@@ -18,6 +18,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Collections;
+using RimSharp.Core.Extensions;
 
 namespace RimSharp.Features.ModManager.ViewModels
 {
@@ -130,7 +131,10 @@ namespace RimSharp.Features.ModManager.ViewModels
             _modListManager.ListChanged += OnModListManagerChanged;
 
             InitializeCommands();
-            _ = LoadDataAsync();
+            ThreadHelper.EnsureUiThread(async () =>
+            {
+                await LoadDataAsync();
+            });
         }
 
         private void InitializeCommands()
@@ -173,31 +177,83 @@ namespace RimSharp.Features.ModManager.ViewModels
 
         private async Task LoadDataAsync()
         {
+            // Ensure we're not already loading
+            if (IsLoading) return;
+
             IsLoading = true;
             CommandManager.InvalidateRequerySuggested();
+
+            ProgressDialogViewModel progressDialog = null;
+
             try
             {
+                // Show progress dialog on UI thread
+                await RunOnUIThreadAsync(() =>
+                {
+                    progressDialog = _dialogService.ShowProgressDialog(
+                        "Loading Mods",
+                        "Initializing...",
+                        canCancel: false,
+                        isIndeterminate: true);
+                });
+
+                // Load data
+                progressDialog.Message = "Loading mod data...";
                 var allMods = await _dataService.LoadAllModsAsync();
                 var activeIdsFromConfig = _dataService.LoadActiveModIdsFromConfig();
+
+                progressDialog.Message = "Initializing mod list...";
                 _modListManager.Initialize(allMods, activeIdsFromConfig);
-                SelectedMod = _modListManager.VirtualActiveMods.FirstOrDefault(m => m.Mod.IsCore).Mod
-                             ?? _modListManager.VirtualActiveMods.FirstOrDefault().Mod
-                             ?? _modListManager.AllInactiveMods.FirstOrDefault();
+
+                progressDialog.Message = "Finalizing...";
+                ModItem selectedModCandidate = null;
+
+                // Try to find a core mod first
+                var coreMod = _modListManager.VirtualActiveMods.FirstOrDefault(m => m.Mod.IsCore);
+                if (coreMod != default) // If a tuple was found
+                {
+                    selectedModCandidate = coreMod.Mod;
+                }
+                // If no core mod, try any active mod
+                else
+                {
+                    var anyActiveMod = _modListManager.VirtualActiveMods.FirstOrDefault();
+                    if (anyActiveMod != default)
+                    {
+                        selectedModCandidate = anyActiveMod.Mod;
+                    }
+                    // If no active mods, try inactive mods
+                    else
+                    {
+                        selectedModCandidate = _modListManager.AllInactiveMods.FirstOrDefault();
+                    }
+                }
+
+                SelectedMod = selectedModCandidate;
                 HasUnsavedChanges = false;
+
+                // Make sure to complete the operation
+                progressDialog.CompleteOperation("Mods loaded successfully");
             }
             catch (Exception ex)
             {
+                // Ensure dialog is closed on error
+                progressDialog?.ForceClose();
                 Debug.WriteLine($"Error loading mods: {ex}");
-                RunOnUIThread(() => _dialogService.ShowError("Loading Error", $"Error loading mods: {ex.Message}"));
+                await RunOnUIThreadAsync(() =>
+                    _dialogService.ShowError("Loading Error", $"Error loading mods: {ex.Message}"));
                 HasUnsavedChanges = false;
             }
             finally
             {
+                // Always reset the loading state
                 IsLoading = false;
                 CommandManager.InvalidateRequerySuggested();
                 (DeleteModCommand as RelayCommand<ModItem>)?.RaiseCanExecuteChanged();
             }
         }
+
+
 
         private bool CanExecuteDeleteMod(ModItem mod)
         {
@@ -420,37 +476,31 @@ namespace RimSharp.Features.ModManager.ViewModels
                 return;
             }
 
-            var confirmationMessage = new StringBuilder();
-            confirmationMessage.AppendLine("Are you sure you want to permanently delete the following mods?");
-            confirmationMessage.AppendLine();
-            foreach (var mod in deletableMods)
-            {
-                confirmationMessage.AppendLine($"- {mod.Name}");
-            }
-            if (nonDeletableMods.Count > 0)
-            {
-                confirmationMessage.AppendLine();
-                confirmationMessage.AppendLine("The following mods cannot be deleted because they are core or expansion mods, or their folders do not exist:");
-                foreach (var mod in nonDeletableMods)
-                {
-                    confirmationMessage.AppendLine($"- {mod.Name}");
-                }
-            }
+            // Show progress dialog
+            var progressDialog = _dialogService.ShowProgressDialog(
+                "Deleting Mods",
+                $"Preparing to delete {deletableMods.Count} mods...",
+                canCancel: true);
 
-            var result = _dialogService.ShowConfirmation("Confirm Deletion", confirmationMessage.ToString(), showCancel: true);
-            if (result != MessageDialogResult.OK)
+            // Handle cancellation
+            progressDialog.Cancelled += (sender, e) =>
             {
-                return;
-            }
+                progressDialog.Message = "Cancellation requested...";
+                // You might want to add cancellation logic here
+            };
 
             IsLoading = true;
             CommandManager.InvalidateRequerySuggested();
 
             var deletionResults = new List<string>();
-            foreach (var mod in deletableMods)
+            for (int i = 0; i < deletableMods.Count; i++)
             {
+                var mod = deletableMods[i];
                 try
                 {
+                    progressDialog.Message = $"Deleting {mod.Name} ({i + 1}/{deletableMods.Count})...";
+                    progressDialog.UpdateProgress((i * 100) / deletableMods.Count);
+
                     await Task.Run(() => Directory.Delete(mod.Path, recursive: true));
                     deletionResults.Add($"Successfully deleted {mod.Name}");
                 }
@@ -459,9 +509,18 @@ namespace RimSharp.Features.ModManager.ViewModels
                     Debug.WriteLine($"Failed to delete {mod.Name}: {ex}");
                     deletionResults.Add($"Failed to delete {mod.Name}: {ex.Message}");
                 }
+
+                // Check if cancellation was requested
+                if (progressDialog.DialogResult == false)
+                {
+                    deletionResults.Add("Operation cancelled by user");
+                    break;
+                }
             }
 
             await RefreshDataAsync();
+
+            progressDialog.CompleteOperation("Deletion completed");
 
             var summaryMessage = string.Join("\n", deletionResults);
             _dialogService.ShowInformation("Deletion Summary", summaryMessage);

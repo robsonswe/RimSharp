@@ -34,6 +34,11 @@ namespace RimSharp.MyApp.AppFiles
             ThreadHelper.EnsureUiThread(action);
         }
 
+        protected async Task RunOnUIThreadAsync(Action action)
+        {
+            await Task.Run(() => RunOnUIThread(action));
+        }
+
         // Helper for safely running background operations that update the UI when complete
         protected async Task RunAsync(Func<Task> asyncOperation)
         {
