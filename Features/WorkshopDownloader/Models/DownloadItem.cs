@@ -1,54 +1,51 @@
+#nullable enable
 using RimSharp.MyApp.AppFiles;
 
 namespace RimSharp.Features.WorkshopDownloader.Models
 {
     public class DownloadItem : ViewModelBase
     {
-        // Existing properties
-        private string _name;
-        private string _url;
-        private string _steamId;
-        private string _publishDate; // Date from Workshop
-        private string _standardDate; // Parsed Workshop Date
+        private string? _name;
+        private string? _url;
+        private string? _steamId;
+        private string? _publishDate; // Date from Workshop
+        private string? _standardDate; // Parsed Workshop Date
 
-        // --- NEW PROPERTIES ---
         private bool _isInstalled;
         private string? _localDateStamp; // Date from local timestamp file
         private bool _isActive;
         private bool _isLocallyOutdatedRW; // Based on ModItem.IsOutdatedRW
 
-        // Existing Property Accessors (Getters/Setters using SetProperty)
-        public string Name
+        public string? Name
         {
             get => _name;
             set => SetProperty(ref _name, value);
         }
 
-        public string Url
+        public string? Url
         {
             get => _url;
             set => SetProperty(ref _url, value);
         }
 
-        public string SteamId
+        public string? SteamId
         {
             get => _steamId;
             set => SetProperty(ref _steamId, value);
         }
 
-        public string PublishDate // Workshop Publish Date
+        public string? PublishDate // Workshop Publish Date
         {
             get => _publishDate;
             set => SetProperty(ref _publishDate, value);
         }
 
-        public string StandardDate // Workshop Publish Date (Standard Format)
+        public string? StandardDate // Workshop Publish Date (Standard Format)
         {
             get => _standardDate;
             set => SetProperty(ref _standardDate, value);
         }
 
-        // --- NEW PROPERTY ACCESSORS ---
         public bool IsInstalled
         {
             get => _isInstalled;

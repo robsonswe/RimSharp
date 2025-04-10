@@ -164,7 +164,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
                 foreach (var item in items)
                 {
-                    if (_queueService.RemoveFromQueue(item))
+                    if (item.Name != null && _queueService.RemoveFromQueue(item))
                     {
                         removedCount++;
                         removedNames.Add(item.Name);
