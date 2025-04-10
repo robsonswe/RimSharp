@@ -25,12 +25,12 @@ namespace RimSharp.Infrastructure.Workshop
             ISteamCmdInstaller installer,
             ISteamCmdDownloader downloader,
             ISteamCmdFileSystem fileSystem)
-                    {
-                        _pathService = pathService;
-                        _installer = installer;
-                        _downloader = downloader;
-                        _fileSystem = fileSystem;
-                    }
+        {
+            _pathService = pathService;
+            _installer = installer;
+            _downloader = downloader;
+            _fileSystem = fileSystem;
+        }
 
 
         // Forward properties to the path service
@@ -38,6 +38,7 @@ namespace RimSharp.Infrastructure.Workshop
         public string SteamCmdInstallPath => _pathService.SteamCmdInstallPath;
         public string SteamCmdWorkshopContentPath => _pathService.SteamCmdWorkshopContentPath;
         public bool IsSetupComplete => _installer.CheckSetupAsync().GetAwaiter().GetResult();
+        public event EventHandler<bool> SetupStateChanged;
 
         /// <summary>
         /// Checks if SteamCMD is present at the configured location.
@@ -75,5 +76,11 @@ namespace RimSharp.Infrastructure.Workshop
         /// Clears the SteamCMD depot cache directory.
         /// </summary>
         public Task<bool> ClearDepotCacheAsync() => _fileSystem.ClearDepotCacheAsync();
+
+        private void OnSetupStateChanged(bool isSetup)
+        {
+            SetupStateChanged?.Invoke(this, isSetup);
+        }
+
     }
 }

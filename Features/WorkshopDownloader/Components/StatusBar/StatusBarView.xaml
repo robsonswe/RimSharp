@@ -1,0 +1,17 @@
+<UserControl x:Class="RimSharp.Features.WorkshopDownloader.Components.StatusBar.StatusBarView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:vm="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.StatusBar"
+             d:DataContext="{d:DesignInstance Type=vm:StatusBarViewModel}"
+             mc:Ignorable="d">
+
+    <Border Background="{StaticResource RimworldLightBrownBrush}"
+            BorderBrush="{StaticResource RimworldBrownBrush}"
+            BorderThickness="0,1,0,0">
+        <TextBlock Text="{Binding StatusMessage}"
+                   Padding="5"
+                   Foreground="{StaticResource RimworldWhiteBrush}"/>
+    </Border>
+</UserControl>

@@ -3,206 +3,58 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
              xmlns:vm="clr-namespace:RimSharp.Features.WorkshopDownloader.ViewModels"
-             xmlns:helpers="clr-namespace:RimSharp.Core.Helpers"
-             xmlns:converters="clr-namespace:RimSharp.Core.Converters"
+             xmlns:browser="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.Browser"
+             xmlns:queue="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.DownloadQueue"
+             xmlns:statusBar="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.StatusBar"
              d:DataContext="{d:DesignInstance Type=vm:DownloaderViewModel}"
              mc:Ignorable="d"
              d:DesignHeight="600"
              d:DesignWidth="800"
              Background="{StaticResource RimworldBeigeBrush}">
 
-
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/> <!-- Browser takes main space -->
+            <RowDefinition Height="Auto"/> <!-- Status Bar at the bottom -->
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="300"/>
+            <ColumnDefinition Width="*"/> <!-- Browser View -->
+            <ColumnDefinition Width="300"/> <!-- Download Queue View -->
         </Grid.ColumnDefinitions>
 
-        <!-- Navigation Bar -->
-        <Border Grid.Row="0"
-                Grid.Column="0"
-                Style="{StaticResource RimworldInfoHeaderBorder}"
-                Margin="0,0,0,1">
-            <StackPanel Orientation="Horizontal">
-                <Button Command="{Binding GoBackCommand}"
-                        Content="Back"
-                        Style="{StaticResource DownloaderButtonStyle}"/>
-                <Button Command="{Binding GoForwardCommand}"
-                        Content="Forward"
-                        Style="{StaticResource DownloaderButtonStyle}"/>
-                <Button Command="{Binding GoHomeCommand}"
-                        Content="Home"
-                        Style="{StaticResource DownloaderButtonStyle}"/>
-            </StackPanel>
-        </Border>
+        <!-- Browser Area (Includes Navigation implicitly via BrowserViewModel) -->
+        <!-- The BrowserView now contains the WebView2 control -->
+        <browser:BrowserView Grid.Row="0"
+                             Grid.Column="0"
+                             DataContext="{Binding BrowserViewModel}"
+                             Margin="0,0,1,1"
+                             BorderBrush="{StaticResource RimworldBrownBrush}"
+                             BorderThickness="1"/>
 
-        <!-- WebView2 Control -->
-        <Border Grid.Row="1"
-                Grid.Column="0"
-                BorderBrush="{StaticResource RimworldBrownBrush}"
-                BorderThickness="1">
-            <wv2:WebView2 x:Name="SteamWorkshopBrowser"/>
-        </Border>
-
-        <!-- Download Panel -->
-        <Border Grid.Row="0"
-                Grid.RowSpan="2"
-                Grid.Column="1"
-                Style="{StaticResource RimworldPanelBorder}"
-                Margin="1,0,0,0">
-            <DockPanel>
-                <Border DockPanel.Dock="Top"
-                        Style="{StaticResource RimworldInfoHeaderBorder}">
-                    <TextBlock Text="Mod Downloader"
-                               Foreground="{StaticResource RimworldWhiteBrush}"
-                               FontWeight="Bold"
-                               FontSize="16"/>
-                </Border>
-
-                <StackPanel DockPanel.Dock="Top"
-                            Margin="10">
-                    <Button Content="Setup SteamCMD"
-                            Command="{Binding SetupSteamCmdCommand}"
-                            Style="{StaticResource RimworldButtonStyle}"
-                            Margin="0,5"/>
-                    <Button Content="Check for Updates"
-                            Command="{Binding CheckUpdatesCommand}"
-                            Style="{StaticResource RimworldSaveButtonStyle}"
-                            Margin="0,5"/>
-
-                    <!-- Use a Grid to position Add Mod and Download buttons -->
-                    <Grid Margin="0,5">
-                        <Grid.ColumnDefinitions>
-                            <!-- Define two columns that share the space equally (*) -->
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <Button Grid.Column="0"
-                                Content="Add Mod"
-                                Command="{Binding AddModCommand}"
-                                Style="{StaticResource RimworldButtonStyle}"
-                                Margin="0,0,2.5,0"
-                                IsEnabled="{Binding IsValidModUrl}"/>
-                                <!-- HorizontalAlignment="Stretch" is the default for items in a Grid cell -->
-
-                        <Button Grid.Column="1" 
-                                Content="Download"
-                                Command="{Binding DownloadCommand}"
-                                Style="{StaticResource RimworldRunButtonStyle}"
-                                Margin="2.5,0,0,0"
-                                IsEnabled="{Binding DownloadList.Count, Converter={StaticResource CountToBooleanConverter}}"/>
-                                <!-- HorizontalAlignment="Stretch" is the default -->
-                    </Grid>
-
-                </StackPanel>
-
-
-                <Border DockPanel.Dock="Top"
-                        Style="{StaticResource RimworldListHeaderBorder}"
-                        Margin="0,10,0,0">
-                    <TextBlock Text="Download Queue"
-                               Foreground="{StaticResource RimworldWhiteBrush}"
-                               FontWeight="Medium"/>
-                </Border>
-
-<ListBox x:Name="DownloadQueueListBox"
-         ItemsSource="{Binding DownloadList}"
-         Style="{StaticResource RimworldListBoxNoHover}"
-         Margin="0,1,0,0"
-         ScrollViewer.VerticalScrollBarVisibility="Auto"
-         SelectionMode="Single">
-    <ListBox.Resources>
-        <ContextMenu x:Key="ItemContextMenu">
-            <MenuItem Header="Open in Browser"
-                    Command="{Binding Path=DataContext.NavigateToUrlCommand, 
-                            RelativeSource={RelativeSource AncestorType=UserControl}}"
-                    CommandParameter="{Binding Url}"/>
-        </ContextMenu>
-    </ListBox.Resources>
-    
-    <ListBox.ItemContainerStyle>
-        <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
-            <Setter Property="ContextMenu" Value="{StaticResource ItemContextMenu}"/>
-        </Style>
-    </ListBox.ItemContainerStyle>
-    <ListBox.ItemTemplate>
-    <DataTemplate>
-        <Grid Margin="0,2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-
-            <TextBlock Grid.Row="0"
-                       Grid.Column="0"
-                       Text="{Binding Name}"
-                       FontWeight="Bold"
-                       Foreground="{StaticResource RimworldBrownBrush}"
-                       TextWrapping="Wrap"/>
-
-            <StackPanel Grid.Row="1"
-                        Grid.Column="0"
-                        Orientation="Horizontal">
-                <TextBlock Text="ID: "
-                           FontSize="11"
-                           Foreground="{StaticResource RimworldLightBrownBrush}"/>
-                <TextBlock Text="{Binding SteamId}"
-                           FontSize="11"
-                           Foreground="{StaticResource RimworldLightBrownBrush}"/>
-            </StackPanel>
-                       
-            <StackPanel Grid.Row="2"
-                        Grid.Column="0"
-                        Orientation="Horizontal">
-                <TextBlock Text="Updated: "
-                           FontSize="11"
-                           Foreground="{StaticResource RimworldLightBrownBrush}"/>
-                <TextBlock Text="{Binding PublishDate}"
-                           FontSize="11"
-                           Foreground="{StaticResource RimworldLightBrownBrush}"
-                           ToolTip="{Binding PublishDate}"/>
-            </StackPanel>
-
-            <Button Grid.Row="0"
-                    Grid.Column="1"
-                    Grid.RowSpan="3"
-                    Command="{Binding DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                    CommandParameter="{Binding}"
-                    Style="{StaticResource SmallUtilityButtonStyle}"
-                    Margin="5,0,0,0"
-                    Content="✕"
-                    Foreground="{StaticResource RimworldRedBrush}"/>
-        </Grid>
-    </DataTemplate>
-</ListBox.ItemTemplate>
-
-                </ListBox>
-            </DockPanel>
-        </Border>
+        <!-- Download Queue Area -->
+        <!-- The DownloadQueueView contains the buttons and list -->
+        <queue:DownloadQueueView Grid.Row="0"
+                                 Grid.Column="1"
+                                 DataContext="{Binding QueueViewModel}"
+                                 Margin="0,0,0,1"/>
 
         <!-- Status Bar -->
-        <Border Grid.Row="2"
-                Grid.Column="0"
-                Grid.ColumnSpan="2"
-                Background="{StaticResource RimworldLightBrownBrush}"
-                BorderBrush="{StaticResource RimworldBrownBrush}"
-                BorderThickness="0,1,0,0">
-            <TextBlock Text="{Binding StatusMessage}"
-                       Padding="5"
-                       Foreground="{StaticResource RimworldWhiteBrush}"/>
-        </Border>
+        <statusBar:StatusBarView Grid.Row="1"
+                                 Grid.Column="0"
+                                 Grid.ColumnSpan="2"
+                                 DataContext="{Binding StatusBarViewModel}" />
+
+        <!-- Optional: Overlay for Cancel Button -->
+        <Button Grid.Row="0" Grid.ColumnSpan="2"
+                Content="Cancel Current Operation"
+                Command="{Binding CancelOperationCommand}"
+                Style="{StaticResource RimworldRunButtonStyle}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                Margin="0,0,0,40"
+                Visibility="{Binding IsOperationInProgress, Converter={StaticResource BooleanToVisibilityConverter}}"
+                MinWidth="200"/>
+                
     </Grid>
 </UserControl>

@@ -17,6 +17,7 @@ namespace RimSharp.Shared.Services.Contracts
         string SteamCmdWorkshopContentPath { get; }
         Task<bool> CheckSetupAsync();
         Task<bool> SetupAsync(IProgress<string>? progress = null, CancellationToken cancellationToken = default);
+        event EventHandler<bool> SetupStateChanged;
 
         /// <summary>
         /// Downloads the specified Workshop items using SteamCMD, showing the console window.

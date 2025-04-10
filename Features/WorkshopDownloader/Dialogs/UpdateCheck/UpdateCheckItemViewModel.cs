@@ -2,7 +2,7 @@ using RimSharp.MyApp.AppFiles;
 using RimSharp.Shared.Models;
 using System.Collections.Generic; // Required for EqualityComparer used in base SetProperty
 
-namespace RimSharp.Features.WorkshopDownloader.ViewModels
+namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
 {
     // ViewModel for each item in the Update Check Dialog ListBox
     public class UpdateCheckItemViewModel : ViewModelBase

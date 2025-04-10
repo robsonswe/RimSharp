@@ -1,8 +1,7 @@
 using System.Windows;
-using RimSharp.Features.WorkshopDownloader.ViewModels;
 using RimSharp.Infrastructure.Dialog;
 
-namespace RimSharp.Features.WorkshopDownloader.Views
+namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
 {
     // Inherit from BaseDialog instead of Window
     public partial class UpdateCheckDialogView : BaseDialog
