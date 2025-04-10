@@ -145,7 +145,8 @@ namespace RimSharp.MyApp.AppFiles
                     provider.GetRequiredService<IModService>(),
                     provider.GetRequiredService<IDialogService>(),
                     provider.GetRequiredService<IWorkshopUpdateCheckerService>(),
-                    provider.GetRequiredService<ISteamCmdService>() // This should now resolve correctly
+                    provider.GetRequiredService<ISteamCmdService>(),
+                    provider.GetRequiredService<IModListManager>()
                 ));
 
             services.AddSingleton<MainViewModel>(provider =>

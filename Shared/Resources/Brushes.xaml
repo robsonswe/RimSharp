@@ -17,6 +17,9 @@
     <SolidColorBrush x:Key="RimworldWhiteBrush" Color="{StaticResource RimworldWhite}"/>
     <SolidColorBrush x:Key="RimworldGrayBrush" Color="{StaticResource RimworldGray}"/>
 
+    <SolidColorBrush x:Key="RimworldDarkBackgroundBrush" Color="{StaticResource RimworldDarkBrown}"/>
+
+
     <!-- Specific Hover/Disabled/Border Brushes -->
     <SolidColorBrush x:Key="RimworldDarkGreenHoverBrush" Color="{StaticResource RimworldDarkGreenHover}"/>
     <SolidColorBrush x:Key="RimworldDarkGreenDisabledBrush" Color="{StaticResource RimworldDarkGreenDisabled}"/>
