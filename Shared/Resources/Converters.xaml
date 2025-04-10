@@ -16,4 +16,6 @@
     <converters:BooleanToBrushConverter x:Key="BooleanToBrushConverter"/>
     <converters:StringToUriConverter x:Key="StringToUriConverter"/>
     <converters:CountToBooleanConverter x:Key="CountToBooleanConverter"/>
+    <converters:BooleanToTextConverter x:Key="BooleanToTextConverter"/>
+
 </ResourceDictionary>
