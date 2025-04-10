@@ -52,9 +52,39 @@ namespace RimSharp.Features.ModManager.Services.Data
 
                 // Load and parse the XML
                 var allModIds = ParseModsConfigXml(configPath);
+                var allMods = _modService.GetLoadedMods();
 
-                // We don't filter mod IDs here - let the ModListManager handle that
-                // so it can track which mods are missing for user feedback
+                // Check which mods are missing
+                var availableModIds = allMods
+                    .Where(m => !string.IsNullOrEmpty(m.PackageId))
+                    .Select(m => m.PackageId.ToLowerInvariant())
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                var missingModIds = allModIds
+                    .Where(id => !availableModIds.Contains(id))
+                    .ToList();
+
+                // Show message about missing mods if any
+                if (missingModIds.Count > 0)
+                {
+                    var messageBuilder = new System.Text.StringBuilder();
+                    messageBuilder.AppendLine("The following mods in your ModsConfig.xml are not installed:");
+                    messageBuilder.AppendLine();
+
+                    foreach (var modId in missingModIds)
+                    {
+                        messageBuilder.AppendLine($"- {modId}");
+                    }
+
+                    messageBuilder.AppendLine();
+                    messageBuilder.AppendLine($"Successfully loaded {allModIds.Count - missingModIds.Count} installed mods.");
+
+                    _dialogService.ShowMessageWithCopy(
+                        "Missing Mods",
+                        messageBuilder.ToString(),
+                        MessageDialogType.Warning);
+                }
+
                 return allModIds;
             }
             catch (Exception ex) when (ex is ArgumentNullException || ex is DirectoryNotFoundException)
@@ -94,7 +124,7 @@ namespace RimSharp.Features.ModManager.Services.Data
 
                 // Save the document
                 doc.Save(configPath);
-                 // --- Replaced MessageBox ---
+                // --- Replaced MessageBox ---
                 _dialogService.ShowInformation("Save Successful", $"Mods configuration saved successfully{(fileExisted ? "!" : " to new file")}!");
                 // -------------------------
             }

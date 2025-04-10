@@ -147,7 +147,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             ImportListCommand = new RelayCommand(async _ => await ExecuteImport(), _ => !_isLoading);
             ExportListCommand = new RelayCommand(async _ => await ExecuteExport(), _ => !_isLoading && _modListManager.VirtualActiveMods.Any());
             CheckIncompatibilitiesCommand = new RelayCommand(async _ => await ExecuteCheckIncompatibilities(), _ => !_isLoading && _modListManager.VirtualActiveMods.Any());
-            CheckDuplicatesCommand = new RelayCommand(_ => CheckForDuplicates());
+            CheckDuplicatesCommand = new RelayCommand(_ => CheckForDuplicates(), _ => !_isLoading);
             StripModsCommand = new RelayCommand(StripMods, _ => !_isLoading);
             CreatePackCommand = new RelayCommand(CreatePack, _ => !_isLoading);
             FixIntegrityCommand = new RelayCommand(FixIntegrity, _ => !_isLoading);

@@ -1,4 +1,5 @@
 using Microsoft.Win32;
+using RimSharp.MyApp.Dialogs;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using System;
@@ -105,15 +106,15 @@ namespace RimSharp.Infrastructure.Mods.IO
             }
             catch (UnauthorizedAccessException)
             {
-                 // --- Replaced MessageBox ---
+                // --- Replaced MessageBox ---
                 _dialogService.ShowError("Export Error", "Error: Permission denied when saving the file.");
                 // -------------------------
             }
             catch (Exception ex)
             {
-                 // --- Replaced MessageBox ---
+                // --- Replaced MessageBox ---
                 _dialogService.ShowError("Export Error", $"An unexpected error occurred during export: {ex.Message}");
-                 // -------------------------
+                // -------------------------
             }
         }
 
@@ -249,9 +250,9 @@ namespace RimSharp.Infrastructure.Mods.IO
         {
             if (missingModIds.Count == 0)
             {
-                // --- Replaced MessageBox ---
-                _dialogService.ShowInformation("Import Successful", $"Successfully imported mod list from {fileName} with {importedCount} active mods.");
-                // -------------------------
+                _dialogService.ShowInformation(
+                    "Import Successful",
+                    $"Successfully imported mod list from {fileName} with {importedCount} active mods.");
                 return;
             }
 
@@ -268,9 +269,10 @@ namespace RimSharp.Infrastructure.Mods.IO
             messageBuilder.AppendLine();
             messageBuilder.AppendLine($"Successfully activated {importedCount} installed mods.");
 
-            // --- Replaced MessageBox ---
-            _dialogService.ShowWarning("Import Partial Success", messageBuilder.ToString());
-            // -------------------------
+            _dialogService.ShowMessageWithCopy(
+                "Import Partial Success",
+                messageBuilder.ToString(),
+                MessageDialogType.Warning);
         }
 
         #endregion
