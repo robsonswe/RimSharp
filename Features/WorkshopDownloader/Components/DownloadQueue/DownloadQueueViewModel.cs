@@ -65,6 +65,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
         public ICommand DownloadCommand { get; }
         public ICommand RemoveItemCommand { get; }
         public ICommand NavigateToUrlCommand { get; }
+        public ICommand RemoveItemsCommand { get; }
 
         // --- Events ---
         public event EventHandler<string>? StatusChanged;
@@ -109,6 +110,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             AddModCommand = new AsyncRelayCommand(ExecuteAddModCommand, () => CanAddMod);
             RemoveItemCommand = new RelayCommand(ExecuteRemoveItemCommand, _ => !IsOperationInProgress);
             NavigateToUrlCommand = new RelayCommand(ExecuteNavigateToUrlCommand, _ => !IsOperationInProgress); // <<< Keep RelayCommand here
+            RemoveItemsCommand = new RelayCommand(ExecuteRemoveItemsCommand, _ => !IsOperationInProgress);
 
             // --- Initial State ---
             Task.Run(UpdateSteamCmdReadyStatus); // Fire and forget
@@ -138,6 +140,50 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 _localModLookupBySteamId.Clear(); // Ensure lookup is empty on error
             }
         }
+        private void ExecuteRemoveItemsCommand(object? parameter)
+        {
+            if (IsOperationInProgress) return; // Don't modify queue during other operations
+
+            // Cast parameter to IList and extract DownloadItems
+            if (parameter is System.Collections.IList selectedItems && selectedItems.Count > 0)
+            {
+                var items = selectedItems.Cast<DownloadItem>().ToList();
+                if (items.Count == 0) return;
+
+                // Prepare confirmation message
+                string confirmMessage = items.Count == 1
+                    ? $"Are you sure you want to remove '{items[0].Name}' from the queue?"
+                    : $"Are you sure you want to remove {items.Count} items from the queue?";
+
+                var result = _dialogService.ShowConfirmation("Remove from Queue", confirmMessage, showCancel: true);
+                if (result != MessageDialogResult.OK && result != MessageDialogResult.Yes) return;
+
+                // Remove confirmed, proceed with removal
+                int removedCount = 0;
+                var removedNames = new List<string>();
+
+                foreach (var item in items)
+                {
+                    if (_queueService.RemoveFromQueue(item))
+                    {
+                        removedCount++;
+                        removedNames.Add(item.Name);
+                    }
+                }
+
+                // Show success message
+                if (removedCount > 0)
+                {
+                    string message = removedCount == 1
+                        ? $"Removed '{removedNames[0]}' from the queue."
+                        : $"Removed {removedCount} items from the queue:\n\n• " + string.Join("\n• ", removedNames);
+
+                    _dialogService.ShowInformation("Items Removed", message);
+                    StatusChanged?.Invoke(this, $"Removed {removedCount} item(s) from queue.");
+                }
+            }
+        }
+
 
         // --- NEW METHOD: Enrich a single DownloadItem ---
         private void EnrichDownloadItem(DownloadItem item)
@@ -146,7 +192,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
             if (_localModLookupBySteamId.TryGetValue(item.SteamId, out var localMod))
             {
-                 Debug.WriteLine($"[QueueVM] Enriching item '{item.Name}' ({item.SteamId}): Found local match.");
+                Debug.WriteLine($"[QueueVM] Enriching item '{item.Name}' ({item.SteamId}): Found local match.");
                 // Found the mod locally
                 item.IsInstalled = true;
                 item.LocalDateStamp = localMod.DateStamp; // Assuming ModItem has DateStamp property
@@ -198,8 +244,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 }
                 else if (e.Action == NotifyCollectionChangedAction.Remove)
                 {
-                     Debug.WriteLine("[QueueVM] Item removed from download list.");
-                     // No enrichment needed, just update commands potentially
+                    Debug.WriteLine("[QueueVM] Item removed from download list.");
+                    // No enrichment needed, just update commands potentially
                 }
 
                 // Always refresh potentially affected properties/commands
@@ -265,11 +311,12 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 ((AsyncRelayCommand)DownloadCommand).RaiseCanExecuteChanged();
                 ((RelayCommand)RemoveItemCommand).RaiseCanExecuteChanged();
                 ((RelayCommand)NavigateToUrlCommand).RaiseCanExecuteChanged();
-                // Explicitly update computed properties bound to UI
+                ((RelayCommand)RemoveItemsCommand).RaiseCanExecuteChanged();
                 OnPropertyChanged(nameof(CanAddMod));
                 OnPropertyChanged(nameof(CanDownload));
             });
         }
+
 
         // --- Command CanExecute Methods (Omitted for brevity - no changes here) ---
         private bool CanExecuteSetupSteamCmd() => !IsOperationInProgress;
@@ -479,11 +526,11 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 }
                 else
                 {
-                     // Maybe still refresh failed items? They might have become installed via other means.
-                     // Let's enrich *all* items again just to be sure the display is consistent
-                     // after the operation, even if no downloads succeeded.
-                     Debug.WriteLine("[QueueVM] No successful downloads, but re-enriching queue items for consistency.");
-                     EnrichAllDownloadItems();
+                    // Maybe still refresh failed items? They might have become installed via other means.
+                    // Let's enrich *all* items again just to be sure the display is consistent
+                    // after the operation, even if no downloads succeeded.
+                    Debug.WriteLine("[QueueVM] No successful downloads, but re-enriching queue items for consistency.");
+                    EnrichAllDownloadItems();
                 }
 
 
@@ -499,18 +546,18 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             {
                 StatusChanged?.Invoke(this, "Download operation cancelled by user.");
                 _dialogService.ShowInformation("Cancelled", "Download operation cancelled. Partially downloaded items may exist but were not fully processed.");
-                 // Even on cancellation, re-enrich to reflect any partial successes before cancel took effect
-                 Debug.WriteLine("[QueueVM] Download cancelled, re-enriching queue items.");
-                 EnrichAllDownloadItems();
+                // Even on cancellation, re-enrich to reflect any partial successes before cancel took effect
+                Debug.WriteLine("[QueueVM] Download cancelled, re-enriching queue items.");
+                EnrichAllDownloadItems();
             }
             catch (Exception ex)
             {
                 StatusChanged?.Invoke(this, $"Error during download process: {ex.Message}");
                 Debug.WriteLine($"[ExecuteDownloadCommand] Exception: {ex}");
                 _dialogService.ShowError("Download Error", $"An unexpected error occurred during the download: {ex.Message}");
-                 // On error, re-enrich to ensure queue reflects current known state
-                 Debug.WriteLine("[QueueVM] Download error occurred, re-enriching queue items.");
-                 EnrichAllDownloadItems();
+                // On error, re-enrich to ensure queue reflects current known state
+                Debug.WriteLine("[QueueVM] Download error occurred, re-enriching queue items.");
+                EnrichAllDownloadItems();
             }
             finally
             {
@@ -577,11 +624,22 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
             if (parameter is DownloadItem item)
             {
-                _queueService.RemoveFromQueue(item); // Service handles status update/logging
-                // Status update handled by service now
-                // StatusChanged?.Invoke(this, $"Removed '{item.Name}' from queue.");
+                // Ask for confirmation
+                var result = _dialogService.ShowConfirmation("Remove from Queue",
+                    $"Are you sure you want to remove '{item.Name}' from the queue?",
+                    showCancel: true);
+
+                if (result != MessageDialogResult.OK && result != MessageDialogResult.Yes) return;
+
+                // Proceed with removal
+                if (_queueService.RemoveFromQueue(item))
+                {
+                    _dialogService.ShowInformation("Item Removed", $"Removed '{item.Name}' from the queue.");
+                    StatusChanged?.Invoke(this, $"Removed '{item.Name}' from queue.");
+                }
             }
         }
+
 
         private void ExecuteNavigateToUrlCommand(object? url)
         {
@@ -629,7 +687,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             try
             {
                 StatusChanged?.Invoke(this, "Gathering installed workshop mods...");
-                 // Refresh local mod info just before check, ensuring IModService is up-to-date
+                // Refresh local mod info just before check, ensuring IModService is up-to-date
                 await _modService.LoadModsAsync(); // Assuming LoadModsAsync refreshes the list used by GetLoadedMods
                 workshopMods = _modService.GetLoadedMods()
                    .Where(m => !string.IsNullOrEmpty(m.SteamId) && long.TryParse(m.SteamId, out _))

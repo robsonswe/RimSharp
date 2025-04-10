@@ -1,50 +1,76 @@
-using System.Windows; // Added
+using System.Windows;
 using System.Windows.Controls;
+using RimSharp.Core.Helpers;
+using RimSharp.Features.WorkshopDownloader.Models;
 
 namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 {
     public partial class DownloadQueueView : UserControl
+{
+    public DownloadQueueView()
     {
-        public DownloadQueueView()
+        InitializeComponent();
+    }
+
+    private void DownloadQueueListBox_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        var listBox = sender as ListBox;
+        if (listBox == null) return;
+
+        var viewModel = DataContext as DownloadQueueViewModel;
+        if (viewModel == null)
         {
-            InitializeComponent();
+            e.Handled = true;
+            return;
         }
 
-        // *** ADDED: Event Handler ***
-        private void DownloadQueueListBox_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+        ContextMenu contextMenu;
+
+        if (listBox.SelectedItems.Count > 1)
         {
-            var listBox = sender as ListBox;
-            if (listBox == null) return;
-
-            // Find the ContextMenu resources
-            var singleItemMenu = FindResource("ItemContextMenu") as ContextMenu;
-            var multiItemMenu = FindResource("MultiItemContextMenu") as ContextMenu;
-
-            if (singleItemMenu == null || multiItemMenu == null)
+            // Multi-item menu
+            contextMenu = new ContextMenu();
+            var removeSelectedItem = new MenuItem
             {
-                e.Handled = true; // Prevent default context menu if resources are missing
+                Header = "Remove Selected",
+                Command = viewModel.RemoveItemsCommand,
+                CommandParameter = listBox.SelectedItems
+            };
+            contextMenu.Items.Add(removeSelectedItem);
+        }
+        else if (listBox.SelectedItems.Count == 1)
+        {
+            // Single-item menu
+            var selectedItem = listBox.SelectedItem as DownloadItem;
+            if (selectedItem == null)
+            {
+                e.Handled = true;
                 return;
             }
 
-            // Decide which menu to show based on selection count
-            if (listBox.SelectedItems.Count > 1)
+            contextMenu = new ContextMenu();
+            var goToModPageItem = new MenuItem
             {
-                // More than one item selected, show multi-item menu
-                listBox.ContextMenu = multiItemMenu;
-            }
-            else if (listBox.SelectedItems.Count == 1)
+                Header = "Go to Mod Page",
+                Command = viewModel.NavigateToUrlCommand,
+                CommandParameter = selectedItem.Url
+            };
+            var removeItem = new MenuItem
             {
-                // Exactly one item selected, show single-item menu
-                // Ensure the context menu is associated with the ListBox itself,
-                // not the ListBoxItem, so RelativeSource binding works.
-                listBox.ContextMenu = singleItemMenu;
-            }
-            else
-            {
-                // No items selected, prevent any context menu from showing
-                e.Handled = true;
-                listBox.ContextMenu = null; // Clear any previously set menu
-            }
+                Header = "Remove from Queue",
+                Command = viewModel.RemoveItemCommand,
+                CommandParameter = selectedItem
+            };
+            contextMenu.Items.Add(goToModPageItem);
+            contextMenu.Items.Add(removeItem);
         }
+        else
+        {
+            e.Handled = true;
+            return;
+        }
+
+        listBox.ContextMenu = contextMenu;
     }
+}
 }

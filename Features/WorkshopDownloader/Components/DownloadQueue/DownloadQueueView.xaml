@@ -6,62 +6,101 @@
              xmlns:vm="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.DownloadQueue"
              xmlns:converters="clr-namespace:RimSharp.Core.Converters"
              xmlns:models="clr-namespace:RimSharp.Features.WorkshopDownloader.Models"
+             xmlns:helpers="clr-namespace:RimSharp.Core.Helpers"
              d:DataContext="{d:DesignInstance Type=vm:DownloadQueueViewModel}"
-             mc:Ignorable="d">
+             mc:Ignorable="d"
+             x:Name="DownloadQueueUserControl">
 
     <UserControl.Resources>
-        <!-- Ensure necessary converters are defined or referenced from MergedDictionaries -->
-        <converters:BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
-        <converters:BooleanToVisibilityConverter x:Key="InverseBoolToVisConverter" Inverse="True" />
-        <converters:BooleanToColorConverter x:Key="ActiveStateColorConverter" />
-        <converters:BooleanToTextConverter x:Key="ActiveStateTextConverter" />
-        <!-- Add other resources like ContextMenu etc. -->
-        <ContextMenu x:Key="ItemContextMenu">
-            <MenuItem Header="Open in Browser"
-                      Command="{Binding Path=DataContext.NavigateToUrlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                      CommandParameter="{Binding Url}"/>
-            <MenuItem Header="Remove from Queue"
-                      Command="{Binding Path=DataContext.RemoveItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                      CommandParameter="{Binding}" />
-        </ContextMenu>
+        <!-- Existing converters -->
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
+        <converters:BooleanToVisibilityConverter x:Key="InverseBoolToVisConverter" Inverse="True"/>
+        <converters:BooleanToColorConverter x:Key="ActiveStateColorConverter"/>
+        <converters:BooleanToTextConverter x:Key="ActiveStateTextConverter"/>
     </UserControl.Resources>
 
     <DockPanel>
-        <!-- Header/Buttons remain the same -->
-        <Border DockPanel.Dock="Top" Style="{StaticResource RimworldInfoHeaderBorder}">
-            <TextBlock Text="Mod Downloader" Foreground="{StaticResource RimworldWhiteBrush}" FontWeight="Bold" FontSize="16"/>
+        <Border DockPanel.Dock="Top"
+                Style="{StaticResource RimworldInfoHeaderBorder}">
+            <TextBlock Text="Mod Downloader"
+                       Foreground="{StaticResource RimworldWhiteBrush}"
+                       FontWeight="Bold"
+                       FontSize="16"/>
         </Border>
-        <StackPanel DockPanel.Dock="Top" Margin="10">
-            <Button Content="Setup SteamCMD" Command="{Binding SetupSteamCmdCommand}" Style="{StaticResource RimworldButtonStyle}" Margin="0,5"/>
-            <Button Content="Check for Updates" Command="{Binding CheckUpdatesCommand}" Style="{StaticResource RimworldSaveButtonStyle}" Margin="0,5"/>
+        <StackPanel DockPanel.Dock="Top"
+                    Margin="10">
+            <Button Content="Setup SteamCMD"
+                    Command="{Binding SetupSteamCmdCommand}"
+                    Style="{StaticResource RimworldButtonStyle}"
+                    Margin="0,5"/>
+            <Button Content="Check for Updates"
+                    Command="{Binding CheckUpdatesCommand}"
+                    Style="{StaticResource RimworldSaveButtonStyle}"
+                    Margin="0,5"/>
             <Grid Margin="0,5">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <Button Grid.Column="0" Content="Add Mod" Command="{Binding AddModCommand}" Style="{StaticResource RimworldButtonStyle}" Margin="0,0,2.5,0" IsEnabled="{Binding CanAddMod}"/>
-                <Button Grid.Column="1" Content="Download" Command="{Binding DownloadCommand}" Style="{StaticResource RimworldRunButtonStyle}" Margin="2.5,0,0,0" IsEnabled="{Binding CanDownload}"/>
+                <Button Grid.Column="0"
+                        Content="Add Mod"
+                        Command="{Binding AddModCommand}"
+                        Style="{StaticResource RimworldButtonStyle}"
+                        Margin="0,0,2.5,0"
+                        IsEnabled="{Binding CanAddMod}"/>
+                <Button Grid.Column="1"
+                        Content="Download"
+                        Command="{Binding DownloadCommand}"
+                        Style="{StaticResource RimworldRunButtonStyle}"
+                        Margin="2.5,0,0,0"
+                        IsEnabled="{Binding CanDownload}"/>
             </Grid>
         </StackPanel>
-        <Border DockPanel.Dock="Top" Style="{StaticResource RimworldListHeaderBorder}" Margin="0,10,0,0">
-            <TextBlock Text="Download Queue" Foreground="{StaticResource RimworldWhiteBrush}" FontWeight="Medium"/>
+        <Border DockPanel.Dock="Top"
+                Style="{StaticResource RimworldListHeaderBorder}"
+                Margin="0,10,0,0">
+            <TextBlock Text="Download Queue"
+                       Foreground="{StaticResource RimworldWhiteBrush}"
+                       FontWeight="Medium"/>
         </Border>
 
-        <!-- ListBox ItemTemplate Modifications -->
         <ListBox x:Name="DownloadQueueListBox"
                  ItemsSource="{Binding DownloadList}"
                  Style="{StaticResource RimworldListBoxNoHover}"
                  Margin="0,1,0,0"
                  ScrollViewer.VerticalScrollBarVisibility="Auto"
-                 SelectionMode="Single">
+                 SelectionMode="Extended"
+                 ContextMenuOpening="DownloadQueueListBox_ContextMenuOpening">
+            <ListBox.Resources>
+                <!-- Binding Proxies -->
+                <helpers:BindingProxy x:Key="DataContextProxy" Data="{Binding DataContext, ElementName=DownloadQueueUserControl}"/>
+                <helpers:BindingProxy x:Key="ListBoxProxy" Data="{Binding ., ElementName=DownloadQueueListBox}"/>
+
+                <!-- Context Menus defined here -->
+                <ContextMenu x:Key="ItemContextMenu" DataContext="{Binding Data, Source={StaticResource DataContextProxy}}">
+                    <MenuItem Header="Go to Mod Page"
+                              Command="{Binding NavigateToUrlCommand}"
+                              CommandParameter="{Binding Url}"/>
+                    <MenuItem Header="Remove from Queue"
+                              Command="{Binding RemoveItemCommand}"
+                              CommandParameter="{Binding}"/>
+                </ContextMenu>
+
+                <ContextMenu x:Key="MultiItemContextMenu" DataContext="{Binding Data, Source={StaticResource DataContextProxy}}">
+                    <MenuItem Header="Remove Selected"
+                              Command="{Binding RemoveItemsCommand}"
+                              CommandParameter="{Binding Data.SelectedItems, Source={StaticResource ListBoxProxy}}"/>
+                </ContextMenu>
+            </ListBox.Resources>
+
             <ListBox.ItemContainerStyle>
-                <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
-                    <Setter Property="ContextMenu" Value="{StaticResource ItemContextMenu}"/>
-                    <!-- Optional: Add tooltip showing more details -->
-                     <Setter Property="ToolTip">
+                <Style TargetType="ListBoxItem"
+                       BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                    <Setter Property="ToolTip">
                         <Setter.Value>
                             <ToolTip Style="{StaticResource RimworldToolTip}">
-                                <TextBlock Text="{Binding Name}" FontWeight="Bold" />
-                                <!-- Add more details if desired -->
+                                <TextBlock Text="{Binding Name}"
+                                           FontWeight="Bold"/>
                             </ToolTip>
                         </Setter.Value>
                     </Setter>
@@ -74,40 +113,65 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/> <!-- Name -->
-                            <RowDefinition Height="Auto"/> <!-- ID & Status -->
-                            <RowDefinition Height="Auto"/> <!-- Workshop Date -->
-                            <RowDefinition Height="Auto"/> <!-- Local Date -->
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <!-- Row 0: Name -->
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Name}" FontWeight="Bold" Foreground="{StaticResource RimworldBrownBrush}" TextWrapping="Wrap"/>
+                        <TextBlock Grid.Row="0"
+                                   Grid.Column="0"
+                                   Text="{Binding Name}"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource RimworldBrownBrush}"
+                                   TextWrapping="Wrap"/>
 
-                        <!-- Row 1: ID & Status Indicators -->
-                        <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal">
-                            <TextBlock Text="ID: " FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}"/>
-                            <TextBlock Text="{Binding SteamId}" FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}" Margin="0,0,5,0"/>
-
-                            <!-- Installed Status -->
-                            <TextBlock Text="(Installed)" FontSize="11" FontWeight="SemiBold" Foreground="ForestGreen" Margin="5,0,0,0"
+                        <StackPanel Grid.Row="1"
+                                    Grid.Column="0"
+                                    Orientation="Horizontal">
+                            <TextBlock Text="ID: "
+                                       FontSize="11"
+                                       Foreground="{StaticResource RimworldLightBrownBrush}"/>
+                            <TextBlock Text="{Binding SteamId}"
+                                       FontSize="11"
+                                       Foreground="{StaticResource RimworldLightBrownBrush}"
+                                       Margin="0,0,5,0"/>
+                            <TextBlock Text="(Installed)"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="ForestGreen"
+                                       Margin="5,0,0,0"
                                        Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVisConverter}}"/>
-
-                            <!-- Active Status (only if installed) -->
-                            <TextBlock Text="(Active)" FontSize="11" Foreground="DodgerBlue" Margin="5,0,0,0"
+                            <TextBlock Text="(Active)"
+                                       FontSize="11"
+                                       Foreground="DodgerBlue"
+                                       Margin="5,0,0,0"
                                        Visibility="{Binding IsActive, Converter={StaticResource BoolToVisConverter}}"/>
                         </StackPanel>
 
-                        <!-- Row 2: Workshop Date -->
-                        <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal">
-                            <TextBlock Text="Latest Version: " FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}"/>
-                            <TextBlock Text="{Binding PublishDate}" FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}" ToolTip="{Binding PublishDate}"/>
+                        <StackPanel Grid.Row="2"
+                                    Grid.Column="0"
+                                    Orientation="Horizontal">
+                            <TextBlock Text="Latest Version: "
+                                       FontSize="11"
+                                       Foreground="{StaticResource RimworldLightBrownBrush}"/>
+                            <TextBlock Text="{Binding PublishDate}"
+                                       FontSize="11"
+                                       Foreground="{StaticResource RimworldLightBrownBrush}"
+                                       ToolTip="{Binding PublishDate}"/>
                         </StackPanel>
 
-                        <!-- Row 3: Local Date (only if installed) -->
-                        <StackPanel Grid.Row="3" Grid.Column="0" Orientation="Horizontal"
+                        <StackPanel Grid.Row="3"
+                                    Grid.Column="0"
+                                    Orientation="Horizontal"
                                     Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVisConverter}}">
-                            <TextBlock Text="Installed Version: " FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}"/>
-                            <TextBlock Text="{Binding LocalDateStamp}" FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}" ToolTip="{Binding LocalDateStamp}"/>
+                            <TextBlock Text="Installed Version: "
+                                       FontSize="11"
+                                       Foreground="{StaticResource RimworldLightBrownBrush}"/>
+                            <TextBlock Text="{Binding LocalDateStamp}"
+                                       FontSize="11"
+                                       Foreground="{StaticResource RimworldLightBrownBrush}"
+                                       ToolTip="{Binding LocalDateStamp}"/>
                         </StackPanel>
                     </Grid>
                 </DataTemplate>
