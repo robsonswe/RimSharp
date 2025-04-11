@@ -9,11 +9,12 @@ namespace RimSharp.Shared.Models
     {
         public Dictionary<string, ModDependencyRule> LoadBefore { get; set; } = new();
         public Dictionary<string, ModDependencyRule> LoadAfter { get; set; } = new();
-
-        // Change bool? to the new class type, make it nullable
         public LoadBottomRule? LoadBottom { get; set; }
-
         public Dictionary<string, ModIncompatibilityRule> Incompatibilities { get; set; } = new();
+        
+        // Add SupportedVersions property
+        [JsonConverter(typeof(StringOrStringListConverter))]
+        public List<string> SupportedVersions { get; set; } = new();
     }
 
     public class ModDependencyRule
@@ -36,7 +37,6 @@ namespace RimSharp.Shared.Models
         public List<string> Name { get; set; } = new();
     }
 
-    // Definition for the LoadBottom object structure in JSON
     public class LoadBottomRule
     {
         [JsonConverter(typeof(StringOrStringListConverter))]

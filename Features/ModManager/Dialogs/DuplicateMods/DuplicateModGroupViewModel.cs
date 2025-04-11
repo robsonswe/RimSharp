@@ -46,8 +46,9 @@ namespace RimSharp.Features.ModManager.Dialogs.DuplicateMods
                 }
             }
 
+            // Updated to work with the new VersionSupport type
             var defaultMod = group.OrderByDescending(m => m?.IsActive ?? false)
-                  .ThenByDescending(m => m?.SupportedVersions?.FirstOrDefault())
+                  .ThenByDescending(m => m?.SupportedVersions?.FirstOrDefault()?.Version)
                   .FirstOrDefault();
 
             if (defaultMod != null)

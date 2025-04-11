@@ -747,14 +747,6 @@ namespace RimSharp.Features.ModManager.ViewModels
             });
         }
 
-
-        // Utility from original VM - Keep it internal or move to a helper class
-        private string GetSupportedVersionsString(ModItem mod)
-        {
-            if (mod?.SupportedVersions == null || !mod.SupportedVersions.Any()) return "N/A";
-            return string.Join(", ", mod.SupportedVersions);
-        }
-
     }
 
     // Helper extension (can be in a separate file)

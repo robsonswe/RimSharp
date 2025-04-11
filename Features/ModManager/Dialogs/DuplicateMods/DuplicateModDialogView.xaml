@@ -96,13 +96,13 @@
                                                         </TextBlock>
                                                         <StackPanel Margin="20,8,0,0">
                                                             <TextBlock Text="{Binding Authors}" FontSize="12"/>
-                                                            <TextBlock Text="{Binding SupportedVersions}" FontSize="12"/>
+                                                            <ContentControl Content="{Binding Original.SupportedVersions, Converter={StaticResource VersionSupportConverter}}" FontSize="12"/>
                                                             <TextBlock Text="{Binding Path}" FontSize="12" TextWrapping="Wrap"/>
                                                             <TextBlock Text="{Binding SteamId}" FontSize="12"
                                                                        Visibility="{Binding SteamId, Converter={StaticResource IsNotNullOrEmptyConverter}}"/> <!-- Hide if SteamId is empty -->
 
                                                             <!-- Use IsNotNullOrEmptyConverter for Visibility -->
-                                                                                                                        <TextBlock Visibility="{Binding Url, Converter={StaticResource IsNotNullOrEmptyConverter}}" FontSize="12">
+                                                            <TextBlock Visibility="{Binding Url, Converter={StaticResource IsNotNullOrEmptyConverter}}" FontSize="12">
                                                                 <Hyperlink NavigateUri="{Binding Url, Converter={StaticResource StringToUriConverter}}" RequestNavigate="Hyperlink_RequestNavigate">
                                                                     <TextBlock Text="{Binding Url}"/>
                                                                 </Hyperlink>
@@ -117,7 +117,6 @@
                                                                     <TextBlock Text="{Binding ExternalUrl}"/>
                                                                 </Hyperlink>
                                                             </TextBlock>
-
                                                         </StackPanel>
                                                     </StackPanel>
                                                 </RadioButton>
