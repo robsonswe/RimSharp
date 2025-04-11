@@ -7,11 +7,14 @@
              xmlns:models="clr-namespace:RimSharp.Shared.Models"
              xmlns:b="http://schemas.microsoft.com/xaml/behaviors"
              xmlns:behaviors="clr-namespace:RimSharp.Features.ModManager.Behaviors"
+             xmlns:vm="clr-namespace:RimSharp.Features.ModManager.ViewModels"
+             xmlns:views="clr-namespace:RimSharp.Features.ModManager.Views"
              mc:Ignorable="d"
              x:Name="RootModListView"
              d:DesignHeight="400"
              d:DesignWidth="300">
     <UserControl.Resources>
+        <!-- SelectedItemsHolder is still used for CommandParameter in ContextMenu -->
         <local:SelectedItemsHolder x:Key="selectedItemsHolder" />
     </UserControl.Resources>
     <Border Style="{StaticResource RimworldPanelBorder}">
@@ -23,10 +26,10 @@
                 <!-- List -->
             </Grid.RowDefinitions>
 
-            <!-- Header -->
-            <Border Grid.Row="0"
-                    Style="{StaticResource RimworldListHeaderBorder}">
-                <Grid>
+            <!-- Header (Bindings use ElementName, unchanged) -->
+            <Border Grid.Row="0" Style="{StaticResource RimworldListHeaderBorder}">
+                <!-- ... Header Grid content unchanged ... -->
+                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
@@ -67,7 +70,7 @@
                 </Grid>
             </Border>
 
-            <!-- ListBox with DragDrop Behavior Attached -->
+            <!-- ListBox -->
             <ListBox Grid.Row="1"
                      x:Name="InternalListBox"
                      ItemsSource="{Binding ItemsSource, ElementName=RootModListView}"
@@ -78,8 +81,7 @@
                      Background="Transparent"
                      SelectionMode="Extended"
                      SelectionChanged="InternalListBox_SelectionChanged">
-                <!-- AllowDrop must be true for behavior's drop events to fire -->
-
+                <!-- Behavior Bindings use ElementName, unchanged -->
                 <b:Interaction.Behaviors>
                     <behaviors:ListBoxDragDropBehavior
                         DropCommand="{Binding DropCommand, ElementName=RootModListView}"
@@ -89,9 +91,12 @@
 
                 <ListBox.ItemTemplate>
                     <DataTemplate DataType="{x:Type models:ModItem}">
-                        <Border Background="Transparent" Tag="{Binding DataContext, ElementName=RootModListView}">
+                         <!-- Set Tag to the DataContext of the ModsView which holds ModActionsViewModel -->
+                        <Border Background="Transparent"
+                                Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType={x:Type views:ModsView}}}">
                             <Border.ContextMenu>
                                 <ContextMenu>
+                                    <!-- ContextMenu Resources unchanged -->
                                     <ContextMenu.Resources>
                                         <Style TargetType="MenuItem">
                                             <Setter Property="Padding" Value="6,2,6,2"/>
@@ -128,34 +133,34 @@
                                         </Style>
                                     </ContextMenu.Resources>
 
-                                    <!-- Updated Menu Items for Multiple Selection -->
+                                    <!-- Update Command bindings to point to ModActionsViewModel via Tag -->
                                     <MenuItem Header="Open Mod Folder"
-                                              Command="{Binding PlacementTarget.Tag.OpenModFoldersCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              Command="{Binding PlacementTarget.Tag.ModActionsViewModel.OpenModFoldersCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}">
                                         <MenuItem.Icon>
                                             <TextBlock Text="📁" FontSize="14"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="Open URL"
-                                              Command="{Binding PlacementTarget.Tag.OpenUrlsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              Command="{Binding PlacementTarget.Tag.ModActionsViewModel.OpenUrlsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}"
-                                              Visibility="{Binding HasUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                              Visibility="{Binding HasUrl, Converter={StaticResource BooleanToVisibilityConverter}}"> <!-- Visibility binds to ModItem -->
                                         <MenuItem.Icon>
                                             <TextBlock Text="🔗" FontSize="14"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="Open Workshop Page"
-                                              Command="{Binding PlacementTarget.Tag.OpenWorkshopPagesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              Command="{Binding PlacementTarget.Tag.ModActionsViewModel.OpenWorkshopPagesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}"
-                                              Visibility="{Binding HasSteamUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                              Visibility="{Binding HasSteamUrl, Converter={StaticResource BooleanToVisibilityConverter}}"> <!-- Visibility binds to ModItem -->
                                         <MenuItem.Icon>
                                             <TextBlock Text="☁️" FontSize="14"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <MenuItem Header="Open Other URL"
-                                              Command="{Binding PlacementTarget.Tag.OpenOtherUrlsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              Command="{Binding PlacementTarget.Tag.ModActionsViewModel.OpenOtherUrlsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}"
-                                              Visibility="{Binding HasExternalUrl, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                              Visibility="{Binding HasExternalUrl, Converter={StaticResource BooleanToVisibilityConverter}}"> <!-- Visibility binds to ModItem -->
                                         <MenuItem.Icon>
                                             <TextBlock Text="🌐" FontSize="14"/>
                                         </MenuItem.Icon>
@@ -177,7 +182,7 @@
                                     </Separator>
 
                                     <MenuItem Header="Delete Mod"
-                                              Command="{Binding PlacementTarget.Tag.DeleteModsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              Command="{Binding PlacementTarget.Tag.ModActionsViewModel.DeleteModsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}">
                                         <MenuItem.Icon>
                                             <TextBlock Text="🗑️" FontSize="14"/>
@@ -187,6 +192,7 @@
                                                 <Setter Property="Foreground" Value="{StaticResource RimworldErrorRedBrush}"/>
                                                 <Setter Property="Visibility" Value="Visible"/>
                                                 <Style.Triggers>
+                                                    <!-- Visibility/Style triggers bind to ModItem -->
                                                     <DataTrigger Binding="{Binding IsCore}" Value="True">
                                                         <Setter Property="Visibility" Value="Collapsed"/>
                                                     </DataTrigger>
@@ -200,6 +206,7 @@
                                 </ContextMenu>
                             </Border.ContextMenu>
 
+                            <!-- Item Content (Bindings to ModItem, unchanged) -->
                             <TextBlock Text="{Binding Name}"
                                        ToolTip="{Binding Path}"
                                        Margin="2,1"
@@ -210,7 +217,9 @@
                     </DataTemplate>
                 </ListBox.ItemTemplate>
 
+                <!-- ItemContainerStyle unchanged -->
                 <ListBox.ItemContainerStyle>
+                   <!-- ... Style content unchanged ... -->
                     <Style TargetType="ListBoxItem"
                            BasedOn="{StaticResource {x:Type ListBoxItem}}">
                         <Setter Property="Padding" Value="0"/>

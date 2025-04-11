@@ -5,10 +5,11 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:RimSharp.Features.ModManager.Components.ModDetails"
              xmlns:models="clr-namespace:RimSharp.Shared.Models"
+             xmlns:vm="clr-namespace:RimSharp.Features.ModManager.ViewModels"
              mc:Ignorable="d"
-             d:DataContext="{d:DesignInstance Type=models:ModItem, IsDesignTimeCreatable=False}"
+             d:DataContext="{d:DesignInstance Type=vm:ModDetailsViewModel, IsDesignTimeCreatable=False}"
              d:DesignHeight="500" d:DesignWidth="400">
-    <!-- DataContext should be a ModItem instance -->
+    <!-- DataContext should be a ModDetailsViewModel instance -->
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -28,7 +29,8 @@
                     MaxWidth="560" MaxHeight="308">
                 <Viewbox Stretch="Uniform" MaxWidth="560" MaxHeight="308">
                     <Grid MinWidth="400" MinHeight="220">
-                        <Image Source="{Binding PreviewImagePath, Converter={StaticResource ImagePathConverter}, TargetNullValue={x:Null}}"
+                        <!-- Bind to CurrentMod property -->
+                        <Image Source="{Binding CurrentMod.PreviewImagePath, Converter={StaticResource ImagePathConverter}, TargetNullValue={x:Null}}"
                                Stretch="UniformToFill"
                                HorizontalAlignment="Center" VerticalAlignment="Center">
                             <Image.Style>
@@ -46,7 +48,7 @@
                                    Foreground="{StaticResource RimworldLightBrownBrush}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"
                                    FontStyle="Italic"
-                                   Visibility="{Binding PreviewImagePath, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=InvertIfNull}"/>
+                                   Visibility="{Binding CurrentMod.PreviewImagePath, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=InvertIfNull}"/>
                     </Grid>
                 </Viewbox>
             </Border>
@@ -54,7 +56,7 @@
 
         <!-- Mod Info (Bottom Part) -->
         <Grid Grid.Row="1" Margin="10">
-            <!-- DataContext is already the ModItem from the UserControl level -->
+            <!-- DataContext is the ModDetailsViewModel -->
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -84,34 +86,36 @@
                      </Style>
                 </Grid.Resources>
 
+                <!-- Bind to CurrentMod property -->
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Name:" Style="{StaticResource InfoLabel}"/>
-                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Name}" Style="{StaticResource InfoValue}"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CurrentMod.Name}" Style="{StaticResource InfoValue}"/>
 
                 <TextBlock Grid.Row="1" Grid.Column="0" Text="Authors:" Style="{StaticResource InfoLabel}"/>
-                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Authors}" Style="{StaticResource InfoValue}"/>
+                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding CurrentMod.Authors}" Style="{StaticResource InfoValue}"/>
 
                 <TextBlock Grid.Row="2" Grid.Column="0" Text="PackageID:" Style="{StaticResource InfoLabel}"/>
-                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding PackageId}" Style="{StaticResource InfoValue}"/>
+                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding CurrentMod.PackageId}" Style="{StaticResource InfoValue}"/>
 
                 <TextBlock Grid.Row="3" Grid.Column="0" Text="Supported:" Style="{StaticResource InfoLabel}"/>
-                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SupportedVersions, Converter={StaticResource ListToStringConverter}, ConverterParameter=', '}" Style="{StaticResource InfoValue}"/>
+                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding CurrentMod.SupportedVersions, Converter={StaticResource ListToStringConverter}, ConverterParameter=', '}" Style="{StaticResource InfoValue}"/>
 
                 <TextBlock Grid.Row="4" Grid.Column="0" Text="Path:" Style="{StaticResource InfoLabel}"/>
                 <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource InfoValue}" TextTrimming="CharacterEllipsis">
-                    <Hyperlink Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}, AncestorLevel=2}}"
-                            CommandParameter="{Binding Path}"
+                    <!-- Simplified Command binding. Binds to ModDetailsViewModel.OpenUrlCommand -->
+                    <!-- CommandParameter still binds to the Path of the CurrentMod -->
+                    <Hyperlink Command="{Binding OpenUrlCommand}"
+                            CommandParameter="{Binding CurrentMod.Path}"
                             Style="{StaticResource RimworldHyperlinkStyle}">
-                        <TextBlock Text="{Binding Path}" ToolTip="{Binding Path}"/>
+                        <TextBlock Text="{Binding CurrentMod.Path}" ToolTip="{Binding CurrentMod.Path}"/>
                     </Hyperlink>
                 </TextBlock>
-
-                <!-- Removed URL Links Section -->
             </Grid>
 
             <!-- Mod Description -->
             <Border Grid.Row="1" Margin="0,10,0,0" BorderBrush="{StaticResource RimworldLightBrownBrush}" BorderThickness="0,1,0,0" Padding="0,10,0,0">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Foreground="{StaticResource RimworldBrownBrush}"/>
+                     <!-- Bind to CurrentMod property -->
+                    <TextBlock Text="{Binding CurrentMod.Description}" TextWrapping="Wrap" Foreground="{StaticResource RimworldBrownBrush}"/>
                 </ScrollViewer>
             </Border>
         </Grid>
