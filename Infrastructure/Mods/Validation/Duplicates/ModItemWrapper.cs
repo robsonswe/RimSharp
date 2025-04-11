@@ -42,7 +42,7 @@ namespace RimSharp.Infrastructure.Mods.Validation.Duplicates
         public string ExternalUrl => Original?.ExternalUrl;
 
         public string SupportedVersions => Original?.SupportedVersions != null && Original.SupportedVersions.Any()
-            ? string.Join(", ", Original.SupportedVersions)
+            ? string.Join(", ", Original.SupportedVersions.Select(v => v.ToString()))
             : "Unknown";
 
         public ModItemWrapper(ModItem original, DuplicateModGroupViewModel parentGroup)

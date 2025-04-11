@@ -34,6 +34,7 @@
     <convText:BooleanToTextConverter x:Key="BooleanToTextConverter"/>
     <convText:ListToStringConverter x:Key="ListToStringConverter"/>
     <convText:StringToUriConverter x:Key="StringToUriConverter"/>
+    <convText:VersionSupportConverter x:Key="VersionSupportConverter"/>
 
     <!-- Utility Converters -->
     <convUtility:PathToExplorerFormatConverter x:Key="PathToExplorerFormatConverter"/>

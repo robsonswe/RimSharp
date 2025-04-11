@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace RimSharp.Shared.Models
 {
@@ -9,7 +10,7 @@ namespace RimSharp.Shared.Models
         public string PackageId { get; set; }
         public string Authors { get; set; }
         public string Description { get; set; }
-        public List<string> SupportedVersions { get; set; } = new List<string>();
+        public List<VersionSupport> SupportedVersions { get; set; } = new List<VersionSupport>();
 
         // Optional fields from About.xml
         public string ModVersion { get; set; }
@@ -47,8 +48,7 @@ namespace RimSharp.Shared.Models
         public string DateStamp { get; set; }
         public string UpdateDate { get; set; }
 
-
-
+        public IEnumerable<string> SupportedVersionStrings => SupportedVersions.Select(v => v.Version);
     }
 
     public class ModDependency

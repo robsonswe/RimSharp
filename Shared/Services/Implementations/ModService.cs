@@ -53,9 +53,19 @@ namespace RimSharp.Shared.Services.Implementations
             // Load workshop mods from mods folder
             LoadWorkshopMods(modsPath);
 
+            // Apply rules to all mods
+            _rulesService.ApplyRulesToMods(_allMods);
+
+            // Now check for outdated status after rules have been applied
+            foreach (var mod in _allMods)
+            {
+                mod.IsOutdatedRW = !IsVersionSupported(_currentMajorVersion, mod.SupportedVersions) && mod.SupportedVersions.Any();
+            }
+
             // Set active status based on ModsConfig.xml
             SetActiveMods(configPath);
         }
+
 
         public ModService(IPathService pathService, IModRulesService rulesService)
         {
@@ -105,8 +115,8 @@ namespace RimSharp.Shared.Services.Implementations
             }
             catch (UnauthorizedAccessException ex)
             {
-                 Debug.WriteLine($"[CreateTimestampFilesAsync] Permission error writing timestamp files for mod {steamId}: {ex.Message}");
-                 // Potentially inform the user via a different mechanism if critical
+                Debug.WriteLine($"[CreateTimestampFilesAsync] Permission error writing timestamp files for mod {steamId}: {ex.Message}");
+                // Potentially inform the user via a different mechanism if critical
             }
             catch (IOException ex)
             {
@@ -114,7 +124,7 @@ namespace RimSharp.Shared.Services.Implementations
             }
             catch (Exception ex) // Catch unexpected errors
             {
-                 Debug.WriteLine($"[CreateTimestampFilesAsync] Unexpected error writing timestamp files for mod {steamId}: {ex.Message}");
+                Debug.WriteLine($"[CreateTimestampFilesAsync] Unexpected error writing timestamp files for mod {steamId}: {ex.Message}");
             }
         }
 
@@ -150,9 +160,16 @@ namespace RimSharp.Shared.Services.Implementations
             // Apply rules to all mods at once
             _rulesService.ApplyRulesToMods(_allMods);
 
+            // Now check for outdated status after rules have been applied
+            foreach (var mod in _allMods)
+            {
+                mod.IsOutdatedRW = !IsVersionSupported(_currentMajorVersion, mod.SupportedVersions) && mod.SupportedVersions.Any();
+            }
+
             // Set active status based on ModsConfig.xml
             await Task.Run(() => SetActiveMods(configPath));
         }
+
 
         private void LoadCoreMods(string gamePath)
         {
@@ -296,23 +313,23 @@ namespace RimSharp.Shared.Services.Implementations
                     name = folderName;
                 }
 
+                // Convert supportedVersions to VersionSupport objects with Unofficial = false
                 var supportedVersions = root.Element("supportedVersions")?.Elements("li")
-                    .Select(x => x.Value)
-                    .ToList() ?? new List<string>();
+                    .Select(x => new VersionSupport(x.Value, false))
+                    .ToList() ?? new List<VersionSupport>();
 
                 var mod = new ModItem
                 {
                     Name = name,
                     PackageId = root.Element("packageId")?.Value,
                     Authors = root.Element("author")?.Value ??
-                             string.Join(", ", root.Element("authors")?.Elements("li").Select(x => x.Value) ?? Array.Empty<string>()),
+                            string.Join(", ", root.Element("authors")?.Elements("li").Select(x => x.Value) ?? Array.Empty<string>()),
                     Description = root.Element("description")?.Value,
                     ModVersion = root.Element("modVersion")?.Value,
                     ModIconPath = root.Element("modIconPath")?.Value,
                     Url = root.Element("url")?.Value,
                     SupportedVersions = supportedVersions,
                     PreviewImagePath = File.Exists(previewImagePath) ? previewImagePath : null,
-                    IsOutdatedRW = !IsVersionSupported(_currentMajorVersion, supportedVersions) && supportedVersions.Any(),
                 };
 
                 // Parse dependencies
@@ -323,7 +340,6 @@ namespace RimSharp.Shared.Services.Implementations
                         DisplayName = x.Element("displayName")?.Value,
                         SteamWorkshopUrl = x.Element("steamWorkshopUrl")?.Value
                     }).ToList() ?? new List<ModDependency>();
-
 
                 if (!string.IsNullOrEmpty(modRootFolder))
                 {
@@ -342,8 +358,6 @@ namespace RimSharp.Shared.Services.Implementations
                         var raw = File.ReadAllText(timestampPath).Trim();
                         mod.UpdateDate = DateTime.ParseExact(raw, "dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
                                     .ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture);
-
-                        // Debug.WriteLine($"Mod {mod.PackageId} has UpdateDate from timestamp.txt: {mod.UpdateDate}");
                     }
                     catch (Exception ex)
                     {
@@ -361,15 +375,14 @@ namespace RimSharp.Shared.Services.Implementations
                         cleaned = Regex.Replace(cleaned, @"\b(am|pm)\b", m => m.Value.ToUpperInvariant());
 
                         string[] formats = {
-            "dd MMM, yyyy h:mmtt",     // 27 May, 2024 12:43AM
-            "dd MMM, yyyy hh:mmtt",    // zero-padded hour
-            "d MMM, yyyy h:mmtt",      // single-digit day
-        };
+                            "dd MMM, yyyy h:mmtt",     // 27 May, 2024 12:43AM
+                            "dd MMM, yyyy hh:mmtt",    // zero-padded hour
+                            "d MMM, yyyy h:mmtt",      // single-digit day
+                        };
 
                         if (DateTime.TryParseExact(cleaned, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
                         {
                             mod.UpdateDate = parsedDate.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture);
-                            //Debug.WriteLine($"Mod {mod.PackageId} has UpdateDate from DateStamp: {mod.UpdateDate}");
                         }
                         else
                         {
@@ -382,14 +395,8 @@ namespace RimSharp.Shared.Services.Implementations
                     }
                 }
 
-
-
-
                 // Parse load order rules using a more efficient approach
                 ParseLoadOrderRules(root, mod);
-
-                // Rules are applied in batch later
-                // _rulesService.ApplyRulesToMod(mod); - Remove this line
 
                 return mod;
             }
@@ -398,7 +405,6 @@ namespace RimSharp.Shared.Services.Implementations
                 return null; // Return null for invalid mods
             }
         }
-
         private static void ParseLoadOrderRules(XElement root, ModItem mod)
         {
             // Load all load order rules at once to minimize XML traversal
@@ -409,13 +415,13 @@ namespace RimSharp.Shared.Services.Implementations
             mod.IncompatibleWith = root.Element("incompatibleWith")?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>();
         }
 
-        private static bool IsVersionSupported(string currentVersion, List<string> supportedVersions)
+        private static bool IsVersionSupported(string currentVersion, List<VersionSupport> supportedVersions)
         {
             if (string.IsNullOrEmpty(currentVersion)) return true;
             if (supportedVersions == null || !supportedVersions.Any()) return true;
 
             return supportedVersions.Any(v =>
-                string.Equals(v.Trim(), currentVersion.Trim(), StringComparison.OrdinalIgnoreCase));
+                string.Equals(v.Version.Trim(), currentVersion.Trim(), StringComparison.OrdinalIgnoreCase));
         }
 
         private void SetActiveMods(string configFolderPath)
@@ -455,6 +461,6 @@ namespace RimSharp.Shared.Services.Implementations
                 // Ignore errors parsing ModsConfig.xml
             }
         }
-        
+
     }
 }

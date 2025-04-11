@@ -1320,7 +1320,10 @@
                         "Hospitality"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.5"
+            ]
         },
         "buddy1913.expandedstorageboxes": {
             "loadAfter": {
@@ -1422,7 +1425,10 @@
                         "Vanilla Textures Expanded"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.4"
+            ]
         },
         "cattleya.productionreskin": {
             "loadAfter": {
@@ -1431,7 +1437,10 @@
                         "Vanilla Furniture Expanded - Production"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.4"
+            ]
         },
         "caulaflower.cexd": {
             "loadAfter": {
@@ -1674,7 +1683,10 @@
                         "Xenobionic Patcher CONTINUED"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.3"
+            ]
         },
         "com.rimworld.nales.expandedrims": {
             "loadBefore": {
@@ -9320,7 +9332,10 @@
                         "Don't Drop Weapon"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.5"
+            ]
         },
         "taranchuk.archotechplus": {
             "loadBefore": {
@@ -11082,7 +11097,10 @@
                         "Vanilla Furniture Expanded - Security"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.3"
+            ]
         },
         "ykara.epoe": {
             "loadAfter": {
@@ -11417,6 +11435,2395 @@
                     "name": "Biomes! Oasis"
                 }
             }
+        },
+        "Sadjuuk.UNColony": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "stormknight.outdoorlighting": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "maarx.meditateasworktype": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "nuke.Synthmeat": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "ruyan.doors": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "explodoboy.NoFatalThreshold": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "FrozenSnowFox.ImprovedShipReactors": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "neceros.ceilinglightsvanillaedition": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "neceros.givememeat": {
+            "supportedVersions": [
+                "1.3",
+                "1.5"
+            ]
+        },
+        "Oreno.VFEFarming.DubsBadHygiene": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "Crudbone.ReconRetexture": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "crlsniper.atewithouttable": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "TheLamb.tribaljewelry": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "xedos.arsenalexotic": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "Crudbone.ParkaRetexture": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "Poetik.JapaneseDogs": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "rayjay.SyntheticAnimals": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "be37.VPE.ATABP": {
+            "supportedVersions": [
+                "1.3",
+                "1.5"
+            ]
+        },
+        "neceros.firetreatedwood": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "Persephone.WeansWorldAlt": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "Duncan.RealisticStarvation.1.1": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "Nekomancer.GiantTrees": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "PinoChemicali.MoreTradeShips": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "Semo583.GloomyHExtraHUHKitchen": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "neceros.stopinsultingus": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "Lat.VeeHair": {
+            "supportedVersions": [
+                "1.3",
+                "1.4",
+                "1.5"
+            ]
+        },
+        "azomittle.corners": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "neceros.ATVFEM": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "bishop.mendingmedieval": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "PatchesIX.MeatPackages": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "dninemfive.ambrosiallongevity": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "Baby.Muffalump": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "Bar0th.WAR": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "Teok25.ArchotechExpanded.Prosthetics.Lite": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "zzz.invisibleconduit": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "Barky.Dryxsteel": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "Barky.Ultraweave": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "ChewyYui.VFEOverwallAC": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "legodude17.letterreorder": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "Phoenix.VanillaSolarSheild": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "y1nalin.amrita": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "supercollidingsuperbutton.anotherbone": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "neceros.androidtiers.unfeelingpatch": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "neceros.closecryptos": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "PartyCowboy.ThinkingSpot": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "JcDentonQ.SubtleVariations": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "rayjay.AddTerraforming": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "Lelbaro.VanillaArmorsRetexture.LBVAR": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "Lelbaro.VanillaWeaponsRetexture.LBVWR": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "Lelbaro.SectorVII.LBSC7": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "hamster.personacryptech": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "TheKingInYellow.TheAbyssAboveDrugs": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "Vertigo.Rimtroid_copy": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "neceros.growableneutroamine": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "hatti.longrangepodlauncher": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "Crudbone.BetterTShirts": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "deon.darkestrim": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "RusticFox.ChickenPlucker.RR": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "Crudbone.WAYS": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "crlsniper.nodisturbedsleep": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "daylight.BlessDevilSt": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "scuba156.withoutsteam": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "maarx.betternutrientpastedispensercontrols": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "stormshark.nfprosthetics": {
+            "supportedVersions": [
+                "1.3",
+                "1.5"
+            ]
+        },
+        "Wishmaster.HydroponicsWithLamps": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "More.Lamps": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "VHolmes.Empire.EAB": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "Arekan.EnhancedVanillaGunSounds": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "Crudbone.TranslucentGlasses": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "amaji.mokan.hair": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "neceros.wallsunlamp": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "faeldray.gravelgray": {
+            "supportedVersions": [
+                "1.3",
+                "1.4",
+                "1.5"
+            ]
+        },
+        "neceros.lastingflowers": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "codyspring.InsulationVanillaTextures": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "n7huntsman.palisades": {
+            "supportedVersions": [
+                "1.3",
+                "1.5"
+            ]
+        },
+        "OkraDonkey.NeverAutoResetMods": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "seabass.commercialserver11": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "mlph.OpenedDoorsDontBlockLight": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "co.uk.epicguru.timelapse2000": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "Wolf478.WolfsCompostAddon.VEFVersion": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "hutgoose.polyamorygloomybed": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "Silver.VFEMQuarryPatch": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "trublucaribou.OptimizedLeather": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "BFAnri.Autoinjectors": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "Xen.XPFixer": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "carlarc.BetterMoodDescriptions": {
+            "supportedVersions": [
+                "1.3"
+            ]
+        },
+        "Blake.EliteBionicFrameworkArchotechExpandedProsthetics": {
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
+        },
+        "StyleRevised.Animalist": {
+            "supportedVersions": [
+                "1.4",
+                "1.5"
+            ]
+        },
+        "Ysimir.MagicalTemperatures": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "MrHacky.ButcheryCountsMeatTypes": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Botaxalim.XcomBadge": {
+            "supportedVersions": [
+                "1.4",
+                "1.5"
+            ]
+        },
+        "lurmey.XcomPawnBadge": {
+            "supportedVersions": [
+                "1.4",
+                "1.5"
+            ]
+        },
+        "jastro.ReclaimFabricUpdate": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Djeeshka.CMT.Retexture": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "ComigoGames.Textures.Trees": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "JBloodthorn.NoLazyDoctors": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Task.RitualChair.zz": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Ripmorld.AnimaWood": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "fc.pruningusesplantworkspeed": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "DBL.AwningsAndRoofs": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "laast.WorldMapEnhanced": {
+            "supportedVersions": [
+                "1.4",
+                "1.5"
+            ]
+        },
+        "Troopersmith1.LifeSupport": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "TrahsPanda.ADNT": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "neceros.ceilinglights": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "CaptainMuscles.PriceIsWhat": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "com.yayo.customYear": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "mercurydoll.fantasymetals": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "brat.bioreactorsizepatch": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "cucumpear.LEDlights": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "com.RimWorld.Shtossi.Hyperweave": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "ClossomMistake.Blegh": {
+            "supportedVersions": [
+                "1.4",
+                "1.5"
+            ]
+        },
+        "Inggo.AdvancedPolyBeds": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "jwl.fishhatcheries": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "erok.Lanterns": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Burusutazu.ImpassableFences": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Oreno.VPlantsE.NoTilledSoil": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "N0C4P.prophetly01": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "neceros.animalmedicalbed": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "CZK.VIEMemes.shintaopatch": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "mechanoidWeapons.Wololo": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Ryflamer.NoRockets": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "wool.uselesshair": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "neceros.reinforcedwalls": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "OkraDonkey.InfiniteRefuelables": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "DanDMan.Onesies": {
+            "supportedVersions": [
+                "1.4",
+                "1.5"
+            ]
+        },
+        "Slashandz.NoIncreasedExpectationsforIdeologyRoles": {
+            "supportedVersions": [
+                "1.4",
+                "1.5"
+            ]
+        },
+        "Vanya.Agent.LolidropHairshop": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "cattleya.florareskin": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Beta.AnimeHair": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Lilscoot.Wheelchairs": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Lat.VeeDeco": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Slashandz.IdeologySimplifiedRaider": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Slashandz.IdeologySimplifiedRancher": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Slashandz.IdeologySimplifiedTreeConnection": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Slashandz.EasyConversions": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "OkraDonkey.NoEdgeFade": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "DanDMan.GroThingThings": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Vicaki.Psiamin": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Cozarkian.DressersHoldClothing": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "DanDMan.ThunderTargeter": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "jabbamonkey.graphicoverhaulhires": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "redstonerev.novanmusiconeone": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "SirLalaPyon.SilverCoins": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "LadyElizabeth.Snake.MiscJobRanks": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Windchime.FoodIsFood": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Sk.cfinfestations": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "jelly.OpenedDoorsDontBlockLight": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "OkraDonkey.NoEdgeFadeLite": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "walkingproblem.woodplanks": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "animalfilthdontcare.1trickPonyta": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "DanDMan.JurretTurrets": {
+            "supportedVersions": [
+                "1.4",
+                "1.5"
+            ]
+        },
+        "DanDMan.YEETBlades": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "likeafox.rimworld.safepause": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "KYD.Prosthetics": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "qux.factionexpanded.bettertexturesandpawnkinds": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Caninmyham.ThogsGunsLeadAndPowderPackReprimed": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Jexa.BlindsightWorks": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Kegarr.RIP": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Eastern.Armory.Geminingen": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Wemd.PartiallyPassableWindTurbines": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "steampunk.just.brass": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Slashandz.NoRestrictionsonFactionIdeologies": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Lailani01.PawnsDrool": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "CZK.SPL.benchpatch": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Seti.Gallatross": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Macro98.PreciousCoinsRetexture": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Smoopadoop.TentRetexture": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Awan.Antisepsis.Patch": {
+            "supportedVersions": [
+                "1.4",
+                "1.5"
+            ]
+        },
+        "Ripmorld.GlowPodDeconstuct": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "CM.VanillaTextures.Upscale": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "CZK.retextured.combattraining": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "CZK.retextured.biotecheyes": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "CZK.retextured.eyepatch": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "ICC.TOV.HS": {
+            "supportedVersions": [
+                "1.4",
+                "1.5"
+            ]
+        },
+        "Wolf478.GauMedicine": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "xelnigma.psyeltex": {
+            "supportedVersions": [
+                "1.4",
+                "1.5"
+            ]
+        },
+        "Si.ThrumboHornWeapons": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Certainty.DesignateExtract": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Nolabritt.WasteInSpace": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "DimonSever000.DarkestHourNight.Specific": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "SquirtingElephant.LessBeerAddiction": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "PKPenguin.SuperAnalyzer": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "squid.catharsis": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "HyArchitect.ID": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Myfharad.Frostshards": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Shazbot.SRTS.RC": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Khaydar.SRTS.TerranShips_copy": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "heye.wealthdisplay": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "artsyanthony.collarsnotclothes": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Alaestor.QuantumCooling": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Mantrasong.Glowstone.1": {
+            "supportedVersions": [
+                "1.4",
+                "1.5"
+            ]
+        },
+        "OptimusPrimordial.Chipboard": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "neceros.morecomponents": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Katte.AmbrosiaUproot": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "DerekBickley.LegacyTextureOverhaulfinal": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "br410bury.BreakupConstruction": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "romancase.hdhrp": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "mcminox.EXOHEAD_copy": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "br410bury.BreakupFarming": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "br410bury.BreakupCooking": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Phlivan.QualityMatters": {
+            "supportedVersions": [
+                "1.4",
+                "1.5"
+            ]
+        },
+        "123nick.PawnsAreDrowning": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Noromyx.TrainersSerumAICrafting": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "Ruddygreat.Craftablepsy": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "jemlpro.Infusion2Expansion": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "AudreysStyles.Industrial": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Pal5k.AgrihandCleansweeperRetexture": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Simmin.AnimalsForage": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "3HSTltd.WMTRetex": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "DerekBickley.LTOTerrainWaterOnly": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Owlchemist.DoorClearance": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "BoostHungry.PsychicallyDeafMechanitor": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "tikubonn.DontBlockDoor": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "weilbyte.renamecolony": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "fyarn.FixableMoodDebuffsAlert": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "ghost.tribalinstrumentsretex": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "MysticFelines.VOE.noplasteelnocompmonentmining": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "SF.Grim.Reality": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "JKN.AdobeAbode": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "deivisis.weightprice": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Owlchemist.SimpleFX.Vapor": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Katsudon.UIButtonRetexture": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Candycorn.CandyHairs": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Fluffy.FollowMe": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "fyarn.EasySpeedup": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "jp.perfectpathing": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Owlchemist.BarelyBetterSpots": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "dninemfive.wildreproduction": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "CM.Ideology.Upscaled2": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "razor2.3.AnotherRimworldMod.AutoCutBlight": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Nals.ChibiBody": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "ABC.GunlinkPatch": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Skye.LearningThresholdForLearningJobFix": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Simmin.PowerTools": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "zzz.WallVitalsMonitor": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "zed.0xff.LoftBed": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Katsudon.UIRetexture": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "purpleyam.moreideologicalwords": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "bs.xenotypespawncontrol": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Revolus.TextileStats": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "dninemfive.settlementdescription": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "ChrisClark13.VeneratedXenotypeFlexibility": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Rooboid.Paintings.Ex": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Ryflamer.Misc.Drawabead": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "sash.NoRefuelling": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "zhrocks11.SunLights_copy": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Meltup.PolyamoryBeds.Vanilla": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "bustedbunny.PrisonersAreNotSwines": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Rev.RimwaveMusic": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Sovereign.Elseud": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Sovereign.Kemet": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "legodude17.qualcolor": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Owlchemist.BetterVanillaMasking": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "pyrce.terrain.zone.select": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "fyarn.BoundedRoofBuildTool": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Aura.FarmlandRegrowthPatch": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "takel.pawnmorphertranshumanist": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "japa4551.craftableblindfold": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "miathea.midworldvapes": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Vanya.Tools.BulkCarrier": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "largemoron.passablechemfuel": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Daniledman.JellyFarm": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "ETRT.PracticalPemmican": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "pointfeev.fireextinguisher": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "dninemfive.qualitycooldown": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Faux.IconXenotypes": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "GrazalThruka.PackagedPaste": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "tenthwit.apparel": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "zoura3025.woolyyaks": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Gege.BetterSurgery": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Timuttie.JustLeaveAlready": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "LazyCat.NoPseudoTranslate": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "twistedpacifist.ReasonableComponents": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "zed.0xff.VNPE.FridgeFix": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "wasscreefted.SmokeleafExpanded": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "MajesticMadman.StarWarsShipsAerocraft": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "ai.improved.icons": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "thing.categories.icons": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "drummeur.BetterLinkableColors": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "CB745.BoostedTransportPods": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "CB745.MiscBuildChaTA1": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "CB745.MiscBuildChaTB1": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "CB745.MiscBuildChaTB2": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "CB745.TribMaskFAll": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "CB745.SmallWorkS": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "CB745.HundredPercentSurgery": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "CB745.OPGStuffedArmsAndArmor": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "zed.0xff.MarketValueFilter": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Owlchemist.PowerTab": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "JelanoRetexture.RPGStyleInventory": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "joethetech.marinearmormaterials": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "alaestor.omnitron": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Rim.Office": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Ravvy.SRTS.TCF": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Sl4vP0weR.RealFlamethrowers": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "BigBadLlama.LlamasForever.Main": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "syrchalis.glowinghealroot": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "maarx.assignedworkbenches": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "GiveMe.ChristianValues": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "net.theelm.RoofedScanning": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Brat.resourcemuffaloes": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Herigony.NoDebris": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "GHOST.TribalIcons": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Ogliss.Toastehs.Veinminer": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Slashandz.MiniMiner": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Roskii.NutrientPasteFix": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "zed.0xff.VNPE.MiniGrinder": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Kyrrisayo.RealDrugNames": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Permanoob.ChemfuelSaunaHeater": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "maledin.BarbedBat": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Rhadamant.YodaTheDog": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "DW.Yeow": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "tikubonn.WaterproofBattery": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Fort.Knifechair": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "SaberVS7.NationalistMilitarism": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Xenofell.LadiesCanFlirtToo": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "marius.pyramidalist": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Nerdy.PrisonerMoodBoost": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "mahrimba.pamonha": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "GHOST.MorrowrimDoodles": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Skelsh.SmokeleadSeverity": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Saximaphone.SkettiMod": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "cubicPsycho.RTRubber": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "TaosChagic.PotatoBattery": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Australden.potato.cannon": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Horo.PotatoStatues.11": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Vocado.RitualTab.Rimworld": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "elkyelky.Rimception": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Old.War.Veil.Augusto": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Neph.PsychicPsychite": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "RoyalFox.PsionicsSacrificeVanilla": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "brat.removerealreligions": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Zwart.Soberana": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Tigerblut.MeatPigs": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "viyers.garfield": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "StoneAnvil.Smokeleaf.Genetics.Korundgen.Kush": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "kouyifozu.xiao": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "bbbbilly.hybridriceplant": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "AshAGirls.animal": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "ChiExpanded.English": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "syrchalis.marbledmarble": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Faux.PirateIcons": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "DeusExEyes": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Rick.FCPGK": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Volt.Kibble": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "MrSamuelStreamer.MrSamuelStreamCustomFaction": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "seos.m.vfea.vault.s": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Argon.xmas": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Vazrua.Attuned": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Rudinov.ChemfuelMeal": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "zzz.RainCaller": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "TheGoofyOne.Roomba": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "seioch.biotech.animeeyes": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "TheGoofyOne.BeefEaters": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "TheGoofyOne.BerrySorbet": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "4trevor4.betterhatomizers": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Yoann.BlindTribe": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Sappho.ChemfuelTrader": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "RadGrinArcher.ChinchillaFarming": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Juneisfunny.Deagle": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Pal5k.ShipTechprints": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "coolie.coagulatefix": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Abrolo.SwampMonsters": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Flixbox.TradersSellBiotechItems": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "SCHMURDA.UninstallDesignator": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "KYD.AlcoholJoyKind": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "SoulfulPumpkin.TabletopTrove": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "glencoe2004.bulkrimatomics": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "KoalaDD.Pinata": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "PunkyRoo.ContainToxicWaste": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "MIKO.Rimays": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "husko.improvements.rimays": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "glencoe2004.healerMechSerumRegrowsGenes": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Rylex.HydroCorn": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "1Sopel6.UncomfortableSleepingSpots": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "bleusquid.cosmichorrorpatch": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "mentalproblem.nightstalker": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "AlexNares.MachinedComponents": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Gniwu.XenotypeIconElf": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Magic.SuperCoolMod2": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "LeveFUN.IdeoligionHolyNation": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "targetdrone.hydroponichay": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "ifsck.hydroponicgrapes": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "pleccymm.hedgehogs": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "iiitta.AuthorityOutlander": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "jelly.RBStuffed": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "IK.ThrumboReskin": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Henta1Hero.Isekaid": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Emilskin.fishwep.Swordfish": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "ChewyYui.GeniePatch": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "DevDesigner.DryadRetexture": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Komunre.Reskins.ThrumboPlush": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Ryusa.GirlsFrontlineTheme_copy": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "davcin.sortby": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "pawnbadges.byT": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "IRRISH.PawnBadgeAssortedJobIcons": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "yipnz.removeweatheroverlay": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Dra.WoodIsNaturalForTrees": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "timtim.Table1x1": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "tenthwit.sculptures": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "TheGoofyOne.ResearchAssistants": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "com.RimWorld.Nales.OvercappedAccuracy": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Uveren.plantanyinhydro": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Forien.NaturalizeGenome": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Plymouth.ProjectArmoury.Mod": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "PrivateGER.DamageMultipliers": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "horriblenerd.prestigeharmonizer": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "032.1x1bed": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "jp.AdjacentLight": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Gege.Obserever": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Panacea.POW.Militor": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "RoyalF.CraftableRBarrels": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Faster.Prunning": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "captaingeorge.StoneToSteelHardcore": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "zilla.fertilityinfo": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Shork.Torpedo.Architecture": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Virstag.MoreWorldFeaturesNames": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Simmin.StoneChairs": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "zoura3025.megabees": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "m0ek.NoVanillaHair": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "RadGrinArcher.GuineaPigFarming": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Augustus.ShOST": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Augustus.ShcOST": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "iforgotmysocks.DisableNewcomersJob": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Timuttie.Atelier": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "beelzebot.RimaomicsPIDAutothrottle": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "miathea.medicalexpansion": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "miathea.flakarmorexpansion": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "JangoDsoul.AlinesFT.Armor": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Mallow.HemogenCuisine": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "MoreSanguineHouses.Mod": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "LilScoot.BMXandBikerOutfits": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "peytonshow.paa": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "HH.Smokeleaf.Lite": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "DerekBickley.FalloutShelterVanillaWeaponRetexture": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Rick.FCPTents": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "OkraDonkey.NoPrayer": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "fyarn.PriorityClean": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Poet.RetexturedGasTrapsShells": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "AIRetexture.Mods": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "zirc.NoNaturalPsyfocusDecrease": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "okthisismyidnow.AddExtractSkullDesignator.Specific": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "SheWantsRevenge.SkullsandIvory": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Fox.SimpleLearning": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "TheGoofyOne.SimplePallet": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Grave.Cross": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "essecoisa.CautionTiles": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "tosenbo.Animalstrawbed": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Asieruso23.AF.PlanesB": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Owlchemist.AnimalGear.Equipment": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "miyamiya.functionalroom.latest": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "VFEA.SuperUnleashed": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Vinzero.Revia.FacialAnimation": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Strachi.tiertwotemp": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "metasynthetic.SilentSleepAccelerators": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Mawy.craftable": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "NackbladInc.Rimhair": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Keshash.BinocularsRevamp": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Prolle.Glitterworld.Medicine": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "jp.AnimalsLikeHay": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "purpleyam.colorfulcoats.vaewildlife": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "purpleyam.colorfulcoats.spinomegafauna": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "purpleyam.colorfulcoats.hlxdodo": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "ETRT.MedicineProduction": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Sl4vP0weR.SleepMeditation": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Backgammon.AASButton": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "Lat.ApparelRetexture_upscaled": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "syrchalis.terrain": {
+            "supportedVersions": [
+                "1.5"
+            ]
+        },
+        "bustedbunny.combatextendedaimbot": {
+            "supportedVersions": [
+                "1.5"
+            ]
         }
     }
 }

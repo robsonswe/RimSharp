@@ -95,7 +95,24 @@ namespace RimSharp.Shared.Services.Implementations
 
                 if (rules.TryGetValue(packageIdLower, out var rule))
                 {
-                    //Console.WriteLine($"[DEBUG] Found rule for mod: {mod.PackageId} / {packageIdLower}");
+                    // Apply supportedVersions from rules
+                    if (rule.SupportedVersions != null && rule.SupportedVersions.Count > 0)
+                    {
+                        // Create a lookup of existing versions for efficient checking
+                        var existingVersions = mod.SupportedVersions
+                            .ToDictionary(v => v.Version.ToLowerInvariant(), StringComparer.OrdinalIgnoreCase);
+
+                        // Add versions from rules that don't already exist
+                        foreach (string version in rule.SupportedVersions)
+                        {
+                            string versionLower = version.ToLowerInvariant();
+                            if (!existingVersions.ContainsKey(versionLower))
+                            {
+                                mod.SupportedVersions.Add(new VersionSupport(version, true)); // Set unofficial = true
+                                Console.WriteLine($"[DEBUG] Added unofficial support for version {version} to mod {mod.PackageId}");
+                            }
+                        }
+                    }
 
                     // Apply loadBefore rules
                     foreach (var target in rule.LoadBefore.Keys)
@@ -103,7 +120,6 @@ namespace RimSharp.Shared.Services.Implementations
                         if (!mod.LoadBefore.Contains(target))
                         {
                             mod.LoadBefore.Add(target);
-                            //Console.WriteLine($"[DEBUG] Added LoadBefore: {mod.PackageId} -> {target}");
                         }
                     }
 
@@ -113,7 +129,6 @@ namespace RimSharp.Shared.Services.Implementations
                         if (!mod.LoadAfter.Contains(target))
                         {
                             mod.LoadAfter.Add(target);
-                            //Console.WriteLine($"[DEBUG] Added LoadAfter: {mod.PackageId} -> {target}");
                         }
                     }
 
@@ -141,7 +156,7 @@ namespace RimSharp.Shared.Services.Implementations
                     var matchingKey = rules.Keys.FirstOrDefault(k => string.Equals(k, mod.PackageId, StringComparison.OrdinalIgnoreCase));
                     if (matchingKey != null)
                     {
-                       // Console.WriteLine($"[DEBUG] Case-sensitive mismatch for {mod.PackageId}. Found rule with key: {matchingKey}");
+                    // Console.WriteLine($"[DEBUG] Case-sensitive mismatch for {mod.PackageId}. Found rule with key: {matchingKey}");
                     }
                 }
             }
