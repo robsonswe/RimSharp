@@ -5,12 +5,13 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:RimSharp.Features.ModManager.Views"
              xmlns:vm="clr-namespace:RimSharp.Features.ModManager.ViewModels"
-            xmlns:modActions="clr-namespace:RimSharp.Features.ModManager.Components.ModActions"  
-            xmlns:modDetails="clr-namespace:RimSharp.Features.ModManager.Components.ModDetails"  
-            xmlns:modList="clr-namespace:RimSharp.Features.ModManager.Components.ModList"  
+             xmlns:modActions="clr-namespace:RimSharp.Features.ModManager.Components.ModActions"
+             xmlns:modDetails="clr-namespace:RimSharp.Features.ModManager.Components.ModDetails"
+             xmlns:modList="clr-namespace:RimSharp.Features.ModManager.Components.ModList"
              xmlns:models="clr-namespace:RimSharp.Shared.Models"
+             xmlns:util="clr-namespace:RimSharp.Core.Helpers"
              mc:Ignorable="d"
-             d:DataContext="{d:DesignInstance Type=vm:ModsViewModel, IsDesignTimeCreatable=True}"
+             d:DataContext="{d:DesignInstance Type=vm:ModsViewModel, IsDesignTimeCreatable=False}"
              d:DesignHeight="600" d:DesignWidth="1000">
     <Grid>
         <!-- Loading Indicator -->
@@ -28,10 +29,8 @@
 
             <!-- Mod Details Panel -->
             <Border Grid.Column="0" Margin="0,0,8,0" Style="{StaticResource RimworldPanelBorder}">
-                <!-- Use the ModDetailsView control -->
-                <!-- Its DataContext needs to be the SelectedMod from the main ViewModel -->
-                 <modDetails:ModDetailsView DataContext="{Binding SelectedMod}"/>
-                 <!-- The Hyperlink command inside ModDetailsView uses RelativeSource to find the main VM's command -->
+                <!-- Bind DataContext to the ModDetailsViewModel -->
+                <modDetails:ModDetailsView DataContext="{Binding ModDetailsViewModel}"/>
             </Border>
 
             <!-- Mod Lists Panel -->
@@ -43,37 +42,43 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Inactive Mods List -->
+                <!-- Bind Dependency Properties to the appropriate ViewModel properties -->
                 <modList:ModListView Grid.Column="0"
+                                      x:Name="InactiveModList"
                                       HeaderText="Inactive"
-                                      ItemsSource="{Binding InactiveMods}"
-                                      SelectedItem="{Binding SelectedMod, Mode=TwoWay}"
-                                      ItemCount="{Binding TotalInactiveMods, Mode=OneWay}"
-                                      SearchText="{Binding InactiveSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      FilterCommand="{Binding FilterInactiveCommand}"
-                                      DoubleClickCommand="{Binding ActivateModCommand}"
+                                      ItemsSource="{Binding ModListViewModel.InactiveMods}"
+                                      SelectedItem="{Binding SelectedMod, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      util:ListBoxSelectionHelper.SelectedItems="{Binding SelectedItems, Mode=OneWayToSource}"
+                                      ItemCount="{Binding ModListViewModel.TotalInactiveMods, Mode=OneWay}"
+                                      SearchText="{Binding ModListViewModel.InactiveSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      FilterCommand="{Binding ModListViewModel.FilterInactiveCommand}"
+                                      DoubleClickCommand="{Binding ModListViewModel.ActivateModCommand}"
                                       GroupName="Inactive"
-                                      DropCommand="{Binding DropModCommand}"
+                                      DropCommand="{Binding ModListViewModel.DropModCommand}"
                                       DragItemType="{x:Type models:ModItem}"
                                       Margin="0,0,4,0"/>
 
                  <!-- Active Mods List -->
                  <modList:ModListView Grid.Column="2"
+                                      x:Name="ActiveModList"
                                       HeaderText="Active"
-                                      ItemsSource="{Binding ActiveMods}"
-                                      SelectedItem="{Binding SelectedMod, Mode=TwoWay}"
-                                      ItemCount="{Binding TotalActiveMods, Mode=OneWay}"
-                                      SearchText="{Binding ActiveSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      FilterCommand="{Binding FilterActiveCommand}"
-                                      DoubleClickCommand="{Binding DeactivateModCommand}"
+                                      ItemsSource="{Binding ModListViewModel.ActiveMods}"
+                                      SelectedItem="{Binding SelectedMod, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      util:ListBoxSelectionHelper.SelectedItems="{Binding SelectedItems, Mode=OneWayToSource}"
+                                      ItemCount="{Binding ModListViewModel.TotalActiveMods, Mode=OneWay}"
+                                      SearchText="{Binding ModListViewModel.ActiveSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      FilterCommand="{Binding ModListViewModel.FilterActiveCommand}"
+                                      DoubleClickCommand="{Binding ModListViewModel.DeactivateModCommand}"
                                       GroupName="Active"
-                                      DropCommand="{Binding DropModCommand}"
+                                      DropCommand="{Binding ModListViewModel.DropModCommand}"
                                       DragItemType="{x:Type models:ModItem}"
                                       Margin="4,0,0,0"/>
             </Grid>
 
             <!-- Right Sidebar Buttons -->
-            <modActions:ModActionsView Grid.Column="2" Margin="8,0,0,0"/>
-             <!-- DataContext is inherited from parent (ModsViewModel) -->
+            <!-- Bind DataContext to the ModActionsViewModel -->
+            <modActions:ModActionsView Grid.Column="2" Margin="8,0,0,0"
+                                       DataContext="{Binding ModActionsViewModel}"/>
 
         </Grid>
     </Grid>
