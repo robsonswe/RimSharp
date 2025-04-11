@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Windows.Data;
 using System.Collections;
 
-namespace RimSharp.Core.Converters
+namespace RimSharp.Core.Converters.Logic
 {
     public class CountToBooleanConverter : IValueConverter
     {

@@ -4,7 +4,7 @@ using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
 
-namespace RimSharp.Core.Converters
+namespace RimSharp.Core.Converters.Visual
 {
     public class BooleanToBrushConverter : IValueConverter
     {
