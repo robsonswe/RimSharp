@@ -5,7 +5,7 @@ using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows;
 
-namespace RimSharp.Core.Converters
+namespace RimSharp.Core.Converters.Visual
 {
     public class BooleanToColorConverter : IValueConverter
     {

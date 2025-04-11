@@ -2,7 +2,7 @@ using System;
 using System.Globalization;
 using System.Windows.Data;
 
-namespace RimSharp.Core.Converters
+namespace RimSharp.Core.Converters.Numeric
 {
     public class MultiplyMultiValueConverter : IMultiValueConverter
     {

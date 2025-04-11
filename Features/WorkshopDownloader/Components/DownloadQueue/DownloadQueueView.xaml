@@ -11,14 +11,7 @@
              mc:Ignorable="d"
              x:Name="DownloadQueueUserControl">
 
-    <UserControl.Resources>
-        <!-- Existing converters -->
-        <converters:BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
-        <converters:BooleanToVisibilityConverter x:Key="InverseBoolToVisConverter" Inverse="True"/>
-        <converters:BooleanToColorConverter x:Key="ActiveStateColorConverter"/>
-        <converters:BooleanToTextConverter x:Key="ActiveStateTextConverter"/>
-    </UserControl.Resources>
-
+    
     <DockPanel>
         <Border DockPanel.Dock="Top"
                 Style="{StaticResource RimworldInfoHeaderBorder}">
@@ -141,12 +134,12 @@
                                        FontWeight="SemiBold"
                                        Foreground="ForestGreen"
                                        Margin="5,0,0,0"
-                                       Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVisConverter}}"/>
+                                       Visibility="{Binding IsInstalled, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                             <TextBlock Text="(Active)"
                                        FontSize="11"
                                        Foreground="DodgerBlue"
                                        Margin="5,0,0,0"
-                                       Visibility="{Binding IsActive, Converter={StaticResource BoolToVisConverter}}"/>
+                                       Visibility="{Binding IsActive, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         </StackPanel>
 
                         <StackPanel Grid.Row="2"
@@ -164,7 +157,7 @@
                         <StackPanel Grid.Row="3"
                                     Grid.Column="0"
                                     Orientation="Horizontal"
-                                    Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVisConverter}}">
+                                    Visibility="{Binding IsInstalled, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <TextBlock Text="Installed Version: "
                                        FontSize="11"
                                        Foreground="{StaticResource RimworldLightBrownBrush}"/>

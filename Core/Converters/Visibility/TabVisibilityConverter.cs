@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
 
-namespace RimSharp.Core.Converters
+namespace RimSharp.Core.Converters.ViewVisibility
 {
     public class TabVisibilityConverter : IValueConverter
     {
