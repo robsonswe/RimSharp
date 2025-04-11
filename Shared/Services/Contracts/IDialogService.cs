@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
 using RimSharp.MyApp.Dialogs; // If you want async wrappers later
@@ -18,8 +19,8 @@ namespace RimSharp.Shared.Services.Contracts
 
         UpdateCheckDialogResult ShowUpdateCheckDialog(UpdateCheckDialogViewModel viewModel);
 
-        ProgressDialogViewModel ShowProgressDialog(string title, string message, bool canCancel = false, bool isIndeterminate = true);
-
+        // Updated to accept an optional CancellationTokenSource
+        ProgressDialogViewModel ShowProgressDialog(string title, string message, bool canCancel = false, bool isIndeterminate = true, CancellationTokenSource cts = null);
 
         // More generic method (optional)
         // TResult ShowDialog<TResult>(DialogViewModelBase<TResult> viewModel);

@@ -348,7 +348,10 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 // Link dialog's cancel request to the parent's token source (parent VM should handle this linkage)
                 // For simplicity, we assume parent cancellation is signaled via the token.
                 // A more direct link: progressDialog.Cancelled += (s,e) => _parentViewModel.CancelOperation();
-                progressDialog.Cancelled += (s, e) => { /* Parent handles cancellation request */ };
+                progressDialog.Cancelled += (s, e) =>
+                {
+                    StatusChanged?.Invoke(this, "Update check cancelled by user.");
+                };
 
                 var progressReporter = new Progress<string>(message =>
                 {
@@ -680,7 +683,10 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
         private async Task ExecuteCheckUpdatesCommand(CancellationToken ignoredToken)
         {
             if (IsOperationInProgress) return;
-            CancellationToken token = _getCancellationToken();
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(_getCancellationToken());
+            var token = cts.Token;
+
             if (token.IsCancellationRequested) return;
 
             List<ModItem> workshopMods;
@@ -737,24 +743,23 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             try
             {
                 StatusChanged?.Invoke(this, $"Checking {selectedMods.Count} mod(s) for updates...");
-                progressDialog = _dialogService.ShowProgressDialog("Checking for Updates", "Preparing...", true); // Can Cancel
+                progressDialog = _dialogService.ShowProgressDialog("Checking for Updates", "Preparing...", true, true, cts);
                 progressDialog.Cancelled += (s, e) => { /* Parent handles cancellation */ };
 
                 // Define progress reporting action
                 var progress = new Progress<(int current, int total, string modName)>(update =>
                 {
-                    if (progressDialog != null) // Check if dialog still exists and isn't cancelled
+                    if (progressDialog != null)
                     {
                         progressDialog.Message = $"Checking {update.modName}... ({update.current}/{update.total})";
                         progressDialog.Progress = (int)((double)update.current / update.total * 100);
                         progressDialog.IsIndeterminate = false;
                     }
-                    // Update status bar regardless of dialog state
                     StatusChanged?.Invoke(this, $"Checking {update.modName} ({update.current} of {update.total})...");
                 });
 
                 // Perform the update check
-                updateResult = await _updateCheckerService.CheckForUpdatesAsync(selectedMods, progress, token); // Pass actual token
+                updateResult = await _updateCheckerService.CheckForUpdatesAsync(selectedMods, progress, token);
 
                 // --- Report Results (only if not cancelled) ---
                 if (token.IsCancellationRequested)

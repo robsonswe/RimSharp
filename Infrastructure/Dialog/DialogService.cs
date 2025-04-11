@@ -2,6 +2,7 @@ using System.Windows;
 using RimSharp.MyApp.Dialogs;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
+using System.Threading;
 
 namespace RimSharp.Infrastructure.Dialog
 {
@@ -86,9 +87,9 @@ namespace RimSharp.Infrastructure.Dialog
             ShowDialogInternal(viewModel);
         }
 
-        public ProgressDialogViewModel ShowProgressDialog(string title, string message, bool canCancel = false, bool isIndeterminate = true)
+        public ProgressDialogViewModel ShowProgressDialog(string title, string message, bool canCancel = false, bool isIndeterminate = true, CancellationTokenSource cts = null)
         {
-            var viewModel = new ProgressDialogViewModel(title, message, canCancel, isIndeterminate);
+            var viewModel = new ProgressDialogViewModel(title, message, canCancel, isIndeterminate, cts);
 
             var dialog = new ProgressDialogView(viewModel)
             {
@@ -101,6 +102,7 @@ namespace RimSharp.Infrastructure.Dialog
 
             return viewModel;
         }
+
 
     }
 }
