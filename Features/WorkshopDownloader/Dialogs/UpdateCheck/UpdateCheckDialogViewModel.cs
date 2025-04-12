@@ -27,16 +27,17 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
 
         public ICommand SelectAllCommand { get; }
         public ICommand SelectNoneCommand { get; }
+        public ICommand SelectActiveCommand { get; }
         public ICommand UpdateCommand { get; }
         public ICommand CancelCommand { get; }
         public ICommand SortCommand { get; }
 
         // Add properties to track current sort state (for UI binding)
         private string _currentSortProperty = nameof(UpdateCheckItemViewModel.Name); // Default sort
-        public string CurrentSortProperty 
+        public string CurrentSortProperty
         {
             get => _currentSortProperty;
-            private set 
+            private set
             {
                 if (_currentSortProperty != value)
                 {
@@ -131,6 +132,7 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
 
             SelectAllCommand = new RelayCommand(ExecuteSelectAll);
             SelectNoneCommand = new RelayCommand(ExecuteSelectNone);
+            SelectActiveCommand = new RelayCommand(ExecuteSelectActive); // <-- Instantiate new command
             SortCommand = new RelayCommand(ExecuteSort);
 
             UpdateCommand = new RelayCommand(
@@ -170,6 +172,18 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
             }
         }
 
+        // <-- Add new execution method
+        private void ExecuteSelectActive(object parameter)
+        {
+            foreach (var item in _modsToCheck)
+            {
+                // Select the item if its underlying ModItem is Active
+                item.IsSelected = item.Mod?.IsActive ?? false;
+            }
+            // The PropertyChanged handler within the constructor already handles
+            // updating the CanExecute state of the UpdateCommand when IsSelected changes.
+        }
+
         private bool CanExecuteUpdate(object parameter)
         {
             return _modsToCheck.Any(item => item.IsSelected);
@@ -204,7 +218,7 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
                 ModsView.SortDescriptions.Clear();
                 ModsView.SortDescriptions.Add(new SortDescription(CurrentSortProperty, CurrentSortDirection));
             }
-            
+
             // Update the sort indicators after applying sort
             UpdateSortIndicators();
         }
@@ -220,7 +234,7 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
 
             // Set indicator for the sorted column
             string sortState = CurrentSortDirection == ListSortDirection.Ascending ? "SortedAscending" : "SortedDescending";
-            
+
             switch (CurrentSortProperty)
             {
                 case nameof(UpdateCheckItemViewModel.Name):

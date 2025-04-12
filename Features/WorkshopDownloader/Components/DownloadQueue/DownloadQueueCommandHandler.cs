@@ -562,7 +562,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                  // Refresh local mod info just before check, ensuring IModService is up-to-date
                  await _modService.LoadModsAsync(); // Assuming LoadModsAsync refreshes the list used by GetLoadedMods
                  workshopMods = _modService.GetLoadedMods()
-                    .Where(m => !string.IsNullOrEmpty(m.SteamId) && long.TryParse(m.SteamId, out _))
+                    .Where(m => !string.IsNullOrEmpty(m.SteamId) && long.TryParse(m.SteamId, out _) && m.ModType == ModType.WorkshopL)
                     .OrderBy(m => m.Name)
                     .ToList();
              }
