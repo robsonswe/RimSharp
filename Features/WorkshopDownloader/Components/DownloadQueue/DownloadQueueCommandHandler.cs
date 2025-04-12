@@ -195,7 +195,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
                 if (token.IsCancellationRequested)
                 {
-                    progressDialog?.OnCancel("Setup cancelled."); // Update dialog message
+                if (progressDialog != null) progressDialog.Message = "Setup cancelled.";
                     StatusChanged?.Invoke(this, "SteamCMD setup cancelled.");
                 }
                 else if (success)
@@ -207,7 +207,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 else
                 {
                     // Failure message likely shown by service, keep dialog message brief
-                    progressDialog?.OnCancel("Setup failed. See log/messages."); // Update dialog message
+                    if (progressDialog != null) progressDialog.Message = "Setup failed. See log/messages.";
                     StatusChanged?.Invoke(this, "SteamCMD setup failed.");
                     _dialogService.ShowError("Setup Failed", "SteamCMD setup failed. Please check the logs or status messages for details.");
                 }
@@ -215,14 +215,14 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             catch (OperationCanceledException)
             {
                 // Catch cancellation triggered by the token
-                progressDialog?.OnCancel("Setup cancelled."); // Update dialog message
+                if (progressDialog != null) progressDialog.Message = "Setup cancelled.";
                 StatusChanged?.Invoke(this, "SteamCMD setup cancelled.");
                 // No need for dialog here, cancellation is expected
             }
             catch (Exception ex)
             {
                 StatusChanged?.Invoke(this, $"Error during SteamCMD setup: {ex.Message}");
-                progressDialog?.OnCancel($"Error: {ex.Message}"); // Update dialog message
+                if (progressDialog != null) progressDialog.Message = $"Error: {ex.Message}";
                 _dialogService.ShowError("Setup Error", $"An unexpected error occurred during setup: {ex.Message}");
                 Debug.WriteLine($"[ExecuteSetupSteamCmdCommand] Error: {ex}");
             }
@@ -639,7 +639,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                  // --- Report Results (only if not cancelled) ---
                  if (token.IsCancellationRequested)
                  {
-                     progressDialog?.OnCancel("Update check cancelled."); // Update dialog message
+                    if (progressDialog != null) progressDialog.Message = "Update check cancelled.";
                      StatusChanged?.Invoke(this, "Update check cancelled.");
                      // Don't show dialog, user initiated cancel
                  }
@@ -679,13 +679,13 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
              catch (OperationCanceledException)
              {
                  // Catch cancellation specifically if needed (e.g., user cancelled via dialog/parent)
-                 progressDialog?.OnCancel("Update check was cancelled.");
+                if (progressDialog != null) progressDialog.Message = "Update check was cancelled.";
                  StatusChanged?.Invoke(this, "Update check was cancelled.");
                  // No dialog needed here usually
              }
              catch (Exception ex)
              {
-                 progressDialog?.OnCancel($"Error: {ex.Message}"); // Show error in progress dialog before closing
+                if (progressDialog != null) progressDialog.Message = $"Error: {ex.Message}";
                  StatusChanged?.Invoke(this, $"An error occurred during the update check process: {ex.Message}");
                  Debug.WriteLine($"[CommandHandler] Error executing update check: {ex}");
                  _dialogService.ShowError("Update Check Failed", $"An unexpected error occurred: {ex.Message}");

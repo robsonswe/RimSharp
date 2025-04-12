@@ -26,6 +26,7 @@ namespace RimSharp.Features.ModManager.ViewModels
         private readonly IModListManager _modListManager;
         private readonly IDialogService _dialogService;
         // private readonly IModIncompatibilityService _incompatibilityService; // Used by ModActionsViewModel
+        private readonly IPathService _pathService;
 
 
         // --- Child ViewModels ---
@@ -112,18 +113,20 @@ namespace RimSharp.Features.ModManager.ViewModels
             IModListManager modListManager,
             IModIncompatibilityService incompatibilityService,
             IDialogService dialogService,
-            IModService modService) // Assuming modService is needed somewhere, maybe dataService?
+            IModService modService,
+            IPathService pathService) // Assuming modService is needed somewhere, maybe dataService?
         {
             _dataService = dataService;
             _filterService = filterService;
             _modListManager = modListManager;
             _dialogService = dialogService;
+            _pathService = pathService;
 
             // Instantiate Child ViewModels, passing required dependencies
             ModListViewModel = new ModListViewModel(_filterService, _modListManager, commandService, _dialogService);
             ModDetailsViewModel = new ModDetailsViewModel(_dialogService);
             ModActionsViewModel = new ModActionsViewModel(
-                _dataService, commandService, ioService, _modListManager, incompatibilityService, _dialogService
+                _dataService, commandService, ioService, _modListManager, incompatibilityService, _dialogService, _pathService
                 );
 
             // --- Event Wiring ---

@@ -135,7 +135,8 @@ namespace RimSharp.MyApp.AppFiles
                     provider.GetRequiredService<IModListManager>(),
                     provider.GetRequiredService<IModIncompatibilityService>(),
                     provider.GetRequiredService<IDialogService>(),
-                    provider.GetRequiredService<IModService>()
+                    provider.GetRequiredService<IModService>(),
+                    provider.GetRequiredService<IPathService>()
                 ));
 
             services.AddTransient<DownloaderViewModel>(provider =>
