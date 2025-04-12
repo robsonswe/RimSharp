@@ -191,10 +191,10 @@
                                         <Separator.Style>
                                             <Style TargetType="Separator" BasedOn="{StaticResource {x:Static MenuItem.SeparatorStyleKey}}">
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsCore}" Value="True">
+                                                    <DataTrigger Binding="{Binding ModType}" Value="Core">
                                                         <Setter Property="Visibility" Value="Collapsed"/>
                                                     </DataTrigger>
-                                                    <DataTrigger Binding="{Binding IsExpansion}" Value="True">
+                                                    <DataTrigger Binding="{Binding ModType}" Value="Expansion">
                                                         <Setter Property="Visibility" Value="Collapsed"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
@@ -214,10 +214,10 @@
                                                 <Setter Property="Visibility" Value="Visible"/>
                                                 <Style.Triggers>
                                                     <!-- Visibility/Style triggers bind to ModItem -->
-                                                    <DataTrigger Binding="{Binding IsCore}" Value="True">
+                                                    <DataTrigger Binding="{Binding ModType}" Value="Core">
                                                         <Setter Property="Visibility" Value="Collapsed"/>
                                                     </DataTrigger>
-                                                    <DataTrigger Binding="{Binding IsExpansion}" Value="True">
+                                                    <DataTrigger Binding="{Binding ModType}" Value="Expansion">
                                                         <Setter Property="Visibility" Value="Collapsed"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>

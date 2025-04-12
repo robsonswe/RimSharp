@@ -42,10 +42,8 @@ namespace RimSharp.Shared.Models
         public string SteamUrl { get; set; }
         public string ExternalUrl { get; set; }
         public string Path { get; set; }
-        public bool IsCore { get; set; }
-        public bool IsExpansion { get; set; }
         public bool IsActive { get; set; }
-        public ModType ModType { get; set; } // New field
+        public ModType ModType { get; set; }
 
         public bool LoadBottom { get; set; }
         public string PreviewImagePath { get; set; }

@@ -230,9 +230,9 @@ namespace RimSharp.Features.ModManager.ViewModels
 
                 progressDialog.Message = "Finalizing...";
                 // Select initial item (logic remains the same)
-                ModItem selectedModCandidate = _modListManager.VirtualActiveMods.FirstOrDefault(m => m.Mod.IsCore).Mod ??
-                                              _modListManager.VirtualActiveMods.FirstOrDefault().Mod ??
-                                              _modListManager.AllInactiveMods.FirstOrDefault();
+                ModItem selectedModCandidate = _modListManager.VirtualActiveMods.FirstOrDefault(vm => vm.Mod.ModType == ModType.Core).Mod ?? // Find Core mod first
+                                _modListManager.VirtualActiveMods.FirstOrDefault().Mod ?? // If no core, take first active
+                                _modListManager.AllInactiveMods.FirstOrDefault();          // If no active, take first inactive
 
                 // Set the parent's selected mod, which will propagate to children
                 SelectedMod = selectedModCandidate;

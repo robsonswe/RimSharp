@@ -54,7 +54,7 @@ namespace RimSharp.Features.ModManager.Services.Mangement
         public void Deactivate(ModItem mod)
         {
             if (mod == null || !_activeModSet.Contains(mod)) return;
-            if (mod.IsCore)
+            if (mod.ModType == ModType.Core)
             {
                 Debug.WriteLine($"Attempt blocked: Cannot deactivate the Core mod '{mod.Name}'.");
                 return;
