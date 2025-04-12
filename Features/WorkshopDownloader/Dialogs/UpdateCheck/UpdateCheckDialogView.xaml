@@ -66,8 +66,10 @@
                        Margin="0,0,0,10" FontSize="14" FontWeight="Medium"
                        Foreground="{StaticResource RimworldBrownBrush}"/>
 
+            <!-- Updated StackPanel -->
             <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,5">
                 <Button Content="Select All" Command="{Binding SelectAllCommand}" Style="{StaticResource RimworldButtonStyle}" Margin="0,0,5,0"/>
+                <Button Content="Select Active" Command="{Binding SelectActiveCommand}" Style="{StaticResource RimworldButtonStyle}" Margin="0,0,5,0"/>
                 <Button Content="Select None" Command="{Binding SelectNoneCommand}" Style="{StaticResource RimworldButtonStyle}"/>
             </StackPanel>
 
@@ -111,59 +113,59 @@
 
 
                             <!-- Column 2: Package ID (Sortable) -->
-<!-- For the Package ID column -->
-<GridViewColumn DisplayMemberBinding="{Binding PackageId}" Width="180">
-    <GridViewColumn.HeaderTemplate>
-        <DataTemplate>
-            <Button Content="Package ID"
-                    Style="{StaticResource SortableHeaderButtonStyle}"
-                    Command="{Binding DataContext.SortCommand, RelativeSource={RelativeSource AncestorType={x:Type views:UpdateCheckDialogView}}}"
-                    CommandParameter="{x:Static vm:UpdateCheckItemViewModel.PackageIdPropertyName}"
-                    ToolTip="Sort by Package ID"/>
-        </DataTemplate>
-    </GridViewColumn.HeaderTemplate>
-    <GridViewColumn.CellTemplate>
-        <DataTemplate>
-            <TextBlock Text="{Binding PackageId}" FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding PackageId}"/>
-        </DataTemplate>
-    </GridViewColumn.CellTemplate>
-</GridViewColumn>
+                            <!-- For the Package ID column -->
+                            <GridViewColumn DisplayMemberBinding="{Binding PackageId}" Width="180">
+                                <GridViewColumn.HeaderTemplate>
+                                    <DataTemplate>
+                                        <Button Content="Package ID"
+                                                Style="{StaticResource SortableHeaderButtonStyle}"
+                                                Command="{Binding DataContext.SortCommand, RelativeSource={RelativeSource AncestorType={x:Type views:UpdateCheckDialogView}}}"
+                                                CommandParameter="{x:Static vm:UpdateCheckItemViewModel.PackageIdPropertyName}"
+                                                ToolTip="Sort by Package ID"/>
+                                    </DataTemplate>
+                                </GridViewColumn.HeaderTemplate>
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding PackageId}" FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding PackageId}"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
 
-<!-- For the Steam ID column -->
-<GridViewColumn DisplayMemberBinding="{Binding SteamId}" Width="100">
-    <GridViewColumn.HeaderTemplate>
-        <DataTemplate>
-            <Button Content="Steam ID"
-                    Style="{StaticResource SortableHeaderButtonStyle}"
-                    Command="{Binding DataContext.SortCommand, RelativeSource={RelativeSource AncestorType={x:Type views:UpdateCheckDialogView}}}"
-                    CommandParameter="{x:Static vm:UpdateCheckItemViewModel.SteamIdPropertyName}"
-                    ToolTip="Sort by Steam ID"/>
-        </DataTemplate>
-    </GridViewColumn.HeaderTemplate>
-    <GridViewColumn.CellTemplate>
-        <DataTemplate>
-            <TextBlock Text="{Binding SteamId}" FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}" VerticalAlignment="Center"/>
-        </DataTemplate>
-    </GridViewColumn.CellTemplate>
-</GridViewColumn>
+                            <!-- For the Steam ID column -->
+                            <GridViewColumn DisplayMemberBinding="{Binding SteamId}" Width="100">
+                                <GridViewColumn.HeaderTemplate>
+                                    <DataTemplate>
+                                        <Button Content="Steam ID"
+                                                Style="{StaticResource SortableHeaderButtonStyle}"
+                                                Command="{Binding DataContext.SortCommand, RelativeSource={RelativeSource AncestorType={x:Type views:UpdateCheckDialogView}}}"
+                                                CommandParameter="{x:Static vm:UpdateCheckItemViewModel.SteamIdPropertyName}"
+                                                ToolTip="Sort by Steam ID"/>
+                                    </DataTemplate>
+                                </GridViewColumn.HeaderTemplate>
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding SteamId}" FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
 
-<!-- For the Date column -->
-<GridViewColumn DisplayMemberBinding="{Binding LocalUpdateDate}" Width="150">
-    <GridViewColumn.HeaderTemplate>
-        <DataTemplate>
-            <Button Content="Last Update"
-                    Style="{StaticResource SortableHeaderButtonStyle}"
-                    Command="{Binding DataContext.SortCommand, RelativeSource={RelativeSource AncestorType={x:Type views:UpdateCheckDialogView}}}"
-                    CommandParameter="{x:Static vm:UpdateCheckItemViewModel.LocalUpdateDatePropertyName}"
-                    ToolTip="Sort by Last Update"/>
-        </DataTemplate>
-    </GridViewColumn.HeaderTemplate>
-    <GridViewColumn.CellTemplate>
-        <DataTemplate>
-            <TextBlock Text="{Binding LocalUpdateDate}" FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}" VerticalAlignment="Center" ToolTip="Local Last Updated Timestamp"/>
-        </DataTemplate>
-    </GridViewColumn.CellTemplate>
-</GridViewColumn>
+                            <!-- For the Date column -->
+                            <GridViewColumn DisplayMemberBinding="{Binding LocalUpdateDate}" Width="150">
+                                <GridViewColumn.HeaderTemplate>
+                                    <DataTemplate>
+                                        <Button Content="Last Update"
+                                                Style="{StaticResource SortableHeaderButtonStyle}"
+                                                Command="{Binding DataContext.SortCommand, RelativeSource={RelativeSource AncestorType={x:Type views:UpdateCheckDialogView}}}"
+                                                CommandParameter="{x:Static vm:UpdateCheckItemViewModel.LocalUpdateDatePropertyName}"
+                                                ToolTip="Sort by Last Update"/>
+                                    </DataTemplate>
+                                </GridViewColumn.HeaderTemplate>
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding LocalUpdateDate}" FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}" VerticalAlignment="Center" ToolTip="Local Last Updated Timestamp"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
 
                         </GridView>
                     </ListView.View>
