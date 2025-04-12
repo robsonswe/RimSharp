@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.ComponentModel; // For PropertyChangedEventArgs
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input; // For CommandManager
 
@@ -34,6 +35,7 @@ namespace RimSharp.Features.ModManager.ViewModels
         public ModDetailsViewModel ModDetailsViewModel { get; private set; }
         public ModActionsViewModel ModActionsViewModel { get; private set; }
 
+        public ICommand RequestRefreshCommand { get; }
 
         // --- State Properties (Managed by Parent) ---
         private bool _isLoading;
@@ -122,6 +124,9 @@ namespace RimSharp.Features.ModManager.ViewModels
             _dialogService = dialogService;
             _pathService = pathService;
 
+            RequestRefreshCommand = new AsyncRelayCommand(ExecuteRequestRefreshAsync, CanExecuteRequestRefresh);
+
+
             // Instantiate Child ViewModels, passing required dependencies
             ModListViewModel = new ModListViewModel(_filterService, _modListManager, commandService, _dialogService);
             ModDetailsViewModel = new ModDetailsViewModel(_dialogService);
@@ -149,6 +154,27 @@ namespace RimSharp.Features.ModManager.ViewModels
 
         // --- Event Handlers from Children ---
 
+        private bool CanExecuteRequestRefresh()
+        {
+            // Can request refresh if not already loading
+            return !IsLoading;
+        }
+
+        private async Task ExecuteRequestRefreshAsync(CancellationToken ct = default) // Add CT parameter
+        {
+            // Double check loading state inside execute in case of race conditions
+            if (IsLoading)
+            {
+                Debug.WriteLine("[ModsViewModel] Refresh request ignored, already loading.");
+                return;
+            }
+
+            Debug.WriteLine("[ModsViewModel] Executing refresh request...");
+            await RefreshDataAsync(); // Call the actual worker method
+            Debug.WriteLine("[ModsViewModel] Refresh execution complete.");
+        }
+
+
         private void OnChildRequestSelectionChange(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ModListViewModel.SelectedMod) && sender is ModListViewModel listVM)
@@ -170,11 +196,21 @@ namespace RimSharp.Features.ModManager.ViewModels
 
         private async void OnChildRequestDataRefresh(object sender, EventArgs e)
         {
-            // A child VM (likely ModActionsViewModel after deletion/import etc.) requests a full refresh
-            Debug.WriteLine("[ModsViewModel] Received request for data refresh from child.");
-            await RefreshDataAsync(); // Call the main refresh method
+            // Execute the command instead of calling RefreshDataAsync directly
+            Debug.WriteLine("[ModsViewModel] Received request for data refresh from child. Executing RequestRefreshCommand.");
+            if (RequestRefreshCommand.CanExecute(null))
+            {
+                // Use await Task.Run or similar if the command execution needs to be awaited
+                // but AsyncRelayCommand handles the async nature internally.
+                // We don't typically await command execution directly unless needed.
+                RequestRefreshCommand.Execute(null);
+            }
+            else
+            {
+                Debug.WriteLine("[ModsViewModel] Cannot execute refresh command now (likely loading).");
+            }
+            // No need for await here as the command handles the async execution.
         }
-
         private void OnChildRequestHasUnsavedChanges(object sender, bool hasChanges)
         {
             // A child VM needs to update the global unsaved changes flag
@@ -244,6 +280,8 @@ namespace RimSharp.Features.ModManager.ViewModels
                 HasUnsavedChanges = false; // ModActionsViewModel.HasUnsavedChanges gets updated via setter
 
                 progressDialog.CompleteOperation("Mods loaded successfully");
+                RunOnUIThread(CommandManager.InvalidateRequerySuggested); // Ensure commands update
+
             }
             catch (Exception ex)
             {

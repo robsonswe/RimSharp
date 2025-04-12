@@ -1,3 +1,4 @@
+
 #nullable enable
 using System.Windows.Input;
 using System.Windows.Forms; // Add reference to System.Windows.Forms assembly for FolderBrowserDialog
@@ -11,7 +12,8 @@ using RimSharp.Features.ModManager.ViewModels;
 using RimSharp.Features.WorkshopDownloader.ViewModels;
 using RimSharp.Shared.Models;
 using RimSharp.Infrastructure.Configuration;
-using System.Threading.Tasks; // Likely not needed if PathService handles config interaction
+using System.Threading.Tasks;
+using RimSharp.Core.Extensions; // Likely not needed if PathService handles config interaction
 
 namespace RimSharp.MyApp.MainPage
 {
@@ -140,31 +142,26 @@ namespace RimSharp.MyApp.MainPage
 
         private void DownloaderVM_DownloadCompletedAndRefreshNeeded(object? sender, EventArgs e)
         {
-            // This event might be raised on a background thread from DownloaderVM.
-            // RefreshDataAsync in ModsVM should be designed to handle this (e.g., use Dispatcher for UI updates).
             StatusMessage = "Download complete. Refreshing mod list...";
-            Console.WriteLine("[MainViewModel] Received DownloadCompletedAndRefreshNeeded event. Triggering ModsVM refresh.");
+            Console.WriteLine("[MainViewModel] Received DownloadCompletedAndRefreshNeeded event. Triggering RefreshCommand.");
 
-            // Trigger the refresh logic. Calling the RefreshCommand ensures consistent behavior (status updates, etc.)
-            // Ensure RefreshCommand's Execute method (RefreshData) eventually calls ModsVM.RefreshDataAsync()
+            // Trigger the main refresh command, which handles path refresh AND mod refresh request
             if (RefreshCommand.CanExecute(null))
             {
-                // Execute the command. Consider if RefreshData does too much (like path reloads)
-                // If RefreshData is heavy, call ModsVM refresh directly:
-                _ = ModsVM?.RefreshDataAsync();
-                StatusMessage = "Mod list refresh initiated."; // Update status after triggering
+                // Let the main command handle the coordinated refresh
+                RefreshCommand.Execute(null);
+                // Status message will be updated by RefreshData
             }
             else
             {
-                Console.WriteLine("[MainViewModel] RefreshCommand cannot execute, attempting direct refresh.");
-                // Fallback to direct call if command can't execute for some reason
-                _ = ModsVM?.RefreshDataAsync();
-                StatusMessage = "Mod list refresh initiated (direct call).";
+                // This case should be less likely now if RefreshCommand checks ModsVM.IsLoading
+                StatusMessage = "Cannot start refresh: Another operation might be in progress.";
+                Console.WriteLine("[MainViewModel] RefreshCommand cannot execute after download completion.");
+                // Maybe attempt direct ModsVM refresh as fallback? Risky. Best to let the main command manage it.
+                // _ = ModsVM.RequestRefreshCommand.Execute(null); // Less safe
             }
-
-            // Maybe add a small delay before clearing the status message
-            Task.Delay(2000).ContinueWith(t => { if (StatusMessage == "Mod list refresh initiated." || StatusMessage == "Mod list refresh initiated (direct call).") StatusMessage = "Ready"; }, TaskScheduler.FromCurrentSynchronizationContext());
         }
+
 
 
         private void OpenFolder(object parameter)
@@ -319,40 +316,80 @@ namespace RimSharp.MyApp.MainPage
         }
 
         // Centralized refresh logic
-        private void RefreshData(object? parameter) // Make parameter nullable
+        private void RefreshData(object? parameter)
         {
-            StatusMessage = "Refreshing paths and mod data...";
-            Console.WriteLine("[MainViewModel] RefreshData executing..."); // Debug log
-
-            // 1. Refresh paths (Optional here if only mods changed, but good for consistency)
-            _pathService.RefreshPaths();
-
-            // 2. Update PathSettings properties from the refreshed service state
-            string tempGame = _pathService.GetGamePath();
-            string tempConfig = _pathService.GetConfigPath();
-            string tempMods = _pathService.GetModsPath();
-            string tempVersion = _pathService.GetGameVersion(tempGame);
-
-            bool pathChanged = false;
-            if (PathSettings.GamePath != tempGame) { PathSettings.GamePath = tempGame; pathChanged = true; }
-            if (PathSettings.ConfigPath != tempConfig) { PathSettings.ConfigPath = tempConfig; pathChanged = true; }
-            if (PathSettings.ModsPath != tempMods) { PathSettings.ModsPath = tempMods; pathChanged = true; }
-            if (PathSettings.GameVersion != tempVersion) { PathSettings.GameVersion = tempVersion; } // Always update version display
-
-            // 3. Trigger data refresh in the ModsViewModel
-            // The ModsVM refresh should handle loading mods based on the *current* paths
-            _ = ModsVM?.RefreshDataAsync(); // Fire and forget async call
-
-            // 4. Update CanExecute state for commands dependent on paths
-            if (pathChanged) // Only update if paths actually changed during THIS refresh
+            // Prevent refresh if ModsVM is busy (optional, ModsVM command handles this too)
+            if (ModsVM.IsLoading)
             {
-                ((RelayCommand)OpenFolderCommand).RaiseCanExecuteChanged();
+                StatusMessage = "Refresh skipped: Mod list operation already in progress.";
+                Debug.WriteLine("[MainViewModel] RefreshData skipped, ModsVM is loading.");
+                return;
             }
 
-            // Clear status after a short delay
-            Task.Delay(1500).ContinueWith(t => { if (StatusMessage == "Refreshing paths and mod data...") StatusMessage = "Refresh complete."; }, TaskScheduler.FromCurrentSynchronizationContext());
-            Console.WriteLine("[MainViewModel] RefreshData finished."); // Debug log
+            StatusMessage = "Refreshing paths and mod data...";
+            Debug.WriteLine("[MainViewModel] RefreshData executing...");
+
+            try
+            {
+                // 1. Refresh paths FIRST
+                _pathService.RefreshPaths();
+
+                // 2. Update MainViewModel's PathSettings properties from the refreshed service state
+                //    (Important: Do this BEFORE triggering mod load which might depend on these paths)
+                string tempGame = _pathService.GetGamePath();
+                string tempConfig = _pathService.GetConfigPath();
+                string tempMods = _pathService.GetModsPath();
+                string tempVersion = _pathService.GetGameVersion(tempGame); // Use refreshed game path
+
+                bool pathChanged = false;
+                // Use temporary variables to avoid triggering PropertyChanged multiple times if unchanged
+                if (PathSettings.GamePath != tempGame) { PathSettings.GamePath = tempGame; pathChanged = true; }
+                if (PathSettings.ConfigPath != tempConfig) { PathSettings.ConfigPath = tempConfig; pathChanged = true; }
+                if (PathSettings.ModsPath != tempMods) { PathSettings.ModsPath = tempMods; pathChanged = true; }
+                if (PathSettings.GameVersion != tempVersion) { PathSettings.GameVersion = tempVersion; pathChanged = true; } // Consider if version change alone needs CanExecute updates
+
+                // 3. Trigger data refresh in the ModsViewModel via its command
+                Debug.WriteLine("[MainViewModel] Requesting ModsViewModel refresh...");
+                if (ModsVM.RequestRefreshCommand.CanExecute(null))
+                {
+                    // Execute the command. It handles its own async logic.
+                    ModsVM.RequestRefreshCommand.Execute(null);
+                }
+                else
+                {
+                    StatusMessage = "Mod refresh request skipped: Mod list operation already in progress.";
+                    Debug.WriteLine("[MainViewModel] ModsVM.RequestRefreshCommand cannot execute.");
+                }
+
+                // 4. Update CanExecute state for commands dependent on paths *if paths changed*
+                if (pathChanged)
+                {
+                    // Use ThreadHelper to ensure UI thread execution
+                    ThreadHelper.EnsureUiThread(() =>
+                    {
+                        ((RelayCommand)OpenFolderCommand).RaiseCanExecuteChanged();
+                        // Potentially other commands dependent on paths
+                    });
+                }
+
+                // Status update handled within the command or after it finishes (more complex)
+                // For simplicity, set status here and let ModsVM update it later if needed.
+                StatusMessage = "Refresh initiated..."; // Or keep the previous message
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error during refresh: {ex.Message}";
+                Debug.WriteLine($"[MainViewModel] RefreshData Error: {ex}");
+                _dialogService.ShowError("Refresh Error", $"An error occurred during refresh: {ex.Message}");
+            }
+            finally
+            {
+                // Clear status after a short delay or rely on ModsVM completion (tricky)
+                Task.Delay(2500).ContinueWith(t => { if (StatusMessage == "Refresh initiated...") StatusMessage = "Refresh complete (check mod list)."; }, TaskScheduler.FromCurrentSynchronizationContext());
+                Debug.WriteLine("[MainViewModel] RefreshData finished.");
+            }
         }
+
 
 
         // Optional: Add a StatusMessage property if MainViewModel controls a status bar
