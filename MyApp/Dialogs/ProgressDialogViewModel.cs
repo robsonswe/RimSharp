@@ -12,7 +12,8 @@ namespace RimSharp.MyApp.Dialogs
         private bool _isIndeterminate;
         private bool _canCancel;
 
-        private CancellationTokenSource _cts;
+        // Keep the CancellationTokenSource internal
+        private readonly CancellationTokenSource _cts;
 
         public event EventHandler Cancelled;
 
@@ -37,71 +38,107 @@ namespace RimSharp.MyApp.Dialogs
         public bool CanCancel
         {
             get => _canCancel;
-            set => SetProperty(ref _canCancel, value);
+            private set => SetProperty(ref _canCancel, value); // Make setter private if only set internally
         }
 
         public ICommand CancelCommand { get; }
 
+        // Public property to get the token controlled by this dialog's cancellation
+        public CancellationToken CancellationToken => _cts.Token;
+
         public ProgressDialogViewModel(string title, string message, bool canCancel = false,
-            bool isIndeterminate = true, CancellationTokenSource cts = null)
+            bool isIndeterminate = true, CancellationTokenSource externalCts = null)
             : base(title)
         {
             Message = message;
             CanCancel = canCancel;
             IsIndeterminate = isIndeterminate;
             Progress = 0;
-            _cts = cts;
 
-            CancelCommand = new RelayCommand(_ => OnCancel());
+            // Use the provided CTS if available, otherwise create an internal one.
+            // This allows external callers (like the DialogService) to potentially provide
+            // a source they want to control, but ensures we always have one internally.
+            _cts = externalCts ?? new CancellationTokenSource();
+
+            // Only enable the command if cancellation is allowed
+            CancelCommand = new RelayCommand(_ => OnCancel(), _ => CanCancel);
         }
 
-        // New method to link external cancellation token source
-        public void LinkCancellationTokenSource(CancellationTokenSource cts)
-        {
-            _cts = cts;
-        }
+        // REMOVED: LinkCancellationTokenSource is no longer needed
 
         public void UpdateProgress(int value, string message = null)
         {
+            // Prevent updates if cancelled? Optional, depends on desired behavior.
+            // if (_cts.IsCancellationRequested) return;
+
             Progress = value;
             if (message != null)
             {
                 Message = message;
             }
-            IsIndeterminate = false; // Typically switch off indeterminate when progress is reported
+            IsIndeterminate = false; // Switch off indeterminate when progress is reported
         }
 
         public void CompleteOperation(string message = null)
         {
+            // Prevent updates if cancelled?
+            // if (_cts.IsCancellationRequested) return;
+
             if (!string.IsNullOrEmpty(message))
             {
                 Message = message;
             }
-            CloseDialog(true);
+            // Disable cancel button on completion?
+            // CanCancel = false;
+            // (CancelCommand as RelayCommand)?.RaiseCanExecuteChanged(); // Requires RelayCommand type access
+            CloseDialog(true); // Indicate success
         }
 
-        public void OnCancel(string message = null)
+        private void OnCancel(string message = null)
         {
+            if (!CanCancel || _cts.IsCancellationRequested) return; // Don't process if already cancelled or not allowed
+
             if (!string.IsNullOrEmpty(message))
             {
                 Message = message;
             }
+            IsIndeterminate = true; // Often good to show indeterminate during cancellation cleanup
 
-            // Cancel the operation
-            _cts?.Cancel();
+            // Disable further cancellation attempts
+            // CanCancel = false;
+            // (CancelCommand as RelayCommand)?.RaiseCanExecuteChanged();
 
-            // Raise the Cancelled event
-            Cancelled?.Invoke(this, EventArgs.Empty);
+            try
+            {
+                _cts.Cancel(); // Signal cancellation
+            }
+            catch (ObjectDisposedException)
+            {
+                // Ignore if already disposed, though should ideally not happen
+            }
 
-            // Close the dialog
-            CloseDialog(false);
+            Cancelled?.Invoke(this, EventArgs.Empty); // Notify listeners
+
+            CloseDialog(false); // Indicate cancellation/failure
         }
 
         public void ForceClose()
         {
-            // Directly close using the base class mechanism with a 'false' result
-            CloseDialog(false);
+            // Ensure CTS is cancelled if forcing closed, maybe? Or assume external cause.
+            CloseDialog(false); // Indicate failure/external closure
         }
-    }
 
+        // Optional: Dispose the CTS when the dialog view model is no longer needed
+        // This requires DialogViewModelBase or the owner to handle disposal.
+        // Example:
+        // protected override void Dispose(bool disposing)
+        // {
+        //     if (disposing)
+        //     {
+        //         _cts?.Dispose();
+        //     }
+        //     base.Dispose(disposing);
+        // }
+
+    }
 }

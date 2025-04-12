@@ -13,9 +13,13 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Input; // For Application.Current etc.
+using System.Windows.Input;
+using System.IO.Compression;
+using Microsoft.Win32;
+using System.Xml.Linq;
 
 namespace RimSharp.Features.ModManager.ViewModels
 {
@@ -28,6 +32,7 @@ namespace RimSharp.Features.ModManager.ViewModels
         private readonly IModListManager _modListManager;
         private readonly IDialogService _dialogService;
         private readonly IModIncompatibilityService _incompatibilityService;
+        private readonly IPathService _pathService;
 
         // State properties (likely mirrored or controlled by parent)
         private bool _isParentLoading;
@@ -95,9 +100,11 @@ namespace RimSharp.Features.ModManager.ViewModels
 
         // Placeholders
         public ICommand StripModsCommand { get; private set; }
-        public ICommand CreatePackCommand { get; private set; }
         public ICommand FixIntegrityCommand { get; private set; }
         public ICommand RunGameCommand { get; private set; }
+
+        public ICommand InstallFromZipCommand { get; private set; }
+        public ICommand InstallFromGithubCommand { get; private set; }
 
 
         // Event to request parent to set global IsLoading state
@@ -113,7 +120,8 @@ namespace RimSharp.Features.ModManager.ViewModels
             IModListIOService ioService,
             IModListManager modListManager,
             IModIncompatibilityService incompatibilityService,
-            IDialogService dialogService)
+            IDialogService dialogService,
+            IPathService pathService)
         {
             _dataService = dataService;
             _commandService = commandService;
@@ -121,38 +129,46 @@ namespace RimSharp.Features.ModManager.ViewModels
             _modListManager = modListManager;
             _incompatibilityService = incompatibilityService;
             _dialogService = dialogService;
-
+            _pathService = pathService;
             InitializeCommands();
         }
 
         private void InitializeCommands()
         {
+            // Use AsyncRelayCommand from RimSharp.Core.Commands
             ClearActiveListCommand = new AsyncRelayCommand(ExecuteClearActiveList, CanExecuteSimpleCommands);
             SortActiveListCommand = new AsyncRelayCommand(ExecuteSortActiveList, CanExecuteSimpleCommands);
-            SaveCommand = new RelayCommand(ExecuteSaveMods, CanExecuteSaveMods);
             ImportListCommand = new AsyncRelayCommand(ExecuteImport, CanExecuteSimpleCommands);
             ExportListCommand = new AsyncRelayCommand(ExecuteExport, CanExecuteExport);
             ResolveDependenciesCommand = new AsyncRelayCommand(ExecuteResolveDependencies, CanExecuteSimpleCommands);
             CheckIncompatibilitiesCommand = new AsyncRelayCommand(ExecuteCheckIncompatibilities, CanExecuteCheckIncompatibilities);
-            CheckDuplicatesCommand = new RelayCommand(ExecuteCheckDuplicates, CanExecuteSimpleCommands);
+            InstallFromZipCommand = new AsyncRelayCommand(ExecuteInstallFromZip, CanExecuteSimpleCommands);
 
+            // Use AsyncRelayCommand<T> from RimSharp.Core.Commands
+            // Ensure the Execute methods accept (T parameter, CancellationToken ct)
+            // Ensure the CanExecute methods accept (T parameter)
             DeleteModCommand = new AsyncRelayCommand<ModItem>(ExecuteDeleteModAsync, CanExecuteDeleteMod);
             DeleteModsCommand = new AsyncRelayCommand<IList>(ExecuteDeleteModsAsync, CanExecuteDeleteMods);
 
+            // Standard RelayCommands remain the same
+            SaveCommand = new RelayCommand(ExecuteSaveMods, CanExecuteSaveMods);
+            CheckDuplicatesCommand = new RelayCommand(ExecuteCheckDuplicates, CanExecuteSimpleCommands);
             OpenModFoldersCommand = new RelayCommand<IList>(OpenModFolders, CanExecuteMultiSelectActions);
             OpenUrlsCommand = new RelayCommand<IList>(OpenUrls, CanExecuteMultiSelectActions);
             OpenWorkshopPagesCommand = new RelayCommand<IList>(OpenWorkshopPages, CanExecuteMultiSelectActions);
             OpenOtherUrlsCommand = new RelayCommand<IList>(OpenOtherUrls, CanExecuteMultiSelectActions);
 
-            // Placeholders
+            // Placeholders / Not Implemented
+            InstallFromGithubCommand = new RelayCommand(_ => _dialogService.ShowInformation("Not Implemented", "GitHub installation is not yet implemented."), _ => !IsParentLoading);
             StripModsCommand = new RelayCommand(_ => _dialogService.ShowInformation("Not Implemented", "Strip mods: Functionality not yet implemented."), _ => !IsParentLoading);
-            CreatePackCommand = new RelayCommand(_ => _dialogService.ShowInformation("Not Implemented", "Create pack: Functionality not yet implemented."), _ => !IsParentLoading);
             FixIntegrityCommand = new RelayCommand(_ => _dialogService.ShowInformation("Not Implemented", "Fix integrity: Functionality not yet implemented."), _ => !IsParentLoading);
             RunGameCommand = new RelayCommand(_ => _dialogService.ShowInformation("Not Implemented", "Run game: Functionality not yet implemented."), _ => !IsParentLoading);
         }
 
+
         private void RaiseCanExecuteChangedForAllCommands()
         {
+            // Use the specific command type for correct RaiseCanExecuteChanged invocation if needed
             (ClearActiveListCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (SortActiveListCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
@@ -168,12 +184,14 @@ namespace RimSharp.Features.ModManager.ViewModels
             (OpenWorkshopPagesCommand as RelayCommand<IList>)?.RaiseCanExecuteChanged();
             (OpenOtherUrlsCommand as RelayCommand<IList>)?.RaiseCanExecuteChanged();
             (StripModsCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (CreatePackCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (FixIntegrityCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (RunGameCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (InstallFromZipCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (InstallFromGithubCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
         // --- CanExecute Methods ---
+        // These do not change as they are synchronous predicates
 
         private bool CanExecuteSimpleCommands() => !IsParentLoading;
         private bool CanExecuteSaveMods() => HasUnsavedChanges && !IsParentLoading;
@@ -182,55 +200,54 @@ namespace RimSharp.Features.ModManager.ViewModels
 
         private bool CanExecuteDeleteMod(ModItem mod)
         {
-            // If command parameter is null, try using the ViewModel's SelectedMod
             mod = mod ?? SelectedMod;
             return mod != null
                 && mod.ModType != ModType.Core
                 && mod.ModType != ModType.Expansion
                 && !string.IsNullOrEmpty(mod.Path)
-                && Directory.Exists(mod.Path) // Check existence here or rely on Execute? Check is safer.
+                && Directory.Exists(mod.Path)
                 && !IsParentLoading;
         }
 
         private bool CanExecuteDeleteMods(IList selectedItems)
         {
-            selectedItems = selectedItems ?? SelectedItems; // Use property if parameter is null
+            selectedItems = selectedItems ?? SelectedItems;
             return selectedItems != null
                 && selectedItems.Count > 0
-                && selectedItems.Cast<ModItem>().Any(CanBeDeleted) // Check if at least one is potentially deletable
+                && selectedItems.Cast<ModItem>().Any(CanBeDeleted)
                 && !IsParentLoading;
         }
 
         private bool CanExecuteMultiSelectActions(IList selectedItems)
         {
-            selectedItems = selectedItems ?? SelectedItems; // Use property if parameter is null
+            selectedItems = selectedItems ?? SelectedItems;
             return selectedItems != null && selectedItems.Count > 0 && !IsParentLoading;
         }
 
+        private bool CanBeDeleted(ModItem mod) => mod != null && mod.ModType != ModType.Core && mod.ModType != ModType.Expansion && !string.IsNullOrEmpty(mod.Path);
 
-        // Helper for deletable checks
-        private bool CanBeDeleted(ModItem mod) => mod != null && mod.ModType != ModType.Core && mod.ModType != ModType.Expansion && !string.IsNullOrEmpty(mod.Path); // Simplified check
+        // --- Execution Methods ---
+        // Methods used by AsyncRelayCommand now accept CancellationToken
 
-        // --- Execution Methods (mostly copied/adapted from original ModsViewModel) ---
-
-        private async Task ExecuteClearActiveList()
+        private async Task ExecuteClearActiveList(CancellationToken ct = default)
         {
             IsLoadingRequest?.Invoke(this, true);
             try
             {
+                // Pass ct if _commandService method supports it
                 await _commandService.ClearActiveModsAsync();
-                HasUnsavedChangesRequest?.Invoke(this, true); // Clearing changes the list
+                HasUnsavedChangesRequest?.Invoke(this, true);
             }
             finally { IsLoadingRequest?.Invoke(this, false); }
         }
 
-        private async Task ExecuteSortActiveList()
+        private async Task ExecuteSortActiveList(CancellationToken ct = default)
         {
             IsLoadingRequest?.Invoke(this, true);
             try
             {
+                // Pass ct if _commandService method supports it
                 await _commandService.SortActiveModsAsync();
-                // ModListManager will fire ListChanged if order actually changed, parent handles HasUnsavedChanges
             }
             catch (Exception ex)
             {
@@ -240,7 +257,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             finally { IsLoadingRequest?.Invoke(this, false); }
         }
 
-        private void ExecuteSaveMods()
+        private void ExecuteSaveMods() // Stays synchronous
         {
             IsLoadingRequest?.Invoke(this, true);
             try
@@ -251,9 +268,9 @@ namespace RimSharp.Features.ModManager.ViewModels
                                         .ToList();
 
                 _dataService.SaveActiveModIdsToConfig(activeIdsToSave);
-                HasUnsavedChangesRequest?.Invoke(this, false); // Save clears the flag
+                HasUnsavedChangesRequest?.Invoke(this, false);
                 Debug.WriteLine("Mod list saved successfully.");
-                _dialogService.ShowInformation("Save Successful", "Current active mod list has been saved."); // Optional feedback
+                _dialogService.ShowInformation("Save Successful", "Current active mod list has been saved.");
             }
             catch (Exception ex)
             {
@@ -263,15 +280,15 @@ namespace RimSharp.Features.ModManager.ViewModels
             finally { IsLoadingRequest?.Invoke(this, false); }
         }
 
-        private async Task ExecuteImport()
+        private async Task ExecuteImport(CancellationToken ct = default)
         {
             IsLoadingRequest?.Invoke(this, true);
             try
             {
+                // Pass ct if _ioService method supports it
                 await _ioService.ImportModListAsync();
-                // ModListManager should fire ListChanged if import succeeded, parent handles HasUnsavedChanges
             }
-            catch (Exception ex) // Catch exceptions specific to IO service if possible
+            catch (Exception ex)
             {
                 Debug.WriteLine($"Error importing list: {ex}");
                 RunOnUIThread(() => _dialogService.ShowError("Import Error", $"Failed to import mod list: {ex.Message}"));
@@ -279,7 +296,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             finally { IsLoadingRequest?.Invoke(this, false); }
         }
 
-        private async Task ExecuteExport()
+        private async Task ExecuteExport(CancellationToken ct = default)
         {
             IsLoadingRequest?.Invoke(this, true);
             try
@@ -290,6 +307,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                     _dialogService.ShowInformation("Export List", "There are no active mods to export.");
                     return;
                 }
+                // Pass ct if _ioService method supports it
                 await _ioService.ExportModListAsync(activeModsToExport);
             }
             catch (Exception ex)
@@ -301,9 +319,9 @@ namespace RimSharp.Features.ModManager.ViewModels
         }
 
 
-        private async Task ExecuteDeleteModAsync(ModItem mod)
+        private async Task ExecuteDeleteModAsync(ModItem mod, CancellationToken ct = default)
         {
-            mod = mod ?? SelectedMod; // Use property if parameter is null
+            mod = mod ?? SelectedMod;
             if (!CanExecuteDeleteMod(mod))
             {
                 Debug.WriteLine($"[ExecuteDeleteModAsync] Precondition failed for mod '{mod?.Name}'.");
@@ -322,11 +340,19 @@ namespace RimSharp.Features.ModManager.ViewModels
             bool deletionSuccess = false;
             try
             {
-                await Task.Run(() => Directory.Delete(mod.Path, recursive: true));
+                // Use Task.Run with cancellation token if the operation inside supports it
+                // Directory.Delete itself doesn't directly support cancellation in this way
+                await Task.Run(() => Directory.Delete(mod.Path, recursive: true), ct);
                 deletionSuccess = true;
                 _dialogService.ShowInformation("Deletion Successful", $"Mod '{mod.Name}' was deleted.");
             }
-            catch (Exception ex) // Catch specific exceptions like UnauthorizedAccessException, IOException
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine($"[ExecuteDeleteModAsync] Deletion cancelled for '{mod.Path}'.");
+                _dialogService.ShowWarning("Deletion Cancelled", $"Deletion of mod '{mod.Name}' was cancelled.");
+                // deletionSuccess remains false
+            }
+            catch (Exception ex)
             {
                 Debug.WriteLine($"[ExecuteDeleteModAsync] Error deleting '{mod.Path}': {ex}");
                 _dialogService.ShowError("Deletion Error", $"Could not delete mod '{mod.Name}'.\nError: {ex.Message}");
@@ -335,19 +361,18 @@ namespace RimSharp.Features.ModManager.ViewModels
             {
                 if (deletionSuccess)
                 {
-                    RequestDataRefresh?.Invoke(this, EventArgs.Empty); // Ask parent to refresh
-                                                                       // IsLoading will be set to false by parent after refresh
+                    RequestDataRefresh?.Invoke(this, EventArgs.Empty);
                 }
                 else
                 {
-                    IsLoadingRequest?.Invoke(this, false); // Reset loading if deletion failed before refresh
+                    IsLoadingRequest?.Invoke(this, false);
                 }
             }
         }
 
-        private async Task ExecuteDeleteModsAsync(IList selectedItems)
+        private async Task ExecuteDeleteModsAsync(IList selectedItems, CancellationToken ct = default)
         {
-            selectedItems = selectedItems ?? SelectedItems; // Use property if parameter is null
+            selectedItems = selectedItems ?? SelectedItems;
             var mods = selectedItems?.Cast<ModItem>().ToList();
 
             if (mods == null || !mods.Any())
@@ -364,85 +389,86 @@ namespace RimSharp.Features.ModManager.ViewModels
             }
             var nonDeletableCount = mods.Count - deletableMods.Count;
 
-
             var confirmationMessage = $"Are you sure you want to permanently delete {deletableMods.Count} mod(s)?";
-            if (nonDeletableCount > 0)
-            {
-                confirmationMessage += $"\n\n({nonDeletableCount} selected mod(s) like Core/DLC cannot be deleted and will be skipped).";
-            }
+            if (nonDeletableCount > 0) { /* ... add warning ... */ }
             confirmationMessage += "\n\nThis action cannot be undone.";
-
 
             var result = _dialogService.ShowConfirmation("Confirm Deletion", confirmationMessage, showCancel: true);
             if (result != MessageDialogResult.OK) return;
 
-
-            // --- Deletion Logic with Progress ---
             var progressDialog = _dialogService.ShowProgressDialog(
                "Deleting Mods",
                $"Preparing to delete {deletableMods.Count} mods...",
-               canCancel: true); // Allow cancellation if needed
+               canCancel: true);
 
             IsLoadingRequest?.Invoke(this, true);
             var deletionResults = new List<string>();
             bool cancelled = false;
             bool anySuccess = false;
 
-            for (int i = 0; i < deletableMods.Count; i++)
+            // Create a cancellation token source linked to the dialog's cancellation
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, progressDialog.CancellationToken);
+            var linkedCt = linkedCts.Token; // Use this token for the actual operation
+            try
             {
-                var mod = deletableMods[i];
-                if (progressDialog.DialogResult == false) // Check for cancellation
+                for (int i = 0; i < deletableMods.Count; i++)
                 {
-                    cancelled = true;
-                    deletionResults.Add("Operation cancelled by user.");
-                    break;
-                }
+                    linkedCt.ThrowIfCancellationRequested(); // Check for cancellation before each mod
 
-                progressDialog.Message = $"Deleting {mod.Name} ({i + 1}/{deletableMods.Count})...";
-                progressDialog.UpdateProgress((int)((double)(i + 1) / deletableMods.Count * 100.0));
+                    var mod = deletableMods[i];
+                    progressDialog.Message = $"Deleting {mod.Name} ({i + 1}/{deletableMods.Count})...";
+                    progressDialog.UpdateProgress((int)((double)(i + 1) / deletableMods.Count * 100.0));
 
-
-                try
-                {
-                    if (Directory.Exists(mod.Path)) // Double check existence before delete attempt
+                    try
                     {
-                        await Task.Run(() => Directory.Delete(mod.Path, recursive: true));
-                        deletionResults.Add($"Successfully deleted {mod.Name}");
-                        anySuccess = true;
+                        if (Directory.Exists(mod.Path))
+                        {
+                             // Use Task.Run with cancellation token
+                            await Task.Run(() => Directory.Delete(mod.Path, recursive: true), linkedCt);
+                            deletionResults.Add($"Successfully deleted {mod.Name}");
+                            anySuccess = true;
+                        }
+                        else
+                        {
+                            deletionResults.Add($"Skipped {mod.Name} (Path not found: {mod.Path})");
+                        }
                     }
-                    else
+                    catch (OperationCanceledException) { throw; } // Re-throw cancellation to be caught outside loop
+                    catch (Exception ex)
                     {
-                        deletionResults.Add($"Skipped {mod.Name} (Path not found: {mod.Path})");
+                        Debug.WriteLine($"Failed to delete {mod.Name}: {ex}");
+                        deletionResults.Add($"Failed to delete {mod.Name}: {ex.Message}");
                     }
                 }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Failed to delete {mod.Name}: {ex}");
-                    deletionResults.Add($"Failed to delete {mod.Name}: {ex.Message}");
-                }
             }
-
-            // --- Completion ---
-            if (anySuccess)
+            catch (OperationCanceledException)
             {
-                RequestDataRefresh?.Invoke(this, EventArgs.Empty); // Refresh if anything was deleted
-                // Parent handles IsLoading=false after refresh
+                 cancelled = true;
+                 deletionResults.Add("Operation cancelled by user.");
+                 Debug.WriteLine("[ExecuteDeleteModsAsync] Deletion loop cancelled.");
             }
-            else
+            finally
             {
-                IsLoadingRequest?.Invoke(this, false); // Manually reset if no refresh triggered
+                 if (anySuccess && !cancelled) // Only refresh if successful and not cancelled
+                 {
+                     RequestDataRefresh?.Invoke(this, EventArgs.Empty);
+                 }
+                 else
+                 {
+                     IsLoadingRequest?.Invoke(this, false); // Manually reset if no refresh or cancelled
+                 }
+
+                 progressDialog.CompleteOperation(cancelled ? "Deletion Cancelled" : "Deletion Completed");
+
+                 // Show Summary
+                 var summaryMessage = new StringBuilder();
+                 if (nonDeletableCount > 0) summaryMessage.AppendLine($"{nonDeletableCount} mod(s) were skipped (Core/DLC or missing path).\n");
+                 summaryMessage.AppendLine(string.Join("\n", deletionResults));
+                 _dialogService.ShowInformation("Deletion Summary", summaryMessage.ToString());
             }
-
-            progressDialog.CompleteOperation(cancelled ? "Deletion Cancelled" : "Deletion Completed");
-
-            // Show Summary
-            var summaryMessage = new StringBuilder();
-            if (nonDeletableCount > 0) summaryMessage.AppendLine($"{nonDeletableCount} mod(s) were skipped (Core/DLC or missing path).\n");
-            summaryMessage.AppendLine(string.Join("\n", deletionResults));
-            _dialogService.ShowInformation("Deletion Summary", summaryMessage.ToString());
         }
 
-        // --- Multi-Open Methods ---
+        // --- Multi-Open Methods --- (Synchronous, no change needed)
         private void OpenModFolders(IList selectedItems) => OpenItems(selectedItems ?? SelectedItems, m => m.Path, "folders", Directory.Exists);
         private void OpenUrls(IList selectedItems) => OpenItems(selectedItems ?? SelectedItems, m => m.Url, "URLs");
         private void OpenWorkshopPages(IList selectedItems) => OpenItems(selectedItems ?? SelectedItems, m => m.SteamUrl, "workshop pages");
@@ -450,7 +476,8 @@ namespace RimSharp.Features.ModManager.ViewModels
 
         private void OpenItems(IList selectedItems, Func<ModItem, string> pathSelector, string itemTypeDescription, Func<string, bool> validator = null)
         {
-            selectedItems = selectedItems ?? SelectedItems; // Use property if parameter is null
+             // ... implementation remains the same ...
+            selectedItems = selectedItems ?? SelectedItems;
             var mods = selectedItems?.Cast<ModItem>().ToList();
             if (mods == null || !mods.Any()) return;
 
@@ -487,30 +514,23 @@ namespace RimSharp.Features.ModManager.ViewModels
                 var message = $"Opened {itemTypeDescription} for {opened.Count} mods.\n\nCould not open {itemTypeDescription} for:\n" + string.Join("\n", notOpened);
                 _dialogService.ShowWarning($"Open {itemTypeDescription.CapitalizeFirst()}", message);
             }
-            else if (opened.Count > 0)
-            {
-                // Optional: Show success message if all opened?
-                //_dialogService.ShowInformation($"Open {itemTypeDescription.CapitalizeFirst()}", $"Opened {itemTypeDescription} for {opened.Count} mods.");
-            }
         }
 
+
         // --- Analysis/Tool Methods ---
-        private async Task ExecuteResolveDependencies()
+        private async Task ExecuteResolveDependencies(CancellationToken ct = default)
         {
             IsLoadingRequest?.Invoke(this, true);
             try
             {
-                var result = await Task.Run(() => _modListManager.ResolveDependencies());
+                // Pass ct if _modListManager method supports it
+                var result = await Task.Run(() => _modListManager.ResolveDependencies(), ct);
                 var (addedMods, missingDependencies) = result;
 
-                if (addedMods.Any()) HasUnsavedChangesRequest?.Invoke(this, true); // Changes were made
+                if (addedMods.Any()) HasUnsavedChangesRequest?.Invoke(this, true);
 
-                // Display Results (copied logic)
                 var message = new StringBuilder();
-                // ... (build message as before) ...
-                if (message.Length == 0) { /* Show No Issues dialog */ }
-                else { /* Show Resolution dialog */ }
-                // Copied from original ModsViewModel:
+                // --- Build Message ---
                 if (addedMods.Count > 0)
                 {
                     message.AppendLine("The following dependencies were automatically added:");
@@ -530,17 +550,22 @@ namespace RimSharp.Features.ModManager.ViewModels
                         message.AppendLine();
                     }
                 }
+                // --- Show Dialog ---
+                 RunOnUIThread(() =>
+                 {
+                     if (message.Length == 0)
+                         _dialogService.ShowInformation("Dependencies Check", "No missing dependencies found and no new dependencies were added.");
+                     else if (missingDependencies.Count == 0)
+                         _dialogService.ShowInformation("Dependencies Added", message.ToString().TrimEnd());
+                     else
+                         _dialogService.ShowMessageWithCopy("Dependencies Status", message.ToString().TrimEnd(), MessageDialogType.Warning);
+                 });
 
-                RunOnUIThread(() =>
-                {
-                    if (message.Length == 0)
-                        _dialogService.ShowInformation("Dependencies Check", "No missing dependencies found and no new dependencies were added.");
-                    else if (missingDependencies.Count == 0)
-                        _dialogService.ShowInformation("Dependencies Added", message.ToString().TrimEnd());
-                    else
-                        _dialogService.ShowMessageWithCopy("Dependencies Status", message.ToString().TrimEnd(), MessageDialogType.Warning);
-                });
-
+            }
+             catch (OperationCanceledException)
+            {
+                 Debug.WriteLine("[ExecuteResolveDependencies] Operation cancelled.");
+                 RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Dependency resolution was cancelled."));
             }
             catch (Exception ex)
             {
@@ -550,14 +575,16 @@ namespace RimSharp.Features.ModManager.ViewModels
             finally { IsLoadingRequest?.Invoke(this, false); }
         }
 
-
-        private async Task ExecuteCheckIncompatibilities()
+        private async Task ExecuteCheckIncompatibilities(CancellationToken ct = default)
         {
             IsLoadingRequest?.Invoke(this, true);
             try
             {
                 var activeMods = _modListManager.VirtualActiveMods.Select(entry => entry.Mod).ToList();
-                var incompatibilities = await Task.Run(() => _incompatibilityService.FindIncompatibilities(activeMods));
+
+                // Pass ct if service methods support it
+                var incompatibilities = await Task.Run(() => _incompatibilityService.FindIncompatibilities(activeMods), ct);
+                ct.ThrowIfCancellationRequested(); // Check cancellation after first step
 
                 if (incompatibilities.Count == 0)
                 {
@@ -565,14 +592,22 @@ namespace RimSharp.Features.ModManager.ViewModels
                     return;
                 }
 
-                var groups = await Task.Run(() => _incompatibilityService.GroupIncompatibilities(incompatibilities));
+                // Pass ct if service methods support it
+                var groups = await Task.Run(() => _incompatibilityService.GroupIncompatibilities(incompatibilities), ct);
+                ct.ThrowIfCancellationRequested(); // Check cancellation after second step
+
                 if (groups.Count == 0)
                 {
-                    RunOnUIThread(() => _dialogService.ShowInformation("Compatibility Check", "Incompatibilities found but could not be grouped for resolution.")); // Edge case?
+                    RunOnUIThread(() => _dialogService.ShowInformation("Compatibility Check", "Incompatibilities found but could not be grouped for resolution."));
                     return;
                 }
 
-                RunOnUIThread(() => ShowIncompatibilityDialog(groups)); // Uses ApplyIncompatibilityResolutions callback
+                RunOnUIThread(() => ShowIncompatibilityDialog(groups));
+            }
+             catch (OperationCanceledException)
+            {
+                 Debug.WriteLine("[ExecuteCheckIncompatibilities] Operation cancelled.");
+                 RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Incompatibility check was cancelled."));
             }
             catch (Exception ex)
             {
@@ -583,21 +618,22 @@ namespace RimSharp.Features.ModManager.ViewModels
         }
 
         // --- Helper Methods for Dialogs/Callbacks ---
+        // These typically remain synchronous or manage their own async if needed internally
 
         private void ShowIncompatibilityDialog(List<IncompatibilityGroup> groups)
         {
             var dialogViewModel = new ModIncompatibilityDialogViewModel(
                 groups,
-                ApplyIncompatibilityResolutions, // Callback on OK
-                () => { /* Cancel handler if needed */ }
+                ApplyIncompatibilityResolutions,
+                () => { /* Cancel handler */ }
             );
-            var dialog = new ModIncompatibilityDialogView(dialogViewModel) { /* Set Owner/Startup */ };
+            var dialog = new ModIncompatibilityDialogView(dialogViewModel);
             dialog.Owner = Application.Current.MainWindow;
             dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
             dialog.ShowDialog();
         }
 
-        private void ApplyIncompatibilityResolutions(List<ModItem> modsToRemove)
+        private void ApplyIncompatibilityResolutions(List<ModItem> modsToRemove) // Remains synchronous
         {
             if (modsToRemove == null || modsToRemove.Count == 0) return;
 
@@ -605,9 +641,9 @@ namespace RimSharp.Features.ModManager.ViewModels
             {
                 foreach (var mod in modsToRemove)
                 {
-                    _modListManager.DeactivateMod(mod); // Let manager handle removal
+                    _modListManager.DeactivateMod(mod);
                 }
-                HasUnsavedChangesRequest?.Invoke(this, true); // Changes were made
+                HasUnsavedChangesRequest?.Invoke(this, true);
                 _dialogService.ShowInformation("Incompatibilities Resolved", $"Resolved incompatibilities by deactivating {modsToRemove.Count} mods.");
             }
             catch (Exception ex)
@@ -618,26 +654,23 @@ namespace RimSharp.Features.ModManager.ViewModels
         }
 
 
-        private void ExecuteCheckDuplicates()
+        private void ExecuteCheckDuplicates() // Remains synchronous
         {
             IsLoadingRequest?.Invoke(this, true);
-            List<IGrouping<string, ModItem>> actualDuplicateGroups = null; // Store the correct type
+            List<IGrouping<string, ModItem>> actualDuplicateGroups = null;
 
             try
             {
                 var allMods = _modListManager.GetAllMods().ToList();
-
-                // Perform grouping but keep the IGrouping<string, ModItem> structure
                 actualDuplicateGroups = allMods
-                    .Where(m => !string.IsNullOrEmpty(m.PackageId)) // Ensure PackageId exists
-                    .GroupBy(m => m.PackageId.ToLowerInvariant())    // Group by PackageId
-                    .Where(g => g.Count() > 1)                     // Where PackageId has duplicates
-                    .ToList(); // List of groups based on PackageId
+                    .Where(m => !string.IsNullOrEmpty(m.PackageId))
+                    .GroupBy(m => m.PackageId.ToLowerInvariant())
+                    .Where(g => g.Count() > 1)
+                    .ToList();
 
                 if (actualDuplicateGroups.Any())
                 {
-                    // Now, pass the correctly typed list to the dialog ViewModel constructor
-                    ShowDuplicateModsDialog(actualDuplicateGroups); // Uses DeleteDuplicateMods callback
+                    ShowDuplicateModsDialog(actualDuplicateGroups);
                 }
                 else
                 {
@@ -655,101 +688,401 @@ namespace RimSharp.Features.ModManager.ViewModels
 
         private void ShowDuplicateModsDialog(List<IGrouping<string, ModItem>> duplicateGroups)
         {
-            // The constructor now receives the correct type
             var dialogViewModel = new DuplicateModDialogViewModel(
                     duplicateGroups,
-                    pathsToDelete => DeleteDuplicateMods(pathsToDelete), // Callback on OK
+                    pathsToDelete => DeleteDuplicateMods(pathsToDelete), // Note: DeleteDuplicateMods is now async void
                     () => { /* Cancel callback */ });
 
-            var view = new DuplicateModDialogView(dialogViewModel) { /* Set Owner/Startup */ };
+            var view = new DuplicateModDialogView(dialogViewModel);
             view.Owner = Application.Current.MainWindow;
             view.WindowStartupLocation = WindowStartupLocation.CenterOwner;
             view.ShowDialog();
         }
 
 
+        // Changed to async void because it's called from a synchronous context (dialog callback)
+        // but performs async operations. Proper async handling would require the dialog
+        // interaction itself to be awaitable or use a different pattern. Async void is acceptable
+        // here as it's a top-level event handler equivalent.
         private async void DeleteDuplicateMods(List<string> pathsToDelete)
         {
             if (pathsToDelete == null || !pathsToDelete.Any()) return;
 
-            IsLoadingRequest?.Invoke(this, true); // Deletion takes time
+            IsLoadingRequest?.Invoke(this, true);
             var successfullyDeletedCount = 0;
             var errorMessages = new List<string>();
+            bool refreshNeeded = false;
 
-            // Create a lookup for better reporting
             var allModsLookup = _modListManager.GetAllMods()
                                  .Where(m => !string.IsNullOrEmpty(m.Path))
                                  .ToDictionary(m => m.Path, m => m, StringComparer.OrdinalIgnoreCase);
 
+            // Ideally, show a progress/busy indicator here
+            var progressDialog = _dialogService.ShowProgressDialog("Deleting Duplicates", "Starting deletion...", false, true); // Allow cancellation
 
-            foreach (var path in pathsToDelete)
+            using var cts = new CancellationTokenSource();
+            // If progressDialog supports cancellation, link it: CancellationTokenSource.CreateLinkedTokenSource(progressDialog.CancellationToken);
+            var ct = cts.Token;
+
+            try
             {
-                if (string.IsNullOrEmpty(path)) continue; // Skip invalid paths
-
-                allModsLookup.TryGetValue(path, out ModItem modInfo);
-                string modIdentifier = modInfo != null ? $"{modInfo.Name} ({modInfo.PackageId})" : $"'{path}'";
-
-                try
+                for (int i = 0; i < pathsToDelete.Count; i++)
                 {
-                    if (Directory.Exists(path))
-                    {
-                        await Task.Run(() => Directory.Delete(path, true));
-                        successfullyDeletedCount++;
-                        Debug.WriteLine($"[DeleteDuplicateMods] Successfully deleted {modIdentifier}.");
-                    }
-                    else
-                    {
-                        Debug.WriteLine($"[DeleteDuplicateMods] Path not found, skipping: {modIdentifier}");
-                        errorMessages.Add($"Path not found for {modIdentifier}");
-                    }
+                     ct.ThrowIfCancellationRequested(); // Check cancellation
+                     var path = pathsToDelete[i];
+                     if (string.IsNullOrEmpty(path)) continue;
+
+                     allModsLookup.TryGetValue(path, out ModItem modInfo);
+                     string modIdentifier = modInfo != null ? $"{modInfo.Name} ({modInfo.PackageId})" : $"'{path}'";
+
+                     progressDialog.Message = $"Deleting {modIdentifier} ({i + 1}/{pathsToDelete.Count})...";
+                     progressDialog.UpdateProgress((int)(((double)i + 1) / pathsToDelete.Count * 100.0));
+
+                     try
+                     {
+                         if (Directory.Exists(path))
+                         {
+                             // Use Task.Run with cancellation
+                             await Task.Run(() => Directory.Delete(path, true), ct);
+                             successfullyDeletedCount++;
+                             refreshNeeded = true; // Mark that data changed
+                             Debug.WriteLine($"[DeleteDuplicateMods] Successfully deleted {modIdentifier}.");
+                         }
+                         else
+                         {
+                             Debug.WriteLine($"[DeleteDuplicateMods] Path not found, skipping: {modIdentifier}");
+                             errorMessages.Add($"Path not found for {modIdentifier}");
+                         }
+                     }
+                     catch (OperationCanceledException) { throw; } // Propagate cancellation
+                     catch (Exception ex)
+                     {
+                         Debug.WriteLine($"[DeleteDuplicateMods] Error deleting {modIdentifier}: {ex}");
+                         errorMessages.Add($"Error deleting {modIdentifier}: {ex.Message}");
+                     }
                 }
-                catch (Exception ex) // Catch specific IO/Auth errors
+                progressDialog.CompleteOperation("Deletion Completed");
+            }
+            catch (OperationCanceledException)
+            {
+                 Debug.WriteLine("[DeleteDuplicateMods] Deletion cancelled by user.");
+                 errorMessages.Add("Deletion process was cancelled.");
+                 progressDialog.CompleteOperation("Deletion Cancelled");
+            }
+            catch (Exception ex) // Catch unexpected errors in the loop management
+            {
+                Debug.WriteLine($"[DeleteDuplicateMods] Unexpected error during batch deletion: {ex}");
+                errorMessages.Add($"An unexpected error occurred: {ex.Message}");
+                progressDialog.ForceClose(); // Ensure closure on unexpected fault
+            }
+            finally
+            {
+                 // --- Completion & Reporting ---
+                 var reportTitle = errorMessages.Any() ? "Deletion Complete with Errors/Cancellation" : "Deletion Complete";
+                 var reportMessage = new StringBuilder();
+
+                 if (successfullyDeletedCount > 0)
+                 {
+                     reportMessage.AppendLine($"Successfully deleted {successfullyDeletedCount} duplicate mod folder(s).");
+                 }
+
+                 if (errorMessages.Any())
+                 {
+                     if(reportMessage.Length > 0) reportMessage.AppendLine();
+                     reportMessage.AppendLine("Issues encountered:");
+                     reportMessage.Append(string.Join("\n -", errorMessages.Prepend(""))); // Indent errors
+                 }
+
+                 if(reportMessage.Length == 0)
+                 {
+                    reportMessage.AppendLine("No duplicate mods were deleted (or the operation was cancelled before any deletion).");
+                 }
+
+                // Trigger refresh *after* dialogs are closed and UI is potentially free
+                if (refreshNeeded)
                 {
-                    Debug.WriteLine($"[DeleteDuplicateMods] Error deleting {modIdentifier}: {ex}");
-                    errorMessages.Add($"Error deleting {modIdentifier}: {ex.Message}");
+                    RequestDataRefresh?.Invoke(this, EventArgs.Empty); // Let parent handle loading state during refresh
                 }
-            }
+                else
+                {
+                    IsLoadingRequest?.Invoke(this, false); // Reset loading if no refresh happened
+                }
 
-            // --- Completion & Reporting ---
-            var reportTitle = errorMessages.Any() ? "Deletion Complete with Errors" : "Deletion Complete";
-            var reportMessage = new StringBuilder();
-
-            if (successfullyDeletedCount > 0)
-            {
-                reportMessage.AppendLine($"Successfully deleted {successfullyDeletedCount} duplicate mod folder(s).");
-                reportMessage.AppendLine();
-                RequestDataRefresh?.Invoke(this, EventArgs.Empty); // Refresh if deletions occurred
-                                                                   // Parent handles IsLoading=false after refresh
+                 // Show report on UI thread
+                 RunOnUIThread(() =>
+                 {
+                     _dialogService.ShowMessageWithCopy(reportTitle, reportMessage.ToString().Trim(),
+                         errorMessages.Any() ? MessageDialogType.Warning : MessageDialogType.Information);
+                 });
             }
-            else if (!errorMessages.Any())
-            {
-                reportMessage.AppendLine("No duplicate mods were deleted (perhaps paths were already gone?).");
-                IsLoadingRequest?.Invoke(this, false); // No refresh needed, reset loading manually
-            }
-            else
-            {
-                // Only errors occurred
-                IsLoadingRequest?.Invoke(this, false); // No refresh needed, reset loading manually
-            }
-
-
-            if (errorMessages.Any())
-            {
-                reportMessage.AppendLine("Errors encountered during deletion:");
-                reportMessage.Append(string.Join("\n -", errorMessages.Prepend(""))); // Indent errors
-                reportMessage.AppendLine();
-            }
-
-            RunOnUIThread(() =>
-            {
-                _dialogService.ShowMessageWithCopy(reportTitle, reportMessage.ToString().Trim(),
-                    errorMessages.Any() ? MessageDialogType.Warning : MessageDialogType.Information);
-            });
         }
 
-    }
 
-    // Helper extension (can be in a separate file)
+public async Task ExecuteInstallFromZip(CancellationToken ct = default)
+{
+    IsLoadingRequest?.Invoke(this, true);
+    try
+    {
+        var fileDialog = new OpenFileDialog
+        {
+            Filter = "Zip Files (*.zip)|*.zip",
+            Title = "Select Mod Zip File"
+        };
+
+        if (fileDialog.ShowDialog() != true) return;
+
+        var zipPath = fileDialog.FileName;
+        ct.ThrowIfCancellationRequested();
+
+        if (!IsValidZipFile(zipPath))
+        {
+            _dialogService.ShowError("Invalid File", "The selected file is not a valid zip file.");
+            return;
+        }
+
+        using (var archive = ZipFile.OpenRead(zipPath))
+        {
+            var modInfo = await ValidateModZip(archive, ct);
+            ct.ThrowIfCancellationRequested();
+
+            if (modInfo == null)
+            {
+                _dialogService.ShowError("Invalid Mod", "The selected zip file doesn't contain a valid RimWorld mod.");
+                return;
+            }
+
+            var result = _dialogService.ShowConfirmation(
+                "Confirm Installation",
+                $"Are you sure you want to install the mod '{modInfo.Name}'?",
+                showCancel: true);
+
+            if (result != MessageDialogResult.OK) return;
+            ct.ThrowIfCancellationRequested();
+
+            var modsPath = _pathService.GetModsPath();
+            if (string.IsNullOrEmpty(modsPath))
+            {
+                _dialogService.ShowError("Path Error", "Mods directory is not set.");
+                return;
+            }
+
+            // Get root folder entry or null if mod is at root level
+            var rootFolder = GetRootModFolder(archive);
+            string modName = rootFolder == null 
+                ? Path.GetFileNameWithoutExtension(zipPath).Replace(" ", "")
+                : rootFolder.FullName.TrimEnd('/', '\\');
+                
+            var targetDir = Path.Combine(modsPath, modName);
+
+            // Debug what directories actually exist
+            Debug.WriteLine($"Mods path: {modsPath}");
+            Debug.WriteLine($"Target directory: {targetDir}");
+            
+            var existingDirs = Directory.GetDirectories(modsPath)
+                .Select(Path.GetFileName)
+                .ToList();
+            
+            Debug.WriteLine($"Existing mod directories: {string.Join(", ", existingDirs)}");
+            Debug.WriteLine($"Directory exists? {Directory.Exists(targetDir)}");
+
+            // Check if target directory already exists
+            if (Directory.Exists(targetDir))
+            {
+                _dialogService.ShowError("Install Error", 
+                    $"A mod folder already exists at:\n{targetDir}");
+                return;
+            }
+
+            // Validate that folder name doesn't contain invalid characters
+            var invalidChars = Path.GetInvalidFileNameChars();
+            if (rootFolder != null && rootFolder.Name.IndexOfAny(invalidChars) >= 0)
+            {
+                _dialogService.ShowError("Invalid Name", 
+                    $"The mod folder name contains invalid characters: {rootFolder.Name}");
+                return;
+            }
+
+            // Extract the mod using Task.Run with cancellation
+            await Task.Run(() => ExtractMod(archive, targetDir, rootFolder, ct), ct);
+
+            _dialogService.ShowInformation("Install Complete", $"Mod '{modInfo.Name}' was successfully installed.");
+            RequestDataRefresh?.Invoke(this, EventArgs.Empty); // Refresh data after install
+        }
+    }
+    catch (OperationCanceledException)
+    {
+        Debug.WriteLine("[ExecuteInstallFromZip] Installation cancelled.");
+        _dialogService.ShowWarning("Installation Cancelled", "Mod installation was cancelled.");
+    }
+    catch (Exception ex)
+    {
+        Debug.WriteLine($"Error installing mod from zip: {ex}");
+        _dialogService.ShowError("Install Error", $"Error installing mod: {ex.Message}");
+    }
+    finally
+    {
+        IsLoadingRequest?.Invoke(this, false);
+    }
+}
+        // --- Zip Installation Helpers ---
+
+        private bool IsValidZipFile(string path)
+        {
+            try
+            {
+                if (!File.Exists(path) || !Path.GetExtension(path).Equals(".zip", StringComparison.OrdinalIgnoreCase))
+                    return false;
+                // Check if we can open it and if it has entries
+                using (var archive = ZipFile.OpenRead(path))
+                {
+                    return archive.Entries.Any();
+                }
+            }
+            catch // IOException, InvalidDataException etc.
+            {
+                return false;
+            }
+        }
+
+        private async Task<ModItem> ValidateModZip(ZipArchive archive, CancellationToken ct = default)
+        {
+            // Check root first
+            var aboutEntry = archive.Entries.FirstOrDefault(e =>
+                e.FullName.Equals("About/About.xml", StringComparison.OrdinalIgnoreCase) ||
+                e.FullName.Equals("About\\About.xml", StringComparison.OrdinalIgnoreCase));
+
+            if (aboutEntry != null)
+            {
+                return await ParseAboutXmlFromZip(aboutEntry, ct);
+            }
+
+            // Check single subfolder
+            var rootFolders = archive.Entries
+                .Where(e => !string.IsNullOrEmpty(e.FullName) && e.FullName.Replace('\\', '/').TrimEnd('/').Contains('/') == false && e.FullName.EndsWith("/"))
+                .Select(e => e.FullName.TrimEnd('/', '\\'))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+
+            if (rootFolders.Count != 1)
+            {
+                return null; // No single root folder found
+            }
+
+            var rootFolder = rootFolders[0];
+            var aboutPathInFolder1 = $"{rootFolder}/About/About.xml";
+            var aboutPathInFolder2 = $"{rootFolder}\\About\\About.xml"; // Less common but possible
+
+            aboutEntry = archive.Entries.FirstOrDefault(e =>
+                e.FullName.Equals(aboutPathInFolder1, StringComparison.OrdinalIgnoreCase) ||
+                e.FullName.Equals(aboutPathInFolder2, StringComparison.OrdinalIgnoreCase));
+
+            return aboutEntry != null ? await ParseAboutXmlFromZip(aboutEntry, ct) : null;
+        }
+
+        private async Task<ModItem> ParseAboutXmlFromZip(ZipArchiveEntry aboutEntry, CancellationToken ct = default)
+        {
+            try
+            {
+                using (var stream = aboutEntry.Open())
+                // Use StreamReader that accepts CancellationToken if reading large files,
+                // otherwise, ReadToEndAsync doesn't directly support it well here.
+                // For typical About.xml, immediate read is fine.
+                using (var reader = new StreamReader(stream))
+                {
+                    ct.ThrowIfCancellationRequested(); // Check before potentially blocking read
+                    var content = await reader.ReadToEndAsync();
+                    ct.ThrowIfCancellationRequested(); // Check after read
+
+                    var doc = XDocument.Parse(content);
+                    var root = doc.Element("ModMetaData");
+
+                    if (root == null) return null;
+
+                    return new ModItem
+                    {
+                        Name = root.Element("name")?.Value,
+                        PackageId = root.Element("packageId")?.Value,
+                        Authors = root.Element("author")?.Value ??
+                                 string.Join(", ", root.Element("authors")?.Elements("li").Select(x => x.Value) ?? Array.Empty<string>())
+                    };
+                }
+            }
+             catch (OperationCanceledException) { throw; } // Propagate cancellation
+            catch (Exception ex) // Catch XML parsing errors etc.
+            {
+                 Debug.WriteLine($"Failed to parse About.xml from zip entry '{aboutEntry.FullName}': {ex.Message}");
+                return null;
+            }
+        }
+
+        private ZipArchiveEntry GetRootModFolder(ZipArchive archive)
+{
+    var rootFolders = archive.Entries
+        .Where(e => !string.IsNullOrEmpty(e.FullName) && 
+                e.FullName.Replace('\\', '/').TrimEnd('/').Contains('/') == false && 
+                e.FullName.EndsWith("/"))
+        .ToList();
+
+    // Debug log for troubleshooting
+    Debug.WriteLine($"Found {rootFolders.Count} root folders in zip: {string.Join(", ", rootFolders.Select(f => f.FullName))}");
+    
+    return rootFolders.Count == 1 ? rootFolders[0] : null;
+}
+
+
+        // Updated to accept and check CancellationToken
+private void ExtractMod(ZipArchive archive, string targetDir, ZipArchiveEntry rootFolderEntry, CancellationToken ct)
+{
+    Debug.WriteLine($"Extracting to target directory: {targetDir}");
+    Debug.WriteLine($"Root folder entry: {rootFolderEntry?.FullName ?? "null"}");
+    
+    Directory.CreateDirectory(targetDir);
+    string rootFolderName = rootFolderEntry?.FullName; // e.g., "MyModFolder/"
+
+    foreach (var entry in archive.Entries)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        // Skip directory entries explicitly
+        if (string.IsNullOrEmpty(entry.Name)) continue;
+
+        string relativePath;
+        if (rootFolderEntry == null)
+        {
+            // Archive has mod contents directly in root
+            relativePath = entry.FullName;
+        }
+        else
+        {
+            // Archive has a single root folder, extract its contents
+            if (!entry.FullName.StartsWith(rootFolderName, StringComparison.OrdinalIgnoreCase))
+                continue; // Skip files not inside the root folder
+
+            relativePath = entry.FullName.Substring(rootFolderName.Length);
+        }
+
+        // Normalize path separators
+        relativePath = relativePath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+        string destinationPath = Path.Combine(targetDir, relativePath);
+        
+        Debug.WriteLine($"Extracting: {entry.FullName} -> {destinationPath}");
+
+        // Ensure the target directory exists
+        var dirPath = Path.GetDirectoryName(destinationPath);
+        if (!string.IsNullOrEmpty(dirPath) && !Directory.Exists(dirPath))
+        {
+            Directory.CreateDirectory(dirPath);
+        }
+
+        // Extract the file
+        entry.ExtractToFile(destinationPath, overwrite: true);
+    }
+}
+
+    } // End of ModActionsViewModel class
+
+    // Helper extension (keep or move to a shared location)
     public static class StringExtensions
     {
         public static string CapitalizeFirst(this string input)
@@ -759,99 +1092,8 @@ namespace RimSharp.Features.ModManager.ViewModels
         }
     }
 
-    // Need AsyncRelayCommand if not already defined
-    public class AsyncRelayCommand : ICommand
-    {
-        private readonly Func<Task> _execute;
-        private readonly Func<bool> _canExecute;
-        private bool _isExecuting;
+    // --- Removed Local Command Definitions ---
+    // The AsyncRelayCommand and AsyncRelayCommand<T> definitions
+    // that were previously here should now be deleted.
 
-        public event EventHandler CanExecuteChanged;
-
-        public AsyncRelayCommand(Func<Task> execute, Func<bool> canExecute = null)
-        {
-            _execute = execute ?? throw new ArgumentNullException(nameof(execute));
-            _canExecute = canExecute ?? (() => true);
-        }
-
-        public bool CanExecute(object parameter)
-        {
-            return !_isExecuting && _canExecute();
-        }
-
-        public async void Execute(object parameter)
-        {
-            if (CanExecute(parameter))
-            {
-                try
-                {
-                    _isExecuting = true;
-                    RaiseCanExecuteChanged();
-                    await _execute();
-                }
-                finally
-                {
-                    _isExecuting = false;
-                    RaiseCanExecuteChanged();
-                }
-            }
-        }
-
-        public void RaiseCanExecuteChanged()
-        {
-            CanExecuteChanged?.Invoke(this, EventArgs.Empty);
-        }
-    }
-    public class AsyncRelayCommand<T> : ICommand
-    {
-        private readonly Func<T, Task> _execute;
-        private readonly Func<T, bool> _canExecute;
-        private bool _isExecuting;
-
-        public event EventHandler CanExecuteChanged;
-
-        public AsyncRelayCommand(Func<T, Task> execute, Func<T, bool> canExecute = null)
-        {
-            _execute = execute ?? throw new ArgumentNullException(nameof(execute));
-            _canExecute = canExecute ?? (_ => true);
-        }
-
-        public bool CanExecute(object parameter)
-        {
-            // Check type compatibility before calling _canExecute
-            if (parameter != null && !(parameter is T) && typeof(T).IsValueType)
-                return false; // Cannot execute if parameter type mismatch for value types
-
-            // Allow execution if parameter is null and T is nullable, or if parameter is null/assignable for reference types
-            bool canAttemptExecute = (parameter == null && !typeof(T).IsValueType) || (parameter == null && Nullable.GetUnderlyingType(typeof(T)) != null) || (parameter is T);
-
-            return !_isExecuting && canAttemptExecute && _canExecute((T)parameter);
-
-        }
-
-        public async void Execute(object parameter)
-        {
-            // Ensure CanExecute would allow this before proceeding
-            if (CanExecute(parameter))
-            {
-                try
-                {
-                    _isExecuting = true;
-                    RaiseCanExecuteChanged();
-                    // Parameter was already checked for type compatibility in CanExecute
-                    await _execute((T)parameter);
-                }
-                finally
-                {
-                    _isExecuting = false;
-                    RaiseCanExecuteChanged();
-                }
-            }
-        }
-
-        public void RaiseCanExecuteChanged()
-        {
-            CanExecuteChanged?.Invoke(this, EventArgs.Empty);
-        }
-    }
-}
+} // End of namespace

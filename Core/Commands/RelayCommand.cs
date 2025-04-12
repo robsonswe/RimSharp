@@ -100,4 +100,59 @@ public class AsyncRelayCommand : ICommand
 
         public void RaiseCanExecuteChanged() => CommandManager.InvalidateRequerySuggested();
     }
+
+    /// <summary>
+/// A generic asynchronous command implementation that provides type safety for its parameters.
+/// </summary>
+public class AsyncRelayCommand<T> : ICommand
+{
+    private readonly Func<T, CancellationToken, Task> _execute;
+    private readonly Predicate<T> _canExecute; // Or Func<T, bool>
+
+    public event EventHandler CanExecuteChanged;
+
+    public AsyncRelayCommand(Func<T, CancellationToken, Task> execute, Predicate<T> canExecute = null)
+    {
+        _execute = execute ?? throw new ArgumentNullException(nameof(execute));
+        _canExecute = canExecute;
+    }
+
+    public bool CanExecute(object parameter)
+    {
+        if (_canExecute == null) return true;
+
+        // Handle potential null parameters if T is a reference type or Nullable<T>
+        if (parameter == null)
+        {
+            // If T is a value type but not Nullable<T>, null is invalid.
+            if (typeof(T).IsValueType && Nullable.GetUnderlyingType(typeof(T)) == null)
+                return false;
+            // Otherwise, null might be valid, pass default(T) which is null for reference/nullable types
+            return _canExecute(default(T));
+        }
+
+        // If parameter is not null, ensure it's assignable to T
+        return parameter is T typedParameter && _canExecute(typedParameter);
+    }
+
+    public async void Execute(object parameter)
+    {
+        // Re-check CanExecute before execution
+        if (!CanExecute(parameter)) return;
+
+        // Cast parameter safely. CanExecute should have already validated the type.
+        T typedParameter = (parameter == null && (!typeof(T).IsValueType || Nullable.GetUnderlyingType(typeof(T)) != null))
+                           ? default(T) // Handle valid null parameter
+                           : (T)parameter;
+
+        // AsyncRelayCommand (non-generic) passes CT, but here we don't automatically get one
+        // from the parameter unless specifically designed for. Use CancellationToken.None.
+        // If cancellation is needed, the Execute method itself must manage sourcing the token.
+        await _execute(typedParameter, CancellationToken.None);
+    }
+
+    public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+}
+
+
 }

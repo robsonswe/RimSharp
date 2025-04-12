@@ -10,7 +10,7 @@
              d:DesignHeight="450" d:DesignWidth="150">
     <!-- DataContext is now ModActionsViewModel -->
     <StackPanel Width="130">
-        <TextBlock Text="Optimize" FontWeight="Bold" Margin="0,0,0,5" Foreground="{StaticResource RimworldBrownBrush}"/>
+        <TextBlock Text="Mods" FontWeight="Bold" Margin="0,0,0,5" Foreground="{StaticResource RimworldBrownBrush}"/>
 
         <!-- Command bindings now point to ModActionsViewModel properties -->
         <Button Content="Clear" Command="{Binding ClearActiveListCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
@@ -28,8 +28,11 @@
 
         <TextBlock Text="Misc" FontWeight="Bold" Margin="0,0,0,5" Foreground="{StaticResource RimworldBrownBrush}"/>
         <Button Content="Strip mods" Command="{Binding StripModsCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
-        <Button Content="Create pack" Command="{Binding CreatePackCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
         <Button Content="Fix integrity" Command="{Binding FixIntegrityCommand}" Margin="0,0,0,20" Style="{StaticResource RimworldButtonStyle}"/>
+
+        <TextBlock Text="Install Mods" FontWeight="Bold" Margin="0,0,0,5" Foreground="{StaticResource RimworldBrownBrush}"/>
+        <Button Content="Zip File" Command="{Binding InstallFromZipCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
+        <Button Content="Github" Command="{Binding InstallFromGithubCommand}" Margin="0,0,0,20" Style="{StaticResource RimworldButtonStyle}"/>
 
         <TextBlock Text="Mod lists" FontWeight="Bold" Margin="0,0,0,5" Foreground="{StaticResource RimworldBrownBrush}"/>
         <Button Content="Import list" Command="{Binding ImportListCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
