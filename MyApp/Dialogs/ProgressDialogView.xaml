@@ -117,21 +117,7 @@
                                 </Rectangle>
                             </Canvas>
                             
-                            <!-- Percentage Text Overlay -->
-                            <TextBlock Text="{Binding Progress, StringFormat={}{0}%}"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    FontWeight="Medium"
-                                    FontSize="13"
-                                    Foreground="{StaticResource RimworldWhiteBrush}"
-                                    Visibility="{Binding IsIndeterminate, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=invert}">
-                                <TextBlock.Effect>
-                                    <DropShadowEffect ShadowDepth="1" 
-                                                    BlurRadius="2" 
-                                                    Opacity="0.6" 
-                                                    Color="{StaticResource RimworldShadow}"/>
-                                </TextBlock.Effect>
-                            </TextBlock>
+                            <!-- Percentage Text Overlay - Removed from template since it's duplicated in the main view -->
                         </Grid>
                         
                         <ControlTemplate.Triggers>
@@ -173,7 +159,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
+                    <!-- Removed Row Definition for the "Operation in progress..." text -->
                 </Grid.RowDefinitions>
                 
                 <!-- Message with Enhanced Typography -->
@@ -214,14 +200,14 @@
                                 IsIndeterminate="{Binding IsIndeterminate}"
                                 Style="{StaticResource RimworldProgressBarStyle}"/>
                                 
-                    <!-- Progress Percentage Overlay with Enhanced Text Style -->
+                    <!-- Progress Percentage Overlay - Only shown when NOT indeterminate -->
                     <TextBlock Text="{Binding Progress, StringFormat={}{0}%}"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"
                                FontWeight="Medium"
                                FontSize="13"
                                Foreground="{StaticResource RimworldWhiteBrush}"
-                               Visibility="{Binding IsIndeterminate, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=invert}">
+                               Visibility="{Binding IsIndeterminate, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
                         <TextBlock.Effect>
                             <DropShadowEffect ShadowDepth="1" 
                                               BlurRadius="2" 
@@ -231,28 +217,6 @@
                     </TextBlock>
                 </Grid>
                 
-                <!-- Status Message with Enhanced Styling -->
-                <Border Grid.Row="2" 
-                        Background="{StaticResource RimworldDarkBeigeBrush}" 
-                        BorderBrush="{StaticResource RimworldBrownBrush}"
-                        BorderThickness="1" 
-                        CornerRadius="3"
-                        Padding="8,5" 
-                        Margin="0,0,0,2"
-                        Visibility="{Binding IsIndeterminate, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <Border.Effect>
-                        <DropShadowEffect ShadowDepth="1" 
-                                          BlurRadius="2" 
-                                          Opacity="0.2" 
-                                          Color="{StaticResource RimworldShadow}"/>
-                    </Border.Effect>
-                    
-                    <TextBlock Text="Operation in progress..."
-                               HorizontalAlignment="Center"
-                               Foreground="{StaticResource RimworldDarkBrownBrush}"
-                               FontStyle="Italic"
-                               FontSize="12"/>
-                </Border>
             </Grid>
         </Border>
     </dialogs:BaseDialog.MainContent>
