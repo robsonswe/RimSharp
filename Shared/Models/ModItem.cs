@@ -3,6 +3,16 @@ using System.Linq;
 
 namespace RimSharp.Shared.Models
 {
+    public enum ModType
+    {
+        Core = 0,
+        Expansion = 1,
+        Workshop = 2,
+        WorkshopL = 3,
+        Git = 4,
+        Zipped = 5
+    }
+
     public class ModItem
     {
         // Required fields from About.xml
@@ -35,6 +45,7 @@ namespace RimSharp.Shared.Models
         public bool IsCore { get; set; }
         public bool IsExpansion { get; set; }
         public bool IsActive { get; set; }
+        public ModType ModType { get; set; } // New field
 
         public bool LoadBottom { get; set; }
         public string PreviewImagePath { get; set; }

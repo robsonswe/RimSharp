@@ -35,6 +35,8 @@
     <convText:ListToStringConverter x:Key="ListToStringConverter"/>
     <convText:StringToUriConverter x:Key="StringToUriConverter"/>
     <convText:VersionSupportConverter x:Key="VersionSupportConverter"/>
+    <convText:ModTypeToInitialConverter x:Key="ModTypeToInitialConverter"/>
+    <convText:ModTypeToDescriptionConverter x:Key="ModTypeToDescriptionConverter"/>
 
     <!-- Utility Converters -->
     <convUtility:PathToExplorerFormatConverter x:Key="PathToExplorerFormatConverter"/>
