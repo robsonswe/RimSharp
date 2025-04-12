@@ -29,10 +29,9 @@ namespace RimSharp.Features.ModManager.Services.Data
 
         public async Task<List<ModItem>> LoadAllModsAsync()
         {
-            await _modService.LoadModsAsync();
+            await _modService.LoadModsAsync(); // This call now ensures rules are applied
             return _modService.GetLoadedMods().ToList();
         }
-
         public List<string> LoadActiveModIdsFromConfig()
         {
             try

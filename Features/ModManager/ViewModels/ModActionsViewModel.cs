@@ -113,7 +113,7 @@ namespace RimSharp.Features.ModManager.ViewModels
         public event EventHandler RequestDataRefresh;
         // Event to request parent to update HasUnsavedChanges
         public event EventHandler<bool> HasUnsavedChangesRequest;
-
+        bool installSuccess = false;
         public ModActionsViewModel(
             IModDataService dataService,
             IModCommandService commandService,
@@ -359,13 +359,11 @@ namespace RimSharp.Features.ModManager.ViewModels
             }
             finally
             {
+                IsLoadingRequest?.Invoke(this, false);
+
                 if (deletionSuccess)
                 {
                     RequestDataRefresh?.Invoke(this, EventArgs.Empty);
-                }
-                else
-                {
-                    IsLoadingRequest?.Invoke(this, false);
                 }
             }
         }
@@ -423,7 +421,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                     {
                         if (Directory.Exists(mod.Path))
                         {
-                             // Use Task.Run with cancellation token
+                            // Use Task.Run with cancellation token
                             await Task.Run(() => Directory.Delete(mod.Path, recursive: true), linkedCt);
                             deletionResults.Add($"Successfully deleted {mod.Name}");
                             anySuccess = true;
@@ -443,28 +441,28 @@ namespace RimSharp.Features.ModManager.ViewModels
             }
             catch (OperationCanceledException)
             {
-                 cancelled = true;
-                 deletionResults.Add("Operation cancelled by user.");
-                 Debug.WriteLine("[ExecuteDeleteModsAsync] Deletion loop cancelled.");
+                cancelled = true;
+                deletionResults.Add("Operation cancelled by user.");
+                Debug.WriteLine("[ExecuteDeleteModsAsync] Deletion loop cancelled.");
             }
             finally
             {
-                 if (anySuccess && !cancelled) // Only refresh if successful and not cancelled
-                 {
-                     RequestDataRefresh?.Invoke(this, EventArgs.Empty);
-                 }
-                 else
-                 {
-                     IsLoadingRequest?.Invoke(this, false); // Manually reset if no refresh or cancelled
-                 }
+                progressDialog.CompleteOperation(cancelled ? "Deletion Cancelled" : "Deletion Completed");
 
-                 progressDialog.CompleteOperation(cancelled ? "Deletion Cancelled" : "Deletion Completed");
+                // 1. ALWAYS Set IsLoading false SECOND (after dialog is handled)
+                IsLoadingRequest?.Invoke(this, false);
 
-                 // Show Summary
-                 var summaryMessage = new StringBuilder();
-                 if (nonDeletableCount > 0) summaryMessage.AppendLine($"{nonDeletableCount} mod(s) were skipped (Core/DLC or missing path).\n");
-                 summaryMessage.AppendLine(string.Join("\n", deletionResults));
-                 _dialogService.ShowInformation("Deletion Summary", summaryMessage.ToString());
+                // 3. Show Summary THIRD (after loading state is reset)
+                var summaryMessage = new StringBuilder();
+                if (nonDeletableCount > 0) summaryMessage.AppendLine($"{nonDeletableCount} mod(s) were skipped (Core/DLC or missing path).\n");
+                summaryMessage.AppendLine(string.Join("\n", deletionResults));
+                _dialogService.ShowInformation("Deletion Summary", summaryMessage.ToString());
+
+                // 4. THEN Request refresh if needed, LAST
+                if (anySuccess && !cancelled)
+                {
+                    RequestDataRefresh?.Invoke(this, EventArgs.Empty);
+                }
             }
         }
 
@@ -476,7 +474,7 @@ namespace RimSharp.Features.ModManager.ViewModels
 
         private void OpenItems(IList selectedItems, Func<ModItem, string> pathSelector, string itemTypeDescription, Func<string, bool> validator = null)
         {
-             // ... implementation remains the same ...
+            // ... implementation remains the same ...
             selectedItems = selectedItems ?? SelectedItems;
             var mods = selectedItems?.Cast<ModItem>().ToList();
             if (mods == null || !mods.Any()) return;
@@ -551,21 +549,21 @@ namespace RimSharp.Features.ModManager.ViewModels
                     }
                 }
                 // --- Show Dialog ---
-                 RunOnUIThread(() =>
-                 {
-                     if (message.Length == 0)
-                         _dialogService.ShowInformation("Dependencies Check", "No missing dependencies found and no new dependencies were added.");
-                     else if (missingDependencies.Count == 0)
-                         _dialogService.ShowInformation("Dependencies Added", message.ToString().TrimEnd());
-                     else
-                         _dialogService.ShowMessageWithCopy("Dependencies Status", message.ToString().TrimEnd(), MessageDialogType.Warning);
-                 });
+                RunOnUIThread(() =>
+                {
+                    if (message.Length == 0)
+                        _dialogService.ShowInformation("Dependencies Check", "No missing dependencies found and no new dependencies were added.");
+                    else if (missingDependencies.Count == 0)
+                        _dialogService.ShowInformation("Dependencies Added", message.ToString().TrimEnd());
+                    else
+                        _dialogService.ShowMessageWithCopy("Dependencies Status", message.ToString().TrimEnd(), MessageDialogType.Warning);
+                });
 
             }
-             catch (OperationCanceledException)
+            catch (OperationCanceledException)
             {
-                 Debug.WriteLine("[ExecuteResolveDependencies] Operation cancelled.");
-                 RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Dependency resolution was cancelled."));
+                Debug.WriteLine("[ExecuteResolveDependencies] Operation cancelled.");
+                RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Dependency resolution was cancelled."));
             }
             catch (Exception ex)
             {
@@ -604,10 +602,10 @@ namespace RimSharp.Features.ModManager.ViewModels
 
                 RunOnUIThread(() => ShowIncompatibilityDialog(groups));
             }
-             catch (OperationCanceledException)
+            catch (OperationCanceledException)
             {
-                 Debug.WriteLine("[ExecuteCheckIncompatibilities] Operation cancelled.");
-                 RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Incompatibility check was cancelled."));
+                Debug.WriteLine("[ExecuteCheckIncompatibilities] Operation cancelled.");
+                RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Incompatibility check was cancelled."));
             }
             catch (Exception ex)
             {
@@ -708,222 +706,269 @@ namespace RimSharp.Features.ModManager.ViewModels
         {
             if (pathsToDelete == null || !pathsToDelete.Any()) return;
 
+            // Set Loading state for the parent ModsViewModel at the very beginning
             IsLoadingRequest?.Invoke(this, true);
+
             var successfullyDeletedCount = 0;
             var errorMessages = new List<string>();
             bool refreshNeeded = false;
+            ProgressDialogViewModel progressDialog = null; // Declare outside try for finally block access
 
+            // Prepare lookup (outside try, as it doesn't throw exceptions critical to the finally block's core logic)
             var allModsLookup = _modListManager.GetAllMods()
                                  .Where(m => !string.IsNullOrEmpty(m.Path))
                                  .ToDictionary(m => m.Path, m => m, StringComparer.OrdinalIgnoreCase);
 
-            // Ideally, show a progress/busy indicator here
-            var progressDialog = _dialogService.ShowProgressDialog("Deleting Duplicates", "Starting deletion...", false, true); // Allow cancellation
-
+            // Prepare cancellation token
             using var cts = new CancellationTokenSource();
-            // If progressDialog supports cancellation, link it: CancellationTokenSource.CreateLinkedTokenSource(progressDialog.CancellationToken);
+            // If progressDialog supports cancellation, link it here (assuming it doesn't for now)
             var ct = cts.Token;
 
             try
             {
+                // Create and show the progress dialog *inside* the try block
+                // In case dialog creation itself fails, we want to handle it and ensure IsLoading is reset
+                progressDialog = _dialogService.ShowProgressDialog("Deleting Duplicates", "Starting deletion...", false, true); // Allow cancellation if supported by dialog
+
+                // Link cancellation if the dialog provides a token
+                // Example: using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, progressDialog.CancellationToken);
+                //          ct = linkedCts.Token; // Use the linked token
+
                 for (int i = 0; i < pathsToDelete.Count; i++)
                 {
-                     ct.ThrowIfCancellationRequested(); // Check cancellation
-                     var path = pathsToDelete[i];
-                     if (string.IsNullOrEmpty(path)) continue;
+                    // Check for cancellation before processing each item
+                    ct.ThrowIfCancellationRequested();
 
-                     allModsLookup.TryGetValue(path, out ModItem modInfo);
-                     string modIdentifier = modInfo != null ? $"{modInfo.Name} ({modInfo.PackageId})" : $"'{path}'";
+                    var path = pathsToDelete[i];
+                    if (string.IsNullOrEmpty(path)) continue;
 
-                     progressDialog.Message = $"Deleting {modIdentifier} ({i + 1}/{pathsToDelete.Count})...";
-                     progressDialog.UpdateProgress((int)(((double)i + 1) / pathsToDelete.Count * 100.0));
+                    allModsLookup.TryGetValue(path, out ModItem modInfo);
+                    string modIdentifier = modInfo != null ? $"{modInfo.Name} ({modInfo.PackageId})" : $"'{path}'";
 
-                     try
-                     {
-                         if (Directory.Exists(path))
-                         {
-                             // Use Task.Run with cancellation
-                             await Task.Run(() => Directory.Delete(path, true), ct);
-                             successfullyDeletedCount++;
-                             refreshNeeded = true; // Mark that data changed
-                             Debug.WriteLine($"[DeleteDuplicateMods] Successfully deleted {modIdentifier}.");
-                         }
-                         else
-                         {
-                             Debug.WriteLine($"[DeleteDuplicateMods] Path not found, skipping: {modIdentifier}");
-                             errorMessages.Add($"Path not found for {modIdentifier}");
-                         }
-                     }
-                     catch (OperationCanceledException) { throw; } // Propagate cancellation
-                     catch (Exception ex)
-                     {
-                         Debug.WriteLine($"[DeleteDuplicateMods] Error deleting {modIdentifier}: {ex}");
-                         errorMessages.Add($"Error deleting {modIdentifier}: {ex.Message}");
-                     }
+                    progressDialog.Message = $"Deleting {modIdentifier} ({i + 1}/{pathsToDelete.Count})...";
+                    progressDialog.UpdateProgress((int)(((double)i + 1) / pathsToDelete.Count * 100.0));
+
+                    try
+                    {
+                        if (Directory.Exists(path))
+                        {
+                            // Use Task.Run with cancellation token support
+                            await Task.Run(() => Directory.Delete(path, true), ct);
+                            successfullyDeletedCount++;
+                            refreshNeeded = true; // Mark that data changed and refresh is needed
+                            Debug.WriteLine($"[DeleteDuplicateMods] Successfully deleted {modIdentifier}.");
+                        }
+                        else
+                        {
+                            Debug.WriteLine($"[DeleteDuplicateMods] Path not found, skipping: {modIdentifier}");
+                            errorMessages.Add($"Path not found for {modIdentifier}");
+                        }
+                    }
+                    // Catch cancellation specific to the Task.Run or checks within the loop
+                    catch (OperationCanceledException taskCancelEx)
+                    {
+                        Debug.WriteLine($"[DeleteDuplicateMods] Cancellation during deletion of {modIdentifier}: {taskCancelEx.Message}");
+                        // Re-throw to be caught by the outer cancellation handler
+                        throw;
+                    }
+                    // Catch errors specific to deleting a single item
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[DeleteDuplicateMods] Error deleting {modIdentifier}: {ex}");
+                        errorMessages.Add($"Error deleting {modIdentifier}: {ex.Message}");
+                        // Decide if you want to continue or stop on error (currently continues)
+                    }
                 }
-                progressDialog.CompleteOperation("Deletion Completed");
+                // If loop completes without cancellation, mark dialog as normally completed
+                // (Completion message is handled in finally)
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) // Catch cancellation requested via token (e.g., from dialog or outer source)
             {
-                 Debug.WriteLine("[DeleteDuplicateMods] Deletion cancelled by user.");
-                 errorMessages.Add("Deletion process was cancelled.");
-                 progressDialog.CompleteOperation("Deletion Cancelled");
+                Debug.WriteLine("[DeleteDuplicateMods] Deletion cancelled by user.");
+                errorMessages.Add("Deletion process was cancelled.");
+                // No need to complete dialog here, finally block handles it
             }
-            catch (Exception ex) // Catch unexpected errors in the loop management
+            catch (Exception ex) // Catch unexpected errors in the overall process management (e.g., dialog creation failure)
             {
-                Debug.WriteLine($"[DeleteDuplicateMods] Unexpected error during batch deletion: {ex}");
-                errorMessages.Add($"An unexpected error occurred: {ex.Message}");
-                progressDialog.ForceClose(); // Ensure closure on unexpected fault
+                Debug.WriteLine($"[DeleteDuplicateMods] Unexpected error during batch deletion process: {ex}");
+                errorMessages.Add($"An unexpected error occurred during the process: {ex.Message}");
+                // Ensure dialog is attempted to be closed in finally
             }
             finally
             {
-                 // --- Completion & Reporting ---
-                 var reportTitle = errorMessages.Any() ? "Deletion Complete with Errors/Cancellation" : "Deletion Complete";
-                 var reportMessage = new StringBuilder();
+                // --- ORDER MATTERS HERE ---
 
-                 if (successfullyDeletedCount > 0)
-                 {
-                     reportMessage.AppendLine($"Successfully deleted {successfullyDeletedCount} duplicate mod folder(s).");
-                 }
+                // 1. Complete or Close the Progress Dialog FIRST
+                // Use null-conditional operator in case dialog creation failed
+                // Check if cancellation was the primary reason for exiting the loop
+                bool wasCancelled = errorMessages.Any(m => m.Contains("cancelled"));
+                progressDialog?.CompleteOperation(wasCancelled ? "Deletion Cancelled" : "Deletion Completed");
+                // Consider progressDialog?.ForceClose() if CompleteOperation might hang or fail
 
-                 if (errorMessages.Any())
-                 {
-                     if(reportMessage.Length > 0) reportMessage.AppendLine();
-                     reportMessage.AppendLine("Issues encountered:");
-                     reportMessage.Append(string.Join("\n -", errorMessages.Prepend(""))); // Indent errors
-                 }
+                // 2. Set Parent IsLoading to False SECOND
+                // Crucial: Do this BEFORE requesting refresh, so parent command CanExecute updates
+                IsLoadingRequest?.Invoke(this, false);
 
-                 if(reportMessage.Length == 0)
-                 {
+                // 3. Build and Show Report Dialog THIRD
+                // Now that the UI is responsive again (IsLoading=false), show the summary
+                var reportTitle = errorMessages.Any() ? "Deletion Complete with Errors/Cancellation" : "Deletion Complete";
+                var reportMessage = new StringBuilder();
+
+                if (successfullyDeletedCount > 0)
+                {
+                    reportMessage.AppendLine($"Successfully deleted {successfullyDeletedCount} duplicate mod folder(s).");
+                }
+
+                if (errorMessages.Any())
+                {
+                    if (reportMessage.Length > 0) reportMessage.AppendLine();
+                    reportMessage.AppendLine("Issues encountered:");
+                    // Prepend with " -" for indentation/bullet points
+                    reportMessage.Append(string.Join("\n - ", errorMessages.Prepend("")));
+                }
+
+                if (reportMessage.Length == 0)
+                {
                     reportMessage.AppendLine("No duplicate mods were deleted (or the operation was cancelled before any deletion).");
-                 }
-
-                // Trigger refresh *after* dialogs are closed and UI is potentially free
-                if (refreshNeeded)
-                {
-                    RequestDataRefresh?.Invoke(this, EventArgs.Empty); // Let parent handle loading state during refresh
-                }
-                else
-                {
-                    IsLoadingRequest?.Invoke(this, false); // Reset loading if no refresh happened
                 }
 
-                 // Show report on UI thread
-                 RunOnUIThread(() =>
-                 {
-                     _dialogService.ShowMessageWithCopy(reportTitle, reportMessage.ToString().Trim(),
-                         errorMessages.Any() ? MessageDialogType.Warning : MessageDialogType.Information);
-                 });
+                // Show report on UI thread
+                RunOnUIThread(() =>
+                {
+                    _dialogService.ShowMessageWithCopy(reportTitle, reportMessage.ToString().Trim(),
+                        errorMessages.Any() ? MessageDialogType.Warning : MessageDialogType.Information);
+                });
+
+
+                // 4. Request Data Refresh LAST (if needed)
+                // This is now safe because IsLoading is false
+                if (refreshNeeded && !wasCancelled) // Only refresh if something was deleted AND not cancelled
+                {
+                    RequestDataRefresh?.Invoke(this, EventArgs.Empty);
+                }
             }
         }
 
 
-public async Task ExecuteInstallFromZip(CancellationToken ct = default)
-{
-    IsLoadingRequest?.Invoke(this, true);
-    try
-    {
-        var fileDialog = new OpenFileDialog
+        public async Task ExecuteInstallFromZip(CancellationToken ct = default)
         {
-            Filter = "Zip Files (*.zip)|*.zip",
-            Title = "Select Mod Zip File"
-        };
+            IsLoadingRequest?.Invoke(this, true);
+            try
+            {
+                var fileDialog = new OpenFileDialog
+                {
+                    Filter = "Zip Files (*.zip)|*.zip",
+                    Title = "Select Mod Zip File"
+                };
 
-        if (fileDialog.ShowDialog() != true) return;
+                if (fileDialog.ShowDialog() != true)
+                {
+                    // Make sure IsLoading is reset if we exit early
+                    IsLoadingRequest?.Invoke(this, false);
+                    return;
+                }
 
-        var zipPath = fileDialog.FileName;
-        ct.ThrowIfCancellationRequested();
+                var zipPath = fileDialog.FileName;
+                ct.ThrowIfCancellationRequested();
 
-        if (!IsValidZipFile(zipPath))
-        {
-            _dialogService.ShowError("Invalid File", "The selected file is not a valid zip file.");
-            return;
+                if (!IsValidZipFile(zipPath))
+                {
+                    _dialogService.ShowError("Invalid File", "The selected file is not a valid zip file.");
+                    return;
+                }
+
+                using (var archive = ZipFile.OpenRead(zipPath))
+                {
+                    var modInfo = await ValidateModZip(archive, ct);
+                    ct.ThrowIfCancellationRequested();
+
+                    if (modInfo == null)
+                    {
+                        _dialogService.ShowError("Invalid Mod", "The selected zip file doesn't contain a valid RimWorld mod.");
+                        return;
+                    }
+
+                    var result = _dialogService.ShowConfirmation(
+                        "Confirm Installation",
+                        $"Are you sure you want to install the mod '{modInfo.Name}'?",
+                        showCancel: true);
+
+                    if (result != MessageDialogResult.OK) return;
+                    ct.ThrowIfCancellationRequested();
+
+                    var modsPath = _pathService.GetModsPath();
+                    if (string.IsNullOrEmpty(modsPath))
+                    {
+                        _dialogService.ShowError("Path Error", "Mods directory is not set.");
+                        return;
+                    }
+
+                    // Get root folder entry or null if mod is at root level
+                    var rootFolder = GetRootModFolder(archive);
+                    string modName = rootFolder == null
+                        ? Path.GetFileNameWithoutExtension(zipPath).Replace(" ", "")
+                        : rootFolder.FullName.TrimEnd('/', '\\');
+
+                    var targetDir = Path.Combine(modsPath, modName);
+
+                    // Debug what directories actually exist
+                    Debug.WriteLine($"Mods path: {modsPath}");
+                    Debug.WriteLine($"Target directory: {targetDir}");
+
+                    var existingDirs = Directory.GetDirectories(modsPath)
+                        .Select(Path.GetFileName)
+                        .ToList();
+
+                    Debug.WriteLine($"Existing mod directories: {string.Join(", ", existingDirs)}");
+                    Debug.WriteLine($"Directory exists? {Directory.Exists(targetDir)}");
+
+                    // Check if target directory already exists
+                    if (Directory.Exists(targetDir))
+                    {
+                        _dialogService.ShowError("Install Error",
+                            $"A mod folder already exists at:\n{targetDir}");
+                        IsLoadingRequest?.Invoke(this, false);
+                        return;
+                    }
+
+                    // Validate that folder name doesn't contain invalid characters
+                    var invalidChars = Path.GetInvalidFileNameChars();
+                    if (rootFolder != null && rootFolder.Name.IndexOfAny(invalidChars) >= 0)
+                    {
+                        _dialogService.ShowError("Invalid Name",
+                            $"The mod folder name contains invalid characters: {rootFolder.Name}");
+                        return;
+                    }
+
+                    // Extract the mod using Task.Run with cancellation
+                    await Task.Run(() => ExtractMod(archive, targetDir, rootFolder, ct), ct);
+
+                    _dialogService.ShowInformation("Install Complete", $"Mod '{modInfo.Name}' was successfully installed.");
+                    RequestDataRefresh?.Invoke(this, EventArgs.Empty); // Refresh data after install
+                    installSuccess = true;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine("[ExecuteInstallFromZip] Installation cancelled.");
+                _dialogService.ShowWarning("Installation Cancelled", "Mod installation was cancelled.");
+                installSuccess = false;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error installing mod from zip: {ex}");
+                _dialogService.ShowError("Install Error", $"Error installing mod: {ex.Message}");
+                installSuccess = false;
+            }
+            finally
+            {
+                IsLoadingRequest?.Invoke(this, false);
+                if (installSuccess)
+                {
+                    RequestDataRefresh?.Invoke(this, EventArgs.Empty);
+                }
+            }
         }
-
-        using (var archive = ZipFile.OpenRead(zipPath))
-        {
-            var modInfo = await ValidateModZip(archive, ct);
-            ct.ThrowIfCancellationRequested();
-
-            if (modInfo == null)
-            {
-                _dialogService.ShowError("Invalid Mod", "The selected zip file doesn't contain a valid RimWorld mod.");
-                return;
-            }
-
-            var result = _dialogService.ShowConfirmation(
-                "Confirm Installation",
-                $"Are you sure you want to install the mod '{modInfo.Name}'?",
-                showCancel: true);
-
-            if (result != MessageDialogResult.OK) return;
-            ct.ThrowIfCancellationRequested();
-
-            var modsPath = _pathService.GetModsPath();
-            if (string.IsNullOrEmpty(modsPath))
-            {
-                _dialogService.ShowError("Path Error", "Mods directory is not set.");
-                return;
-            }
-
-            // Get root folder entry or null if mod is at root level
-            var rootFolder = GetRootModFolder(archive);
-            string modName = rootFolder == null 
-                ? Path.GetFileNameWithoutExtension(zipPath).Replace(" ", "")
-                : rootFolder.FullName.TrimEnd('/', '\\');
-                
-            var targetDir = Path.Combine(modsPath, modName);
-
-            // Debug what directories actually exist
-            Debug.WriteLine($"Mods path: {modsPath}");
-            Debug.WriteLine($"Target directory: {targetDir}");
-            
-            var existingDirs = Directory.GetDirectories(modsPath)
-                .Select(Path.GetFileName)
-                .ToList();
-            
-            Debug.WriteLine($"Existing mod directories: {string.Join(", ", existingDirs)}");
-            Debug.WriteLine($"Directory exists? {Directory.Exists(targetDir)}");
-
-            // Check if target directory already exists
-            if (Directory.Exists(targetDir))
-            {
-                _dialogService.ShowError("Install Error", 
-                    $"A mod folder already exists at:\n{targetDir}");
-                return;
-            }
-
-            // Validate that folder name doesn't contain invalid characters
-            var invalidChars = Path.GetInvalidFileNameChars();
-            if (rootFolder != null && rootFolder.Name.IndexOfAny(invalidChars) >= 0)
-            {
-                _dialogService.ShowError("Invalid Name", 
-                    $"The mod folder name contains invalid characters: {rootFolder.Name}");
-                return;
-            }
-
-            // Extract the mod using Task.Run with cancellation
-            await Task.Run(() => ExtractMod(archive, targetDir, rootFolder, ct), ct);
-
-            _dialogService.ShowInformation("Install Complete", $"Mod '{modInfo.Name}' was successfully installed.");
-            RequestDataRefresh?.Invoke(this, EventArgs.Empty); // Refresh data after install
-        }
-    }
-    catch (OperationCanceledException)
-    {
-        Debug.WriteLine("[ExecuteInstallFromZip] Installation cancelled.");
-        _dialogService.ShowWarning("Installation Cancelled", "Mod installation was cancelled.");
-    }
-    catch (Exception ex)
-    {
-        Debug.WriteLine($"Error installing mod from zip: {ex}");
-        _dialogService.ShowError("Install Error", $"Error installing mod: {ex.Message}");
-    }
-    finally
-    {
-        IsLoadingRequest?.Invoke(this, false);
-    }
-}
         // --- Zip Installation Helpers ---
 
         private bool IsValidZipFile(string path)
@@ -1008,77 +1053,77 @@ public async Task ExecuteInstallFromZip(CancellationToken ct = default)
                     };
                 }
             }
-             catch (OperationCanceledException) { throw; } // Propagate cancellation
+            catch (OperationCanceledException) { throw; } // Propagate cancellation
             catch (Exception ex) // Catch XML parsing errors etc.
             {
-                 Debug.WriteLine($"Failed to parse About.xml from zip entry '{aboutEntry.FullName}': {ex.Message}");
+                Debug.WriteLine($"Failed to parse About.xml from zip entry '{aboutEntry.FullName}': {ex.Message}");
                 return null;
             }
         }
 
         private ZipArchiveEntry GetRootModFolder(ZipArchive archive)
-{
-    var rootFolders = archive.Entries
-        .Where(e => !string.IsNullOrEmpty(e.FullName) && 
-                e.FullName.Replace('\\', '/').TrimEnd('/').Contains('/') == false && 
-                e.FullName.EndsWith("/"))
-        .ToList();
+        {
+            var rootFolders = archive.Entries
+                .Where(e => !string.IsNullOrEmpty(e.FullName) &&
+                        e.FullName.Replace('\\', '/').TrimEnd('/').Contains('/') == false &&
+                        e.FullName.EndsWith("/"))
+                .ToList();
 
-    // Debug log for troubleshooting
-    Debug.WriteLine($"Found {rootFolders.Count} root folders in zip: {string.Join(", ", rootFolders.Select(f => f.FullName))}");
-    
-    return rootFolders.Count == 1 ? rootFolders[0] : null;
-}
+            // Debug log for troubleshooting
+            Debug.WriteLine($"Found {rootFolders.Count} root folders in zip: {string.Join(", ", rootFolders.Select(f => f.FullName))}");
+
+            return rootFolders.Count == 1 ? rootFolders[0] : null;
+        }
 
 
         // Updated to accept and check CancellationToken
-private void ExtractMod(ZipArchive archive, string targetDir, ZipArchiveEntry rootFolderEntry, CancellationToken ct)
-{
-    Debug.WriteLine($"Extracting to target directory: {targetDir}");
-    Debug.WriteLine($"Root folder entry: {rootFolderEntry?.FullName ?? "null"}");
-    
-    Directory.CreateDirectory(targetDir);
-    string rootFolderName = rootFolderEntry?.FullName; // e.g., "MyModFolder/"
-
-    foreach (var entry in archive.Entries)
-    {
-        ct.ThrowIfCancellationRequested();
-
-        // Skip directory entries explicitly
-        if (string.IsNullOrEmpty(entry.Name)) continue;
-
-        string relativePath;
-        if (rootFolderEntry == null)
+        private void ExtractMod(ZipArchive archive, string targetDir, ZipArchiveEntry rootFolderEntry, CancellationToken ct)
         {
-            // Archive has mod contents directly in root
-            relativePath = entry.FullName;
+            Debug.WriteLine($"Extracting to target directory: {targetDir}");
+            Debug.WriteLine($"Root folder entry: {rootFolderEntry?.FullName ?? "null"}");
+
+            Directory.CreateDirectory(targetDir);
+            string rootFolderName = rootFolderEntry?.FullName; // e.g., "MyModFolder/"
+
+            foreach (var entry in archive.Entries)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                // Skip directory entries explicitly
+                if (string.IsNullOrEmpty(entry.Name)) continue;
+
+                string relativePath;
+                if (rootFolderEntry == null)
+                {
+                    // Archive has mod contents directly in root
+                    relativePath = entry.FullName;
+                }
+                else
+                {
+                    // Archive has a single root folder, extract its contents
+                    if (!entry.FullName.StartsWith(rootFolderName, StringComparison.OrdinalIgnoreCase))
+                        continue; // Skip files not inside the root folder
+
+                    relativePath = entry.FullName.Substring(rootFolderName.Length);
+                }
+
+                // Normalize path separators
+                relativePath = relativePath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+                string destinationPath = Path.Combine(targetDir, relativePath);
+
+                Debug.WriteLine($"Extracting: {entry.FullName} -> {destinationPath}");
+
+                // Ensure the target directory exists
+                var dirPath = Path.GetDirectoryName(destinationPath);
+                if (!string.IsNullOrEmpty(dirPath) && !Directory.Exists(dirPath))
+                {
+                    Directory.CreateDirectory(dirPath);
+                }
+
+                // Extract the file
+                entry.ExtractToFile(destinationPath, overwrite: true);
+            }
         }
-        else
-        {
-            // Archive has a single root folder, extract its contents
-            if (!entry.FullName.StartsWith(rootFolderName, StringComparison.OrdinalIgnoreCase))
-                continue; // Skip files not inside the root folder
-
-            relativePath = entry.FullName.Substring(rootFolderName.Length);
-        }
-
-        // Normalize path separators
-        relativePath = relativePath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
-        string destinationPath = Path.Combine(targetDir, relativePath);
-        
-        Debug.WriteLine($"Extracting: {entry.FullName} -> {destinationPath}");
-
-        // Ensure the target directory exists
-        var dirPath = Path.GetDirectoryName(destinationPath);
-        if (!string.IsNullOrEmpty(dirPath) && !Directory.Exists(dirPath))
-        {
-            Directory.CreateDirectory(dirPath);
-        }
-
-        // Extract the file
-        entry.ExtractToFile(destinationPath, overwrite: true);
-    }
-}
 
     } // End of ModActionsViewModel class
 
