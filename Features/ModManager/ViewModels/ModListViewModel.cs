@@ -102,7 +102,7 @@ namespace RimSharp.Features.ModManager.ViewModels
 
             DeactivateModCommand = new RelayCommand<ModItem>(
                 mod => { _modListManager.DeactivateMod(mod); /* Parent handles HasUnsavedChanges */ },
-                mod => mod != null && !mod.IsCore && !IsParentLoading);
+                mod => mod != null && mod.ModType != ModType.Core && !IsParentLoading);
 
             DropModCommand = new RelayCommand<DropModArgs>(
                 async args => await _commandService.HandleDropCommand(args),

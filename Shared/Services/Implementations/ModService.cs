@@ -189,11 +189,9 @@ namespace RimSharp.Shared.Services.Implementations
 
                 // Set core/expansion flags
                 bool isCoreMod = mod.PackageId == "Ludeon.RimWorld";
-                mod.IsCore = isCoreMod;
-                mod.IsExpansion = !isCoreMod;  // All other official mods in Data folder are expansions
                 mod.ModType = isCoreMod ? ModType.Core : ModType.Expansion;
                 // Append "[DLC]" to name if it's an expansion
-                if (mod.IsExpansion && !string.IsNullOrEmpty(mod.Name))
+                if (mod.ModType == ModType.Expansion && !string.IsNullOrEmpty(mod.Name)) // Check ModType
                 {
                     mod.Name = $"{mod.Name} [DLC]";
                 }
@@ -225,10 +223,8 @@ namespace RimSharp.Shared.Services.Implementations
 
                 // Set core/expansion flags
                 bool isCoreMod = mod.PackageId == "Ludeon.RimWorld";
-                mod.IsCore = isCoreMod;
-                mod.IsExpansion = !isCoreMod;
                 mod.ModType = isCoreMod ? ModType.Core : ModType.Expansion;
-                if (mod.IsExpansion && !string.IsNullOrEmpty(mod.Name))
+                if (mod.ModType == ModType.Expansion && !string.IsNullOrEmpty(mod.Name)) 
                 {
                     mod.Name = $"{mod.Name} [DLC]";
                 }

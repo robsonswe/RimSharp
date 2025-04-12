@@ -80,7 +80,7 @@ namespace RimSharp.Features.ModManager.Services.Mangement
         public void ClearActiveList()
         {
             var modsToKeep = _orderService.VirtualActiveMods // Use OrderService's view
-                .Where(x => x.Mod != null && (x.Mod.IsCore || x.Mod.IsExpansion))
+                .Where(x => x.Mod != null && (x.Mod.ModType == ModType.Core || x.Mod.ModType == ModType.Expansion))
                 .Select(x => x.Mod)
                 .ToList();
 
@@ -230,7 +230,7 @@ namespace RimSharp.Features.ModManager.Services.Mangement
 
             // Filter out nulls, core mods, and ensure distinctness
             var modsToDeactivate = mods
-                .Where(m => m != null && !m.IsCore) // Do not allow Core deactivation
+                .Where(m => m != null && m.ModType != ModType.Core) // Do not allow Core deactivation
                 .Distinct()
                 .ToList();
 
@@ -269,7 +269,7 @@ namespace RimSharp.Features.ModManager.Services.Mangement
 
             // Ensure all mods are actually active and not null/core (core shouldn't be manually reordered usually)
             var validModsToMove = modsToMove
-                .Where(m => m != null && _stateTracker.IsModActive(m) /* && !m.IsCore */ ) // Allow reordering core if needed? Decide based on requirements.
+                .Where(m => m != null && _stateTracker.IsModActive(m) /* && m.ModType != ModType.Core */ ) // Allow reordering core if needed? Decide based on requirements.
                 .Distinct()
                 .ToList();
 
@@ -307,7 +307,7 @@ namespace RimSharp.Features.ModManager.Services.Mangement
             // Use OrderService view to get current active mods
             var activeModsForCheck = _orderService.VirtualActiveMods
                 .Select(x => x.Mod)
-                // .Where(m => !m.IsCore && !m.IsExpansion) // Keep this filtering? Dependencies might be needed even for core/exp
+                // .Where(m => m.ModType != ModType.Core && m.ModType != ModType.Expansion) // Keep this filtering? Dependencies might be needed even for core/exp
                 .ToList();
 
             // Use StateTracker view for inactive mods

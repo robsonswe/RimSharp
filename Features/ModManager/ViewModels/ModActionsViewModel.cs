@@ -185,8 +185,8 @@ namespace RimSharp.Features.ModManager.ViewModels
             // If command parameter is null, try using the ViewModel's SelectedMod
             mod = mod ?? SelectedMod;
             return mod != null
-                && !mod.IsCore
-                && !mod.IsExpansion
+                && mod.ModType != ModType.Core
+                && mod.ModType != ModType.Expansion
                 && !string.IsNullOrEmpty(mod.Path)
                 && Directory.Exists(mod.Path) // Check existence here or rely on Execute? Check is safer.
                 && !IsParentLoading;
@@ -209,7 +209,7 @@ namespace RimSharp.Features.ModManager.ViewModels
 
 
         // Helper for deletable checks
-        private bool CanBeDeleted(ModItem mod) => mod != null && !mod.IsCore && !mod.IsExpansion && !string.IsNullOrEmpty(mod.Path); // Simplified check
+        private bool CanBeDeleted(ModItem mod) => mod != null && mod.ModType != ModType.Core && mod.ModType != ModType.Expansion && !string.IsNullOrEmpty(mod.Path); // Simplified check
 
         // --- Execution Methods (mostly copied/adapted from original ModsViewModel) ---
 

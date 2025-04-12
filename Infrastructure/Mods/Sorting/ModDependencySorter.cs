@@ -18,8 +18,8 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             var graph = new Dictionary<ModItem, HashSet<ModItem>>();
             var inDegree = new Dictionary<ModItem, int>();
 
-            var coreMod = mods.FirstOrDefault(m => m.IsCore);
-            var expansionMods = mods.Where(m => m.IsExpansion).ToList();
+            var coreMod = mods.FirstOrDefault(m => m.ModType == ModType.Core);
+            var expansionMods = mods.Where(m => m.ModType == ModType.Expansion).ToList();
             var loadBottomMods = mods.Where(m => m.LoadBottom).ToList();
 
             Console.WriteLine($"[DEBUG] Found {loadBottomMods.Count} LoadBottom mods: {string.Join(", ", loadBottomMods.Select(m => m.PackageId))}");
@@ -143,7 +143,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             foreach (var mod in mods)
             {
                 // Avoid forcing Core to come after anything
-                if (mod == specialMod || mod.IsCore) continue;
+                if (mod == specialMod || mod.ModType == ModType.Core) continue;
 
                 if (HasExplicitOrImpliedBeforeDependency(mod, specialMod)) continue;
 
@@ -169,7 +169,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
         {
             if (HasExplicitBeforeDependency(mod, target)) return true;
 
-            if (target.IsExpansion &&
+            if (target.ModType == ModType.Expansion &&
                 mod.LoadBefore.Contains("ludeon.rimworld", StringComparer.OrdinalIgnoreCase))
                 return true;
 
@@ -278,8 +278,8 @@ namespace RimSharp.Infrastructure.Mods.Sorting
         {
             if (mod.ForceLoadBefore.Any()) return 0;
             if (mod.LoadBefore.Any()) return 1;
-            if (mod.IsCore) return 2;
-            if (mod.IsExpansion) return 3;
+            if (mod.ModType == ModType.Core) return 2;
+            if (mod.ModType == ModType.Expansion) return 3;
             if (mod.LoadAfter.Any() || mod.ForceLoadAfter.Any() || mod.ModDependencies.Any()) return 4;
             return 5; // Regular mods
         }
