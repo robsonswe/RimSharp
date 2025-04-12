@@ -224,7 +224,7 @@ namespace RimSharp.Shared.Services.Implementations
                 // Set core/expansion flags
                 bool isCoreMod = mod.PackageId == "Ludeon.RimWorld";
                 mod.ModType = isCoreMod ? ModType.Core : ModType.Expansion;
-                if (mod.ModType == ModType.Expansion && !string.IsNullOrEmpty(mod.Name)) 
+                if (mod.ModType == ModType.Expansion && !string.IsNullOrEmpty(mod.Name))
                 {
                     mod.Name = $"{mod.Name} [DLC]";
                 }
@@ -248,7 +248,6 @@ namespace RimSharp.Shared.Services.Implementations
 
                 mod.Path = dir;
 
-                // Check if folder name is a Steam ID
                 if (long.TryParse(folderName, out _))
                 {
                     mod.SteamId = folderName;
@@ -257,15 +256,62 @@ namespace RimSharp.Shared.Services.Implementations
                 }
                 else
                 {
-                    // Check for Git mod
                     var gitDir = Path.Combine(dir, ".git");
                     if (Directory.Exists(gitDir))
                     {
                         mod.ModType = ModType.Git;
+                        // Parse Git repository URL
+                        var gitConfigPath = Path.Combine(gitDir, "config");
+                        if (File.Exists(gitConfigPath))
+                        {
+                            try
+                            {
+                                var lines = File.ReadAllLines(gitConfigPath);
+                                bool inOriginSection = false;
+                                foreach (var line in lines)
+                                {
+                                    var trimmed = line.Trim();
+                                    if (trimmed.StartsWith("[remote \"origin\"]"))
+                                    {
+                                        inOriginSection = true;
+                                    }
+                                    else if (trimmed.StartsWith("[") && inOriginSection)
+                                    {
+                                        inOriginSection = false; // Exit origin section
+                                    }
+                                    else if (inOriginSection && trimmed.StartsWith("url = "))
+                                    {
+                                        mod.GitRepo = trimmed.Substring("url = ".Length).Trim();
+                                        break;
+                                    }
+                                }
+                                // Standardize the URL to match desired format
+                                if (!string.IsNullOrEmpty(mod.GitRepo))
+                                {
+                                    if (mod.GitRepo.StartsWith("git@"))
+                                    {
+                                        // Convert SSH URL: git@github.com:jptrrs/OpenTheWindows.git
+                                        var parts = mod.GitRepo.Split(':');
+                                        if (parts.Length == 2)
+                                        {
+                                            mod.GitRepo = parts[1].Replace(".git", "");
+                                        }
+                                    }
+                                    else if (mod.GitRepo.StartsWith("https://"))
+                                    {
+                                        // Handle HTTPS URL: https://github.com/jptrrs/OpenTheWindows.git
+                                        mod.GitRepo = mod.GitRepo.Replace("https://", "").Replace(".git", "");
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.WriteLine($"Failed to read Git config for mod {mod.PackageId}: {ex.Message}");
+                            }
+                        }
                     }
                     else
                     {
-                        // Default to Zipped if none of the above
                         mod.ModType = ModType.Zipped;
                     }
                 }
@@ -278,7 +324,6 @@ namespace RimSharp.Shared.Services.Implementations
         {
             if (!Directory.Exists(modsPath)) return;
 
-            // Get all directories first to avoid file system bottlenecks
             var directories = Directory.GetDirectories(modsPath);
 
             await Task.WhenAll(directories.Select(async dir =>
@@ -287,14 +332,11 @@ namespace RimSharp.Shared.Services.Implementations
                 if (!File.Exists(aboutPath)) return;
 
                 var folderName = Path.GetFileName(dir);
-
-                // Parse on a separate thread to avoid XML parsing bottlenecks
                 var mod = await Task.Run(() => ParseAboutXml(aboutPath, folderName));
                 if (mod == null) return;
 
                 mod.Path = dir;
 
-                // Check if folder name is a Steam ID
                 if (long.TryParse(folderName, out _))
                 {
                     mod.SteamId = folderName;
@@ -303,15 +345,58 @@ namespace RimSharp.Shared.Services.Implementations
                 }
                 else
                 {
-                    // Check for Git mod
                     var gitDir = Path.Combine(dir, ".git");
                     if (Directory.Exists(gitDir))
                     {
                         mod.ModType = ModType.Git;
+                        var gitConfigPath = Path.Combine(gitDir, "config");
+                        if (File.Exists(gitConfigPath))
+                        {
+                            try
+                            {
+                                var lines = File.ReadAllLines(gitConfigPath);
+                                bool inOriginSection = false;
+                                foreach (var line in lines)
+                                {
+                                    var trimmed = line.Trim();
+                                    if (trimmed.StartsWith("[remote \"origin\"]"))
+                                    {
+                                        inOriginSection = true;
+                                    }
+                                    else if (trimmed.StartsWith("[") && inOriginSection)
+                                    {
+                                        inOriginSection = false;
+                                    }
+                                    else if (inOriginSection && trimmed.StartsWith("url = "))
+                                    {
+                                        mod.GitRepo = trimmed.Substring("url = ".Length).Trim();
+                                        break;
+                                    }
+                                }
+                                if (!string.IsNullOrEmpty(mod.GitRepo))
+                                {
+                                    if (mod.GitRepo.StartsWith("git@"))
+                                    {
+                                        var parts = mod.GitRepo.Split(':');
+                                        if (parts.Length == 2)
+                                        {
+                                            mod.GitRepo = parts[1].Replace(".git", "");
+                                        }
+                                    }
+                                    else if (mod.GitRepo.StartsWith("https://"))
+                                    {
+                                        mod.GitRepo = mod.GitRepo.Replace("https://", "").Replace(".git", "");
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.WriteLine($"Failed to read Git config for mod {mod.PackageId}: {ex.Message}");
+                            }
+                        }
                     }
                     else
                     {
-                        // Default to Zipped if none of the above
                         mod.ModType = ModType.Zipped;
                     }
                 }
@@ -339,7 +424,6 @@ namespace RimSharp.Shared.Services.Implementations
                     name = folderName;
                 }
 
-                // Convert supportedVersions to VersionSupport objects with Unofficial = false
                 var supportedVersions = root.Element("supportedVersions")?.Elements("li")
                     .Select(x => new VersionSupport(x.Value, false))
                     .ToList() ?? new List<VersionSupport>();
@@ -349,7 +433,7 @@ namespace RimSharp.Shared.Services.Implementations
                     Name = name,
                     PackageId = root.Element("packageId")?.Value,
                     Authors = root.Element("author")?.Value ??
-                            string.Join(", ", root.Element("authors")?.Elements("li").Select(x => x.Value) ?? Array.Empty<string>()),
+                              string.Join(", ", root.Element("authors")?.Elements("li").Select(x => x.Value) ?? Array.Empty<string>()),
                     Description = root.Element("description")?.Value,
                     ModVersion = root.Element("modVersion")?.Value,
                     ModIconPath = root.Element("modIconPath")?.Value,
@@ -358,7 +442,6 @@ namespace RimSharp.Shared.Services.Implementations
                     PreviewImagePath = File.Exists(previewImagePath) ? previewImagePath : null,
                 };
 
-                // Parse dependencies
                 mod.ModDependencies = root.Element("modDependencies")?.Elements("li")
                     .Select(x => new ModDependency
                     {
@@ -395,16 +478,14 @@ namespace RimSharp.Shared.Services.Implementations
                     try
                     {
                         var cleaned = mod.DateStamp.Replace("@", "").Trim();
-
-                        // Normalize to single space and uppercase AM/PM
                         cleaned = Regex.Replace(cleaned, @"\s+", " ");
                         cleaned = Regex.Replace(cleaned, @"\b(am|pm)\b", m => m.Value.ToUpperInvariant());
 
                         string[] formats = {
-                            "dd MMM, yyyy h:mmtt",     // 27 May, 2024 12:43AM
-                            "dd MMM, yyyy hh:mmtt",    // zero-padded hour
-                            "d MMM, yyyy h:mmtt",      // single-digit day
-                        };
+                    "dd MMM, yyyy h:mmtt",
+                    "dd MMM, yyyy hh:mmtt",
+                    "d MMM, yyyy h:mmtt",
+                };
 
                         if (DateTime.TryParseExact(cleaned, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
                         {
@@ -421,14 +502,13 @@ namespace RimSharp.Shared.Services.Implementations
                     }
                 }
 
-                // Parse load order rules using a more efficient approach
                 ParseLoadOrderRules(root, mod);
 
                 return mod;
             }
             catch
             {
-                return null; // Return null for invalid mods
+                return null;
             }
         }
         private static void ParseLoadOrderRules(XElement root, ModItem mod)

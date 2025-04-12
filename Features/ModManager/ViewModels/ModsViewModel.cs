@@ -1,6 +1,7 @@
 using RimSharp.Core.Commands; // Keep for SelectModCommand maybe? Or move entirely?
 using RimSharp.Core.Extensions;
 using RimSharp.Features.ModManager.Services.Commands; // Likely not needed directly anymore
+using RimSharp.Features.ModManager.ViewModels.Actions;
 using RimSharp.MyApp.AppFiles;
 using RimSharp.MyApp.Dialogs;
 using RimSharp.Shared.Models;

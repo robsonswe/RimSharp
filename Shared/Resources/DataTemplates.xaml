@@ -3,7 +3,10 @@
                     xmlns:vmMods="clr-namespace:RimSharp.Features.ModManager.ViewModels"
                     xmlns:vMods="clr-namespace:RimSharp.Features.ModManager.Views"
                     xmlns:vmDownloader="clr-namespace:RimSharp.Features.WorkshopDownloader.ViewModels"
-                    xmlns:vDownloader="clr-namespace:RimSharp.Features.WorkshopDownloader.Views">
+                    xmlns:vDownloader="clr-namespace:RimSharp.Features.WorkshopDownloader.Views"
+                    xmlns:vmGitMods="clr-namespace:RimSharp.Features.GitModManager.ViewModels"
+                    xmlns:vGitMods="clr-namespace:RimSharp.Features.GitModManager.Views"
+>
 
     <DataTemplate DataType="{x:Type vmMods:ModsViewModel}">
         <vMods:ModsView/>
@@ -11,5 +14,9 @@
 
     <DataTemplate DataType="{x:Type vmDownloader:DownloaderViewModel}">
         <vDownloader:DownloaderView/>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vmGitMods:GitModsViewModel}">
+        <vGitMods:GitModsView/>
     </DataTemplate>
 </ResourceDictionary>
