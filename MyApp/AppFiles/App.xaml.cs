@@ -17,10 +17,11 @@ using RimSharp.Infrastructure.Mods.Rules;
 using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
 using RimSharp.MyApp.MainPage;
 using RimSharp.Shared.Models;
-using RimSharp.Shared.Services.Contracts; // <<< Add this using
+using RimSharp.Shared.Services.Contracts; // <<< Keep this using
 using RimSharp.Shared.Services.Implementations;
 using RimSharp.Infrastructure.Workshop;
 using RimSharp.Infrastructure.Logging;
+using RimSharp.Features.GitModManager.ViewModels; // <<< Add this using
 
 namespace RimSharp.MyApp.AppFiles
 {
@@ -48,13 +49,8 @@ namespace RimSharp.MyApp.AppFiles
         private void ConfigureServices(IServiceCollection services)
         {
             // --- Base Infrastructure & Configuration ---
-            // Register Logger FIRST so other services potentially could use it during construction (if needed via factory)
-            // Although direct use isn't feasible here, it's good practice.
             services.AddSingleton<ILoggerService, LoggerService>();
-
-            // --- Remaining service configurations ---
             services.AddSingleton<IConfigService, ConfigService>();
-            // services.AddSingleton<ILoggerService, LoggerService>(); // Moved up
             services.AddSingleton<IDialogService, DialogService>();
 
             services.AddSingleton<IPathService, PathService>(provider =>
@@ -63,8 +59,7 @@ namespace RimSharp.MyApp.AppFiles
             services.AddSingleton(provider =>
             {
                 var configService = provider.GetRequiredService<IConfigService>();
-                // Log path settings retrieval
-                var logger = provider.GetService<ILoggerService>(); // Use GetService for optional logging inside factory
+                var logger = provider.GetService<ILoggerService>();
                 logger?.LogDebug("Retrieving path settings from config.", "App.ConfigureServices");
                 var pathSettings = new PathSettings
                 {
@@ -125,7 +120,7 @@ namespace RimSharp.MyApp.AppFiles
             services.AddSingleton<ISteamCmdService, SteamCmdService>();
 
             // --- ViewModels ---
-            // (No changes needed here unless ViewModels need logging during construction)
+            // Register ViewModels - Use AddTransient unless you specifically need a singleton lifecycle
              services.AddTransient<ModsViewModel>(provider =>
                 new ModsViewModel(
                     provider.GetRequiredService<IModDataService>(),
@@ -150,21 +145,35 @@ namespace RimSharp.MyApp.AppFiles
                     provider.GetRequiredService<IModListManager>()
                 ));
 
+            // ************************************************
+            // **************** FIX: REGISTER GitModsViewModel ****************
+            // ************************************************
+            services.AddTransient<GitModsViewModel>(provider =>
+                new GitModsViewModel(
+                    provider.GetRequiredService<IModService>(),
+                    provider.GetRequiredService<IModListManager>()
+                    // Add any other dependencies GitModsViewModel might need here
+                ));
+            // ************************************************
+            // ************************************************
+
+            // MainViewModel should likely be Singleton as it holds the application's top-level state
             services.AddSingleton<MainViewModel>(provider =>
                 new MainViewModel(
                     provider.GetRequiredService<IPathService>(),
                     provider.GetRequiredService<IConfigService>(),
                     provider.GetRequiredService<IDialogService>(),
-                    provider.GetRequiredService<ModsViewModel>(),
-                    provider.GetRequiredService<DownloaderViewModel>()
+                    provider.GetRequiredService<ModsViewModel>(),     // Resolve transient instance
+                    provider.GetRequiredService<DownloaderViewModel>(), // Resolve transient instance
+                    provider.GetRequiredService<GitModsViewModel>()   // <<< Resolve the now-registered GitModsViewModel
                 ));
 
             // --- Application Shell ---
+            // MainWindow is the root visual, usually a Singleton.
             services.AddSingleton<MainWindow>();
 
             // Log completion of service configuration
             // Cannot directly log here as the provider isn't built yet.
-            // Logging is done after the provider is built in the constructor.
         }
 
         protected override void OnStartup(StartupEventArgs e)
@@ -173,29 +182,38 @@ namespace RimSharp.MyApp.AppFiles
 
             try
             {
-                // Optional: Trigger path initialization explicitly if needed before UI loads
-                // var steamCmdPathService = ServiceProvider.GetRequiredService<ISteamCmdPathService>();
-                // _logger.LogDebug("Initializing SteamCMD paths.", "App.OnStartup");
-                // steamCmdPathService.InitializePaths(); // Assuming InitializePaths exists and is needed here
-                // _logger.LogDebug("SteamCMD paths initialized.", "App.OnStartup");
-
                 _logger.LogDebug("Attempting to retrieve MainWindow instance.", "App.OnStartup");
-                var mainWindow = ServiceProvider.GetService<MainWindow>();
+                // Resolve MainWindow AFTER services are configured and provider is built
+                var mainWindow = ServiceProvider.GetRequiredService<MainWindow>(); // Use GetRequiredService
 
                 if (mainWindow != null)
                 {
-                    _logger.LogDebug("MainWindow instance retrieved successfully. Showing window.", "App.OnStartup");
+                    _logger.LogDebug("MainWindow instance retrieved successfully. Assigning DataContext.", "App.OnStartup");
+
+                    // ***************************************************************************
+                    // *** Crucial: Set the DataContext for MainWindow AFTER resolving it ***
+                    // ***************************************************************************
+                    // The MainWindow needs its ViewModel (MainViewModel) to function correctly.
+                    // Resolve MainViewModel and set it as the DataContext.
+                    var mainViewModel = ServiceProvider.GetRequiredService<MainViewModel>();
+                    mainWindow.DataContext = mainViewModel;
+                    _logger.LogDebug("DataContext (MainViewModel) assigned to MainWindow.", "App.OnStartup");
+                    // ***************************************************************************
+
+                    _logger.LogDebug("Showing MainWindow.", "App.OnStartup");
                     mainWindow.Show();
                     _logger.LogInfo("MainWindow shown.", "App.OnStartup");
+
+                    // Consider triggering initial data load *here* if needed, *after* Show()
+                    // Example: await mainViewModel.InitializeApplicationAsync(); // If you add such a method
                 }
                 else
                 {
+                    // This case should ideally not happen if registration is correct, but keep logging.
                     _logger.LogCritical("Failed to retrieve MainWindow instance from Service Provider. Application cannot start.", "App.OnStartup");
-                    // Optionally show a basic message box if DialogService failed or isn't usable yet
                     MessageBox.Show("Critical error: Could not create the main application window. Check logs for details.", "Application Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    // Shutdown the application gracefully if possible
-                    Shutdown(-1); // Use a non-zero exit code for error
-                    return; // Prevent base.OnStartup from running if shutdown is initiated
+                    Shutdown(-1);
+                    return;
                 }
 
                 base.OnStartup(e);
@@ -203,30 +221,35 @@ namespace RimSharp.MyApp.AppFiles
             }
             catch (Exception ex)
             {
+                // Log the exception that occurred during startup (could be during DI resolution or Show())
                 _logger.LogException(ex, "Unhandled exception during application startup.", "App.OnStartup");
-                // Try to show an error message before crashing
                  MessageBox.Show($"An critical error occurred during startup: {ex.Message}\n\nPlease check the application logs for more details.", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                // Ensure shutdown
-                Shutdown(-2); // Different error code
+                Shutdown(-2);
             }
         }
 
-        // --- Global Exception Handlers ---
+        // --- Global Exception Handlers --- (Keep these as they are good practice)
 
         private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
         {
             _logger?.LogException(e.Exception, "Unhandled UI exception occurred.", "App.DispatcherUnhandled");
-            // Optionally show user a message box (could use DialogService if it's reliable at this point)
-            MessageBox.Show($"An unexpected error occurred: {e.Exception.Message}\n\nThe application may become unstable. Please check logs.", "Unhandled Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            // Prevent default WPF crash behavior
-            e.Handled = true;
-            // Consider if you need to shut down depending on the severity:
-            // Shutdown(-3);
+            // Check if MainWindow exists before trying to use DialogService potentially tied to it
+            var dialogService = ServiceProvider?.GetService<IDialogService>(); // Use GetService for safety
+            if (dialogService != null && Application.Current?.MainWindow != null && Application.Current.MainWindow.IsVisible)
+            {
+                 dialogService.ShowError("Unhandled Error", $"An unexpected error occurred: {e.Exception.Message}\n\nThe application may become unstable. Please check logs.");
+            }
+            else
+            {
+                MessageBox.Show($"An unexpected error occurred: {e.Exception.Message}\n\nThe application may become unstable. Please check logs.", "Unhandled Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+           
+            e.Handled = true; // Prevent WPF default crash dialog
+            // Consider Shutdown(-3) depending on severity or if recovery isn't possible.
         }
 
         private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
-             // This catches exceptions on non-UI threads
             if (e.ExceptionObject is Exception ex)
             {
                  _logger?.LogException(ex, $"Unhandled non-UI exception occurred. IsTerminating: {e.IsTerminating}", "App.CurrentDomainUnhandled");
@@ -235,15 +258,16 @@ namespace RimSharp.MyApp.AppFiles
             {
                 _logger?.LogCritical($"Unhandled non-UI exception occurred with non-exception object: {e.ExceptionObject}", "App.CurrentDomainUnhandled");
             }
-             // Log it, but can't do much else here as the app is likely terminating.
-             // Avoid showing UI elements here as it might be on a background thread.
+             // Can't reliably show UI here. Logging is key.
+             // If e.IsTerminating is true, the app is going down anyway.
         }
 
         protected override void OnExit(ExitEventArgs e)
         {
             _logger?.LogInfo($"Application exiting with code {e.ApplicationExitCode}.", "App.OnExit");
+            // Dispose IDisposable services if needed (though DI container might handle singletons)
+            (ServiceProvider as IDisposable)?.Dispose();
             base.OnExit(e);
-            // Dispose resources if necessary (though DI container disposal handles most singletons)
         }
     }
 }

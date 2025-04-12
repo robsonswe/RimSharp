@@ -102,7 +102,9 @@
                 <Button Content="Downloader"
                         Command="{Binding SwitchTabCommand}" CommandParameter="Downloader"
                         Style="{StaticResource RimworldTabButtonStyle}"/>
-                 <!-- Add other tabs here -->
+                <Button Content="Git Mods"
+                        Command="{Binding SwitchTabCommand}" CommandParameter="GitMods"
+                        Style="{StaticResource RimworldTabButtonStyle}"/>
             </StackPanel>
         </Border>
 

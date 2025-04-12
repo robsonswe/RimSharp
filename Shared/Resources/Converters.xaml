@@ -12,12 +12,14 @@
     <convVisual:BooleanToColorConverter x:Key="BooleanToColorConverter"/>
     <convVisual:DarkenColorConverter x:Key="DarkenColorConverter" />
     <convVisual:ImagePathConverter x:Key="ImagePathConverter"/>
+    <convVisual:UpdateStatusToColorConverter x:Key="UpdateStatusToColorConverter"/>
 
     <!-- View Visibility Converters -->
     <convViewVisibility:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
     <convViewVisibility:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
     <convViewVisibility:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
     <convViewVisibility:TabVisibilityConverter x:Key="TabVisibilityConverter"/>
+    <convViewVisibility:IsNotNullOrEmptyToVisibilityConverter x:Key="IsNotNullOrEmptyToVisibilityConverter"/>
 
     <!-- Logic Converters -->
     <convLogic:CountToBooleanConverter x:Key="CountToBooleanConverter"/>
@@ -40,5 +42,7 @@
 
     <!-- Utility Converters -->
     <convUtility:PathToExplorerFormatConverter x:Key="PathToExplorerFormatConverter"/>
+
+
 
 </ResourceDictionary>

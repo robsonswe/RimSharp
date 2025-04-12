@@ -13,7 +13,8 @@ using RimSharp.Features.WorkshopDownloader.ViewModels;
 using RimSharp.Shared.Models;
 using RimSharp.Infrastructure.Configuration;
 using System.Threading.Tasks;
-using RimSharp.Core.Extensions; // Likely not needed if PathService handles config interaction
+using RimSharp.Core.Extensions;
+using RimSharp.Features.GitModManager.ViewModels;
 
 namespace RimSharp.MyApp.MainPage
 {
@@ -30,6 +31,8 @@ namespace RimSharp.MyApp.MainPage
         // Properties for Module ViewModels (Injected)
         public ModsViewModel ModsVM { get; }
         public DownloaderViewModel? DownloaderVM { get; }
+        public GitModsViewModel GitModsVM { get; }
+
 
         // Application-wide settings or state
         public PathSettings PathSettings { get; }
@@ -49,8 +52,8 @@ namespace RimSharp.MyApp.MainPage
             IConfigService configService,
             IDialogService dialogService,
             ModsViewModel modsViewModel,             // Inject ModsViewModel
-            DownloaderViewModel downloaderViewModel  // Inject DownloaderViewModel
-            )
+            DownloaderViewModel downloaderViewModel,  // Inject DownloaderViewModel
+            GitModsViewModel gitModsViewModel)
         {
             _pathService = pathService;
             _configService = configService;
@@ -59,6 +62,8 @@ namespace RimSharp.MyApp.MainPage
             // --- Assign injected ViewModels ---
             ModsVM = modsViewModel;
             DownloaderVM = downloaderViewModel;
+            GitModsVM = gitModsViewModel;
+
             // --- No longer creating ModsVM here ---
             if (DownloaderVM != null)
             {
@@ -234,15 +239,15 @@ namespace RimSharp.MyApp.MainPage
         private void SwitchTab(object parameter)
         {
             var tabName = parameter as string;
-            if (string.IsNullOrEmpty(tabName) || tabName == SelectedTab) return;
+            if (string.IsNullOrEmpty(tabName)) return;
 
             ViewModelBase? nextViewModel = tabName switch
             {
                 "Mods" => ModsVM,
                 "Downloader" => DownloaderVM,
+                "GitMods" => GitModsVM, // Add this case
                 _ => null
             };
-
 
             if (nextViewModel != null && CurrentViewModel != nextViewModel)
             {
@@ -250,6 +255,7 @@ namespace RimSharp.MyApp.MainPage
                 SelectedTab = tabName;
             }
         }
+
 
         private void BrowsePath(object? parameter)
         {
