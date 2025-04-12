@@ -191,7 +191,7 @@ namespace RimSharp.Shared.Services.Implementations
                 bool isCoreMod = mod.PackageId == "Ludeon.RimWorld";
                 mod.IsCore = isCoreMod;
                 mod.IsExpansion = !isCoreMod;  // All other official mods in Data folder are expansions
-
+                mod.ModType = isCoreMod ? ModType.Core : ModType.Expansion;
                 // Append "[DLC]" to name if it's an expansion
                 if (mod.IsExpansion && !string.IsNullOrEmpty(mod.Name))
                 {
@@ -227,7 +227,7 @@ namespace RimSharp.Shared.Services.Implementations
                 bool isCoreMod = mod.PackageId == "Ludeon.RimWorld";
                 mod.IsCore = isCoreMod;
                 mod.IsExpansion = !isCoreMod;
-
+                mod.ModType = isCoreMod ? ModType.Core : ModType.Expansion;
                 if (mod.IsExpansion && !string.IsNullOrEmpty(mod.Name))
                 {
                     mod.Name = $"{mod.Name} [DLC]";
@@ -257,6 +257,21 @@ namespace RimSharp.Shared.Services.Implementations
                 {
                     mod.SteamId = folderName;
                     mod.SteamUrl = $"https://steamcommunity.com/workshop/filedetails/?id={folderName}";
+                    mod.ModType = ModType.WorkshopL;
+                }
+                else
+                {
+                    // Check for Git mod
+                    var gitDir = Path.Combine(dir, ".git");
+                    if (Directory.Exists(gitDir))
+                    {
+                        mod.ModType = ModType.Git;
+                    }
+                    else
+                    {
+                        // Default to Zipped if none of the above
+                        mod.ModType = ModType.Zipped;
+                    }
                 }
 
                 _allMods.Add(mod);
@@ -288,6 +303,21 @@ namespace RimSharp.Shared.Services.Implementations
                 {
                     mod.SteamId = folderName;
                     mod.SteamUrl = $"https://steamcommunity.com/workshop/filedetails/?id={folderName}";
+                    mod.ModType = ModType.WorkshopL;
+                }
+                else
+                {
+                    // Check for Git mod
+                    var gitDir = Path.Combine(dir, ".git");
+                    if (Directory.Exists(gitDir))
+                    {
+                        mod.ModType = ModType.Git;
+                    }
+                    else
+                    {
+                        // Default to Zipped if none of the above
+                        mod.ModType = ModType.Zipped;
+                    }
                 }
 
                 mods.Add(mod);

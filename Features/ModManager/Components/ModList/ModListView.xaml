@@ -14,8 +14,30 @@
              d:DesignHeight="400"
              d:DesignWidth="300">
     <UserControl.Resources>
-        <!-- SelectedItemsHolder is still used for CommandParameter in ContextMenu -->
         <local:SelectedItemsHolder x:Key="selectedItemsHolder" />
+        <Style x:Key="ModTypeBadgeStyle" TargetType="Border">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Margin" Value="0,0,5,0"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect ShadowDepth="1" Opacity="0.3" BlurRadius="2"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <Style x:Key="ModTypeBadgeTextStyle" TargetType="TextBlock">
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{StaticResource RimworldWhiteBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+        </Style>
+
     </UserControl.Resources>
     <Border Style="{StaticResource RimworldPanelBorder}">
         <Grid>
@@ -26,9 +48,8 @@
                 <!-- List -->
             </Grid.RowDefinitions>
 
-            <!-- Header (Bindings use ElementName, unchanged) -->
+            <!-- Header (Bindings use ElementName) -->
             <Border Grid.Row="0" Style="{StaticResource RimworldListHeaderBorder}">
-                <!-- ... Header Grid content unchanged ... -->
                  <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -206,20 +227,68 @@
                                 </ContextMenu>
                             </Border.ContextMenu>
 
+
                             <!-- Item Content (Bindings to ModItem, unchanged) -->
-                            <TextBlock Text="{Binding Name}"
-                                       ToolTip="{Binding Path}"
-                                       Margin="2,1"
-                                       Foreground="{Binding IsOutdatedRW,
+                            <StackPanel Orientation="Horizontal" Margin="2,1">
+                                <!-- Mod Type Badge -->
+                                <!-- Mod Type Badge -->
+<Border ToolTip="{Binding ModType, Converter={StaticResource ModTypeToDescriptionConverter}}">
+    <Border.Style>
+        <Style TargetType="Border" BasedOn="{StaticResource ModTypeBadgeStyle}">
+            <Setter Property="Background" Value="{StaticResource RimworldDarkBrownBrush}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ModType}" Value="Core">
+                    <Setter Property="Background" Value="{StaticResource RimworldRedBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding ModType}" Value="Expansion">
+                    <Setter Property="Background" Value="{StaticResource RimworldDarkGreenBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding ModType}" Value="Workshop">
+                    <Setter Property="Background" Value="{StaticResource RimworldBrownBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding ModType}" Value="WorkshopL">
+                    <Setter Property="Background" Value="{StaticResource RimworldHighlightBrush}"/>
+                    <Setter Property="Effect">
+                        <Setter.Value>
+                            <DropShadowEffect ShadowDepth="1" Opacity="0.5" BlurRadius="3"/>
+                        </Setter.Value>
+                    </Setter>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding ModType}" Value="Git">
+                    <Setter Property="Background" Value="{StaticResource RimworldDarkBeigeBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding ModType}" Value="Zipped">
+                    <Setter Property="Background" Value="{StaticResource RimworldGrayBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Border.Style>
+    <TextBlock Text="{Binding ModType, Converter={StaticResource ModTypeToInitialConverter}}">
+        <TextBlock.Style>
+            <Style TargetType="TextBlock" BasedOn="{StaticResource ModTypeBadgeTextStyle}">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding ModType}" Value="WorkshopL">
+                        <Setter Property="Foreground" Value="{StaticResource RimworldBlackBrush}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </TextBlock.Style>
+    </TextBlock>
+</Border>
+
+                                <!-- Mod Name -->
+                                <TextBlock Text="{Binding Name}"
+                                        VerticalAlignment="Center"
+                                        Foreground="{Binding IsOutdatedRW,
                                                     Converter={StaticResource BooleanToColorConverter},
                                                     ConverterParameter=RimworldErrorRed|RimworldBrown}"/>
+                            </StackPanel>
                         </Border>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
 
                 <!-- ItemContainerStyle unchanged -->
                 <ListBox.ItemContainerStyle>
-                   <!-- ... Style content unchanged ... -->
                     <Style TargetType="ListBoxItem"
                            BasedOn="{StaticResource {x:Type ListBoxItem}}">
                         <Setter Property="Padding" Value="0"/>
