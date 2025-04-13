@@ -21,7 +21,7 @@ using System.Windows.Input;
 namespace RimSharp.Features.ModManager.ViewModels.Actions
 {
     // Mark the class as partial
-    public partial class ModActionsViewModel : ViewModelBase
+    public partial class ModActionsViewModel : ViewModelBase // Ensure inherits from ViewModelBase
     {
         // Dependencies (Remain here)
         private readonly IModDataService _dataService;
@@ -37,13 +37,16 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private bool _hasUnsavedChanges;
         private ModItem _selectedMod; // For single-item actions
         private IList _selectedItems; // For multi-item actions
+        protected bool CanExecuteSimpleCommands() => !IsParentLoading;
 
         public bool IsParentLoading
         {
             get => _isParentLoading;
             set
             {
-                if (SetProperty(ref _isParentLoading, value)) RaiseCanExecuteChangedForAllCommands();
+                // Use base SetProperty, command observation handles updates
+                SetProperty(ref _isParentLoading, value);
+                // Manual RaiseCanExecuteChangedForAllCommands() removed
             }
         }
 
@@ -52,7 +55,13 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             get => _hasUnsavedChanges;
             set
             {
-                if (SetProperty(ref _hasUnsavedChanges, value)) RaiseCanExecuteChangedForAllCommands();
+                // Use base SetProperty, command observation handles updates
+                if (SetProperty(ref _hasUnsavedChanges, value))
+                {
+                    // Request update in parent VM if needed (handled by event)
+                    HasUnsavedChangesRequest?.Invoke(this, value);
+                }
+                // Manual RaiseCanExecuteChangedForAllCommands() removed
             }
         }
 
@@ -61,7 +70,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             get => _selectedMod;
             set
             {
-                if (SetProperty(ref _selectedMod, value)) RaiseCanExecuteChangedForAllCommands();
+                // Use base SetProperty, command observation handles updates
+                SetProperty(ref _selectedMod, value);
+                 // Manual RaiseCanExecuteChangedForAllCommands() removed
             }
         }
 
@@ -70,7 +81,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             get => _selectedItems;
             set
             {
-                if (SetProperty(ref _selectedItems, value)) RaiseCanExecuteChangedForAllCommands();
+                 // Use base SetProperty, command observation handles updates
+                SetProperty(ref _selectedItems, value);
+                 // Manual RaiseCanExecuteChangedForAllCommands() removed
             }
         }
 
@@ -139,43 +152,17 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             InitializeModActionsCommands();
             InitializeToolsAnalysisCommands();
             InitializeInstallationCommands();
-            InitializePlaceholderCommands(); // Add initialization for placeholders
+            InitializePlaceholderCommands();
         }
 
-        // Central CanExecuteChanged raiser (Remains here)
-        private void RaiseCanExecuteChangedForAllCommands()
-        {
-            // Use the specific command type for correct RaiseCanExecuteChanged invocation
-            (ClearActiveListCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-            (SortActiveListCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-            (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (ImportListCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-            (ExportListCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-            (ResolveDependenciesCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-            (CheckIncompatibilitiesCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-            (CheckDuplicatesCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (DeleteModCommand as AsyncRelayCommand<ModItem>)?.RaiseCanExecuteChanged();
-            (DeleteModsCommand as AsyncRelayCommand<IList>)?.RaiseCanExecuteChanged();
-            (OpenModFoldersCommand as RelayCommand<IList>)?.RaiseCanExecuteChanged();
-            (OpenUrlsCommand as RelayCommand<IList>)?.RaiseCanExecuteChanged();
-            (OpenWorkshopPagesCommand as RelayCommand<IList>)?.RaiseCanExecuteChanged();
-            (OpenOtherUrlsCommand as RelayCommand<IList>)?.RaiseCanExecuteChanged();
-            (StripModsCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (FixIntegrityCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (RunGameCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (InstallFromZipCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-            (InstallFromGithubCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-        }
+
+        // REMOVED: RaiseCanExecuteChangedForAllCommands() is no longer needed
 
         // --- Generic CanExecute Predicates (Can stay here or move if specific) ---
-        private bool CanExecuteSimpleCommands() => !IsParentLoading;
-        private bool CanExecuteSaveMods() => HasUnsavedChanges && !IsParentLoading;
-        private bool CanExecuteExport() => !IsParentLoading && _modListManager.VirtualActiveMods.Any();
-        private bool CanExecuteCheckIncompatibilities() => !IsParentLoading && _modListManager.VirtualActiveMods.Any();
-        private bool CanExecuteMultiSelectActions(IList selectedItems)
-        {
-            selectedItems = selectedItems ?? SelectedItems;
-            return selectedItems != null && selectedItems.Count > 0 && !IsParentLoading;
-        }
+        // These are now used directly in the CreateCommand calls
+
+        // --- Helper Methods (Remain in partial files) ---
+        // e.g., CanBeDeleted, OpenItems, etc.
+
     }
 }

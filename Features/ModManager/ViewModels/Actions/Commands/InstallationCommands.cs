@@ -1,7 +1,7 @@
 using Microsoft.Win32;
 using RimSharp.Core.Commands;
-using RimSharp.MyApp.AppFiles; // For ViewModelBase/RunOnUIThread if needed
-using RimSharp.MyApp.Dialogs; // For MessageDialogResult
+using RimSharp.MyApp.AppFiles;
+using RimSharp.MyApp.Dialogs;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -12,21 +12,25 @@ using System.Threading.Tasks;
 
 namespace RimSharp.Features.ModManager.ViewModels.Actions
 {
-    // Mark the class as partial
     public partial class ModActionsViewModel
     {
-        // Partial initialization method
         private void InitializeInstallationCommands()
         {
-            InstallFromZipCommand = new AsyncRelayCommand(ExecuteInstallFromZip, CanExecuteSimpleCommands);
-            InstallFromGithubCommand = new AsyncRelayCommand(ExecuteInstallFromGithub, CanExecuteSimpleCommands);
+            InstallFromZipCommand = CreateCancellableAsyncCommand(
+                ExecuteInstallFromZip,
+                CanExecuteSimpleCommands,
+                new[] { nameof(IsParentLoading) });
+
+            InstallFromGithubCommand = CreateCancellableAsyncCommand(
+                ExecuteInstallFromGithub,
+                CanExecuteSimpleCommands,
+                new[] { nameof(IsParentLoading) });
         }
 
-        // --- Execution Methods ---
-        public async Task ExecuteInstallFromZip(CancellationToken ct = default)
+        public async Task ExecuteInstallFromZip(CancellationToken ct)
         {
             IsLoadingRequest?.Invoke(this, true);
-            _installSuccess = false; // Reset flag
+            _installSuccess = false;
             try
             {
                 var fileDialog = new OpenFileDialog
@@ -35,12 +39,13 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     Title = "Select Mod Zip File"
                 };
 
-                if (fileDialog.ShowDialog() != true) return; // IsLoading reset in finally
+                bool? dialogResult = null;
+                await RunOnUIThreadAsync(() => dialogResult = fileDialog.ShowDialog());
+                if (dialogResult != true) return;
 
                 var zipPath = fileDialog.FileName;
                 ct.ThrowIfCancellationRequested();
 
-                // Use helper from ZipInstallationHelper.cs
                 if (!IsValidZipFile(zipPath))
                 {
                     _dialogService.ShowError("Invalid File", "The selected file is not a valid zip file.");
@@ -49,7 +54,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
                 using (var archive = ZipFile.OpenRead(zipPath))
                 {
-                    // Use helper from ZipInstallationHelper.cs
                     var modInfo = await ValidateModZip(archive, ct);
                     ct.ThrowIfCancellationRequested();
 
@@ -74,27 +78,24 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                         return;
                     }
 
-                    // Use helper from ZipInstallationHelper.cs
                     var rootFolder = GetRootModFolder(archive);
                     string modName = rootFolder == null
-                        ? Path.GetFileNameWithoutExtension(zipPath).Replace(" ", "") // Consider better sanitization
+                        ? Path.GetFileNameWithoutExtension(zipPath).Replace(" ", "")
                         : rootFolder.FullName.TrimEnd('/', '\\');
 
                     var targetDir = Path.Combine(modsPath, modName);
 
                     if (Directory.Exists(targetDir))
                     {
-                         _dialogService.ShowError("Install Error", $"A mod folder already exists at:\n{targetDir}");
-                         return;
+                        _dialogService.ShowError("Install Error", $"A mod folder already exists at:\n{targetDir}");
+                        return;
                     }
 
-                    // Consider adding validation for invalid characters in modName here
-
-                    // Use helper from ZipInstallationHelper.cs
                     await Task.Run(() => ExtractMod(archive, targetDir, rootFolder, ct), ct);
+                    ct.ThrowIfCancellationRequested();
 
                     _dialogService.ShowInformation("Install Complete", $"Mod '{modInfo.Name}' was successfully installed.");
-                    _installSuccess = true; // Set flag for finally block
+                    _installSuccess = true;
                 }
             }
             catch (OperationCanceledException)
@@ -112,35 +113,35 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 IsLoadingRequest?.Invoke(this, false);
                 if (_installSuccess)
                 {
-                    RequestDataRefresh?.Invoke(this, EventArgs.Empty); // Refresh data only on success
+                    RequestDataRefresh?.Invoke(this, EventArgs.Empty);
                 }
             }
         }
 
-        private async Task ExecuteInstallFromGithub(CancellationToken ct = default)
+        private async Task ExecuteInstallFromGithub(CancellationToken ct)
         {
             IsLoadingRequest?.Invoke(this, true);
-            _installSuccess = false; // Reset flag
+            _installSuccess = false;
             try
             {
-                // Step 1: Get URL
-                var (result, gitUrl) = _dialogService.ShowInputDialog(
-                    "Install from GitHub", "Enter the GitHub repository URL:", "");
+                var dialogResultTuple = await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    _dialogService.ShowInputDialog("Install from GitHub", "Enter the GitHub repository URL:", ""));
+
+                // Deconstruct the result returned by ShowInputDialog
+                (MessageDialogResult result, string gitUrl) = dialogResultTuple;
+
                 if (result != MessageDialogResult.OK || string.IsNullOrWhiteSpace(gitUrl)) return;
                 ct.ThrowIfCancellationRequested();
 
-                // Step 2: Validate (Uses GitHubInstallationHelper.cs)
                 var modInfo = await ValidateGitHubModRepo(gitUrl, ct);
-                if (modInfo == null) return; // Error shown in helper
+                if (modInfo == null) return;
                 ct.ThrowIfCancellationRequested();
 
-                // Step 3: Confirm
                 var confirmResult = _dialogService.ShowConfirmation(
                     "Confirm Installation", $"Are you sure you want to install the mod '{modInfo.Name}'?", showCancel: true);
                 if (confirmResult != MessageDialogResult.OK) return;
                 ct.ThrowIfCancellationRequested();
 
-                // Step 4: Prepare target directory
                 var modsPath = _pathService.GetModsPath();
                 if (string.IsNullOrEmpty(modsPath))
                 {
@@ -148,10 +149,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     return;
                 }
 
-                // Uses GitHubInstallationHelper.cs
                 var repoInfo = ParseGitHubUrl(gitUrl);
-                if (repoInfo == null) { /* Should have been caught by ValidateGitHubModRepo */ return; }
-                var modName = repoInfo.Value.repo; // Use repository name as folder name
+                if (repoInfo == null) { return; }
+                var modName = repoInfo.Value.repo;
                 var targetDir = Path.Combine(modsPath, modName);
 
                 if (Directory.Exists(targetDir))
@@ -160,17 +160,18 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     return;
                 }
 
-                // Step 5: Clone (Uses GitHubInstallationHelper.cs)
-                // Run synchronous LibGit2Sharp clone on a background thread
                 await Task.Run(() => CloneGitMod(gitUrl, targetDir), ct);
+                ct.ThrowIfCancellationRequested();
 
-                 _installSuccess = true; // Set flag for finally block
+                _dialogService.ShowInformation("Install Complete", $"Mod '{modInfo.Name}' was successfully installed from GitHub.");
+                _installSuccess = true;
             }
             catch (OperationCanceledException)
             {
+                Debug.WriteLine("[ExecuteInstallFromGithub] Installation cancelled.");
                 _dialogService.ShowWarning("Installation Cancelled", "Mod installation was cancelled.");
             }
-            catch (Exception ex) // Catch specific LibGit2Sharp exceptions if needed
+            catch (Exception ex)
             {
                 Debug.WriteLine($"Error installing mod from GitHub: {ex}");
                 _dialogService.ShowError("Install Error", $"Error installing mod: {ex.Message}");
@@ -178,9 +179,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             finally
             {
                 IsLoadingRequest?.Invoke(this, false);
-                 if (_installSuccess)
+                if (_installSuccess)
                 {
-                    RequestDataRefresh?.Invoke(this, EventArgs.Empty); // Refresh data only on success
+                    RequestDataRefresh?.Invoke(this, EventArgs.Empty);
                 }
             }
         }

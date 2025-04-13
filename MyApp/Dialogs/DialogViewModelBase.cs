@@ -1,25 +1,29 @@
 using System;
 using System.Collections.Generic;
 using System.Windows.Input;
-using RimSharp.Core.Commands;
 using RimSharp.MyApp.AppFiles;
 
 namespace RimSharp.MyApp.Dialogs
 {
     public abstract class DialogViewModelBase : ViewModelBase
     {
-        public string Title { get; protected set; }
+        private string _title;
+        public string Title
+        {
+            get => _title;
+            protected set => SetProperty(ref _title, value);
+        }
 
         // Event to signal the view to close
         public event EventHandler RequestCloseDialog;
 
         // Command to trigger the close request
-        public ICommand CloseCommand { get; }
+        private ICommand _closeCommand;
+        public ICommand CloseCommand => _closeCommand ??= CreateCommand(OnRequestCloseDialog);
 
         protected DialogViewModelBase(string title)
         {
             Title = title;
-            CloseCommand = new RelayCommand(_ => OnRequestCloseDialog());
         }
 
         protected virtual void OnRequestCloseDialog()
@@ -28,50 +32,60 @@ namespace RimSharp.MyApp.Dialogs
         }
     }
 
-    // Optional: Generic version if you need to return results easily
     public abstract class DialogViewModelBase<TResult> : DialogViewModelBase
     {
-        public TResult DialogResult { get; protected set; }
+        private TResult _dialogResult;
+        public TResult DialogResult
+        {
+            get => _dialogResult;
+            protected set => SetProperty(ref _dialogResult, value);
+        }
 
         // Command to close with a specific result
-        public ICommand CloseWithResultCommand { get; }
+        private ICommand _closeWithResultCommand;
+        public ICommand CloseWithResultCommand => _closeWithResultCommand ??= CreateCommand<object>(
+            execute: param => ExecuteCloseWithResult(param),
+            canExecute: param => CanExecuteCloseWithResult(param)
+        );
 
         protected DialogViewModelBase(string title) : base(title)
         {
-            // Generic command requires parameter conversion
-            CloseWithResultCommand = new RelayCommand(param =>
+        }
+
+        private bool CanExecuteCloseWithResult(object param)
+        {
+            return param is TResult
+                || (param != null && typeof(TResult).IsEnum && Enum.IsDefined(typeof(TResult), param))
+                || (param == null && !typeof(TResult).IsValueType);
+        }
+
+        private void ExecuteCloseWithResult(object param)
+        {
+            if (param is TResult result)
             {
-                if (param is TResult result)
-                {
-                    CloseDialog(result);
-                }
-                else if (param != null && typeof(TResult).IsEnum && Enum.IsDefined(typeof(TResult), param))
-                {
-                     CloseDialog((TResult)Enum.Parse(typeof(TResult), param.ToString()));
-                }
-                else if (param == null && !typeof(TResult).IsValueType) // Handle null for reference types
-                {
-                     CloseDialog(default(TResult)); // or handle appropriately
-                }
-                // Add more conversion logic if needed (e.g., string to bool)
-            });
+                CloseDialog(result);
+            }
+            else if (param != null && typeof(TResult).IsEnum && Enum.IsDefined(typeof(TResult), param))
+            {
+                CloseDialog((TResult)Enum.Parse(typeof(TResult), param.ToString()));
+            }
+            else if (param == null && !typeof(TResult).IsValueType)
+            {
+                CloseDialog(default(TResult));
+            }
         }
 
         public void CloseDialog(TResult result)
         {
             DialogResult = result;
-            OnRequestCloseDialog(); // Trigger the close event from base
+            OnRequestCloseDialog();
         }
 
-        // Override the parameterless close to provide a default result
         protected override void OnRequestCloseDialog()
         {
-            // If DialogResult hasn't been set, set it to default before closing
-            // This is useful for simple close actions (like clicking 'X')
             if (EqualityComparer<TResult>.Default.Equals(DialogResult, default(TResult)))
             {
-                 // Or set a specific default like 'Cancel' if applicable
-                 DialogResult = default(TResult);
+                DialogResult = default(TResult);
             }
             base.OnRequestCloseDialog();
         }

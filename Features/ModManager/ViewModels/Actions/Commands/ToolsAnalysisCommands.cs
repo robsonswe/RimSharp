@@ -1,10 +1,10 @@
 using RimSharp.Core.Commands;
 using RimSharp.Features.ModManager.Dialogs.DuplicateMods;
 using RimSharp.Features.ModManager.Dialogs.Incompatibilities;
-using RimSharp.Infrastructure.Mods.Validation.Incompatibilities; // For IncompatibilityGroup
-using RimSharp.MyApp.AppFiles; // For ViewModelBase/RunOnUIThread
-using RimSharp.MyApp.Dialogs; // For MessageDialogResult, MessageDialogType
-using RimSharp.Shared.Models; // For ModItem
+using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
+using RimSharp.MyApp.AppFiles;
+using RimSharp.MyApp.Dialogs;
+using RimSharp.Shared.Models;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -12,52 +12,72 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows; // For Application.Current etc.
+using System.Windows;
+using System.Windows.Input;
 
 namespace RimSharp.Features.ModManager.ViewModels.Actions
 {
-    // Mark the class as partial
     public partial class ModActionsViewModel
     {
-        // Partial initialization method
         private void InitializeToolsAnalysisCommands()
         {
-            ResolveDependenciesCommand = new AsyncRelayCommand(ExecuteResolveDependencies, CanExecuteSimpleCommands);
-            CheckIncompatibilitiesCommand = new AsyncRelayCommand(ExecuteCheckIncompatibilities, CanExecuteCheckIncompatibilities);
-            CheckDuplicatesCommand = new RelayCommand(ExecuteCheckDuplicates, CanExecuteSimpleCommands);
+            ResolveDependenciesCommand = CreateCancellableAsyncCommand(
+                ExecuteResolveDependencies,
+                CanExecuteSimpleCommands,
+                nameof(IsParentLoading));
+
+            CheckIncompatibilitiesCommand = CreateCancellableAsyncCommand(
+                ExecuteCheckIncompatibilities,
+                CanExecuteCheckIncompatibilities,
+                nameof(IsParentLoading));
+
+            CheckDuplicatesCommand = CreateCommand(
+                ExecuteCheckDuplicates,
+                CanExecuteSimpleCommands,
+                nameof(IsParentLoading));
         }
 
-        // Placeholder command initialization (can also be in a separate file if desired)
         private void InitializePlaceholderCommands()
         {
-             StripModsCommand = new RelayCommand(_ => _dialogService.ShowInformation("Not Implemented", "Strip mods: Functionality not yet implemented."), _ => !IsParentLoading);
-             FixIntegrityCommand = new RelayCommand(_ => _dialogService.ShowInformation("Not Implemented", "Fix integrity: Functionality not yet implemented."), _ => !IsParentLoading);
-             RunGameCommand = new RelayCommand(_ => _dialogService.ShowInformation("Not Implemented", "Run game: Functionality not yet implemented."), _ => !IsParentLoading);
-        }
+            StripModsCommand = CreateCommand(
+                () => _dialogService.ShowInformation("Not Implemented", "Strip mods: Functionality not yet implemented."),
+                () => true,
+                nameof(IsParentLoading));
 
-        // --- Execution Methods ---
-        private async Task ExecuteResolveDependencies(CancellationToken ct = default)
+            FixIntegrityCommand = CreateCommand(
+                () => _dialogService.ShowInformation("Not Implemented", "Fix integrity: Functionality not yet implemented."),
+                () => true,
+                nameof(IsParentLoading));
+
+            RunGameCommand = CreateCommand(
+                () => _dialogService.ShowInformation("Not Implemented", "Run game: Functionality not yet implemented."),
+                () => true,
+                nameof(IsParentLoading));
+        }
+        private bool CanExecuteCheckIncompatibilities() => !IsParentLoading && _modListManager.VirtualActiveMods.Any();
+
+        private async Task ExecuteResolveDependencies(CancellationToken ct)
         {
             IsLoadingRequest?.Invoke(this, true);
             try
             {
+                ct.ThrowIfCancellationRequested();
                 var result = await Task.Run(() => _modListManager.ResolveDependencies(), ct);
+                ct.ThrowIfCancellationRequested();
+
                 var (addedMods, missingDependencies) = result;
 
-                if (addedMods.Any()) HasUnsavedChangesRequest?.Invoke(this, true);
-
                 var message = new StringBuilder();
-                // --- Build Message ---
                 if (addedMods.Count > 0)
                 {
-                    message.AppendLine("The following dependencies were automatically added:");
+                    message.AppendLine("Dependencies automatically added:");
                     message.AppendLine();
                     foreach (var mod in addedMods) message.AppendLine($"- {mod.Name} ({mod.PackageId})");
                     message.AppendLine();
                 }
                 if (missingDependencies.Count > 0)
                 {
-                    message.AppendLine("The following dependencies are missing:");
+                    message.AppendLine("MISSING Dependencies:");
                     message.AppendLine();
                     foreach (var dep in missingDependencies)
                     {
@@ -67,8 +87,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                         message.AppendLine();
                     }
                 }
-                // --- Show Dialog ---
-                RunOnUIThread(() =>
+
+                await RunOnUIThreadAsync(() =>
                 {
                     if (message.Length == 0)
                         _dialogService.ShowInformation("Dependencies Check", "No missing dependencies found and no new dependencies were added.");
@@ -91,18 +111,19 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             finally { IsLoadingRequest?.Invoke(this, false); }
         }
 
-        private async Task ExecuteCheckIncompatibilities(CancellationToken ct = default)
+        private async Task ExecuteCheckIncompatibilities(CancellationToken ct)
         {
             IsLoadingRequest?.Invoke(this, true);
             try
             {
+                ct.ThrowIfCancellationRequested();
                 var activeMods = _modListManager.VirtualActiveMods.Select(entry => entry.Mod).ToList();
                 var incompatibilities = await Task.Run(() => _incompatibilityService.FindIncompatibilities(activeMods), ct);
                 ct.ThrowIfCancellationRequested();
 
                 if (incompatibilities.Count == 0)
                 {
-                    RunOnUIThread(() => _dialogService.ShowInformation("Compatibility Check", "No incompatibilities found."));
+                    await RunOnUIThreadAsync(() => _dialogService.ShowInformation("Compatibility Check", "No incompatibilities found."));
                     return;
                 }
 
@@ -111,11 +132,11 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
                 if (groups.Count == 0)
                 {
-                    RunOnUIThread(() => _dialogService.ShowInformation("Compatibility Check", "Incompatibilities found but could not be grouped for resolution."));
+                    await RunOnUIThreadAsync(() => _dialogService.ShowInformation("Compatibility Check", "Incompatibilities found but could not be grouped for resolution."));
                     return;
                 }
 
-                RunOnUIThread(() => ShowIncompatibilityDialog(groups)); // Helper defined below
+                await RunOnUIThreadAsync(() => ShowIncompatibilityDialog(groups));
             }
             catch (OperationCanceledException)
             {
@@ -130,7 +151,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             finally { IsLoadingRequest?.Invoke(this, false); }
         }
 
-        private void ExecuteCheckDuplicates() // Remains synchronous
+        private void ExecuteCheckDuplicates()
         {
             IsLoadingRequest?.Invoke(this, true);
             List<IGrouping<string, ModItem>> actualDuplicateGroups = null;
@@ -145,47 +166,41 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
                 if (actualDuplicateGroups.Any())
                 {
-                    ShowDuplicateModsDialog(actualDuplicateGroups); // Helper defined below
+                    RunOnUIThread(() => ShowDuplicateModsDialog(actualDuplicateGroups));
                 }
                 else
                 {
-                    _dialogService.ShowInformation("Duplicates Check", "No duplicate mods found based on Package ID.");
+                    RunOnUIThread(() => _dialogService.ShowInformation("Duplicates Check", "No duplicate mods found based on Package ID."));
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error checking duplicates: {ex}");
-                _dialogService.ShowError("Duplicates Error", $"Error checking for duplicate mods: {ex.Message}");
+                RunOnUIThread(() => _dialogService.ShowError("Duplicates Error", $"Error checking for duplicate mods: {ex.Message}"));
             }
             finally { IsLoadingRequest?.Invoke(this, false); }
         }
 
-
-        // --- Helper Methods for Dialogs/Callbacks (Specific to Tools/Analysis) ---
         private void ShowIncompatibilityDialog(List<IncompatibilityGroup> groups)
         {
             var dialogViewModel = new ModIncompatibilityDialogViewModel(
                 groups,
-                ApplyIncompatibilityResolutions, // Callback defined below
-                () => { /* Cancel handler */ }
+                ApplyIncompatibilityResolutions,
+                () => { }
             );
             var dialog = new ModIncompatibilityDialogView(dialogViewModel);
-            dialog.Owner = Application.Current.MainWindow;
+            dialog.Owner = Application.Current?.MainWindow;
             dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
             dialog.ShowDialog();
         }
 
-        private void ApplyIncompatibilityResolutions(List<ModItem> modsToRemove) // Remains synchronous
+        private void ApplyIncompatibilityResolutions(List<ModItem> modsToRemove)
         {
             if (modsToRemove == null || modsToRemove.Count == 0) return;
             try
             {
-                foreach (var mod in modsToRemove)
-                {
-                    _modListManager.DeactivateMod(mod);
-                }
-                HasUnsavedChangesRequest?.Invoke(this, true);
-                _dialogService.ShowInformation("Incompatibilities Resolved", $"Resolved incompatibilities by deactivating {modsToRemove.Count} mods.");
+                _modListManager.DeactivateMods(modsToRemove);
+                _dialogService.ShowInformation("Incompatibilities Resolved", $"Resolved incompatibilities by deactivating {modsToRemove.Count} mod(s).");
             }
             catch (Exception ex)
             {
@@ -197,13 +212,11 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private void ShowDuplicateModsDialog(List<IGrouping<string, ModItem>> duplicateGroups)
         {
             var dialogViewModel = new DuplicateModDialogViewModel(
-                    duplicateGroups,
-                    // Pass the call to the async void helper method in ModDeletionHelper.cs
-                    pathsToDelete => DeleteDuplicateModsAsyncInternal(pathsToDelete),
-                    () => { /* Cancel callback */ });
-
+                duplicateGroups,
+                pathsToDelete => DeleteDuplicateModsAsyncInternal(pathsToDelete),
+                () => { });
             var view = new DuplicateModDialogView(dialogViewModel);
-            view.Owner = Application.Current.MainWindow;
+            view.Owner = Application.Current?.MainWindow;
             view.WindowStartupLocation = WindowStartupLocation.CenterOwner;
             view.ShowDialog();
         }

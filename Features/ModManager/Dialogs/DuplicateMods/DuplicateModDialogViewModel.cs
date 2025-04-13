@@ -55,9 +55,10 @@ namespace RimSharp.Features.ModManager.Dialogs.DuplicateMods
                 CloseDialog(false);
             }
 
-            ApplyResolutionsCommand = new RelayCommand(_ => ApplyResolutions());
-            CancelCommand = new RelayCommand(_ => Cancel());
+            ApplyResolutionsCommand = CreateCommand(ApplyResolutions);
+            CancelCommand = CreateCommand(Cancel);
         }
+
 
         private void ApplyResolutions()
         {

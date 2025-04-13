@@ -1,6 +1,5 @@
 using System.Windows.Input;
-using RimSharp.Core.Commands;
-using RimSharp.MyApp.Dialogs;
+using RimSharp.MyApp.AppFiles;
 
 namespace RimSharp.MyApp.Dialogs
 {
@@ -26,8 +25,16 @@ namespace RimSharp.MyApp.Dialogs
             Message = message;
             Input = defaultInput;
 
-            OkCommand = new RelayCommand(_ => CloseDialog(MessageDialogResult.OK), _ => !string.IsNullOrWhiteSpace(Input));
-            CancelCommand = new RelayCommand(_ => CloseDialog(MessageDialogResult.Cancel));
+            // Use ViewModelBase helper methods
+            OkCommand = CreateCommand(
+                () => CloseDialog(MessageDialogResult.OK),
+                () => !string.IsNullOrWhiteSpace(Input),
+                nameof(Input) // Automatically observe Input property
+            );
+
+            CancelCommand = CreateCommand(
+                () => CloseDialog(MessageDialogResult.Cancel)
+            );
         }
     }
 }

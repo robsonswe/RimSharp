@@ -1,34 +1,70 @@
 #nullable enable
 using System;
+using System.ComponentModel; // Added for PropertyChangedEventHandler, PropertyChangedEventArgs
 using System.Windows.Input;
 using Microsoft.Web.WebView2.Wpf;
-using RimSharp.Core.Commands;
-using RimSharp.Features.WorkshopDownloader.ViewModels; // Keep reference to parent for IsOperationInProgress
+using RimSharp.Core.Commands.Base; // Added for DelegateCommand
+using RimSharp.Features.WorkshopDownloader.ViewModels;
 using RimSharp.MyApp.AppFiles;
 using RimSharp.Shared.Services.Contracts;
 using System.Diagnostics;
 using RimSharp.Features.WorkshopDownloader.Services;
-using RimSharp.Features.WorkshopDownloader.Models; // Needed for ModInfoDto
-using System.Threading.Tasks; // Needed for Task
-using System.Threading; // Needed for CancellationToken
+using RimSharp.Features.WorkshopDownloader.Models;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 {
-    public class BrowserViewModel : ViewModelBase
+    public class BrowserViewModel : ViewModelBase, IDisposable
     {
         private readonly IWebNavigationService _navigationService;
-        private readonly DownloaderViewModel _parentViewModel; // Keep parent for IsOperationInProgress checks
+        private readonly DownloaderViewModel _parentViewModel;
         private WebView2? _webView;
-        private IModExtractorService? _extractorService; // Add extractor service field
+        private IModExtractorService? _extractorService;
+        private bool _isDisposed = false;
 
-        // Properties
-        public bool CanGoBack => _navigationService.CanGoBack;
-        public bool CanGoForward => _navigationService.CanGoForward;
-        public bool IsValidModUrl => _navigationService.IsValidModUrl;
-        public string CurrentUrl => _navigationService.CurrentUrl;
+        // Properties (synced with navigation service)
+        private bool _canGoBack;
+        public bool CanGoBack
+        {
+            get => _canGoBack;
+            private set => SetProperty(ref _canGoBack, value);
+        }
 
-        // NEW Property: Expose mod info availability
-        public bool IsModInfoAvailable => _extractorService?.IsModInfoAvailable ?? false;
+        private bool _canGoForward;
+        public bool CanGoForward
+        {
+            get => _canGoForward;
+            private set => SetProperty(ref _canGoForward, value);
+        }
+
+        private bool _isValidModUrl;
+        public bool IsValidModUrl
+        {
+            get => _isValidModUrl;
+            private set => SetProperty(ref _isValidModUrl, value);
+        }
+
+        private string _currentUrl = string.Empty;
+        public string CurrentUrl
+        {
+            get => _currentUrl;
+            private set => SetProperty(ref _currentUrl, value);
+        }
+
+        private bool _isModInfoAvailable;
+        public bool IsModInfoAvailable
+        {
+            get => _isModInfoAvailable;
+            private set => SetProperty(ref _isModInfoAvailable, value);
+        }
+
+        private bool _isOperationInProgress;
+        public bool IsOperationInProgress
+        {
+            get => _isOperationInProgress;
+            private set => SetProperty(ref _isOperationInProgress, value);
+        }
 
         // Commands
         public ICommand GoBackCommand { get; }
@@ -38,77 +74,103 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
         // Events
         public event EventHandler<string>? StatusChanged;
-        public event EventHandler? ModInfoAvailabilityChanged; // NEW: Event for DownloadQueueViewModel
+        public event EventHandler? ModInfoAvailabilityChanged;
+
+        // Named handlers for unsubscribing
+        private EventHandler<string>? _navStatusHandler;
+        private EventHandler? _navStateChangedHandler;
+        private EventHandler<bool>? _navModUrlValidityHandler;
+        private EventHandler<string>? _navSucceededAndValidHandler;
+        private EventHandler? _extractorModInfoAvailableHandler;
+        private PropertyChangedEventHandler? _parentPropertyChangedHandler;
 
         public BrowserViewModel(IWebNavigationService navigationService, DownloaderViewModel parentViewModel)
         {
             _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
-            _parentViewModel = parentViewModel ?? throw new ArgumentNullException(nameof(parentViewModel)); // Store parent
+            _parentViewModel = parentViewModel ?? throw new ArgumentNullException(nameof(parentViewModel));
+
+            // Initialize properties from service/parent
+            _canGoBack = _navigationService.CanGoBack;
+            _canGoForward = _navigationService.CanGoForward;
+            _isValidModUrl = _navigationService.IsValidModUrl;
+            _currentUrl = _navigationService.CurrentUrl;
+            _isOperationInProgress = _parentViewModel.IsOperationInProgress;
 
             // Subscribe to navigation service events
-            _navigationService.StatusChanged += NavigationService_StatusChanged;
-            _navigationService.NavigationStateChanged += NavigationService_NavigationStateChanged;
-            _navigationService.ModUrlValidityChanged += NavigationService_ModUrlValidityChanged;
-            _navigationService.NavigationSucceededAndUrlValid += NavigationService_NavigationSucceededAndUrlValid; // Subscribe to this
+            _navStatusHandler = NavigationService_StatusChanged;
+            _navigationService.StatusChanged += _navStatusHandler;
 
-            // Initialize commands (reference parent's IsOperationInProgress)
-            GoBackCommand = new RelayCommand(
-                _ => _navigationService.GoBack(),
-                _ => CanGoBack && !_parentViewModel.IsOperationInProgress);
+            _navStateChangedHandler = NavigationService_NavigationStateChanged;
+            _navigationService.NavigationStateChanged += _navStateChangedHandler;
 
-            GoForwardCommand = new RelayCommand(
-                _ => _navigationService.GoForward(),
-                _ => CanGoForward && !_parentViewModel.IsOperationInProgress);
+            _navModUrlValidityHandler = NavigationService_ModUrlValidityChanged;
+            _navigationService.ModUrlValidityChanged += _navModUrlValidityHandler;
 
-            GoHomeCommand = new RelayCommand(
-                _ => _navigationService.GoHome(),
-                _ => !_parentViewModel.IsOperationInProgress);
+            _navSucceededAndValidHandler = NavigationService_NavigationSucceededAndUrlValid;
+            _navigationService.NavigationSucceededAndUrlValid += _navSucceededAndValidHandler;
 
-            NavigateToUrlCommand = new RelayCommand(
+            // Subscribe to parent VM changes
+            _parentPropertyChangedHandler = ParentViewModel_PropertyChanged;
+            _parentViewModel.PropertyChanged += _parentPropertyChangedHandler;
+
+            // Initialize commands using base class helpers
+            GoBackCommand = CreateCommand(
+                () => _navigationService.GoBack(),
+                () => !IsOperationInProgress && CanGoBack,
+                nameof(IsOperationInProgress), nameof(CanGoBack)
+            );
+
+            GoForwardCommand = CreateCommand(
+                () => _navigationService.GoForward(),
+                () => !IsOperationInProgress && CanGoForward,
+                nameof(IsOperationInProgress), nameof(CanGoForward)
+            );
+
+            GoHomeCommand = CreateCommand(
+                () => _navigationService.GoHome(),
+                () => !IsOperationInProgress,
+                nameof(IsOperationInProgress)
+            );
+
+            NavigateToUrlCommand = CreateCommand<string>(
                 ExecuteNavigateToUrlCommand,
-                _ => !_parentViewModel.IsOperationInProgress);
+                url => !IsOperationInProgress,
+                nameof(IsOperationInProgress)
+            );
         }
 
         public void SetWebView(WebView2 webView)
         {
+            if (_isDisposed) return;
             _webView = webView;
             _navigationService.SetWebView(webView);
 
-            // --- Extractor Service Initialization ---
-            // Unsubscribe from previous if exists
             if (_extractorService != null)
             {
-                _extractorService.IsModInfoAvailableChanged -= ExtractorService_IsModInfoAvailableChanged;
+                _extractorService.IsModInfoAvailableChanged -= _extractorModInfoAvailableHandler;
             }
 
-            // Create and store the new extractor service instance
             _extractorService = new ModExtractorService(webView);
-            // Subscribe to its event
-            _extractorService.IsModInfoAvailableChanged += ExtractorService_IsModInfoAvailableChanged;
+            _extractorModInfoAvailableHandler = ExtractorService_IsModInfoAvailableChanged;
+            _extractorService.IsModInfoAvailableChanged += _extractorModInfoAvailableHandler;
 
-            // Update initial state
             RunOnUIThread(() =>
-             {
-                 OnPropertyChanged(nameof(IsModInfoAvailable));
-                 ModInfoAvailabilityChanged?.Invoke(this, EventArgs.Empty);
-                 // Commands depending on this don't live here, so no need to RaiseCanExecuteChanged
-             });
-            // --- End Extractor Service Initialization ---
+            {
+                IsModInfoAvailable = _extractorService.IsModInfoAvailable;
+                ModInfoAvailabilityChanged?.Invoke(this, EventArgs.Empty);
+            });
         }
 
-        // NEW Method: Allow getting mod info (called by DownloadQueueViewModel)
-        public Task<ModInfoDto?> GetCurrentModInfoAsync(CancellationToken token = default) // Optional token
+        public Task<ModInfoDto?> GetCurrentModInfoAsync(CancellationToken token = default)
         {
-            if (_extractorService == null)
+            if (_isDisposed || _extractorService == null)
             {
-                StatusChanged?.Invoke(this, "Mod extractor not initialized.");
+                StatusChanged?.Invoke(this, "Mod extractor not initialized or VM disposed.");
                 return Task.FromResult<ModInfoDto?>(null);
             }
             try
             {
-                // Pass token if the service supports it
-                // return _extractorService.ExtractFullModInfo(token);
-                return _extractorService.ExtractFullModInfo(); // Assuming ExtractFullModInfo doesn't need token yet
+                return _extractorService.ExtractFullModInfo();
             }
             catch (Exception ex)
             {
@@ -118,8 +180,14 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             }
         }
 
-
-        // --- Event Handlers ---
+        // Event Handlers
+        private void ParentViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(DownloaderViewModel.IsOperationInProgress))
+            {
+                RunOnUIThread(() => IsOperationInProgress = _parentViewModel.IsOperationInProgress);
+            }
+        }
 
         private void NavigationService_StatusChanged(object? sender, string message)
         {
@@ -128,126 +196,144 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
         private void NavigationService_NavigationStateChanged(object? sender, EventArgs e)
         {
-            RunOnUIThread(() => { // Ensure UI thread
-                OnPropertyChanged(nameof(CanGoBack));
-                OnPropertyChanged(nameof(CanGoForward));
-                OnPropertyChanged(nameof(CurrentUrl));
-                RefreshCommandStates();
+            RunOnUIThread(() =>
+            {
+                CanGoBack = _navigationService.CanGoBack;
+                CanGoForward = _navigationService.CanGoForward;
+                CurrentUrl = _navigationService.CurrentUrl;
             });
         }
 
         private void NavigationService_ModUrlValidityChanged(object? sender, bool isValid)
         {
-             RunOnUIThread(() => { // Ensure UI thread
-                OnPropertyChanged(nameof(IsValidModUrl));
-                // State change might affect parent commands, parent should handle refreshing if needed
-            });
+            RunOnUIThread(() => IsValidModUrl = isValid);
         }
 
-        // NEW Handler: Trigger extraction when navigating to a valid URL
-        // *** CHANGED HERE: Removed Task.Run ***
         private async void NavigationService_NavigationSucceededAndUrlValid(object? sender, string url)
         {
-            if (_extractorService != null)
+            if (_isDisposed || _extractorService == null) return;
+
+            Debug.WriteLine($"[BrowserVM] Navigated to valid URL ({url}). Triggering info extraction.");
+            try
             {
-                Debug.WriteLine($"[BrowserVM] Navigated to valid URL ({url}). Triggering info extraction on UI thread.");
-                try
-                {
-                    // Call extraction directly; await ensures it completes before continuing the handler (if needed)
-                    // This runs on the UI thread because the event handler is invoked on the UI thread.
-                    await _extractorService.ExtractFullModInfo();
-                    // The result/state change will trigger ExtractorService_IsModInfoAvailableChanged
-                }
-                catch (Exception ex)
-                {
-                    // This catch is now likely for errors within ExtractFullModInfo itself
-                    Debug.WriteLine($"[BrowserVM] Extraction failed: {ex.Message}");
-                    RunOnUIThread(() => StatusChanged?.Invoke(this, $"Error during info extraction: {ex.Message}"));
-                }
+                await _extractorService.ExtractFullModInfo();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[BrowserVM] Extraction failed: {ex.Message}");
+                RunOnUIThread(() => StatusChanged?.Invoke(this, $"Error during info extraction: {ex.Message}"));
             }
         }
 
-
-        // NEW Handler: Respond to changes from the extractor service
         private void ExtractorService_IsModInfoAvailableChanged(object? sender, EventArgs e)
         {
-            RunOnUIThread(() => // Ensure UI thread for property/event changes
-            {
-                Debug.WriteLine($"[BrowserVM] ExtractorService_IsModInfoAvailableChanged. IsModInfoAvailable: {IsModInfoAvailable}");
-                OnPropertyChanged(nameof(IsModInfoAvailable));
-                ModInfoAvailabilityChanged?.Invoke(this, EventArgs.Empty); // Notify listeners (like DownloadQueueViewModel)
-            });
-        }
+            if (_isDisposed || _extractorService == null) return;
 
-        // --- Command Logic ---
-
-        // Can be called by Parent VM to reflect changes in IsOperationInProgress
-        public void RefreshCommandStates()
-        {
             RunOnUIThread(() =>
             {
-                ((RelayCommand)GoBackCommand).RaiseCanExecuteChanged();
-                ((RelayCommand)GoForwardCommand).RaiseCanExecuteChanged();
-                ((RelayCommand)GoHomeCommand).RaiseCanExecuteChanged();
-                ((RelayCommand)NavigateToUrlCommand).RaiseCanExecuteChanged();
+                bool newValue = _extractorService.IsModInfoAvailable;
+                if (IsModInfoAvailable != newValue)
+                {
+                    IsModInfoAvailable = newValue;
+                    Debug.WriteLine($"[BrowserVM] ExtractorService_IsModInfoAvailableChanged. IsModInfoAvailable: {IsModInfoAvailable}");
+                    ModInfoAvailabilityChanged?.Invoke(this, EventArgs.Empty);
+                }
             });
         }
 
-        private void ExecuteNavigateToUrlCommand(object? url)
+        // Command Logic
+        private void ExecuteNavigateToUrlCommand(string urlString)
         {
-            if (_parentViewModel.IsOperationInProgress) return; // Check parent state
+            if (string.IsNullOrEmpty(urlString)) return;
 
-            if (url is string urlString && !string.IsNullOrEmpty(urlString))
+            try
             {
-                try
+                if (_webView?.CoreWebView2 != null)
                 {
-                    // Ensure CoreWebView2 is available before navigating
-                    if (_webView?.CoreWebView2 != null)
-                    {
-                        // Prefer CoreWebView2.Navigate for better control and event handling
-                         _webView.CoreWebView2.Navigate(urlString);
-                    }
-                    else if (_webView != null && Uri.TryCreate(urlString, UriKind.Absolute, out var uri))
-                    {
-                        // Fallback: Set source directly - might not trigger all navigation events reliably
-                        _webView.Source = uri;
-                        Debug.WriteLine("[BrowserVM] Warning: Navigating via Source property. CoreWebView2 might not be fully ready.");
-                    }
-                    else
-                    {
-                        Debug.WriteLine("[BrowserVM] WebView or CoreWebView2 not initialized for navigation.");
-                        StatusChanged?.Invoke(this, "Browser component not ready for navigation.");
-                    }
+                    _webView.CoreWebView2.Navigate(urlString);
                 }
-                catch (ArgumentException ex) // Catch specific exceptions like invalid URI format
+                else if (_webView != null && Uri.TryCreate(urlString, UriKind.Absolute, out var uri))
                 {
-                     Debug.WriteLine($"[BrowserVM] Invalid URL format: {urlString} - {ex.Message}");
-                     StatusChanged?.Invoke(this, $"Invalid URL: {urlString}");
+                    _webView.Source = uri;
+                    Debug.WriteLine("[BrowserVM] Warning: Navigating via Source property.");
                 }
-                catch (Exception ex) // Catch other potential navigation errors
+                else
                 {
-                    Debug.WriteLine($"[BrowserVM] Navigation error: {ex.Message}");
-                    StatusChanged?.Invoke(this, $"Error navigating to URL: {ex.Message}");
+                    Debug.WriteLine("[BrowserVM] WebView or CoreWebView2 not initialized.");
+                    StatusChanged?.Invoke(this, "Browser component not ready.");
                 }
+            }
+            catch (ArgumentException ex)
+            {
+                Debug.WriteLine($"[BrowserVM] Invalid URL format: {urlString} - {ex.Message}");
+                StatusChanged?.Invoke(this, $"Invalid URL: {urlString}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[BrowserVM] Navigation error: {ex.Message}");
+                StatusChanged?.Invoke(this, $"Error navigating to URL: {ex.Message}");
             }
         }
 
-        // NEW Cleanup method
+        // Dispose Implementation
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_isDisposed) return;
+
+            if (disposing)
+            {
+                Debug.WriteLine("[BrowserVM] Disposing...");
+                // Unsubscribe from navigation service
+                if (_navigationService != null)
+                {
+                    if (_navStatusHandler != null) _navigationService.StatusChanged -= _navStatusHandler;
+                    if (_navStateChangedHandler != null) _navigationService.NavigationStateChanged -= _navStateChangedHandler;
+                    if (_navModUrlValidityHandler != null) _navigationService.ModUrlValidityChanged -= _navModUrlValidityHandler;
+                    if (_navSucceededAndValidHandler != null) _navigationService.NavigationSucceededAndUrlValid -= _navSucceededAndValidHandler;
+                }
+
+                // Unsubscribe from extractor service
+                if (_extractorService != null)
+                {
+                    if (_extractorModInfoAvailableHandler != null) _extractorService.IsModInfoAvailableChanged -= _extractorModInfoAvailableHandler;
+                    (_extractorService as IDisposable)?.Dispose();
+                }
+
+                // Unsubscribe from parent VM
+                if (_parentViewModel != null && _parentPropertyChangedHandler != null)
+                {
+                    _parentViewModel.PropertyChanged -= _parentPropertyChangedHandler;
+                }
+
+                // Clear handlers
+                _navStatusHandler = null;
+                _navStateChangedHandler = null;
+                _navModUrlValidityHandler = null;
+                _navSucceededAndValidHandler = null;
+                _extractorModInfoAvailableHandler = null;
+                _parentPropertyChangedHandler = null;
+
+                _webView = null;
+                Debug.WriteLine("[BrowserVM] Dispose complete.");
+            }
+
+            _isDisposed = true;
+        }
+
         public void Cleanup()
         {
-            _navigationService.StatusChanged -= NavigationService_StatusChanged;
-            _navigationService.NavigationStateChanged -= NavigationService_NavigationStateChanged;
-            _navigationService.ModUrlValidityChanged -= NavigationService_ModUrlValidityChanged;
-            _navigationService.NavigationSucceededAndUrlValid -= NavigationService_NavigationSucceededAndUrlValid;
+            Dispose();
+        }
 
-            if (_extractorService != null)
-            {
-                _extractorService.IsModInfoAvailableChanged -= ExtractorService_IsModInfoAvailableChanged;
-                // Assuming IModExtractorService doesn't need explicit disposal
-            }
-            // Clear WebView reference if needed, though parent usually owns it
-            // _webView = null;
-             Debug.WriteLine("BrowserViewModel cleaned up.");
+        ~BrowserViewModel()
+        {
+            Dispose(false);
         }
     }
 }
