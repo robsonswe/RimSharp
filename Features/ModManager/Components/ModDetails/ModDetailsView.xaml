@@ -75,7 +75,7 @@
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Grid.Resources>
                     <Style TargetType="TextBlock" x:Key="InfoLabel">
@@ -135,8 +135,20 @@
                     </ContentControl>
                 </Border>
 
-                <TextBlock Grid.Row="4" Grid.Column="0" Text="Path:" Style="{StaticResource InfoLabel}"/>
-                <Grid Grid.Row="4" Grid.Column="1">
+            <TextBlock Grid.Row="4" Grid.Column="0" Text="Tags:" Style="{StaticResource InfoLabel}"
+                    Visibility="{Binding CurrentMod.Tags, Converter={StaticResource IsNotNullOrEmptyToVisibilityConverter}}"/>
+            <TextBox Grid.Row="4" Grid.Column="1" 
+                    Text="{Binding CurrentMod.Tags, Mode=OneWay}" 
+                    IsReadOnly="True"
+                    BorderThickness="0"
+                    Background="Transparent"
+                    Foreground="{StaticResource RimworldBrownBrush}"
+                    TextWrapping="Wrap"
+                    VerticalAlignment="Top"
+                    Visibility="{Binding CurrentMod.Tags, Converter={StaticResource IsNotNullOrEmptyToVisibilityConverter}}"/>
+
+                <TextBlock Grid.Row="5" Grid.Column="0" Text="Path:" Style="{StaticResource InfoLabel}"/>
+                <Grid Grid.Row="5" Grid.Column="1">
                     <TextBox Text="{Binding CurrentMod.Path, Mode=OneWay}"
                              IsReadOnly="True"
                              BorderThickness="0"

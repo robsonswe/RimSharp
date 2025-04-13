@@ -294,9 +294,10 @@ namespace RimSharp.Shared.Services.Implementations
                 mod.ExternalUrl = customInfo.ExternalUrl;
             }
 
-            // Apply Tags (newly created property)
-            // Note: ModItem needs to be updated to include Tags property
-            // For now, we'll add the tag information in comments
+            if (!string.IsNullOrEmpty(customInfo.Tags))
+            {
+                mod.Tags = customInfo.Tags;
+            }
 
             // Apply SupportedVersions
             if (customInfo.SupportedVersions != null && customInfo.SupportedVersions.Count > 0)
