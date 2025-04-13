@@ -1,0 +1,129 @@
+<local:BaseDialog x:Class="RimSharp.Features.ModManager.Dialogs.CustomizeMod.CustomizeModDialogView"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                 xmlns:local="clr-namespace:RimSharp.Infrastructure.Dialog"
+                 Width="500"
+                 Height="500"
+                 Title="{Binding Title}">
+    
+    <!-- Main Content -->
+    <local:BaseDialog.MainContent>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="10">
+                <!-- Basic Mod Info (just for reference) -->
+                <TextBlock Text="Basic Properties"
+                           FontWeight="Bold"
+                           Margin="0,0,0,5" />
+                
+                <!-- External URL -->
+                <TextBlock Text="External URL:"
+                           Margin="0,10,0,2" />
+                <TextBox Text="{Binding ExternalUrl}"
+                         Margin="0,0,0,10" />
+                
+                <!-- Tags -->
+                <TextBlock Text="Tags (comma-separated):"
+                           Margin="0,0,0,2" />
+                <TextBox Text="{Binding Tags}"
+                         Margin="0,0,0,10" />
+                
+                <!-- Supported Versions -->
+                <TextBlock Text="Supported Versions (comma-separated):"
+                           Margin="0,0,0,2" />
+                <TextBox Text="{Binding SupportedVersions}"
+                         Margin="0,0,0,10" />
+                
+                <!-- Load Bottom -->
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    
+                    <CheckBox Grid.Column="0"
+                              Grid.Row="0"
+                              Content="Load Bottom"
+                              IsChecked="{Binding LoadBottom}"
+                              Margin="0,0,10,0" />
+                    
+                    <TextBlock Grid.Column="0"
+                               Grid.Row="1"
+                               Text="Comment:"
+                               Margin="0,5,10,0" />
+                    
+                    <TextBox Grid.Column="1"
+                             Grid.Row="1"
+                             Text="{Binding LoadBottomComment}"
+                             IsEnabled="{Binding LoadBottom}" />
+                </Grid>
+                
+                <!-- Rules Sections -->
+                <Expander Header="Load Rules"
+                          IsExpanded="True"
+                          Margin="0,0,0,10">
+                    <StackPanel Margin="10">
+                        <TextBlock Text="Load Before (format: PackageId:DisplayName:Comment; ...):"
+                                   Margin="0,0,0,2" />
+                        <TextBox Text="{Binding LoadBefore}"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 Height="60"
+                                 Margin="0,0,0,10" />
+                        
+                        <TextBlock Text="Load After (format: PackageId:DisplayName:Comment; ...):"
+                                   Margin="0,0,0,2" />
+                        <TextBox Text="{Binding LoadAfter}"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 Height="60"
+                                 Margin="0,0,0,10" />
+                    </StackPanel>
+                </Expander>
+                
+                <Expander Header="Incompatibilities"
+                          IsExpanded="False"
+                          Margin="0,0,0,10">
+                    <StackPanel Margin="10">
+                        <TextBlock Text="Incompatible With (format: PackageId:DisplayName:Comment:IsHard; ...):"
+                                   Margin="0,0,0,2" />
+                        <TextBox Text="{Binding IncompatibleWith}"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 Height="60"
+                                 Margin="0,0,0,10" />
+                    </StackPanel>
+                </Expander>
+                
+                <!-- Help text -->
+                <TextBlock TextWrapping="Wrap" 
+                           Margin="0,10,0,0" 
+                           Foreground="Gray">
+                    Note: These settings override the mod's original settings. Leave fields empty to use the mod's default values.
+                </TextBlock>
+            </StackPanel>
+        </ScrollViewer>
+    </local:BaseDialog.MainContent>
+    
+    <!-- Button Content -->
+    <local:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,10,0,0">
+            <Button Content="Save"
+                    Command="{Binding SaveCommand}"
+                    Style="{StaticResource RimworldButtonStyle}"
+                    Margin="0,0,10,0"
+                    Width="80" />
+            <Button Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    Style="{StaticResource RimworldButtonStyle}"
+                    Width="80" />
+        </StackPanel>
+    </local:BaseDialog.ButtonContent>
+</local:BaseDialog>

@@ -3,6 +3,7 @@ using RimSharp.MyApp.Dialogs;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
 using System.Threading;
+using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
 
 namespace RimSharp.Infrastructure.Dialog
 {
@@ -90,5 +91,17 @@ namespace RimSharp.Infrastructure.Dialog
             dialog.ShowDialog();
             return (viewModel.DialogResult, viewModel.Input);
         }
+
+        public ModCustomizationResult ShowCustomizeModDialog(CustomizeModDialogViewModel viewModel)
+        {
+            var dialog = new CustomizeModDialogView(viewModel)
+            {
+                Owner = Application.Current?.MainWindow,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+            dialog.ShowDialog();
+            return viewModel.DialogResult;
+        }
+
     }
 }

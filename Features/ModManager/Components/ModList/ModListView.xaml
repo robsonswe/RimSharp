@@ -202,6 +202,54 @@
                                         </Separator.Style>
                                     </Separator>
 
+                                    <MenuItem Header="Customize Mod"
+Command="{Binding PlacementTarget.Tag.ModActionsViewModel.CustomizeModCommand, 
+         RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                            CommandParameter="{Binding}">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="⚙️" FontSize="14"/>
+                                        </MenuItem.Icon>
+                                        <MenuItem.Style>
+                                            <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <!-- Hide for Core and Expansion mods -->
+                                                    <DataTrigger Binding="{Binding ModType}" Value="Core">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ModType}" Value="Expansion">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                    <!-- Hide when multiple items are selected -->
+                                                    <DataTrigger Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="0">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/>
+                                                            <Condition Binding="{Binding ModType}" Value="Core"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/>
+                                                            <Condition Binding="{Binding ModType}" Value="Expansion"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </MultiDataTrigger>
+                                                    <DataTrigger Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="2">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </MenuItem.Style>
+                                    </MenuItem>
+
+
                                     <MenuItem Header="Delete Mod"
                                               Command="{Binding PlacementTarget.Tag.ModActionsViewModel.DeleteModsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}">

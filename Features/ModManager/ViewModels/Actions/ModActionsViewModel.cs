@@ -17,6 +17,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
 
 namespace RimSharp.Features.ModManager.ViewModels.Actions
 {
@@ -31,6 +32,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private readonly IDialogService _dialogService;
         private readonly IModIncompatibilityService _incompatibilityService;
         private readonly IPathService _pathService;
+
+        private readonly IModService _modService;
 
         // State properties (Remain here)
         private bool _isParentLoading;
@@ -72,7 +75,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             {
                 // Use base SetProperty, command observation handles updates
                 SetProperty(ref _selectedMod, value);
-                 // Manual RaiseCanExecuteChangedForAllCommands() removed
+                // Manual RaiseCanExecuteChangedForAllCommands() removed
             }
         }
 
@@ -81,9 +84,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             get => _selectedItems;
             set
             {
-                 // Use base SetProperty, command observation handles updates
+                // Use base SetProperty, command observation handles updates
                 SetProperty(ref _selectedItems, value);
-                 // Manual RaiseCanExecuteChangedForAllCommands() removed
+                // Manual RaiseCanExecuteChangedForAllCommands() removed
             }
         }
 
@@ -112,6 +115,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         public ICommand StripModsCommand { get; private set; }
         public ICommand FixIntegrityCommand { get; private set; }
         public ICommand RunGameCommand { get; private set; }
+        public ICommand CustomizeModCommand { get; private set; }
 
         // Installation
         public ICommand InstallFromZipCommand { get; private set; }
@@ -133,7 +137,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             IModListManager modListManager,
             IModIncompatibilityService incompatibilityService,
             IDialogService dialogService,
-            IPathService pathService)
+            IPathService pathService,
+            IModService modService)
         {
             _dataService = dataService;
             _commandService = commandService;
@@ -142,6 +147,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             _incompatibilityService = incompatibilityService;
             _dialogService = dialogService;
             _pathService = pathService;
+            _modService = modService;
             InitializeCommands(); // Calls partial initialization methods
         }
 
@@ -153,7 +159,43 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             InitializeToolsAnalysisCommands();
             InitializeInstallationCommands();
             InitializePlaceholderCommands();
+            CustomizeModCommand = CreateCommand<ModItem>(
+                execute: mod => ExecuteCustomizeMod(mod),
+                canExecute: mod => CanExecutizeMod(mod));
+
         }
+
+        private bool CanExecutizeMod(ModItem mod)
+        {
+            return !IsParentLoading && mod != null && mod.ModType != ModType.Core && mod.ModType != ModType.Expansion;
+        }
+
+        private async Task ExecuteCustomizeMod(ModItem mod)
+        {
+            if (mod == null) return;
+
+            try
+            {
+                Debug.WriteLine($"Attempting to customize mod: {mod.PackageId}");
+                var customInfo = _modService.GetCustomModInfo(mod.PackageId);
+                var viewModel = new CustomizeModDialogViewModel(mod, customInfo, _modService);
+
+                Debug.WriteLine("Showing customize dialog...");
+                var result = _dialogService.ShowCustomizeModDialog(viewModel);
+                Debug.WriteLine($"Dialog result: {result}");
+
+                if (result == ModCustomizationResult.Save)
+                {
+                    Debug.WriteLine("Saving custom mod info...");
+                    RequestDataRefresh?.Invoke(this, EventArgs.Empty);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error in ExecuteCustomizeMod: {ex}");
+            }
+        }
+
 
 
         // REMOVED: RaiseCanExecuteChangedForAllCommands() is no longer needed
