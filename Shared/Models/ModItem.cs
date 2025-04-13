@@ -58,6 +58,8 @@ namespace RimSharp.Shared.Models
 
         public string DateStamp { get; set; }
         public string UpdateDate { get; set; }
+        
+        public string Tags { get; set; }
 
         public IEnumerable<string> SupportedVersionStrings => SupportedVersions.Select(v => v.Version);
     }

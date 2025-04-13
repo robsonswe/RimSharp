@@ -21,11 +21,13 @@ namespace RimSharp.Shared.Services.Implementations
         private string _currentMajorVersion = string.Empty;
 
         private readonly IModRulesService _rulesService;
+        private readonly IModCustomService _customService;
 
-
-        public ModService(IPathService pathService)
+        public ModService(IPathService pathService, IModRulesService rulesService, IModCustomService customService)
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
+            _rulesService = rulesService ?? throw new ArgumentNullException(nameof(rulesService));
+            _customService = customService ?? throw new ArgumentNullException(nameof(customService));
         }
 
         public IEnumerable<ModItem> GetLoadedMods() => _allMods;
@@ -56,6 +58,9 @@ namespace RimSharp.Shared.Services.Implementations
             // Apply rules to all mods
             _rulesService.ApplyRulesToMods(_allMods);
 
+            // Apply custom information to mods
+            _customService.ApplyCustomInfoToMods(_allMods);
+
             // Now check for outdated status after rules have been applied
             foreach (var mod in _allMods)
             {
@@ -67,11 +72,6 @@ namespace RimSharp.Shared.Services.Implementations
         }
 
 
-        public ModService(IPathService pathService, IModRulesService rulesService)
-        {
-            _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
-            _rulesService = rulesService ?? throw new ArgumentNullException(nameof(rulesService));
-        }
         #region Timestamp File Creation
 
         /// <summary>
@@ -159,6 +159,20 @@ namespace RimSharp.Shared.Services.Implementations
 
             // Apply rules to all mods at once
             _rulesService.ApplyRulesToMods(_allMods);
+
+            // Apply custom information to mods
+            if (_customService != null)
+            {
+                try
+                {
+                    _customService.ApplyCustomInfoToMods(_allMods);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Error applying custom mod info: {ex.Message}");
+                    // Continue without custom info if there's an error
+                }
+            }
 
             // Now check for outdated status after rules have been applied
             foreach (var mod in _allMods)
@@ -566,6 +580,43 @@ namespace RimSharp.Shared.Services.Implementations
             {
                 // Ignore errors parsing ModsConfig.xml
             }
+        }
+        public async Task SaveCustomModInfoAsync(string packageId, ModCustomInfo customInfo)
+        {
+            if (string.IsNullOrEmpty(packageId))
+                throw new ArgumentNullException(nameof(packageId));
+
+            if (customInfo == null)
+                throw new ArgumentNullException(nameof(customInfo));
+
+            await _customService.SaveCustomModInfoAsync(packageId, customInfo);
+
+            // After saving, reload the custom info into the mods
+            _customService.ApplyCustomInfoToMods(_allMods);
+        }
+
+        // Add method for removing custom mod info
+        public async Task RemoveCustomModInfoAsync(string packageId)
+        {
+            if (string.IsNullOrEmpty(packageId))
+                throw new ArgumentNullException(nameof(packageId));
+
+            await _customService.RemoveCustomModInfoAsync(packageId);
+
+            // Reload mods to reflect the removal
+            await LoadModsAsync();
+        }
+
+        // Add method to get custom mod info
+        public ModCustomInfo GetCustomModInfo(string packageId)
+        {
+            if (string.IsNullOrEmpty(packageId))
+                throw new ArgumentNullException(nameof(packageId));
+
+            if (_customService == null)
+                throw new InvalidOperationException("IModCustomService was not initialized.");
+
+            return _customService.GetCustomModInfo(packageId);
         }
 
     }

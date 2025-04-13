@@ -42,6 +42,16 @@
     <Content>{"rules":{}}</Content>
   </None>
 
+  <None Include="Custom\**\*">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </None>
+
+  <!-- Create a default rules.json if it doesn't exist -->
+  <None Include="Custom\mods.json" Condition="!Exists('Custom\mods.json')">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Content>{"mods":{}}</Content>
+  </None>
+
   <!-- Your existing items -->
   <None Include="Lists\**\*" Condition="Exists('Lists\**\*')">
     <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -57,13 +67,21 @@
   <WriteLinesToFile File="$(ProjectDir)Rules\rules.json" Lines="{&quot;rules&quot;:{}}" Overwrite="false" Condition="!Exists('$(ProjectDir)Rules\rules.json')" />
 </Target>
 
+<Target Name="EnsureRulesDirectoryExists" BeforeTargets="PrepareForBuild">
+  <MakeDir Directories="$(ProjectDir)Custom" Condition="!Exists('$(ProjectDir)Custom')" />
+  <!-- Create a default rules.json if it doesn't exist -->
+  <WriteLinesToFile File="$(ProjectDir)Custom\mods.json" Lines="{&quot;mods&quot;:{}}" Overwrite="false" Condition="!Exists('$(ProjectDir)Custom\mods.json')" />
+</Target>
+
 <Target Name="PostBuild" AfterTargets="PostBuild">
   <!-- Create directories and copy files -->
   <MakeDir Directories="$(OutputPath)Rules" />
   <MakeDir Directories="$(OutputPath)Lists" />
+  <MakeDir Directories="$(OutputPath)Custom" />
 
   <!-- Copy Rules folder contents - without condition to ensure it always tries -->
   <Copy SourceFiles="@(None)" DestinationFiles="@(None->'$(OutputPath)%(RelativeDir)%(Filename)%(Extension)')" Condition="'%(None.RelativeDir)' != '' AND '%(None.RelativeDir)'.StartsWith('Rules\')" />
+  <Copy SourceFiles="@(None)" DestinationFiles="@(None->'$(OutputPath)%(RelativeDir)%(Filename)%(Extension)')" Condition="'%(None.RelativeDir)' != '' AND '%(None.RelativeDir)'.StartsWith('Custom\')" />
 
   <!-- Copy config file -->
   <Copy SourceFiles="config.cfg" DestinationFolder="$(OutputPath)" Condition="Exists('config.cfg')" />

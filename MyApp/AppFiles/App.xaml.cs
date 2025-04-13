@@ -72,15 +72,25 @@ namespace RimSharp.MyApp.AppFiles
                 return pathSettings;
             });
 
+            services.AddSingleton(provider =>
+            {
+                // Get the base path of the application
+                var basePath = AppDomain.CurrentDomain.BaseDirectory;
+                provider.GetRequiredService<ILoggerService>()?.LogDebug($"Application base path: {basePath}", "App.ConfigureServices");
+                return basePath;
+            });
             // --- Mod Rules ---
             services.AddSingleton<IModRulesRepository, JsonModRulesRepository>();
             services.AddSingleton<IModRulesService, ModRulesService>();
+            services.AddSingleton<IModCustomService, ModCustomService>(provider =>
+                new ModCustomService(provider.GetRequiredService<string>()));
 
             // --- Core Mod Services ---
             services.AddSingleton<IModService>(provider =>
                 new ModService(
                     provider.GetRequiredService<IPathService>(),
-                    provider.GetRequiredService<IModRulesService>()
+                    provider.GetRequiredService<IModRulesService>(),
+                    provider.GetRequiredService<IModCustomService>()
                 ));
             services.AddSingleton<IModListManager, ModListManager>();
             services.AddSingleton<ModLookupService>();
@@ -121,18 +131,18 @@ namespace RimSharp.MyApp.AppFiles
 
             // --- ViewModels ---
             // Register ViewModels - Use AddTransient unless you specifically need a singleton lifecycle
-             services.AddTransient<ModsViewModel>(provider =>
-                new ModsViewModel(
-                    provider.GetRequiredService<IModDataService>(),
-                    provider.GetRequiredService<IModFilterService>(),
-                    provider.GetRequiredService<IModCommandService>(),
-                    provider.GetRequiredService<IModListIOService>(),
-                    provider.GetRequiredService<IModListManager>(),
-                    provider.GetRequiredService<IModIncompatibilityService>(),
-                    provider.GetRequiredService<IDialogService>(),
-                    provider.GetRequiredService<IModService>(),
-                    provider.GetRequiredService<IPathService>()
-                ));
+            services.AddTransient<ModsViewModel>(provider =>
+               new ModsViewModel(
+                   provider.GetRequiredService<IModDataService>(),
+                   provider.GetRequiredService<IModFilterService>(),
+                   provider.GetRequiredService<IModCommandService>(),
+                   provider.GetRequiredService<IModListIOService>(),
+                   provider.GetRequiredService<IModListManager>(),
+                   provider.GetRequiredService<IModIncompatibilityService>(),
+                   provider.GetRequiredService<IDialogService>(),
+                   provider.GetRequiredService<IModService>(),
+                   provider.GetRequiredService<IPathService>()
+               ));
 
             services.AddTransient<DownloaderViewModel>(provider =>
                 new DownloaderViewModel(
@@ -152,7 +162,7 @@ namespace RimSharp.MyApp.AppFiles
                 new GitModsViewModel(
                     provider.GetRequiredService<IModService>(),
                     provider.GetRequiredService<IModListManager>()
-                    // Add any other dependencies GitModsViewModel might need here
+                // Add any other dependencies GitModsViewModel might need here
                 ));
             // ************************************************
             // ************************************************
@@ -223,7 +233,7 @@ namespace RimSharp.MyApp.AppFiles
             {
                 // Log the exception that occurred during startup (could be during DI resolution or Show())
                 _logger.LogException(ex, "Unhandled exception during application startup.", "App.OnStartup");
-                 MessageBox.Show($"An critical error occurred during startup: {ex.Message}\n\nPlease check the application logs for more details.", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"An critical error occurred during startup: {ex.Message}\n\nPlease check the application logs for more details.", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown(-2);
             }
         }
@@ -237,13 +247,13 @@ namespace RimSharp.MyApp.AppFiles
             var dialogService = ServiceProvider?.GetService<IDialogService>(); // Use GetService for safety
             if (dialogService != null && Application.Current?.MainWindow != null && Application.Current.MainWindow.IsVisible)
             {
-                 dialogService.ShowError("Unhandled Error", $"An unexpected error occurred: {e.Exception.Message}\n\nThe application may become unstable. Please check logs.");
+                dialogService.ShowError("Unhandled Error", $"An unexpected error occurred: {e.Exception.Message}\n\nThe application may become unstable. Please check logs.");
             }
             else
             {
                 MessageBox.Show($"An unexpected error occurred: {e.Exception.Message}\n\nThe application may become unstable. Please check logs.", "Unhandled Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-           
+
             e.Handled = true; // Prevent WPF default crash dialog
             // Consider Shutdown(-3) depending on severity or if recovery isn't possible.
         }
@@ -252,14 +262,14 @@ namespace RimSharp.MyApp.AppFiles
         {
             if (e.ExceptionObject is Exception ex)
             {
-                 _logger?.LogException(ex, $"Unhandled non-UI exception occurred. IsTerminating: {e.IsTerminating}", "App.CurrentDomainUnhandled");
+                _logger?.LogException(ex, $"Unhandled non-UI exception occurred. IsTerminating: {e.IsTerminating}", "App.CurrentDomainUnhandled");
             }
             else
             {
                 _logger?.LogCritical($"Unhandled non-UI exception occurred with non-exception object: {e.ExceptionObject}", "App.CurrentDomainUnhandled");
             }
-             // Can't reliably show UI here. Logging is key.
-             // If e.IsTerminating is true, the app is going down anyway.
+            // Can't reliably show UI here. Logging is key.
+            // If e.IsTerminating is true, the app is going down anyway.
         }
 
         protected override void OnExit(ExitEventArgs e)

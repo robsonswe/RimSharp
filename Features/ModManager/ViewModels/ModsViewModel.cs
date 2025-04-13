@@ -26,6 +26,7 @@ namespace RimSharp.Features.ModManager.ViewModels
         private readonly IModListManager _modListManager;
         private readonly IDialogService _dialogService;
         private readonly IPathService _pathService;
+        private readonly IModService _modService;
 
 
         // --- Child ViewModels ---
@@ -126,6 +127,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             _modListManager = modListManager;
             _dialogService = dialogService;
             _pathService = pathService;
+            _modService = modService;
 
             // Initialize command using base helper, observing IsLoading
             // Use CreateCancellableAsyncCommand as ExecuteRequestRefreshAsync accepts a CancellationToken
@@ -135,7 +137,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             ModListViewModel = new ModListViewModel(_filterService, _modListManager, commandService, _dialogService);
             ModDetailsViewModel = new ModDetailsViewModel(_dialogService);
             ModActionsViewModel = new ModActionsViewModel(
-                _dataService, commandService, ioService, _modListManager, incompatibilityService, _dialogService, _pathService
+                _dataService, commandService, ioService, _modListManager, incompatibilityService, _dialogService, _pathService, _modService
                 );
 
             // --- Event Wiring ---

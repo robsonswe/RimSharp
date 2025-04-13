@@ -32,6 +32,36 @@ namespace RimSharp.Shared.Services.Contracts
         /// </summary>
         /// <returns>A <see cref="Task"/> representing the asynchronous loading operation.</returns>
         Task LoadModsAsync();
+        
+        /// <summary>
+        /// Creates the DateStamp and timestamp.txt files for a successfully downloaded mod.
+        /// </summary>
+        /// <param name="steamId">The Steam Workshop ID of the mod.</param>
+        /// <param name="publishDate">The publish date in Steam's format (d MMM yyyy @ h:mmtt).</param>
+        /// <param name="standardDate">The publish date in standard format (dd/MM/yyyy HH:mm:ss).</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous file creation operation.</returns>
         Task CreateTimestampFilesAsync(string steamId, string publishDate, string standardDate);
+        
+        /// <summary>
+        /// Retrieves the custom information for a specific mod.
+        /// </summary>
+        /// <param name="packageId">The package ID of the mod.</param>
+        /// <returns>The custom information for the mod, or null if not found.</returns>
+        ModCustomInfo GetCustomModInfo(string packageId);
+        
+        /// <summary>
+        /// Saves custom information for a mod.
+        /// </summary>
+        /// <param name="packageId">The package ID of the mod.</param>
+        /// <param name="customInfo">The custom information to save.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous save operation.</returns>
+        Task SaveCustomModInfoAsync(string packageId, ModCustomInfo customInfo);
+        
+        /// <summary>
+        /// Removes custom information for a mod.
+        /// </summary>
+        /// <param name="packageId">The package ID of the mod.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous remove operation.</returns>
+        Task RemoveCustomModInfoAsync(string packageId);
     }
 }
