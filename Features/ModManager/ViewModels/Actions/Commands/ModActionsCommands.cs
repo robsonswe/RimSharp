@@ -1,6 +1,6 @@
 using RimSharp.Core.Commands;
 using RimSharp.Shared.Models;
-using RimSharp.MyApp.AppFiles; // For ViewModelBase/RunOnUIThread if needed
+using RimSharp.MyApp.AppFiles;
 using System;
 using System.Collections;
 using System.Diagnostics;
@@ -8,75 +8,93 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Input;
 
 namespace RimSharp.Features.ModManager.ViewModels.Actions
 {
-    // Mark the class as partial
     public partial class ModActionsViewModel
     {
-        // Partial initialization method
         private void InitializeModActionsCommands()
         {
-            DeleteModCommand = new AsyncRelayCommand<ModItem>(ExecuteDeleteModAsync, CanExecuteDeleteMod);
-            DeleteModsCommand = new AsyncRelayCommand<IList>(ExecuteDeleteModsAsync, CanExecuteDeleteMods);
-            OpenModFoldersCommand = new RelayCommand<IList>(OpenModFolders, CanExecuteMultiSelectActions);
-            OpenUrlsCommand = new RelayCommand<IList>(OpenUrls, CanExecuteMultiSelectActions);
-            OpenWorkshopPagesCommand = new RelayCommand<IList>(OpenWorkshopPages, CanExecuteMultiSelectActions);
-            OpenOtherUrlsCommand = new RelayCommand<IList>(OpenOtherUrls, CanExecuteMultiSelectActions);
+            DeleteModCommand = CreateAsyncCommand<ModItem>(
+                mod => ExecuteDeleteModAsync(mod, CancellationToken.None),
+                CanExecuteDeleteMod,
+                nameof(SelectedMod), nameof(IsParentLoading));
+
+            DeleteModsCommand = CreateAsyncCommand<IList>(
+                items => ExecuteDeleteModsAsync(items, CancellationToken.None),
+                CanExecuteDeleteMods,
+                nameof(SelectedItems), nameof(IsParentLoading));
+
+            OpenModFoldersCommand = CreateCommand<IList>(
+                OpenModFolders,
+                CanExecuteMultiSelectActions,
+                nameof(SelectedItems), nameof(IsParentLoading));
+
+            OpenUrlsCommand = CreateCommand<IList>(
+                OpenUrls,
+                CanExecuteMultiSelectActions,
+                nameof(SelectedItems), nameof(IsParentLoading));
+
+            OpenWorkshopPagesCommand = CreateCommand<IList>(
+                OpenWorkshopPages,
+                CanExecuteMultiSelectActions,
+                nameof(SelectedItems), nameof(IsParentLoading));
+
+            OpenOtherUrlsCommand = CreateCommand<IList>(
+                OpenOtherUrls,
+                CanExecuteMultiSelectActions,
+                nameof(SelectedItems), nameof(IsParentLoading));
         }
 
-        // --- CanExecute Methods ---
         private bool CanExecuteDeleteMod(ModItem mod)
         {
             mod = mod ?? SelectedMod;
-            // Uses the CanBeDeleted helper method defined in ModDeletionHelper.cs
-            return CanBeDeleted(mod) && !string.IsNullOrEmpty(mod.Path) && Directory.Exists(mod.Path) && !IsParentLoading;
+            return CanBeDeleted(mod) && !string.IsNullOrEmpty(mod?.Path) && !IsParentLoading;
         }
 
         private bool CanExecuteDeleteMods(IList selectedItems)
         {
             selectedItems = selectedItems ?? SelectedItems;
-            // Uses the CanBeDeleted helper method defined in ModDeletionHelper.cs
             return selectedItems != null
                 && selectedItems.Count > 0
                 && selectedItems.Cast<ModItem>().Any(CanBeDeleted)
                 && !IsParentLoading;
         }
 
-        // --- Execution Methods (Call Helpers) ---
-        private async Task ExecuteDeleteModAsync(ModItem mod, CancellationToken ct = default)
+        private bool CanExecuteMultiSelectActions(IList selectedItems)
         {
-            // Calls the helper method defined in ModDeletionHelper.cs
-            await DeleteSingleModAsyncInternal(mod, ct);
+            selectedItems = selectedItems ?? SelectedItems;
+            return selectedItems != null && selectedItems.Count > 0 && !IsParentLoading;
         }
 
-        private async Task ExecuteDeleteModsAsync(IList selectedItems, CancellationToken ct = default)
+        private async Task ExecuteDeleteModAsync(ModItem mod, CancellationToken ct)
         {
-            // Calls the helper method defined in ModDeletionHelper.cs
-            await DeleteMultipleModsAsyncInternal(selectedItems, ct);
+            await DeleteSingleModAsyncInternal(mod ?? SelectedMod, ct);
+        }
+
+        private async Task ExecuteDeleteModsAsync(IList selectedItems, CancellationToken ct)
+        {
+            await DeleteMultipleModsAsyncInternal(selectedItems ?? SelectedItems, ct);
         }
 
         private void OpenModFolders(IList selectedItems)
         {
-            // Calls the helper method defined in ModOpeningHelper.cs
             OpenItems(selectedItems ?? SelectedItems, m => m.Path, "folders", Directory.Exists);
         }
 
         private void OpenUrls(IList selectedItems)
         {
-            // Calls the helper method defined in ModOpeningHelper.cs
             OpenItems(selectedItems ?? SelectedItems, m => m.Url, "URLs");
         }
 
         private void OpenWorkshopPages(IList selectedItems)
         {
-             // Calls the helper method defined in ModOpeningHelper.cs
             OpenItems(selectedItems ?? SelectedItems, m => m.SteamUrl, "workshop pages");
         }
 
         private void OpenOtherUrls(IList selectedItems)
         {
-             // Calls the helper method defined in ModOpeningHelper.cs
             OpenItems(selectedItems ?? SelectedItems, m => m.ExternalUrl, "external URLs");
         }
     }

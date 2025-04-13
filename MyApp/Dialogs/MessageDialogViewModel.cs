@@ -2,7 +2,8 @@ using System;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
-using RimSharp.Core.Commands;
+using RimSharp.Core.Commands; // Keep specific command type if needed
+using RimSharp.Core.Commands.Base; // For DelegateCommand
 
 namespace RimSharp.MyApp.Dialogs
 {
@@ -28,21 +29,15 @@ namespace RimSharp.MyApp.Dialogs
         public string Message { get; }
         public MessageDialogType DialogType { get; }
 
-        // Button Visibility Flags (can add Yes/No later)
+        // Button Visibility Flags
         public bool ShowOkButton { get; set; } = true;
         public bool ShowCancelButton { get; set; } = false;
-        // public bool ShowYesButton { get; set; } = false;
-        // public bool ShowNoButton { get; set; } = false;
-
         public bool ShowCopyButton { get; set; }
 
 
-        // Specific commands binding to CloseDialog with appropriate result
+        // Commands
         public ICommand OkCommand { get; }
         public ICommand CancelCommand { get; }
-        // public ICommand YesCommand { get; }
-        // public ICommand NoCommand { get; }
-
         public ICommand CopyToClipboardCommand { get; }
 
         public MessageDialogViewModel(string title, string message, MessageDialogType type = MessageDialogType.Information)
@@ -51,33 +46,28 @@ namespace RimSharp.MyApp.Dialogs
             Message = message;
             DialogType = type;
 
-            // Initialize commands to close with specific results
-            OkCommand = new RelayCommand(_ => CloseDialog(MessageDialogResult.OK));
-            CancelCommand = new RelayCommand(_ => CloseDialog(MessageDialogResult.Cancel));
-            // YesCommand = new RelayCommand(_ => CloseDialog(MessageDialogResult.Yes));
-            // NoCommand = new RelayCommand(_ => CloseDialog(MessageDialogResult.No));
+            // Use base CloseDialog method via standard commands (no dependencies)
+            OkCommand = new DelegateCommand(() => CloseDialog(MessageDialogResult.OK));
+            CancelCommand = new DelegateCommand(() => CloseDialog(MessageDialogResult.Cancel));
+            CopyToClipboardCommand = new DelegateCommand(CopyToClipboard);
 
-            CopyToClipboardCommand = new RelayCommand(_ => CopyToClipboard());
-
-            // Configure default buttons based on type (optional refinement)
             if (type == MessageDialogType.Question)
             {
                 ShowOkButton = false;
-                // ShowYesButton = true;
-                // ShowNoButton = true;
+                // Configure Yes/No visibility if added later
             }
         }
         private void CopyToClipboard()
         {
             try
             {
+                 // Consider running on UI thread if called from non-UI context, though unlikely for dialogs
                 Clipboard.SetText(Message);
-                // Optionally show a brief confirmation
-                // You could use a separate dialog service call here if needed
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Failed to copy to clipboard: {ex}");
+                // Maybe show error dialog?
             }
         }
 

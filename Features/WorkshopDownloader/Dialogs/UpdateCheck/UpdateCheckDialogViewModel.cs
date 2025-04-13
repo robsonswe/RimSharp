@@ -5,7 +5,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Windows.Data;
 using System.Windows.Input;
-using RimSharp.Core.Commands;
+using RimSharp.MyApp.AppFiles; // For ViewModelBase
 using RimSharp.MyApp.Dialogs;
 using RimSharp.Shared.Models;
 
@@ -19,10 +19,7 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
 
     public class UpdateCheckDialogViewModel : DialogViewModelBase<UpdateCheckDialogResult>
     {
-        // Store the original collection
         private readonly ObservableCollection<UpdateCheckItemViewModel> _modsToCheck;
-
-        // Expose the view for binding
         public ICollectionView ModsView { get; }
 
         public ICommand SelectAllCommand { get; }
@@ -32,183 +29,116 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
         public ICommand CancelCommand { get; }
         public ICommand SortCommand { get; }
 
-        // Add properties to track current sort state (for UI binding)
-        private string _currentSortProperty = nameof(UpdateCheckItemViewModel.Name); // Default sort
+        private string _currentSortProperty = UpdateCheckItemViewModel.NamePropertyName;
         public string CurrentSortProperty
         {
             get => _currentSortProperty;
-            private set
-            {
-                if (_currentSortProperty != value)
-                {
-                    _currentSortProperty = value;
-                    OnPropertyChanged(nameof(CurrentSortProperty));
-                    UpdateSortIndicators();
-                }
-            }
+            private set => SetProperty(ref _currentSortProperty, value);
         }
 
         private ListSortDirection _currentSortDirection = ListSortDirection.Ascending;
         public ListSortDirection CurrentSortDirection
         {
             get => _currentSortDirection;
-            private set
-            {
-                if (_currentSortDirection != value)
-                {
-                    _currentSortDirection = value;
-                    OnPropertyChanged(nameof(CurrentSortDirection));
-                    UpdateSortIndicators();
-                }
-            }
+            private set => SetProperty(ref _currentSortDirection, value);
         }
 
-        // Properties for each column's sort state
-        private string _nameSortState = "SortedAscending"; // Default initial sort
-        public string NameSortState
-        {
-            get => _nameSortState;
-            private set
-            {
-                if (_nameSortState != value)
-                {
-                    _nameSortState = value;
-                    OnPropertyChanged(nameof(NameSortState));
-                }
-            }
-        }
-
+        private string _nameSortState = "SortedAscending";
+        public string NameSortState { get => _nameSortState; private set => SetProperty(ref _nameSortState, value); }
         private string _packageIdSortState = "";
-        public string PackageIdSortState
-        {
-            get => _packageIdSortState;
-            private set
-            {
-                if (_packageIdSortState != value)
-                {
-                    _packageIdSortState = value;
-                    OnPropertyChanged(nameof(PackageIdSortState));
-                }
-            }
-        }
-
+        public string PackageIdSortState { get => _packageIdSortState; private set => SetProperty(ref _packageIdSortState, value); }
         private string _steamIdSortState = "";
-        public string SteamIdSortState
-        {
-            get => _steamIdSortState;
-            private set
-            {
-                if (_steamIdSortState != value)
-                {
-                    _steamIdSortState = value;
-                    OnPropertyChanged(nameof(SteamIdSortState));
-                }
-            }
-        }
-
+        public string SteamIdSortState { get => _steamIdSortState; private set => SetProperty(ref _steamIdSortState, value); }
         private string _localUpdateDateSortState = "";
-        public string LocalUpdateDateSortState
+        public string LocalUpdateDateSortState { get => _localUpdateDateSortState; private set => SetProperty(ref _localUpdateDateSortState, value); }
+
+        // Track selection state to simplify CanExecute
+        private bool _hasSelectedItems;
+        public bool HasSelectedItems
         {
-            get => _localUpdateDateSortState;
-            private set
-            {
-                if (_localUpdateDateSortState != value)
-                {
-                    _localUpdateDateSortState = value;
-                    OnPropertyChanged(nameof(LocalUpdateDateSortState));
-                }
-            }
+            get => _hasSelectedItems;
+            private set => SetProperty(ref _hasSelectedItems, value);
         }
 
         public UpdateCheckDialogViewModel(IEnumerable<ModItem> workshopMods)
             : base("Check Mod Updates")
         {
-            var checkItems = workshopMods.Select(mod => new UpdateCheckItemViewModel(mod));
+            var checkItems = workshopMods
+                .Select(mod => new UpdateCheckItemViewModel(mod))
+                .OrderBy(vm => vm.Name);
             _modsToCheck = new ObservableCollection<UpdateCheckItemViewModel>(checkItems);
 
-            // Create the CollectionViewSource and get the view
             ModsView = CollectionViewSource.GetDefaultView(_modsToCheck);
-            ApplySort(); // Apply initial sort
 
-            SelectAllCommand = new RelayCommand(ExecuteSelectAll);
-            SelectNoneCommand = new RelayCommand(ExecuteSelectNone);
-            SelectActiveCommand = new RelayCommand(ExecuteSelectActive); // <-- Instantiate new command
-            SortCommand = new RelayCommand(ExecuteSort);
+            // Initialize commands using ViewModelBase helpers
+            SelectAllCommand = CreateCommand(ExecuteSelectAll);
+            SelectNoneCommand = CreateCommand(ExecuteSelectNone);
+            SelectActiveCommand = CreateCommand(ExecuteSelectActive);
+            CancelCommand = CreateCommand(() => CloseDialog(UpdateCheckDialogResult.Cancel));
+            SortCommand = CreateCommand<string>(ExecuteSort);
 
-            UpdateCommand = new RelayCommand(
-                _ => CloseDialog(UpdateCheckDialogResult.CheckUpdates),
-                CanExecuteUpdate
-             );
+            // UpdateCommand observes HasSelectedItems
+            UpdateCommand = CreateCommand(
+                () => CloseDialog(UpdateCheckDialogResult.CheckUpdates),
+                () => HasSelectedItems,
+                nameof(HasSelectedItems)
+            );
 
-            CancelCommand = new RelayCommand(
-                 _ => CloseDialog(UpdateCheckDialogResult.Cancel)
-             );
-
-             // Monitor selection changes on the original collection items
-             foreach(var item in _modsToCheck)
-             {
-                 item.PropertyChanged += (s,e) => {
-                     if (e.PropertyName == nameof(UpdateCheckItemViewModel.IsSelected))
-                     {
-                         ((RelayCommand)UpdateCommand).RaiseCanExecuteChanged();
-                     }
-                 };
-             }
-        }
-
-        private void ExecuteSelectAll(object parameter)
-        {
+            // Subscribe to item changes to update HasSelectedItems
             foreach (var item in _modsToCheck)
             {
-                item.IsSelected = true;
+                item.PropertyChanged += Item_PropertyChanged;
             }
+            // Initialize selection state
+            UpdateSelectionState();
+            // Update sort indicators
+            UpdateSortIndicators();
         }
 
-        private void ExecuteSelectNone(object parameter)
+        private void Item_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            foreach (var item in _modsToCheck)
+            if (e.PropertyName == UpdateCheckItemViewModel.IsSelectedPropertyName)
             {
-                item.IsSelected = false;
+                UpdateSelectionState();
             }
         }
 
-        // <-- Add new execution method
-        private void ExecuteSelectActive(object parameter)
+        private void UpdateSelectionState()
         {
-            foreach (var item in _modsToCheck)
+            HasSelectedItems = _modsToCheck.Any(item => item.IsSelected);
+        }
+
+        private void ExecuteSelectAll()
+        {
+            foreach (var item in _modsToCheck) item.IsSelected = true;
+        }
+
+        private void ExecuteSelectNone()
+        {
+            foreach (var item in _modsToCheck) item.IsSelected = false;
+        }
+
+        private void ExecuteSelectActive()
+        {
+            foreach (var item in _modsToCheck) item.IsSelected = item.Mod?.IsActive ?? false;
+        }
+
+        private void ExecuteSort(string propertyName)
+        {
+            if (string.IsNullOrEmpty(propertyName)) return;
+
+            if (CurrentSortProperty == propertyName)
             {
-                // Select the item if its underlying ModItem is Active
-                item.IsSelected = item.Mod?.IsActive ?? false;
+                CurrentSortDirection = (CurrentSortDirection == ListSortDirection.Ascending)
+                    ? ListSortDirection.Descending
+                    : ListSortDirection.Ascending;
             }
-            // The PropertyChanged handler within the constructor already handles
-            // updating the CanExecute state of the UpdateCommand when IsSelected changes.
-        }
-
-        private bool CanExecuteUpdate(object parameter)
-        {
-            return _modsToCheck.Any(item => item.IsSelected);
-        }
-
-        private void ExecuteSort(object parameter)
-        {
-            if (parameter is string propertyName)
+            else
             {
-                if (CurrentSortProperty == propertyName)
-                {
-                    // Toggle direction if sorting by the same property
-                    CurrentSortDirection = (CurrentSortDirection == ListSortDirection.Ascending)
-                        ? ListSortDirection.Descending
-                        : ListSortDirection.Ascending;
-                }
-                else
-                {
-                    // New property, sort ascending
-                    CurrentSortProperty = propertyName;
-                    CurrentSortDirection = ListSortDirection.Ascending;
-                }
-
-                ApplySort();
+                CurrentSortProperty = propertyName;
+                CurrentSortDirection = ListSortDirection.Ascending;
             }
+            ApplySort();
         }
 
         private void ApplySort()
@@ -218,44 +148,34 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
                 ModsView.SortDescriptions.Clear();
                 ModsView.SortDescriptions.Add(new SortDescription(CurrentSortProperty, CurrentSortDirection));
             }
-
-            // Update the sort indicators after applying sort
             UpdateSortIndicators();
         }
 
-        // Update the sort indicators for each column
         private void UpdateSortIndicators()
         {
-            // Clear all indicators
-            NameSortState = "";
-            PackageIdSortState = "";
-            SteamIdSortState = "";
-            LocalUpdateDateSortState = "";
-
-            // Set indicator for the sorted column
+            NameSortState = ""; PackageIdSortState = ""; SteamIdSortState = ""; LocalUpdateDateSortState = "";
             string sortState = CurrentSortDirection == ListSortDirection.Ascending ? "SortedAscending" : "SortedDescending";
 
             switch (CurrentSortProperty)
             {
-                case nameof(UpdateCheckItemViewModel.Name):
-                    NameSortState = sortState;
-                    break;
-                case nameof(UpdateCheckItemViewModel.PackageId):
-                    PackageIdSortState = sortState;
-                    break;
-                case nameof(UpdateCheckItemViewModel.SteamId):
-                    SteamIdSortState = sortState;
-                    break;
-                case nameof(UpdateCheckItemViewModel.LocalUpdateDate):
-                    LocalUpdateDateSortState = sortState;
-                    break;
+                case UpdateCheckItemViewModel.NamePropertyName: NameSortState = sortState; break;
+                case UpdateCheckItemViewModel.PackageIdPropertyName: PackageIdSortState = sortState; break;
+                case UpdateCheckItemViewModel.SteamIdPropertyName: SteamIdSortState = sortState; break;
+                case UpdateCheckItemViewModel.LocalUpdateDatePropertyName: LocalUpdateDateSortState = sortState; break;
             }
         }
 
-        // Method to get the selected ModItems still uses the original collection
         public IEnumerable<ModItem> GetSelectedMods()
         {
             return _modsToCheck.Where(vm => vm.IsSelected).Select(vm => vm.Mod);
+        }
+
+        public void Cleanup()
+        {
+            foreach (var item in _modsToCheck)
+            {
+                item.PropertyChanged -= Item_PropertyChanged;
+            }
         }
     }
 }

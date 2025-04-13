@@ -19,37 +19,44 @@ namespace RimSharp.Features.ModManager.ViewModels
             get => _currentMod;
             set
             {
+                // Use base SetProperty
                 if (SetProperty(ref _currentMod, value))
                 {
-                    (OpenUrlCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                    // Raise property changed for all derived properties if needed
+                    // Command observation handles CanExecute updates automatically
                     OnPropertyChanged(nameof(HasValidUrlOrPath));
+                    // Manual RaiseCanExecuteChanged removed:
+                    // (OpenUrlCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
 
+        // This property depends on CurrentMod
         public bool HasValidUrlOrPath => CurrentMod != null &&
                                          (!string.IsNullOrWhiteSpace(CurrentMod.Url) ||
                                           (!string.IsNullOrWhiteSpace(CurrentMod.Path) && Directory.Exists(CurrentMod.Path)));
 
 
         // --- Commands specific to the SINGLE selected mod ---
-        public ICommand OpenUrlCommand { get; private set; } // Renamed for clarity
+        public ICommand OpenUrlCommand { get; } // Renamed for clarity
 
 
         public ModDetailsViewModel(IDialogService dialogService)
         {
             _dialogService = dialogService;
-            OpenUrlCommand = new RelayCommand(ExecuteOpenUrl, CanExecuteOpenUrl);
+            // Use base helper CreateCommand and observe CurrentMod
+            // CanExecute depends on HasValidUrlOrPath, which depends on CurrentMod
+            OpenUrlCommand = CreateCommand(ExecuteOpenUrl, CanExecuteOpenUrl, nameof(CurrentMod));
         }
 
         private bool CanExecuteOpenUrl()
         {
+            // Dependency observed by command
             return HasValidUrlOrPath;
         }
 
         private void ExecuteOpenUrl()
         {
+             // CanExecute check already done by framework
             if (CurrentMod == null) return;
 
             string target = CurrentMod.Url; // Prefer URL
@@ -66,7 +73,6 @@ namespace RimSharp.Features.ModManager.ViewModels
 
             try
             {
-                // Use ShellExecute for both URLs and Folders
                 Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
             }
             catch (Exception ex)
