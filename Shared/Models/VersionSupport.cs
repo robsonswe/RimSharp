@@ -10,7 +10,7 @@ namespace RimSharp.Shared.Models
 
         public VersionSupport(string version, bool unofficial = false)
         {
-            Version = version ?? throw new ArgumentNullException(nameof(version));
+            Version = version?.Trim() ?? throw new ArgumentNullException(nameof(version));
             Unofficial = unofficial;
         }
 

@@ -4,6 +4,7 @@ using RimSharp.Shared.Services.Contracts;
 using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
 using System.Threading;
 using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
+using RimSharp.Features.ModManager.Dialogs.Filter;
 
 namespace RimSharp.Infrastructure.Dialog
 {
@@ -101,6 +102,16 @@ namespace RimSharp.Infrastructure.Dialog
             };
             dialog.ShowDialog();
             return viewModel.DialogResult;
+        }
+        public ModFilterDialogResult ShowModFilterDialog(ModFilterDialogViewModel viewModel)
+        {
+            var dialog = new ModFilterDialogView(viewModel)
+            {
+                Owner = Application.Current?.MainWindow,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+            dialog.ShowDialog();
+            return viewModel.DialogResult; // ViewModel handles setting this before closing
         }
 
     }

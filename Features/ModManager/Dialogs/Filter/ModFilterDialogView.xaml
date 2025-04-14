@@ -1,0 +1,202 @@
+<dialog:BaseDialog x:Class="RimSharp.Features.ModManager.Dialogs.Filter.ModFilterDialogView"
+                   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                   xmlns:dialog="clr-namespace:RimSharp.Infrastructure.Dialog"
+                   xmlns:local="clr-namespace:RimSharp.Features.ModManager.Dialogs.Filter"
+                   mc:Ignorable="d"
+                   d:DataContext="{d:DesignInstance Type=local:ModFilterDialogViewModel}"
+                   Title="{Binding Title}"
+                   Width="600" Height="Auto"
+                   MinHeight="500" MinWidth="500"
+                   SizeToContent="Height"
+                   Style="{StaticResource RimworldDialogStyle}">
+
+    <dialog:BaseDialog.Resources>
+        <!-- Style for ListBoxItems within the filter dialog -->
+        <Style x:Key="FilterListBoxItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource RimworldListBoxItemStyleNoHover}">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Padding" Value="5,3"/>
+            <Setter Property="Margin" Value="0,0,0,2"/>
+            <Setter Property="Background" Value="{StaticResource RimworldBeigeBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource RimworldBrownBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+
+        <!-- Style for ListBoxes within the filter dialog -->
+        <Style x:Key="FilterListBoxStyle" TargetType="ListBox" BasedOn="{StaticResource RimworldListBoxNoHover}">
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="{StaticResource RimworldBeigeBrush}"/>
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="MaxHeight" Value="200"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource FilterListBoxItemStyle}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource RimworldBrownBrush}"/>
+        </Style>
+
+        <!-- Style for CheckBoxes within the filter dialog -->
+        <Style x:Key="FilterCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="Margin" Value="5,3"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+        </Style>
+
+        <!-- Style for Tristate CheckBoxes with ToolTips -->
+        <Style x:Key="FilterTristateCheckBoxStyle" TargetType="CheckBox" BasedOn="{StaticResource FilterCheckBoxStyle}">
+            <Setter Property="IsThreeState" Value="True"/>
+            <Style.Triggers>
+                <Trigger Property="IsChecked" Value="{x:Null}">
+                    <Setter Property="ToolTip" Value="Any (Include and Exclude)"/>
+                    <Setter Property="Foreground" Value="{StaticResource RimworldLightBrownBrush}"/>
+                </Trigger>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="ToolTip" Value="Yes (Include Only)"/>
+                    <Setter Property="Foreground" Value="{StaticResource RimworldDarkGreenBrush}"/>
+                </Trigger>
+                <Trigger Property="IsChecked" Value="False">
+                    <Setter Property="ToolTip" Value="No (Exclude Only)"/>
+                    <Setter Property="Foreground" Value="{StaticResource RimworldRedBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Style for Expander Headers -->
+        <Style TargetType="Expander">
+            <Setter Property="Margin" Value="0,10,0,5"/>
+            <Setter Property="BorderBrush" Value="{StaticResource RimworldBrownBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="Padding" Value="5,8"/>
+            <Setter Property="Background" Value="{StaticResource RimworldDarkBeigeBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource RimworldWhiteBrush}"/>
+            <Setter Property="HeaderTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" FontWeight="Bold" FontSize="14"/>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Style for GroupBox headers -->
+        <Style TargetType="GroupBox">
+            <Setter Property="BorderBrush" Value="{StaticResource RimworldBrownBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="{StaticResource RimworldDarkBeigeBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource RimworldWhiteBrush}"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+            <Setter Property="HeaderTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" FontWeight="Medium" FontSize="13"/>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Style for TextBlock labels -->
+        <Style TargetType="TextBlock" x:Key="FilterLabelStyle">
+            <Setter Property="Foreground" Value="{StaticResource RimworldWhiteBrush}"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Margin" Value="0,0,0,3"/>
+        </Style>
+    </dialog:BaseDialog.Resources>
+
+    <dialog:BaseDialog.MainContent>
+        <Border Background="{StaticResource RimworldDarkBeigeBrush}" Padding="10">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,5,0">
+                <StackPanel Margin="0,5">
+                    <!-- General Filters Expander -->
+                    <Expander Header="General" IsExpanded="True">
+                        <StackPanel Margin="5,5,0,5">
+                            <!-- Search Text -->
+                            <TextBlock Text="Search by Name/PackageId:" Style="{StaticResource FilterLabelStyle}"/>
+                            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource RimworldTextBox}" Margin="0,0,0,10"/>
+
+                            <!-- Author Filter -->
+                            <TextBlock Text="Filter by Author:" Style="{StaticResource FilterLabelStyle}"/>
+                            <TextBox Text="{Binding AuthorFilterText, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource RimworldTextBox}" Margin="0,0,0,10"
+                                     ToolTip="Enter part of an author's name (case-insensitive)."/>
+                        </StackPanel>
+                    </Expander>
+
+                    <!-- Categorization Expander -->
+                    <Expander Header="Categorization" IsExpanded="True">
+                        <Grid Margin="5,5,0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Mod Types -->
+                            <GroupBox Header="Mod Types" Grid.Column="0">
+                                <ListBox ItemsSource="{Binding AvailableModTypes}" Style="{StaticResource FilterListBoxStyle}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type local:SelectableItemViewModel`1}">
+                                            <CheckBox Content="{Binding DisplayName}" 
+                                                      IsChecked="{Binding IsSelected}" 
+                                                      Style="{StaticResource FilterCheckBoxStyle}"/>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </GroupBox>
+
+                            <!-- Supported Versions -->
+                            <GroupBox Header="Supported Versions" Grid.Column="2">
+                                <ListBox ItemsSource="{Binding AvailableVersions}" Style="{StaticResource FilterListBoxStyle}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type local:SelectableItemViewModel`1}">
+                                            <CheckBox Content="{Binding DisplayName}" 
+                                                      IsChecked="{Binding IsSelected}" 
+                                                      Style="{StaticResource FilterCheckBoxStyle}"/>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </GroupBox>
+
+                            <!-- Tags -->
+                            <GroupBox Header="Tags" Grid.Column="4">
+                                <ListBox ItemsSource="{Binding AvailableTags}" Style="{StaticResource FilterListBoxStyle}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type local:SelectableItemViewModel`1}">
+                                            <CheckBox Content="{Binding DisplayName}" 
+                                                      IsChecked="{Binding IsSelected}" 
+                                                      Style="{StaticResource FilterCheckBoxStyle}"/>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </GroupBox>
+                        </Grid>
+                    </Expander>
+
+                    <!-- Properties Expander -->
+                    <Expander Header="Properties" IsExpanded="False">
+                        <UniformGrid Columns="2" HorizontalAlignment="Left" Margin="5,5,0,5">
+                            <CheckBox Content="Has URL" IsChecked="{Binding HasUrlFilter}" Style="{StaticResource FilterTristateCheckBoxStyle}"/>
+                            <CheckBox Content="Has Steam URL" IsChecked="{Binding HasSteamUrlFilter}" Style="{StaticResource FilterTristateCheckBoxStyle}"/>
+                            <CheckBox Content="Has External URL" IsChecked="{Binding HasExternalUrlFilter}" Style="{StaticResource FilterTristateCheckBoxStyle}"/>
+                            <CheckBox Content="Is Outdated RW" IsChecked="{Binding IsOutdatedFilter}" Style="{StaticResource FilterTristateCheckBoxStyle}"/>
+                        </UniformGrid>
+                    </Expander>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </dialog:BaseDialog.MainContent>
+
+    <dialog:BaseDialog.ButtonContent>
+        <Border Background="{StaticResource RimworldDarkBeigeBrush}" Padding="10" BorderBrush="{StaticResource RimworldBrownBrush}" BorderThickness="0,1,0,0">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Apply" Command="{Binding ApplyCommand}" Style="{StaticResource RimworldSaveButtonStyle}" MinWidth="90" Margin="0,0,10,0"/>
+                <Button Content="Clear" Command="{Binding ClearCommand}" Style="{StaticResource RimworldButtonStyle}" MinWidth="90" Margin="0,0,10,0"/>
+                <Button Content="Cancel" Command="{Binding CancelCommand}" IsCancel="True" Style="{StaticResource RimworldRunButtonStyle}" MinWidth="90"/>
+            </StackPanel>
+        </Border>
+    </dialog:BaseDialog.ButtonContent>
+
+</dialog:BaseDialog>
