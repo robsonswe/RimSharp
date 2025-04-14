@@ -57,7 +57,8 @@
                                                     Background="Transparent"
                                                     BorderThickness="0"
                                                     Click="CloseButton_Click"
-                                                    Cursor="Hand">
+                                                    Cursor="Hand"
+                                                    Visibility="{TemplateBinding Closeable, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                 <TextBlock Text="✕"
                                                         Foreground="{StaticResource RimworldWhiteBrush}"
                                                         FontWeight="Bold"

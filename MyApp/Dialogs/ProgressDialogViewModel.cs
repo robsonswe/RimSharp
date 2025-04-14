@@ -51,7 +51,7 @@ namespace RimSharp.MyApp.Dialogs
         public CancellationToken CancellationToken => _cts.Token;
 
         public ProgressDialogViewModel(string title, string message, bool canCancel = false,
-            bool isIndeterminate = true, CancellationTokenSource externalCts = null)
+            bool isIndeterminate = true, CancellationTokenSource externalCts = null, bool closeable = true)
             : base(title)
         {
             Message = message;
@@ -69,6 +69,7 @@ namespace RimSharp.MyApp.Dialogs
 
             // Set initial state AFTER command is created
              CanCancel = canCancel && !_cts.IsCancellationRequested;
+             Closeable = closeable;
         }
 
         public void UpdateProgress(int value, string message = null)

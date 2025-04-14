@@ -161,7 +161,8 @@ namespace RimSharp.MyApp.AppFiles
             services.AddTransient<GitModsViewModel>(provider =>
                 new GitModsViewModel(
                     provider.GetRequiredService<IModService>(),
-                    provider.GetRequiredService<IModListManager>()
+                    provider.GetRequiredService<IModListManager>(),
+                    provider.GetRequiredService<IDialogService>()
                 // Add any other dependencies GitModsViewModel might need here
                 ));
             // ************************************************

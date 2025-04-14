@@ -8,6 +8,7 @@
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vmDialogs:ProgressDialogViewModel, IsDesignTimeCreatable=True}"
         Title="{Binding Title}"
+        Closeable="{Binding Closeable}"
         SizeToContent="Height"
         Width="450" MinWidth="350" MaxWidth="600"
         MinHeight="180" MaxHeight="400"
@@ -207,7 +208,7 @@
                                FontWeight="Medium"
                                FontSize="13"
                                Foreground="{StaticResource RimworldWhiteBrush}"
-                               Visibility="{Binding IsIndeterminate, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
+                                Visibility="{Binding IsIndeterminate, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                         <TextBlock.Effect>
                             <DropShadowEffect ShadowDepth="1" 
                                               BlurRadius="2" 
