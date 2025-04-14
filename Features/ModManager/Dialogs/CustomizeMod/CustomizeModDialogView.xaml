@@ -4,8 +4,8 @@
                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                  xmlns:local="clr-namespace:RimSharp.Infrastructure.Dialog"
-                 Width="500"
-                 Height="500"
+                 Width="650"
+                 Height="700"
                  Title="{Binding Title}">
     
     <!-- Main Content -->
@@ -30,81 +30,354 @@
                          Margin="0,0,0,10" />
                 
                 <!-- Supported Versions -->
-                <TextBlock Text="Supported Versions (comma-separated):"
-                           Margin="0,0,0,2" />
-                <TextBox Text="{Binding SupportedVersions}"
-                         Margin="0,0,0,10" />
+                <StackPanel Margin="0,0,0,10">
+                    <TextBlock Text="Supported Versions:"
+                               Margin="0,0,0,5" />
+                    
+                    <!-- Original versions (read-only) -->
+                    <Border Margin="0,0,0,5" 
+                            Padding="5"
+                            BorderBrush="#CCCCCC" 
+                            BorderThickness="1" 
+                            Background="#F0F0F0"
+                            Visibility="{Binding HasOriginalVersions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel>
+                            <TextBlock Text="Original:" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                            <ItemsControl ItemsSource="{Binding OriginalSupportedVersions}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" Margin="5,0,0,0"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                    
+                    <!-- Custom versions (editable) -->
+                    <TextBlock Text="Custom versions (comma-separated):" Margin="0,5,0,3"/>
+                    <TextBox Text="{Binding SupportedVersions}"
+                             Margin="0,0,0,5" />
+                </StackPanel>
                 
                 <!-- Load Bottom -->
-                <Grid Margin="0,0,0,10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    
-                    <CheckBox Grid.Column="0"
-                              Grid.Row="0"
-                              Content="Load Bottom"
-                              IsChecked="{Binding LoadBottom}"
-                              Margin="0,0,10,0" />
-                    
-                    <TextBlock Grid.Column="0"
-                               Grid.Row="1"
-                               Text="Comment:"
-                               Margin="0,5,10,0" />
-                    
-                    <TextBox Grid.Column="1"
-                             Grid.Row="1"
-                             Text="{Binding LoadBottomComment}"
-                             IsEnabled="{Binding LoadBottom}" />
-                </Grid>
+                <Border Margin="0,0,0,10" 
+                        Padding="10"
+                        BorderBrush="#CCCCCC" 
+                        BorderThickness="1">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock Grid.Row="0" 
+                                   Text="Load Bottom"
+                                   FontWeight="SemiBold" 
+                                   Margin="0,0,0,5"/>
+                        
+                        <!-- Original LoadBottom Status (if any) -->
+                        <Border Grid.Row="1" 
+                                Margin="0,0,0,5" 
+                                Padding="5"
+                                BorderBrush="#CCCCCC" 
+                                BorderThickness="1" 
+                                Background="#F0F0F0"
+                                Visibility="{Binding HasOriginalLoadBottom, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock Text="Original: Enabled" FontStyle="Italic"/>
+                                <TextBlock Text="This setting cannot be overridden" Foreground="Gray" FontSize="11"/>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Custom LoadBottom settings (disabled if original exists) -->
+                        <StackPanel Grid.Row="2" IsEnabled="{Binding CanCustomizeLoadBottom}">
+                            <CheckBox Content="Enable Load Bottom" 
+                                      IsChecked="{Binding LoadBottom}"
+                                      Margin="0,0,0,5" />
+                            
+                            <Grid IsEnabled="{Binding LoadBottom}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                
+                                <TextBlock Grid.Column="0"
+                                           Text="Comment:"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,10,0" />
+                                
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding LoadBottomComment}" />
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
+                </Border>
                 
                 <!-- Rules Sections -->
-                <Expander Header="Load Rules"
+                <Expander Header="Load Before Rules"
                           IsExpanded="True"
                           Margin="0,0,0,10">
-                    <StackPanel Margin="10">
-                        <TextBlock Text="Load Before (format: PackageId:DisplayName:Comment; ...):"
-                                   Margin="0,0,0,2" />
-                        <TextBox Text="{Binding LoadBefore}"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 Height="60"
-                                 Margin="0,0,0,10" />
+                    <Grid Margin="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
                         
-                        <TextBlock Text="Load After (format: PackageId:DisplayName:Comment; ...):"
-                                   Margin="0,0,0,2" />
-                        <TextBox Text="{Binding LoadAfter}"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 Height="60"
-                                 Margin="0,0,0,10" />
-                    </StackPanel>
+                        <!-- Original LoadBefore Rules (Read-only) -->
+                        <Border Grid.Row="0"
+                                Margin="0,0,0,10"
+                                Padding="5"
+                                BorderBrush="#CCCCCC"
+                                BorderThickness="1"
+                                Background="#F0F0F0"
+                                Visibility="{Binding HasOriginalLoadBefore, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock Text="Original Load Before Rules:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                <ItemsControl ItemsSource="{Binding OriginalLoadBeforeItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" Margin="5,2,0,2"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Custom LoadBefore Rules (Editable) -->
+                        <Border Grid.Row="1" 
+                                BorderBrush="#CCCCCC"
+                                BorderThickness="1"
+                                Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                
+                                <TextBlock Grid.Row="0" 
+                                           Text="Custom Load Before Rules:" 
+                                           FontWeight="SemiBold" 
+                                           Margin="5,5,0,5"/>
+                                
+                                <ListView Grid.Row="1" 
+                                          ItemsSource="{Binding CustomLoadBefore}" 
+                                          MaxHeight="150"
+                                          SelectedItem="{Binding SelectedLoadBeforeRule}">
+                                    <ListView.View>
+                                        <GridView>
+                                            <GridViewColumn Header="Package ID" DisplayMemberBinding="{Binding PackageId}" Width="150"/>
+                                            <GridViewColumn Header="Display Name" DisplayMemberBinding="{Binding DisplayName}" Width="150"/>
+                                            <GridViewColumn Header="Comment" DisplayMemberBinding="{Binding Comment}" Width="200"/>
+                                        </GridView>
+                                    </ListView.View>
+                                </ListView>
+                            </Grid>
+                        </Border>
+                        
+                        <!-- Add/Remove buttons for LoadBefore -->
+                        <StackPanel Grid.Row="2" 
+                                    Orientation="Horizontal" 
+                                    HorizontalAlignment="Right">
+                            <Button Content="Add" 
+                                    Command="{Binding AddLoadBeforeCommand}" 
+                                    Width="80" 
+                                    Margin="0,0,10,0"
+                                    Style="{StaticResource RimworldButtonStyle}"/>
+                            <Button Content="Edit" 
+                                    Command="{Binding EditLoadBeforeCommand}" 
+                                    Width="80" 
+                                    Margin="0,0,10,0"
+                                    Style="{StaticResource RimworldButtonStyle}"/>
+                            <Button Content="Remove" 
+                                    Command="{Binding RemoveLoadBeforeCommand}" 
+                                    Width="80"
+                                    Style="{StaticResource RimworldButtonStyle}"/>
+                        </StackPanel>
+                    </Grid>
+                </Expander>
+                
+                <Expander Header="Load After Rules"
+                          IsExpanded="False"
+                          Margin="0,0,0,10">
+                    <Grid Margin="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        
+                        <!-- Original LoadAfter Rules (Read-only) -->
+                        <Border Grid.Row="0"
+                                Margin="0,0,0,10"
+                                Padding="5"
+                                BorderBrush="#CCCCCC"
+                                BorderThickness="1"
+                                Background="#F0F0F0"
+                                Visibility="{Binding HasOriginalLoadAfter, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock Text="Original Load After Rules:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                <ItemsControl ItemsSource="{Binding OriginalLoadAfterItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" Margin="5,2,0,2"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Custom LoadAfter Rules (Editable) -->
+                        <Border Grid.Row="1" 
+                                BorderBrush="#CCCCCC"
+                                BorderThickness="1"
+                                Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                
+                                <TextBlock Grid.Row="0" 
+                                           Text="Custom Load After Rules:" 
+                                           FontWeight="SemiBold" 
+                                           Margin="5,5,0,5"/>
+                                
+                                <ListView Grid.Row="1" 
+                                          ItemsSource="{Binding CustomLoadAfter}" 
+                                          MaxHeight="150"
+                                          SelectedItem="{Binding SelectedLoadAfterRule}">
+                                    <ListView.View>
+                                        <GridView>
+                                            <GridViewColumn Header="Package ID" DisplayMemberBinding="{Binding PackageId}" Width="150"/>
+                                            <GridViewColumn Header="Display Name" DisplayMemberBinding="{Binding DisplayName}" Width="150"/>
+                                            <GridViewColumn Header="Comment" DisplayMemberBinding="{Binding Comment}" Width="200"/>
+                                        </GridView>
+                                    </ListView.View>
+                                </ListView>
+                            </Grid>
+                        </Border>
+                        
+                        <!-- Add/Remove buttons for LoadAfter -->
+                        <StackPanel Grid.Row="2" 
+                                    Orientation="Horizontal" 
+                                    HorizontalAlignment="Right">
+                            <Button Content="Add" 
+                                    Command="{Binding AddLoadAfterCommand}" 
+                                    Width="80" 
+                                    Margin="0,0,10,0"
+                                    Style="{StaticResource RimworldButtonStyle}"/>
+                            <Button Content="Edit" 
+                                    Command="{Binding EditLoadAfterCommand}" 
+                                    Width="80" 
+                                    Margin="0,0,10,0"
+                                    Style="{StaticResource RimworldButtonStyle}"/>
+                            <Button Content="Remove" 
+                                    Command="{Binding RemoveLoadAfterCommand}" 
+                                    Width="80"
+                                    Style="{StaticResource RimworldButtonStyle}"/>
+                        </StackPanel>
+                    </Grid>
                 </Expander>
                 
                 <Expander Header="Incompatibilities"
                           IsExpanded="False"
                           Margin="0,0,0,10">
-                    <StackPanel Margin="10">
-                        <TextBlock Text="Incompatible With (format: PackageId:DisplayName:Comment:IsHard; ...):"
-                                   Margin="0,0,0,2" />
-                        <TextBox Text="{Binding IncompatibleWith}"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 Height="60"
-                                 Margin="0,0,0,10" />
-                    </StackPanel>
+                    <Grid Margin="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        
+                        <!-- Original Incompatibility Rules (Read-only) -->
+                        <Border Grid.Row="0"
+                                Margin="0,0,0,10"
+                                Padding="5"
+                                BorderBrush="#CCCCCC"
+                                BorderThickness="1"
+                                Background="#F0F0F0"
+                                Visibility="{Binding HasOriginalIncompatibilities, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock Text="Original Incompatibility Rules:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                <ItemsControl ItemsSource="{Binding OriginalIncompatibilityItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" Margin="5,2,0,2"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Custom Incompatibility Rules (Editable) -->
+                        <Border Grid.Row="1" 
+                                BorderBrush="#CCCCCC"
+                                BorderThickness="1"
+                                Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                
+                                <TextBlock Grid.Row="0" 
+                                           Text="Custom Incompatibility Rules:" 
+                                           FontWeight="SemiBold" 
+                                           Margin="5,5,0,5"/>
+                                
+                                <ListView Grid.Row="1" 
+                                          ItemsSource="{Binding CustomIncompatibilities}" 
+                                          MaxHeight="150"
+                                          SelectedItem="{Binding SelectedIncompatibilityRule}">
+                                    <ListView.View>
+                                        <GridView>
+                                            <GridViewColumn Header="Package ID" DisplayMemberBinding="{Binding PackageId}" Width="150"/>
+                                            <GridViewColumn Header="Display Name" DisplayMemberBinding="{Binding DisplayName}" Width="150"/>
+                                            <GridViewColumn Header="Comment" DisplayMemberBinding="{Binding Comment}" Width="150"/>
+                                            <GridViewColumn Header="Hard" Width="50">
+                                                <GridViewColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <CheckBox IsChecked="{Binding HardIncompatibility}" 
+                                                                  IsEnabled="False" 
+                                                                  HorizontalAlignment="Center"/>
+                                                    </DataTemplate>
+                                                </GridViewColumn.CellTemplate>
+                                            </GridViewColumn>
+                                        </GridView>
+                                    </ListView.View>
+                                </ListView>
+                            </Grid>
+                        </Border>
+                        
+                        <!-- Add/Remove buttons for Incompatibilities -->
+                        <StackPanel Grid.Row="2" 
+                                    Orientation="Horizontal" 
+                                    HorizontalAlignment="Right">
+                            <Button Content="Add" 
+                                    Command="{Binding AddIncompatibilityCommand}" 
+                                    Width="80" 
+                                    Margin="0,0,10,0"
+                                    Style="{StaticResource RimworldButtonStyle}"/>
+                            <Button Content="Edit" 
+                                    Command="{Binding EditIncompatibilityCommand}" 
+                                    Width="80" 
+                                    Margin="0,0,10,0"
+                                    Style="{StaticResource RimworldButtonStyle}"/>
+                            <Button Content="Remove" 
+                                    Command="{Binding RemoveIncompatibilityCommand}" 
+                                    Width="80"
+                                    Style="{StaticResource RimworldButtonStyle}"/>
+                        </StackPanel>
+                    </Grid>
                 </Expander>
                 
                 <!-- Help text -->
                 <TextBlock TextWrapping="Wrap" 
                            Margin="0,10,0,0" 
                            Foreground="Gray">
-                    Note: These settings override the mod's original settings. Leave fields empty to use the mod's default values.
+                    Note: Original mod settings cannot be changed. Custom settings you define here will be saved separately.
                 </TextBlock>
             </StackPanel>
         </ScrollViewer>
