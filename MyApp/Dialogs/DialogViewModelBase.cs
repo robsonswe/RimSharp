@@ -8,10 +8,16 @@ namespace RimSharp.MyApp.Dialogs
     public abstract class DialogViewModelBase : ViewModelBase
     {
         private string _title;
+        private bool _closeable = true;
         public string Title
         {
             get => _title;
             protected set => SetProperty(ref _title, value);
+        }
+        public bool Closeable
+        {
+            get => _closeable;
+            protected set => SetProperty(ref _closeable, value);
         }
 
         // Event to signal the view to close

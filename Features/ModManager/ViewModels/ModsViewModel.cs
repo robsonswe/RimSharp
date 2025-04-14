@@ -250,7 +250,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                 {
                     // Pass a new CTS linked to the incoming token for the dialog
                     var dialogCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                    progressDialog = _dialogService.ShowProgressDialog("Loading Mods", "Initializing...", false, true, dialogCts);
+                    progressDialog = _dialogService.ShowProgressDialog("Loading Mods", "Initializing...", false, true, dialogCts, false);
                     // Handle cancellation from dialog if needed: progressDialog.Cancelled += (s,e) => { /* maybe log */ };
                 });
 

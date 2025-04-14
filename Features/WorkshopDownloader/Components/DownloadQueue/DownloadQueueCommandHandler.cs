@@ -165,9 +165,10 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 // Show non-cancelable, indeterminate progress dialog
                 progressDialog = _dialogService.ShowProgressDialog(
                     "Downloading Mods",
-                    $"Starting download of {itemsToDownload.Count} mod(s)...",
+                    $"Starting download of {itemsToDownload.Count} mod(s). Please observe the SteamCMD window...",
                     canCancel: false,
-                    isIndeterminate: true
+                    isIndeterminate: true,
+                    closeable: false
                 );
 
                 downloadResult = await _steamCmdService.DownloadModsAsync(itemsToDownload, false, token);

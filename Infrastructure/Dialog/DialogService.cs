@@ -69,13 +69,14 @@ namespace RimSharp.Infrastructure.Dialog
             ShowDialogInternal(viewModel);
         }
 
-        public ProgressDialogViewModel ShowProgressDialog(string title, string message, bool canCancel = false, bool isIndeterminate = true, CancellationTokenSource cts = null)
+        public ProgressDialogViewModel ShowProgressDialog(string title, string message, bool canCancel = false, bool isIndeterminate = true, CancellationTokenSource cts = null, bool closeable = true)
         {
             var viewModel = new ProgressDialogViewModel(title, message, canCancel, isIndeterminate, cts);
             var dialog = new ProgressDialogView(viewModel)
             {
                 Owner = Application.Current?.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Closeable = closeable
             };
             dialog.Show();
             return viewModel;

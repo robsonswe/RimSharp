@@ -20,6 +20,15 @@ namespace RimSharp.Infrastructure.Dialog
 
         #region Dependency Properties
 
+        public static readonly DependencyProperty CloseableProperty =
+                DependencyProperty.Register("Closeable", typeof(bool), typeof(BaseDialog), new PropertyMetadata(true));
+
+        public bool Closeable
+        {
+            get => (bool)GetValue(CloseableProperty);
+            set => SetValue(CloseableProperty, value);
+        }
+
         public static readonly DependencyProperty HeaderContentProperty =
             DependencyProperty.Register("HeaderContent", typeof(object), typeof(BaseDialog));
 
