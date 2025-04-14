@@ -1,6 +1,6 @@
 using System;
-using System.Collections.Generic; // Required for List
-using System.Linq; // Required for Linq
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using RimSharp.Shared.Services.Contracts;
@@ -13,11 +13,17 @@ namespace RimSharp.Features.ModManager.Services.Commands
     {
         private readonly IModListManager _modListManager;
         private readonly IDialogService _dialogService;
+        private readonly IModFilterService _modFilterService; // Added field for ModFilterService
 
-        public ModCommandService(IModListManager modListManager, IDialogService dialogService)
+        // Updated constructor to include IModFilterService
+        public ModCommandService(
+            IModListManager modListManager, 
+            IDialogService dialogService,
+            IModFilterService modFilterService)
         {
             _modListManager = modListManager ?? throw new ArgumentNullException(nameof(modListManager));
             _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
+            _modFilterService = modFilterService ?? throw new ArgumentNullException(nameof(modFilterService));
         }
 
         public Task HandleDropCommand(DropModArgs args)
@@ -52,32 +58,65 @@ namespace RimSharp.Features.ModManager.Services.Commands
         // Updated to handle List<ModItem>
         private void HandleDropOnActiveList(List<ModItem> draggedMods, int dropIndex)
         {
-            // Determine if this is primarily a reorder operation within the active list
-            // This is true if ALL dragged mods are ALREADY active.
+            // First, translate filtered index to actual index if filtering is active
+            int actualIndex = TranslateFilteredIndexToActualIndex(dropIndex);
+
             bool allDraggedModsAreActive = draggedMods.All(mod => _modListManager.IsModActive(mod));
 
             if (allDraggedModsAreActive)
             {
-                // Reorder within active list
-                Debug.WriteLine($"HandleDropOnActiveList: Reordering {draggedMods.Count} active mods to index {dropIndex}.");
-                _modListManager.ReorderMods(draggedMods, dropIndex); // Requires implementation in ModListManager
+                Debug.WriteLine($"HandleDropOnActiveList: Reordering {draggedMods.Count} active mods to index {actualIndex}.");
+                _modListManager.ReorderMods(draggedMods, actualIndex);
             }
             else
             {
-                // Activate mods (add inactive mods and potentially reposition existing active ones)
-                // Filter out any mods that might already be active if the logic should only add inactive ones.
-                // Or, simpler: just ask the manager to ensure all these mods are active at the specified position.
-                 var modsToActivate = draggedMods; // Or filter: .Where(m => !_modListManager.IsModActive(m)).ToList();
+                var modsToActivate = draggedMods;
                 if (modsToActivate.Any())
                 {
-                     Debug.WriteLine($"HandleDropOnActiveList: Activating {modsToActivate.Count} mods at index {dropIndex}.");
-                    _modListManager.ActivateModsAt(modsToActivate, dropIndex); // Requires implementation in ModListManager
+                    Debug.WriteLine($"HandleDropOnActiveList: Activating {modsToActivate.Count} mods at index {actualIndex}.");
+                    _modListManager.ActivateModsAt(modsToActivate, actualIndex);
                 }
                 else
                 {
                     Debug.WriteLine("HandleDropOnActiveList: No mods needed activation.");
                 }
             }
+        }
+
+        // Properly implemented method using the injected ModFilterService
+        private int TranslateFilteredIndexToActualIndex(int filteredIndex)
+        {
+            // If filtering is not active, return the index as-is
+            if (!_modFilterService.ActiveFilterCriteria.IsActive())
+            {
+                return filteredIndex;
+            }
+
+            // Get the actual item from the filtered list at filteredIndex
+            if (filteredIndex >= 0 && filteredIndex < _modFilterService.ActiveMods.Count)
+            {
+                var modAtFilteredIndex = _modFilterService.ActiveMods[filteredIndex];
+
+                // Find this mod's position in the full, unfiltered list from ModListManager
+                var allActiveMods = _modListManager.VirtualActiveMods;
+
+                for (int i = 0; i < allActiveMods.Count; i++)
+                {
+                    if (allActiveMods[i].Mod.PackageId == modAtFilteredIndex.PackageId)
+                    {
+                        return i;
+                    }
+                }
+
+                // If past the end or not found in the unfiltered list
+                if (filteredIndex >= _modFilterService.ActiveMods.Count)
+                {
+                    return allActiveMods.Count;
+                }
+            }
+
+            // Default fallback
+            return filteredIndex;
         }
 
         // Updated to handle List<ModItem>
@@ -89,14 +128,13 @@ namespace RimSharp.Features.ModManager.Services.Commands
             if (modsToDeactivate.Any())
             {
                 Debug.WriteLine($"HandleDropOnInactiveList: Deactivating {modsToDeactivate.Count} mods.");
-                _modListManager.DeactivateMods(modsToDeactivate); // Requires implementation in ModListManager
+                _modListManager.DeactivateMods(modsToDeactivate);
             }
             else
             {
                 Debug.WriteLine("HandleDropOnInactiveList: No active mods in the dragged list to deactivate.");
             }
         }
-
 
         public async Task ClearActiveModsAsync()
         {
@@ -114,9 +152,9 @@ namespace RimSharp.Features.ModManager.Services.Commands
         {
             try
             {
-                 Debug.WriteLine("SortActiveModsAsync: Requesting sort from ModListManager.");
+                Debug.WriteLine("SortActiveModsAsync: Requesting sort from ModListManager.");
                 bool orderChanged = await Task.Run(() => _modListManager.SortActiveList());
-                 Debug.WriteLine($"SortActiveModsAsync: ModListManager returned orderChanged={orderChanged}");
+                Debug.WriteLine($"SortActiveModsAsync: ModListManager returned orderChanged={orderChanged}");
 
                 if (orderChanged)
                 {
