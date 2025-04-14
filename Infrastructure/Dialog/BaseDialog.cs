@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace RimSharp.Infrastructure.Dialog
 {
@@ -15,7 +16,6 @@ namespace RimSharp.Infrastructure.Dialog
         {
             Style = (Style)Application.Current.Resources["RimworldDialogStyle"];
             this.WindowStartupLocation = WindowStartupLocation.CenterOwner;
-
         }
 
         #region Dependency Properties
@@ -50,6 +50,16 @@ namespace RimSharp.Infrastructure.Dialog
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             this.Close();
+        }
+
+        // Add these methods to enable window dragging
+        
+        private bool IsMouseInHeader(MouseEventArgs e)
+        {
+            // This method will be used if we want to determine 
+            // if the mouse is in the header area
+            // You can use this if you only want certain parts to be draggable
+            return true; // By default, allow dragging from anywhere
         }
 
         #endregion
