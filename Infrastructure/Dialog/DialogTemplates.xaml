@@ -15,10 +15,10 @@
                         <!-- Drop shadow effect for the window -->
                         <Border.Effect>
                             <DropShadowEffect Color="{StaticResource RimworldShadow}"
-                                              Direction="270"
-                                              ShadowDepth="5"
-                                              BlurRadius="10"
-                                              Opacity="0.5"/>
+                                            Direction="270"
+                                            ShadowDepth="5"
+                                            BlurRadius="10"
+                                            Opacity="0.5"/>
                         </Border.Effect>
                         
                         <!-- Main window container -->
@@ -39,13 +39,14 @@
                                     <Border Grid.Row="0" 
                                             Background="{StaticResource RimworldBrownBrush}" 
                                             Height="30"
-                                            CornerRadius="4,4,0,0">
+                                            CornerRadius="4,4,0,0"
+                                            MouseLeftButtonDown="HeaderBorder_MouseLeftButtonDown">
                                         <Grid>
                                             <TextBlock Text="{TemplateBinding Title}"
-                                                       Foreground="{StaticResource RimworldWhiteBrush}"
-                                                       FontWeight="Medium"
-                                                       VerticalAlignment="Center"
-                                                       HorizontalAlignment="Center"/>
+                                                    Foreground="{StaticResource RimworldWhiteBrush}"
+                                                    FontWeight="Medium"
+                                                    VerticalAlignment="Center"
+                                                    HorizontalAlignment="Center"/>
                                             
                                             <!-- Close button -->
                                             <Button x:Name="CloseButton"
@@ -58,10 +59,10 @@
                                                     Click="CloseButton_Click"
                                                     Cursor="Hand">
                                                 <TextBlock Text="✕"
-                                                           Foreground="{StaticResource RimworldWhiteBrush}"
-                                                           FontWeight="Bold"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"/>
+                                                        Foreground="{StaticResource RimworldWhiteBrush}"
+                                                        FontWeight="Bold"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"/>
                                                 <Button.Style>
                                                     <Style TargetType="Button">
                                                         <Setter Property="Template">
@@ -86,13 +87,13 @@
                                     
                                     <!-- Main content area -->
                                     <ContentPresenter Grid.Row="1" 
-                                                     Content="{TemplateBinding MainContent}"
-                                                     Margin="10,10,10,0"/>
+                                                    Content="{TemplateBinding MainContent}"
+                                                    Margin="10,10,10,0"/>
                                     
                                     <!-- Button area -->
                                     <ContentPresenter Grid.Row="2" 
-                                                     Content="{TemplateBinding ButtonContent}"
-                                                     Margin="10,0,10,10"/>
+                                                    Content="{TemplateBinding ButtonContent}"
+                                                    Margin="10,0,10,10"/>
                                 </Grid>
                             </Border>
                         </Grid>
