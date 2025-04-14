@@ -167,10 +167,10 @@ namespace RimSharp.MyApp.MainPage
 
             if (pathSettingsChanged)
             {
-                 // Manual update still needed as PathSettings is a separate object,
-                 // not directly observed by the command using 'this'.
-                 // Alternatively, pass PathSettings properties to ObservesProperties.
-                RunOnUIThread(() => ((RelayCommand)OpenFolderCommand).RaiseCanExecuteChanged());
+                // Manual update still needed as PathSettings is a separate object,
+                // not directly observed by the command using 'this'.
+                // Alternatively, pass PathSettings properties to ObservesProperties.
+                RunOnUIThread(() => ((DelegateCommand<string>)OpenFolderCommand).RaiseCanExecuteChanged());
             }
         }
 
@@ -322,7 +322,7 @@ namespace RimSharp.MyApp.MainPage
                             PathSettings.ModsPath = selectedPath;
                             break;
                     }
-                     // CanExecute for OpenFolder might change - handled by PathSettings_PropertyChanged
+                    // CanExecute for OpenFolder might change - handled by PathSettings_PropertyChanged
                 }
             }
         }
@@ -340,15 +340,15 @@ namespace RimSharp.MyApp.MainPage
 
         private bool CanRefreshData()
         {
-             // Depends on external VM state. Observation set up in constructor.
+            // Depends on external VM state. Observation set up in constructor.
             return ModsVM != null && !ModsVM.IsLoading;
         }
 
         // Centralized refresh logic
         private void RefreshData() // Parameter removed
         {
-             // CanExecute check already done by command framework.
-             // Redundant check here doesn't hurt but isn't strictly necessary.
+            // CanExecute check already done by command framework.
+            // Redundant check here doesn't hurt but isn't strictly necessary.
             // if (!CanRefreshData()) return; //
 
             StatusMessage = "Refreshing paths and mod data...";
@@ -392,7 +392,7 @@ namespace RimSharp.MyApp.MainPage
                 // not directly observed by the command using 'this'.
                 if (pathsChanged)
                 {
-                    RunOnUIThread(() => ((RelayCommand)OpenFolderCommand).RaiseCanExecuteChanged());
+                    RunOnUIThread(() => ((DelegateCommand<string>)OpenFolderCommand).RaiseCanExecuteChanged());
                 }
 
                 // Status update handled within the command or after it finishes.

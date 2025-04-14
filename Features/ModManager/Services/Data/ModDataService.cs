@@ -1,3 +1,4 @@
+using RimSharp.Core.Extensions;
 using RimSharp.MyApp.Dialogs;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
@@ -155,7 +156,10 @@ namespace RimSharp.Features.ModManager.Services.Data
         {
             Debug.WriteLine(message);
             // --- Replaced MessageBox ---
-            _dialogService.ShowWarning("Config Read Warning", $"Warning: Could not read active mods from ModsConfig.xml.\nReason: {message}\nStarting with an empty active list.");
+            ThreadHelper.EnsureUiThread(() =>
+            {
+                _dialogService.ShowWarning("Config Read Warning", $"Warning: Could not read active mods from ModsConfig.xml.\nReason: {message}\nStarting with an empty active list.");
+            });
             // -------------------------
         }
 

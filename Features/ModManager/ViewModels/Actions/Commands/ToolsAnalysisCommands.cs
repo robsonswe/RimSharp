@@ -8,6 +8,7 @@ using RimSharp.Shared.Models;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -50,9 +51,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 nameof(IsParentLoading));
 
             RunGameCommand = CreateCommand(
-                () => _dialogService.ShowInformation("Not Implemented", "Run game: Functionality not yet implemented."),
-                () => true,
-                nameof(IsParentLoading));
+                ExecuteRunGame,
+                CanExecuteRunGame,
+                nameof(IsParentLoading), nameof(HasValidPaths));
         }
         private bool CanExecuteCheckIncompatibilities() => !IsParentLoading && _modListManager.VirtualActiveMods.Any();
 
@@ -220,5 +221,46 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             view.WindowStartupLocation = WindowStartupLocation.CenterOwner;
             view.ShowDialog();
         }
+
+        private bool CanExecuteRunGame()
+        {
+            return !IsParentLoading && HasValidPaths;
+        }
+
+        private void ExecuteRunGame()
+        {
+            try
+            {
+                var gamePath = _pathService.GetGamePath();
+                if (string.IsNullOrEmpty(gamePath))
+                {
+                    _dialogService.ShowError("Game Path Error", "Game path is not set.");
+                    return;
+                }
+
+                string exePath = Path.Combine(gamePath, "RimWorldWin64.exe");
+                if (!File.Exists(exePath))
+                {
+                    exePath = Path.Combine(gamePath, "RimWorld.exe");
+                    if (!File.Exists(exePath))
+                    {
+                        _dialogService.ShowError("Game Not Found", "Could not find RimWorld executable in the specified game path.");
+                        return;
+                    }
+                }
+
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = exePath,
+                    WorkingDirectory = gamePath,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError("Launch Error", $"Failed to launch RimWorld: {ex.Message}");
+            }
+        }
+
     }
 }
