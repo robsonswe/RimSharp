@@ -6,8 +6,8 @@
         xmlns:local="clr-namespace:RimSharp.MyApp.MainPage"
         xmlns:vm="clr-namespace:RimSharp.MyApp.MainPage"
         mc:Ignorable="d"
-        Title="RimSharp - RimWorld Mod Manager" Height="800" Width="1200"
-        MinHeight="600" MinWidth="900"
+        Title="RimSharp - RimWorld Mod Manager" Height="900" Width="1200"
+        MinHeight="900" MinWidth="1200"
         Style="{StaticResource RimworldWindowStyle}">
 
     <DockPanel>
