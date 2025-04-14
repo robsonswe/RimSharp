@@ -40,7 +40,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private bool _hasUnsavedChanges;
         private ModItem _selectedMod; // For single-item actions
         private IList _selectedItems; // For multi-item actions
-        protected bool CanExecuteSimpleCommands() => !IsParentLoading;
+        protected bool CanExecuteSimpleCommands() => !IsParentLoading && HasValidPaths;
 
         public bool IsParentLoading
         {
@@ -89,6 +89,14 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 // Manual RaiseCanExecuteChangedForAllCommands() removed
             }
         }
+
+        private bool _hasValidPaths;
+        public bool HasValidPaths
+        {
+            get => _hasValidPaths;
+            private set => SetProperty(ref _hasValidPaths, value);
+        }
+
 
         // Command Properties (Declarations remain here)
         // List Management
@@ -148,6 +156,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             _dialogService = dialogService;
             _pathService = pathService;
             _modService = modService;
+            _pathService.RefreshPaths();
+            RefreshPathValidity();
             InitializeCommands(); // Calls partial initialization methods
         }
 
@@ -196,15 +206,17 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             }
         }
 
+        private void RefreshPathValidity()
+        {
+            var gamePath = _pathService.GetGamePath();
+            var modsPath = _pathService.GetModsPath();
+            var configPath = _pathService.GetConfigPath();
 
+            HasValidPaths = !string.IsNullOrEmpty(gamePath) &&
+                           !string.IsNullOrEmpty(modsPath) &&
+                           !string.IsNullOrEmpty(configPath);
+        }
 
-        // REMOVED: RaiseCanExecuteChangedForAllCommands() is no longer needed
-
-        // --- Generic CanExecute Predicates (Can stay here or move if specific) ---
-        // These are now used directly in the CreateCommand calls
-
-        // --- Helper Methods (Remain in partial files) ---
-        // e.g., CanBeDeleted, OpenItems, etc.
 
     }
 }
