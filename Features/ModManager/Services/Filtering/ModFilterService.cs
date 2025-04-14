@@ -7,46 +7,107 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
+using FuzzySharp;
 
 namespace RimSharp.Features.ModManager.Services.Filtering
 {
     public class ModFilterService : IModFilterService
     {
-        // Store optimized collections for better performance
         private readonly BulkObservableCollection<ModItem> _activeMods = new();
         private readonly BulkObservableCollection<ModItem> _inactiveMods = new();
-        
-        // Implement interface properties that expose the collections
+
         public ObservableCollection<ModItem> ActiveMods => _activeMods;
         public ObservableCollection<ModItem> InactiveMods => _inactiveMods;
 
-        // Filter state
-        private string _activeSearchText = string.Empty;
-        private string _inactiveSearchText = string.Empty;
-        
-        public string ActiveSearchText => _activeSearchText;
-        public string InactiveSearchText => _inactiveSearchText;
+        private ModFilterCriteria _activeFilterCriteria = new ModFilterCriteria();
+        private ModFilterCriteria _inactiveFilterCriteria = new ModFilterCriteria();
 
-        // Cache source collections
+        public ModFilterCriteria ActiveFilterCriteria => _activeFilterCriteria.Clone();
+        public ModFilterCriteria InactiveFilterCriteria => _inactiveFilterCriteria.Clone();
+
         private IEnumerable<(ModItem Mod, int LoadOrder)> _allActiveModsSource = Array.Empty<(ModItem, int)>();
         private IEnumerable<ModItem> _allInactiveModsSource = Array.Empty<ModItem>();
 
+        // Cached lists of available filter options
+        private List<string> _allAvailableSupportedVersions = new List<string>();
+        private List<string> _allAvailableTags = new List<string>();
+        private List<string> _allAvailableAuthors = new List<string>();
+
+        public string ActiveSearchText => _activeFilterCriteria.SearchText ?? string.Empty;
+        public string InactiveSearchText => _inactiveFilterCriteria.SearchText ?? string.Empty;
+
+        public IEnumerable<string> AllAvailableSupportedVersions => _allAvailableSupportedVersions;
+        public IEnumerable<string> AllAvailableTags => _allAvailableTags;
+        public IEnumerable<string> AllAvailableAuthors => _allAvailableAuthors;
+
+        private const int FuzzySearchThreshold = 75; // Adjust threshold (0-100) as needed
+
         public void ApplyActiveFilter(string searchText)
         {
-            _activeSearchText = searchText ?? string.Empty;
-            UpdateActiveModsCollection();
+            if (_activeFilterCriteria.SearchText != searchText)
+            {
+                _activeFilterCriteria.SearchText = searchText ?? string.Empty;
+                UpdateActiveModsCollection();
+            }
         }
 
         public void ApplyInactiveFilter(string searchText)
         {
-            _inactiveSearchText = searchText ?? string.Empty;
+            if (_inactiveFilterCriteria.SearchText != searchText)
+            {
+                _inactiveFilterCriteria.SearchText = searchText ?? string.Empty;
+                UpdateInactiveModsCollection();
+            }
+        }
+
+        public void ApplyActiveFilterCriteria(ModFilterCriteria criteria)
+        {
+            _activeFilterCriteria = criteria ?? new ModFilterCriteria();
+            UpdateActiveModsCollection();
+        }
+
+        public void ApplyInactiveFilterCriteria(ModFilterCriteria criteria)
+        {
+            _inactiveFilterCriteria = criteria ?? new ModFilterCriteria();
             UpdateInactiveModsCollection();
+        }
+
+        public void ClearActiveFilters()
+        {
+            ApplyActiveFilterCriteria(new ModFilterCriteria());
+        }
+        public void ClearInactiveFilters()
+        {
+            ApplyInactiveFilterCriteria(new ModFilterCriteria());
         }
 
         public void UpdateCollections(IEnumerable<(ModItem Mod, int LoadOrder)> activeMods, IEnumerable<ModItem> inactiveMods)
         {
-            _allActiveModsSource = activeMods ?? throw new ArgumentNullException(nameof(activeMods));
-            _allInactiveModsSource = inactiveMods ?? throw new ArgumentNullException(nameof(inactiveMods));
+            _allActiveModsSource = activeMods?.ToList() ?? throw new ArgumentNullException(nameof(activeMods));
+            _allInactiveModsSource = inactiveMods?.ToList() ?? throw new ArgumentNullException(nameof(inactiveMods));
+
+            var allMods = _allActiveModsSource.Select(m => m.Mod).Concat(_allInactiveModsSource);
+
+            // Update available versions list
+            _allAvailableSupportedVersions = allMods
+                                              .SelectMany(m => m.SupportedVersionStrings)
+                                              .Distinct(StringComparer.OrdinalIgnoreCase)
+                                              .OrderByDescending(v => v)
+                                              .ToList();
+
+            // Update available tags list
+            _allAvailableTags = allMods
+                                  .SelectMany(m => m.TagList) // Use parsed TagList
+                                  .Distinct(StringComparer.OrdinalIgnoreCase)
+                                  .OrderBy(t => t, StringComparer.OrdinalIgnoreCase)
+                                  .ToList();
+
+            // Update available authors list
+            _allAvailableAuthors = allMods
+                                     .SelectMany(m => m.AuthorList) // Use parsed AuthorList
+                                     .Distinct(StringComparer.OrdinalIgnoreCase)
+                                     .OrderBy(a => a, StringComparer.OrdinalIgnoreCase)
+                                     .ToList();
 
             UpdateActiveModsCollection();
             UpdateInactiveModsCollection();
@@ -61,7 +122,9 @@ namespace RimSharp.Features.ModManager.Services.Filtering
                 return;
             }
 
-            var filteredMods = FilterActiveMods().ToList();
+            var filteredMods = FilterMods(_allActiveModsSource.Select(x => x.Mod), _activeFilterCriteria)
+                               .OrderBy(mod => _allActiveModsSource.FirstOrDefault(x => x.Mod.PackageId == mod.PackageId).LoadOrder)
+                               .ToList();
             _activeMods.ReplaceAll(filteredMods);
         }
 
@@ -74,46 +137,78 @@ namespace RimSharp.Features.ModManager.Services.Filtering
                 return;
             }
 
-            var filteredMods = FilterInactiveMods().ToList();
+            var filteredMods = FilterMods(_allInactiveModsSource, _inactiveFilterCriteria)
+                                .OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase)
+                                .ToList();
             _inactiveMods.ReplaceAll(filteredMods);
         }
 
-        private IEnumerable<ModItem> FilterActiveMods()
+        private IEnumerable<ModItem> FilterMods(IEnumerable<ModItem> source, ModFilterCriteria criteria)
         {
-            // If no filter, just sort and return
-            if (string.IsNullOrWhiteSpace(_activeSearchText))
+            IEnumerable<ModItem> filtered = source;
+
+            // 1. Text Search (Name or PackageId) - Now with Fuzzy Matching
+            if (!string.IsNullOrWhiteSpace(criteria.SearchText))
             {
-                return _allActiveModsSource.OrderBy(x => x.LoadOrder).Select(x => x.Mod);
+                string searchLower = criteria.SearchText.ToLowerInvariant();
+                // Prioritize exact contains, then fallback to fuzzy
+                filtered = filtered.Where(m =>
+                    (m.Name?.ToLowerInvariant().Contains(searchLower) ?? false) ||
+                    (m.PackageId?.ToLowerInvariant().Contains(searchLower) ?? false) ||
+                    Fuzz.PartialRatio(m.Name?.ToLowerInvariant() ?? "", searchLower) >= FuzzySearchThreshold ||
+                    Fuzz.PartialRatio(m.PackageId?.ToLowerInvariant() ?? "", searchLower) >= FuzzySearchThreshold
+                );
             }
 
-            // Apply filter, sort, and return
-            return _allActiveModsSource
-                .Where(x => ContainsTextIgnoreCase(x.Mod.Name, _activeSearchText) || 
-                           ContainsTextIgnoreCase(x.Mod.PackageId, _activeSearchText))
-                .OrderBy(x => x.LoadOrder)
-                .Select(x => x.Mod);
-        }
-
-        private IEnumerable<ModItem> FilterInactiveMods()
-        {
-            // If no filter, just sort and return
-            if (string.IsNullOrWhiteSpace(_inactiveSearchText))
+            // 2. Author Filter
+            if (!string.IsNullOrWhiteSpace(criteria.AuthorFilterText))
             {
-                return _allInactiveModsSource.OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase);
+                string authorLower = criteria.AuthorFilterText.ToLowerInvariant();
+                filtered = filtered.Where(m =>
+                    m.AuthorList.Any(a => a.ToLowerInvariant().Contains(authorLower))
+                );
             }
 
-            // Apply filter, sort, and return
-            return _allInactiveModsSource
-                .Where(m => ContainsTextIgnoreCase(m.Name, _inactiveSearchText) || 
-                           ContainsTextIgnoreCase(m.PackageId, _inactiveSearchText))
-                .OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase);
-        }
+            // 3. Mod Type Filter
+            if (criteria.SelectedModTypes?.Any() ?? false)
+            {
+                var selectedTypesSet = new HashSet<ModType>(criteria.SelectedModTypes);
+                filtered = filtered.Where(m => selectedTypesSet.Contains(m.ModType));
+            }
 
-        // Optimized string comparison that handles nulls safely
-        private static bool ContainsTextIgnoreCase(string source, string searchText)
-        {
-            return !string.IsNullOrEmpty(source) && 
-                   source.Contains(searchText, StringComparison.OrdinalIgnoreCase);
+            // 4. Supported Version Filter
+            if (criteria.SelectedSupportedVersions?.Any() ?? false)
+            {
+                var selectedVersionsSet = new HashSet<string>(criteria.SelectedSupportedVersions, StringComparer.OrdinalIgnoreCase);
+                filtered = filtered.Where(m => m.SupportedVersionStrings.Any(sv => selectedVersionsSet.Contains(sv)));
+            }
+
+            // 5. Tag Filter
+            if (criteria.SelectedTags?.Any() ?? false)
+            {
+                var selectedTagsSet = new HashSet<string>(criteria.SelectedTags, StringComparer.OrdinalIgnoreCase);
+                filtered = filtered.Where(m => m.TagList.Any(tag => selectedTagsSet.Contains(tag)));
+            }
+
+            // 6. Boolean Filters (Tristate)
+            if (criteria.HasUrlFilter.HasValue)
+            {
+                filtered = filtered.Where(m => m.HasUrl == criteria.HasUrlFilter.Value);
+            }
+            if (criteria.HasSteamUrlFilter.HasValue)
+            {
+                filtered = filtered.Where(m => m.HasSteamUrl == criteria.HasSteamUrlFilter.Value);
+            }
+            if (criteria.HasExternalUrlFilter.HasValue)
+            {
+                filtered = filtered.Where(m => m.HasExternalUrl == criteria.HasExternalUrlFilter.Value);
+            }
+            if (criteria.IsOutdatedFilter.HasValue)
+            {
+                filtered = filtered.Where(m => m.IsOutdatedRW == criteria.IsOutdatedFilter.Value);
+            }
+
+            return filtered;
         }
     }
 }

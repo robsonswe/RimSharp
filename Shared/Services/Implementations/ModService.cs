@@ -304,7 +304,6 @@ namespace RimSharp.Shared.Services.Implementations
                                 {
                                     if (mod.GitRepo.StartsWith("git@"))
                                     {
-                                        // Convert SSH URL: git@github.com:jptrrs/OpenTheWindows.git
                                         var parts = mod.GitRepo.Split(':');
                                         if (parts.Length == 2)
                                         {
@@ -313,7 +312,6 @@ namespace RimSharp.Shared.Services.Implementations
                                     }
                                     else if (mod.GitRepo.StartsWith("https://"))
                                     {
-                                        // Handle HTTPS URL: https://github.com/jptrrs/OpenTheWindows.git
                                         mod.GitRepo = mod.GitRepo.Replace("https://", "").Replace(".git", "");
                                     }
                                 }

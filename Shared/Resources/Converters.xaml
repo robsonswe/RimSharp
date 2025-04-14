@@ -43,6 +43,9 @@
     <!-- Utility Converters -->
     <convUtility:PathToExplorerFormatConverter x:Key="PathToExplorerFormatConverter"/>
 
+        <convUtility:FilterButtonTagConverter x:Key="FilterButtonTagConverter"/>
+
+
 
 
 </ResourceDictionary>

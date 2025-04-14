@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -62,6 +63,27 @@ namespace RimSharp.Shared.Models
         public string Tags { get; set; }
 
         public IEnumerable<string> SupportedVersionStrings => SupportedVersions.Select(v => v.Version);
+
+                // New: Efficiently parsed Author list
+        private List<string> _authorList;
+        public List<string> AuthorList => _authorList ??= ParseCommaSeparatedString(Authors);
+
+        // New: Efficiently parsed Tag list
+        private List<string> _tagList;
+        public List<string> TagList => _tagList ??= ParseCommaSeparatedString(Tags);
+
+        private static List<string> ParseCommaSeparatedString(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                return new List<string>();
+            }
+            return input.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries) // Allow comma or semicolon
+                        .Select(s => s.Trim())
+                        .Where(s => !string.IsNullOrEmpty(s))
+                        .ToList();
+        }
+
     }
 
     public class ModDependency
