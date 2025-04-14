@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RimSharp.Features.ModManager.Services.Commands;
 using RimSharp.Features.ModManager.Services.Data;
 using RimSharp.Features.ModManager.Services.Filtering;
-using RimSharp.Features.ModManager.Services.Mangement;
+using RimSharp.Features.ModManager.Services.Management;
 using RimSharp.Features.ModManager.ViewModels;
 using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Features.WorkshopDownloader.ViewModels;
@@ -17,11 +17,11 @@ using RimSharp.Infrastructure.Mods.Rules;
 using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
 using RimSharp.MyApp.MainPage;
 using RimSharp.Shared.Models;
-using RimSharp.Shared.Services.Contracts; // <<< Keep this using
+using RimSharp.Shared.Services.Contracts;
 using RimSharp.Shared.Services.Implementations;
 using RimSharp.Infrastructure.Workshop;
 using RimSharp.Infrastructure.Logging;
-using RimSharp.Features.GitModManager.ViewModels; // <<< Add this using
+using RimSharp.Features.GitModManager.ViewModels;
 
 namespace RimSharp.MyApp.AppFiles
 {

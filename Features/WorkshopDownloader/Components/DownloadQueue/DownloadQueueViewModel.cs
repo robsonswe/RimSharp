@@ -181,9 +181,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
         private void SteamCmdService_SetupStateChanged(object? sender, bool isSetup)
         {
-            RunOnUIThread(() => _commandHandler.UpdateSteamCmdReadyStatusAsync());
+            RunOnUIThread(() => _ = _commandHandler.UpdateSteamCmdReadyStatusAsync());
         }
-
         public void RefreshCommandStates()
         {
             RunOnUIThread(() =>

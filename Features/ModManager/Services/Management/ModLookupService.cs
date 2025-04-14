@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using RimSharp.Shared.Models;
 
-namespace RimSharp.Features.ModManager.Services.Mangement
+namespace RimSharp.Features.ModManager.Services.Management
 {
     public class ModLookupService
     {

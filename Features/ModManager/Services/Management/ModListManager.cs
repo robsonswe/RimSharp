@@ -6,7 +6,7 @@ using RimSharp.Infrastructure.Mods.Sorting;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 
-namespace RimSharp.Features.ModManager.Services.Mangement
+namespace RimSharp.Features.ModManager.Services.Management
 {
     public class ModListManager : IModListManager
     {

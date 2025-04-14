@@ -1,6 +1,7 @@
 # RimSharp Command System Technical Documentation
 
 ## Table of Contents
+
 1. [Overview](#overview)
 2. [Command Interfaces](#command-interfaces)
    - [IDelegateCommand](#idelegatecommand)
@@ -61,6 +62,7 @@ void RaiseCanExecuteChanged();
 | RaiseCanExecuteChanged | Raises the CanExecuteChanged event to force a re-evaluation of command execution ability. | None | void |
 
 **Implementation Example**:
+
 ```csharp
 public class MyCommand : IDelegateCommand
 {
@@ -94,6 +96,7 @@ void RaiseCanExecuteChanged();
 | RaiseCanExecuteChanged | Raises the CanExecuteChanged event to force a re-evaluation of command execution ability. | None | void |
 
 **Implementation Example**:
+
 ```csharp
 public class MyTypedCommand<T> : IDelegateCommand<T>
 {
@@ -151,6 +154,7 @@ DelegateCommand(Action<T> execute, Predicate<T> canExecute = null)
 | CanExecuteChanged (event) | EventHandler | Event that is raised when the ability to execute the command changes. |
 
 **Implementation Example**:
+
 ```csharp
 // In a ViewModel
 public class MyViewModel : INotifyPropertyChanged
@@ -201,6 +205,7 @@ DelegateCommand(Action<object> execute, Func<object, bool> canExecute = null)
 | ObservesProperty | Sets up property change observation to automatically raise CanExecuteChanged when a property changes. | INotifyPropertyChanged owner, string propertyName | DelegateCommand |
 
 **Implementation Example**:
+
 ```csharp
 // In a ViewModel
 public class MyViewModel : INotifyPropertyChanged
@@ -260,6 +265,7 @@ AsyncDelegateCommand(Func<T, Task> execute, Predicate<T> canExecute = null)
 | CanExecuteChanged (event) | EventHandler | Event that is raised when the ability to execute the command changes. |
 
 **Implementation Example**:
+
 ```csharp
 // In a ViewModel
 public class MyViewModel : INotifyPropertyChanged
@@ -324,6 +330,7 @@ AsyncDelegateCommand(Func<object, Task> execute, Func<object, bool> canExecute =
 | ObservesProperty | Sets up property change observation to automatically raise CanExecuteChanged when a property changes. | INotifyPropertyChanged owner, string propertyName | AsyncDelegateCommand |
 
 **Implementation Example**:
+
 ```csharp
 // In a ViewModel
 public class MyViewModel : INotifyPropertyChanged
@@ -398,6 +405,7 @@ RelayCommand(Action execute, Func<bool> canExecute = null)
 | CanExecuteChanged (event) | EventHandler | Event that is raised when the ability to execute the command changes. |
 
 **Implementation Example**:
+
 ```csharp
 // In a ViewModel
 public class MyViewModel : INotifyPropertyChanged
@@ -468,6 +476,7 @@ AsyncRelayCommand(Func<Task> execute, Func<bool> canExecute = null)
 | CanExecuteChanged (event) | EventHandler | Event that is raised when the ability to execute the command changes. |
 
 **Implementation Example**:
+
 ```csharp
 // In a ViewModel
 public class MyViewModel : INotifyPropertyChanged
@@ -543,6 +552,7 @@ CompositeCommand(bool monitorCommandActivity = true)
 | RegisteredCommands | IReadOnlyList&lt;ICommand&gt; | Gets the list of registered commands. |
 
 **Implementation Example**:
+
 ```csharp
 // In a ViewModel
 public class MyViewModel
@@ -583,6 +593,7 @@ public class MyViewModel
 | Initialize | Initializes commands and registers them with the command service. | IModCommandService commandService | void |
 
 **Implementation Example**:
+
 ```csharp
 public class AppCommandInitializer : ICommandInitializer
 {
@@ -629,6 +640,7 @@ public class AppCommandInitializer : ICommandInitializer
 | ContainsCommand | Determines whether a command is registered with the service. | string commandName | bool |
 
 **Implementation Example**:
+
 ```csharp
 // In a bootstrapper or app startup class
 public class AppBootstrapper
@@ -685,6 +697,7 @@ ModCommandService()
 | ContainsCommand | Determines whether a command is registered with the service. | string commandName | bool |
 
 **Implementation Example**:
+
 ```csharp
 // Registration in a DI container
 public void ConfigureServices(IServiceCollection services)
@@ -730,6 +743,7 @@ public class MainViewModel
 | Unsubscribe&lt;TEvent&gt; | Unsubscribes from an event. | SubscriptionToken token | void |
 
 **Implementation Example**:
+
 ```csharp
 // Define an event
 public class DataLoadedEvent
@@ -812,6 +826,7 @@ SubscriptionToken(Type eventType)
 | EventType | Type | Gets the type of event the token is for. |
 
 **Usage Example**:
+
 ```csharp
 // Store the token when subscribing
 SubscriptionToken token = eventAggregator.Subscribe<MyEvent>(OnMyEvent);
@@ -846,6 +861,7 @@ WeakEventAggregator()
 | Purge | Removes all dead references from the subscribers dictionary. | None | void |
 
 **Implementation Example**:
+
 ```csharp
 // Registration in a DI container
 public void ConfigureServices(IServiceCollection services)

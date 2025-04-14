@@ -34,6 +34,14 @@
             <Setter Property="BorderBrush" Value="{StaticResource RimworldBrownBrush}"/>
         </Style>
 
+        
+        <Style x:Key="FilterRadioButtonStyle" TargetType="RadioButton">
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+        </Style>
+
         <!-- Style for CheckBoxes within the filter dialog -->
         <Style x:Key="FilterCheckBoxStyle" TargetType="CheckBox">
             <Setter Property="Margin" Value="5,3"/>
@@ -178,13 +186,48 @@
                     <!-- Properties Expander -->
                     <Expander Header="Properties" IsExpanded="False">
                         <UniformGrid Columns="2" HorizontalAlignment="Left" Margin="5,5,0,5">
-                            <CheckBox Content="Has URL" IsChecked="{Binding HasUrlFilter}" Style="{StaticResource FilterTristateCheckBoxStyle}"/>
-                            <CheckBox Content="Has Steam URL" IsChecked="{Binding HasSteamUrlFilter}" Style="{StaticResource FilterTristateCheckBoxStyle}"/>
-                            <CheckBox Content="Has External URL" IsChecked="{Binding HasExternalUrlFilter}" Style="{StaticResource FilterTristateCheckBoxStyle}"/>
-                            <CheckBox Content="Is Outdated RW" IsChecked="{Binding IsOutdatedFilter}" Style="{StaticResource FilterTristateCheckBoxStyle}"/>
+                            <!-- Has URL -->
+                            <StackPanel Margin="0,5">
+                                <TextBlock Text="Has URL:" Style="{StaticResource FilterLabelStyle}"/>
+                                <StackPanel Orientation="Horizontal" Margin="5,0">
+                                    <RadioButton Content="Any" GroupName="HasUrl" IsChecked="{Binding HasUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Margin="0,0,10,0" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="Yes" GroupName="HasUrl" IsChecked="{Binding HasUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Margin="0,0,10,0" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="No" GroupName="HasUrl" IsChecked="{Binding HasUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Has Steam URL -->
+                            <StackPanel Margin="0,5">
+                                <TextBlock Text="Has Steam URL:" Style="{StaticResource FilterLabelStyle}"/>
+                                <StackPanel Orientation="Horizontal" Margin="5,0">
+                                    <RadioButton Content="Any" GroupName="HasSteamUrl" IsChecked="{Binding HasSteamUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Margin="0,0,10,0" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="Yes" GroupName="HasSteamUrl" IsChecked="{Binding HasSteamUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Margin="0,0,10,0" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="No" GroupName="HasSteamUrl" IsChecked="{Binding HasSteamUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Has External URL -->
+                            <StackPanel Margin="0,5">
+                                <TextBlock Text="Has External URL:" Style="{StaticResource FilterLabelStyle}"/>
+                                <StackPanel Orientation="Horizontal" Margin="5,0">
+                                    <RadioButton Content="Any" GroupName="HasExternalUrl" IsChecked="{Binding HasExternalUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Margin="0,0,10,0" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="Yes" GroupName="HasExternalUrl" IsChecked="{Binding HasExternalUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Margin="0,0,10,0" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="No" GroupName="HasExternalUrl" IsChecked="{Binding HasExternalUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Is Outdated RW -->
+                            <StackPanel Margin="0,5">
+                                <TextBlock Text="Is Outdated RW:" Style="{StaticResource FilterLabelStyle}"/>
+                                <StackPanel Orientation="Horizontal" Margin="5,0">
+                                    <RadioButton Content="Any" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Margin="0,0,10,0" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="Yes" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Margin="0,0,10,0" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="No" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                </StackPanel>
+                            </StackPanel>
                         </UniformGrid>
-                    </Expander>
-                </StackPanel>
+                    </Expander>               
+ </StackPanel>
             </ScrollViewer>
         </Border>
     </dialog:BaseDialog.MainContent>
