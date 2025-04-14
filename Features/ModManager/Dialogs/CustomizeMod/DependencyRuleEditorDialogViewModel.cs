@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Input;
 using RimSharp.MyApp.Dialogs;
 
@@ -40,9 +41,14 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             // Basic validation: ensure PackageId is not empty
             if (string.IsNullOrWhiteSpace(PackageId))
             {
-                // Optionally show a message box here
+                MessageBox.Show("Package ID cannot be empty.", "Validation Error", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+            
+            // Trim whitespace from PackageId
+            PackageId = PackageId.Trim();
+            
             CloseDialog(true);
         }
 
