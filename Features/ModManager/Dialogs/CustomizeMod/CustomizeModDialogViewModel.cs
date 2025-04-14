@@ -1,20 +1,112 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using RimSharp.MyApp.AppFiles;
 using RimSharp.MyApp.Dialogs;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 
 namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 {
+    public class ModDependencyRuleViewModel : ViewModelBase
+    {
+        private string _packageId;
+        public string PackageId
+        {
+            get => _packageId;
+            set => SetProperty(ref _packageId, value);
+        }
+
+        private string _displayName;
+        public string DisplayName
+        {
+            get => _displayName;
+            set => SetProperty(ref _displayName, value);
+        }
+
+        private string _comment;
+        public string Comment
+        {
+            get => _comment;
+            set => SetProperty(ref _comment, value);
+        }
+
+        private bool _isOriginal;
+        public bool IsOriginal
+        {
+            get => _isOriginal;
+            set => SetProperty(ref _isOriginal, value);
+        }
+    }
+
+    public class ModIncompatibilityRuleViewModel : ViewModelBase
+    {
+        private string _packageId;
+        public string PackageId
+        {
+            get => _packageId;
+            set => SetProperty(ref _packageId, value);
+        }
+
+        private string _displayName;
+        public string DisplayName
+        {
+            get => _displayName;
+            set => SetProperty(ref _displayName, value);
+        }
+
+        private string _comment;
+        public string Comment
+        {
+            get => _comment;
+            set => SetProperty(ref _comment, value);
+        }
+
+        private bool _hardIncompatibility;
+        public bool HardIncompatibility
+        {
+            get => _hardIncompatibility;
+            set => SetProperty(ref _hardIncompatibility, value);
+        }
+
+        private bool _isOriginal;
+        public bool IsOriginal
+        {
+            get => _isOriginal;
+            set => SetProperty(ref _isOriginal, value);
+        }
+    }
+
     public class CustomizeModDialogViewModel : DialogViewModelBase<ModCustomizationResult>
     {
         private readonly IModService _modService;
         private readonly ModItem _mod;
         private ModCustomInfo _customInfo;
 
-        // Properties for binding
+        private readonly List<string> _originalLoadBefore;
+        private readonly List<string> _originalLoadAfter;
+        private readonly List<string> _originalIncompatibilities;
+        private readonly bool _originalLoadBottom;
+        private readonly List<string> _originalSupportedVersions;
+        private readonly string _originalExternalUrl;
+        private readonly string _originalTags;
+
+
+        // Original mod properties (display-only)
+        public bool HasOriginalLoadBottom => _originalLoadBottom;
+        public List<string> OriginalLoadBeforeItems => _originalLoadBefore;
+        public List<string> OriginalLoadAfterItems => _originalLoadAfter;
+        public List<string> OriginalIncompatibilityItems => _originalIncompatibilities;
+        public List<string> OriginalSupportedVersions => _originalSupportedVersions;
+        public bool HasOriginalVersions => OriginalSupportedVersions?.Any() ?? false;
+        public bool HasOriginalLoadBefore => OriginalLoadBeforeItems?.Any() ?? false;
+        public bool HasOriginalLoadAfter => OriginalLoadAfterItems?.Any() ?? false;
+        public bool HasOriginalIncompatibilities => OriginalIncompatibilityItems?.Any() ?? false;
+
+        // Basic properties for binding
         private string _externalUrl;
         public string ExternalUrl
         {
@@ -36,6 +128,9 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             set => SetProperty(ref _supportedVersions, value);
         }
 
+        // LoadBottom custom options
+        public bool CanCustomizeLoadBottom => !HasOriginalLoadBottom;
+
         private bool _loadBottom;
         public bool LoadBottom
         {
@@ -50,87 +145,239 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             set => SetProperty(ref _loadBottomComment, value);
         }
 
-        // TODO: Add properties for LoadBefore, LoadAfter, IncompatibleWith collections
-        // For simplicity, we'll use string representations for now 
-        private string _loadBefore;
-        public string LoadBefore
+        // Collection properties for rules
+        public ObservableCollection<ModDependencyRuleViewModel> CustomLoadBefore { get; } = new();
+        public ObservableCollection<ModDependencyRuleViewModel> CustomLoadAfter { get; } = new();
+        public ObservableCollection<ModIncompatibilityRuleViewModel> CustomIncompatibilities { get; } = new();
+
+        // Selected items for editing
+        private ModDependencyRuleViewModel _selectedLoadBeforeRule;
+        public ModDependencyRuleViewModel SelectedLoadBeforeRule
         {
-            get => _loadBefore;
-            set => SetProperty(ref _loadBefore, value);
+            get => _selectedLoadBeforeRule;
+            set => SetProperty(ref _selectedLoadBeforeRule, value);
         }
 
-        private string _loadAfter;
-        public string LoadAfter
+        private ModDependencyRuleViewModel _selectedLoadAfterRule;
+        public ModDependencyRuleViewModel SelectedLoadAfterRule
         {
-            get => _loadAfter;
-            set => SetProperty(ref _loadAfter, value);
+            get => _selectedLoadAfterRule;
+            set => SetProperty(ref _selectedLoadAfterRule, value);
         }
 
-        private string _incompatibleWith;
-        public string IncompatibleWith
+        private ModIncompatibilityRuleViewModel _selectedIncompatibilityRule;
+        public ModIncompatibilityRuleViewModel SelectedIncompatibilityRule
         {
-            get => _incompatibleWith;
-            set => SetProperty(ref _incompatibleWith, value);
+            get => _selectedIncompatibilityRule;
+            set => SetProperty(ref _selectedIncompatibilityRule, value);
         }
 
         // Commands
         public ICommand SaveCommand { get; }
         public ICommand CancelCommand { get; }
 
-        public CustomizeModDialogViewModel(ModItem mod, ModCustomInfo customInfo, IModService modService) 
+        // Rule management commands
+        public ICommand AddLoadBeforeCommand { get; }
+        public ICommand EditLoadBeforeCommand { get; }
+        public ICommand RemoveLoadBeforeCommand { get; }
+
+        public ICommand AddLoadAfterCommand { get; }
+        public ICommand EditLoadAfterCommand { get; }
+        public ICommand RemoveLoadAfterCommand { get; }
+
+        public ICommand AddIncompatibilityCommand { get; }
+        public ICommand EditIncompatibilityCommand { get; }
+        public ICommand RemoveIncompatibilityCommand { get; }
+
+        public CustomizeModDialogViewModel(ModItem mod, ModCustomInfo customInfo, IModService modService)
             : base($"Customize Mod: {mod.Name}")
         {
             _mod = mod ?? throw new ArgumentNullException(nameof(mod));
             _modService = modService ?? throw new ArgumentNullException(nameof(modService));
             _customInfo = customInfo ?? new ModCustomInfo();
 
-            // Initialize properties from custom info
+            // Determine original data by subtracting custom rules from the merged mod data
+            _originalLoadBefore = mod.LoadBefore?
+                .Where(id => !_customInfo.LoadBefore?.ContainsKey(id) ?? true)
+                .ToList() ?? new List<string>();
+
+            _originalLoadAfter = mod.LoadAfter?
+                .Where(id => !_customInfo.LoadAfter?.ContainsKey(id) ?? true)
+                .ToList() ?? new List<string>();
+
+            _originalIncompatibilities = mod.IncompatibleWith?
+                .Where(id => !_customInfo.IncompatibleWith?.ContainsKey(id) ?? true)
+                .ToList() ?? new List<string>();
+
+            // For simple properties, we consider them original if they match the mod's value
+            // and aren't explicitly set in custom info
+            _originalLoadBottom = mod.LoadBottom &&
+                (_customInfo.LoadBottom == null || !_customInfo.LoadBottom.Value);
+
+            _originalSupportedVersions = mod.SupportedVersionStrings
+                .Where(v => !(_customInfo.SupportedVersions?.Contains(v) ?? false))
+                .ToList();
+
+            _originalExternalUrl = string.IsNullOrEmpty(_customInfo.ExternalUrl) ?
+                mod.ExternalUrl : null;
+
+            _originalTags = string.IsNullOrEmpty(_customInfo.Tags) ?
+                mod.Tags : null;
+
+            // Initialize basic properties
             ExternalUrl = _customInfo.ExternalUrl ?? mod.ExternalUrl ?? "";
             Tags = _customInfo.Tags ?? mod.Tags ?? "";
-            
-            // Convert list to comma-separated string
             SupportedVersions = string.Join(", ", _customInfo.SupportedVersions ?? new List<string>());
-            
+
             // Setup LoadBottom
-            LoadBottom = _customInfo.LoadBottom?.Value ?? mod.LoadBottom;
+            LoadBottom = !HasOriginalLoadBottom && (_customInfo.LoadBottom?.Value ?? false);
             LoadBottomComment = _customInfo.LoadBottom != null ? string.Join(", ", _customInfo.LoadBottom.Comment) : "";
 
-            // Initialize dictionaries as comma-separated strings (simplified for now)
-            // In a more complete implementation, you'd want to create proper collection editors
-            LoadBefore = SerializeDependencyRules(_customInfo.LoadBefore);
-            LoadAfter = SerializeDependencyRules(_customInfo.LoadAfter);
-            IncompatibleWith = SerializeIncompatibilityRules(_customInfo.IncompatibleWith);
+            // Initialize rule collections
+            InitializeRuleCollections();
 
             // Setup commands
             SaveCommand = CreateCommand(Save);
             CancelCommand = CreateCommand(Cancel);
+
+            // Rule management commands with property observation
+            AddLoadBeforeCommand = CreateCommand(AddLoadBefore);
+            EditLoadBeforeCommand = CreateCommand(EditLoadBefore, CanEditLoadBefore, nameof(SelectedLoadBeforeRule));
+            RemoveLoadBeforeCommand = CreateCommand(RemoveLoadBefore, CanRemoveLoadBefore, nameof(SelectedLoadBeforeRule));
+
+            AddLoadAfterCommand = CreateCommand(AddLoadAfter);
+            EditLoadAfterCommand = CreateCommand(EditLoadAfter, CanEditLoadAfter, nameof(SelectedLoadAfterRule));
+            RemoveLoadAfterCommand = CreateCommand(RemoveLoadAfter, CanRemoveLoadAfter, nameof(SelectedLoadAfterRule));
+
+            AddIncompatibilityCommand = CreateCommand(AddIncompatibility);
+            EditIncompatibilityCommand = CreateCommand(EditIncompatibility, CanEditIncompatibility, nameof(SelectedIncompatibilityRule));
+            RemoveIncompatibilityCommand = CreateCommand(RemoveIncompatibility, CanRemoveIncompatibility, nameof(SelectedIncompatibilityRule));
+        }
+
+        private void InitializeRuleCollections()
+        {
+            // Clear existing collections
+            CustomLoadBefore.Clear();
+            CustomLoadAfter.Clear();
+            CustomIncompatibilities.Clear();
+
+            // LoadBefore rules - only add custom rules that aren't in original
+            if (_customInfo.LoadBefore != null)
+            {
+                foreach (var rule in _customInfo.LoadBefore)
+                {
+                    // Only add if this isn't actually an original rule
+                    if (!_originalLoadBefore.Contains(rule.Key))
+                    {
+                        CustomLoadBefore.Add(new ModDependencyRuleViewModel
+                        {
+                            PackageId = rule.Key,
+                            DisplayName = string.Join(", ", rule.Value.Name),
+                            Comment = string.Join(", ", rule.Value.Comment),
+                            IsOriginal = false
+                        });
+                    }
+                }
+            }
+
+            // Similar logic for LoadAfter
+            if (_customInfo.LoadAfter != null)
+            {
+                foreach (var rule in _customInfo.LoadAfter)
+                {
+                    if (!_originalLoadAfter.Contains(rule.Key))
+                    {
+                        CustomLoadAfter.Add(new ModDependencyRuleViewModel
+                        {
+                            PackageId = rule.Key,
+                            DisplayName = string.Join(", ", rule.Value.Name),
+                            Comment = string.Join(", ", rule.Value.Comment),
+                            IsOriginal = false
+                        });
+                    }
+                }
+            }
+
+            // Similar logic for Incompatibilities
+            if (_customInfo.IncompatibleWith != null)
+            {
+                foreach (var rule in _customInfo.IncompatibleWith)
+                {
+                    if (!_originalIncompatibilities.Contains(rule.Key))
+                    {
+                        CustomIncompatibilities.Add(new ModIncompatibilityRuleViewModel
+                        {
+                            PackageId = rule.Key,
+                            DisplayName = string.Join(", ", rule.Value.Name),
+                            Comment = string.Join(", ", rule.Value.Comment),
+                            HardIncompatibility = rule.Value.HardIncompatibility,
+                            IsOriginal = false
+                        });
+                    }
+                }
+            }
         }
 
         private void Save()
         {
-            // Create a new custom info object or update existing
             var customInfo = new ModCustomInfo
             {
                 ExternalUrl = ExternalUrl,
                 Tags = Tags,
-                // Parse comma-separated versions
                 SupportedVersions = ParseCommaSeparatedList(SupportedVersions),
-                // Setup LoadBottom if checked
-                LoadBottom = LoadBottom ? new LoadBottomRule
-                {
-                    Value = true,
-                    Comment = ParseCommaSeparatedList(LoadBottomComment)
-                } : null,
-                // Parse rule dictionaries (simplified)
-                LoadBefore = ParseDependencyRules(LoadBefore),
-                LoadAfter = ParseDependencyRules(LoadAfter),
-                IncompatibleWith = ParseIncompatibilityRules(IncompatibleWith)
+                LoadBottom = CanCustomizeLoadBottom && LoadBottom
+                    ? new LoadBottomRule
+                    {
+                        Value = true,
+                        Comment = ParseCommaSeparatedList(LoadBottomComment)
+                    }
+                    : null,
+                LoadBefore = ConvertToDependencyRules(CustomLoadBefore),
+                LoadAfter = ConvertToDependencyRules(CustomLoadAfter),
+                IncompatibleWith = ConvertToIncompatibilityRules(CustomIncompatibilities)
             };
 
-            // Save the customizations asynchronously
             _ = Task.Run(async () => await _modService.SaveCustomModInfoAsync(_mod.PackageId, customInfo));
-
             CloseDialog(ModCustomizationResult.Save);
+        }
+
+        private Dictionary<string, ModDependencyRule> ConvertToDependencyRules(ObservableCollection<ModDependencyRuleViewModel> viewModels)
+        {
+            var rules = new Dictionary<string, ModDependencyRule>();
+            foreach (var vm in viewModels)
+            {
+                rules[vm.PackageId] = new ModDependencyRule
+                {
+                    Name = ParseCommaSeparatedList(vm.DisplayName),
+                    Comment = ParseCommaSeparatedList(vm.Comment)
+                };
+            }
+            return rules;
+        }
+
+        private Dictionary<string, ModIncompatibilityRule> ConvertToIncompatibilityRules(ObservableCollection<ModIncompatibilityRuleViewModel> viewModels)
+        {
+            var rules = new Dictionary<string, ModIncompatibilityRule>();
+            foreach (var vm in viewModels)
+            {
+                rules[vm.PackageId] = new ModIncompatibilityRule
+                {
+                    Name = ParseCommaSeparatedList(vm.DisplayName),
+                    Comment = ParseCommaSeparatedList(vm.Comment),
+                    HardIncompatibility = vm.HardIncompatibility
+                };
+            }
+            return rules;
+        }
+
+        private List<string> ParseCommaSeparatedList(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return new List<string>();
+
+            return input.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                       .Select(s => s.Trim())
+                       .ToList();
         }
 
         private void Cancel()
@@ -138,107 +385,151 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             CloseDialog(ModCustomizationResult.Cancel);
         }
 
-        // Helper methods for serializing/deserializing rules
-        private string SerializeDependencyRules(Dictionary<string, ModDependencyRule> rules)
+        #region Rule Management Methods
+
+        private void AddLoadBefore()
         {
-            if (rules == null || rules.Count == 0)
-                return string.Empty;
-
-            // Simple serialization for demo - in a real app you'd want a proper UI for this
-            List<string> items = new List<string>();
-            foreach (var kvp in rules)
+            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Add Load Before Rule");
+            var dialog = new DependencyRuleEditorDialogView(dialogViewModel);
+            if (dialog.ShowDialog() == true)
             {
-                var rule = kvp.Value;
-                string name = string.Join(", ", rule.Name);
-                string comment = string.Join(", ", rule.Comment);
-                items.Add($"{kvp.Key}:{name}:{comment}");
-            }
-            return string.Join("; ", items);
-        }
-
-        private Dictionary<string, ModDependencyRule> ParseDependencyRules(string serialized)
-        {
-            var result = new Dictionary<string, ModDependencyRule>();
-            if (string.IsNullOrWhiteSpace(serialized))
-                return result;
-
-            string[] items = serialized.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var item in items)
-            {
-                string[] parts = item.Split(new[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length >= 1)
+                var newRule = new ModDependencyRuleViewModel
                 {
-                    string packageId = parts[0].Trim();
-                    string name = parts.Length > 1 ? parts[1].Trim() : "";
-                    string comment = parts.Length > 2 ? parts[2].Trim() : "";
-
-                    result[packageId] = new ModDependencyRule
-                    {
-                        Name = ParseCommaSeparatedList(name),
-                        Comment = ParseCommaSeparatedList(comment)
-                    };
-                }
+                    PackageId = dialogViewModel.PackageId,
+                    DisplayName = dialogViewModel.DisplayName,
+                    Comment = dialogViewModel.Comment,
+                    IsOriginal = false
+                };
+                CustomLoadBefore.Add(newRule);
+                SelectedLoadBeforeRule = newRule;
             }
-            return result;
         }
 
-        private string SerializeIncompatibilityRules(Dictionary<string, ModIncompatibilityRule> rules)
+        private bool CanEditLoadBefore() => SelectedLoadBeforeRule != null && !SelectedLoadBeforeRule.IsOriginal;
+        private void EditLoadBefore()
         {
-            if (rules == null || rules.Count == 0)
-                return string.Empty;
+            if (!CanEditLoadBefore()) return;
 
-            // Simple serialization for demo
-            List<string> items = new List<string>();
-            foreach (var kvp in rules)
+            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Edit Load Before Rule")
             {
-                var rule = kvp.Value;
-                string name = string.Join(", ", rule.Name);
-                string comment = string.Join(", ", rule.Comment);
-                items.Add($"{kvp.Key}:{name}:{comment}:{rule.HardIncompatibility}");
+                PackageId = SelectedLoadBeforeRule.PackageId,
+                DisplayName = SelectedLoadBeforeRule.DisplayName,
+                Comment = SelectedLoadBeforeRule.Comment
+            };
+            var dialog = new DependencyRuleEditorDialogView(dialogViewModel);
+            if (dialog.ShowDialog() == true)
+            {
+                SelectedLoadBeforeRule.PackageId = dialogViewModel.PackageId;
+                SelectedLoadBeforeRule.DisplayName = dialogViewModel.DisplayName;
+                SelectedLoadBeforeRule.Comment = dialogViewModel.Comment;
             }
-            return string.Join("; ", items);
         }
 
-        private Dictionary<string, ModIncompatibilityRule> ParseIncompatibilityRules(string serialized)
+        private bool CanRemoveLoadBefore() => SelectedLoadBeforeRule != null && !SelectedLoadBeforeRule.IsOriginal;
+        private void RemoveLoadBefore()
         {
-            var result = new Dictionary<string, ModIncompatibilityRule>();
-            if (string.IsNullOrWhiteSpace(serialized))
-                return result;
-
-            string[] items = serialized.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var item in items)
+            if (SelectedLoadBeforeRule != null)
             {
-                string[] parts = item.Split(new[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length >= 1)
+                CustomLoadBefore.Remove(SelectedLoadBeforeRule);
+            }
+        }
+
+        private void AddLoadAfter()
+        {
+            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Add Load After Rule");
+            var dialog = new DependencyRuleEditorDialogView(dialogViewModel);
+            if (dialog.ShowDialog() == true)
+            {
+                var newRule = new ModDependencyRuleViewModel
                 {
-                    string packageId = parts[0].Trim();
-                    string name = parts.Length > 1 ? parts[1].Trim() : "";
-                    string comment = parts.Length > 2 ? parts[2].Trim() : "";
-                    bool hard = parts.Length > 3 && bool.TryParse(parts[3], out bool h) && h;
-
-                    result[packageId] = new ModIncompatibilityRule
-                    {
-                        Name = ParseCommaSeparatedList(name),
-                        Comment = ParseCommaSeparatedList(comment),
-                        HardIncompatibility = hard
-                    };
-                }
+                    PackageId = dialogViewModel.PackageId,
+                    DisplayName = dialogViewModel.DisplayName,
+                    Comment = dialogViewModel.Comment,
+                    IsOriginal = false
+                };
+                CustomLoadAfter.Add(newRule);
+                SelectedLoadAfterRule = newRule;
             }
-            return result;
         }
 
-        private List<string> ParseCommaSeparatedList(string input)
+        private bool CanEditLoadAfter() => SelectedLoadAfterRule != null && !SelectedLoadAfterRule.IsOriginal;
+        private void EditLoadAfter()
         {
-            var result = new List<string>();
-            if (string.IsNullOrWhiteSpace(input))
-                return result;
+            if (!CanEditLoadAfter()) return;
 
-            string[] items = input.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var item in items)
+            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Edit Load After Rule")
             {
-                result.Add(item.Trim());
+                PackageId = SelectedLoadAfterRule.PackageId,
+                DisplayName = SelectedLoadAfterRule.DisplayName,
+                Comment = SelectedLoadAfterRule.Comment
+            };
+            var dialog = new DependencyRuleEditorDialogView(dialogViewModel);
+            if (dialog.ShowDialog() == true)
+            {
+                SelectedLoadAfterRule.PackageId = dialogViewModel.PackageId;
+                SelectedLoadAfterRule.DisplayName = dialogViewModel.DisplayName;
+                SelectedLoadAfterRule.Comment = dialogViewModel.Comment;
             }
-            return result;
         }
+
+        private bool CanRemoveLoadAfter() => SelectedLoadAfterRule != null && !SelectedLoadAfterRule.IsOriginal;
+        private void RemoveLoadAfter()
+        {
+            if (SelectedLoadAfterRule != null)
+            {
+                CustomLoadAfter.Remove(SelectedLoadAfterRule);
+            }
+        }
+
+        private void AddIncompatibility()
+        {
+            var dialogViewModel = new IncompatibilityRuleEditorDialogViewModel("Add Incompatibility Rule");
+            var dialog = new IncompatibilityRuleEditorDialogView(dialogViewModel);
+            if (dialog.ShowDialog() == true)
+            {
+                var newRule = new ModIncompatibilityRuleViewModel
+                {
+                    PackageId = dialogViewModel.PackageId,
+                    DisplayName = dialogViewModel.DisplayName,
+                    Comment = dialogViewModel.Comment,
+                    HardIncompatibility = dialogViewModel.HardIncompatibility,
+                    IsOriginal = false
+                };
+                CustomIncompatibilities.Add(newRule);
+                SelectedIncompatibilityRule = newRule;
+            }
+        }
+
+        private bool CanEditIncompatibility() => SelectedIncompatibilityRule != null && !SelectedIncompatibilityRule.IsOriginal;
+        private void EditIncompatibility()
+        {
+            if (!CanEditIncompatibility()) return;
+
+            var dialogViewModel = new IncompatibilityRuleEditorDialogViewModel("Edit Incompatibility Rule")
+            {
+                PackageId = SelectedIncompatibilityRule.PackageId,
+                DisplayName = SelectedIncompatibilityRule.DisplayName,
+                Comment = SelectedIncompatibilityRule.Comment,
+                HardIncompatibility = SelectedIncompatibilityRule.HardIncompatibility
+            };
+            var dialog = new IncompatibilityRuleEditorDialogView(dialogViewModel);
+            if (dialog.ShowDialog() == true)
+            {
+                SelectedIncompatibilityRule.PackageId = dialogViewModel.PackageId;
+                SelectedIncompatibilityRule.DisplayName = dialogViewModel.DisplayName;
+                SelectedIncompatibilityRule.Comment = dialogViewModel.Comment;
+                SelectedIncompatibilityRule.HardIncompatibility = dialogViewModel.HardIncompatibility;
+            }
+        }
+
+        private bool CanRemoveIncompatibility() => SelectedIncompatibilityRule != null && !SelectedIncompatibilityRule.IsOriginal;
+        private void RemoveIncompatibility()
+        {
+            if (SelectedIncompatibilityRule != null)
+            {
+                CustomIncompatibilities.Remove(SelectedIncompatibilityRule);
+            }
+        }
+        #endregion
     }
 }
