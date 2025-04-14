@@ -219,7 +219,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             // CheckUrlValidity(e.Uri);
         }
 
-                private void WebView_NavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
+        private void WebView_NavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
         {
             UpdateNavigationState(); // Update CanGoBack/Forward
 
@@ -267,6 +267,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             bool coreWebViewAvailable = _webView?.CoreWebView2 != null;
             CanGoBack = coreWebViewAvailable && _webView.CoreWebView2.CanGoBack;
             CanGoForward = coreWebViewAvailable && _webView.CoreWebView2.CanGoForward;
+    Debug.WriteLine($"[WebNav] CanGoBack: {CanGoBack}, CanGoForward: {CanGoForward}"); // Add debug
 
             // No need to invoke NavigationStateChanged here, the property setters do it.
         }
