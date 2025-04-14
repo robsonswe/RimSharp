@@ -196,11 +196,16 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
         private void NavigationService_NavigationStateChanged(object? sender, EventArgs e)
         {
+
             RunOnUIThread(() =>
             {
                 CanGoBack = _navigationService.CanGoBack;
                 CanGoForward = _navigationService.CanGoForward;
                 CurrentUrl = _navigationService.CurrentUrl;
+
+                (GoBackCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                (GoForwardCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+
             });
         }
 
