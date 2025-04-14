@@ -199,7 +199,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             IsLoading = isLoading; // Setter handles notifications and command updates via observation
         }
 
-        private async void OnChildRequestDataRefresh(object sender, EventArgs e)
+        private void OnChildRequestDataRefresh(object sender, EventArgs e)
         {
             Debug.WriteLine("[ModsViewModel] Received request for data refresh from child. Executing RequestRefreshCommand.");
             if (RequestRefreshCommand.CanExecute(null))

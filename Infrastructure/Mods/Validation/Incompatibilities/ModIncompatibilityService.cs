@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using RimSharp.Features.ModManager.Services.Mangement;
+using RimSharp.Features.ModManager.Services.Management;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 

@@ -2,7 +2,7 @@ using RimSharp.Core.Commands;
 using RimSharp.MyApp.AppFiles;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
-using RimSharp.Features.ModManager.Services.Mangement; // Correct namespace? Check dependencies.
+using RimSharp.Features.ModManager.Services.Management;
 using System;
 using System.Collections.Generic;
 using System.Linq;

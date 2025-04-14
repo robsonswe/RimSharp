@@ -170,8 +170,10 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             InitializeInstallationCommands();
             InitializePlaceholderCommands();
             CustomizeModCommand = CreateCommand<ModItem>(
-                execute: mod => ExecuteCustomizeMod(mod),
-                canExecute: mod => CanExecutizeMod(mod));
+                    execute: async mod => await ExecuteCustomizeMod(mod),
+                    canExecute: CanExecutizeMod,
+                    propertyNames: new[] { nameof(IsParentLoading), nameof(SelectedMod) });
+
 
         }
 
@@ -184,27 +186,55 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         {
             if (mod == null) return;
 
+            ModCustomInfo customInfo = null;
+            CustomizeModDialogViewModel viewModel = null;
+            ModCustomizationResult result = ModCustomizationResult.Cancel; // Default result
+
+            // Indicate loading potentially (optional, if it's quick, maybe not needed)
+            // IsLoadingRequest?.Invoke(this, true); // Consider if needed
+
             try
             {
                 Debug.WriteLine($"Attempting to customize mod: {mod.PackageId}");
-                var customInfo = _modService.GetCustomModInfo(mod.PackageId);
-                var viewModel = new CustomizeModDialogViewModel(mod, customInfo, _modService);
 
-                Debug.WriteLine("Showing customize dialog...");
-                var result = _dialogService.ShowCustomizeModDialog(viewModel);
-                Debug.WriteLine($"Dialog result: {result}");
+                // 1. Load data in the background (Keep this)
+                customInfo = await Task.Run(() => _modService.GetCustomModInfo(mod.PackageId));
+                // Execution resumes here, potentially on UI thread or background thread after await
 
-                if (result == ModCustomizationResult.Save)
+                // 2. Ensure subsequent UI operations run on the UI thread.
+                // Use the RunOnUIThread helper from ViewModelBase.
+                RunOnUIThread(() =>
                 {
-                    Debug.WriteLine("Saving custom mod info...");
-                    RequestDataRefresh?.Invoke(this, EventArgs.Empty);
-                }
+                    // Create ViewModel (safe on UI thread)
+                    viewModel = new CustomizeModDialogViewModel(mod, customInfo, _modService);
+
+                    Debug.WriteLine("Showing customize dialog on UI thread...");
+
+                    // Show Dialog (Must be on UI thread)
+                    result = _dialogService.ShowCustomizeModDialog(viewModel); // ShowDialog blocks here
+
+                    Debug.WriteLine($"Dialog result: {result}");
+
+                    if (result == ModCustomizationResult.Save)
+                    {
+                        Debug.WriteLine("Requesting data refresh after save...");
+                        // Trigger refresh event (also safer on UI thread)
+                        RequestDataRefresh?.Invoke(this, EventArgs.Empty);
+                    }
+                });
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error in ExecuteCustomizeMod: {ex}");
+                // Show error message on UI thread
+                RunOnUIThread(() => _dialogService.ShowError("Customization Error", $"Failed to customize mod '{mod?.Name ?? "Unknown"}': {ex.Message}"));
+            }
+            finally
+            {
+                // IsLoadingRequest?.Invoke(this, false); // Turn off loading indicator if used
             }
         }
+
 
         private void RefreshPathValidity()
         {

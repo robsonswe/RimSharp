@@ -26,6 +26,7 @@
     <convLogic:InequalityConverter x:Key="InequalityConverter"/>
     <convLogic:IsNotNullOrEmptyConverter x:Key="IsNotNullOrEmptyConverter"/>
     <convLogic:TabActiveConverter x:Key="TabActiveConverter"/>
+    <convLogic:NullToBoolConverter x:Key="NullToBoolConverter"/>
 
     <!-- Numeric Converters -->
     <convNumeric:ClampValueConverter x:Key="ClampValueConverter"/>
