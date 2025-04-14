@@ -83,11 +83,42 @@ namespace RimSharp.Features.GitModManager.ViewModels
                 if (SetProperty(ref _gitMods, value))
                 {
                     Debug.WriteLine($"[DEBUG] GitModsViewModel: GitMods property SET. New Count: {(_gitMods?.Count ?? 0)}. PropertyChanged raised for GitMods.");
-                    OnPropertyChanged(nameof(GitMods.Count)); // Existing notification
-                    // Command updates handled by observation of _isBusy and potentially GitMods count
-                    // Manual update needed if CanExecute depends on list *content* directly
-                    // ((RelayCommand)PullUpdatesCommand)?.RaiseCanExecuteChanged(); // Replaced by observation
+                    OnPropertyChanged(nameof(GitMods.Count));
+                    
+                    // Unsubscribe from old items
+                    if (_oldGitMods != null)
+                    {
+                        foreach (var mod in _oldGitMods)
+                        {
+                            mod.PropertyChanged -= GitModItem_PropertyChanged;
+                        }
+                    }
+                    
+                    // Subscribe to new items
+                    if (_gitMods != null)
+                    {
+                        foreach (var mod in _gitMods)
+                        {
+                            mod.PropertyChanged += GitModItem_PropertyChanged;
+                        }
+                    }
+                    
+                    _oldGitMods = _gitMods;
                 }
+            }
+        }
+        
+        // Keep track of old items for proper event handling
+        private List<GitModItemWrapper> _oldGitMods;
+
+        // Event handler for GitModItemWrapper property changes
+        private void GitModItem_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(GitModItemWrapper.IsSelected))
+            {
+                // Update commands that depend on selection state
+                RunOnUIThread(() => ((AsyncRelayCommand)PullUpdatesCommand).RaiseCanExecuteChanged());
+                Debug.WriteLine("[DEBUG] Item selection changed, PullUpdatesCommand.CanExecute updated");
             }
         }
 
@@ -120,7 +151,7 @@ namespace RimSharp.Features.GitModManager.ViewModels
             // Use base class helpers and observe IsBusy
             // Wrap synchronous logic in Task.Run for async commands
             CheckUpdatesCommand = CreateCancellableAsyncCommand(ExecuteCheckUpdatesAsync, CanExecuteCommands, nameof(IsBusy));
-            PullUpdatesCommand = CreateCancellableAsyncCommand(ExecutePullUpdatesAsync, CanPullUpdates, nameof(IsBusy), nameof(GitMods)); // Observe GitMods too? If CanPullUpdates depends on selection state within it. Selection isn't directly observed though. Let's rely on manual update after CheckUpdates for now.
+            PullUpdatesCommand = CreateCancellableAsyncCommand(ExecutePullUpdatesAsync, CanPullUpdates, nameof(IsBusy)); 
             OpenGitHubRepoCommand = CreateCommand<string>(OpenGitHubRepo, CanOpenGitHubRepo); // Sync, typed
 
             _modListManager.ListChanged += HandleModListChanged;
@@ -426,7 +457,7 @@ namespace RimSharp.Features.GitModManager.ViewModels
              });
         }
 
-        // Dispose method remains the same
+        // Dispose method updated to clean up event handlers
 
         public void Dispose()
         {
@@ -445,7 +476,15 @@ namespace RimSharp.Features.GitModManager.ViewModels
                         Debug.WriteLine("[DEBUG] GitModsViewModel: Disposing and unsubscribing from ListChanged.");
                         _modListManager.ListChanged -= HandleModListChanged;
                     }
-                    // Dispose other managed resources here
+                    
+                    // Unsubscribe from all mod item property changes
+                    if (_gitMods != null)
+                    {
+                        foreach (var mod in _gitMods)
+                        {
+                            mod.PropertyChanged -= GitModItem_PropertyChanged;
+                        }
+                    }
                 }
                 _isDisposed = true;
             }
