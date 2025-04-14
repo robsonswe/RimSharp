@@ -156,15 +156,26 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             var itemsToDownload = _queueService.Items.ToList();
             SteamCmdDownloadResult? downloadResult = null;
             bool refreshIsNeeded = false;
+            ProgressDialogViewModel? progressDialog = null;
 
             try
             {
                 StatusChanged?.Invoke(this, $"Starting download of {itemsToDownload.Count} mod(s). Please observe the SteamCMD window...");
+
+                // Show non-cancelable, indeterminate progress dialog
+                progressDialog = _dialogService.ShowProgressDialog(
+                    "Downloading Mods",
+                    $"Starting download of {itemsToDownload.Count} mod(s)...",
+                    canCancel: false,
+                    isIndeterminate: true
+                );
+
                 downloadResult = await _steamCmdService.DownloadModsAsync(itemsToDownload, false, token);
 
                 if (token.IsCancellationRequested) throw new OperationCanceledException();
 
                 StatusChanged?.Invoke(this, "SteamCMD process finished. Processing results...");
+                progressDialog.Message = "Processing download results...";
                 Debug.WriteLine($"[CommandHandler] SteamCMD finished. Overall Success: {downloadResult.OverallSuccess}, Exit Code: {downloadResult.ExitCode}");
 
                 int successCount = 0;
@@ -172,7 +183,9 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
                 if (downloadResult.SucceededItems.Any())
                 {
+                    progressDialog.Message = $"Processing {downloadResult.SucceededItems.Count} downloaded mod(s)...";
                     StatusChanged?.Invoke(this, $"Processing {downloadResult.SucceededItems.Count} downloaded mod(s)...");
+
                     foreach (var successItem in downloadResult.SucceededItems)
                     {
                         if (token.IsCancellationRequested) throw new OperationCanceledException();
@@ -202,36 +215,42 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 {
                     summary = $"Download cancelled by user. {successCount} items processed before cancellation.";
                     StatusChanged?.Invoke(this, summary);
+                    progressDialog.CompleteOperation(summary);
                     _dialogService.ShowInformation("Download Cancelled", summary);
                 }
                 else if (successCount > 0 && failCount == 0)
                 {
                     summary = $"Successfully downloaded and processed {successCount} mod(s).";
                     StatusChanged?.Invoke(this, summary);
+                    progressDialog.CompleteOperation(summary);
                     _dialogService.ShowInformation("Download Complete", summary);
                 }
                 else if (successCount > 0 && failCount > 0)
                 {
                     summary = $"Download finished. {successCount} succeeded, {failCount} failed (failed items remain in queue or had post-processing errors).";
                     StatusChanged?.Invoke(this, summary);
+                    progressDialog.CompleteOperation(summary);
                     _dialogService.ShowWarning("Download Partially Complete", summary);
                 }
                 else if (successCount == 0 && failCount > 0)
                 {
                     summary = $"Download failed. {failCount} item(s) could not be downloaded or processed. Check SteamCMD log and errors.";
                     StatusChanged?.Invoke(this, summary);
+                    progressDialog.CompleteOperation(summary);
                     _dialogService.ShowError("Download Failed", summary);
                 }
                 else if (downloadResult.ExitCode != 0)
                 {
                     summary = $"SteamCMD process failed (Exit Code {downloadResult.ExitCode}). No items successfully processed. Check log.";
                     StatusChanged?.Invoke(this, summary);
+                    progressDialog.CompleteOperation(summary);
                     _dialogService.ShowError("Download Failed", summary);
                 }
                 else
                 {
                     summary = "Download process finished, but outcome is unclear. Check SteamCMD log and queue.";
                     StatusChanged?.Invoke(this, summary);
+                    progressDialog.CompleteOperation(summary);
                     _dialogService.ShowWarning("Download Finished", summary);
                 }
 
@@ -247,6 +266,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             catch (OperationCanceledException)
             {
                 StatusChanged?.Invoke(this, "Download operation cancelled by user.");
+                progressDialog?.CompleteOperation("Download operation cancelled.");
                 _dialogService.ShowInformation("Cancelled", "Download operation cancelled. Partially downloaded items may exist but were not fully processed.");
                 Debug.WriteLine("[CommandHandler] Download cancelled, re-enriching queue items.");
                 _modInfoEnricher.EnrichAllDownloadItems(_queueService.Items);
@@ -254,6 +274,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             catch (Exception ex)
             {
                 StatusChanged?.Invoke(this, $"Error during download process: {ex.Message}");
+                progressDialog?.CompleteOperation($"Error: {ex.Message}");
                 Debug.WriteLine($"[ExecuteDownloadAsync] Exception: {ex}");
                 _dialogService.ShowError("Download Error", $"An unexpected error occurred during the download: {ex.Message}");
                 Debug.WriteLine("[CommandHandler] Download error occurred, re-enriching queue items.");
@@ -261,6 +282,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             }
             finally
             {
+                progressDialog?.ForceClose();
                 OperationCompleted?.Invoke(this, EventArgs.Empty);
             }
         }
