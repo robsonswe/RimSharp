@@ -28,8 +28,6 @@ namespace RimSharp.Features.ModManager.ViewModels
         private readonly IDialogService _dialogService;
         private readonly IPathService _pathService;
         private readonly IModService _modService;
-        private readonly IDownloadQueueService _downloadQueueService;
-
 
         // --- Child ViewModels ---
         public ModListViewModel ModListViewModel { get; private set; }
@@ -124,7 +122,8 @@ namespace RimSharp.Features.ModManager.ViewModels
             IModService modService,
             IPathService pathService,
             IModReplacementService replacementService,
-            IDownloadQueueService downloadQueueService)
+            IDownloadQueueService downloadQueueService,
+            ISteamApiClient steamApiClient)
         {
             _dataService = dataService;
             _filterService = filterService;
@@ -142,7 +141,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             ModDetailsViewModel = new ModDetailsViewModel(_dialogService);
             ModActionsViewModel = new ModActionsViewModel(
                 _dataService, commandService, ioService, _modListManager, incompatibilityService, _dialogService, _pathService, _modService,
-                        replacementService, downloadQueueService
+                        replacementService, downloadQueueService, steamApiClient
                         );
 
             // --- Event Wiring ---
