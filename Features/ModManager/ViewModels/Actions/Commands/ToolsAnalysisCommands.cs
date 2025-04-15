@@ -9,6 +9,7 @@ using RimSharp.Shared.Models;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -257,7 +258,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                         "Checking Replacements",
                         "Searching for mod replacements...",
                         canCancel: true,
-                        isIndeterminate: true, // Set to true for indeterminate progress
+                        isIndeterminate: true,
                         cts: null,
                         closeable: true);
                 });
@@ -325,79 +326,136 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     int errorCount = 0;
                     var addedNames = new List<string>();
 
-                    foreach (var selectedItem in selectedReplacements)
+                    // Show new progress dialog for Steam API checks
+                    await RunOnUIThreadAsync(() =>
                     {
-                        ct.ThrowIfCancellationRequested();
+                        progressViewModel = _dialogService.ShowProgressDialog(
+                            "Verifying Replacements",
+                            "Checking replacement mods with Steam API...",
+                            canCancel: true,
+                            isIndeterminate: false,
+                            cts: null,
+                            closeable: true);
+                    });
 
-                        var replacementInfo = selectedItem.ReplacementInfo;
-                        if (replacementInfo == null || string.IsNullOrEmpty(replacementInfo.ReplacementSteamId))
-                        {
-                            Debug.WriteLine($"[ExecuteCheckReplacements] Skipping selected item without valid ReplacementSteamId: {selectedItem.OriginalMod.Name} -> {replacementInfo?.ReplacementName}");
-                            errorCount++;
-                            continue;
-                        }
+                    linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, progressViewModel.CancellationToken);
+                    combinedToken = linkedCts.Token;
 
-                        if (_downloadQueueService.IsInQueue(replacementInfo.ReplacementSteamId))
+                    try
+                    {
+                        // Process each selected replacement
+                        for (int i = 0; i < selectedReplacements.Count; i++)
                         {
-                            Debug.WriteLine($"[ExecuteCheckReplacements] Replacement mod '{replacementInfo.ReplacementName}' ({replacementInfo.ReplacementSteamId}) is already in the download queue.");
-                            alreadyQueuedCount++;
-                            continue;
-                        }
+                            combinedToken.ThrowIfCancellationRequested();
+                            var selectedItem = selectedReplacements[i];
 
-                        var modInfoDto = new ModInfoDto
-                        {
-                            Name = replacementInfo.ReplacementName ?? $"Replacement for {selectedItem.OriginalMod.Name}",
-                            SteamId = replacementInfo.ReplacementSteamId,
-                            Url = replacementInfo.ReplacementSteamUrl,
-                            PublishDate = null,
-                            StandardDate = null
-                        };
-
-                        try
-                        {
-                            if (_downloadQueueService.AddToQueue(modInfoDto))
+                            // Update progress
+                            await RunOnUIThreadAsync(() =>
                             {
-                                addedCount++;
-                                addedNames.Add(modInfoDto.Name);
-                                Debug.WriteLine($"[ExecuteCheckReplacements] Added '{modInfoDto.Name}' ({modInfoDto.SteamId}) to download queue.");
+                                progressViewModel.Message = $"Checking {selectedItem.ReplacementInfo.ReplacementName}... ({i + 1}/{selectedReplacements.Count})";
+                                progressViewModel.Progress = (int)((double)(i + 1) / selectedReplacements.Count * 100);
+                            });
+
+                            var replacementInfo = selectedItem.ReplacementInfo;
+                            if (replacementInfo == null || string.IsNullOrEmpty(replacementInfo.ReplacementSteamId))
+                            {
+                                Debug.WriteLine($"[ExecuteCheckReplacements] Skipping selected item without valid ReplacementSteamId: {selectedItem.OriginalMod.Name} -> {replacementInfo?.ReplacementName}");
+                                errorCount++;
+                                continue;
+                            }
+
+                            if (_downloadQueueService.IsInQueue(replacementInfo.ReplacementSteamId))
+                            {
+                                Debug.WriteLine($"[ExecuteCheckReplacements] Replacement mod '{replacementInfo.ReplacementName}' ({replacementInfo.ReplacementSteamId}) is already in the download queue.");
+                                alreadyQueuedCount++;
+                                continue;
+                            }
+
+                            // Get details from Steam API
+                            try
+                            {
+                                var apiResponse = await _steamApiClient.GetFileDetailsAsync(replacementInfo.ReplacementSteamId, combinedToken);
+                                if (apiResponse?.Response?.PublishedFileDetails == null || !apiResponse.Response.PublishedFileDetails.Any())
+                                {
+                                    Debug.WriteLine($"[ExecuteCheckReplacements] No details returned for replacement mod '{replacementInfo.ReplacementName}' ({replacementInfo.ReplacementSteamId})");
+                                    errorCount++;
+                                    continue;
+                                }
+
+                                var details = apiResponse.Response.PublishedFileDetails.First();
+                                if (details.Result != 1)
+                                {
+                                    Debug.WriteLine($"[ExecuteCheckReplacements] API indicated failure retrieving details for replacement mod '{replacementInfo.ReplacementName}' ({replacementInfo.ReplacementSteamId}). Result Code: {details.Result}");
+                                    errorCount++;
+                                    continue;
+                                }
+
+                                // Convert Steam timestamp to DateTime
+                                DateTimeOffset apiUpdateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(details.TimeUpdated);
+                                DateTime apiUpdateTimeUtc = apiUpdateTimeOffset.UtcDateTime;
+
+                                var modInfoDto = new ModInfoDto
+                                {
+                                    Name = details.Title ?? replacementInfo.ReplacementName,
+                                    SteamId = replacementInfo.ReplacementSteamId,
+                                    Url = $"https://steamcommunity.com/sharedfiles/filedetails/?id={replacementInfo.ReplacementSteamId}",
+                                    PublishDate = apiUpdateTimeOffset.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture),
+                                    StandardDate = apiUpdateTimeUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                                };
+
+                                if (_downloadQueueService.AddToQueue(modInfoDto))
+                                {
+                                    addedCount++;
+                                    addedNames.Add(modInfoDto.Name);
+                                    Debug.WriteLine($"[ExecuteCheckReplacements] Added '{modInfoDto.Name}' ({modInfoDto.SteamId}) to download queue.");
+                                }
+                                else
+                                {
+                                    Debug.WriteLine($"[ExecuteCheckReplacements] Failed to add '{modInfoDto.Name}' ({modInfoDto.SteamId}) to queue (returned false).");
+                                    errorCount++;
+                                }
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                throw; // Re-throw cancellation
+                            }
+                            catch (Exception apiEx)
+                            {
+                                Debug.WriteLine($"[ExecuteCheckReplacements] Error checking Steam API for replacement mod '{replacementInfo.ReplacementName}' ({replacementInfo.ReplacementSteamId}): {apiEx.Message}");
+                                errorCount++;
+                                continue;
+                            }
+                        }
+
+                        // Show summary message on UI Thread
+                        await RunOnUIThreadAsync(() =>
+                        {
+                            var sb = new StringBuilder();
+                            if (addedCount > 0)
+                            {
+                                sb.AppendLine($"{addedCount} replacement mod(s) added to the download queue. Check the Downloader tab.");
                             }
                             else
                             {
-                                Debug.WriteLine($"[ExecuteCheckReplacements] Failed to add '{modInfoDto.Name}' ({modInfoDto.SteamId}) to queue (returned false).");
-                                errorCount++;
+                                sb.AppendLine("No new replacement mods were added to the download queue.");
                             }
-                        }
-                        catch (Exception addEx)
-                        {
-                            Debug.WriteLine($"[ExecuteCheckReplacements] Error adding '{modInfoDto.Name}' ({modInfoDto.SteamId}) to queue: {addEx.Message}");
-                            errorCount++;
-                        }
+
+                            if (alreadyQueuedCount > 0)
+                            {
+                                sb.AppendLine($"{alreadyQueuedCount} selected replacement mod(s) were already in the queue.");
+                            }
+                            if (errorCount > 0)
+                            {
+                                sb.AppendLine($"{errorCount} selected replacement mod(s) could not be added due to errors or missing info.");
+                            }
+
+                            _dialogService.ShowInformation("Replacements Processed", sb.ToString().Trim());
+                        });
                     }
-
-                    // Show summary message on UI Thread
-                    await RunOnUIThreadAsync(() =>
+                    finally
                     {
-                        var sb = new StringBuilder();
-                        if (addedCount > 0)
-                        {
-                            sb.AppendLine($"{addedCount} replacement mod(s) added to the download queue:");
-                        }
-                        else
-                        {
-                            sb.AppendLine("No new replacement mods were added to the download queue.");
-                        }
-
-                        if (alreadyQueuedCount > 0)
-                        {
-                            sb.AppendLine($"{alreadyQueuedCount} selected replacement mod(s) were already in the queue.");
-                        }
-                        if (errorCount > 0)
-                        {
-                            sb.AppendLine($"{errorCount} selected replacement mod(s) could not be added due to errors or missing info.");
-                        }
-
-                        _dialogService.ShowInformation("Replacements Processed", sb.ToString().Trim());
-                    });
+                        await RunOnUIThreadAsync(() => progressViewModel?.ForceClose());
+                    }
                 }
             }
             catch (OperationCanceledException)
@@ -425,7 +483,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 IsLoadingRequest?.Invoke(this, false);
             }
         }
-
 
 
         private bool CanExecuteRunGame()

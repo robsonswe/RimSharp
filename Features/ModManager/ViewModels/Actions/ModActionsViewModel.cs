@@ -38,6 +38,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
         private readonly IModReplacementService _replacementService;
         private readonly IDownloadQueueService _downloadQueueService;
+        private readonly ISteamApiClient _steamApiClient;
 
         // State properties (Remain here)
         private bool _isParentLoading;
@@ -153,7 +154,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             IPathService pathService,
             IModService modService,
             IModReplacementService replacementService,
-            IDownloadQueueService downloadQueueService)
+            IDownloadQueueService downloadQueueService,
+            ISteamApiClient steamApiClient)
         {
             _dataService = dataService;
             _commandService = commandService;
@@ -166,6 +168,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             _replacementService = replacementService;
             _pathService.RefreshPaths();
             _downloadQueueService = downloadQueueService;
+            _steamApiClient = steamApiClient;
             RefreshPathValidity();
             InitializeCommands(); // Calls partial initialization methods
         }

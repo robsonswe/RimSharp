@@ -152,7 +152,8 @@ namespace RimSharp.MyApp.AppFiles
                    provider.GetRequiredService<IModService>(),
                    provider.GetRequiredService<IPathService>(),
                    provider.GetRequiredService<IModReplacementService>(),
-                   provider.GetRequiredService<IDownloadQueueService>()
+                   provider.GetRequiredService<IDownloadQueueService>(),
+                   provider.GetRequiredService<ISteamApiClient>()
                ));
 
             services.AddTransient<DownloaderViewModel>(provider =>
@@ -166,9 +167,6 @@ namespace RimSharp.MyApp.AppFiles
                     provider.GetRequiredService<IModListManager>()
                 ));
 
-            // ************************************************
-            // **************** FIX: REGISTER GitModsViewModel ****************
-            // ************************************************
             services.AddTransient<GitModsViewModel>(provider =>
                 new GitModsViewModel(
                     provider.GetRequiredService<IModService>(),
@@ -176,8 +174,6 @@ namespace RimSharp.MyApp.AppFiles
                     provider.GetRequiredService<IDialogService>()
                 // Add any other dependencies GitModsViewModel might need here
                 ));
-            // ************************************************
-            // ************************************************
 
             // MainViewModel should likely be Singleton as it holds the application's top-level state
             services.AddSingleton<MainViewModel>(provider =>
