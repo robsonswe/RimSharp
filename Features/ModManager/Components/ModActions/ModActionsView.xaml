@@ -25,6 +25,11 @@
                 Command="{Binding CheckDuplicatesCommand}"
                 Margin="0,0,0,5"
                 Style="{StaticResource RimworldButtonStyle}"/>
+        <Button Content="Replacements"
+                Command="{Binding CheckReplacementsCommand}"
+                Margin="0,0,0,5"
+                Style="{StaticResource RimworldButtonStyle}"/>
+
 
         <TextBlock Text="Misc" FontWeight="Bold" Margin="0,0,0,5" Foreground="{StaticResource RimworldBrownBrush}"/>
         <Button Content="Strip mods" Command="{Binding StripModsCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
