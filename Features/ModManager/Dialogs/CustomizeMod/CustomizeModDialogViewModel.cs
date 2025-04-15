@@ -232,7 +232,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 
             // Setup LoadBottom
             LoadBottom = !HasOriginalLoadBottom && (_customInfo.LoadBottom?.Value ?? false);
-            LoadBottomComment = _customInfo.LoadBottom != null ? string.Join(", ", _customInfo.LoadBottom.Comment) : "";
+            LoadBottomComment = string.Join(", ", _customInfo.LoadBottom?.Comment ?? Enumerable.Empty<string>());
 
             // Initialize rule collections
             InitializeRuleCollections();
@@ -262,6 +262,9 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             CustomLoadAfter.Clear();
             CustomIncompatibilities.Clear();
 
+            // Provide an empty list if the source list is null before joining
+            var emptyList = new List<string>(); // Cache an empty list for efficiency
+
             // LoadBefore rules - only add custom rules that aren't in original
             if (_customInfo.LoadBefore != null)
             {
@@ -273,8 +276,9 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                         CustomLoadBefore.Add(new ModDependencyRuleViewModel
                         {
                             PackageId = rule.Key,
-                            DisplayName = string.Join(", ", rule.Value.Name),
-                            Comment = string.Join(", ", rule.Value.Comment),
+                            // Use ?? to handle potential null lists
+                            DisplayName = string.Join(", ", rule.Value.Name ?? emptyList),
+                            Comment = string.Join(", ", rule.Value.Comment ?? emptyList),
                             IsOriginal = false
                         });
                     }
@@ -291,8 +295,9 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                         CustomLoadAfter.Add(new ModDependencyRuleViewModel
                         {
                             PackageId = rule.Key,
-                            DisplayName = string.Join(", ", rule.Value.Name),
-                            Comment = string.Join(", ", rule.Value.Comment),
+                            // Use ?? to handle potential null lists
+                            DisplayName = string.Join(", ", rule.Value.Name ?? emptyList),
+                            Comment = string.Join(", ", rule.Value.Comment ?? emptyList),
                             IsOriginal = false
                         });
                     }
@@ -309,8 +314,9 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                         CustomIncompatibilities.Add(new ModIncompatibilityRuleViewModel
                         {
                             PackageId = rule.Key,
-                            DisplayName = string.Join(", ", rule.Value.Name),
-                            Comment = string.Join(", ", rule.Value.Comment),
+                            // Use ?? to handle potential null lists
+                            DisplayName = string.Join(", ", rule.Value.Name ?? emptyList),
+                            Comment = string.Join(", ", rule.Value.Comment ?? emptyList),
                             HardIncompatibility = rule.Value.HardIncompatibility,
                             IsOriginal = false
                         });
@@ -387,15 +393,15 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         }
 
         #region Validation Methods
-        
+
         /// <summary>
         /// Checks if the package ID already exists in any of the lists (both original and custom)
         /// </summary>
         private bool IsPackageIdDuplicated(string packageId)
         {
             // Check original lists
-            if (_originalLoadBefore.Contains(packageId) || 
-                _originalLoadAfter.Contains(packageId) || 
+            if (_originalLoadBefore.Contains(packageId) ||
+                _originalLoadAfter.Contains(packageId) ||
                 _originalIncompatibilities.Contains(packageId))
                 return true;
 
@@ -414,17 +420,17 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         private bool IsPackageIdInOtherLists(string packageId, string listType)
         {
             // Check if in LoadBefore (original or custom)
-            if (listType != "LoadBefore" && 
+            if (listType != "LoadBefore" &&
                 (_originalLoadBefore.Contains(packageId) || CustomLoadBefore.Any(x => x.PackageId == packageId)))
                 return true;
 
             // Check if in LoadAfter (original or custom)
-            if (listType != "LoadAfter" && 
+            if (listType != "LoadAfter" &&
                 (_originalLoadAfter.Contains(packageId) || CustomLoadAfter.Any(x => x.PackageId == packageId)))
                 return true;
 
             // Check if in IncompatibleWith (original or custom)
-            if (listType != "IncompatibleWith" && 
+            if (listType != "IncompatibleWith" &&
                 (_originalIncompatibilities.Contains(packageId) || CustomIncompatibilities.Any(x => x.PackageId == packageId)))
                 return true;
 
@@ -439,7 +445,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             // Check if already in LoadBefore
             if (_originalLoadBefore.Contains(packageId) || CustomLoadBefore.Any(x => x.PackageId == packageId))
             {
-                MessageBox.Show($"Package ID '{packageId}' already exists in the Load Before list.", 
+                MessageBox.Show($"Package ID '{packageId}' already exists in the Load Before list.",
                     "Duplicate Entry", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
@@ -448,7 +454,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             if (IsPackageIdInOtherLists(packageId, "LoadBefore"))
             {
                 MessageBox.Show($"Package ID '{packageId}' already exists in another list. " +
-                    "A package ID cannot be in multiple lists.", 
+                    "A package ID cannot be in multiple lists.",
                     "Rule Conflict", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
@@ -464,7 +470,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             // Check if already in LoadAfter
             if (_originalLoadAfter.Contains(packageId) || CustomLoadAfter.Any(x => x.PackageId == packageId))
             {
-                MessageBox.Show($"Package ID '{packageId}' already exists in the Load After list.", 
+                MessageBox.Show($"Package ID '{packageId}' already exists in the Load After list.",
                     "Duplicate Entry", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
@@ -473,7 +479,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             if (IsPackageIdInOtherLists(packageId, "LoadAfter"))
             {
                 MessageBox.Show($"Package ID '{packageId}' already exists in another list. " +
-                    "A package ID cannot be in multiple lists.", 
+                    "A package ID cannot be in multiple lists.",
                     "Rule Conflict", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
@@ -489,7 +495,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             // Check if already in IncompatibleWith
             if (_originalIncompatibilities.Contains(packageId) || CustomIncompatibilities.Any(x => x.PackageId == packageId))
             {
-                MessageBox.Show($"Package ID '{packageId}' already exists in the Incompatible With list.", 
+                MessageBox.Show($"Package ID '{packageId}' already exists in the Incompatible With list.",
                     "Duplicate Entry", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
@@ -498,7 +504,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             if (IsPackageIdInOtherLists(packageId, "IncompatibleWith"))
             {
                 MessageBox.Show($"Package ID '{packageId}' already exists in another list. " +
-                    "A package ID cannot be in multiple lists.", 
+                    "A package ID cannot be in multiple lists.",
                     "Rule Conflict", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
