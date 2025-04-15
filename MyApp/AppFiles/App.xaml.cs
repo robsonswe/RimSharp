@@ -85,6 +85,12 @@ namespace RimSharp.MyApp.AppFiles
             services.AddSingleton<IModCustomService, ModCustomService>(provider =>
                 new ModCustomService(provider.GetRequiredService<string>()));
             services.AddSingleton<IMlieVersionService, MlieVersionService>();
+            services.AddSingleton<IModReplacementService, ModReplacementService>(provider =>
+                new ModReplacementService(
+                    provider.GetRequiredService<IPathService>(),
+                    provider.GetRequiredService<string>(),
+                    provider.GetRequiredService<ILoggerService>()
+                ));
 
             // --- Core Mod Services ---
             services.AddSingleton<IModService>(provider =>
@@ -144,7 +150,9 @@ namespace RimSharp.MyApp.AppFiles
                    provider.GetRequiredService<IModIncompatibilityService>(),
                    provider.GetRequiredService<IDialogService>(),
                    provider.GetRequiredService<IModService>(),
-                   provider.GetRequiredService<IPathService>()
+                   provider.GetRequiredService<IPathService>(),
+                   provider.GetRequiredService<IModReplacementService>(),
+                   provider.GetRequiredService<IDownloadQueueService>()
                ));
 
             services.AddTransient<DownloaderViewModel>(provider =>

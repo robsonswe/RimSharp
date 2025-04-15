@@ -10,7 +10,8 @@
     <Color x:Key="RimworldHighlight">#F7D070</Color>
     <Color x:Key="RimworldDarkGreen">#2B4933</Color>
     <Color x:Key="RimworldRed">#9E2A2A</Color>
-    <Color x:Key="RimworldErrorRed">#b52828</Color> <!-- Renamed for clarity -->
+    <Color x:Key="RimworldErrorRed">#b52828</Color>
+    <Color x:Key="RimworldOrange">#D98A4B</Color>
     <Color x:Key="RimworldWhite">#FFFFFF</Color>
     <Color x:Key="RimworldGray">#BBBBBB</Color>
     <Color x:Key="RimworldShadow">#222222</Color>

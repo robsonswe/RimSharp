@@ -18,6 +18,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
+using RimSharp.Features.WorkshopDownloader.Services;
 
 namespace RimSharp.Features.ModManager.ViewModels.Actions
 {
@@ -34,6 +35,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private readonly IPathService _pathService;
 
         private readonly IModService _modService;
+
+        private readonly IModReplacementService _replacementService;
+        private readonly IDownloadQueueService _downloadQueueService;
 
         // State properties (Remain here)
         private bool _isParentLoading;
@@ -105,6 +109,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         public ICommand SaveCommand { get; private set; }
         public ICommand ImportListCommand { get; private set; }
         public ICommand ExportListCommand { get; private set; }
+        public ICommand CheckReplacementsCommand { get; private set; }
 
         // Mod Actions (Single/Multi)
         public ICommand DeleteModCommand { get; private set; } // Single
@@ -146,7 +151,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             IModIncompatibilityService incompatibilityService,
             IDialogService dialogService,
             IPathService pathService,
-            IModService modService)
+            IModService modService,
+            IModReplacementService replacementService,
+            IDownloadQueueService downloadQueueService)
         {
             _dataService = dataService;
             _commandService = commandService;
@@ -156,7 +163,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             _dialogService = dialogService;
             _pathService = pathService;
             _modService = modService;
+            _replacementService = replacementService;
             _pathService.RefreshPaths();
+            _downloadQueueService = downloadQueueService;
             RefreshPathValidity();
             InitializeCommands(); // Calls partial initialization methods
         }

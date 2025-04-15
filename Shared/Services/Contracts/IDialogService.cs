@@ -2,6 +2,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
 using RimSharp.Features.ModManager.Dialogs.Filter;
+using RimSharp.Features.ModManager.Dialogs.Replacements;
 using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
 using RimSharp.MyApp.Dialogs;
 
@@ -19,6 +20,7 @@ namespace RimSharp.Shared.Services.Contracts
         (MessageDialogResult Result, string Input) ShowInputDialog(string title, string message, string defaultInput = "");
         ModCustomizationResult ShowCustomizeModDialog(CustomizeModDialogViewModel viewModel);
         ModFilterDialogResult ShowModFilterDialog(ModFilterDialogViewModel viewModel);
+        ModReplacementDialogResult ShowModReplacementDialog(ModReplacementDialogViewModel viewModel);
 
     }
 }

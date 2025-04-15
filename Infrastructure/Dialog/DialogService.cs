@@ -5,6 +5,7 @@ using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
 using System.Threading;
 using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
 using RimSharp.Features.ModManager.Dialogs.Filter;
+using RimSharp.Features.ModManager.Dialogs.Replacements;
 
 namespace RimSharp.Infrastructure.Dialog
 {
@@ -113,6 +114,16 @@ namespace RimSharp.Infrastructure.Dialog
             };
             dialog.ShowDialog();
             return viewModel.DialogResult; // ViewModel handles setting this before closing
+        }
+        public ModReplacementDialogResult ShowModReplacementDialog(ModReplacementDialogViewModel viewModel)
+        {
+            var dialog = new ModReplacementDialogView(viewModel)
+            {
+                Owner = Application.Current?.MainWindow,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+            dialog.ShowDialog();
+            return viewModel.DialogResult;
         }
 
     }

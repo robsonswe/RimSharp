@@ -2,6 +2,7 @@ using RimSharp.Core.Commands; // Keep for specific types if needed (e.g., AsyncR
 using RimSharp.Core.Extensions;
 // using RimSharp.Features.ModManager.Services.Commands; // Likely not needed directly anymore
 using RimSharp.Features.ModManager.ViewModels.Actions;
+using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.MyApp.AppFiles;
 using RimSharp.MyApp.Dialogs;
 using RimSharp.Shared.Models;
@@ -27,6 +28,7 @@ namespace RimSharp.Features.ModManager.ViewModels
         private readonly IDialogService _dialogService;
         private readonly IPathService _pathService;
         private readonly IModService _modService;
+        private readonly IDownloadQueueService _downloadQueueService;
 
 
         // --- Child ViewModels ---
@@ -65,12 +67,12 @@ namespace RimSharp.Features.ModManager.ViewModels
             get => _hasUnsavedChanges;
             private set
             {
-                 // Use base SetProperty
+                // Use base SetProperty
                 if (SetProperty(ref _hasUnsavedChanges, value))
                 {
                     // Inform children
                     if (ModActionsViewModel != null) ModActionsViewModel.HasUnsavedChanges = value;
-                     // Command observation handles CanExecute updates for commands observing HasUnsavedChanges
+                    // Command observation handles CanExecute updates for commands observing HasUnsavedChanges
                     RunOnUIThread(CommandManager.InvalidateRequerySuggested);
                 }
             }
@@ -81,7 +83,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             get => _selectedMod;
             set
             {
-                 // Use base SetProperty
+                // Use base SetProperty
                 if (SetProperty(ref _selectedMod, value))
                 {
                     // Update children that care about the single selected mod
@@ -120,7 +122,9 @@ namespace RimSharp.Features.ModManager.ViewModels
             IModIncompatibilityService incompatibilityService,
             IDialogService dialogService,
             IModService modService,
-            IPathService pathService)
+            IPathService pathService,
+            IModReplacementService replacementService,
+            IDownloadQueueService downloadQueueService)
         {
             _dataService = dataService;
             _filterService = filterService;
@@ -137,8 +141,9 @@ namespace RimSharp.Features.ModManager.ViewModels
             ModListViewModel = new ModListViewModel(_filterService, _modListManager, commandService, _dialogService);
             ModDetailsViewModel = new ModDetailsViewModel(_dialogService);
             ModActionsViewModel = new ModActionsViewModel(
-                _dataService, commandService, ioService, _modListManager, incompatibilityService, _dialogService, _pathService, _modService
-                );
+                _dataService, commandService, ioService, _modListManager, incompatibilityService, _dialogService, _pathService, _modService,
+                        replacementService, downloadQueueService
+                        );
 
             // --- Event Wiring ---
             _modListManager.ListChanged += OnModListManagerChanged;
@@ -183,7 +188,7 @@ namespace RimSharp.Features.ModManager.ViewModels
         {
             if (e.PropertyName == nameof(ModListViewModel.SelectedMod) && sender is ModListViewModel listVM)
             {
-                 // Check prevents infinite loop if parent setting triggered the child change
+                // Check prevents infinite loop if parent setting triggered the child change
                 if (SelectedMod != listVM.SelectedMod)
                 {
                     SelectedMod = listVM.SelectedMod;
@@ -243,8 +248,8 @@ namespace RimSharp.Features.ModManager.ViewModels
 
             try
             {
-                 // Check for cancellation before showing dialog
-                 ct.ThrowIfCancellationRequested();
+                // Check for cancellation before showing dialog
+                ct.ThrowIfCancellationRequested();
 
                 await RunOnUIThreadAsync(() =>
                 {
@@ -254,8 +259,8 @@ namespace RimSharp.Features.ModManager.ViewModels
                     // Handle cancellation from dialog if needed: progressDialog.Cancelled += (s,e) => { /* maybe log */ };
                 });
 
-                 // Check for cancellation after showing dialog
-                 ct.ThrowIfCancellationRequested();
+                // Check for cancellation after showing dialog
+                ct.ThrowIfCancellationRequested();
 
 
                 // Load data (as before), passing token if service methods support it
@@ -296,17 +301,17 @@ namespace RimSharp.Features.ModManager.ViewModels
 
                 progressDialog.CompleteOperation("Mods loaded successfully");
                 // CommandManager.InvalidateRequerySuggested might still be useful for global commands
-                 RunOnUIThread(CommandManager.InvalidateRequerySuggested);
+                RunOnUIThread(CommandManager.InvalidateRequerySuggested);
 
             }
-             catch (OperationCanceledException)
-             {
-                 progressDialog?.ForceClose(); // Close dialog on cancellation
-                 Debug.WriteLine("[ModsViewModel] LoadDataAsync cancelled.");
-                 // Optionally show a cancelled message, or just reset state
-                 await RunOnUIThreadAsync(() => _dialogService.ShowWarning("Load Cancelled", "Mod loading was cancelled."));
-                 HasUnsavedChanges = false; // Reset flag
-             }
+            catch (OperationCanceledException)
+            {
+                progressDialog?.ForceClose(); // Close dialog on cancellation
+                Debug.WriteLine("[ModsViewModel] LoadDataAsync cancelled.");
+                // Optionally show a cancelled message, or just reset state
+                await RunOnUIThreadAsync(() => _dialogService.ShowWarning("Load Cancelled", "Mod loading was cancelled."));
+                HasUnsavedChanges = false; // Reset flag
+            }
             catch (Exception ex)
             {
                 progressDialog?.ForceClose(); // Ensure dialog closes on error
