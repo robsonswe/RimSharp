@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
+using System.Diagnostics; // For Debug/Console WriteLine
 
 namespace RimSharp.Shared.Services.Implementations
 {
@@ -19,9 +20,12 @@ namespace RimSharp.Shared.Services.Implementations
 
         public Dictionary<string, ModRule> GetRules()
         {
+            // Consider thread safety if needed (using lock)
             if (!_rulesLoaded)
             {
-                _cachedRules = _repository.GetAllRules();
+                _cachedRules = _repository.GetAllRules()
+                    // Normalize keys to lowercase when loading
+                    .ToDictionary(kvp => kvp.Key.ToLowerInvariant(), kvp => kvp.Value, StringComparer.OrdinalIgnoreCase);
                 _rulesLoaded = true;
             }
             return _cachedRules;
@@ -29,139 +33,118 @@ namespace RimSharp.Shared.Services.Implementations
 
         public ModRule GetRulesForMod(string packageId)
         {
-            if (!_rulesLoaded)
-            {
-                _cachedRules = GetRules();
-            }
+            if (string.IsNullOrEmpty(packageId)) return new ModRule(); // Return empty rule if no ID
 
-            if (_cachedRules.TryGetValue(packageId, out var rule))
+            var rules = GetRules(); // Ensures rules are loaded
+
+            // Use lowercase for lookup
+            if (rules.TryGetValue(packageId.ToLowerInvariant(), out var rule))
             {
                 return rule;
             }
-            return new ModRule();
+            return new ModRule(); // Return empty rule if not found
         }
 
+        // ApplyRulesToMod is less efficient, ApplyRulesToMods is preferred
         public void ApplyRulesToMod(ModItem mod)
         {
-            if (mod == null || string.IsNullOrEmpty(mod.PackageId))
+             if (mod == null || string.IsNullOrEmpty(mod.PackageId))
                 return;
 
-            var rule = GetRulesForMod(mod.PackageId);
-
-            if (rule == null) return;
-
-            // Apply loadBefore rules
-            foreach (var target in rule.LoadBefore.Keys)
-            {
-                if (!mod.LoadBefore.Contains(target))
-                    mod.LoadBefore.Add(target);
-            }
-
-            // Apply loadAfter rules
-            foreach (var target in rule.LoadAfter.Keys)
-            {
-                if (!mod.LoadAfter.Contains(target))
-                    mod.LoadAfter.Add(target);
-            }
-
-            // Apply loadBottom
-            if (rule.LoadBottom != null)
-            {
-                mod.LoadBottom = rule.LoadBottom.Value;
-                Console.WriteLine($"[DEBUG] Applied LoadBottom={rule.LoadBottom.Value} to mod {mod.PackageId}");
-            }
-
-            // Apply incompatibilities
-            foreach (var target in rule.Incompatibilities.Keys)
-            {
-                if (!mod.IncompatibleWith.Contains(target))
-                    mod.IncompatibleWith.Add(target);
-            }
+             ApplyRulesToMods(new List<ModItem> { mod }); // Just call the batch version
         }
 
-        // New batch processing method
+        // Modified batch processing method
         public void ApplyRulesToMods(IEnumerable<ModItem> mods)
         {
-            // Load all rules once
-            var rules = GetRules();
-            Console.WriteLine($"[DEBUG] ApplyRulesToMods: Processing {rules.Count} rules for mods");
+            var rules = GetRules(); // Load all rules once (uses lowercase keys now)
+            if (rules == null || !rules.Any())
+            {
+                Debug.WriteLine("[DEBUG] ApplyRulesToMods: No rules loaded or available.");
+                return; // Nothing to apply
+            }
+            // Debug.WriteLine($"[DEBUG] ApplyRulesToMods: Processing {rules.Count} rules for mods");
+
+            int versionsAdded = 0;
+            int rulesAppliedCount = 0;
 
             foreach (var mod in mods)
             {
                 if (mod == null || string.IsNullOrEmpty(mod.PackageId))
                     continue;
 
-                string packageIdLower = mod.PackageId.ToLowerInvariant(); // Ensure case-insensitive lookup
+                string packageIdLower = mod.PackageId.ToLowerInvariant(); // Use lowercase for lookup
 
                 if (rules.TryGetValue(packageIdLower, out var rule))
                 {
+                    rulesAppliedCount++;
                     // Apply supportedVersions from rules
                     if (rule.SupportedVersions != null && rule.SupportedVersions.Count > 0)
                     {
-                        // Create a lookup of existing versions for efficient checking
+                        // Use a HashSet for efficient duplicate checking (case-insensitive)
                         var existingVersions = mod.SupportedVersions
-                            .ToDictionary(v => v.Version.ToLowerInvariant(), StringComparer.OrdinalIgnoreCase);
+                                                .Select(v => v.Version)
+                                                .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-                        // Add versions from rules that don't already exist
-                        foreach (string version in rule.SupportedVersions)
+                        foreach (string ruleVersion in rule.SupportedVersions)
                         {
-                            string versionLower = version.ToLowerInvariant();
-                            if (!existingVersions.ContainsKey(versionLower))
+                            if (string.IsNullOrWhiteSpace(ruleVersion)) continue;
+
+                            // Add rule version only if it doesn't already exist
+                            if (existingVersions.Add(ruleVersion)) // Returns true if added
                             {
-                                mod.SupportedVersions.Add(new VersionSupport(version, true)); // Set unofficial = true
-                                Console.WriteLine($"[DEBUG] Added unofficial support for version {version} to mod {mod.PackageId}");
+                                mod.SupportedVersions.Add(new VersionSupport(ruleVersion, VersionSource.Database, unofficial: true)); // Mark as DB source and unofficial
+                                versionsAdded++;
+                                // Debug.WriteLine($"[DEBUG] Added DB support: {mod.PackageId} -> {ruleVersion}");
                             }
                         }
                     }
 
                     // Apply loadBefore rules
-                    foreach (var target in rule.LoadBefore.Keys)
-                    {
-                        if (!mod.LoadBefore.Contains(target))
+                    if (rule.LoadBefore != null) {
+                        foreach (var target in rule.LoadBefore.Keys)
                         {
-                            mod.LoadBefore.Add(target);
+                            if (!string.IsNullOrWhiteSpace(target) && !mod.LoadBefore.Contains(target, StringComparer.OrdinalIgnoreCase))
+                            {
+                                mod.LoadBefore.Add(target);
+                            }
                         }
                     }
 
                     // Apply loadAfter rules
-                    foreach (var target in rule.LoadAfter.Keys)
-                    {
-                        if (!mod.LoadAfter.Contains(target))
+                     if (rule.LoadAfter != null) {
+                        foreach (var target in rule.LoadAfter.Keys)
                         {
-                            mod.LoadAfter.Add(target);
+                             if (!string.IsNullOrWhiteSpace(target) && !mod.LoadAfter.Contains(target, StringComparer.OrdinalIgnoreCase))
+                            {
+                                mod.LoadAfter.Add(target);
+                            }
                         }
                     }
 
-                    // Apply loadBottom - with detailed logging
+                    // Apply loadBottom
                     if (rule.LoadBottom != null)
                     {
-                        Console.WriteLine($"[DEBUG] LoadBottom rule found for {mod.PackageId}: Value={rule.LoadBottom.Value}, Comment={string.Join(", ", rule.LoadBottom.Comment)}");
+                        // Debug.WriteLine($"[DEBUG] Applying DB LoadBottom={rule.LoadBottom.Value} to mod {mod.PackageId}");
                         mod.LoadBottom = rule.LoadBottom.Value;
-                        Console.WriteLine($"[DEBUG] Applied LoadBottom={rule.LoadBottom.Value} to mod {mod.PackageId}");
                     }
 
                     // Apply incompatibilities
-                    foreach (var target in rule.Incompatibilities.Keys)
-                    {
-                        if (!mod.IncompatibleWith.Contains(target))
+                    if (rule.Incompatibilities != null) {
+                        foreach (var target in rule.Incompatibilities.Keys)
                         {
-                            mod.IncompatibleWith.Add(target);
-                            Console.WriteLine($"[DEBUG] Added Incompatibility: {mod.PackageId} -> {target}");
+                             if (!string.IsNullOrWhiteSpace(target) && !mod.IncompatibleWith.Contains(target, StringComparer.OrdinalIgnoreCase))
+                            {
+                                mod.IncompatibleWith.Add(target);
+                                // Debug.WriteLine($"[DEBUG] Added DB Incompatibility: {mod.PackageId} -> {target}");
+                            }
                         }
                     }
                 }
-                else
-                {
-                    // Check if it's a case sensitivity issue
-                    var matchingKey = rules.Keys.FirstOrDefault(k => string.Equals(k, mod.PackageId, StringComparison.OrdinalIgnoreCase));
-                    if (matchingKey != null)
-                    {
-                    // Console.WriteLine($"[DEBUG] Case-sensitive mismatch for {mod.PackageId}. Found rule with key: {matchingKey}");
-                    }
-                }
+                // else: No rule found for this mod, which is normal.
             }
+            // Debug.WriteLine($"[DEBUG] ApplyRulesToMods finished. Applied rules to {rulesAppliedCount} mods. Added {versionsAdded} DB version entries.");
         }
 
     }
-
 }

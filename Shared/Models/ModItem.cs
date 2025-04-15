@@ -72,18 +72,28 @@ namespace RimSharp.Shared.Models
         private List<string> _tagList;
         public List<string> TagList => _tagList ??= ParseCommaSeparatedString(Tags);
 
+        /// <summary>
+        /// Invalidates the cached tag list, forcing it to be reparsed on next access.
+        /// Call this if the Tags string is modified externally.
+        /// </summary>
+        public void InvalidateTagListCache() // <<< ADDED METHOD
+        {
+            _tagList = null;
+        }
+
         private static List<string> ParseCommaSeparatedString(string input)
         {
             if (string.IsNullOrWhiteSpace(input))
             {
                 return new List<string>();
             }
-            return input.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries) // Allow comma or semicolon
+            // Allow comma or semicolon, trim whitespace, remove empty results
+            return input.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
                         .Select(s => s.Trim())
                         .Where(s => !string.IsNullOrEmpty(s))
+                        .Distinct(StringComparer.OrdinalIgnoreCase) // Ensure unique tags
                         .ToList();
         }
-
     }
 
     public class ModDependency
