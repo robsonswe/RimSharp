@@ -22,54 +22,120 @@ namespace RimSharp.Shared.Services.Implementations
 
         private readonly IModRulesService _rulesService;
         private readonly IModCustomService _customService;
+        private readonly IMlieVersionService _mlieVersionService; // <<< ADDED
+        private readonly ILoggerService _logger; // <<< ADDED
 
-        public ModService(IPathService pathService, IModRulesService rulesService, IModCustomService customService)
+        public ModService(IPathService pathService, IModRulesService rulesService, IModCustomService customService, IMlieVersionService mlieVersionService, ILoggerService logger)
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
             _rulesService = rulesService ?? throw new ArgumentNullException(nameof(rulesService));
             _customService = customService ?? throw new ArgumentNullException(nameof(customService));
+            _mlieVersionService = mlieVersionService ?? throw new ArgumentNullException(nameof(mlieVersionService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public IEnumerable<ModItem> GetLoadedMods() => _allMods;
 
         public void LoadMods()
         {
+            _logger.LogInfo("Starting synchronous mod loading...", nameof(ModService));
             _allMods.Clear();
             _currentMajorVersion = _pathService.GetMajorGameVersion();
+            _logger.LogDebug($"Current Major Game Version: {_currentMajorVersion}", nameof(ModService));
 
-            // Check if all required paths are set
             var gamePath = _pathService.GetGamePath();
             var configPath = _pathService.GetConfigPath();
             var modsPath = _pathService.GetModsPath();
 
-            if (string.IsNullOrEmpty(gamePath) ||
-                string.IsNullOrEmpty(configPath) ||
-                string.IsNullOrEmpty(modsPath))
+            if (string.IsNullOrEmpty(gamePath) || string.IsNullOrEmpty(configPath) || string.IsNullOrEmpty(modsPath))
             {
-                return; // Return empty list if any path is not set
+                _logger.LogWarning("One or more required paths (Game, Config, Mods) are not set. Mod loading aborted.", nameof(ModService));
+                return;
             }
 
-            // Load core mods from game data folder
-            LoadCoreMods(gamePath);
+            // 1. Load Base Mod Info (About.xml) - Includes Official Versions
+            _logger.LogDebug("Loading core mods...", nameof(ModService));
+            LoadCoreMods(gamePath); // Already adds to _allMods
+            _logger.LogDebug("Loading workshop/local mods...", nameof(ModService));
+            LoadWorkshopMods(modsPath); // Already adds to _allMods
 
-            // Load workshop mods from mods folder
-            LoadWorkshopMods(modsPath);
+            // 2. Get Mlie Data (Do this early before applying rules/custom)
+            _logger.LogDebug("Retrieving Mlie version data...", nameof(ModService));
+            var mlieVersions = _mlieVersionService.GetMlieVersions();
 
-            // Apply rules to all mods
+            // 3. Apply Mlie Versions (Priority: Official -> Mlie)
+            _logger.LogDebug("Applying Mlie version data...", nameof(ModService));
+            ApplyMlieVersions(_allMods, mlieVersions);
+
+            // 4. Apply Rules Service Info (Versions + Other Rules)
+            _logger.LogDebug("Applying ModRulesService data...", nameof(ModService));
+            // ModRulesService.ApplyRulesToMods needs modification (see Step 7)
             _rulesService.ApplyRulesToMods(_allMods);
 
-            // Apply custom information to mods
+            // 5. Apply Custom Service Info (Versions + Other Customizations)
+            _logger.LogDebug("Applying ModCustomService data...", nameof(ModService));
+            // ModCustomService.ApplyCustomInfoToMods needs modification (see Step 8)
             _customService.ApplyCustomInfoToMods(_allMods);
 
-            // Now check for outdated status after rules have been applied
+            // 6. Final Checks (Outdated Status)
+            _logger.LogDebug("Calculating outdated status...", nameof(ModService));
             foreach (var mod in _allMods)
             {
+                // Use the comprehensive SupportedVersions list now
                 mod.IsOutdatedRW = !IsVersionSupported(_currentMajorVersion, mod.SupportedVersions) && mod.SupportedVersions.Any();
             }
 
-            // Set active status based on ModsConfig.xml
+            // 7. Set Active Status
+            _logger.LogDebug("Setting active mod status from ModsConfig.xml...", nameof(ModService));
             SetActiveMods(configPath);
+             _logger.LogInfo($"Synchronous mod loading complete. Loaded {_allMods.Count} mods.", nameof(ModService));
         }
+
+        /// <summary>
+        /// Applies version compatibility information from the Mlie service to the mods list.
+        /// Only adds versions if they are not already present from the Official source.
+        /// </summary>
+        private void ApplyMlieVersions(List<ModItem> mods, Dictionary<string, List<string>> mlieVersions)
+        {
+            if (mlieVersions == null || mlieVersions.Count == 0)
+            {
+                _logger.LogDebug("No Mlie version data found or provided to apply.", nameof(ModService));
+                return;
+            }
+
+            int versionsAdded = 0;
+            foreach (var mod in mods)
+            {
+                if (string.IsNullOrEmpty(mod.PackageId)) continue;
+
+                // Mlie data uses lowercase keys
+                if (mlieVersions.TryGetValue(mod.PackageId.ToLowerInvariant(), out var supportedMlieVersions))
+                {
+                    if (supportedMlieVersions != null)
+                    {
+                        // Create a HashSet of existing versions for quick lookups (case-insensitive)
+                        var existingVersions = mod.SupportedVersions
+                                                  .Select(v => v.Version)
+                                                  .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                        foreach (var mlieVersion in supportedMlieVersions)
+                        {
+                            // Add Mlie version only if it doesn't already exist
+                            if (existingVersions.Add(mlieVersion)) // .Add returns true if item was added (i.e., not present)
+                            {
+                                mod.SupportedVersions.Add(new VersionSupport(mlieVersion, VersionSource.Mlie, unofficial: true)); // Mlie versions are considered unofficial overrides
+                                versionsAdded++;
+                                //_logger.LogTrace($"Added Mlie support: {mod.PackageId} -> {mlieVersion}", nameof(ModService));
+                            }
+                        }
+                    }
+                }
+            }
+             _logger.LogDebug($"Applied Mlie versions. Added {versionsAdded} new version entries.", nameof(ModService));
+        }
+
+
+
 
 
         #region Timestamp File Creation
@@ -132,56 +198,71 @@ namespace RimSharp.Shared.Services.Implementations
 
         public async Task LoadModsAsync()
         {
+            _logger.LogInfo("Starting asynchronous mod loading...", nameof(ModService));
             var gamePath = _pathService.GetGamePath();
             var configPath = _pathService.GetConfigPath();
             var modsPath = _pathService.GetModsPath();
             _currentMajorVersion = _pathService.GetMajorGameVersion();
+            _logger.LogDebug($"Current Major Game Version: {_currentMajorVersion}", nameof(ModService));
 
-            if (string.IsNullOrEmpty(gamePath) ||
-                string.IsNullOrEmpty(configPath) ||
-                string.IsNullOrEmpty(modsPath))
+
+            if (string.IsNullOrEmpty(gamePath) || string.IsNullOrEmpty(configPath) || string.IsNullOrEmpty(modsPath))
             {
+                _logger.LogWarning("One or more required paths (Game, Config, Mods) are not set. Mod loading aborted.", nameof(ModService));
                 _allMods.Clear();
                 return;
             }
 
             var mods = new ConcurrentBag<ModItem>();
 
-            // Process core and workshop mods in parallel
+            // 1. Load Base Mod Info (About.xml) - Includes Official Versions
+            _logger.LogDebug("Loading core and workshop/local mods concurrently...", nameof(ModService));
             await Task.WhenAll(
                 Task.Run(() => LoadCoreModsAsync(gamePath, mods)),
                 Task.Run(() => LoadWorkshopModsAsync(modsPath, mods))
             );
 
-            // Update the main collection
+            // Update the main collection - do this before applying other sources
             _allMods.Clear();
             _allMods.AddRange(mods);
+            _logger.LogDebug($"Initial parsing complete. Found {_allMods.Count} mods.", nameof(ModService));
 
-            // Apply rules to all mods at once
-            _rulesService.ApplyRulesToMods(_allMods);
+            // --- Apply information in priority order ---
 
-            // Apply custom information to mods
-            if (_customService != null)
-            {
-                try
-                {
-                    _customService.ApplyCustomInfoToMods(_allMods);
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Error applying custom mod info: {ex.Message}");
-                    // Continue without custom info if there's an error
-                }
-            }
+            // 2. Get Mlie Data (Do this early before applying rules/custom)
+            _logger.LogDebug("Retrieving Mlie version data...", nameof(ModService));
+            var mlieVersions = _mlieVersionService.GetMlieVersions(); // Sync call ok, as it caches
 
-            // Now check for outdated status after rules have been applied
+            // 3. Apply Mlie Versions (Priority: Official -> Mlie)
+            _logger.LogDebug("Applying Mlie version data...", nameof(ModService));
+            ApplyMlieVersions(_allMods, mlieVersions); // Apply to the list directly
+
+            // 4. Apply Rules Service Info (Versions + Other Rules)
+            _logger.LogDebug("Applying ModRulesService data...", nameof(ModService));
+            // ModRulesService.ApplyRulesToMods needs modification (see Step 7)
+            await Task.Run(() => _rulesService.ApplyRulesToMods(_allMods));
+
+            // 5. Apply Custom Service Info (Versions + Other Customizations)
+            _logger.LogDebug("Applying ModCustomService data...", nameof(ModService));
+            // ModCustomService.ApplyCustomInfoToMods needs modification (see Step 8)
+            // Note: ApplyCustomInfoToMods uses EnsureInitializedAsync().Wait() internally, which isn't ideal.
+            // If ModCustomService becomes truly async, await it here. For now, Task.Run is fine.
+            await Task.Run(() => _customService.ApplyCustomInfoToMods(_allMods));
+
+
+            // 6. Final Checks (Outdated Status)
+            _logger.LogDebug("Calculating outdated status...", nameof(ModService));
             foreach (var mod in _allMods)
             {
+                // Use the comprehensive SupportedVersions list now
                 mod.IsOutdatedRW = !IsVersionSupported(_currentMajorVersion, mod.SupportedVersions) && mod.SupportedVersions.Any();
             }
 
-            // Set active status based on ModsConfig.xml
+            // 7. Set Active Status
+            _logger.LogDebug("Setting active mod status from ModsConfig.xml...", nameof(ModService));
             await Task.Run(() => SetActiveMods(configPath));
+
+            _logger.LogInfo($"Asynchronous mod loading complete. Loaded {_allMods.Count} mods.", nameof(ModService));
         }
 
 
@@ -437,7 +518,7 @@ namespace RimSharp.Shared.Services.Implementations
                 }
 
                 var supportedVersions = root.Element("supportedVersions")?.Elements("li")
-                    .Select(x => new VersionSupport(x.Value, false))
+                    .Select(x => new VersionSupport(x.Value, VersionSource.Official, unofficial: false))
                     .ToList() ?? new List<VersionSupport>();
 
                 var mod = new ModItem

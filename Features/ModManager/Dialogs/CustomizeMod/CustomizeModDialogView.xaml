@@ -57,7 +57,26 @@
                     <TextBlock Text="Custom versions (comma-separated):" Margin="0,5,0,3"/>
                     <TextBox Text="{Binding SupportedVersions}"
                              Margin="0,0,0,5" />
-                </StackPanel>
+                            <Border 
+                                Margin="0,0,0,5" 
+                                Padding="5"
+                                BorderBrush="#CCCCCC" 
+                                BorderThickness="1" 
+                                Background="#F0F0F0">
+                            <StackPanel>
+                            <TextBlock Text="Recommendation" FontStyle="Italic"/>
+                            <TextBlock Foreground="Gray" FontSize="11">
+                                <Run Text="This customization only removes the warning within the app."/>
+                                <LineBreak/>
+                                <Run Text="To fully suppress the version warnings in-game, install "/>
+                                <Run FontWeight="Bold" Text="Mlie's 'No Version Warning'"/>
+                                <Run Text=" mod."/>
+                                <LineBreak/>
+                                <Run Text="Please report compatible mods for the current RimWorld version in the mod's comment section."/>
+                            </TextBlock>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                 
                 <!-- Load Bottom -->
                 <Border Margin="0,0,0,10" 

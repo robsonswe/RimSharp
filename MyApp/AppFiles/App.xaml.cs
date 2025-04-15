@@ -84,13 +84,16 @@ namespace RimSharp.MyApp.AppFiles
             services.AddSingleton<IModRulesService, ModRulesService>();
             services.AddSingleton<IModCustomService, ModCustomService>(provider =>
                 new ModCustomService(provider.GetRequiredService<string>()));
+            services.AddSingleton<IMlieVersionService, MlieVersionService>();
 
             // --- Core Mod Services ---
             services.AddSingleton<IModService>(provider =>
                 new ModService(
                     provider.GetRequiredService<IPathService>(),
                     provider.GetRequiredService<IModRulesService>(),
-                    provider.GetRequiredService<IModCustomService>()
+                    provider.GetRequiredService<IModCustomService>(),
+                    provider.GetRequiredService<IMlieVersionService>(),
+                    provider.GetRequiredService<ILoggerService>()
                 ));
             services.AddSingleton<IModListManager, ModListManager>();
             services.AddSingleton<ModLookupService>();
