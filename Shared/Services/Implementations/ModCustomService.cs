@@ -393,45 +393,45 @@ namespace RimSharp.Shared.Services.Implementations
         /// </summary>
         private void CleanupEmptyCollections(ModCustomInfo customInfo)
         {
+             // Nullify top-level collections/properties if they are empty or default
              if (customInfo.LoadBefore?.Count == 0) customInfo.LoadBefore = null;
              if (customInfo.LoadAfter?.Count == 0) customInfo.LoadAfter = null;
              if (customInfo.IncompatibleWith?.Count == 0) customInfo.IncompatibleWith = null;
              if (customInfo.SupportedVersions?.Count == 0) customInfo.SupportedVersions = null;
+             if (customInfo.LoadBottom != null && !customInfo.LoadBottom.Value) customInfo.LoadBottom = null;
 
-             // For LoadBottom, only keep it if Value is true. Set to null otherwise.
-             if (customInfo.LoadBottom != null && !customInfo.LoadBottom.Value)
-             {
-                 customInfo.LoadBottom = null;
-             }
-             // Also remove null/empty strings if they somehow got added
+             // Clean inner lists within rules
+             // For SupportedVersions, remove empty strings
              customInfo.SupportedVersions?.RemoveAll(string.IsNullOrWhiteSpace);
-             customInfo.LoadBefore?.Remove(null); // Should not happen with Dict keys, but safe
-             customInfo.LoadAfter?.Remove(null);
-             customInfo.IncompatibleWith?.Remove(null);
+             // If after removing empty strings, the list becomes empty, nullify it.
+             if (customInfo.SupportedVersions?.Count == 0) customInfo.SupportedVersions = null;
 
-             // Recurse/check inner lists/dictionaries if they could be empty? (e.g., rules Name/Comment lists)
-             // Example for LoadBefore rules:
-             if (customInfo.LoadBefore != null) {
-                 foreach(var rule in customInfo.LoadBefore.Values) {
+
+             Action<Dictionary<string, ModDependencyRule>> cleanupDepRule = dict => {
+                 if (dict == null) return;
+                 // We don't need to remove rules, just clean their inner lists
+                 foreach(var rule in dict.Values) {
                     if (rule.Name?.Count == 0) rule.Name = null;
                     if (rule.Comment?.Count == 0) rule.Comment = null;
                  }
-             }
-             // ... repeat for LoadAfter, Incompatibilities ...
-             if (customInfo.LoadAfter != null) {
-                 foreach(var rule in customInfo.LoadAfter.Values) {
+             };
+
+             Action<Dictionary<string, ModIncompatibilityRule>> cleanupIncompRule = dict => {
+                 if (dict == null) return;
+                 foreach(var rule in dict.Values) {
                     if (rule.Name?.Count == 0) rule.Name = null;
                     if (rule.Comment?.Count == 0) rule.Comment = null;
                  }
-             }
-             if (customInfo.IncompatibleWith != null) {
-                 foreach(var rule in customInfo.IncompatibleWith.Values) {
-                    if (rule.Name?.Count == 0) rule.Name = null;
-                    if (rule.Comment?.Count == 0) rule.Comment = null;
-                 }
-             }
+             };
+
+             cleanupDepRule(customInfo.LoadBefore);
+             cleanupDepRule(customInfo.LoadAfter);
+             cleanupIncompRule(customInfo.IncompatibleWith);
+
+             // Cleanup LoadBottom Comment
              if (customInfo.LoadBottom?.Comment?.Count == 0) customInfo.LoadBottom.Comment = null;
 
+        
         }
     }
 }
