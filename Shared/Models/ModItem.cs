@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions; // Added for Regex
 
 namespace RimSharp.Shared.Models
 {
@@ -59,12 +60,12 @@ namespace RimSharp.Shared.Models
 
         public string DateStamp { get; set; }
         public string UpdateDate { get; set; }
-        
+
         public string Tags { get; set; }
 
         public IEnumerable<string> SupportedVersionStrings => SupportedVersions.Select(v => v.Version);
 
-                // New: Efficiently parsed Author list
+        // New: Efficiently parsed Author list
         private List<string> _authorList;
         public List<string> AuthorList => _authorList ??= ParseCommaSeparatedString(Authors);
 
@@ -76,7 +77,7 @@ namespace RimSharp.Shared.Models
         /// Invalidates the cached tag list, forcing it to be reparsed on next access.
         /// Call this if the Tags string is modified externally.
         /// </summary>
-        public void InvalidateTagListCache() // <<< ADDED METHOD
+        public void InvalidateTagListCache()
         {
             _tagList = null;
         }
@@ -101,5 +102,37 @@ namespace RimSharp.Shared.Models
         public string PackageId { get; set; }
         public string DisplayName { get; set; }
         public string SteamWorkshopUrl { get; set; }
+
+        // --- ADDED CALCULATED PROPERTY ---
+        private string _steamId;
+        public string SteamId
+        {
+            get
+            {
+                if (_steamId == null) // Calculate only once
+                {
+                    _steamId = ExtractSteamIdFromUrl(SteamWorkshopUrl) ?? string.Empty; // Store empty string if not found
+                }
+                return _steamId;
+            }
+        }
+
+        private static readonly Regex SteamIdRegex = new Regex(@"id=(\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        private static string ExtractSteamIdFromUrl(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                return null;
+            }
+
+            var match = SteamIdRegex.Match(url);
+            if (match.Success && match.Groups.Count > 1)
+            {
+                return match.Groups[1].Value;
+            }
+
+            return null; // Return null if no ID found
+        }
     }
 }

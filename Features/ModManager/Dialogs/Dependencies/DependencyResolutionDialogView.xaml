@@ -1,0 +1,123 @@
+<dialog:BaseDialog x:Class="RimSharp.Features.ModManager.Dialogs.Dependencies.DependencyResolutionDialogView"
+                   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                   xmlns:local="clr-namespace:RimSharp.Features.ModManager.Dialogs.Dependencies"
+                   xmlns:dialog="clr-namespace:RimSharp.Infrastructure.Dialog"
+                   mc:Ignorable="d"
+                   Title="{Binding Title}"
+                   Width="750" MinHeight="450" MaxHeight="700">
+
+
+    <!-- Main Content Area -->
+    <dialog:BaseDialog.MainContent>
+        <Grid Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" /> <!-- Header -->
+                <RowDefinition Height="*" />   <!-- List -->
+                <RowDefinition Height="Auto" /> <!-- Footer -->
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Grid Grid.Row="0" Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" VerticalAlignment="Center" TextWrapping="Wrap">
+                    <Run Text="The following mods are required by mods in your active list but are missing."/>
+                    <LineBreak/>
+                    <Run Text="Select the dependencies you wish to download from the Steam Workshop:"/>
+                </TextBlock>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="Select All" Command="{Binding SelectAllCommand}"
+                            Style="{StaticResource RimworldButtonStyle}" Margin="0,0,5,0" />
+                    <Button Content="Select None" Command="{Binding SelectNoneCommand}"
+                            Style="{StaticResource RimworldButtonStyle}" />
+                </StackPanel>
+            </Grid>
+
+            <!-- List of Missing Dependencies -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <ListBox ItemsSource="{Binding MissingDependencies}"
+                         Style="{StaticResource RimworldListBox}"
+                         ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                         SelectionMode="Extended"> <!-- Allows standard multi-select visuals if desired -->
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type local:MissingDependencyItemViewModel}">
+                            <Border Padding="5" Margin="2" BorderBrush="{StaticResource RimworldBorderBrush}" BorderThickness="0,0,0,1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" /> <!-- Checkbox -->
+                                        <ColumnDefinition Width="*" />   <!-- Details -->
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Checkbox -->
+                                    <CheckBox Grid.Column="0"
+                                              VerticalAlignment="Top" Margin="0,2,10,0"
+                                              IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"
+                                              IsEnabled="{Binding IsSelectable}"/>
+
+                                    <!-- Dependency Details -->
+                                    <StackPanel Grid.Column="1">
+                                        <!-- Name and ID -->
+                                        <TextBlock FontWeight="Medium">
+                                             <!-- *** CORRECTED BINDING MODE *** -->
+                                            <Run Text="{Binding DisplayName, Mode=OneWay}"/>
+                                             <!-- *** CORRECTED BINDING MODE *** -->
+                                            <Run Text="{Binding PackageId, StringFormat='({0})', Mode=OneWay}" Foreground="Gray" FontSize="11"/>
+                                        </TextBlock>
+
+                                        <!-- Steam Link -->
+                                        <TextBlock Margin="0,2,0,5" Visibility="{Binding IsSelectable, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            <Run Text="Steam: " FontSize="10" Foreground="Gray"/>
+                                            <!-- *** CORRECTED BINDING MODE *** -->
+                                            <Hyperlink NavigateUri="{Binding SteamWorkshopUrl, Mode=OneWay}" RequestNavigate="Hyperlink_RequestNavigate" Style="{StaticResource RimworldHyperlinkStyle}">
+                                                 <!-- *** CORRECTED BINDING MODE *** -->
+                                                <Run Text="{Binding SteamId, Mode=OneWay}" FontSize="10"/>
+                                            </Hyperlink>
+                                        </TextBlock>
+                                         <TextBlock Margin="0,2,0,5" Visibility="{Binding IsSelectable, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                                             FontSize="10" Foreground="{StaticResource RimworldOrangeBrush}" Text="No Steam Workshop link found"/>
+
+                                        <!-- Required By Expander -->
+                                        <Expander Header="Required By:" Margin="0,5,0,0" Style="{StaticResource RimworldExpanderStyle}">
+                                             <!-- *** CORRECTED BINDING MODE *** -->
+                                             <ItemsControl ItemsSource="{Binding RequiredByDisplay, Mode=OneWay}" Margin="15,0,0,0">
+                                                 <ItemsControl.ItemTemplate>
+                                                     <DataTemplate>
+                                                         <TextBlock Text="{Binding}" Margin="0,1" FontSize="11" Foreground="DimGray"/>
+                                                     </DataTemplate>
+                                                 </ItemsControl.ItemTemplate>
+                                             </ItemsControl>
+                                        </Expander>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </ScrollViewer>
+
+            <!-- Footer -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                <TextBlock Text="{Binding SelectedCount, StringFormat='{}{0} dependencies selected'}"
+                           VerticalAlignment="Center" Margin="0,0,15,0" />
+                <Button Content="Cancel"
+                        Command="{Binding CloseWithResultCommand}"
+                        CommandParameter="{x:Static local:DependencyResolutionDialogResult.Cancel}"
+                        Style="{StaticResource RimworldButtonStyle}" Margin="0,0,5,0" IsCancel="True"/>
+                <Button Content="Download Selected"
+                        Command="{Binding CloseWithResultCommand}"
+                        CommandParameter="{x:Static local:DependencyResolutionDialogResult.Download}"
+                        Style="{StaticResource RimworldButtonStyle}"
+                        IsEnabled="{Binding SelectedCount, Converter={StaticResource CountToBooleanConverter}}"
+                        IsDefault="True"/>
+            </StackPanel>
+        </Grid>
+    </dialog:BaseDialog.MainContent>
+
+</dialog:BaseDialog>

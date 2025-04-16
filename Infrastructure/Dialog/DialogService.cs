@@ -6,6 +6,7 @@ using System.Threading;
 using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
 using RimSharp.Features.ModManager.Dialogs.Filter;
 using RimSharp.Features.ModManager.Dialogs.Replacements;
+using RimSharp.Features.ModManager.Dialogs.Dependencies;
 
 namespace RimSharp.Infrastructure.Dialog
 {
@@ -124,6 +125,20 @@ namespace RimSharp.Infrastructure.Dialog
             };
             dialog.ShowDialog();
             return viewModel.DialogResult;
+        }
+        public DependencyResolutionDialogResult ShowDependencyResolutionDialog(DependencyResolutionDialogViewModel viewModel)
+        {
+            DependencyResolutionDialogResult result = DependencyResolutionDialogResult.Cancel;
+            Application.Current.Dispatcher.Invoke(() => {
+                var dialog = new DependencyResolutionDialogView(viewModel)
+                {
+                    Owner = Application.Current?.MainWindow,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+                dialog.ShowDialog(); // Blocks until closed
+                result = viewModel.DialogResult;
+            });
+            return result;
         }
 
     }
