@@ -6,6 +6,85 @@
         <ResourceDictionary Source="/Shared/Resources/Colors.xaml"/>
     </ResourceDictionary.MergedDictionaries>
 
+    <!-- Helper Style for the Expander's ToggleButton Header -->
+    <Style x:Key="ExpanderHeaderToggleButtonStyle" TargetType="{x:Type ToggleButton}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ToggleButton}">
+                    <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <!-- Arrow Indicator -->
+                            <TextBlock x:Name="Arrow" Grid.Column="0" Text="▶" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                            <!-- Header Content -->
+                            <ContentPresenter Grid.Column="1" RecognizesAccessKey="True" SnapsToDevicePixels="True" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Arrow" Property="Text" Value="▼"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource RimworldLightBrownBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource RimworldHighlightBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+    <Style x:Key="RimworldExpanderStyle" TargetType="{x:Type Expander}">
+        <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="{StaticResource RimworldBrownBrush}"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/> <!-- Typically just a bottom border -->
+        <Setter Property="Padding" Value="5,3"/> <!-- Padding for the content area -->
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Expander}">
+                    <!-- Removed outer border to simplify, border is now on the DockPanel -->
+                    <DockPanel Background="{TemplateBinding Background}" SnapsToDevicePixels="True">
+                         <!-- Border for the ToggleButton header to provide a visual boundary if needed -->
+                         <Border DockPanel.Dock="Top"
+                                 BorderBrush="{TemplateBinding BorderBrush}"
+                                 BorderThickness="{TemplateBinding BorderThickness}">
+                            <ToggleButton x:Name="HeaderSite"
+                                          IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          Content="{TemplateBinding Header}"
+                                          ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                          ContentTemplateSelector="{TemplateBinding HeaderTemplateSelector}"
+                                          Foreground="{TemplateBinding Foreground}"
+                                          FontWeight="SemiBold"
+                                          Focusable="False"
+                                          Style="{StaticResource ExpanderHeaderToggleButtonStyle}"/>
+                        </Border>
+                        <ContentPresenter x:Name="ExpandSite"
+                                          Visibility="Collapsed"
+                                          DockPanel.Dock="Bottom"
+                                          Focusable="False"
+                                          Margin="{TemplateBinding Padding}"/>
+                    </DockPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsExpanded" Value="True">
+                            <Setter TargetName="ExpandSite" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.6"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
     <!-- Custom Border Style for RimWorld-like panels -->
     <Style x:Key="RimworldPanelBorder" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource RimworldDarkBeigeBrush}"/>

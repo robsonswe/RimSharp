@@ -1,4 +1,5 @@
 using RimSharp.Core.Commands;
+using RimSharp.Features.ModManager.Dialogs.Dependencies;
 using RimSharp.Features.ModManager.Dialogs.DuplicateMods;
 using RimSharp.Features.ModManager.Dialogs.Incompatibilities;
 using RimSharp.Features.ModManager.Dialogs.Replacements;
@@ -67,56 +68,243 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private async Task ExecuteResolveDependencies(CancellationToken ct)
         {
             IsLoadingRequest?.Invoke(this, true);
+            ProgressDialogViewModel progressDialog = null; // For download phase
+            CancellationTokenSource linkedCts = null; // For download phase cancellation
+
             try
             {
-                ct.ThrowIfCancellationRequested();
+                // 1. Perform the core dependency resolution (finds missing, activates existing)
                 var result = await Task.Run(() => _modListManager.ResolveDependencies(), ct);
-                ct.ThrowIfCancellationRequested();
+                ct.ThrowIfCancellationRequested(); // Check after potentially long operation
 
                 var (addedMods, missingDependencies) = result;
 
-                var message = new StringBuilder();
-                if (addedMods.Count > 0)
-                {
-                    message.AppendLine("Dependencies automatically added:");
-                    message.AppendLine();
-                    foreach (var mod in addedMods) message.AppendLine($"- {mod.Name} ({mod.PackageId})");
-                    message.AppendLine();
-                }
+                // 2. Handle Results - Decide which dialog to show (if any)
                 if (missingDependencies.Count > 0)
                 {
-                    message.AppendLine("MISSING Dependencies:");
-                    message.AppendLine();
-                    foreach (var dep in missingDependencies)
-                    {
-                        message.AppendLine($"- {dep.displayName} ({dep.packageId})");
-                        message.AppendLine($"  Required by: {string.Join(", ", dep.requiredBy)}");
-                        if (!string.IsNullOrEmpty(dep.steamUrl)) message.AppendLine($"  Workshop URL: {dep.steamUrl}");
-                        message.AppendLine();
-                    }
-                }
+                    // --- Show the NEW Interactive Dialog ---
+                    DependencyResolutionDialogResult dialogResult = DependencyResolutionDialogResult.Cancel;
+                    List<string> selectedSteamIds = null;
 
-                await RunOnUIThreadAsync(() =>
+                    // Create and show the dialog on the UI thread
+                    await RunOnUIThreadAsync(() =>
+                    {
+                        var viewModel = new DependencyResolutionDialogViewModel(missingDependencies);
+                        dialogResult = _dialogService.ShowDependencyResolutionDialog(viewModel);
+                        if (dialogResult == DependencyResolutionDialogResult.Download)
+                        {
+                            selectedSteamIds = viewModel.GetSelectedSteamIds();
+                        }
+                    });
+
+                    ct.ThrowIfCancellationRequested(); // Check after dialog interaction
+
+                    // --- Process Download Request ---
+                    if (dialogResult == DependencyResolutionDialogResult.Download && selectedSteamIds != null && selectedSteamIds.Any())
+                    {
+                        int addedCount = 0;
+                        int alreadyQueuedCount = 0;
+                        int errorCount = 0;
+                        var addedNames = new List<string>(); // Store names for summary
+
+                        // Show progress dialog for the download/API check phase
+                        await RunOnUIThreadAsync(() =>
+                        {
+                             // Use non-null cts for cancellation
+                             progressDialog = _dialogService.ShowProgressDialog(
+                                "Verifying Dependencies",
+                                "Checking dependencies with Steam API...",
+                                canCancel: true,
+                                isIndeterminate: false, // Determinate progress
+                                cts: null, // Create linked CTS below
+                                closeable: true);
+                         });
+
+                        if (progressDialog == null) throw new InvalidOperationException("Progress dialog view model was not created.");
+
+                        // Link cancellation tokens (main command token + dialog token)
+                        linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, progressDialog.CancellationToken);
+                        var combinedToken = linkedCts.Token;
+
+                        try
+                        {
+                            for (int i = 0; i < selectedSteamIds.Count; i++)
+                            {
+                                combinedToken.ThrowIfCancellationRequested();
+                                var steamId = selectedSteamIds[i];
+
+                                // Update progress for the *second* dialog
+                                string progressMessage = $"Checking dependency {steamId}... ({i + 1}/{selectedSteamIds.Count})";
+                                await RunOnUIThreadAsync(() =>
+                                {
+                                    if (progressDialog != null && !progressDialog.CancellationToken.IsCancellationRequested)
+                                    {
+                                        progressDialog.Message = progressMessage;
+                                        progressDialog.Progress = (int)((double)(i + 1) / selectedSteamIds.Count * 100);
+                                    }
+                                });
+
+                                // Check if already in queue
+                                if (_downloadQueueService.IsInQueue(steamId))
+                                {
+                                    Debug.WriteLine($"[ExecuteResolveDependencies] Dependency mod '{steamId}' is already in the download queue.");
+                                    alreadyQueuedCount++;
+                                    continue;
+                                }
+
+                                // --- Steam API Check ---
+                                try
+                                {
+                                    var apiResponse = await _steamApiClient.GetFileDetailsAsync(steamId, combinedToken);
+                                    if (apiResponse?.Response?.PublishedFileDetails == null || !apiResponse.Response.PublishedFileDetails.Any())
+                                    {
+                                        Debug.WriteLine($"[ExecuteResolveDependencies] No details returned for dependency mod '{steamId}'");
+                                        errorCount++;
+                                        continue;
+                                    }
+
+                                    var details = apiResponse.Response.PublishedFileDetails.First();
+                                    if (details.Result != 1) // 1 = OK according to Steam API docs
+                                    {
+                                        Debug.WriteLine($"[ExecuteResolveDependencies] API indicated failure retrieving details for dependency mod '{steamId}'. Result Code: {details.Result}");
+                                        errorCount++;
+                                        continue;
+                                    }
+
+                                    // --- Add to Queue ---
+                                    DateTimeOffset apiUpdateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(details.TimeUpdated);
+                                    DateTime apiUpdateTimeUtc = apiUpdateTimeOffset.UtcDateTime;
+
+                                    var modInfoDto = new ModInfoDto
+                                    {
+                                        Name = details.Title ?? $"Unknown Mod {steamId}", // Use title or fallback
+                                        SteamId = steamId,
+                                        Url = $"https://steamcommunity.com/sharedfiles/filedetails/?id={steamId}",
+                                        PublishDate = apiUpdateTimeOffset.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture),
+                                        StandardDate = apiUpdateTimeUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                                        // Add other relevant info if available from details (Author, etc.)
+                                    };
+
+                                    if (_downloadQueueService.AddToQueue(modInfoDto))
+                                    {
+                                        addedCount++;
+                                        addedNames.Add(modInfoDto.Name);
+                                        Debug.WriteLine($"[ExecuteResolveDependencies] Added '{modInfoDto.Name}' ({modInfoDto.SteamId}) to download queue.");
+                                    }
+                                    else
+                                    {
+                                        // This might happen if AddToQueue has internal checks that fail
+                                        Debug.WriteLine($"[ExecuteResolveDependencies] Failed to add '{modInfoDto.Name}' ({modInfoDto.SteamId}) to queue (returned false).");
+                                        errorCount++;
+                                    }
+                                }
+                                catch (OperationCanceledException) { throw; } // Re-throw cancellation
+                                catch (Exception apiEx)
+                                {
+                                    Debug.WriteLine($"[ExecuteResolveDependencies] Error checking Steam API for dependency mod '{steamId}': {apiEx.Message}");
+                                    errorCount++;
+                                    // Continue with the next item
+                                }
+                            } // --- End For Loop ---
+
+                            // --- Show Summary ---
+                            await RunOnUIThreadAsync(() =>
+                            {
+                                progressDialog?.CompleteOperation("Dependency checks complete.");
+
+                                var sb = new StringBuilder();
+                                if (addedCount > 0) sb.AppendLine($"{addedCount} missing dependency mod(s) added to the download queue.");
+                                else sb.AppendLine("No new dependency mods were added to the download queue.");
+
+                                if (alreadyQueuedCount > 0) sb.AppendLine($"{alreadyQueuedCount} selected dependency mod(s) were already in the queue.");
+                                if (errorCount > 0) sb.AppendLine($"{errorCount} selected dependency mod(s) could not be added due to errors or invalid Steam info.");
+
+                                if (addedMods.Count > 0) // Also mention mods activated locally
+                                {
+                                     sb.AppendLine();
+                                     sb.AppendLine($"{addedMods.Count} inactive dependency mod(s) were automatically activated:");
+                                     foreach (var mod in addedMods.Take(5)) // Show first few
+                                         sb.AppendLine($"- {mod.Name}");
+                                     if(addedMods.Count > 5) sb.AppendLine("  ...");
+                                }
+
+
+                                _dialogService.ShowInformation("Dependencies Processed", sb.ToString().Trim());
+
+                                if (addedCount > 0)
+                                {
+                                    _navigationService.RequestTabSwitch("Downloader");
+                                }
+                            });
+                        }
+                        finally
+                        {
+                             // Ensure progress dialog is closed and CTS is disposed
+                             await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
+                             linkedCts?.Dispose();
+                             linkedCts = null;
+                             progressDialog = null;
+                        }
+                    }
+                    else if (addedMods.Count > 0) // Missing deps exist, but user cancelled download OR no downloadable ones selected
+                    {
+                        // Still inform about locally activated mods if any
+                         await RunOnUIThreadAsync(() =>
+                         {
+                              var sb = new StringBuilder();
+                              sb.AppendLine("Some required dependencies were missing or not selected for download.");
+                              sb.AppendLine();
+                              sb.AppendLine($"{addedMods.Count} inactive dependency mod(s) were automatically activated:");
+                              foreach (var mod in addedMods.Take(5)) // Show first few
+                                  sb.AppendLine($"- {mod.Name}");
+                              if(addedMods.Count > 5) sb.AppendLine("  ...");
+                              _dialogService.ShowInformation("Dependencies Resolved (Partial)", sb.ToString().Trim());
+                         });
+                    }
+                    // else: Missing dependencies exist, but none were selected and none were activated locally. No extra message needed.
+
+                }
+                else if (addedMods.Count > 0)
                 {
-                    if (message.Length == 0)
-                        _dialogService.ShowInformation("Dependencies Check", "No missing dependencies found and no new dependencies were added.");
-                    else if (missingDependencies.Count == 0)
-                        _dialogService.ShowInformation("Dependencies Added", message.ToString().TrimEnd());
-                    else
-                        _dialogService.ShowMessageWithCopy("Dependencies Status", message.ToString().TrimEnd(), MessageDialogType.Warning);
-                });
+                    // --- Only local activations occurred, no missing dependencies ---
+                    await RunOnUIThreadAsync(() =>
+                    {
+                        var message = new StringBuilder();
+                        message.AppendLine("Dependencies automatically activated:");
+                        message.AppendLine();
+                        foreach (var mod in addedMods) message.AppendLine($"- {mod.Name} ({mod.PackageId})");
+                        _dialogService.ShowInformation("Dependencies Activated", message.ToString().TrimEnd());
+                    });
+                }
+                else
+                {
+                    // --- No missing dependencies and no local activations ---
+                    await RunOnUIThreadAsync(() =>
+                    {
+                        _dialogService.ShowInformation("Dependencies Check", "No missing dependencies found and no new dependencies were activated.");
+                    });
+                }
             }
             catch (OperationCanceledException)
             {
                 Debug.WriteLine("[ExecuteResolveDependencies] Operation cancelled.");
+                 // Ensure progress dialog is closed if cancellation happened during download phase
+                await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
                 RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Dependency resolution was cancelled."));
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error resolving dependencies: {ex}");
+                await RunOnUIThreadAsync(() => progressDialog?.ForceClose()); // Close progress on error too
                 RunOnUIThread(() => _dialogService.ShowError("Resolution Error", $"Error resolving dependencies: {ex.Message}"));
             }
-            finally { IsLoadingRequest?.Invoke(this, false); }
+            finally
+            {
+                // Ensure progress dialog is closed and CTS disposed in all exit paths
+                 await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
+                 linkedCts?.Dispose();
+                IsLoadingRequest?.Invoke(this, false);
+            }
         }
 
         private async Task ExecuteCheckIncompatibilities(CancellationToken ct)
