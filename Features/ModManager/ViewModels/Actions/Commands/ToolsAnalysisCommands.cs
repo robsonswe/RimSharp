@@ -278,21 +278,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     foreach (var mod in loadedMods)
                     {
                         combinedToken.ThrowIfCancellationRequested();
-                        // processedCount++; // Not needed anymore
-
-                        // --- CHANGE 2: Remove per-mod progress update ---
-                        // The following block is removed as the dialog is indeterminate
-                        /*
-                        await RunOnUIThreadAsync(() =>
-                        {
-                            if (progressViewModel != null && !progressViewModel.CancellationToken.IsCancellationRequested)
-                            {
-                                progressViewModel.Message = $"Checking {mod.Name}... ({processedCount}/{loadedMods.Count})";
-                                progressViewModel.Progress = (int)((double)processedCount / loadedMods.Count * 100);
-                            }
-                        });
-                        */
-                        // --- END CHANGE 2 ---
 
                         ModReplacementInfo replacement = null;
                         if (!string.IsNullOrEmpty(mod.SteamId))
@@ -359,7 +344,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
                 if (dialogResult == ModReplacementDialogResult.Download && selectedReplacements != null && selectedReplacements.Any())
                 {
-                    // --- Second Progress Dialog (for API checks - THIS REMAINS DETERMINATE) ---
+                    // --- Second Progress Dialog (for API checks) ---
                     int addedCount = 0;
                     int alreadyQueuedCount = 0;
                     int errorCount = 0;
