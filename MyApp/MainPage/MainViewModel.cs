@@ -25,6 +25,7 @@ namespace RimSharp.MyApp.MainPage
         private readonly IPathService _pathService;
         private readonly IConfigService _configService; // Needed for saving path settings
         private readonly IDialogService _dialogService;
+        private readonly IApplicationNavigationService _navigationService;
 
         private string _selectedTab = "Mods"; // Default tab
         private ViewModelBase? _currentViewModel; // Holds the currently displayed module ViewModel
@@ -59,6 +60,7 @@ namespace RimSharp.MyApp.MainPage
             IPathService pathService,
             IConfigService configService,
             IDialogService dialogService,
+            IApplicationNavigationService navigationService,
             ModsViewModel modsViewModel,
             DownloaderViewModel downloaderViewModel,
             GitModsViewModel gitModsViewModel)
@@ -66,6 +68,7 @@ namespace RimSharp.MyApp.MainPage
             _pathService = pathService;
             _configService = configService;
             _dialogService = dialogService;
+            _navigationService = navigationService;
 
             ModsVM = modsViewModel;
             DownloaderVM = downloaderViewModel;
@@ -108,9 +111,14 @@ namespace RimSharp.MyApp.MainPage
                     ((DelegateCommand<string>)OpenFolderCommand).RaiseCanExecuteChanged();
                     ((DelegateCommand<string>)BrowsePathCommand).RaiseCanExecuteChanged();
                 });
+
+            // Subscribe to navigation requests
+            _navigationService.TabSwitchRequested += OnTabSwitchRequested;
         }
         // --- END Constructor ---
 
+        private void OnTabSwitchRequested(object? sender, string tabName)
+        { RunOnUIThread(() => SwitchTab(tabName)); }
         private void PathSettings_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             OnPropertyChanged(nameof(PathSettings)); // Notify UI about the whole object change
@@ -148,7 +156,7 @@ namespace RimSharp.MyApp.MainPage
                     // GameVersion change doesn't require saving config or full refresh,
                     // but notify UI if needed. PathSettings object notification handles this.
                     break;
-                 case nameof(PathSettings.ModsPath):
+                case nameof(PathSettings.ModsPath):
                     // This property changed because GamePath changed. No further action needed here,
                     // but we need to signal that path settings did change for command updates.
                     pathSettingsChanged = true;
@@ -163,14 +171,15 @@ namespace RimSharp.MyApp.MainPage
 
             if (refreshNeeded && RefreshCommand.CanExecute(null))
             {
-                 // It's better to let the user trigger refresh explicitly after path changes if it's slow,
-                 // or provide visual feedback that a refresh is recommended/needed.
-                 // For now, let's trigger it automatically.
-                 StatusMessage = "Path changed. Refreshing data...";
-                 RefreshCommand.Execute(null);
+                // It's better to let the user trigger refresh explicitly after path changes if it's slow,
+                // or provide visual feedback that a refresh is recommended/needed.
+                // For now, let's trigger it automatically.
+                StatusMessage = "Path changed. Refreshing data...";
+                RefreshCommand.Execute(null);
             }
-            else if (refreshNeeded) {
-                 StatusMessage = "Path changed. Refresh recommended (click Refresh button).";
+            else if (refreshNeeded)
+            {
+                StatusMessage = "Path changed. Refresh recommended (click Refresh button).";
             }
 
 
@@ -246,7 +255,7 @@ namespace RimSharp.MyApp.MainPage
             {
                 "GamePath" => PathSettings.GamePath,
                 "ConfigPath" => PathSettings.ConfigPath,
-                 // "ModsPath" case removed
+                // "ModsPath" case removed
                 _ => null
             };
 
@@ -271,6 +280,7 @@ namespace RimSharp.MyApp.MainPage
         {
             if (string.IsNullOrEmpty(tabName)) return;
 
+            Debug.WriteLine($"[MainViewModel] Attempting to switch tab to: {tabName}");
             ViewModelBase? nextViewModel = tabName switch
             {
                 "Mods" => ModsVM,
@@ -283,6 +293,15 @@ namespace RimSharp.MyApp.MainPage
             {
                 CurrentViewModel = nextViewModel;
                 SelectedTab = tabName;
+                Debug.WriteLine($"[MainViewModel] Switched tab to: {tabName}");
+            }
+            else if (nextViewModel == null)
+            {
+                Debug.WriteLine($"[MainViewModel] Tab switch failed: No ViewModel found for tab '{tabName}'.");
+            }
+            else
+            {
+                Debug.WriteLine($"[MainViewModel] Tab switch ignored: Already on tab '{tabName}'.");
             }
         }
 
@@ -301,7 +320,7 @@ namespace RimSharp.MyApp.MainPage
                     _ => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
                 };
 
-                 // Ensure SelectedPath is valid if possible
+                // Ensure SelectedPath is valid if possible
                 dialog.SelectedPath = (!string.IsNullOrEmpty(currentPath) && Directory.Exists(currentPath))
                     ? currentPath
                     : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -320,7 +339,7 @@ namespace RimSharp.MyApp.MainPage
                         case "ConfigPath":
                             PathSettings.ConfigPath = selectedPath;
                             break;
-                         // "ModsPath" case removed
+                            // "ModsPath" case removed
                     }
                     // CanExecute for OpenFolder/BrowsePath is handled by PathSettings_PropertyChanged
                 }
@@ -384,15 +403,15 @@ namespace RimSharp.MyApp.MainPage
                 }
 
                 // 4. Update CanExecute state for commands dependent on paths (already done by PathSettings_PropertyChanged if pathsChanged=true)
-                 if (pathsChanged)
-                 {
+                if (pathsChanged)
+                {
                     // Explicitly trigger CanExecute updates in case PropertyChanged didn't fire for all dependencies
-                     RunOnUIThread(() =>
-                     {
-                         ((DelegateCommand<string>)OpenFolderCommand).RaiseCanExecuteChanged();
-                         ((DelegateCommand<string>)BrowsePathCommand).RaiseCanExecuteChanged();
-                     });
-                 }
+                    RunOnUIThread(() =>
+                    {
+                        ((DelegateCommand<string>)OpenFolderCommand).RaiseCanExecuteChanged();
+                        ((DelegateCommand<string>)BrowsePathCommand).RaiseCanExecuteChanged();
+                    });
+                }
 
                 StatusMessage = "Refresh initiated...";
             }
@@ -404,7 +423,7 @@ namespace RimSharp.MyApp.MainPage
             }
             finally
             {
-                 // Provide slightly more accurate completion feedback
+                // Provide slightly more accurate completion feedback
                 Task.Delay(3500).ContinueWith(t =>
                 {
                     if (StatusMessage == "Refresh initiated...")
@@ -416,5 +435,46 @@ namespace RimSharp.MyApp.MainPage
                 Debug.WriteLine("[MainViewModel] RefreshData finished trigger.");
             }
         }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (_disposed) return; // Use specific field for this class
+
+            if (disposing)
+            {
+                // Unsubscribe from events
+                Debug.WriteLine("[MainViewModel] Disposing: Unsubscribing from events.");
+                if (_navigationService != null)
+                {
+                    _navigationService.TabSwitchRequested -= OnTabSwitchRequested;
+                }
+                if (PathSettings != null)
+                {
+                    PathSettings.PropertyChanged -= PathSettings_PropertyChanged;
+                }
+                if (DownloaderVM != null)
+                {
+                    DownloaderVM.DownloadCompletedAndRefreshNeeded -= DownloaderVM_DownloadCompletedAndRefreshNeeded;
+                }
+
+                 // Dispose child ViewModels if they are IDisposable (important if they are singletons resolved here)
+                 (ModsVM as IDisposable)?.Dispose();
+                (DownloaderVM as IDisposable)?.Dispose();
+                (GitModsVM as IDisposable)?.Dispose();
+
+                // Dispose other managed resources if any
+            }
+
+            // Call base dispose AFTER derived class cleanup
+            base.Dispose(disposing);
+            _disposed = true; // Set flag after base call completes its logic
+            Debug.WriteLine("[MainViewModel] Disposed.");
+        }
+        ~MainViewModel()
+        {
+            Dispose(false);
+        }
+
+
     }
 }

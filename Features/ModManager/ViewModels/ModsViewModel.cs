@@ -1,6 +1,4 @@
-using RimSharp.Core.Commands; // Keep for specific types if needed (e.g., AsyncRelayCommand)
-using RimSharp.Core.Extensions;
-// using RimSharp.Features.ModManager.Services.Commands; // Likely not needed directly anymore
+
 using RimSharp.Features.ModManager.ViewModels.Actions;
 using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.MyApp.AppFiles;
@@ -125,7 +123,8 @@ namespace RimSharp.Features.ModManager.ViewModels
             IPathService pathService,
             IModReplacementService replacementService,
             IDownloadQueueService downloadQueueService,
-            ISteamApiClient steamApiClient)
+            ISteamApiClient steamApiClient,
+            IApplicationNavigationService navigationService)
         {
             _dataService = dataService;
             _filterService = filterService;
@@ -143,7 +142,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             ModDetailsViewModel = new ModDetailsViewModel(_dialogService);
             ModActionsViewModel = new ModActionsViewModel(
                 _dataService, commandService, ioService, _modListManager, incompatibilityService, _dialogService, _pathService, _modService,
-                        replacementService, downloadQueueService, steamApiClient
+                        replacementService, downloadQueueService, steamApiClient, navigationService
                         );
 
             // --- Event Wiring ---
