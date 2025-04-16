@@ -72,6 +72,19 @@ namespace RimSharp.Shared.Models
         // New: Efficiently parsed Tag list
         private List<string> _tagList;
         public List<string> TagList => _tagList ??= ParseCommaSeparatedString(Tags);
+        /// <summary>
+        /// Gets or sets a value indicating whether this mod instance has detected issues
+        /// within the current active list context (e.g., missing dependencies, order violations).
+        /// This property is managed externally (e.g., by ModListManager).
+        /// </summary>
+        public bool HasIssues { get; set; } // We'll update this from ModListManager
+
+        /// <summary>
+        /// Gets or sets the detailed tooltip text explaining the issues found for this mod
+        /// in the current active list context.
+        /// This property is managed externally (e.g., by ModListManager).
+        /// </summary>
+        public string IssueTooltipText { get; set; } // We'll update this from ModListManager
 
         /// <summary>
         /// Invalidates the cached tag list, forcing it to be reparsed on next access.

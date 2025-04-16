@@ -39,6 +39,7 @@ namespace RimSharp.Features.ModManager.ViewModels
         private bool _hasUnsavedChanges;
         private ModItem _selectedMod;
         private IList _selectedItems; // Property to bind ListBox.SelectedItems
+        public bool HasAnyActiveModIssues => _modListManager?.HasAnyActiveModIssues ?? false;
 
         public bool IsLoading
         {
@@ -350,6 +351,7 @@ namespace RimSharp.Features.ModManager.ViewModels
 
                 // 3. Set HasUnsavedChanges Flag
                 HasUnsavedChanges = true; // Setter triggers command updates via observation
+                OnPropertyChanged(nameof(HasAnyActiveModIssues));
 
                 // 4. Invalidate Commands: Explicit call might still be needed for commands
                 //    not directly observing HasUnsavedChanges or IsLoading, or for global UI state.
