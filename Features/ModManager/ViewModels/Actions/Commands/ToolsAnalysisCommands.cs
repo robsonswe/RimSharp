@@ -460,12 +460,15 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                             }
 
                             var sb = new StringBuilder();
-                            if (addedCount > 0) sb.AppendLine($"{addedCount} replacement mod(s) added to the download queue. Check the Downloader tab.");
+                            if (addedCount > 0) sb.AppendLine($"{addedCount} replacement mod(s) added to the download queue.");
                             else sb.AppendLine("No new replacement mods were added to the download queue.");
                             if (alreadyQueuedCount > 0) sb.AppendLine($"{alreadyQueuedCount} selected replacement mod(s) were already in the queue.");
                             if (errorCount > 0) sb.AppendLine($"{errorCount} selected replacement mod(s) could not be added due to errors or missing info.");
 
                             _dialogService.ShowInformation("Replacements Processed", sb.ToString().Trim());
+                            if (addedCount > 0){
+                                _navigationService.RequestTabSwitch("Downloader");
+                            }
                         });
 
                     } // end try for API checks

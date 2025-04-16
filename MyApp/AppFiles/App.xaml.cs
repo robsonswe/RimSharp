@@ -52,6 +52,7 @@ namespace RimSharp.MyApp.AppFiles
             services.AddSingleton<ILoggerService, LoggerService>();
             services.AddSingleton<IConfigService, ConfigService>();
             services.AddSingleton<IDialogService, DialogService>();
+            services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
 
             services.AddSingleton<IPathService, PathService>(provider =>
                 new PathService(provider.GetRequiredService<IConfigService>()));
@@ -153,7 +154,8 @@ namespace RimSharp.MyApp.AppFiles
                    provider.GetRequiredService<IPathService>(),
                    provider.GetRequiredService<IModReplacementService>(),
                    provider.GetRequiredService<IDownloadQueueService>(),
-                   provider.GetRequiredService<ISteamApiClient>()
+                   provider.GetRequiredService<ISteamApiClient>(),
+                   provider.GetRequiredService<IApplicationNavigationService>()
                ));
 
             services.AddTransient<DownloaderViewModel>(provider =>
@@ -181,6 +183,7 @@ namespace RimSharp.MyApp.AppFiles
                     provider.GetRequiredService<IPathService>(),
                     provider.GetRequiredService<IConfigService>(),
                     provider.GetRequiredService<IDialogService>(),
+                    provider.GetRequiredService<IApplicationNavigationService>(),
                     provider.GetRequiredService<ModsViewModel>(),     // Resolve transient instance
                     provider.GetRequiredService<DownloaderViewModel>(), // Resolve transient instance
                     provider.GetRequiredService<GitModsViewModel>()   // <<< Resolve the now-registered GitModsViewModel
