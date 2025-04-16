@@ -15,6 +15,7 @@ namespace RimSharp.Features.ModManager.Services.Management
         private readonly ModDependencySorter _dependencySorter;
         private readonly ModLookupService _lookupService;
         private readonly List<ModItem> _allAvailableMods = new();
+        private bool _hasAnyActiveModIssues = false;
 
         public event EventHandler ListChanged;
 
@@ -29,6 +30,7 @@ namespace RimSharp.Features.ModManager.Services.Management
         public IReadOnlyList<(ModItem Mod, int LoadOrder)> VirtualActiveMods => _orderService.VirtualActiveMods;
         public IReadOnlyList<ModItem> AllInactiveMods => _stateTracker.AllInactiveMods;
        // public IReadOnlyList<string> MissingModIds => _stateTracker.MissingModIds; // Assuming this was needed elsewhere
+        public bool HasAnyActiveModIssues => _hasAnyActiveModIssues;
 
         public void Initialize(IEnumerable<ModItem> allAvailableMods, IEnumerable<string> activeModPackageIds)
         {
@@ -60,7 +62,7 @@ namespace RimSharp.Features.ModManager.Services.Management
              }
 
             _orderService.Initialize(initialActiveModsForOrder);
-
+            RecalculateActiveModIssues(); 
 
             RaiseListChanged();
             Debug.WriteLine($"ModListManager Initialized: {_orderService.VirtualActiveMods.Count} active, {_stateTracker.AllInactiveMods.Count} inactive."); // Removed missing count reference
@@ -156,6 +158,7 @@ namespace RimSharp.Features.ModManager.Services.Management
 
         private void RaiseListChanged()
         {
+            RecalculateActiveModIssues();
              Debug.WriteLine("ModListManager: Raising ListChanged event.");
             ListChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -389,5 +392,121 @@ namespace RimSharp.Features.ModManager.Services.Management
 
             return (addedMods, missingDependencies);
         }
+                private void RecalculateActiveModIssues()
+        {
+            var activeModsWithOrder = _orderService.VirtualActiveMods.ToList();
+            if (!activeModsWithOrder.Any())
+            {
+                _hasAnyActiveModIssues = false;
+                return; // Nothing to check
+            }
+
+            // Create lookup structures for efficiency
+            var activeModLookup = activeModsWithOrder
+                .Where(m => m.Mod != null && !string.IsNullOrEmpty(m.Mod.PackageId)) // Safety checks
+                .ToDictionary(m => m.Mod.PackageId.ToLowerInvariant(), m => m, StringComparer.OrdinalIgnoreCase);
+
+            var activePackageIds = activeModLookup.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            bool anyIssuesFound = false;
+
+            foreach (var currentEntry in activeModsWithOrder)
+            {
+                var currentMod = currentEntry.Mod;
+                if (currentMod == null) continue; // Skip if mod is null
+
+                var issues = new List<string>();
+                // Reset previous issues
+                currentMod.HasIssues = false;
+                currentMod.IssueTooltipText = string.Empty;
+
+                // 1. Check Missing Dependencies
+                if (currentMod.ModDependencies != null)
+                {
+                    foreach (var dep in currentMod.ModDependencies)
+                    {
+                        if (string.IsNullOrEmpty(dep.PackageId)) continue;
+                        var depIdLower = dep.PackageId.ToLowerInvariant();
+                        if (!activePackageIds.Contains(depIdLower))
+                        {
+                            issues.Add($"Dependency missing: '{dep.DisplayName ?? dep.PackageId}'");
+                        }
+                        // 2. Check Dependency Load Order (must load *before* current mod)
+                        else if (activeModLookup.TryGetValue(depIdLower, out var depEntry))
+                        {
+                            if (depEntry.LoadOrder > currentEntry.LoadOrder)
+                            {
+                                issues.Add($"Dependency load order: '{dep.DisplayName ?? dep.PackageId}' must load before this mod.");
+                            }
+                        }
+                    }
+                }
+
+                // 3. Check Incompatibilities
+                if (currentMod.IncompatibleWith != null)
+                {
+                    foreach (var incompatibleId in currentMod.IncompatibleWith)
+                    {
+                         if (string.IsNullOrEmpty(incompatibleId)) continue;
+                         var incIdLower = incompatibleId.ToLowerInvariant();
+                        if (activePackageIds.Contains(incIdLower))
+                        {
+                            // Try to get the name for a better message
+                            string incompatibleName = activeModLookup.TryGetValue(incIdLower, out var incEntry)
+                                                    ? incEntry.Mod?.Name ?? incIdLower
+                                                    : incIdLower;
+                            issues.Add($"Incompatible with active mod: '{incompatibleName}'");
+                        }
+                    }
+                }
+
+                // 4. Check Load Before Order
+                var loadBeforeIds = (currentMod.LoadBefore ?? Enumerable.Empty<string>())
+                                   .Concat(currentMod.ForceLoadBefore ?? Enumerable.Empty<string>())
+                                   .Where(id => !string.IsNullOrEmpty(id))
+                                   .Select(id => id.ToLowerInvariant());
+                foreach (var beforeIdLower in loadBeforeIds)
+                {
+                    if (activeModLookup.TryGetValue(beforeIdLower, out var targetEntry))
+                    {
+                        if (targetEntry.LoadOrder < currentEntry.LoadOrder)
+                        {
+                            string targetName = targetEntry.Mod?.Name ?? beforeIdLower;
+                            issues.Add($"Load order: Should load before '{targetName}', but loads after.");
+                        }
+                    }
+                }
+
+                // 5. Check Load After Order
+                 var loadAfterIds = (currentMod.LoadAfter ?? Enumerable.Empty<string>())
+                                   .Concat(currentMod.ForceLoadAfter ?? Enumerable.Empty<string>())
+                                   .Where(id => !string.IsNullOrEmpty(id))
+                                   .Select(id => id.ToLowerInvariant());
+                foreach (var afterIdLower in loadAfterIds)
+                {
+                    if (activeModLookup.TryGetValue(afterIdLower, out var targetEntry))
+                    {
+                        if (targetEntry.LoadOrder > currentEntry.LoadOrder)
+                        {
+                             string targetName = targetEntry.Mod?.Name ?? afterIdLower;
+                            issues.Add($"Load order: Should load after '{targetName}', but loads before.");
+                        }
+                    }
+                }
+
+
+                // Update mod properties if issues were found
+                if (issues.Count > 0)
+                {
+                    currentMod.HasIssues = true;
+                    currentMod.IssueTooltipText = string.Join(Environment.NewLine, issues);
+                    anyIssuesFound = true;
+                }
+            }
+
+            _hasAnyActiveModIssues = anyIssuesFound;
+             Debug.WriteLine($"[RecalculateActiveModIssues] Finished. AnyIssuesFound: {_hasAnyActiveModIssues}");
+        }
+
     }
 }

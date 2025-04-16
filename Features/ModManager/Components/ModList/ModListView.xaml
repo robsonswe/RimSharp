@@ -19,6 +19,7 @@
         <!-- Define the SelectedItemsHolder resource here -->
         <local:SelectedItemsHolder x:Key="selectedItemsHolder" />
 
+        <!-- Styles for Mod Type Badge -->
         <Style x:Key="ModTypeBadgeStyle" TargetType="Border">
             <Setter Property="Width" Value="22"/>
             <Setter Property="Height" Value="22"/>
@@ -53,33 +54,42 @@
             <Setter Property="BorderBrush" Value="{StaticResource RimworldBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Style.Triggers>
-                <!-- Corrected Binding Path (Removed DataContext.) -->
-                <DataTrigger Binding="{Binding IsActiveFilterApplied, RelativeSource={RelativeSource AncestorType={x:Type views:ModsView}}}" Value="True">
+                 <!-- Updated Binding Paths: Assumes DataContext of this control is ModListViewModel,
+                      and the parent view (ModsView) has the ModsViewModel as its DataContext. -->
+                 <!-- Trigger for Active List Filter -->
+                 <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding HeaderText, ElementName=RootModListView}" Value="Active"/>
+                        <Condition Binding="{Binding DataContext.IsActiveFilterApplied, RelativeSource={RelativeSource AncestorType={x:Type views:ModsView}}}" Value="True"/>
+                    </MultiDataTrigger.Conditions>
                     <Setter Property="BorderBrush" Value="{StaticResource RimworldHighlightBrush}"/>
                     <Setter Property="Foreground" Value="{StaticResource RimworldHighlightBrush}"/>
                     <Setter Property="BorderThickness" Value="2"/>
                     <Setter Property="FontWeight" Value="Bold"/>
-                </DataTrigger>
-                <!-- Corrected Binding Path (Removed DataContext.) -->
-                <DataTrigger Binding="{Binding IsInactiveFilterApplied, RelativeSource={RelativeSource AncestorType={x:Type views:ModsView}}}" Value="True">
+                 </MultiDataTrigger>
+                  <!-- Trigger for Inactive List Filter -->
+                  <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                         <Condition Binding="{Binding HeaderText, ElementName=RootModListView}" Value="Inactive"/>
+                         <Condition Binding="{Binding DataContext.IsInactiveFilterApplied, RelativeSource={RelativeSource AncestorType={x:Type views:ModsView}}}" Value="True"/>
+                    </MultiDataTrigger.Conditions>
                     <Setter Property="BorderBrush" Value="{StaticResource RimworldHighlightBrush}"/>
                     <Setter Property="Foreground" Value="{StaticResource RimworldHighlightBrush}"/>
                     <Setter Property="BorderThickness" Value="2"/>
                     <Setter Property="FontWeight" Value="Bold"/>
-                </DataTrigger>
+                 </MultiDataTrigger>
             </Style.Triggers>
         </Style>
-        
-        <!-- Assume necessary converters like FilterButtonTagConverter, BooleanToVisibilityConverter, ModTypeToDescriptionConverter, ModTypeToInitialConverter, BooleanToColorConverter are defined elsewhere (e.g., App.xaml or another ResourceDictionary) -->
+
+        <!-- Ensure necessary converters like BooleanToVisibilityConverter, etc., are referenced
+             Assuming Converters.xaml is merged in App.xaml or a parent dictionary -->
 
     </UserControl.Resources>
     <Border Style="{StaticResource RimworldPanelBorder}">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <!-- Header -->
-                <RowDefinition Height="*"/>
-                <!-- List -->
+                <RowDefinition Height="Auto"/> <!-- Header -->
+                <RowDefinition Height="*"/>    <!-- List -->
             </Grid.RowDefinitions>
 
             <!-- Header (Bindings use ElementName to RootModListView) -->
@@ -115,22 +125,20 @@
                                 Command="{Binding FilterCommand, ElementName=RootModListView}"
                                 ToolTip="{Binding FilterToolTip, ElementName=RootModListView}"
                                 Style="{StaticResource FilterButtonStyle}">
-                            <Button.Tag>
-                                <!-- Assume FilterButtonTagConverter is defined and handles these inputs correctly -->
+                             <!-- Tag binding can remain as it was, FilterButtonTagConverter handles it -->
+                             <Button.Tag>
                                 <MultiBinding Converter="{StaticResource FilterButtonTagConverter}">
                                     <Binding Path="HeaderText" ElementName="RootModListView"/>
-                                    <!-- Corrected Binding Path (Removed DataContext.) -->
-                                    <Binding Path="IsActiveFilterApplied" RelativeSource="{RelativeSource AncestorType={x:Type views:ModsView}}"/>
-                                    <!-- Corrected Binding Path (Removed DataContext.) -->
-                                    <Binding Path="IsInactiveFilterApplied" RelativeSource="{RelativeSource AncestorType={x:Type views:ModsView}}"/>
+                                    <Binding Path="DataContext.IsActiveFilterApplied" RelativeSource="{RelativeSource AncestorType={x:Type views:ModsView}}"/>
+                                    <Binding Path="DataContext.IsInactiveFilterApplied" RelativeSource="{RelativeSource AncestorType={x:Type views:ModsView}}"/>
                                 </MultiBinding>
-                            </Button.Tag>
+                             </Button.Tag>
                         </Button>
                     </Grid>
                 </Grid>
             </Border>
 
-            <!-- ListBox (Content remains largely the same) -->
+            <!-- ListBox -->
             <ListBox Grid.Row="1"
                      x:Name="InternalListBox"
                      ItemsSource="{Binding ItemsSource, ElementName=RootModListView}"
@@ -149,6 +157,7 @@
                 </b:Interaction.Behaviors>
 
                 <ListBox.ItemTemplate>
+                     <!-- Modify DataTemplate -->
                      <DataTemplate DataType="{x:Type models:ModItem}">
                         <Border Background="Transparent"
                                 Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType={x:Type views:ModsView}}}">
@@ -190,6 +199,7 @@
                                             </Setter>
                                         </Style>
                                     </ContextMenu.Resources>
+                                    <!-- Context Menu Items -->
                                     <MenuItem Header="Open Mod Folder" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.OpenModFoldersCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}"><MenuItem.Icon><TextBlock Text="📁" FontSize="14"/></MenuItem.Icon></MenuItem>
                                     <MenuItem Header="Open URL" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.OpenUrlsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" Visibility="{Binding HasUrl, Converter={StaticResource BooleanToVisibilityConverter}}"><MenuItem.Icon><TextBlock Text="🔗" FontSize="14"/></MenuItem.Icon></MenuItem>
                                     <MenuItem Header="Open Workshop Page" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.OpenWorkshopPagesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" Visibility="{Binding HasSteamUrl, Converter={StaticResource BooleanToVisibilityConverter}}"><MenuItem.Icon><TextBlock Text="☁️" FontSize="14"/></MenuItem.Icon></MenuItem>
@@ -200,10 +210,16 @@
                                 </ContextMenu>
                             </Border.ContextMenu>
 
-                            <!-- Item Content -->
-                            <StackPanel Orientation="Horizontal" Margin="2,1">
+                            <!-- Item Content - Changed StackPanel to Grid -->
+                            <Grid Margin="2,1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/> <!-- Badge -->
+                                    <ColumnDefinition Width="*"/>    <!-- Name -->
+                                    <ColumnDefinition Width="Auto"/> <!-- Issue Indicator -->
+                                </Grid.ColumnDefinitions>
+
                                 <!-- Mod Type Badge -->
-                                <Border ToolTip="{Binding ModType, Converter={StaticResource ModTypeToDescriptionConverter}}">
+                                <Border Grid.Column="0" ToolTip="{Binding ModType, Converter={StaticResource ModTypeToDescriptionConverter}}">
                                     <Border.Style>
                                         <Style TargetType="Border" BasedOn="{StaticResource ModTypeBadgeStyle}">
                                             <Setter Property="Background" Value="{StaticResource RimworldDarkBrownBrush}"/>
@@ -227,29 +243,44 @@
                                         </TextBlock.Style>
                                     </TextBlock>
                                 </Border>
+
                                 <!-- Mod Name -->
-                                <TextBlock Text="{Binding Name}"
+                                <TextBlock Grid.Column="1" Text="{Binding Name}"
                                            VerticalAlignment="Center"
+                                           Margin="5,0,0,0"
                                            Foreground="{Binding IsOutdatedRW,
                                                        Converter={StaticResource BooleanToColorConverter},
                                                        ConverterParameter=RimworldErrorRed|RimworldBrown}"/>
-                            </StackPanel>
+
+                                <TextBlock Grid.Column="2" Text="⚠️"
+                                           Foreground="{StaticResource RimworldErrorRedBrush}"
+                                           FontWeight="Bold"
+                                           FontSize="14"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Right"
+                                           Margin="5,0,2,0"
+                                           ToolTipService.InitialShowDelay="300"
+                                           ToolTipService.ShowDuration="10000"
+                                           ToolTip="{Binding IssueTooltipText}"
+                                           Visibility="{Binding HasIssues, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                            </Grid>
                         </Border>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
 
                 <ListBox.ItemContainerStyle>
-                     <!-- ItemContainerStyle remains unchanged -->
-                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                    <!-- Use the appropriate base style for list items -->
+                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource RimworldListBoxItemStyle}">
+                         <!-- Override Padding -->
                         <Setter Property="Padding" Value="0"/>
+                        <!-- Keep selection/other triggers as defined in BaseStyles.xaml or override here -->
                         <Style.Triggers>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter Property="Background" Value="{StaticResource RimworldHighlightBrush}"/>
                                 <Setter Property="Foreground" Value="{StaticResource RimworldBlackBrush}"/>
                             </Trigger>
-                            <Trigger Property="Tag" Value="Dragging">
-                                <Setter Property="Opacity" Value="0.5"/>
-                            </Trigger>
+                            <!-- Add other triggers if needed -->
                         </Style.Triggers>
                     </Style>
                 </ListBox.ItemContainerStyle>

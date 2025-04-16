@@ -9,6 +9,12 @@ namespace RimSharp.Shared.Services.Contracts
         IReadOnlyList<(ModItem Mod, int LoadOrder)> VirtualActiveMods { get; }
         IReadOnlyList<ModItem> AllInactiveMods { get; }
         event EventHandler ListChanged;
+        /// <summary>
+        /// Gets a value indicating whether any mod in the current active list has detected issues
+        /// (missing dependencies, incompatibilities, load order violations).
+        /// </summary>
+        bool HasAnyActiveModIssues { get; }
+
         void Initialize(IEnumerable<ModItem> allAvailableMods, IEnumerable<string> activeModPackageIds);
         void ActivateMod(ModItem mod);
         void ActivateModAt(ModItem mod, int index);

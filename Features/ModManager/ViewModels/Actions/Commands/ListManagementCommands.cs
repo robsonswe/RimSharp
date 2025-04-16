@@ -120,6 +120,23 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
         private void ExecuteSaveMods() // Stays synchronous
         {
+            if (_modListManager.HasAnyActiveModIssues)
+            {
+                var confirmationResult = _dialogService.ShowConfirmation(
+                    "Save Warning",
+                    "The active mod list has potential issues (e.g., missing dependencies, load order conflicts, incompatibilities).\n\n" +
+                    "Saving the list in this state might cause problems when running the game.\n\n" +
+                    "Do you want to save anyway?",
+                    showCancel: true); // Show OK (Yes) and Cancel (No)
+
+                if (confirmationResult == MessageDialogResult.Cancel) // User chose not to save
+                {
+                    Debug.WriteLine("Save cancelled by user due to detected issues.");
+                    return; // Exit without saving
+                }
+                 Debug.WriteLine("User confirmed saving despite issues.");
+            }
+
             // CanExecute checked by framework
             IsLoadingRequest?.Invoke(this, true);
             try
