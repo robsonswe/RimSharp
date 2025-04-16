@@ -18,7 +18,6 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <!-- Row 0: Settings and Version -->
@@ -52,7 +51,7 @@
                 </Grid>
 
                 <!-- Row 2: Config Folder -->
-                <Grid Grid.Row="2" Margin="0,0,0,8">
+                <Grid Grid.Row="2"> <!-- Removed Margin="0,0,0,8" from this last row -->
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
@@ -69,26 +68,6 @@
                             Style="{StaticResource SmallUtilityButtonStyle}" Margin="8,0,0,0"
                             ToolTip="Browse for config folder"/>
                 </Grid>
-
-                <!-- Row 3: Mods Folder -->
-                <Grid Grid.Row="3">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <Button Grid.Column="0" Content="Mods Dir"
-                            Command="{Binding OpenFolderCommand}" CommandParameter="ModsPath"
-                            Style="{StaticResource RimworldButtonStyle}" Width="80" Margin="0,0,8,0"
-                            ToolTip="Open mods folder in Explorer"/>
-                    <TextBox Grid.Column="1" Text="{Binding PathSettings.ModsPath, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{StaticResource RimworldTextBox}" VerticalAlignment="Center" IsReadOnly="True"/>
-                    <!-- Use SmallUtilityButtonStyle for the "..." button -->
-                    <Button Grid.Column="2" Content="..." Command="{Binding BrowsePathCommand}" CommandParameter="ModsPath"
-                            Style="{StaticResource SmallUtilityButtonStyle}" Margin="8,0,0,0"
-                            ToolTip="Browse for mods folder"/>
-                </Grid>
-
             </Grid>
         </Border>
 
@@ -108,9 +87,8 @@
             </StackPanel>
         </Border>
 
-        <!-- Main Content Area -->
+        <!-- Main Content Area (Unchanged) -->
         <Border Margin="8" Style="{StaticResource RimworldPanelBorder}" Background="{StaticResource RimworldBeigeBrush}">
-            <!-- Content is determined by DataTemplates in DataTemplates.xaml -->
             <ContentControl Content="{Binding CurrentViewModel}" />
         </Border>
     </DockPanel>

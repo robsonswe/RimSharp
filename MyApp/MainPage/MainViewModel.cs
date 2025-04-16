@@ -1,7 +1,7 @@
 #nullable enable
 using System.Windows.Input;
 using System.Windows.Forms; // Add reference to System.Windows.Forms assembly for FolderBrowserDialog
-using System.IO; // For Directory.Exists
+using System.IO; // For Directory.Exists and Path.Combine
 using System.Diagnostics;
 using System;
 using RimSharp.MyApp.AppFiles;
@@ -54,65 +54,62 @@ namespace RimSharp.MyApp.MainPage
         }
 
 
-        // --- UPDATED CONSTRUCTOR ---
-        // Only inject services used DIRECTLY by MainViewModel and the sub-viewmodels
+        // --- Constructor ---
         public MainViewModel(
             IPathService pathService,
             IConfigService configService,
             IDialogService dialogService,
-            ModsViewModel modsViewModel,             // Inject ModsViewModel
-            DownloaderViewModel downloaderViewModel,  // Inject DownloaderViewModel
+            ModsViewModel modsViewModel,
+            DownloaderViewModel downloaderViewModel,
             GitModsViewModel gitModsViewModel)
         {
             _pathService = pathService;
             _configService = configService;
             _dialogService = dialogService;
 
-            // --- Assign injected ViewModels ---
             ModsVM = modsViewModel;
             DownloaderVM = downloaderViewModel;
             GitModsVM = gitModsViewModel;
 
-            // --- No longer creating ModsVM here ---
             if (DownloaderVM != null)
             {
                 DownloaderVM.DownloadCompletedAndRefreshNeeded += DownloaderVM_DownloadCompletedAndRefreshNeeded;
             }
 
-            // Initialize Path Settings (remains here as it's app-level config)
+            // Initialize Path Settings
             PathSettings = new PathSettings
             {
                 // Get initial values from the service
-                GameVersion = _pathService.GetGameVersion(), // Get current version
                 GamePath = _pathService.GetGamePath(),
                 ConfigPath = _pathService.GetConfigPath(),
-                ModsPath = _pathService.GetModsPath()
+                ModsPath = _pathService.GetModsPath(), // Still get derived path initially
+                GameVersion = _pathService.GetGameVersion() // Get version based on initial GamePath
             };
 
-            // Listen for changes in PathSettings if they need to trigger updates elsewhere
             PathSettings.PropertyChanged += PathSettings_PropertyChanged;
 
-            // Set the initial view
-            CurrentViewModel = ModsVM; // Start with the Mods view
-            _selectedTab = "Mods"; // Explicitly set selected tab name
+            CurrentViewModel = ModsVM;
+            _selectedTab = "Mods";
 
-            // Initialize commands using base class helpers
-            SwitchTabCommand = CreateCommand<string>(SwitchTab); // No CanExecute needed if it always runs
-            BrowsePathCommand = CreateCommand<string>(BrowsePath, CanBrowsePath); // Typed parameter
-            SettingsCommand = CreateCommand(OpenSettings); // No CanExecute needed
-            RefreshCommand = CreateCommand(RefreshData, CanRefreshData); // Depends on ModsVM.IsLoading
-            OpenFolderCommand = CreateCommand<string>(OpenFolder, CanOpenFolder); // Typed parameter, depends on PathSettings
+            SwitchTabCommand = CreateCommand<string>(SwitchTab);
+            BrowsePathCommand = CreateCommand<string>(BrowsePath, CanBrowsePath);
+            SettingsCommand = CreateCommand(OpenSettings);
+            RefreshCommand = CreateCommand(RefreshData, CanRefreshData);
+            OpenFolderCommand = CreateCommand<string>(OpenFolder, CanOpenFolder);
 
-            // Initial CanExecute check for OpenFolderCommand
-            // No longer needed to call RaiseCanExecuteChanged manually here if dependencies are observed.
-            // However, initial state check is good practice, and PropertyChanged triggers observation.
-            // We observe PathSettings properties in PathSettings_PropertyChanged, which indirectly affects CanOpenFolder.
-            // But RefreshCommand depends on ModsVM state, so we need to observe that.
-            // Let's add observation for RefreshCommand explicitly.
+            // Observe ModsVM.IsLoading for RefreshCommand's CanExecute state
             ((DelegateCommand)RefreshCommand).ObservesProperty(ModsVM, nameof(ModsViewModel.IsLoading));
 
+            // Initial CanExecute update for commands dependent on PathSettings properties
+            // This happens implicitly via the initial property sets triggering PropertyChanged
+            // but an explicit call ensures it after all setup.
+            RunOnUIThread(() =>
+                {
+                    ((DelegateCommand<string>)OpenFolderCommand).RaiseCanExecuteChanged();
+                    ((DelegateCommand<string>)BrowsePathCommand).RaiseCanExecuteChanged();
+                });
         }
-        // --- END UPDATED CONSTRUCTOR ---
+        // --- END Constructor ---
 
         private void PathSettings_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
@@ -128,48 +125,58 @@ namespace RimSharp.MyApp.MainPage
                 case nameof(PathSettings.GamePath):
                     key = "game_folder";
                     value = PathSettings.GamePath;
-                    // Update related property - this might trigger another PropertyChanged event
+                    // Update related properties
                     PathSettings.GameVersion = _pathService.GetGameVersion(value ?? string.Empty);
-                    refreshNeeded = true;
+                    // *** Derive and update ModsPath ***
+                    PathSettings.ModsPath = string.IsNullOrEmpty(value) ? string.Empty : Path.Combine(value, "Mods");
+                    refreshNeeded = true; // Game path change requires full refresh
                     pathSettingsChanged = true;
                     break;
                 case nameof(PathSettings.ConfigPath):
                     key = "config_folder";
                     value = PathSettings.ConfigPath;
-                    refreshNeeded = true;
+                    refreshNeeded = true; // Config path change *might* require refresh (e.g., active mod list)
                     pathSettingsChanged = true;
                     break;
-                case nameof(PathSettings.ModsPath):
-                    key = "mods_folder";
-                    value = PathSettings.ModsPath;
-                    refreshNeeded = true;
-                    pathSettingsChanged = true;
-                    break;
+                // case nameof(PathSettings.ModsPath): // REMOVED - ModsPath is now derived
+                //     key = "mods_folder";
+                //     value = PathSettings.ModsPath;
+                //     refreshNeeded = true;
+                //     pathSettingsChanged = true;
+                //     break;
                 case nameof(PathSettings.GameVersion):
                     // GameVersion change doesn't require saving config or full refresh,
-                    // but might affect command states if they depend on it.
+                    // but notify UI if needed. PathSettings object notification handles this.
+                    break;
+                 case nameof(PathSettings.ModsPath):
+                    // This property changed because GamePath changed. No further action needed here,
+                    // but we need to signal that path settings did change for command updates.
+                    pathSettingsChanged = true;
                     break;
             }
 
-            if (key != null && value != null) // Ensure value is not null before saving
+            if (key != null && value != null)
             {
                 _configService.SetConfigValue(key, value);
                 _configService.SaveConfig();
-                // PathService cache is handled by RefreshPaths called in RefreshData if needed
             }
 
-            if (refreshNeeded)
+            if (refreshNeeded && RefreshCommand.CanExecute(null))
             {
-                // Use Task.Run for potentially long-running refresh, but ensure ModsVM handles UI updates correctly
-                // Calling the command ensures the status updates etc. happen too
-                if (RefreshCommand.CanExecute(null)) RefreshCommand.Execute(null);
+                 // It's better to let the user trigger refresh explicitly after path changes if it's slow,
+                 // or provide visual feedback that a refresh is recommended/needed.
+                 // For now, let's trigger it automatically.
+                 StatusMessage = "Path changed. Refreshing data...";
+                 RefreshCommand.Execute(null);
             }
+            else if (refreshNeeded) {
+                 StatusMessage = "Path changed. Refresh recommended (click Refresh button).";
+            }
+
 
             if (pathSettingsChanged)
             {
-                // Manual update still needed as PathSettings is a separate object,
-                // not directly observed by the command using 'this'.
-                // Alternatively, pass PathSettings properties to ObservesProperties.
+                // Update CanExecute for commands that depend on path validity
                 RunOnUIThread(() => ((DelegateCommand<string>)OpenFolderCommand).RaiseCanExecuteChanged());
             }
         }
@@ -179,11 +186,8 @@ namespace RimSharp.MyApp.MainPage
         {
             StatusMessage = "Download complete. Refreshing mod list...";
             Console.WriteLine("[MainViewModel] Received DownloadCompletedAndRefreshNeeded event. Triggering RefreshCommand.");
-
-            // Trigger the main refresh command, which handles path refresh AND mod refresh request
             if (RefreshCommand.CanExecute(null))
             {
-                // Let the main command handle the coordinated refresh
                 RefreshCommand.Execute(null);
             }
             else
@@ -195,18 +199,21 @@ namespace RimSharp.MyApp.MainPage
 
 
 
-        private void OpenFolder(string pathType) // Use specific type from CreateCommand<string>
+        private void OpenFolder(string pathType)
         {
-            // pathType is guaranteed non-null/empty if CanExecute passed, but check anyway
             if (string.IsNullOrEmpty(pathType)) return;
 
             string? path = pathType switch
             {
                 "GamePath" => PathSettings.GamePath,
                 "ConfigPath" => PathSettings.ConfigPath,
-                "ModsPath" => PathSettings.ModsPath,
+                // "ModsPath" case removed
                 _ => null
             };
+
+            // Also allow opening the derived Mods path via the GamePath button's logic?
+            // Let's keep it simple: only open explicitly defined paths for now.
+            // User can navigate to Mods from GamePath easily.
 
             if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
             {
@@ -226,12 +233,12 @@ namespace RimSharp.MyApp.MainPage
             }
             else
             {
-                _dialogService.ShowWarning("Path Not Found", $"The path '{path ?? "specified"}' does not exist or is not set.");
+                _dialogService.ShowWarning("Path Not Found", $"The path for '{pathType}' ('{path ?? "N/A"}') does not exist or is not set.");
             }
         }
 
 
-        private bool CanOpenFolder(string pathType) // Use specific type
+        private bool CanOpenFolder(string pathType)
         {
             if (string.IsNullOrEmpty(pathType)) return false;
 
@@ -239,10 +246,11 @@ namespace RimSharp.MyApp.MainPage
             {
                 "GamePath" => PathSettings.GamePath,
                 "ConfigPath" => PathSettings.ConfigPath,
-                "ModsPath" => PathSettings.ModsPath,
+                 // "ModsPath" case removed
                 _ => null
             };
 
+            // Check if the path string is non-empty AND the directory actually exists
             return !string.IsNullOrEmpty(path) && Directory.Exists(path);
         }
 
@@ -259,7 +267,7 @@ namespace RimSharp.MyApp.MainPage
             private set => SetProperty(ref _selectedTab, value);
         }
 
-        private void SwitchTab(string tabName) // Use specific type
+        private void SwitchTab(string tabName)
         {
             if (string.IsNullOrEmpty(tabName)) return;
 
@@ -279,10 +287,9 @@ namespace RimSharp.MyApp.MainPage
         }
 
 
-        private void BrowsePath(string pathType) // Use specific type
+        private void BrowsePath(string pathType)
         {
-            // CanExecute already checked by command infrastructure
-
+            // CanExecute already checked
             using (var dialog = new FolderBrowserDialog())
             {
                 dialog.Description = $"Select RimWorld {pathType.Replace("Path", "")} Folder";
@@ -290,66 +297,57 @@ namespace RimSharp.MyApp.MainPage
                 {
                     "GamePath" => PathSettings.GamePath,
                     "ConfigPath" => PathSettings.ConfigPath,
-                    "ModsPath" => PathSettings.ModsPath,
-                    _ => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) // Sensible default if type unknown
+                    // "ModsPath" case removed
+                    _ => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
                 };
 
-                if (!string.IsNullOrEmpty(currentPath) && Directory.Exists(currentPath))
-                {
-                    dialog.SelectedPath = currentPath;
-                }
-                else
-                {
-                    dialog.SelectedPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                }
+                 // Ensure SelectedPath is valid if possible
+                dialog.SelectedPath = (!string.IsNullOrEmpty(currentPath) && Directory.Exists(currentPath))
+                    ? currentPath
+                    : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
                 dialog.ShowNewFolderButton = true;
 
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
                     string selectedPath = dialog.SelectedPath;
-                    // Update the corresponding PathSettings property
-                    // The PropertyChanged event handler on PathSettings will trigger saving and refresh
                     switch (pathType)
                     {
                         case "GamePath":
+                            // Setting GamePath will trigger PropertyChanged, which handles updating ModsPath, Version, saving, etc.
                             PathSettings.GamePath = selectedPath;
                             break;
                         case "ConfigPath":
                             PathSettings.ConfigPath = selectedPath;
                             break;
-                        case "ModsPath":
-                            PathSettings.ModsPath = selectedPath;
-                            break;
+                         // "ModsPath" case removed
                     }
-                    // CanExecute for OpenFolder might change - handled by PathSettings_PropertyChanged
+                    // CanExecute for OpenFolder/BrowsePath is handled by PathSettings_PropertyChanged
                 }
             }
         }
 
-        private bool CanBrowsePath(string pathType) // Use specific type
+        private bool CanBrowsePath(string pathType)
         {
+            // Only allow browsing for paths that have a browse button
             return !string.IsNullOrEmpty(pathType) &&
-                   (pathType == "GamePath" || pathType == "ConfigPath" || pathType == "ModsPath");
+                   (pathType == "GamePath" || pathType == "ConfigPath"); // Removed "ModsPath"
         }
 
-        private void OpenSettings() // Parameter removed as CreateCommand used parameterless overload
+        private void OpenSettings()
         {
             _dialogService.ShowInformation("Settings", "Settings dialog functionality is not yet implemented.");
         }
 
         private bool CanRefreshData()
         {
-            // Depends on external VM state. Observation set up in constructor.
             return ModsVM != null && !ModsVM.IsLoading;
         }
 
         // Centralized refresh logic
-        private void RefreshData() // Parameter removed
+        private void RefreshData()
         {
-            // CanExecute check already done by command framework.
-            // Redundant check here doesn't hurt but isn't strictly necessary.
-            // if (!CanRefreshData()) return; //
+            if (!CanRefreshData()) return;
 
             StatusMessage = "Refreshing paths and mod data...";
             Debug.WriteLine("[MainViewModel] RefreshData executing...");
@@ -357,45 +355,45 @@ namespace RimSharp.MyApp.MainPage
             bool pathsChanged = false;
             try
             {
-                // 1. Refresh paths FIRST
+                // 1. Refresh paths service cache
                 _pathService.RefreshPaths();
 
                 // 2. Update MainViewModel's PathSettings properties from the refreshed service state
+                // Use temporary variables to minimize PropertyChanged events if values are the same
                 string tempGame = _pathService.GetGamePath();
                 string tempConfig = _pathService.GetConfigPath();
-                string tempMods = _pathService.GetModsPath();
-                string tempVersion = _pathService.GetGameVersion(tempGame);
+                string tempMods = _pathService.GetModsPath(); // Get the derived mods path
+                string tempVersion = _pathService.GetGameVersion(); // Uses refreshed game path internally
 
-                // Use temporary variables to avoid triggering PropertyChanged multiple times if unchanged
-                // and set flag if any path actually changed
+                // Check and set properties, triggering PropertyChanged only if values actually differ
                 if (PathSettings.GamePath != tempGame) { PathSettings.GamePath = tempGame; pathsChanged = true; }
                 if (PathSettings.ConfigPath != tempConfig) { PathSettings.ConfigPath = tempConfig; pathsChanged = true; }
-                if (PathSettings.ModsPath != tempMods) { PathSettings.ModsPath = tempMods; pathsChanged = true; }
-                if (PathSettings.GameVersion != tempVersion) { PathSettings.GameVersion = tempVersion; pathsChanged = true; }
+                if (PathSettings.ModsPath != tempMods) { PathSettings.ModsPath = tempMods; pathsChanged = true; } // Update derived ModsPath too
+                if (PathSettings.GameVersion != tempVersion) { PathSettings.GameVersion = tempVersion; pathsChanged = true; } // Update version
 
                 // 3. Trigger data refresh in the ModsViewModel via its command
                 Debug.WriteLine("[MainViewModel] Requesting ModsViewModel refresh...");
                 if (ModsVM.RequestRefreshCommand.CanExecute(null))
                 {
-                    // Execute the command. Let it handle its own async logic and status updates.
                     ModsVM.RequestRefreshCommand.Execute(null);
                 }
                 else
                 {
-                    // This case should be rare now due to CanRefreshData check
                     StatusMessage = "Mod refresh request skipped: Mod list operation already in progress.";
                     Debug.WriteLine("[MainViewModel] ModsVM.RequestRefreshCommand cannot execute.");
                 }
 
-                // 4. Update CanExecute state for commands dependent on paths *if paths changed*
-                // Manual update still needed as PathSettings is a separate object,
-                // not directly observed by the command using 'this'.
-                if (pathsChanged)
-                {
-                    RunOnUIThread(() => ((DelegateCommand<string>)OpenFolderCommand).RaiseCanExecuteChanged());
-                }
+                // 4. Update CanExecute state for commands dependent on paths (already done by PathSettings_PropertyChanged if pathsChanged=true)
+                 if (pathsChanged)
+                 {
+                    // Explicitly trigger CanExecute updates in case PropertyChanged didn't fire for all dependencies
+                     RunOnUIThread(() =>
+                     {
+                         ((DelegateCommand<string>)OpenFolderCommand).RaiseCanExecuteChanged();
+                         ((DelegateCommand<string>)BrowsePathCommand).RaiseCanExecuteChanged();
+                     });
+                 }
 
-                // Status update handled within the command or after it finishes.
                 StatusMessage = "Refresh initiated...";
             }
             catch (Exception ex)
@@ -406,8 +404,15 @@ namespace RimSharp.MyApp.MainPage
             }
             finally
             {
-                // Let ModsVM update status on completion. Maybe clear after timeout if ModsVM doesn't.
-                Task.Delay(3500).ContinueWith(t => { if (StatusMessage == "Refresh initiated...") StatusMessage = "Refresh complete (check mod list)."; }, TaskScheduler.FromCurrentSynchronizationContext());
+                 // Provide slightly more accurate completion feedback
+                Task.Delay(3500).ContinueWith(t =>
+                {
+                    if (StatusMessage == "Refresh initiated...")
+                    {
+                        StatusMessage = ModsVM.IsLoading ? "Mod list refresh in progress..." : "Refresh complete.";
+                    }
+                }, TaskScheduler.FromCurrentSynchronizationContext());
+
                 Debug.WriteLine("[MainViewModel] RefreshData finished trigger.");
             }
         }
