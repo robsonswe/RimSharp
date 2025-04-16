@@ -41,7 +41,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             CheckReplacementsCommand = CreateCancellableAsyncCommand(
                 execute: ExecuteCheckReplacements,
                 canExecute: CanExecuteSimpleCommands,
-                propertyNames: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
+                observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
 
         }
 

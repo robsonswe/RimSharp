@@ -52,9 +52,12 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             get => _isParentLoading;
             set
             {
+                Debug.WriteLine($"[ModActionsViewModel] IsParentLoading SETTER: Current = {_isParentLoading}, New = {value}");
                 // Use base SetProperty, command observation handles updates
-                SetProperty(ref _isParentLoading, value);
-                // Manual RaiseCanExecuteChangedForAllCommands() removed
+                if (SetProperty(ref _isParentLoading, value))
+                {
+                    Debug.WriteLine($"[ModActionsViewModel] IsParentLoading Changed to {value}.");
+                }
             }
         }
 
@@ -64,12 +67,14 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             set
             {
                 // Use base SetProperty, command observation handles updates
-                if (SetProperty(ref _hasUnsavedChanges, value))
-                {
-                    // Request update in parent VM if needed (handled by event)
-                    HasUnsavedChangesRequest?.Invoke(this, value);
-                }
-                // Manual RaiseCanExecuteChangedForAllCommands() removed
+                // REMOVE THE EVENT INVOCATION FROM HERE
+                // if (SetProperty(ref _hasUnsavedChanges, value))
+                // {
+                //     // Request update in parent VM if needed (handled by event)
+                //     // HasUnsavedChangesRequest?.Invoke(this, value); // <<< REMOVE THIS LINE
+                // }
+                // Setter still needs to raise PropertyChanged for command observation:
+                SetProperty(ref _hasUnsavedChanges, value);
             }
         }
 
@@ -181,10 +186,10 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             InitializeToolsAnalysisCommands();
             InitializeInstallationCommands();
             InitializePlaceholderCommands();
-            CustomizeModCommand = CreateCommand<ModItem>(
-                    execute: async mod => await ExecuteCustomizeMod(mod),
-                    canExecute: CanExecutizeMod,
-                    propertyNames: new[] { nameof(IsParentLoading), nameof(SelectedMod) });
+            CustomizeModCommand = CreateAsyncCommand<ModItem>(
+                execute: ExecuteCustomizeMod,
+                canExecute: CanExecutizeMod,
+                observedProperties: new[] { nameof(IsParentLoading), nameof(SelectedMod) });
 
 
         }

@@ -281,19 +281,19 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         }
 
         // Dispose Implementation
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
 
-        protected virtual void Dispose(bool disposing)
+        protected override void Dispose(bool disposing)
         {
-            if (_isDisposed) return;
+            // Check the base class flag BEFORE doing anything
+            if (_disposed) // Use the inherited _disposed field
+            {
+                 return;
+            }
 
             if (disposing)
             {
-                Debug.WriteLine("[BrowserVM] Disposing...");
+                // --- Derived Class Specific Cleanup ---
+                Debug.WriteLine("[BrowserVM] Disposing derived resources...");
                 // Unsubscribe from navigation service
                 if (_navigationService != null)
                 {
@@ -303,11 +303,13 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                     if (_navSucceededAndValidHandler != null) _navigationService.NavigationSucceededAndUrlValid -= _navSucceededAndValidHandler;
                 }
 
-                // Unsubscribe from extractor service
+                // Unsubscribe from and dispose extractor service
                 if (_extractorService != null)
                 {
                     if (_extractorModInfoAvailableHandler != null) _extractorService.IsModInfoAvailableChanged -= _extractorModInfoAvailableHandler;
+                    // Use 'as' and null-conditional operator for safety
                     (_extractorService as IDisposable)?.Dispose();
+                    _extractorService = null; // Clear reference
                 }
 
                 // Unsubscribe from parent VM
@@ -316,7 +318,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                     _parentViewModel.PropertyChanged -= _parentPropertyChangedHandler;
                 }
 
-                // Clear handlers
+                // Clear handlers to prevent memory leaks
                 _navStatusHandler = null;
                 _navStateChangedHandler = null;
                 _navModUrlValidityHandler = null;
@@ -324,16 +326,17 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 _extractorModInfoAvailableHandler = null;
                 _parentPropertyChangedHandler = null;
 
-                _webView = null;
-                Debug.WriteLine("[BrowserVM] Dispose complete.");
+                _webView = null; // Clear reference to WebView2 control
+                Debug.WriteLine("[BrowserVM] Dispose complete (derived resources).");
+                // --- End Derived Class Specific Cleanup ---
             }
 
-            _isDisposed = true;
-        }
+            // Dispose unmanaged resources here if any (specific to BrowserViewModel)
 
-        public void Cleanup()
-        {
-            Dispose();
+            // IMPORTANT: Call the base class implementation LAST
+            Debug.WriteLine($"[BrowserVM] Calling base.Dispose({disposing}).");
+            base.Dispose(disposing);
+             Debug.WriteLine($"[BrowserVM] Finished Dispose({disposing}). _disposed = {_disposed}");
         }
 
         ~BrowserViewModel()

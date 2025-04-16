@@ -47,14 +47,16 @@ namespace RimSharp.Features.ModManager.ViewModels
             get => _isLoading;
             private set
             {
-                // Use base SetProperty which handles change check and OnPropertyChanged
+                Debug.WriteLine($"[ModsViewModel] IsLoading SETTER: Current = {_isLoading}, New = {value}");
                 if (SetProperty(ref _isLoading, value))
                 {
-                    // Inform children about loading state change
+                    Debug.WriteLine($"[ModsViewModel] IsLoading Changed to {value}. Notifying children...");
                     if (ModListViewModel != null) ModListViewModel.IsParentLoading = value;
-                    if (ModActionsViewModel != null) ModActionsViewModel.IsParentLoading = value;
-                    // Command observation handles CanExecute updates for commands observing IsLoading
-                    // May still need CommandManager for global UI updates if necessary
+                    if (ModActionsViewModel != null)
+                    {
+                        Debug.WriteLine($"[ModsViewModel] Setting ModActionsViewModel.IsParentLoading = {value}");
+                        ModActionsViewModel.IsParentLoading = value;
+                    }
                     RunOnUIThread(CommandManager.InvalidateRequerySuggested);
                 }
             }
@@ -219,7 +221,9 @@ namespace RimSharp.Features.ModManager.ViewModels
         }
         private void OnChildRequestHasUnsavedChanges(object sender, bool hasChanges)
         {
-            // A child VM needs to update the global unsaved changes flag
+            // A child VM (ModActionsViewModel) has completed a save action
+            // Only expecting 'false' here now.
+            Debug.WriteLine($"[ModsViewModel] Received HasUnsavedChangesRequest: {hasChanges}. Setting parent state.");
             HasUnsavedChanges = hasChanges; // Setter handles notifications and command updates via observation
         }
 
@@ -320,7 +324,9 @@ namespace RimSharp.Features.ModManager.ViewModels
             }
             finally
             {
+                Debug.WriteLine($"[ModsViewModel] LoadDataAsync FINALLY block entered. Setting IsLoading = false.");
                 IsLoading = false; // Reset loading state, setter handles updates
+                Debug.WriteLine($"[ModsViewModel] LoadDataAsync FINALLY block finished. IsLoading should be false.");
             }
         }
 
@@ -357,40 +363,48 @@ namespace RimSharp.Features.ModManager.ViewModels
 
 
         // --- IDisposable Implementation ---
-        private bool _disposed = false;
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
 
-        protected virtual void Dispose(bool disposing)
+        protected override void Dispose(bool disposing)
         {
-            if (!_disposed)
+            // Check the base class flag BEFORE doing anything
+            if (_disposed) // Use the inherited _disposed field
             {
-                if (disposing)
+                return;
+            }
+
+            if (disposing)
+            {
+                // --- Derived Class Specific Cleanup ---
+                Debug.WriteLine("[ModsViewModel] Disposing derived resources...");
+                // Unsubscribe from events
+                if (_modListManager != null) _modListManager.ListChanged -= OnModListManagerChanged;
+                if (ModListViewModel != null) ModListViewModel.RequestSelectionChange -= OnChildRequestSelectionChange;
+                if (ModActionsViewModel != null)
                 {
-                    // Unsubscribe from events
-                    if (_modListManager != null) _modListManager.ListChanged -= OnModListManagerChanged;
-                    if (ModListViewModel != null) ModListViewModel.RequestSelectionChange -= OnChildRequestSelectionChange;
-                    if (ModActionsViewModel != null)
-                    {
-                        ModActionsViewModel.IsLoadingRequest -= OnChildRequestLoading;
-                        ModActionsViewModel.RequestDataRefresh -= OnChildRequestDataRefresh;
-                        ModActionsViewModel.HasUnsavedChangesRequest -= OnChildRequestHasUnsavedChanges;
-                    }
-
-
-                    // Dispose child ViewModels if they implement IDisposable
-                    (ModListViewModel as IDisposable)?.Dispose();
-                    (ModDetailsViewModel as IDisposable)?.Dispose();
-                    (ModActionsViewModel as IDisposable)?.Dispose();
-
-                    Debug.WriteLine("[ModsViewModel] Disposed managed resources.");
+                    ModActionsViewModel.IsLoadingRequest -= OnChildRequestLoading;
+                    ModActionsViewModel.RequestDataRefresh -= OnChildRequestDataRefresh;
+                    ModActionsViewModel.HasUnsavedChangesRequest -= OnChildRequestHasUnsavedChanges;
                 }
 
-                _disposed = true;
+                // Dispose child ViewModels if they implement IDisposable
+                // Use 'as' and null-conditional operator for safety
+                (ModListViewModel as IDisposable)?.Dispose();
+                (ModDetailsViewModel as IDisposable)?.Dispose();
+                (ModActionsViewModel as IDisposable)?.Dispose();
+                ModListViewModel = null; // Optional: Clear references
+                ModDetailsViewModel = null;
+                ModActionsViewModel = null;
+
+                Debug.WriteLine("[ModsViewModel] Disposed managed resources.");
+                // --- End Derived Class Specific Cleanup ---
             }
+
+            // Dispose unmanaged resources here if any (specific to ModsViewModel)
+
+            // IMPORTANT: Call the base class implementation LAST
+            Debug.WriteLine($"[ModsViewModel] Calling base.Dispose({disposing}).");
+            base.Dispose(disposing);
+            Debug.WriteLine($"[ModsViewModel] Finished Dispose({disposing}). _disposed = {_disposed}");
         }
 
         ~ModsViewModel()

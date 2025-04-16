@@ -44,7 +44,7 @@
         <Button Content="Export list" Command="{Binding ExportListCommand}" Margin="0,0,0,20" Style="{StaticResource RimworldButtonStyle}"/>
 
         <!-- IsEnabled binding also points to ModActionsViewModel.HasUnsavedChanges -->
-        <Button Content="Save" Command="{Binding SaveCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldSaveButtonStyle}" IsEnabled="{Binding HasUnsavedChanges}"/>
+        <Button Content="Save" Command="{Binding SaveCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldSaveButtonStyle}"/>
         <Button Content="Run!" Command="{Binding RunGameCommand}" Style="{StaticResource RimworldRunButtonStyle}"/>
     </StackPanel>
 </UserControl>

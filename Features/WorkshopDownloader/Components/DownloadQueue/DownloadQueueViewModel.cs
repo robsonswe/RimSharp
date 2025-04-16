@@ -22,8 +22,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
         private readonly ISteamCmdService _steamCmdService;
         private readonly DownloadQueueCommandHandler _commandHandler;
         private readonly ModInfoEnricher _modInfoEnricher;
-        private bool _isDisposed = false;
-
         private bool _isOperationInProgress;
         public bool IsOperationInProgress
         {
@@ -201,21 +199,21 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             });
         }
 
-        public void Dispose()
+        protected override void Dispose(bool disposing)
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (_isDisposed) return;
+            // Check the base class flag BEFORE doing anything
+            if (_disposed) // Use the inherited _disposed field
+            {
+                return;
+            }
 
             if (disposing)
             {
-                Debug.WriteLine("[QueueVM] Disposing...");
-                _commandHandler?.Cleanup();
+                // --- Derived Class Specific Cleanup ---
+                Debug.WriteLine("[QueueVM] Disposing derived resources...");
+                _commandHandler?.Cleanup(); // Dispose the command handler if it needs cleanup
 
+                // Unsubscribe from events
                 if (_queueServiceItemsHandler != null && _queueService?.Items != null)
                     _queueService.Items.CollectionChanged -= _queueServiceItemsHandler;
                 if (_browserModInfoAvailabilityHandler != null && _browserViewModel != null)
@@ -225,20 +223,22 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 if (_steamCmdSetupStateHandler != null && _steamCmdService != null)
                     _steamCmdService.SetupStateChanged -= _steamCmdSetupStateHandler;
 
+                // Clear handler references
                 _queueServiceItemsHandler = null;
                 _browserModInfoAvailabilityHandler = null;
                 _browserPropertyChangedHandler = null;
                 _steamCmdSetupStateHandler = null;
 
-                Debug.WriteLine("DownloadQueueViewModel cleaned up.");
+                Debug.WriteLine("DownloadQueueViewModel cleaned up (derived resources).");
+                 // --- End Derived Class Specific Cleanup ---
             }
 
-            _isDisposed = true;
-        }
+            // Dispose unmanaged resources here if any (specific to DownloadQueueViewModel)
 
-        public void Cleanup()
-        {
-            Dispose();
+            // IMPORTANT: Call the base class implementation LAST
+            Debug.WriteLine($"[QueueVM] Calling base.Dispose({disposing}).");
+            base.Dispose(disposing);
+            Debug.WriteLine($"[QueueVM] Finished Dispose({disposing}). _disposed = {_disposed}");
         }
 
         ~DownloadQueueViewModel()

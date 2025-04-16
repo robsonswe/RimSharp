@@ -26,8 +26,6 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
         private readonly IDialogService _dialogService;
 
         private CancellationTokenSource? _currentOperationCts;
-        private bool _isDisposed = false;
-
         private bool _isOperationInProgress;
         public bool IsOperationInProgress
         {
@@ -198,33 +196,39 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             }
         }
 
-        public void Dispose()
+        protected override void Dispose(bool disposing)
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (_isDisposed) return;
+            if (_disposed) // Use the inherited _disposed field
+            {
+                return;
+            }
 
             if (disposing)
             {
-                Debug.WriteLine("[DownloaderVM] Disposing...");
-                if (_browserStatusHandler != null) BrowserViewModel.StatusChanged -= _browserStatusHandler;
-                if (_queueStatusHandler != null) QueueViewModel.StatusChanged -= _queueStatusHandler;
-                if (_queueOperationStartedHandler != null) QueueViewModel.OperationStarted -= _queueOperationStartedHandler;
-                if (_queueOperationCompletedHandler != null) QueueViewModel.OperationCompleted -= _queueOperationCompletedHandler;
-                if (_queueDownloadCompletedHandler != null) QueueViewModel.DownloadCompletedAndRefreshNeeded -= _queueDownloadCompletedHandler;
-                if (_steamCmdSetupStateChangedHandler != null) _steamCmdService.SetupStateChanged -= _steamCmdSetupStateChangedHandler;
+                // --- Derived Class Specific Cleanup ---
+                Debug.WriteLine("[DownloaderVM] Disposing derived resources...");
 
+                // Unsubscribe from events to prevent memory leaks
+                if (_browserStatusHandler != null && BrowserViewModel != null) BrowserViewModel.StatusChanged -= _browserStatusHandler;
+                if (_queueStatusHandler != null && QueueViewModel != null) QueueViewModel.StatusChanged -= _queueStatusHandler;
+                if (_queueOperationStartedHandler != null && QueueViewModel != null) QueueViewModel.OperationStarted -= _queueOperationStartedHandler;
+                if (_queueOperationCompletedHandler != null && QueueViewModel != null) QueueViewModel.OperationCompleted -= _queueOperationCompletedHandler;
+                if (_queueDownloadCompletedHandler != null && QueueViewModel != null) QueueViewModel.DownloadCompletedAndRefreshNeeded -= _queueDownloadCompletedHandler;
+                if (_steamCmdSetupStateChangedHandler != null && _steamCmdService != null) _steamCmdService.SetupStateChanged -= _steamCmdSetupStateChangedHandler;
+
+                // Dispose owned child ViewModels that implement IDisposable
                 (BrowserViewModel as IDisposable)?.Dispose();
                 (QueueViewModel as IDisposable)?.Dispose();
+                // StatusBarViewModel disposal depends on its implementation
 
-                _currentOperationCts?.Cancel();
-                _currentOperationCts?.Dispose();
-                _currentOperationCts = null;
+                // Dispose the CancellationTokenSource if it exists
+                var ctsToDispose = _currentOperationCts; // Capture reference
+                _currentOperationCts = null; // Clear field
+                ctsToDispose?.Cancel(); // Request cancellation
+                ctsToDispose?.Dispose(); // Dispose
+                Debug.WriteLine("[DownloaderVM] Disposed internal CTS.");
 
+                // Clear handler references
                 _browserStatusHandler = null;
                 _queueStatusHandler = null;
                 _queueOperationStartedHandler = null;
@@ -232,15 +236,16 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
                 _queueDownloadCompletedHandler = null;
                 _steamCmdSetupStateChangedHandler = null;
 
-                Debug.WriteLine("[DownloaderVM] Dispose complete.");
+                Debug.WriteLine("[DownloaderVM] Dispose complete (derived resources).");
+                // --- End Derived Class Specific Cleanup ---
             }
 
-            _isDisposed = true;
-        }
+            // Dispose unmanaged resources here if any (specific to DownloaderViewModel)
 
-        public void Cleanup()
-        {
-            Dispose();
+            // IMPORTANT: Call the base class implementation LAST
+            Debug.WriteLine($"[DownloaderVM] Calling base.Dispose({disposing}).");
+            base.Dispose(disposing);
+            Debug.WriteLine($"[DownloaderVM] Finished Dispose({disposing}). _disposed = {_disposed}");
         }
 
         ~DownloaderViewModel()
