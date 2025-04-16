@@ -366,7 +366,7 @@ namespace RimSharp.Features.GitModManager.ViewModels
                 await Task.Delay(50, CancellationToken.None); // Allow dialog to render
 
                 // Run synchronous LibGit2Sharp code on background thread
-                await Task.Run(async () =>
+                await Task.Run(() =>
                 {
                     foreach (var modWrapper in selectedMods)
                     {
