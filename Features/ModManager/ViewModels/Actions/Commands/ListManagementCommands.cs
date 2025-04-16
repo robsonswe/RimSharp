@@ -149,10 +149,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 _dataService.SaveActiveModIdsToConfig(activeIdsToSave); // Assume synchronous
 
                 // Signal parent that changes are now saved
-                HasUnsavedChangesRequest?.Invoke(this, false); // <<< KEEP/ENSURE THIS IS HERE
+                HasUnsavedChangesRequest?.Invoke(this, false);
 
                 Debug.WriteLine("Mod list saved successfully.");
-                RunOnUIThread(() => _dialogService.ShowInformation("Save Successful", "Current active mod list has been saved."));
             }
             catch (Exception ex)
             {
