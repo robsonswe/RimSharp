@@ -271,7 +271,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 var combinedToken = linkedCts.Token;
 
                 // Perform the search and validation operation
-                await Task.Run(async () => // Mark lambda as async ONLY IF NEEDED for await inside (not needed anymore here)
+                await Task.Run(() =>
                 {
                     // int processedCount = 0; // Not needed for message/progress calculation anymore
 

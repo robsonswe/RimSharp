@@ -8,8 +8,9 @@
              xmlns:vm="clr-namespace:RimSharp.Features.ModManager.ViewModels"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:ModDetailsViewModel, IsDesignTimeCreatable=False}"
-             d:DesignHeight="500" d:DesignWidth="400">
-    
+             d:DesignHeight="500"
+             d:DesignWidth="400">
+
     <!-- DataContext should be a ModDetailsViewModel instance -->
     <Grid>
         <Grid.RowDefinitions>
@@ -24,43 +25,67 @@
                 VerticalAlignment="Top">
             <Border Background="{StaticResource RimworldDarkBrownBrush}"
                     CornerRadius="3"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
                     SnapsToDevicePixels="True"
-                    MaxWidth="560" MaxHeight="308">
-                <!-- Modified Image Container - Using Grid instead of Viewbox for better control -->
-                <Grid Width="560" Height="308">
-                    <!-- Bind to CurrentMod property -->
-                    <Image Source="{Binding CurrentMod.PreviewImagePath, Converter={StaticResource ImagePathConverter}, TargetNullValue={x:Null}}"
-                           Stretch="Uniform"
-                           HorizontalAlignment="Center" 
-                           VerticalAlignment="Center"
-                           Width="Auto" 
-                           Height="Auto"
-                           MaxWidth="560" 
-                           MaxHeight="308">
-                        <Image.Style>
-                            <Style TargetType="Image">
-                                <Setter Property="Visibility" Value="Visible"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Source, RelativeSource={RelativeSource Self}}" Value="{x:Null}">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Image.Style>
-                    </Image>
-                    <TextBlock Text="NO PREVIEW IMAGE" FontSize="18"
-                               Foreground="{StaticResource RimworldLightBrownBrush}"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                               FontStyle="Italic"
-                               Visibility="{Binding CurrentMod.PreviewImagePath, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=InvertIfNull}"/>
+                    MaxWidth="560"
+                    MaxHeight="360">
+                <!-- Set a consistent aspect ratio with aspect ratio container -->
+                <Grid>
+                    <!-- This defines the aspect ratio -->
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Viewport with fixed aspect ratio (using aspect ratio 560:308) -->
+                    <Viewbox Stretch="Uniform">
+                        <Grid Width="560"
+                              Height="308">
+                            <!-- This rectangle ensures the proper background shows even with small images -->
+                            <Rectangle Fill="{StaticResource RimworldDarkBrownBrush}"
+                                       Width="560"
+                                       Height="308"/>
+
+                            <!-- Image centered and scaled within the fixed aspect ratio space -->
+                            <Image Source="{Binding CurrentMod.PreviewImagePath, Converter={StaticResource ImagePathConverter}, TargetNullValue={x:Null}}"
+                                   Stretch="Uniform"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   MaxWidth="560"
+                                   MaxHeight="308">
+                                <Image.Style>
+                                    <Style TargetType="Image">
+                                        <Setter Property="Visibility"
+                                                Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Source, RelativeSource={RelativeSource Self}}"
+                                                         Value="{x:Null}">
+                                                <Setter Property="Visibility"
+                                                        Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Image.Style>
+                            </Image>
+
+                            <TextBlock Text="NO PREVIEW IMAGE"
+                                       FontSize="18"
+                                       Foreground="{StaticResource RimworldLightBrownBrush}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       FontStyle="Italic"
+                                       Visibility="{Binding CurrentMod.PreviewImagePath, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=InvertIfNull}"/>
+                        </Grid>
+                    </Viewbox>
                 </Grid>
             </Border>
         </Border>
-
         <!-- Mod Info (Bottom Part) -->
-        <Grid Grid.Row="1" Margin="10">
+        <Grid Grid.Row="1"
+              Margin="10">
             <!-- DataContext is the ModDetailsViewModel -->
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -74,28 +99,46 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Grid.Resources>
-                    <Style TargetType="TextBlock" x:Key="InfoLabel">
-                        <Setter Property="FontWeight" Value="SemiBold"/>
-                        <Setter Property="Margin" Value="0,0,10,2"/>
-                        <Setter Property="VerticalAlignment" Value="Top"/>
-                        <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
+                    <Style TargetType="TextBlock"
+                           x:Key="InfoLabel">
+                        <Setter Property="FontWeight"
+                                Value="SemiBold"/>
+                        <Setter Property="Margin"
+                                Value="0,0,10,2"/>
+                        <Setter Property="VerticalAlignment"
+                                Value="Top"/>
+                        <Setter Property="Foreground"
+                                Value="{StaticResource RimworldBrownBrush}"/>
                     </Style>
-                    <Style TargetType="TextBlock" x:Key="InfoValue">
-                        <Setter Property="TextWrapping" Value="Wrap"/>
-                        <Setter Property="VerticalAlignment" Value="Top"/>
-                        <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
-                        <Setter Property="Focusable" Value="True"/>
+                    <Style TargetType="TextBlock"
+                           x:Key="InfoValue">
+                        <Setter Property="TextWrapping"
+                                Value="Wrap"/>
+                        <Setter Property="VerticalAlignment"
+                                Value="Top"/>
+                        <Setter Property="Foreground"
+                                Value="{StaticResource RimworldBrownBrush}"/>
+                        <Setter Property="Focusable"
+                                Value="True"/>
                     </Style>
                 </Grid.Resources>
 
                 <!-- Bind to CurrentMod property -->
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="Name:" Style="{StaticResource InfoLabel}"/>
-                <TextBox Grid.Row="0" Grid.Column="1" 
-                         Text="{Binding CurrentMod.Name, Mode=OneWay}" 
+                <TextBlock Grid.Row="0"
+                           Grid.Column="0"
+                           Text="Name:"
+                           Style="{StaticResource InfoLabel}"/>
+                <TextBox Grid.Row="0"
+                         Grid.Column="1"
+                         Text="{Binding CurrentMod.Name, Mode=OneWay}"
                          IsReadOnly="True"
                          BorderThickness="0"
                          Background="Transparent"
@@ -103,9 +146,13 @@
                          TextWrapping="Wrap"
                          VerticalAlignment="Top"/>
 
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="Authors:" Style="{StaticResource InfoLabel}"/>
-                <TextBox Grid.Row="1" Grid.Column="1" 
-                         Text="{Binding CurrentMod.Authors, Mode=OneWay}" 
+                <TextBlock Grid.Row="1"
+                           Grid.Column="0"
+                           Text="Authors:"
+                           Style="{StaticResource InfoLabel}"/>
+                <TextBox Grid.Row="1"
+                         Grid.Column="1"
+                         Text="{Binding CurrentMod.Authors, Mode=OneWay}"
                          IsReadOnly="True"
                          BorderThickness="0"
                          Background="Transparent"
@@ -113,9 +160,13 @@
                          TextWrapping="Wrap"
                          VerticalAlignment="Top"/>
 
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="PackageID:" Style="{StaticResource InfoLabel}"/>
-                <TextBox Grid.Row="2" Grid.Column="1" 
-                         Text="{Binding CurrentMod.PackageId, Mode=OneWay}" 
+                <TextBlock Grid.Row="2"
+                           Grid.Column="0"
+                           Text="PackageID:"
+                           Style="{StaticResource InfoLabel}"/>
+                <TextBox Grid.Row="2"
+                         Grid.Column="1"
+                         Text="{Binding CurrentMod.PackageId, Mode=OneWay}"
                          IsReadOnly="True"
                          BorderThickness="0"
                          Background="Transparent"
@@ -123,32 +174,46 @@
                          TextWrapping="Wrap"
                          VerticalAlignment="Top"/>
 
-                <TextBlock Grid.Row="3" Grid.Column="0" Text="Supported:" Style="{StaticResource InfoLabel}"/>
+                <TextBlock Grid.Row="3"
+                           Grid.Column="0"
+                           Text="Supported:"
+                           Style="{StaticResource InfoLabel}"/>
                 <!-- Keep TextBlock for versions but make it selectable with MouseBinding -->
-                <Border Grid.Row="3" Grid.Column="1" Background="Transparent">
+                <Border Grid.Row="3"
+                        Grid.Column="1"
+                        Background="Transparent">
                     <ContentControl Content="{Binding CurrentMod.SupportedVersions, Converter={StaticResource VersionSupportConverter}}">
                         <ContentControl.Resources>
                             <Style TargetType="TextBlock">
-                                <Setter Property="Focusable" Value="True"/>
+                                <Setter Property="Focusable"
+                                        Value="True"/>
                             </Style>
                         </ContentControl.Resources>
                     </ContentControl>
                 </Border>
 
-            <TextBlock Grid.Row="4" Grid.Column="0" Text="Tags:" Style="{StaticResource InfoLabel}"
-                    Visibility="{Binding CurrentMod.Tags, Converter={StaticResource IsNotNullOrEmptyToVisibilityConverter}}"/>
-            <TextBox Grid.Row="4" Grid.Column="1" 
-                    Text="{Binding CurrentMod.Tags, Mode=OneWay}" 
-                    IsReadOnly="True"
-                    BorderThickness="0"
-                    Background="Transparent"
-                    Foreground="{StaticResource RimworldBrownBrush}"
-                    TextWrapping="Wrap"
-                    VerticalAlignment="Top"
-                    Visibility="{Binding CurrentMod.Tags, Converter={StaticResource IsNotNullOrEmptyToVisibilityConverter}}"/>
+                <TextBlock Grid.Row="4"
+                           Grid.Column="0"
+                           Text="Tags:"
+                           Style="{StaticResource InfoLabel}"
+                           Visibility="{Binding CurrentMod.Tags, Converter={StaticResource IsNotNullOrEmptyToVisibilityConverter}}"/>
+                <TextBox Grid.Row="4"
+                         Grid.Column="1"
+                         Text="{Binding CurrentMod.Tags, Mode=OneWay}"
+                         IsReadOnly="True"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         Foreground="{StaticResource RimworldBrownBrush}"
+                         TextWrapping="Wrap"
+                         VerticalAlignment="Top"
+                         Visibility="{Binding CurrentMod.Tags, Converter={StaticResource IsNotNullOrEmptyToVisibilityConverter}}"/>
 
-                <TextBlock Grid.Row="5" Grid.Column="0" Text="Path:" Style="{StaticResource InfoLabel}"/>
-                <Grid Grid.Row="5" Grid.Column="1">
+                <TextBlock Grid.Row="5"
+                           Grid.Column="0"
+                           Text="Path:"
+                           Style="{StaticResource InfoLabel}"/>
+                <Grid Grid.Row="5"
+                      Grid.Column="1">
                     <TextBox Text="{Binding CurrentMod.Path, Mode=OneWay}"
                              IsReadOnly="True"
                              BorderThickness="0"
@@ -170,16 +235,21 @@
             </Grid>
 
             <!-- Mod Description -->
-            <Border Grid.Row="1" Margin="0,10,0,0" BorderBrush="{StaticResource RimworldLightBrownBrush}" BorderThickness="0,1,0,0" Padding="0,10,0,0">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                     <!-- Bind to CurrentMod property -->
-                     <TextBox Text="{Binding CurrentMod.Description, Mode=OneWay}" 
-                              TextWrapping="Wrap" 
-                              Foreground="{StaticResource RimworldBrownBrush}"
-                              IsReadOnly="True"
-                              BorderThickness="0"
-                              Background="Transparent"
-                              VerticalScrollBarVisibility="Auto"/>
+            <Border Grid.Row="1"
+                    Margin="0,10,0,0"
+                    BorderBrush="{StaticResource RimworldLightBrownBrush}"
+                    BorderThickness="0,1,0,0"
+                    Padding="0,10,0,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <!-- Bind to CurrentMod property -->
+                    <TextBox Text="{Binding CurrentMod.Description, Mode=OneWay}"
+                             TextWrapping="Wrap"
+                             Foreground="{StaticResource RimworldBrownBrush}"
+                             IsReadOnly="True"
+                             BorderThickness="0"
+                             Background="Transparent"
+                             VerticalScrollBarVisibility="Auto"/>
                 </ScrollViewer>
             </Border>
         </Grid>
