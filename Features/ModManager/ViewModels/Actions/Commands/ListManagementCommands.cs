@@ -50,7 +50,12 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
         // --- CanExecute Predicates (used by command creation) ---
         // private bool CanExecuteSimpleCommands() => !IsParentLoading; // Defined in InstallationCommands.cs
-        private bool CanExecuteSaveMods() => HasUnsavedChanges && !IsParentLoading;
+        private bool CanExecuteSaveMods()
+        {
+            bool canExecute = HasUnsavedChanges && !IsParentLoading;
+            Debug.WriteLine($"[ModActionsViewModel] CanExecuteSaveMods Check: Result={canExecute} (HasUnsavedChanges: {HasUnsavedChanges}, IsParentLoading: {IsParentLoading})");
+            return canExecute;
+        }
         private bool CanExecuteExport() => !IsParentLoading && _modListManager.VirtualActiveMods.Any();
 
 
@@ -62,15 +67,15 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             IsLoadingRequest?.Invoke(this, true);
             try
             {
-                 // Check token before long operation
+                // Check token before long operation
                 ct.ThrowIfCancellationRequested();
                 await Task.Run(() => _modListManager.ClearActiveList(), ct); // Assume ClearActiveList respects token if possible
                 HasUnsavedChangesRequest?.Invoke(this, true); // Signal parent
             }
             catch (OperationCanceledException)
             {
-                 Debug.WriteLine("[ExecuteClearActiveList] Operation cancelled.");
-                 RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Clearing the list was cancelled."));
+                Debug.WriteLine("[ExecuteClearActiveList] Operation cancelled.");
+                RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Clearing the list was cancelled."));
             }
             catch (Exception ex) // Catch potential exceptions from ClearActiveList
             {
@@ -92,12 +97,13 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 ct.ThrowIfCancellationRequested(); // Check after sort completes
 
                 // Show result dialog on UI thread
-                await RunOnUIThreadAsync(() => {
-                     if (orderChanged)
-                         _dialogService.ShowInformation("Sort Complete", "Active mods sorted successfully.");
-                     else
-                         _dialogService.ShowInformation("Sort Complete", "Mods already in correct order.");
-                 });
+                await RunOnUIThreadAsync(() =>
+                {
+                    if (orderChanged)
+                        _dialogService.ShowInformation("Sort Complete", "Active mods sorted successfully.");
+                    else
+                        _dialogService.ShowInformation("Sort Complete", "Mods already in correct order.");
+                });
             }
             catch (OperationCanceledException)
             {
@@ -124,10 +130,12 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                                         .ToList();
 
                 _dataService.SaveActiveModIdsToConfig(activeIdsToSave); // Assume synchronous
-                HasUnsavedChangesRequest?.Invoke(this, false); // Signal parent
+
+                // Signal parent that changes are now saved
+                HasUnsavedChangesRequest?.Invoke(this, false); // <<< KEEP/ENSURE THIS IS HERE
+
                 Debug.WriteLine("Mod list saved successfully.");
-                // Use RunOnUIThread for dialog if Save might be called from non-UI context? Unlikely for command.
-                _dialogService.ShowInformation("Save Successful", "Current active mod list has been saved.");
+                RunOnUIThread(() => _dialogService.ShowInformation("Save Successful", "Current active mod list has been saved."));
             }
             catch (Exception ex)
             {
@@ -136,24 +144,23 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             }
             finally { IsLoadingRequest?.Invoke(this, false); }
         }
-
         private async Task ExecuteImport(CancellationToken ct)
         {
             IsLoadingRequest?.Invoke(this, true);
             try
             {
-                 ct.ThrowIfCancellationRequested();
-                 // Assuming ImportModListAsync now accepts and respects CancellationToken
+                ct.ThrowIfCancellationRequested();
+                // Assuming ImportModListAsync now accepts and respects CancellationToken
                 await _ioService.ImportModListAsync(); // TODO: Update IModListIOService if cancellation needed
-                 ct.ThrowIfCancellationRequested(); // Check after completion
-                 // Refresh is likely needed after import - parent VM handles refresh logic
-                 RequestDataRefresh?.Invoke(this, EventArgs.Empty);
+                ct.ThrowIfCancellationRequested(); // Check after completion
+                                                   // Refresh is likely needed after import - parent VM handles refresh logic
+                RequestDataRefresh?.Invoke(this, EventArgs.Empty);
             }
-             catch (OperationCanceledException)
-             {
-                 Debug.WriteLine("[ExecuteImport] Import cancelled.");
-                 RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Mod list import was cancelled."));
-             }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine("[ExecuteImport] Import cancelled.");
+                RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Mod list import was cancelled."));
+            }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error importing list: {ex}");
@@ -171,12 +178,12 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 var activeModsToExport = _modListManager.VirtualActiveMods.Select(entry => entry.Mod).ToList();
                 if (!activeModsToExport.Any())
                 {
-                     // Use RunOnUIThread for dialog if CanExecute might race
+                    // Use RunOnUIThread for dialog if CanExecute might race
                     RunOnUIThread(() => _dialogService.ShowInformation("Export List", "There are no active mods to export."));
                     return;
                 }
                 ct.ThrowIfCancellationRequested();
-                 // Assuming ExportModListAsync now accepts and respects CancellationToken
+                // Assuming ExportModListAsync now accepts and respects CancellationToken
                 await _ioService.ExportModListAsync(activeModsToExport); // TODO: Update IModListIOService if cancellation needed
                 ct.ThrowIfCancellationRequested();
                 // Show success message on UI thread

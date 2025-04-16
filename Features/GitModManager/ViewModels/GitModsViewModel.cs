@@ -75,7 +75,6 @@ namespace RimSharp.Features.GitModManager.ViewModels
         // --- Private Fields ---
         private List<GitModItemWrapper> _gitMods;
         private string _statusMessage;
-        private bool _isDisposed = false;
         private bool _isBusy;
         private List<GitModItemWrapper> _oldGitMods; // Keep track of old items for proper event handling
 
@@ -571,7 +570,7 @@ namespace RimSharp.Features.GitModManager.ViewModels
 
         private void LoadGitMods()
         {
-            if (_isDisposed) return;
+            if (_disposed) return;
 
             Debug.WriteLine("[DEBUG] GitModsViewModel: LoadGitMods() called.");
             try
@@ -622,45 +621,48 @@ namespace RimSharp.Features.GitModManager.ViewModels
         }
 
         // --- Dispose Method ---
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
 
-        protected virtual void Dispose(bool disposing)
+        protected override void Dispose(bool disposing)
         {
-            if (!_isDisposed)
+            // Check the base class flag BEFORE doing anything
+            if (_disposed)
             {
-                if (disposing)
-                {
-                    // Unsubscribe from managed events
-                    if (_modListManager != null)
-                    {
-                        Debug.WriteLine("[DEBUG] GitModsViewModel: Disposing and unsubscribing from ListChanged.");
-                        _modListManager.ListChanged -= HandleModListChanged;
-                    }
-
-                    // Unsubscribe from all mod item property changes
-                    if (_oldGitMods != null) // Use _oldGitMods as it holds the last assigned list
-                    {
-                        Debug.WriteLine($"[DEBUG] GitModsViewModel: Disposing and unsubscribing from {_oldGitMods.Count} GitModItemWrapper instances.");
-                        foreach (var mod in _oldGitMods)
-                        {
-                            mod.PropertyChanged -= GitModItem_PropertyChanged;
-                        }
-                        _oldGitMods = null; // Clear reference
-                    }
-                    _gitMods = null; // Clear reference
-
-                    // Note: Do not dispose injected services (_modService, _modListManager, _dialogService) here
-                    // as their lifecycle is managed by the DI container or creator.
-                }
-                // Dispose unmanaged resources here if any
-
-                _isDisposed = true;
-                Debug.WriteLine("[DEBUG] GitModsViewModel: Disposed.");
+                return;
             }
+
+            if (disposing)
+            {
+                // --- Derived Class Specific Cleanup ---
+                Debug.WriteLine($"[GitModsViewModel] Disposing derived resources...");
+                // Unsubscribe from managed events
+                if (_modListManager != null)
+                {
+                    Debug.WriteLine("[GitModsViewModel] Unsubscribing from ListChanged.");
+                    _modListManager.ListChanged -= HandleModListChanged;
+                }
+
+                // Unsubscribe from all mod item property changes
+                if (_oldGitMods != null) // Use _oldGitMods as it holds the last assigned list
+                {
+                    Debug.WriteLine($"[GitModsViewModel] Unsubscribing from {_oldGitMods.Count} GitModItemWrapper instances.");
+                    foreach (var mod in _oldGitMods)
+                    {
+                        mod.PropertyChanged -= GitModItem_PropertyChanged;
+                    }
+                    _oldGitMods = null; // Clear reference
+                }
+                _gitMods = null; // Clear reference
+
+                // Note: Do not dispose injected services (_modService, _modListManager, _dialogService) here
+                // --- End Derived Class Specific Cleanup ---
+            }
+            // Dispose unmanaged resources here if any (specific to GitModsViewModel)
+
+            // IMPORTANT: Call the base class implementation LAST
+            // This will dispose owned commands and set the _disposed flag
+            Debug.WriteLine($"[GitModsViewModel] Calling base.Dispose({disposing}).");
+            base.Dispose(disposing);
+             Debug.WriteLine($"[GitModsViewModel] Finished Dispose({disposing}). _disposed = {_disposed}"); // Base sets the flag
         }
 
         // Finalizer (optional, good practice if using unmanaged resources directly)

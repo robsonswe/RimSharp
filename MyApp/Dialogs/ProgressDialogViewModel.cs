@@ -3,7 +3,8 @@ using System.Threading;
 using System.Windows.Input;
 using RimSharp.Core.Commands; // Keep specific command type if needed
 using RimSharp.Core.Commands.Base; // For DelegateCommand
-using System.ComponentModel; // Added for IDisposable pattern (optional)
+using System.ComponentModel;
+using System.Diagnostics; // Added for IDisposable pattern (optional)
 
 namespace RimSharp.MyApp.Dialogs
 {
@@ -132,37 +133,47 @@ namespace RimSharp.MyApp.Dialogs
         }
 
         // --- IDisposable Implementation ---
-         public void Dispose()
-         {
-             Dispose(true);
-             GC.SuppressFinalize(this);
-         }
 
-         protected virtual void Dispose(bool disposing)
-         {
-             if (!_isDisposed)
-             {
-                 if (disposing)
-                 {
-                     // Dispose managed resources
-                     try
-                     {
-                        // Cancel first to potentially unblock threads waiting on the token
-                        if (!_cts.IsCancellationRequested)
-                        {
-                             _cts.Cancel();
-                        }
-                     }
-                     catch (ObjectDisposedException) { /* Ignore */ }
-                     finally
-                     {
-                         _cts?.Dispose();
-                     }
-                 }
-                 // Dispose unmanaged resources here if any
-                 _isDisposed = true;
-             }
-         }
+        protected override void Dispose(bool disposing)
+        {
+            // Check the base class flag BEFORE doing anything
+            // Assuming DialogViewModelBase provides _disposed or inherits it from ViewModelBase
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (disposing)
+            {
+                // --- Derived Class Specific Cleanup ---
+                Debug.WriteLine("[ProgressDialogViewModel] Disposing derived resources (CTS)...");
+                // Dispose managed resources specific to ProgressDialogViewModel
+                try
+                {
+                    // Cancel first to potentially unblock threads waiting on the token
+                    if (!_cts.IsCancellationRequested)
+                    {
+                         _cts.Cancel();
+                    }
+                }
+                catch (ObjectDisposedException) { /* Ignore */ }
+                finally
+                {
+                    // Ensure CTS is disposed even if Cancel throws (though unlikely for ODE)
+                    _cts?.Dispose();
+                }
+                 Debug.WriteLine("[ProgressDialogViewModel] Disposed CTS.");
+                 // --- End Derived Class Specific Cleanup ---
+            }
+            // Dispose unmanaged resources here if any (specific to ProgressDialogViewModel)
+
+            // IMPORTANT: Call the base class implementation LAST
+            // This calls DialogViewModelBase.Dispose(bool), which should in turn call
+            // ViewModelBase.Dispose(bool) if it inherits correctly.
+             Debug.WriteLine($"[ProgressDialogViewModel] Calling base.Dispose({disposing}).");
+            base.Dispose(disposing);
+            Debug.WriteLine($"[ProgressDialogViewModel] Finished Dispose({disposing}). _disposed = {_disposed}");
+        }
 
          ~ProgressDialogViewModel()
          {
