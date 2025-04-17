@@ -1,4 +1,4 @@
-using RimSharp.MyApp.AppFiles;
+using RimSharp.AppDir.AppFiles;
 
 namespace RimSharp.Shared.Models
 {

@@ -4,7 +4,7 @@ using System.Windows.Forms; // Add reference to System.Windows.Forms assembly fo
 using System.IO; // For Directory.Exists and Path.Combine
 using System.Diagnostics;
 using System;
-using RimSharp.MyApp.AppFiles;
+using RimSharp.AppDir.AppFiles;
 using RimSharp.Core.Commands;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Features.ModManager.ViewModels;
@@ -17,7 +17,7 @@ using RimSharp.Features.GitModManager.ViewModels;
 using System.Threading;
 using RimSharp.Core.Commands.Base; // For CancellationToken
 
-namespace RimSharp.MyApp.MainPage
+namespace RimSharp.AppDir.MainPage
 {
     public class MainViewModel : ViewModelBase
     {

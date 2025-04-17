@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using RimSharp.Shared.Services.Contracts;
-using RimSharp.MyApp.Dialogs;
+using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
 
 namespace RimSharp.Features.ModManager.Services.Commands

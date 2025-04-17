@@ -5,8 +5,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
-using RimSharp.MyApp.AppFiles;
-using RimSharp.MyApp.Dialogs;
+using RimSharp.AppDir.AppFiles;
+using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 

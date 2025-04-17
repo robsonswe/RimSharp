@@ -1,5 +1,5 @@
 using System.Windows;
-using RimSharp.MyApp.Dialogs;
+using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
 using System.Threading;

@@ -1,4 +1,4 @@
-using RimSharp.MyApp.AppFiles; // For ViewModelBase or similar base for INPC
+using RimSharp.AppDir.AppFiles; // For ViewModelBase or similar base for INPC
 using RimSharp.Shared.Models;
 using System;
 using System.ComponentModel;

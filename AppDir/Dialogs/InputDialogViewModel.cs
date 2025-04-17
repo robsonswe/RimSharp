@@ -1,7 +1,7 @@
 using System.Windows.Input;
-using RimSharp.MyApp.AppFiles;
+using RimSharp.AppDir.AppFiles;
 
-namespace RimSharp.MyApp.Dialogs
+namespace RimSharp.AppDir.Dialogs
 {
     public class InputDialogViewModel : DialogViewModelBase<MessageDialogResult>
     {

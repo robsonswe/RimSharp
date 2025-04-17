@@ -5,7 +5,7 @@ using System.Windows.Input;
 using RimSharp.Core.Commands; // Keep specific command type if needed
 using RimSharp.Core.Commands.Base; // For DelegateCommand
 
-namespace RimSharp.MyApp.Dialogs
+namespace RimSharp.AppDir.Dialogs
 {
     public enum MessageDialogType
     {

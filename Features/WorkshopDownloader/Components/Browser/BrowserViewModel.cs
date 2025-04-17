@@ -5,7 +5,7 @@ using System.Windows.Input;
 using Microsoft.Web.WebView2.Wpf;
 using RimSharp.Core.Commands.Base; // Added for DelegateCommand
 using RimSharp.Features.WorkshopDownloader.ViewModels;
-using RimSharp.MyApp.AppFiles;
+using RimSharp.AppDir.AppFiles;
 using RimSharp.Shared.Services.Contracts;
 using System.Diagnostics;
 using RimSharp.Features.WorkshopDownloader.Services;

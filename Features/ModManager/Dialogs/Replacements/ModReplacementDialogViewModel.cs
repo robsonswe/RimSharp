@@ -1,5 +1,5 @@
-using RimSharp.MyApp.AppFiles;
-using RimSharp.MyApp.Dialogs;
+using RimSharp.AppDir.AppFiles;
+using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
 using System;
 using System.Collections.Generic;

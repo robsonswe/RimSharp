@@ -1,6 +1,6 @@
 using System;
 using System.Linq;
-using RimSharp.MyApp.AppFiles;
+using RimSharp.AppDir.AppFiles;
 using RimSharp.Features.ModManager.Dialogs.DuplicateMods;
 using RimSharp.Shared.Models;
 

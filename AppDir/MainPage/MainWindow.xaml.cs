@@ -1,8 +1,9 @@
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
-using RimSharp.MyApp.AppFiles;
+using RimSharp.AppDir.AppFiles;
+using AppClass = RimSharp.AppDir.AppFiles.App;
 
-namespace RimSharp.MyApp.MainPage
+namespace RimSharp.AppDir.MainPage
 {
     public partial class MainWindow : Window
     {
@@ -11,7 +12,7 @@ namespace RimSharp.MyApp.MainPage
             InitializeComponent();
             
             // Get the MainViewModel from the service provider
-            DataContext = ((App)Application.Current).ServiceProvider.GetRequiredService<MainViewModel>();
+            DataContext = ((AppClass)Application.Current).ServiceProvider.GetRequiredService<MainViewModel>();
         }
     }
 }

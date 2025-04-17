@@ -1,6 +1,6 @@
 using RimSharp.Core.Commands;
-using RimSharp.MyApp.AppFiles; // For ViewModelBase/RunOnUIThread if needed
-using RimSharp.MyApp.Dialogs; // For MessageDialogResult
+using RimSharp.AppDir.AppFiles; // For ViewModelBase/RunOnUIThread if needed
+using RimSharp.AppDir.Dialogs; // For MessageDialogResult
 using System;
 using System.Diagnostics;
 using System.Linq;

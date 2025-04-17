@@ -14,7 +14,7 @@ using RimSharp.Infrastructure.Dialog;
 using RimSharp.Infrastructure.Mods.IO;
 using RimSharp.Infrastructure.Mods.Rules; // Needed for JsonModRulesRepository
 using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
-using RimSharp.MyApp.MainPage;
+using RimSharp.AppDir.MainPage;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Shared.Services.Implementations;
@@ -22,7 +22,7 @@ using RimSharp.Infrastructure.Workshop;
 using RimSharp.Infrastructure.Logging;
 using RimSharp.Features.GitModManager.ViewModels;
 
-namespace RimSharp.MyApp.AppFiles
+namespace RimSharp.AppDir.AppFiles
 {
     public partial class App : Application
     {

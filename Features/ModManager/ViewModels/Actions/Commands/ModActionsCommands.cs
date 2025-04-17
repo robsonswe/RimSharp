@@ -1,6 +1,6 @@
 using RimSharp.Core.Commands;
 using RimSharp.Shared.Models;
-using RimSharp.MyApp.AppFiles;
+using RimSharp.AppDir.AppFiles;
 using System;
 using System.Collections;
 using System.Diagnostics;

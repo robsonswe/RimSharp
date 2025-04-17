@@ -1,4 +1,4 @@
-using RimSharp.MyApp.AppFiles;
+using RimSharp.AppDir.AppFiles;
 using RimSharp.Shared.Models; // Assuming ModDependency is here
 using System;
 using System.Collections.Generic;

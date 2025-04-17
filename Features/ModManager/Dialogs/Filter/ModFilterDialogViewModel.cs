@@ -1,4 +1,4 @@
-using RimSharp.MyApp.Dialogs;
+using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
 using System;
 using System.Collections.Generic;

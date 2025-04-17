@@ -11,12 +11,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ApplicationDefinition Include="MyApp\AppFiles\App.xaml">
+    <ApplicationDefinition Include="AppDir\AppFiles\App.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Update="MyApp\AppFiles\App.xaml.cs">
-      <DependentUpon>MyApp\AppFiles\App.xaml</DependentUpon>
+    <Compile Update="AppDir\AppFiles\App.xaml.cs">
+      <DependentUpon>AppDir\AppFiles\App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>

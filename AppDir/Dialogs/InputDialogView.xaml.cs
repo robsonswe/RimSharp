@@ -2,7 +2,7 @@ using RimSharp.Infrastructure.Dialog;
 using System;
 using System.Windows;
 
-namespace RimSharp.MyApp.Dialogs
+namespace RimSharp.AppDir.Dialogs
 {
     public partial class InputDialogView : BaseDialog
     {

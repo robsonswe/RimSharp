@@ -1,5 +1,5 @@
 using RimSharp.Infrastructure.Mods.Validation.Duplicates;
-using RimSharp.MyApp.AppFiles;
+using RimSharp.AppDir.AppFiles;
 using RimSharp.Shared.Models;
 using System.Collections.ObjectModel;
 using System.Linq;

@@ -5,8 +5,8 @@ using System.ComponentModel;
 using System.Linq;
 using System.Windows.Data;
 using System.Windows.Input;
-using RimSharp.MyApp.AppFiles; // For ViewModelBase
-using RimSharp.MyApp.Dialogs;
+using RimSharp.AppDir.AppFiles; // For ViewModelBase
+using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
 
 namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck

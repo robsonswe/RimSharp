@@ -11,7 +11,7 @@ using RimSharp.Core.Commands.Composite;
 using RimSharp.Core.Extensions;
 using RimSharp.Core.Services.Commanding; // Assuming IModCommandService is here or accessible
 
-namespace RimSharp.MyApp.AppFiles
+namespace RimSharp.AppDir.AppFiles
 {
     /// <summary>
     /// Base class for all ViewModels in the application, providing property change notification

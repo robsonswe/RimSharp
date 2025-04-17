@@ -1,8 +1,8 @@
 
 using RimSharp.Features.ModManager.ViewModels.Actions;
 using RimSharp.Features.WorkshopDownloader.Services;
-using RimSharp.MyApp.AppFiles;
-using RimSharp.MyApp.Dialogs;
+using RimSharp.AppDir.AppFiles;
+using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using System;

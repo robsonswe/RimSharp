@@ -1,6 +1,6 @@
 using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
 using RimSharp.Core.Commands;
-using RimSharp.MyApp.AppFiles;
+using RimSharp.AppDir.AppFiles;
 using RimSharp.Shared.Models;
 using System;
 using System.Collections.Generic;
