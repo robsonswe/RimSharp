@@ -488,10 +488,25 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                     if (updateResult.ErrorsEncountered > 0)
                     {
                         summary += $" Errors: {updateResult.ErrorsEncountered}.";
-                        var errorSample = updateResult.ErrorMessages.Take(5).ToList();
-                        var errorMessage = string.Join("\n • ", errorSample);
-                        if (updateResult.ErrorMessages.Count > 5) { errorMessage += $"\n (and {updateResult.ErrorMessages.Count - 5} more errors...)"; }
-                        _dialogService.ShowWarning("Update Check Errors", $"Encountered {updateResult.ErrorsEncountered} error(s) during the update check.\nCheck status messages or logs for details.\n\nSample Errors:\n • {errorMessage}");
+
+                        // --- OLD CODE TO REPLACE ---
+                        // var errorSample = updateResult.ErrorMessages.Take(5).ToList();
+                        // var errorMessage = string.Join("\n • ", errorSample);
+                        // if (updateResult.ErrorMessages.Count > 5) { errorMessage += $"\n (and {updateResult.ErrorMessages.Count - 5} more errors...)"; }
+                        // _dialogService.ShowWarning("Update Check Errors", $"Encountered {updateResult.ErrorsEncountered} error(s) during the update check.\nCheck status messages or logs for details.\n\nSample Errors:\n • {errorMessage}");
+
+                        // --- NEW CODE ---
+                        // Combine all error messages into a single string, prefixed with bullet points.
+                        var allErrorsMessage = string.Join("\n • ", updateResult.ErrorMessages);
+
+                        // Show the warning dialog with the full list of errors.
+                        // Note: If the list is very long, the standard dialog might become unwieldy.
+                        // A custom dialog with a scrollable view might be a better UX for many errors.
+                        _dialogService.ShowWarning("Update Check Errors",
+                            $"Encountered {updateResult.ErrorsEncountered} error(s) during the update check.\n" +
+                            $"Check status messages or logs for more context.\n\n" +
+                            $"Errors Reported:\n • {allErrorsMessage}");
+                        // --- END NEW CODE ---
                     }
 
                     StatusChanged?.Invoke(this, summary);
