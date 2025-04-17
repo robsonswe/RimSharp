@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization; // Needed for CultureInfo and DateTimeStyles
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -15,13 +16,20 @@ namespace RimSharp.Infrastructure.Workshop
     public class SteamCmdDownloader : ISteamCmdDownloader
     {
         private const string RimworldAppId = "294100";
-        // Keep Regexes for log parsing - improved for greater flexibility
-        private static readonly Regex DownloadSuccessRegex = new Regex(
-            @"Success\.\s*Downloaded item (\d+) to ""([^""]+)""",
+
+        // Regexes specifically for logs/workshop_log.txt
+        // Now include timestamp capture group (Group 1)
+        private static readonly Regex WorkshopLogSuccessRegex = new Regex(
+             @"^\[(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})\]\s+\[AppID\s+294100\]\s+Download item\s+(\d+)\s+result\s*:\s*OK",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Regex DownloadFailureRegex = new Regex(
-            @"ERROR! (Failed to download item|Timeout downloading item) (\d+)\.",
+        private static readonly Regex WorkshopLogFailureRegex = new Regex(
+            @"^\[(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})\]\s+\[AppID\s+294100\]\s+Download item\s+(\d+)\s+result\s*:\s*(?!OK\s*$)(\w+[\w\s]*)",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        // Group 1: Timestamp (YYYY-MM-DD HH:MM:SS)
+        // Group 2: Item ID
+        // Group 3 (Failure only): Reason
+
+        // Regex for generic errors in the primary log
         private static readonly Regex GenericErrorRegex = new Regex(
             @"^ERROR! (.*)",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -30,6 +38,9 @@ namespace RimSharp.Infrastructure.Workshop
         private readonly ISteamCmdInstaller _installer;
         private readonly IDialogService _dialogService;
         private readonly ILoggerService _logger;
+
+        // Timestamp format used in workshop_log.txt
+        private const string LogTimestampFormat = "yyyy-MM-dd HH:mm:ss";
 
         public SteamCmdDownloader(
             ISteamCmdPathService pathService,
@@ -68,23 +79,21 @@ namespace RimSharp.Infrastructure.Workshop
             {
                 _logger.LogInfo("Download skipped: No valid workshop items provided", "SteamCmdDownloader");
                 result.LogMessages.Add("Download skipped: No valid workshop items provided.");
-                result.OverallSuccess = true; // Nothing to do is success
+                result.OverallSuccess = true;
                 return result;
             }
 
-            // Log items to be downloaded
             foreach (var item in validItems)
             {
                 _logger.LogDebug($"Preparing to download item: {item.SteamId} - {item.Name}", "SteamCmdDownloader");
             }
 
-            // Create a lookup for easier matching later
             var itemLookup = validItems.ToDictionary(i => i.SteamId);
             var requestedIds = itemLookup.Keys.ToHashSet();
-            var succeededIds = new HashSet<string>();
-            var failedIds = new HashSet<string>();
+            // Use dictionaries to store the *latest* result per ID for this run
+            var sessionResults = new Dictionary<string, (bool Success, DateTime Timestamp, string? Reason)>();
 
-            string scriptDir = Path.GetDirectoryName(_pathService.SteamCmdExePath);
+            string? scriptDir = Path.GetDirectoryName(_pathService.SteamCmdExePath);
             if (string.IsNullOrEmpty(scriptDir))
             {
                 _logger.LogError("Error: Cannot determine SteamCMD directory", "SteamCmdDownloader");
@@ -95,50 +104,56 @@ namespace RimSharp.Infrastructure.Workshop
 
             string scriptId = Guid.NewGuid().ToString("N").Substring(0, 8);
             string scriptPath = Path.Combine(scriptDir, $"rimsharp_dl_script_{scriptId}.txt");
-            string logPath = Path.Combine(scriptDir, $"rimsharp_dl_log_{scriptId}.log");
+            string primaryLogPath = Path.Combine(scriptDir, $"rimsharp_dl_log_{scriptId}.log");
+            string workshopLogPath = Path.Combine(_pathService.SteamCmdInstallPath, "logs", "workshop_log.txt");
 
             _logger.LogDebug($"Script path: {scriptPath}", "SteamCmdDownloader");
-            _logger.LogDebug($"Log path: {logPath}", "SteamCmdDownloader");
+            _logger.LogDebug($"Primary log path (+log_file): {primaryLogPath}", "SteamCmdDownloader");
+            _logger.LogDebug($"Workshop log path (detailed status): {workshopLogPath}", "SteamCmdDownloader");
+
+            // --- Record Start Time ---
+            DateTime startTime = DateTime.Now;
+            // Use a slightly earlier time for filtering to catch logs that might appear *just* before WaitForExit returns
+            DateTime filterTime = startTime.AddSeconds(-5);
+            _logger.LogInfo($"Operation started at {startTime:O}. Filtering log entries >= {filterTime:O}", "SteamCmdDownloader");
+
 
             try
             {
                 // --- 1. Create Script ---
+                // (Script creation remains the same)
                 _logger.LogInfo("Generating SteamCMD script...", "SteamCmdDownloader");
                 result.LogMessages.Add("Generating SteamCMD script...");
                 var scriptBuilder = new StringBuilder();
                 scriptBuilder.AppendLine($"force_install_dir \"{_pathService.SteamCmdSteamAppsPath}\"");
                 scriptBuilder.AppendLine("login anonymous");
-
                 string downloadCommand = $"workshop_download_item {RimworldAppId}";
                 string validateSuffix = validate ? " validate" : "";
-
                 foreach (var item in validItems)
                 {
                     scriptBuilder.AppendLine($"{downloadCommand} {item.SteamId.Trim()}{validateSuffix}");
                     cancellationToken.ThrowIfCancellationRequested();
                 }
                 scriptBuilder.AppendLine("quit");
-
                 await File.WriteAllTextAsync(scriptPath, scriptBuilder.ToString(), cancellationToken);
                 _logger.LogInfo($"SteamCMD script generated for {validItems.Count} items", "SteamCmdDownloader");
                 result.LogMessages.Add($"SteamCMD script generated ({validItems.Count} items).");
-                result.LogMessages.Add($"Log will be at: {logPath}");
 
                 cancellationToken.ThrowIfCancellationRequested();
 
-                // --- 2. Execute SteamCMD (Show Window) ---
+                // --- 2. Execute SteamCMD ---
                 _logger.LogInfo($"Executing SteamCMD...", "SteamCmdDownloader");
                 result.LogMessages.Add($"Executing SteamCMD...");
-                if (File.Exists(logPath)) File.Delete(logPath); // Ensure clean log
+                if (File.Exists(primaryLogPath)) { try { File.Delete(primaryLogPath); } catch { /* Ignore */ } }
 
                 var processStartInfo = new ProcessStartInfo
                 {
                     FileName = _pathService.SteamCmdExePath,
-                    Arguments = $"+runscript \"{scriptPath}\" +log_file \"{logPath}\"", // Force logging via argument
-                    UseShellExecute = true, // <<< SHOW WINDOW
-                    RedirectStandardOutput = false, // <<< Cannot redirect if UseShellExecute is true
-                    RedirectStandardError = false, // <<< Cannot redirect
-                    CreateNoWindow = false, // <<< Show the window
+                    Arguments = $"+runscript \"{scriptPath}\" +log_file \"{primaryLogPath}\"",
+                    UseShellExecute = true,
+                    RedirectStandardOutput = false,
+                    RedirectStandardError = false,
+                    CreateNoWindow = false,
                     WorkingDirectory = scriptDir,
                 };
 
@@ -148,267 +163,217 @@ namespace RimSharp.Infrastructure.Workshop
                 _logger.LogInfo($"SteamCMD process started (PID: {process.Id})", "SteamCmdDownloader");
                 result.LogMessages.Add($"SteamCMD process started (PID: {process.Id}). Waiting for exit...");
 
-                // Wait for the process to exit, respecting cancellation
                 await process.WaitForExitAsync(cancellationToken);
                 result.ExitCode = process.ExitCode;
 
                 _logger.LogInfo($"SteamCMD process exited with code: {process.ExitCode}", "SteamCmdDownloader");
                 result.LogMessages.Add($"SteamCMD process exited with code: {process.ExitCode}.");
 
-                // --- 3. Parse Log File for Results ---
-                _logger.LogInfo($"Parsing log file: {logPath}", "SteamCmdDownloader");
-                result.LogMessages.Add($"Parsing log file: {logPath}");
+                // --- 3. Parse Workshop Log File with Timestamp Filtering ---
+                bool workshopLogParsed = false;
+                int processedLogEntryCount = 0;
 
-                if (File.Exists(logPath))
+                _logger.LogInfo($"Attempting to parse workshop log ({workshopLogPath}) using filter time >= {filterTime:O}", "SteamCmdDownloader");
+                result.LogMessages.Add($"Attempting to parse workshop log using filter time >= {filterTime:O}");
+
+                if (File.Exists(workshopLogPath))
                 {
-                    var logLines = await File.ReadAllLinesAsync(logPath, cancellationToken);
-                    _logger.LogDebug($"Found log file with {logLines.Length} lines", "SteamCmdDownloader");
-                    result.LogMessages.Add($"Found log file with {logLines.Length} lines");
-
-                    // Add first 20 lines of log to results for debugging
-                    var logSample = logLines.Take(Math.Min(20, logLines.Length));
-                    result.LogMessages.Add("=== LOG FILE SAMPLE (first 20 lines) ===");
-                    result.LogMessages.AddRange(logSample);
-                    result.LogMessages.Add("=== END OF LOG SAMPLE ===");
-
-                    // Also log the full log file at debug level
-                    _logger.LogDebug($"Full log content:\n{string.Join("\n", logLines)}", "SteamCmdDownloader");
-
-                    int successMatches = 0;
-                    int failureMatches = 0;
-
-                    foreach (var line in logLines)
+                    try
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
+                        // Read all lines - necessary if multiple items download in one run
+                        var logLines = await File.ReadAllLinesAsync(workshopLogPath, cancellationToken);
+                         _logger.LogDebug($"Found workshop log with {logLines.Length} lines", "SteamCmdDownloader");
+                         result.LogMessages.Add($"Found workshop log with {logLines.Length} lines");
 
-                        // First try the precise regex patterns
-                        Match successMatch = DownloadSuccessRegex.Match(line);
-                        if (successMatch.Success)
+                        // Add log sample (last 50 lines)
+                        var logSample = logLines.TakeLast(Math.Min(50, logLines.Length));
+                        result.LogMessages.Add("=== WORKSHOP LOG SAMPLE (last 50 lines) ===");
+                        result.LogMessages.AddRange(logSample);
+                        result.LogMessages.Add("=== END OF WORKSHOP LOG SAMPLE ===");
+
+                        foreach (var line in logLines)
                         {
-                            string id = successMatch.Groups[1].Value;
-                            string path = successMatch.Groups[2].Value;
-                            _logger.LogDebug($"SUCCESS MATCH: Found ID {id} downloaded to {path}", "SteamCmdDownloader");
+                            cancellationToken.ThrowIfCancellationRequested();
+                            bool matched = false;
 
-                            if (requestedIds.Contains(id))
+                            // Try matching success pattern
+                            Match successMatch = WorkshopLogSuccessRegex.Match(line);
+                            if (successMatch.Success)
                             {
-                                succeededIds.Add(id);
-                                failedIds.Remove(id); // Ensure it's not marked as failed if it succeeded later
-                                _logger.LogInfo($"Marked item {id} as SUCCEEDED", "SteamCmdDownloader");
-                                successMatches++;
-                            }
-                            continue; // Move to next line
-                        }
-
-                        // Fallback parsing for success if regex doesn't match
-                        if (line.Contains("Success") && line.Contains("Downloaded item"))
-                        {
-                            _logger.LogDebug($"Found success text but regex didn't match: {line}", "SteamCmdDownloader");
-
-                            // Try a simpler extraction method if the regex failed
-                            var parts = line.Split(new[] { "Downloaded item ", " to " }, StringSplitOptions.None);
-                            if (parts.Length >= 3)
-                            {
-                                string id = parts[1].Trim();
-                                if (requestedIds.Contains(id))
+                                string timestampStr = successMatch.Groups[1].Value;
+                                string id = successMatch.Groups[2].Value;
+                                if (DateTime.TryParseExact(timestampStr, LogTimestampFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime entryTime))
                                 {
-                                    succeededIds.Add(id);
-                                    failedIds.Remove(id);
-                                    _logger.LogInfo($"Marked item {id} as SUCCEEDED using fallback parsing", "SteamCmdDownloader");
-                                    successMatches++;
+                                    if (entryTime >= filterTime && requestedIds.Contains(id))
+                                    {
+                                        processedLogEntryCount++;
+                                        _logger.LogDebug($"TIMESTAMP MATCH (Success): ID {id} at {entryTime:O}", "SteamCmdDownloader");
+                                        // Store or update the result, keeping the latest timestamp
+                                        if (!sessionResults.TryGetValue(id, out var existing) || entryTime > existing.Timestamp)
+                                        {
+                                            sessionResults[id] = (Success: true, Timestamp: entryTime, Reason: null);
+                                        }
+                                        matched = true;
+                                    }
+                                } else { _logger.LogWarning($"Could not parse timestamp '{timestampStr}' in workshop log line: {line}", "SteamCmdDownloader"); }
+                            }
+
+                            // If not success, try matching failure pattern
+                            if (!matched)
+                            {
+                                Match failureMatch = WorkshopLogFailureRegex.Match(line);
+                                if (failureMatch.Success)
+                                {
+                                    string timestampStr = failureMatch.Groups[1].Value;
+                                    string id = failureMatch.Groups[2].Value;
+                                    string reason = failureMatch.Groups[3].Value.Trim();
+                                    if (DateTime.TryParseExact(timestampStr, LogTimestampFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime entryTime))
+                                    {
+                                        if (entryTime >= filterTime && requestedIds.Contains(id))
+                                        {
+                                            processedLogEntryCount++;
+                                             _logger.LogWarning($"TIMESTAMP MATCH (Failure): ID {id} at {entryTime:O}, Reason: {reason}", "SteamCmdDownloader");
+                                            // Store or update the result, keeping the latest timestamp
+                                             if (!sessionResults.TryGetValue(id, out var existing) || entryTime > existing.Timestamp)
+                                             {
+                                                 sessionResults[id] = (Success: false, Timestamp: entryTime, Reason: reason);
+                                             }
+                                            matched = true;
+                                        }
+                                    } else { _logger.LogWarning($"Could not parse timestamp '{timestampStr}' in workshop log line: {line}", "SteamCmdDownloader"); }
                                 }
                             }
                         }
+                        workshopLogParsed = true;
+                        _logger.LogInfo($"Workshop log parsing complete. Processed {processedLogEntryCount} relevant entries for this session.", "SteamCmdDownloader");
+                        result.LogMessages.Add($"Workshop log parsing complete. Processed {processedLogEntryCount} relevant entries for this session.");
 
-                        Match failureMatch = DownloadFailureRegex.Match(line);
-                        if (failureMatch.Success)
-                        {
-                            string id = failureMatch.Groups[2].Value;
-                            _logger.LogDebug($"FAILURE MATCH: Found failed ID {id}", "SteamCmdDownloader");
-
-                            if (requestedIds.Contains(id) && !succeededIds.Contains(id)) // Only mark as failed if not already succeeded
-                            {
-                                failedIds.Add(id);
-                                _logger.LogWarning($"Marked item {id} as FAILED", "SteamCmdDownloader");
-                                failureMatches++;
-                            }
-                            continue; // Move to next line
-                        }
-
-                        // Log generic errors too
-                        Match errorMatch = GenericErrorRegex.Match(line);
-                        if (errorMatch.Success)
-                        {
-                            string errorMsg = errorMatch.Groups[1].Value;
-                            _logger.LogWarning($"Detected generic error in log: {errorMsg}", "SteamCmdDownloader");
-                            result.LogMessages.Add($"Detected generic error: {errorMsg}");
-                        }
                     }
-
-                    _logger.LogInfo($"Log parsing complete. Success matches: {successMatches}, Failure matches: {failureMatches}", "SteamCmdDownloader");
-                    result.LogMessages.Add($"Log parsing complete. Success matches: {successMatches}, Failure matches: {failureMatches}");
-                    _logger.LogInfo($"Succeeded IDs: {succeededIds.Count}, Failed IDs: {failedIds.Count}", "SteamCmdDownloader");
-
-                    // Extra diagnostic - list the IDs that succeeded
-                    if (succeededIds.Count > 0)
+                    catch (IOException ioEx)
                     {
-                        string successList = string.Join(", ", succeededIds);
-                        _logger.LogInfo($"Successfully downloaded IDs: {successList}", "SteamCmdDownloader");
-                        result.LogMessages.Add($"Successfully downloaded IDs: {successList}");
+                        _logger.LogError($"Error reading workshop log file {workshopLogPath}: {ioEx.Message}", "SteamCmdDownloader");
+                        result.LogMessages.Add($"Error reading workshop log file: {ioEx.Message}");
+                    }
+                    catch (Exception ex)
+                    {
+                         _logger.LogError($"Unexpected error parsing workshop log file {workshopLogPath}: {ex.Message}", "SteamCmdDownloader");
+                        result.LogMessages.Add($"Unexpected error parsing workshop log file: {ex.Message}");
                     }
                 }
                 else
                 {
-                    _logger.LogWarning($"Warning: Log file not found at {logPath} after execution", "SteamCmdDownloader");
-                    result.LogMessages.Add($"Warning: Log file not found at {logPath} after execution.");
+                     _logger.LogWarning($"Warning: Workshop log file not found at {workshopLogPath}.", "SteamCmdDownloader");
+                     result.LogMessages.Add($"Warning: Workshop log file not found at {workshopLogPath}. Cannot confirm item status reliably.");
+                }
 
-                    // Check if SteamCMD created logs elsewhere
-                    string steamCmdLogsDir = Path.Combine(scriptDir, "logs");
-                    if (Directory.Exists(steamCmdLogsDir))
+                // --- 4. Determine Final Item Status from Session Results or Exit Code ---
+                var succeededIds = new HashSet<string>();
+                var failedIds = new HashSet<string>();
+
+                if (!workshopLogParsed)
+                {
+                    // Workshop log unusable, rely solely on exit code
+                    if (process.ExitCode != 0)
                     {
-                        var steamLogFiles = Directory.GetFiles(steamCmdLogsDir, "*.txt").OrderByDescending(f => new FileInfo(f).LastWriteTime).Take(3).ToList();
-                        if (steamLogFiles.Any())
-                        {
-                            _logger.LogInfo($"Found SteamCMD log files in logs directory: {string.Join(", ", steamLogFiles.Select(Path.GetFileName))}", "SteamCmdDownloader");
-                            result.LogMessages.Add($"Found SteamCMD log files in logs directory: {string.Join(", ", steamLogFiles.Select(Path.GetFileName))}");
-
-                            // Try to parse the most recent log file
-                            var newestLog = steamLogFiles.First();
-                            try
-                            {
-                                var alternateLogLines = await File.ReadAllLinesAsync(newestLog, cancellationToken);
-                                result.LogMessages.Add($"Reading alternate log file: {newestLog} ({alternateLogLines.Length} lines)");
-                                _logger.LogDebug($"Alternative log content:\n{string.Join("\n", alternateLogLines)}", "SteamCmdDownloader");
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogError($"Failed to read alternate log file: {ex.Message}", "SteamCmdDownloader");
-                            }
-                        }
+                        _logger.LogError($"Workshop log unusable and exit code ({process.ExitCode}) indicates failure. Marking all requested items as failed.", "SteamCmdDownloader");
+                        result.LogMessages.Add($"Workshop log unusable and exit code ({process.ExitCode}) indicates failure. Assuming all items failed.");
+                        failedIds.UnionWith(requestedIds);
                     }
-                }
-
-                // --- 4. Populate Result Object ---
-                foreach (var id in succeededIds)
-                {
-                    if (itemLookup.TryGetValue(id, out var item))
+                    else
                     {
-                        result.SucceededItems.Add(item);
+                        _logger.LogWarning($"Workshop log unusable, but exit code is 0. Marking all requested items as failed due to ambiguity.", "SteamCmdDownloader");
+                        result.LogMessages.Add($"Warning: Workshop log unusable, but exit code is 0. Assuming all items failed due to lack of confirmation.");
+                        failedIds.UnionWith(requestedIds);
                     }
-                }
-
-                foreach (var id in failedIds)
-                {
-                    if (itemLookup.TryGetValue(id, out var item))
-                    {
-                        result.FailedItems.Add(item);
-                    }
-                }
-
-                // Verify workshop content directories exist as a backup check
-                _logger.LogInfo("Verifying workshop content directories as backup check", "SteamCmdDownloader");
-                foreach (var item in validItems)
-                {
-                    string id = item.SteamId;
-                    if (!succeededIds.Contains(id) && !failedIds.Contains(id))
-                    {
-                        // Check if the directory exists for this item
-                        // ***** CORRECTED LINE BELOW *****
-                        string expectedPath = Path.Combine(_pathService.SteamCmdWorkshopContentPath, id);
-                        // ***** END OF CORRECTION *****
-
-                        // Check for directory existence and non-emptiness (optional but safer)
-                        bool directoryExists = Directory.Exists(expectedPath);
-                        bool directoryNotEmpty = directoryExists && Directory.EnumerateFileSystemEntries(expectedPath).Any(); // Check if it has *any* files or subdirs
-
-                        _logger.LogDebug($"Directory check for item {id}: {(directoryNotEmpty ? "EXISTS AND NOT EMPTY" : (directoryExists ? "EXISTS BUT EMPTY" : "MISSING"))} at {expectedPath}", "SteamCmdDownloader");
-
-                        if (directoryNotEmpty) // Only count as success if it exists AND has content
-                        {
-                            // Directory exists and has content, assume success even if not parsed from logs
-                            succeededIds.Add(id);
-                            if (itemLookup.TryGetValue(id, out var foundItem) && !result.SucceededItems.Contains(foundItem))
-                            {
-                                result.SucceededItems.Add(foundItem);
-                            }
-                            _logger.LogInfo($"Item {id} verified as SUCCESS based on directory existence and content", "SteamCmdDownloader");
-                            result.LogMessages.Add($"Item {id} verified as SUCCESS based on directory existence and content");
-                        }
-                        // Keep the original logic for handling failure/uncertainty based on exit code
-                        else if (process.ExitCode == 0 && !directoryExists) // Directory missing but process succeeded
-                        {
-                            // Exit code is 0 but directory doesn't exist - uncertain state
-                            // This could happen if SteamCMD *thinks* it succeeded but didn't actually download
-                            // Or if the log parsing failed AND the directory check failed.
-                            // Let's mark it as failed in this case for clarity, as the content isn't there.
-                            failedIds.Add(id);
-                            if (itemLookup.TryGetValue(id, out var foundItem) && !result.FailedItems.Contains(foundItem))
-                            {
-                                result.FailedItems.Add(foundItem);
-                            }
-                            _logger.LogWarning($"Item {id} marked as FAILED. Process exit code 0, but directory not found or empty at {expectedPath}", "SteamCmdDownloader");
-                            result.LogMessages.Add($"Item {id} marked as FAILED. Process exit code 0, but directory not found or empty");
-                        }
-                        else if (!directoryNotEmpty) // Directory missing (or empty) and exit code non-zero (or zero)
-                        {
-                            // Directory doesn't exist (or is empty) - treat as failure regardless of exit code if not already succeeded
-                            failedIds.Add(id);
-                            if (itemLookup.TryGetValue(id, out var foundItem) && !result.FailedItems.Contains(foundItem))
-                            {
-                                result.FailedItems.Add(foundItem);
-                            }
-                            _logger.LogWarning($"Item {id} marked as FAILED based on missing/empty directory at {expectedPath}", "SteamCmdDownloader");
-                            result.LogMessages.Add($"Item {id} marked as FAILED based on missing/empty directory");
-                        }
-                    }
-                }
-
-
-                // Define overall success - modified logic to be more reliable
-                if (process.ExitCode == 0 && result.SucceededItems.Count == validItems.Count)
-                {
-                    // Perfect success - all items succeeded with clean exit code
-                    result.OverallSuccess = true;
-                    _logger.LogInfo("Download completed successfully for all items", "SteamCmdDownloader");
-                }
-                else if (process.ExitCode == 0 && result.SucceededItems.Count > 0)
-                {
-                    // Partial success - some items succeeded with clean exit code
-                    result.OverallSuccess = true;
-                    _logger.LogInfo("Download completed with partial success - some items succeeded", "SteamCmdDownloader");
-                }
-                else if (process.ExitCode == 0)
-                {
-                    // Exit code is 0 but no success detected - strange case
-                    // If we got here, the backup directory checks didn't find anything either
-                    result.OverallSuccess = false;
-                    _logger.LogWarning("Download reported success (exit code 0) but no successful downloads were detected", "SteamCmdDownloader");
-                    result.LogMessages.Add("Warning: SteamCMD reported success (exit code 0) but no successful downloads were detected.");
                 }
                 else
                 {
-                    // Non-zero exit code - report as failure
-                    result.OverallSuccess = false;
-                    _logger.LogError($"SteamCMD process reported an error (ExitCode: {process.ExitCode})", "SteamCmdDownloader");
-                    result.LogMessages.Add($"SteamCMD process reported an error (ExitCode: {process.ExitCode}).");
+                    // Workshop log was parsed, use sessionResults
+                    foreach (var requestedId in requestedIds)
+                    {
+                        if (sessionResults.TryGetValue(requestedId, out var latestResult))
+                        {
+                            if (latestResult.Success)
+                            {
+                                succeededIds.Add(requestedId);
+                                _logger.LogInfo($"Item {requestedId} final status: SUCCEEDED (Log entry at {latestResult.Timestamp:O})", "SteamCmdDownloader");
+                            }
+                            else
+                            {
+                                failedIds.Add(requestedId);
+                                _logger.LogWarning($"Item {requestedId} final status: FAILED (Reason: {latestResult.Reason ?? "Unknown"}, Log entry at {latestResult.Timestamp:O})", "SteamCmdDownloader");
+                            }
+                        }
+                        else
+                        {
+                            // No entry found for this item in the relevant time frame
+                            failedIds.Add(requestedId);
+                             _logger.LogWarning($"Item {requestedId} final status: FAILED (No result found in workshop log for this session)", "SteamCmdDownloader");
+                             result.LogMessages.Add($"Warning: Item {requestedId} had no result entry in the workshop log for this session.");
+                        }
+                    }
                 }
 
-                // Final logging
-                _logger.LogInfo($"Download operation completed. Overall success: {result.OverallSuccess}", "SteamCmdDownloader");
-                _logger.LogInfo($"Items succeeded: {result.SucceededItems.Count}, Items failed: {result.FailedItems.Count}", "SteamCmdDownloader");
+                // --- 5. Populate Result Object ---
+                result.SucceededItems.AddRange(succeededIds.Select(id => itemLookup[id]));
+                result.FailedItems.AddRange(failedIds.Select(id => itemLookup[id]));
+
+                _logger.LogInfo($"Final item status determined. Succeeded: {result.SucceededItems.Count}, Failed: {result.FailedItems.Count}", "SteamCmdDownloader");
+                if (result.SucceededItems.Any()) _logger.LogInfo($"Succeeded IDs: {string.Join(", ", result.SucceededItems.Select(i => i.SteamId))}", "SteamCmdDownloader");
+                if (result.FailedItems.Any()) _logger.LogWarning($"Failed IDs: {string.Join(", ", result.FailedItems.Select(i => i.SteamId))}", "SteamCmdDownloader");
+
+
+                // --- 6. Define Overall Success ---
+                // Still requires exit code 0 AND all requested items succeeded based on *this session's* log entries.
+                bool allRequestedItemsSucceededThisSession = succeededIds.Count == requestedIds.Count;
+                result.OverallSuccess = (process.ExitCode == 0 && failedIds.Count == 0 && allRequestedItemsSucceededThisSession);
+
+                // Provide clearer final status message
+                if (result.OverallSuccess)
+                {
+                    _logger.LogInfo("Download operation completed successfully for all items.", "SteamCmdDownloader");
+                    result.LogMessages.Add("Download completed successfully for all items.");
+                }
+                else if (process.ExitCode != 0)
+                {
+                     _logger.LogError($"Download operation failed. SteamCMD process reported an error (ExitCode: {process.ExitCode}). Check logs for details.", "SteamCmdDownloader");
+                     result.LogMessages.Add($"Download operation failed. SteamCMD process error (ExitCode: {process.ExitCode}).");
+                }
+                else if (!workshopLogParsed)
+                {
+                     _logger.LogError($"Download operation failed. Could not read/parse the workshop log file ({workshopLogPath}) to confirm status.", "SteamCmdDownloader");
+                     result.LogMessages.Add($"Download operation failed. Cannot confirm status from workshop log file.");
+                }
+                 else if (result.FailedItems.Any())
+                {
+                    _logger.LogWarning($"Download operation completed with failures. Succeeded: {result.SucceededItems.Count}, Failed: {result.FailedItems.Count}.", "SteamCmdDownloader");
+                    result.LogMessages.Add($"Download completed with failures. Succeeded: {result.SucceededItems.Count}, Failed: {result.FailedItems.Count}.");
+                }
+                else // Exit code 0, log parsed, but not all items succeeded (e.g., undetermined marked as failed)
+                {
+                     _logger.LogWarning($"Download operation finished, but not all items were confirmed successful in the workshop log for this session. Succeeded: {result.SucceededItems.Count}, Total Requested: {requestedIds.Count}", "SteamCmdDownloader");
+                     result.LogMessages.Add($"Download finished, but not all items confirmed successful this session. Succeeded: {result.SucceededItems.Count}/{requestedIds.Count}.");
+                }
+
+                _logger.LogInfo($"Download processing finished. Overall success flag: {result.OverallSuccess}", "SteamCmdDownloader");
+
             }
             catch (OperationCanceledException)
             {
                 _logger.LogWarning("Download operation cancelled by user", "SteamCmdDownloader");
                 result.LogMessages.Add("Download operation cancelled.");
                 result.OverallSuccess = false;
-                return result; // Return partial results if any parsing happened before cancellation
+                // Assign remaining items based on potentially partial sessionResults if available, otherwise mark as failed.
+                var determinedIds = sessionResults.Keys.ToHashSet();
+                result.FailedItems.AddRange(validItems.Where(i => !determinedIds.Contains(i.SteamId)));
+                return result;
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Download failed with exception: {ex.Message}\n{ex.StackTrace}", "SteamCmdDownloader");
-                result.LogMessages.Add($"Download failed with exception: {ex.Message}");
+                _logger.LogError($"Download failed with unexpected exception: {ex.Message}\n{ex.StackTrace}", "SteamCmdDownloader");
+                result.LogMessages.Add($"Download failed with unexpected exception: {ex.Message}");
                 result.OverallSuccess = false;
-                result.FailedItems.AddRange(validItems.Where(i => !result.SucceededItems.Contains(i))); // Assume all failed on exception
+                result.FailedItems.AddRange(validItems.Where(i => !result.SucceededItems.Contains(i) && !result.FailedItems.Contains(i)));
                 _dialogService.ShowError("Download Failed", $"An unexpected error occurred while running SteamCMD:\n\n{ex.Message}");
             }
             finally
@@ -416,23 +381,12 @@ namespace RimSharp.Infrastructure.Workshop
                 // Clean up script file
                 if (File.Exists(scriptPath))
                 {
-                    try
-                    {
-                        File.Delete(scriptPath);
-                        _logger.LogDebug($"Cleaned up script file: {scriptPath}", "SteamCmdDownloader");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogDebug($"Failed to clean up script file: {ex.Message}", "SteamCmdDownloader");
-                    }
+                    try { File.Delete(scriptPath); _logger.LogDebug($"Cleaned up script file: {scriptPath}", "SteamCmdDownloader"); }
+                    catch (Exception ex) { _logger.LogWarning($"Failed to clean up script file: {ex.Message}", "SteamCmdDownloader"); }
                 }
-
-                // Keep the log file for inspection
-                if (File.Exists(logPath))
-                {
-                    _logger.LogInfo($"Log file kept at: {logPath}", "SteamCmdDownloader");
-                    result.LogMessages.Add($"Log file kept at: {logPath}");
-                }
+                 // Keep log files
+                if (File.Exists(primaryLogPath)) { _logger.LogInfo($"Primary log file kept at: {primaryLogPath}", "SteamCmdDownloader"); result.LogMessages.Add($"Primary log file kept at: {primaryLogPath}"); }
+                if (File.Exists(workshopLogPath)) { _logger.LogInfo($"Workshop log file kept at: {workshopLogPath}", "SteamCmdDownloader"); result.LogMessages.Add($"Workshop log file kept at: {workshopLogPath}"); }
             }
 
             return result;
