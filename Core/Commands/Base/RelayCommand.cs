@@ -69,7 +69,7 @@ namespace RimSharp.Core.Commands.Base
             {
                 if(!_disposed)
                 {
-                     Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] RaiseCanExecuteChanged invoked.");
+                     //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] RaiseCanExecuteChanged invoked.");
                      CanExecuteChanged?.Invoke(this, EventArgs.Empty);
                 }
             });
@@ -88,7 +88,7 @@ namespace RimSharp.Core.Commands.Base
         {
             if (_disposed)
             {
-                 Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Attempted to observe property on disposed command.");
+                 //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Attempted to observe property on disposed command.");
                  return this;
             }
 
@@ -109,12 +109,12 @@ namespace RimSharp.Core.Commands.Base
                     observedProperties = new HashSet<string>();
                     _observedPropertiesPerOwner.Add(owner, observedProperties);
                     owner.PropertyChanged += Owner_PropertyChanged;
-                    Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Subscribed to PropertyChanged on Owner {owner.GetHashCode()}");
+                    //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Subscribed to PropertyChanged on Owner {owner.GetHashCode()}");
                 }
 
                 if(observedProperties.Add(propertyName))
                 {
-                    Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Observing property '{propertyName}' on Owner {owner.GetHashCode()}");
+                    //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Observing property '{propertyName}' on Owner {owner.GetHashCode()}");
                 }
             }
             return this;
@@ -131,7 +131,7 @@ namespace RimSharp.Core.Commands.Base
              // Check disposal state first
             if (_disposed)
             {
-                 Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Attempted to observe properties on disposed command.");
+                 //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Attempted to observe properties on disposed command.");
                  return this;
             }
 
@@ -169,12 +169,12 @@ namespace RimSharp.Core.Commands.Base
                 observedProperties = new HashSet<string>();
                 _observedPropertiesPerOwner.Add(owner, observedProperties);
                 owner.PropertyChanged += Owner_PropertyChanged;
-                Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Subscribed to PropertyChanged on Owner {owner.GetHashCode()}");
+                //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Subscribed to PropertyChanged on Owner {owner.GetHashCode()}");
             }
 
             if(observedProperties.Add(propertyName))
             {
-                Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Observing property '{propertyName}' on Owner {owner.GetHashCode()}");
+                //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Observing property '{propertyName}' on Owner {owner.GetHashCode()}");
             }
         }
 
@@ -198,7 +198,7 @@ namespace RimSharp.Core.Commands.Base
                      if (string.IsNullOrEmpty(e.PropertyName) || relevantProperties.Contains(e.PropertyName))
                      {
                          shouldRaise = true;
-                          Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Property '{e.PropertyName ?? "null"}' changed on Owner {owner.GetHashCode()}. Will raise CanExecuteChanged.");
+                          //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Property '{e.PropertyName ?? "null"}' changed on Owner {owner.GetHashCode()}. Will raise CanExecuteChanged.");
                      }
                  }
              }
@@ -227,7 +227,7 @@ namespace RimSharp.Core.Commands.Base
                     {
                         if (_observedPropertiesPerOwner != null)
                         {
-                             Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Disposing: Unsubscribing from {_observedPropertiesPerOwner.Count} owners.");
+                             //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Disposing: Unsubscribing from {_observedPropertiesPerOwner.Count} owners.");
                             foreach (var owner in _observedPropertiesPerOwner.Keys)
                             {
                                 if (owner != null) owner.PropertyChanged -= Owner_PropertyChanged;
@@ -238,7 +238,7 @@ namespace RimSharp.Core.Commands.Base
                     }
                 }
                 _disposed = true;
-                Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Disposed.");
+                //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Disposed.");
             }
         }
         #endregion
@@ -315,7 +315,7 @@ namespace RimSharp.Core.Commands.Base
              {
                   if(!_disposed)
                   {
-                    Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] RaiseCanExecuteChanged invoked.");
+                    //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] RaiseCanExecuteChanged invoked.");
                     CanExecuteChanged?.Invoke(this, EventArgs.Empty);
                   }
              });
@@ -334,7 +334,7 @@ namespace RimSharp.Core.Commands.Base
         {
              if (_disposed)
              {
-                 Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Attempted to observe property on disposed command.");
+                 //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Attempted to observe property on disposed command.");
                  return this;
              }
 
@@ -355,12 +355,12 @@ namespace RimSharp.Core.Commands.Base
                      observedProperties = new HashSet<string>();
                      _observedPropertiesPerOwner.Add(owner, observedProperties);
                      owner.PropertyChanged += Owner_PropertyChanged;
-                     Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Subscribed to PropertyChanged on Owner {owner.GetHashCode()}");
+                     //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Subscribed to PropertyChanged on Owner {owner.GetHashCode()}");
                  }
 
                  if(observedProperties.Add(propertyName))
                  {
-                    Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Observing property '{propertyName}' on Owner {owner.GetHashCode()}");
+                    //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Observing property '{propertyName}' on Owner {owner.GetHashCode()}");
                  }
              }
             return this;
@@ -376,7 +376,7 @@ namespace RimSharp.Core.Commands.Base
         {
              if (_disposed)
              {
-                 Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Attempted to observe properties on disposed command.");
+                 //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Attempted to observe properties on disposed command.");
                  return this;
              }
 
@@ -413,12 +413,12 @@ namespace RimSharp.Core.Commands.Base
                 observedProperties = new HashSet<string>();
                 _observedPropertiesPerOwner.Add(owner, observedProperties);
                 owner.PropertyChanged += Owner_PropertyChanged;
-                Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Subscribed to PropertyChanged on Owner {owner.GetHashCode()}");
+                //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Subscribed to PropertyChanged on Owner {owner.GetHashCode()}");
             }
 
             if(observedProperties.Add(propertyName))
             {
-                Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Observing property '{propertyName}' on Owner {owner.GetHashCode()}");
+                //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Observing property '{propertyName}' on Owner {owner.GetHashCode()}");
             }
         }
 
@@ -442,7 +442,7 @@ namespace RimSharp.Core.Commands.Base
                      if (string.IsNullOrEmpty(e.PropertyName) || relevantProperties.Contains(e.PropertyName))
                      {
                          shouldRaise = true;
-                          Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Property '{e.PropertyName ?? "null"}' changed on Owner {owner.GetHashCode()}. Will raise CanExecuteChanged.");
+                          //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Property '{e.PropertyName ?? "null"}' changed on Owner {owner.GetHashCode()}. Will raise CanExecuteChanged.");
                      }
                  }
              }
@@ -471,7 +471,7 @@ namespace RimSharp.Core.Commands.Base
                     {
                         if (_observedPropertiesPerOwner != null)
                         {
-                             Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Disposing: Unsubscribing from {_observedPropertiesPerOwner.Count} owners.");
+                             //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Disposing: Unsubscribing from {_observedPropertiesPerOwner.Count} owners.");
                             foreach (var owner in _observedPropertiesPerOwner.Keys)
                             {
                                 if (owner != null) owner.PropertyChanged -= Owner_PropertyChanged;
@@ -482,7 +482,7 @@ namespace RimSharp.Core.Commands.Base
                     }
                 }
                 _disposed = true;
-                 Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Disposed.");
+                 //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Disposed.");
             }
         }
         #endregion

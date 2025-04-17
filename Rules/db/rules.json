@@ -10,7 +10,7 @@
                 }
             }
         },
-        "MOFSLBLECN209.rimfacehforhfacialhstuffh1v0": {
+        "mofslblecn209.rimfacehforhfacialhstuffh1v0": {
             "loadBefore": {
                 "killface.facialstuff.patchprepc": {
                     "name": [
@@ -376,7 +376,10 @@
                         "Androids Expanded"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.5"
+            ]
         },
         "albion.sparklingworlds.bmchardcore": {
             "loadAfter": {
@@ -423,57 +426,57 @@
                 },
                 "oskarhpotocki141.vanillahanimalshexpandedhmhlivestock": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Livestock"
+                        "Vanilla Animals Expanded — Livestock"
                     ]
                 },
                 "vanillaexpanded.vaeas": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Arid Shrubland"
+                        "Vanilla Animals Expanded — Arid Shrubland"
                     ]
                 },
                 "vanillaexpanded.vaeau": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Australia"
+                        "Vanilla Animals Expanded — Australia"
                     ]
                 },
                 "vanillaexpanded.vaebf": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Boreal Forest"
+                        "Vanilla Animals Expanded — Boreal Forest"
                     ]
                 },
                 "vanillaexpanded.vaecd": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Cats and Dogs"
+                        "Vanilla Animals Expanded — Cats and Dogs"
                     ]
                 },
                 "vanillaexpanded.vaed": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Desert"
+                        "Vanilla Animals Expanded — Desert"
                     ]
                 },
                 "vanillaexpanded.vaeed": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Extreme Desert"
+                        "Vanilla Animals Expanded — Extreme Desert"
                     ]
                 },
                 "vanillaexpanded.vaeis": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Ice Sheet"
+                        "Vanilla Animals Expanded — Ice Sheet"
                     ]
                 },
                 "vanillaexpanded.vaet": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tundra"
+                        "Vanilla Animals Expanded — Tundra"
                     ]
                 },
                 "vanillaexpanded.vaetr": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tropical Rainforest"
+                        "Vanilla Animals Expanded — Tropical Rainforest"
                     ]
                 },
                 "vanillaexpanded.vaets": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tropical Swamp"
+                        "Vanilla Animals Expanded — Tropical Swamp"
                     ]
                 }
             }
@@ -542,7 +545,7 @@
             "loadAfter": {
                 "vanya.outsource.bodytypeextend": {
                     "name": [
-                        "[RF]Body Type Extend - \u4f53\u578b\u6269\u5c55\u6846\u67b6"
+                        "[RF]Body Type Extend - 体型扩展框架"
                     ]
                 },
                 "xeva.xevafbpants.11": {
@@ -995,7 +998,11 @@
                         "Vanilla Factions Expanded - Medieval"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.4",
+                "1.5"
+            ]
         },
         "ayameduki.haridhale": {
             "loadBefore": {
@@ -1497,7 +1504,7 @@
             "loadAfter": {
                 "vanillaexpanded.vaeaccessories": {
                     "name": [
-                        "Vanilla Apparel Expanded \u2014 Accessories"
+                        "Vanilla Apparel Expanded — Accessories"
                     ]
                 },
                 "vanillaexpanded.vtexe": {
@@ -2066,7 +2073,7 @@
             "loadAfter": {
                 "vanillaexpanded.vaeendandext": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Endangered"
+                        "Vanilla Animals Expanded — Endangered"
                     ]
                 }
             }
@@ -2167,7 +2174,10 @@
                         "Vanilla Ideology Expanded - Anima Theme"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.4"
+            ]
         },
         "dninemfive.d9framework": {
             "loadAfter": {
@@ -2489,52 +2499,52 @@
             "loadAfter": {
                 "vanillaexpanded.vaeas": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Arid Shrubland"
+                        "Vanilla Animals Expanded — Arid Shrubland"
                     ]
                 },
                 "vanillaexpanded.vaeau": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Australia"
+                        "Vanilla Animals Expanded — Australia"
                     ]
                 },
                 "vanillaexpanded.vaebf": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Boreal Forest"
+                        "Vanilla Animals Expanded — Boreal Forest"
                     ]
                 },
                 "vanillaexpanded.vaecd": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Cats and Dogs"
+                        "Vanilla Animals Expanded — Cats and Dogs"
                     ]
                 },
                 "vanillaexpanded.vaed": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Desert"
+                        "Vanilla Animals Expanded — Desert"
                     ]
                 },
                 "vanillaexpanded.vaeed": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Extreme Desert"
+                        "Vanilla Animals Expanded — Extreme Desert"
                     ]
                 },
                 "vanillaexpanded.vaeis": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Ice Sheet"
+                        "Vanilla Animals Expanded — Ice Sheet"
                     ]
                 },
                 "vanillaexpanded.vaet": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tundra"
+                        "Vanilla Animals Expanded — Tundra"
                     ]
                 },
                 "vanillaexpanded.vaetr": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tropical Rainforest"
+                        "Vanilla Animals Expanded — Tropical Rainforest"
                     ]
                 },
                 "vanillaexpanded.vaets": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tropical Swamp"
+                        "Vanilla Animals Expanded — Tropical Swamp"
                     ]
                 }
             }
@@ -3431,7 +3441,10 @@
                         "Pawn Badge Fan Fork [Adopted]"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.5"
+            ]
         },
         "itzal.fortuna.laser": {
             "loadAfter": {
@@ -4312,7 +4325,7 @@
                 }
             }
         },
-        "lazywhalehwhbenbenrabbithwhbiscuitminer192.animalcollabprojhNQNSLCRT": {
+        "lazywhalehwhbenbenrabbithwhbiscuitminer192.animalcollabprojhnqnslcrt": {
             "loadAfter": {
                 "acpteam.acp": {
                     "name": [
@@ -4811,7 +4824,10 @@
                         "Vanilla Expanded - Royalty Patches"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.5"
+            ]
         },
         "mengde.fe3h.accessories": {
             "loadAfter": {
@@ -5309,7 +5325,7 @@
             "loadAfter": {
                 "shavius.variousspaceshipchunk.zh": {
                     "name": [
-                        "Various Space Ship Chunk \u66f4\u591a\u98de\u8239\u6b8b\u9ab8\u7b80\u7e41\u6c49\u5316\u5305"
+                        "Various Space Ship Chunk 更多飞船残骸简繁汉化包"
                     ]
                 }
             }
@@ -5620,7 +5636,7 @@
             "loadAfter": {
                 "individuality.cnlangpack": {
                     "name": [
-                        "[SYR] Individuality \u7b80\u4e2d\u7ffb\u8bd1"
+                        "[SYR] Individuality 简中翻译"
                     ]
                 },
                 "syrchalis.individuality": {
@@ -5788,7 +5804,7 @@
             "loadBefore": {
                 "zh.arimworldofmagic.dreadnecromancerclass": {
                     "name": [
-                        "A RimWorld of Magic - Dread Necromancer Class\u7b80\u7e41\u4e2d\u6587\u6c49\u5316\u5305"
+                        "A RimWorld of Magic - Dread Necromancer Class简繁中文汉化包"
                     ]
                 }
             }
@@ -6062,7 +6078,7 @@
                 "meltup.polyamorybeds.vanilla": {
                     "name": [
                         "Polyamory Beds (Vanilla Edition)",
-                        "\u041f\u043e\u043b\u0438\u0430\u043c\u0443\u0440\u043d\u044b\u0435 \u043a\u0440\u043e\u0432\u0430\u0442\u0438 (\u0412\u0430\u043d\u0438\u043b\u044c\u043d\u0430\u044f \u0432\u0435\u0440\u0441\u0438\u044f)"
+                        "Полиамурные кровати (Ванильная версия)"
                     ]
                 }
             }
@@ -6250,7 +6266,10 @@
                         "AI Upscaled Textures - Core"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.5"
+            ]
         },
         "owlchemist.fridgeutilities": {
             "loadBefore": {
@@ -6283,52 +6302,52 @@
                 },
                 "vanillaexpanded.vaeas": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Arid Shrubland"
+                        "Vanilla Animals Expanded — Arid Shrubland"
                     ]
                 },
                 "vanillaexpanded.vaeau": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Australia"
+                        "Vanilla Animals Expanded — Australia"
                     ]
                 },
                 "vanillaexpanded.vaebf": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Boreal Forest"
+                        "Vanilla Animals Expanded — Boreal Forest"
                     ]
                 },
                 "vanillaexpanded.vaecd": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Cats and Dogs"
+                        "Vanilla Animals Expanded — Cats and Dogs"
                     ]
                 },
                 "vanillaexpanded.vaed": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Desert"
+                        "Vanilla Animals Expanded — Desert"
                     ]
                 },
                 "vanillaexpanded.vaeed": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Extreme Desert"
+                        "Vanilla Animals Expanded — Extreme Desert"
                     ]
                 },
                 "vanillaexpanded.vaeis": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Ice Sheet"
+                        "Vanilla Animals Expanded — Ice Sheet"
                     ]
                 },
                 "vanillaexpanded.vaet": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tundra"
+                        "Vanilla Animals Expanded — Tundra"
                     ]
                 },
                 "vanillaexpanded.vaetr": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tropical Rainforest"
+                        "Vanilla Animals Expanded — Tropical Rainforest"
                     ]
                 },
                 "vanillaexpanded.vaets": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tropical Swamp"
+                        "Vanilla Animals Expanded — Tropical Swamp"
                     ]
                 }
             }
@@ -6562,7 +6581,10 @@
                         "Vanilla Textures Expanded"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.3"
+            ]
         },
         "pelador.firewarden": {
             "loadAfter": {
@@ -6640,7 +6662,11 @@
                         "RT Solar Flare Shield"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
         },
         "pikes.harvesteverybodyparts": {
             "loadBefore": {
@@ -7095,7 +7121,10 @@
                         "SRTS Expanded"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.5"
+            ]
         },
         "raydarkenpakahrimworldhcolonistq151.colorfulhtraits": {
             "loadAfter": {
@@ -7470,7 +7499,10 @@
                         "FemaleBB BodyType Support"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.5"
+            ]
         },
         "ryflamer.rimcraft.animals": {
             "loadAfter": {
@@ -7495,7 +7527,7 @@
                 "frozensnowfox.advancedbionicsexpansion": {
                     "name": [
                         "[FSF] Advanced Bionics Expansion",
-                        "[FSF] Advanced Bionics Expansion\u6c49\u5316"
+                        "[FSF] Advanced Bionics Expansion汉化"
                     ]
                 }
             }
@@ -7663,7 +7695,7 @@
                         "Load after animals for all leathers"
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Arid Shrubland"
+                        "Vanilla Animals Expanded — Arid Shrubland"
                     ]
                 },
                 "vanillaexpanded.vaeau": {
@@ -7671,7 +7703,7 @@
                         "Load after animals for all leathers"
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Australia"
+                        "Vanilla Animals Expanded — Australia"
                     ]
                 },
                 "vanillaexpanded.vaebf": {
@@ -7679,7 +7711,7 @@
                         "Load after animals for all leathers"
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Boreal Forest"
+                        "Vanilla Animals Expanded — Boreal Forest"
                     ]
                 },
                 "vanillaexpanded.vaecaves": {
@@ -7688,7 +7720,7 @@
                         "should be loaded after all animal mods"
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Caves"
+                        "Vanilla Animals Expanded — Caves"
                     ]
                 },
                 "vanillaexpanded.vaecd": {
@@ -7696,7 +7728,7 @@
                         "Load after animals for all leathers"
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Cats and Dogs"
+                        "Vanilla Animals Expanded — Cats and Dogs"
                     ]
                 },
                 "vanillaexpanded.vaed": {
@@ -7704,7 +7736,7 @@
                         "Load after animals for all leathers"
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Desert"
+                        "Vanilla Animals Expanded — Desert"
                     ]
                 },
                 "vanillaexpanded.vaeed": {
@@ -7712,7 +7744,7 @@
                         "Load after animals for all leathers"
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Extreme Desert"
+                        "Vanilla Animals Expanded — Extreme Desert"
                     ]
                 },
                 "vanillaexpanded.vaeendandext": {
@@ -7720,7 +7752,7 @@
                         "should be loaded after all animal mods"
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Endangered"
+                        "Vanilla Animals Expanded — Endangered"
                     ]
                 },
                 "vanillaexpanded.vaeis": {
@@ -7728,7 +7760,7 @@
                         "Load after animals for all leathers"
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Ice Sheet"
+                        "Vanilla Animals Expanded — Ice Sheet"
                     ]
                 },
                 "vanillaexpanded.vaeroy": {
@@ -7736,7 +7768,7 @@
                         "should be loaded after all animal mods"
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Royal Animals"
+                        "Vanilla Animals Expanded — Royal Animals"
                     ]
                 },
                 "vanillaexpanded.vaet": {
@@ -7744,7 +7776,7 @@
                         "Load after animals for all leathers"
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tundra"
+                        "Vanilla Animals Expanded — Tundra"
                     ]
                 },
                 "vanillaexpanded.vaetf": {
@@ -7752,7 +7784,7 @@
                         "Load after animals for all leathers"
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Temperate Forest"
+                        "Vanilla Animals Expanded — Temperate Forest"
                     ]
                 },
                 "vanillaexpanded.vaetr": {
@@ -7760,7 +7792,7 @@
                         "Load after animals for all leathers"
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tropical Rainforest"
+                        "Vanilla Animals Expanded — Tropical Rainforest"
                     ]
                 },
                 "vanillaexpanded.vaets": {
@@ -7768,7 +7800,7 @@
                         "Load after animals for all leathers"
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tropical Swamp"
+                        "Vanilla Animals Expanded — Tropical Swamp"
                     ]
                 },
                 "vanillaexpanded.vanillaanimalsexpanded": {
@@ -7833,7 +7865,11 @@
                         "GloomyFurniture"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.3",
+                "1.4"
+            ]
         },
         "seohyeon.optimizationmeats": {
             "loadBefore": {
@@ -8042,12 +8078,12 @@
                 },
                 "vanillaexpanded.vaeas": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Arid Shrubland"
+                        "Vanilla Animals Expanded — Arid Shrubland"
                     ]
                 },
                 "vanillaexpanded.vaebf": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Boreal Forest"
+                        "Vanilla Animals Expanded — Boreal Forest"
                     ]
                 },
                 "vanillaexpanded.vaecaves": {
@@ -8056,22 +8092,22 @@
                         "should be loaded after all animal mods"
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Caves"
+                        "Vanilla Animals Expanded — Caves"
                     ]
                 },
                 "vanillaexpanded.vaecd": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Cats and Dogs"
+                        "Vanilla Animals Expanded — Cats and Dogs"
                     ]
                 },
                 "vanillaexpanded.vaed": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Desert"
+                        "Vanilla Animals Expanded — Desert"
                     ]
                 },
                 "vanillaexpanded.vaeed": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Extreme Desert"
+                        "Vanilla Animals Expanded — Extreme Desert"
                     ]
                 },
                 "vanillaexpanded.vaeendandext": {
@@ -8079,12 +8115,12 @@
                         "Should load after all animal mods"
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Endangered"
+                        "Vanilla Animals Expanded — Endangered"
                     ]
                 },
                 "vanillaexpanded.vaeis": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Ice Sheet"
+                        "Vanilla Animals Expanded — Ice Sheet"
                     ]
                 },
                 "vanillaexpanded.vaeroy": {
@@ -8093,27 +8129,27 @@
                         "should be loaded after all animal mods"
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Royal Animals"
+                        "Vanilla Animals Expanded — Royal Animals"
                     ]
                 },
                 "vanillaexpanded.vaet": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tundra"
+                        "Vanilla Animals Expanded — Tundra"
                     ]
                 },
                 "vanillaexpanded.vaetf": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Temperate Forest"
+                        "Vanilla Animals Expanded — Temperate Forest"
                     ]
                 },
                 "vanillaexpanded.vaetr": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tropical Rainforest"
+                        "Vanilla Animals Expanded — Tropical Rainforest"
                     ]
                 },
                 "vanillaexpanded.vaets": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tropical Swamp"
+                        "Vanilla Animals Expanded — Tropical Swamp"
                     ]
                 },
                 "vanillaexpanded.vanillaanimalsexpanded": {
@@ -8183,7 +8219,10 @@
                         "HugsLib"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.5"
+            ]
         },
         "shakeyourbunny.hdhterrainhtexturehpack": {
             "loadAfter": {
@@ -8267,7 +8306,10 @@
                         "SRTS Expanded"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.4"
+            ]
         },
         "shenanigans.dogcollars": {
             "loadAfter": {
@@ -8341,7 +8383,7 @@
                         "Fluffy's in-game MM said to."
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Arid Shrubland"
+                        "Vanilla Animals Expanded — Arid Shrubland"
                     ]
                 },
                 "vanillaexpanded.vaebf": {
@@ -8349,7 +8391,7 @@
                         "Fluffy's in-game MM said to."
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Boreal Forest"
+                        "Vanilla Animals Expanded — Boreal Forest"
                     ]
                 },
                 "vanillaexpanded.vaecd": {
@@ -8357,7 +8399,7 @@
                         "Adds collars to Vanilla Animals Expanded - Cats and Dogs"
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Cats and Dogs"
+                        "Vanilla Animals Expanded — Cats and Dogs"
                     ]
                 },
                 "vanillaexpanded.vaed": {
@@ -8365,7 +8407,7 @@
                         "Fluffy's in-game MM said to."
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Desert"
+                        "Vanilla Animals Expanded — Desert"
                     ]
                 },
                 "vanillaexpanded.vaeendandext": {
@@ -8373,7 +8415,7 @@
                         "Fluffy's in-game MM said to."
                     ],
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Endangered"
+                        "Vanilla Animals Expanded — Endangered"
                     ]
                 }
             }
@@ -8639,7 +8681,10 @@
                         "Vanilla Textures Expanded"
                     ]
                 }
-            }
+            },
+            "supportedVersions": [
+                "1.4"
+            ]
         },
         "sirmashedpotato.insectshavenobones": {
             "loadAfter": {
@@ -9577,7 +9622,7 @@
                 },
                 "tosenbo.ricecultivatingcivilization": {
                     "name": [
-                        "\u3010ZP\u3011Rice cultivating civilization\u30101.1\u3011"
+                        "【ZP】Rice cultivating civilization【1.1】"
                     ]
                 }
             }
@@ -9601,7 +9646,7 @@
                 },
                 "tosenbo.ricecultivatingcivilization": {
                     "name": [
-                        "\u3010ZP\u3011Rice cultivating civilization\u30101.1\u3011"
+                        "【ZP】Rice cultivating civilization【1.1】"
                     ]
                 }
             }
@@ -9653,7 +9698,7 @@
                         "Age Matters 2 needs to be below all races, or otherwise it will cause errors"
                     ],
                     "name": [
-                        "Angels and Devils\u52d5\u6f2b\u8868\u60c5"
+                        "Angels and Devils動漫表情"
                     ]
                 },
                 "atomicravioli.crystalloid": {
@@ -9960,7 +10005,7 @@
             "loadAfter": {
                 "oskarhpotocki141.vanillahanimalshexpandedhmhlivestock": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Livestock"
+                        "Vanilla Animals Expanded — Livestock"
                     ]
                 },
                 "trunkenthkikohi125.cybernetichorganismhandhneuralhnetwork": {
@@ -9975,37 +10020,37 @@
                 },
                 "vanillaexpanded.vaeas": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Arid Shrubland"
+                        "Vanilla Animals Expanded — Arid Shrubland"
                     ]
                 },
                 "vanillaexpanded.vaebf": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Boreal Forest"
+                        "Vanilla Animals Expanded — Boreal Forest"
                     ]
                 },
                 "vanillaexpanded.vaed": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Desert"
+                        "Vanilla Animals Expanded — Desert"
                     ]
                 },
                 "vanillaexpanded.vaeed": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Extreme Desert"
+                        "Vanilla Animals Expanded — Extreme Desert"
                     ]
                 },
                 "vanillaexpanded.vaeis": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Ice Sheet"
+                        "Vanilla Animals Expanded — Ice Sheet"
                     ]
                 },
                 "vanillaexpanded.vaetr": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tropical Rainforest"
+                        "Vanilla Animals Expanded — Tropical Rainforest"
                     ]
                 },
                 "vanillaexpanded.vaets": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tropical Swamp"
+                        "Vanilla Animals Expanded — Tropical Swamp"
                     ]
                 }
             }
@@ -10573,52 +10618,52 @@
                 },
                 "vanillaexpanded.vaeas": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Arid Shrubland"
+                        "Vanilla Animals Expanded — Arid Shrubland"
                     ]
                 },
                 "vanillaexpanded.vaeau": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Australia"
+                        "Vanilla Animals Expanded — Australia"
                     ]
                 },
                 "vanillaexpanded.vaebf": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Boreal Forest"
+                        "Vanilla Animals Expanded — Boreal Forest"
                     ]
                 },
                 "vanillaexpanded.vaecd": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Cats and Dogs"
+                        "Vanilla Animals Expanded — Cats and Dogs"
                     ]
                 },
                 "vanillaexpanded.vaed": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Desert"
+                        "Vanilla Animals Expanded — Desert"
                     ]
                 },
                 "vanillaexpanded.vaeed": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Extreme Desert"
+                        "Vanilla Animals Expanded — Extreme Desert"
                     ]
                 },
                 "vanillaexpanded.vaeis": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Ice Sheet"
+                        "Vanilla Animals Expanded — Ice Sheet"
                     ]
                 },
                 "vanillaexpanded.vaet": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tundra"
+                        "Vanilla Animals Expanded — Tundra"
                     ]
                 },
                 "vanillaexpanded.vaetr": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tropical Rainforest"
+                        "Vanilla Animals Expanded — Tropical Rainforest"
                     ]
                 },
                 "vanillaexpanded.vaets": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tropical Swamp"
+                        "Vanilla Animals Expanded — Tropical Swamp"
                     ]
                 },
                 "vanillaexpanded.vappe": {
@@ -10776,42 +10821,42 @@
                 },
                 "vanillaexpanded.vaeas": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Arid Shrubland"
+                        "Vanilla Animals Expanded — Arid Shrubland"
                     ]
                 },
                 "vanillaexpanded.vaeau": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Australia"
+                        "Vanilla Animals Expanded — Australia"
                     ]
                 },
                 "vanillaexpanded.vaebf": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Boreal Forest"
+                        "Vanilla Animals Expanded — Boreal Forest"
                     ]
                 },
                 "vanillaexpanded.vaecd": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Cats and Dogs"
+                        "Vanilla Animals Expanded — Cats and Dogs"
                     ]
                 },
                 "vanillaexpanded.vaed": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Desert"
+                        "Vanilla Animals Expanded — Desert"
                     ]
                 },
                 "vanillaexpanded.vaeis": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Ice Sheet"
+                        "Vanilla Animals Expanded — Ice Sheet"
                     ]
                 },
                 "vanillaexpanded.vaet": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tundra"
+                        "Vanilla Animals Expanded — Tundra"
                     ]
                 },
                 "vanillaexpanded.vaetr": {
                     "name": [
-                        "Vanilla Animals Expanded \u2014 Tropical Rainforest"
+                        "Vanilla Animals Expanded — Tropical Rainforest"
                     ]
                 }
             }
@@ -11384,7 +11429,7 @@
                 },
                 "yanzihko.kfls": {
                     "comment": "Framework dependency",
-                    "name": "Kisalfar and Fress\u00e1lfar - Lost Project [1.5]"
+                    "name": "Kisalfar and Fressálfar - Lost Project [1.5]"
                 },
                 "yanzihko.ldw": {
                     "comment": "Framework dependency",
@@ -11436,7 +11481,7 @@
                 }
             }
         },
-        "Sadjuuk.UNColony": {
+        "sadjuuk.uncolony": {
             "supportedVersions": [
                 "1.3"
             ]
@@ -11452,7 +11497,7 @@
                 "1.3"
             ]
         },
-        "nuke.Synthmeat": {
+        "nuke.synthmeat": {
             "supportedVersions": [
                 "1.3"
             ]
@@ -11462,12 +11507,12 @@
                 "1.3"
             ]
         },
-        "explodoboy.NoFatalThreshold": {
+        "explodoboy.nofatalthreshold": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "FrozenSnowFox.ImprovedShipReactors": {
+        "frozensnowfox.improvedshipreactors": {
             "supportedVersions": [
                 "1.3",
                 "1.4"
@@ -11484,12 +11529,12 @@
                 "1.5"
             ]
         },
-        "Oreno.VFEFarming.DubsBadHygiene": {
+        "oreno.vfefarming.dubsbadhygiene": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "Crudbone.ReconRetexture": {
+        "crudbone.reconretexture": {
             "supportedVersions": [
                 "1.3",
                 "1.4"
@@ -11500,7 +11545,7 @@
                 "1.3"
             ]
         },
-        "TheLamb.tribaljewelry": {
+        "thelamb.tribaljewelry": {
             "supportedVersions": [
                 "1.3"
             ]
@@ -11510,23 +11555,23 @@
                 "1.3"
             ]
         },
-        "Crudbone.ParkaRetexture": {
+        "crudbone.parkaretexture": {
             "supportedVersions": [
                 "1.3",
                 "1.4"
             ]
         },
-        "Poetik.JapaneseDogs": {
+        "poetik.japanesedogs": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "rayjay.SyntheticAnimals": {
+        "rayjay.syntheticanimals": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "be37.VPE.ATABP": {
+        "be37.vpe.atabp": {
             "supportedVersions": [
                 "1.3",
                 "1.5"
@@ -11538,30 +11583,24 @@
                 "1.4"
             ]
         },
-        "Persephone.WeansWorldAlt": {
+        "persephone.weansworldalt": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "Duncan.RealisticStarvation.1.1": {
+        "duncan.realisticstarvation.1.1": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "Nekomancer.GiantTrees": {
+        "nekomancer.gianttrees": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "PinoChemicali.MoreTradeShips": {
+        "pinochemicali.moretradeships": {
             "supportedVersions": [
                 "1.3"
-            ]
-        },
-        "Semo583.GloomyHExtraHUHKitchen": {
-            "supportedVersions": [
-                "1.3",
-                "1.4"
             ]
         },
         "neceros.stopinsultingus": {
@@ -11569,7 +11608,7 @@
                 "1.3"
             ]
         },
-        "Lat.VeeHair": {
+        "lat.veehair": {
             "supportedVersions": [
                 "1.3",
                 "1.4",
@@ -11581,7 +11620,7 @@
                 "1.3"
             ]
         },
-        "neceros.ATVFEM": {
+        "neceros.atvfem": {
             "supportedVersions": [
                 "1.3"
             ]
@@ -11592,28 +11631,23 @@
                 "1.4"
             ]
         },
-        "PatchesIX.MeatPackages": {
-            "supportedVersions": [
-                "1.3"
-            ]
-        },
         "dninemfive.ambrosiallongevity": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "Baby.Muffalump": {
+        "baby.muffalump": {
             "supportedVersions": [
                 "1.3",
                 "1.4"
             ]
         },
-        "Bar0th.WAR": {
+        "bar0th.war": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "Teok25.ArchotechExpanded.Prosthetics.Lite": {
+        "teok25.archotechexpanded.prosthetics.lite": {
             "supportedVersions": [
                 "1.3"
             ]
@@ -11624,17 +11658,17 @@
                 "1.4"
             ]
         },
-        "Barky.Dryxsteel": {
+        "barky.dryxsteel": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "Barky.Ultraweave": {
+        "barky.ultraweave": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "ChewyYui.VFEOverwallAC": {
+        "chewyyui.vfeoverwallac": {
             "supportedVersions": [
                 "1.3"
             ]
@@ -11642,12 +11676,6 @@
         "legodude17.letterreorder": {
             "supportedVersions": [
                 "1.3"
-            ]
-        },
-        "Phoenix.VanillaSolarSheild": {
-            "supportedVersions": [
-                "1.3",
-                "1.4"
             ]
         },
         "y1nalin.amrita": {
@@ -11671,34 +11699,34 @@
                 "1.3"
             ]
         },
-        "PartyCowboy.ThinkingSpot": {
+        "partycowboy.thinkingspot": {
             "supportedVersions": [
                 "1.3",
                 "1.4"
             ]
         },
-        "JcDentonQ.SubtleVariations": {
+        "jcdentonq.subtlevariations": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "rayjay.AddTerraforming": {
+        "rayjay.addterraforming": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "Lelbaro.VanillaArmorsRetexture.LBVAR": {
+        "lelbaro.vanillaarmorsretexture.lbvar": {
             "supportedVersions": [
                 "1.3",
                 "1.4"
             ]
         },
-        "Lelbaro.VanillaWeaponsRetexture.LBVWR": {
+        "lelbaro.vanillaweaponsretexture.lbvwr": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "Lelbaro.SectorVII.LBSC7": {
+        "lelbaro.sectorvii.lbsc7": {
             "supportedVersions": [
                 "1.3"
             ]
@@ -11708,12 +11736,12 @@
                 "1.3"
             ]
         },
-        "TheKingInYellow.TheAbyssAboveDrugs": {
+        "thekinginyellow.theabyssabovedrugs": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "Vertigo.Rimtroid_copy": {
+        "vertigo.rimtroid_copy": {
             "supportedVersions": [
                 "1.3"
             ]
@@ -11729,7 +11757,7 @@
                 "1.4"
             ]
         },
-        "Crudbone.BetterTShirts": {
+        "crudbone.bettertshirts": {
             "supportedVersions": [
                 "1.3",
                 "1.4"
@@ -11740,12 +11768,12 @@
                 "1.3"
             ]
         },
-        "RusticFox.ChickenPlucker.RR": {
+        "rusticfox.chickenplucker.rr": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "Crudbone.WAYS": {
+        "crudbone.ways": {
             "supportedVersions": [
                 "1.3"
             ]
@@ -11756,7 +11784,7 @@
                 "1.4"
             ]
         },
-        "daylight.BlessDevilSt": {
+        "daylight.blessdevilst": {
             "supportedVersions": [
                 "1.3"
             ]
@@ -11777,27 +11805,27 @@
                 "1.5"
             ]
         },
-        "Wishmaster.HydroponicsWithLamps": {
+        "wishmaster.hydroponicswithlamps": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "More.Lamps": {
+        "more.lamps": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "VHolmes.Empire.EAB": {
+        "vholmes.empire.eab": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "Arekan.EnhancedVanillaGunSounds": {
+        "arekan.enhancedvanillagunsounds": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "Crudbone.TranslucentGlasses": {
+        "crudbone.translucentglasses": {
             "supportedVersions": [
                 "1.3",
                 "1.4"
@@ -11826,7 +11854,7 @@
                 "1.4"
             ]
         },
-        "codyspring.InsulationVanillaTextures": {
+        "codyspring.insulationvanillatextures": {
             "supportedVersions": [
                 "1.3"
             ]
@@ -11837,7 +11865,7 @@
                 "1.5"
             ]
         },
-        "OkraDonkey.NeverAutoResetMods": {
+        "okradonkey.neverautoresetmods": {
             "supportedVersions": [
                 "1.3"
             ]
@@ -11847,7 +11875,7 @@
                 "1.3"
             ]
         },
-        "mlph.OpenedDoorsDontBlockLight": {
+        "mlph.openeddoorsdontblocklight": {
             "supportedVersions": [
                 "1.3",
                 "1.4"
@@ -11858,7 +11886,7 @@
                 "1.3"
             ]
         },
-        "Wolf478.WolfsCompostAddon.VEFVersion": {
+        "wolf478.wolfscompostaddon.vefversion": {
             "supportedVersions": [
                 "1.3"
             ]
@@ -11869,93 +11897,88 @@
                 "1.4"
             ]
         },
-        "Silver.VFEMQuarryPatch": {
+        "silver.vfemquarrypatch": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "trublucaribou.OptimizedLeather": {
+        "trublucaribou.optimizedleather": {
             "supportedVersions": [
                 "1.3",
                 "1.4"
             ]
         },
-        "BFAnri.Autoinjectors": {
+        "bfanri.autoinjectors": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "Xen.XPFixer": {
+        "xen.xpfixer": {
             "supportedVersions": [
                 "1.3",
                 "1.4"
             ]
         },
-        "carlarc.BetterMoodDescriptions": {
+        "carlarc.bettermooddescriptions": {
             "supportedVersions": [
                 "1.3"
             ]
         },
-        "Blake.EliteBionicFrameworkArchotechExpandedProsthetics": {
+        "blake.elitebionicframeworkarchotechexpandedprosthetics": {
             "supportedVersions": [
                 "1.3",
                 "1.4"
             ]
         },
-        "StyleRevised.Animalist": {
+        "stylerevised.animalist": {
             "supportedVersions": [
                 "1.4",
                 "1.5"
             ]
         },
-        "Ysimir.MagicalTemperatures": {
+        "ysimir.magicaltemperatures": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "MrHacky.ButcheryCountsMeatTypes": {
+        "mrhacky.butcherycountsmeattypes": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Botaxalim.XcomBadge": {
+        "botaxalim.xcombadge": {
             "supportedVersions": [
                 "1.4",
                 "1.5"
             ]
         },
-        "lurmey.XcomPawnBadge": {
+        "lurmey.xcompawnbadge": {
             "supportedVersions": [
                 "1.4",
                 "1.5"
             ]
         },
-        "jastro.ReclaimFabricUpdate": {
+        "jastro.reclaimfabricupdate": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Djeeshka.CMT.Retexture": {
+        "comigogames.textures.trees": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "ComigoGames.Textures.Trees": {
+        "jbloodthorn.nolazydoctors": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "JBloodthorn.NoLazyDoctors": {
+        "task.ritualchair.zz": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Task.RitualChair.zz": {
-            "supportedVersions": [
-                "1.4"
-            ]
-        },
-        "Ripmorld.AnimaWood": {
+        "ripmorld.animawood": {
             "supportedVersions": [
                 "1.4"
             ]
@@ -11965,23 +11988,23 @@
                 "1.4"
             ]
         },
-        "DBL.AwningsAndRoofs": {
+        "dbl.awningsandroofs": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "laast.WorldMapEnhanced": {
+        "laast.worldmapenhanced": {
             "supportedVersions": [
                 "1.4",
                 "1.5"
             ]
         },
-        "Troopersmith1.LifeSupport": {
+        "troopersmith1.lifesupport": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "TrahsPanda.ADNT": {
+        "trahspanda.adnt": {
             "supportedVersions": [
                 "1.4"
             ]
@@ -11991,12 +12014,12 @@
                 "1.4"
             ]
         },
-        "CaptainMuscles.PriceIsWhat": {
+        "captainmuscles.priceiswhat": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "com.yayo.customYear": {
+        "com.yayo.customyear": {
             "supportedVersions": [
                 "1.4"
             ]
@@ -12011,23 +12034,23 @@
                 "1.4"
             ]
         },
-        "cucumpear.LEDlights": {
+        "cucumpear.ledlights": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "com.RimWorld.Shtossi.Hyperweave": {
+        "com.rimworld.shtossi.hyperweave": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "ClossomMistake.Blegh": {
+        "clossommistake.blegh": {
             "supportedVersions": [
                 "1.4",
                 "1.5"
             ]
         },
-        "Inggo.AdvancedPolyBeds": {
+        "inggo.advancedpolybeds": {
             "supportedVersions": [
                 "1.4"
             ]
@@ -12037,22 +12060,22 @@
                 "1.4"
             ]
         },
-        "erok.Lanterns": {
+        "erok.lanterns": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Burusutazu.ImpassableFences": {
+        "burusutazu.impassablefences": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Oreno.VPlantsE.NoTilledSoil": {
+        "oreno.vplantse.notilledsoil": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "N0C4P.prophetly01": {
+        "n0c4p.prophetly01": {
             "supportedVersions": [
                 "1.4"
             ]
@@ -12062,17 +12085,17 @@
                 "1.4"
             ]
         },
-        "CZK.VIEMemes.shintaopatch": {
+        "czk.viememes.shintaopatch": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "mechanoidWeapons.Wololo": {
+        "mechanoidweapons.wololo": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Ryflamer.NoRockets": {
+        "ryflamer.norockets": {
             "supportedVersions": [
                 "1.4"
             ]
@@ -12087,24 +12110,24 @@
                 "1.4"
             ]
         },
-        "OkraDonkey.InfiniteRefuelables": {
+        "okradonkey.infiniterefuelables": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "DanDMan.Onesies": {
+        "dandman.onesies": {
             "supportedVersions": [
                 "1.4",
                 "1.5"
             ]
         },
-        "Slashandz.NoIncreasedExpectationsforIdeologyRoles": {
+        "slashandz.noincreasedexpectationsforideologyroles": {
             "supportedVersions": [
                 "1.4",
                 "1.5"
             ]
         },
-        "Vanya.Agent.LolidropHairshop": {
+        "vanya.agent.lolidrophairshop": {
             "supportedVersions": [
                 "1.4"
             ]
@@ -12114,62 +12137,62 @@
                 "1.4"
             ]
         },
-        "Beta.AnimeHair": {
+        "beta.animehair": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Lilscoot.Wheelchairs": {
+        "lilscoot.wheelchairs": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Lat.VeeDeco": {
+        "lat.veedeco": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Slashandz.IdeologySimplifiedRaider": {
+        "slashandz.ideologysimplifiedraider": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Slashandz.IdeologySimplifiedRancher": {
+        "slashandz.ideologysimplifiedrancher": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Slashandz.IdeologySimplifiedTreeConnection": {
+        "slashandz.ideologysimplifiedtreeconnection": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Slashandz.EasyConversions": {
+        "slashandz.easyconversions": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "OkraDonkey.NoEdgeFade": {
+        "okradonkey.noedgefade": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "DanDMan.GroThingThings": {
+        "dandman.grothingthings": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Vicaki.Psiamin": {
+        "vicaki.psiamin": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Cozarkian.DressersHoldClothing": {
+        "cozarkian.dressersholdclothing": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "DanDMan.ThunderTargeter": {
+        "dandman.thundertargeter": {
             "supportedVersions": [
                 "1.4"
             ]
@@ -12184,32 +12207,27 @@
                 "1.4"
             ]
         },
-        "SirLalaPyon.SilverCoins": {
+        "ladyelizabeth.snake.miscjobranks": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "LadyElizabeth.Snake.MiscJobRanks": {
+        "windchime.foodisfood": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Windchime.FoodIsFood": {
+        "sk.cfinfestations": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Sk.cfinfestations": {
+        "jelly.openeddoorsdontblocklight": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "jelly.OpenedDoorsDontBlockLight": {
-            "supportedVersions": [
-                "1.4"
-            ]
-        },
-        "OkraDonkey.NoEdgeFadeLite": {
+        "okradonkey.noedgefadelite": {
             "supportedVersions": [
                 "1.4"
             ]
@@ -12219,18 +12237,18 @@
                 "1.4"
             ]
         },
-        "animalfilthdontcare.1trickPonyta": {
+        "animalfilthdontcare.1trickponyta": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "DanDMan.JurretTurrets": {
+        "dandman.jurretturrets": {
             "supportedVersions": [
                 "1.4",
                 "1.5"
             ]
         },
-        "DanDMan.YEETBlades": {
+        "dandman.yeetblades": {
             "supportedVersions": [
                 "1.4"
             ]
@@ -12240,7 +12258,7 @@
                 "1.4"
             ]
         },
-        "KYD.Prosthetics": {
+        "kyd.prosthetics": {
             "supportedVersions": [
                 "1.4"
             ]
@@ -12250,27 +12268,27 @@
                 "1.4"
             ]
         },
-        "Caninmyham.ThogsGunsLeadAndPowderPackReprimed": {
+        "caninmyham.thogsgunsleadandpowderpackreprimed": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Jexa.BlindsightWorks": {
+        "jexa.blindsightworks": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Kegarr.RIP": {
+        "kegarr.rip": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Eastern.Armory.Geminingen": {
+        "eastern.armory.geminingen": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Wemd.PartiallyPassableWindTurbines": {
+        "wemd.partiallypassablewindturbines": {
             "supportedVersions": [
                 "1.4"
             ]
@@ -12280,74 +12298,68 @@
                 "1.4"
             ]
         },
-        "Slashandz.NoRestrictionsonFactionIdeologies": {
+        "slashandz.norestrictionsonfactionideologies": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Lailani01.PawnsDrool": {
+        "lailani01.pawnsdrool": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "CZK.SPL.benchpatch": {
+        "czk.spl.benchpatch": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Seti.Gallatross": {
+        "seti.gallatross": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Macro98.PreciousCoinsRetexture": {
+        "macro98.preciouscoinsretexture": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Smoopadoop.TentRetexture": {
+        "smoopadoop.tentretexture": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Awan.Antisepsis.Patch": {
+        "ripmorld.glowpoddeconstuct": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "cm.vanillatextures.upscale": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "czk.retextured.combattraining": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "czk.retextured.biotecheyes": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "czk.retextured.eyepatch": {
+            "supportedVersions": [
+                "1.4"
+            ]
+        },
+        "icc.tov.hs": {
             "supportedVersions": [
                 "1.4",
                 "1.5"
             ]
         },
-        "Ripmorld.GlowPodDeconstuct": {
-            "supportedVersions": [
-                "1.4"
-            ]
-        },
-        "CM.VanillaTextures.Upscale": {
-            "supportedVersions": [
-                "1.4"
-            ]
-        },
-        "CZK.retextured.combattraining": {
-            "supportedVersions": [
-                "1.4"
-            ]
-        },
-        "CZK.retextured.biotecheyes": {
-            "supportedVersions": [
-                "1.4"
-            ]
-        },
-        "CZK.retextured.eyepatch": {
-            "supportedVersions": [
-                "1.4"
-            ]
-        },
-        "ICC.TOV.HS": {
-            "supportedVersions": [
-                "1.4",
-                "1.5"
-            ]
-        },
-        "Wolf478.GauMedicine": {
+        "wolf478.gaumedicine": {
             "supportedVersions": [
                 "1.4"
             ]
@@ -12358,32 +12370,32 @@
                 "1.5"
             ]
         },
-        "Si.ThrumboHornWeapons": {
+        "si.thrumbohornweapons": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Certainty.DesignateExtract": {
+        "certainty.designateextract": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Nolabritt.WasteInSpace": {
+        "nolabritt.wasteinspace": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "DimonSever000.DarkestHourNight.Specific": {
+        "dimonsever000.darkesthournight.specific": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "SquirtingElephant.LessBeerAddiction": {
+        "squirtingelephant.lessbeeraddiction": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "PKPenguin.SuperAnalyzer": {
+        "pkpenguin.superanalyzer": {
             "supportedVersions": [
                 "1.4"
             ]
@@ -12393,22 +12405,17 @@
                 "1.4"
             ]
         },
-        "HyArchitect.ID": {
+        "hyarchitect.id": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Myfharad.Frostshards": {
+        "myfharad.frostshards": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Shazbot.SRTS.RC": {
-            "supportedVersions": [
-                "1.4"
-            ]
-        },
-        "Khaydar.SRTS.TerranShips_copy": {
+        "khaydar.srts.terranships_copy": {
             "supportedVersions": [
                 "1.4"
             ]
@@ -12423,18 +12430,18 @@
                 "1.4"
             ]
         },
-        "Alaestor.QuantumCooling": {
+        "alaestor.quantumcooling": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Mantrasong.Glowstone.1": {
+        "mantrasong.glowstone.1": {
             "supportedVersions": [
                 "1.4",
                 "1.5"
             ]
         },
-        "OptimusPrimordial.Chipboard": {
+        "optimusprimordial.chipboard": {
             "supportedVersions": [
                 "1.4"
             ]
@@ -12444,17 +12451,17 @@
                 "1.4"
             ]
         },
-        "Katte.AmbrosiaUproot": {
+        "katte.ambrosiauproot": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "DerekBickley.LegacyTextureOverhaulfinal": {
+        "derekbickley.legacytextureoverhaulfinal": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "br410bury.BreakupConstruction": {
+        "br410bury.breakupconstruction": {
             "supportedVersions": [
                 "1.4"
             ]
@@ -12464,83 +12471,83 @@
                 "1.4"
             ]
         },
-        "mcminox.EXOHEAD_copy": {
+        "mcminox.exohead_copy": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "br410bury.BreakupFarming": {
+        "br410bury.breakupfarming": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "br410bury.BreakupCooking": {
+        "br410bury.breakupcooking": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Phlivan.QualityMatters": {
+        "phlivan.qualitymatters": {
             "supportedVersions": [
                 "1.4",
                 "1.5"
             ]
         },
-        "123nick.PawnsAreDrowning": {
+        "123nick.pawnsaredrowning": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Noromyx.TrainersSerumAICrafting": {
+        "noromyx.trainersserumaicrafting": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "Ruddygreat.Craftablepsy": {
+        "ruddygreat.craftablepsy": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "jemlpro.Infusion2Expansion": {
+        "jemlpro.infusion2expansion": {
             "supportedVersions": [
                 "1.4"
             ]
         },
-        "AudreysStyles.Industrial": {
+        "audreysstyles.industrial": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Pal5k.AgrihandCleansweeperRetexture": {
+        "pal5k.agrihandcleansweeperretexture": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Simmin.AnimalsForage": {
+        "simmin.animalsforage": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "3HSTltd.WMTRetex": {
+        "3hstltd.wmtretex": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "DerekBickley.LTOTerrainWaterOnly": {
+        "derekbickley.ltoterrainwateronly": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Owlchemist.DoorClearance": {
+        "owlchemist.doorclearance": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "BoostHungry.PsychicallyDeafMechanitor": {
+        "boosthungry.psychicallydeafmechanitor": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "tikubonn.DontBlockDoor": {
+        "tikubonn.dontblockdoor": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -12550,7 +12557,7 @@
                 "1.5"
             ]
         },
-        "fyarn.FixableMoodDebuffsAlert": {
+        "fyarn.fixablemooddebuffsalert": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -12560,17 +12567,12 @@
                 "1.5"
             ]
         },
-        "MysticFelines.VOE.noplasteelnocompmonentmining": {
+        "mysticfelines.voe.noplasteelnocompmonentmining": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "SF.Grim.Reality": {
-            "supportedVersions": [
-                "1.5"
-            ]
-        },
-        "JKN.AdobeAbode": {
+        "jkn.adobeabode": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -12580,27 +12582,27 @@
                 "1.5"
             ]
         },
-        "Owlchemist.SimpleFX.Vapor": {
+        "owlchemist.simplefx.vapor": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Katsudon.UIButtonRetexture": {
+        "katsudon.uibuttonretexture": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Candycorn.CandyHairs": {
+        "candycorn.candyhairs": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Fluffy.FollowMe": {
+        "fluffy.followme": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "fyarn.EasySpeedup": {
+        "fyarn.easyspeedup": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -12610,7 +12612,7 @@
                 "1.5"
             ]
         },
-        "Owlchemist.BarelyBetterSpots": {
+        "owlchemist.barelybetterspots": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -12620,47 +12622,47 @@
                 "1.5"
             ]
         },
-        "CM.Ideology.Upscaled2": {
+        "cm.ideology.upscaled2": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "razor2.3.AnotherRimworldMod.AutoCutBlight": {
+        "razor2.3.anotherrimworldmod.autocutblight": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Nals.ChibiBody": {
+        "nals.chibibody": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "ABC.GunlinkPatch": {
+        "abc.gunlinkpatch": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Skye.LearningThresholdForLearningJobFix": {
+        "skye.learningthresholdforlearningjobfix": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Simmin.PowerTools": {
+        "simmin.powertools": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "zzz.WallVitalsMonitor": {
+        "zzz.wallvitalsmonitor": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "zed.0xff.LoftBed": {
+        "zed.0xff.loftbed": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Katsudon.UIRetexture": {
+        "katsudon.uiretexture": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -12675,7 +12677,7 @@
                 "1.5"
             ]
         },
-        "Revolus.TextileStats": {
+        "revolus.textilestats": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -12685,52 +12687,42 @@
                 "1.5"
             ]
         },
-        "ChrisClark13.VeneratedXenotypeFlexibility": {
+        "chrisclark13.veneratedxenotypeflexibility": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Rooboid.Paintings.Ex": {
+        "rooboid.paintings.ex": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Ryflamer.Misc.Drawabead": {
+        "sash.norefuelling": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "sash.NoRefuelling": {
+        "zhrocks11.sunlights_copy": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "zhrocks11.SunLights_copy": {
+        "bustedbunny.prisonersarenotswines": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Meltup.PolyamoryBeds.Vanilla": {
+        "rev.rimwavemusic": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "bustedbunny.PrisonersAreNotSwines": {
+        "sovereign.elseud": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Rev.RimwaveMusic": {
-            "supportedVersions": [
-                "1.5"
-            ]
-        },
-        "Sovereign.Elseud": {
-            "supportedVersions": [
-                "1.5"
-            ]
-        },
-        "Sovereign.Kemet": {
+        "sovereign.kemet": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -12740,22 +12732,17 @@
                 "1.5"
             ]
         },
-        "Owlchemist.BetterVanillaMasking": {
-            "supportedVersions": [
-                "1.5"
-            ]
-        },
         "pyrce.terrain.zone.select": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "fyarn.BoundedRoofBuildTool": {
+        "fyarn.boundedroofbuildtool": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Aura.FarmlandRegrowthPatch": {
+        "aura.farmlandregrowthpatch": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -12775,7 +12762,7 @@
                 "1.5"
             ]
         },
-        "Vanya.Tools.BulkCarrier": {
+        "vanya.tools.bulkcarrier": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -12785,12 +12772,12 @@
                 "1.5"
             ]
         },
-        "Daniledman.JellyFarm": {
+        "daniledman.jellyfarm": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "ETRT.PracticalPemmican": {
+        "etrt.practicalpemmican": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -12805,12 +12792,12 @@
                 "1.5"
             ]
         },
-        "Faux.IconXenotypes": {
+        "faux.iconxenotypes": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "GrazalThruka.PackagedPaste": {
+        "grazalthruka.packagedpaste": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -12825,37 +12812,37 @@
                 "1.5"
             ]
         },
-        "Gege.BetterSurgery": {
+        "gege.bettersurgery": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Timuttie.JustLeaveAlready": {
+        "timuttie.justleavealready": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "LazyCat.NoPseudoTranslate": {
+        "lazycat.nopseudotranslate": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "twistedpacifist.ReasonableComponents": {
+        "twistedpacifist.reasonablecomponents": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "zed.0xff.VNPE.FridgeFix": {
+        "zed.0xff.vnpe.fridgefix": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "wasscreefted.SmokeleafExpanded": {
+        "wasscreefted.smokeleafexpanded": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "MajesticMadman.StarWarsShipsAerocraft": {
+        "majesticmadman.starwarsshipsaerocraft": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -12870,62 +12857,62 @@
                 "1.5"
             ]
         },
-        "drummeur.BetterLinkableColors": {
+        "drummeur.betterlinkablecolors": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "CB745.BoostedTransportPods": {
+        "cb745.boostedtransportpods": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "CB745.MiscBuildChaTA1": {
+        "cb745.miscbuildchata1": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "CB745.MiscBuildChaTB1": {
+        "cb745.miscbuildchatb1": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "CB745.MiscBuildChaTB2": {
+        "cb745.miscbuildchatb2": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "CB745.TribMaskFAll": {
+        "cb745.tribmaskfall": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "CB745.SmallWorkS": {
+        "cb745.smallworks": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "CB745.HundredPercentSurgery": {
+        "cb745.hundredpercentsurgery": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "CB745.OPGStuffedArmsAndArmor": {
+        "cb745.opgstuffedarmsandarmor": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "zed.0xff.MarketValueFilter": {
+        "zed.0xff.marketvaluefilter": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Owlchemist.PowerTab": {
+        "owlchemist.powertab": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "JelanoRetexture.RPGStyleInventory": {
+        "jelanoretexture.rpgstyleinventory": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -12940,22 +12927,17 @@
                 "1.5"
             ]
         },
-        "Rim.Office": {
+        "rim.office": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Ravvy.SRTS.TCF": {
+        "sl4vp0wer.realflamethrowers": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Sl4vP0weR.RealFlamethrowers": {
-            "supportedVersions": [
-                "1.5"
-            ]
-        },
-        "BigBadLlama.LlamasForever.Main": {
+        "bigbadllama.llamasforever.main": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -12970,92 +12952,92 @@
                 "1.5"
             ]
         },
-        "GiveMe.ChristianValues": {
+        "giveme.christianvalues": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "net.theelm.RoofedScanning": {
+        "net.theelm.roofedscanning": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Brat.resourcemuffaloes": {
+        "brat.resourcemuffaloes": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Herigony.NoDebris": {
+        "herigony.nodebris": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "GHOST.TribalIcons": {
+        "ghost.tribalicons": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Ogliss.Toastehs.Veinminer": {
+        "ogliss.toastehs.veinminer": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Slashandz.MiniMiner": {
+        "slashandz.miniminer": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Roskii.NutrientPasteFix": {
+        "roskii.nutrientpastefix": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "zed.0xff.VNPE.MiniGrinder": {
+        "zed.0xff.vnpe.minigrinder": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Kyrrisayo.RealDrugNames": {
+        "kyrrisayo.realdrugnames": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Permanoob.ChemfuelSaunaHeater": {
+        "permanoob.chemfuelsaunaheater": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "maledin.BarbedBat": {
+        "maledin.barbedbat": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Rhadamant.YodaTheDog": {
+        "rhadamant.yodathedog": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "DW.Yeow": {
+        "dw.yeow": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "tikubonn.WaterproofBattery": {
+        "tikubonn.waterproofbattery": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Fort.Knifechair": {
+        "fort.knifechair": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "SaberVS7.NationalistMilitarism": {
+        "sabervs7.nationalistmilitarism": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Xenofell.LadiesCanFlirtToo": {
+        "xenofell.ladiescanflirttoo": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13065,7 +13047,7 @@
                 "1.5"
             ]
         },
-        "Nerdy.PrisonerMoodBoost": {
+        "nerdy.prisonermoodboost": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13075,62 +13057,62 @@
                 "1.5"
             ]
         },
-        "GHOST.MorrowrimDoodles": {
+        "ghost.morrowrimdoodles": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Skelsh.SmokeleadSeverity": {
+        "skelsh.smokeleadseverity": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Saximaphone.SkettiMod": {
+        "saximaphone.skettimod": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "cubicPsycho.RTRubber": {
+        "cubicpsycho.rtrubber": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "TaosChagic.PotatoBattery": {
+        "taoschagic.potatobattery": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Australden.potato.cannon": {
+        "australden.potato.cannon": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Horo.PotatoStatues.11": {
+        "horo.potatostatues.11": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Vocado.RitualTab.Rimworld": {
+        "vocado.ritualtab.rimworld": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "elkyelky.Rimception": {
+        "elkyelky.rimception": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Old.War.Veil.Augusto": {
+        "old.war.veil.augusto": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Neph.PsychicPsychite": {
+        "neph.psychicpsychite": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "RoyalFox.PsionicsSacrificeVanilla": {
+        "royalfox.psionicssacrificevanilla": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13140,12 +13122,12 @@
                 "1.5"
             ]
         },
-        "Zwart.Soberana": {
+        "zwart.soberana": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Tigerblut.MeatPigs": {
+        "tigerblut.meatpigs": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13155,7 +13137,7 @@
                 "1.5"
             ]
         },
-        "StoneAnvil.Smokeleaf.Genetics.Korundgen.Kush": {
+        "stoneanvil.smokeleaf.genetics.korundgen.kush": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13170,12 +13152,12 @@
                 "1.5"
             ]
         },
-        "AshAGirls.animal": {
+        "ashagirls.animal": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "ChiExpanded.English": {
+        "chiexpanded.english": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13185,27 +13167,27 @@
                 "1.5"
             ]
         },
-        "Faux.PirateIcons": {
+        "faux.pirateicons": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "DeusExEyes": {
+        "deusexeyes": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Rick.FCPGK": {
+        "rick.fcpgk": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Volt.Kibble": {
+        "volt.kibble": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "MrSamuelStreamer.MrSamuelStreamCustomFaction": {
+        "mrsamuelstreamer.mrsamuelstreamcustomfaction": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13215,27 +13197,27 @@
                 "1.5"
             ]
         },
-        "Argon.xmas": {
+        "argon.xmas": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Vazrua.Attuned": {
+        "vazrua.attuned": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Rudinov.ChemfuelMeal": {
+        "rudinov.chemfuelmeal": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "zzz.RainCaller": {
+        "zzz.raincaller": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "TheGoofyOne.Roomba": {
+        "thegoofyone.roomba": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13245,12 +13227,12 @@
                 "1.5"
             ]
         },
-        "TheGoofyOne.BeefEaters": {
+        "thegoofyone.beefeaters": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "TheGoofyOne.BerrySorbet": {
+        "thegoofyone.berrysorbet": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13260,27 +13242,27 @@
                 "1.5"
             ]
         },
-        "Yoann.BlindTribe": {
+        "yoann.blindtribe": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Sappho.ChemfuelTrader": {
+        "sappho.chemfueltrader": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "RadGrinArcher.ChinchillaFarming": {
+        "radgrinarcher.chinchillafarming": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Juneisfunny.Deagle": {
+        "juneisfunny.deagle": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Pal5k.ShipTechprints": {
+        "pal5k.shiptechprints": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13290,27 +13272,27 @@
                 "1.5"
             ]
         },
-        "Abrolo.SwampMonsters": {
+        "abrolo.swampmonsters": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Flixbox.TradersSellBiotechItems": {
+        "flixbox.traderssellbiotechitems": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "SCHMURDA.UninstallDesignator": {
+        "schmurda.uninstalldesignator": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "KYD.AlcoholJoyKind": {
+        "kyd.alcoholjoykind": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "SoulfulPumpkin.TabletopTrove": {
+        "soulfulpumpkin.tabletoptrove": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13320,17 +13302,17 @@
                 "1.5"
             ]
         },
-        "KoalaDD.Pinata": {
+        "koaladd.pinata": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "PunkyRoo.ContainToxicWaste": {
+        "punkyroo.containtoxicwaste": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "MIKO.Rimays": {
+        "miko.rimays": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13340,17 +13322,17 @@
                 "1.5"
             ]
         },
-        "glencoe2004.healerMechSerumRegrowsGenes": {
+        "glencoe2004.healermechserumregrowsgenes": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Rylex.HydroCorn": {
+        "rylex.hydrocorn": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "1Sopel6.UncomfortableSleepingSpots": {
+        "1sopel6.uncomfortablesleepingspots": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13365,22 +13347,22 @@
                 "1.5"
             ]
         },
-        "AlexNares.MachinedComponents": {
+        "alexnares.machinedcomponents": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Gniwu.XenotypeIconElf": {
+        "gniwu.xenotypeiconelf": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Magic.SuperCoolMod2": {
+        "magic.supercoolmod2": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "LeveFUN.IdeoligionHolyNation": {
+        "levefun.ideoligionholynation": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13400,47 +13382,47 @@
                 "1.5"
             ]
         },
-        "iiitta.AuthorityOutlander": {
+        "iiitta.authorityoutlander": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "jelly.RBStuffed": {
+        "jelly.rbstuffed": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "IK.ThrumboReskin": {
+        "ik.thrumboreskin": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Henta1Hero.Isekaid": {
+        "henta1hero.isekaid": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Emilskin.fishwep.Swordfish": {
+        "emilskin.fishwep.swordfish": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "ChewyYui.GeniePatch": {
+        "chewyyui.geniepatch": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "DevDesigner.DryadRetexture": {
+        "devdesigner.dryadretexture": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Komunre.Reskins.ThrumboPlush": {
+        "komunre.reskins.thrumboplush": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Ryusa.GirlsFrontlineTheme_copy": {
+        "ryusa.girlsfrontlinetheme_copy": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13450,12 +13432,7 @@
                 "1.5"
             ]
         },
-        "pawnbadges.byT": {
-            "supportedVersions": [
-                "1.5"
-            ]
-        },
-        "IRRISH.PawnBadgeAssortedJobIcons": {
+        "pawnbadges.byt": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13465,12 +13442,12 @@
                 "1.5"
             ]
         },
-        "Dra.WoodIsNaturalForTrees": {
+        "dra.woodisnaturalfortrees": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "timtim.Table1x1": {
+        "timtim.table1x1": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13480,32 +13457,32 @@
                 "1.5"
             ]
         },
-        "TheGoofyOne.ResearchAssistants": {
+        "thegoofyone.researchassistants": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "com.RimWorld.Nales.OvercappedAccuracy": {
+        "com.rimworld.nales.overcappedaccuracy": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Uveren.plantanyinhydro": {
+        "uveren.plantanyinhydro": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Forien.NaturalizeGenome": {
+        "forien.naturalizegenome": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Plymouth.ProjectArmoury.Mod": {
+        "plymouth.projectarmoury.mod": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "PrivateGER.DamageMultipliers": {
+        "privateger.damagemultipliers": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13520,32 +13497,32 @@
                 "1.5"
             ]
         },
-        "jp.AdjacentLight": {
+        "jp.adjacentlight": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Gege.Obserever": {
+        "gege.obserever": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Panacea.POW.Militor": {
+        "panacea.pow.militor": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "RoyalF.CraftableRBarrels": {
+        "royalf.craftablerbarrels": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Faster.Prunning": {
+        "faster.prunning": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "captaingeorge.StoneToSteelHardcore": {
+        "captaingeorge.stonetosteelhardcore": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13555,17 +13532,17 @@
                 "1.5"
             ]
         },
-        "Shork.Torpedo.Architecture": {
+        "shork.torpedo.architecture": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Virstag.MoreWorldFeaturesNames": {
+        "virstag.moreworldfeaturesnames": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Simmin.StoneChairs": {
+        "simmin.stonechairs": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13575,37 +13552,37 @@
                 "1.5"
             ]
         },
-        "m0ek.NoVanillaHair": {
+        "m0ek.novanillahair": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "RadGrinArcher.GuineaPigFarming": {
+        "radgrinarcher.guineapigfarming": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Augustus.ShOST": {
+        "augustus.shost": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Augustus.ShcOST": {
+        "augustus.shcost": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "iforgotmysocks.DisableNewcomersJob": {
+        "iforgotmysocks.disablenewcomersjob": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Timuttie.Atelier": {
+        "timuttie.atelier": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "beelzebot.RimaomicsPIDAutothrottle": {
+        "beelzebot.rimaomicspidautothrottle": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13620,22 +13597,22 @@
                 "1.5"
             ]
         },
-        "JangoDsoul.AlinesFT.Armor": {
+        "jangodsoul.alinesft.armor": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Mallow.HemogenCuisine": {
+        "mallow.hemogencuisine": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "MoreSanguineHouses.Mod": {
+        "moresanguinehouses.mod": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "LilScoot.BMXandBikerOutfits": {
+        "lilscoot.bmxandbikeroutfits": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13645,87 +13622,82 @@
                 "1.5"
             ]
         },
-        "HH.Smokeleaf.Lite": {
+        "hh.smokeleaf.lite": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "DerekBickley.FalloutShelterVanillaWeaponRetexture": {
+        "derekbickley.falloutsheltervanillaweaponretexture": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Rick.FCPTents": {
+        "rick.fcptents": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "OkraDonkey.NoPrayer": {
+        "okradonkey.noprayer": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "fyarn.PriorityClean": {
+        "fyarn.priorityclean": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Poet.RetexturedGasTrapsShells": {
+        "poet.retexturedgastrapsshells": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "AIRetexture.Mods": {
+        "zirc.nonaturalpsyfocusdecrease": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "zirc.NoNaturalPsyfocusDecrease": {
+        "okthisismyidnow.addextractskulldesignator.specific": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "okthisismyidnow.AddExtractSkullDesignator.Specific": {
+        "shewantsrevenge.skullsandivory": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "SheWantsRevenge.SkullsandIvory": {
+        "fox.simplelearning": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Fox.SimpleLearning": {
+        "thegoofyone.simplepallet": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "TheGoofyOne.SimplePallet": {
+        "grave.cross": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Grave.Cross": {
+        "essecoisa.cautiontiles": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "essecoisa.CautionTiles": {
+        "tosenbo.animalstrawbed": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "tosenbo.Animalstrawbed": {
+        "asieruso23.af.planesb": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Asieruso23.AF.PlanesB": {
-            "supportedVersions": [
-                "1.5"
-            ]
-        },
-        "Owlchemist.AnimalGear.Equipment": {
+        "owlchemist.animalgear.equipment": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13735,47 +13707,47 @@
                 "1.5"
             ]
         },
-        "VFEA.SuperUnleashed": {
+        "vfea.superunleashed": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Vinzero.Revia.FacialAnimation": {
+        "vinzero.revia.facialanimation": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Strachi.tiertwotemp": {
+        "strachi.tiertwotemp": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "metasynthetic.SilentSleepAccelerators": {
+        "metasynthetic.silentsleepaccelerators": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Mawy.craftable": {
+        "mawy.craftable": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "NackbladInc.Rimhair": {
+        "nackbladinc.rimhair": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Keshash.BinocularsRevamp": {
+        "keshash.binocularsrevamp": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Prolle.Glitterworld.Medicine": {
+        "prolle.glitterworld.medicine": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "jp.AnimalsLikeHay": {
+        "jp.animalslikehay": {
             "supportedVersions": [
                 "1.5"
             ]
@@ -13795,22 +13767,22 @@
                 "1.5"
             ]
         },
-        "ETRT.MedicineProduction": {
+        "etrt.medicineproduction": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Sl4vP0weR.SleepMeditation": {
+        "sl4vp0wer.sleepmeditation": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Backgammon.AASButton": {
+        "backgammon.aasbutton": {
             "supportedVersions": [
                 "1.5"
             ]
         },
-        "Lat.ApparelRetexture_upscaled": {
+        "lat.apparelretexture_upscaled": {
             "supportedVersions": [
                 "1.5"
             ]
