@@ -1,4 +1,4 @@
-using RimSharp.MyApp.Dialogs; // For DialogViewModelBase
+using RimSharp.AppDir.Dialogs; // For DialogViewModelBase
 using RimSharp.Shared.Models;
 using System;
 using System.Collections.Generic;

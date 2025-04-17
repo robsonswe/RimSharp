@@ -6,7 +6,7 @@ using RimSharp.Core.Commands.Base; // For DelegateCommand
 using System.ComponentModel;
 using System.Diagnostics; // Added for IDisposable pattern (optional)
 
-namespace RimSharp.MyApp.Dialogs
+namespace RimSharp.AppDir.Dialogs
 {
     // Implement IDisposable to manage the CancellationTokenSource
     public class ProgressDialogViewModel : DialogViewModelBase<bool>, IDisposable

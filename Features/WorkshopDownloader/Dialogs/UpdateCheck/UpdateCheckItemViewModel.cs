@@ -1,4 +1,4 @@
-using RimSharp.MyApp.AppFiles;
+using RimSharp.AppDir.AppFiles;
 using RimSharp.Shared.Models;
 using System.Collections.Generic; // Required for EqualityComparer used in base SetProperty
 

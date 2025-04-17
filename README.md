@@ -78,7 +78,7 @@ cd RimSharp
 dotnet build RimSharp.sln -c Release
 ```
 
-Executable will be in `RimSharp.MyApp/bin/Release/netX.Y-windows/`.
+Executable will be in `RimSharp.AppDir/bin/Release/netX.Y-windows/`.
 
 You can also build via Visual Studio by opening `RimSharp.sln`.
 

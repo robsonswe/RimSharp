@@ -1,4 +1,4 @@
-using RimSharp.MyApp.AppFiles; // For RunOnUIThread
+using RimSharp.AppDir.AppFiles; // For RunOnUIThread
 using RimSharp.Shared.Models;
 using System;
 using System.Collections;

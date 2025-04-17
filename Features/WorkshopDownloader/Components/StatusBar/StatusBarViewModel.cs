@@ -1,6 +1,6 @@
 #nullable enable
 using System;
-using RimSharp.MyApp.AppFiles;
+using RimSharp.AppDir.AppFiles;
 
 namespace RimSharp.Features.WorkshopDownloader.Components.StatusBar
 {

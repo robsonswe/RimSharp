@@ -1,6 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
-using RimSharp.MyApp.Dialogs;
+using RimSharp.AppDir.Dialogs;
 
 namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 {

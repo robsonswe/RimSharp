@@ -1,5 +1,5 @@
 #nullable enable
-using RimSharp.MyApp.AppFiles;
+using RimSharp.AppDir.AppFiles;
 
 namespace RimSharp.Features.WorkshopDownloader.Models
 {

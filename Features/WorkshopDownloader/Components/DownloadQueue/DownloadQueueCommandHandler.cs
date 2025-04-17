@@ -10,8 +10,8 @@ using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
 using RimSharp.Features.WorkshopDownloader.Models;
 using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Infrastructure.Workshop;
-using RimSharp.MyApp.AppFiles;
-using RimSharp.MyApp.Dialogs;
+using RimSharp.AppDir.AppFiles;
+using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 

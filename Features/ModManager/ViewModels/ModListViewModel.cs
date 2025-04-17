@@ -1,6 +1,6 @@
 using RimSharp.Core.Commands;
 using RimSharp.Features.ModManager.Services.Commands;
-using RimSharp.MyApp.AppFiles;
+using RimSharp.AppDir.AppFiles;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using System.Collections.ObjectModel;

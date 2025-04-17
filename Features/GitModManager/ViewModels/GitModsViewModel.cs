@@ -1,5 +1,5 @@
 using RimSharp.Core.Commands;
-using RimSharp.MyApp.AppFiles;
+using RimSharp.AppDir.AppFiles;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Features.ModManager.Services.Management;
@@ -14,7 +14,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Threading;
 using RimSharp.Core.Commands.Base;
-using RimSharp.MyApp.Dialogs; // Added for ProgressDialogViewModel
+using RimSharp.AppDir.Dialogs; // Added for ProgressDialogViewModel
 
 namespace RimSharp.Features.GitModManager.ViewModels
 {

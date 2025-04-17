@@ -1,5 +1,5 @@
 using RimSharp.Core.Commands;
-using RimSharp.MyApp.AppFiles;
+using RimSharp.AppDir.AppFiles;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts; // For IDialogService
 using System.Diagnostics;

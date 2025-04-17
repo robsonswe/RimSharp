@@ -5,7 +5,7 @@ using RimSharp.Features.ModManager.Dialogs.Dependencies;
 using RimSharp.Features.ModManager.Dialogs.Filter;
 using RimSharp.Features.ModManager.Dialogs.Replacements;
 using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
-using RimSharp.MyApp.Dialogs;
+using RimSharp.AppDir.Dialogs;
 
 namespace RimSharp.Shared.Services.Contracts
 {

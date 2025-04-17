@@ -4,7 +4,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using RimSharp.Features.WorkshopDownloader.Models;
 using RimSharp.Features.WorkshopDownloader.Services;
-using RimSharp.MyApp.AppFiles;
+using RimSharp.AppDir.AppFiles;
 using RimSharp.Shared.Services.Contracts;
 using System.Threading;
 using System.Diagnostics;

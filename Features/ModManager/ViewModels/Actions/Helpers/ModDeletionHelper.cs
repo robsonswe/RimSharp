@@ -1,5 +1,5 @@
-using RimSharp.MyApp.AppFiles; // For ViewModelBase/RunOnUIThread
-using RimSharp.MyApp.Dialogs; // For ProgressDialogViewModel etc.
+using RimSharp.AppDir.AppFiles; // For ViewModelBase/RunOnUIThread
+using RimSharp.AppDir.Dialogs; // For ProgressDialogViewModel etc.
 using RimSharp.Shared.Models;
 using System;
 using System.Collections;

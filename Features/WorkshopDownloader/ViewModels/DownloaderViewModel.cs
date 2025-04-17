@@ -5,7 +5,7 @@ using RimSharp.Core.Commands;
 using RimSharp.Features.WorkshopDownloader.Components.Browser;
 using RimSharp.Features.WorkshopDownloader.Components.DownloadQueue;
 using RimSharp.Features.WorkshopDownloader.Components.StatusBar;
-using RimSharp.MyApp.AppFiles;
+using RimSharp.AppDir.AppFiles;
 using RimSharp.Shared.Services.Contracts;
 using System.Threading;
 using System.Diagnostics;

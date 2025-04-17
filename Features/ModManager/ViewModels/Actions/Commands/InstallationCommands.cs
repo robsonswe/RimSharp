@@ -1,7 +1,7 @@
 using Microsoft.Win32;
 using RimSharp.Core.Commands;
-using RimSharp.MyApp.AppFiles;
-using RimSharp.MyApp.Dialogs;
+using RimSharp.AppDir.AppFiles;
+using RimSharp.AppDir.Dialogs;
 using System;
 using System.Diagnostics;
 using System.IO;
