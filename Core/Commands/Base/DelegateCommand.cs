@@ -87,7 +87,7 @@ namespace RimSharp.Core.Commands.Base
                 // Double check disposal on UI thread in case of race condition
                 if (!_disposed)
                 {
-                    Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] RaiseCanExecuteChanged invoked.");
+                    //Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] RaiseCanExecuteChanged invoked.");
                     CanExecuteChanged?.Invoke(this, EventArgs.Empty);
                 }
             });
@@ -107,7 +107,7 @@ namespace RimSharp.Core.Commands.Base
             // Prevent observation if already disposed
             if (_disposed)
             {
-                 Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Attempted to observe property on disposed command.");
+                 //Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Attempted to observe property on disposed command.");
                  return this; // Or throw ObjectDisposedException
             }
 
@@ -129,12 +129,12 @@ namespace RimSharp.Core.Commands.Base
                     observedProperties = new HashSet<string>();
                     _observedPropertiesPerOwner.Add(owner, observedProperties);
                     owner.PropertyChanged += Owner_PropertyChanged;
-                    Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Subscribed to PropertyChanged on Owner {owner.GetHashCode()}");
+                    //Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Subscribed to PropertyChanged on Owner {owner.GetHashCode()}");
                 }
 
                 if (observedProperties.Add(propertyName))
                 {
-                     Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Observing property '{propertyName}' on Owner {owner.GetHashCode()}");
+                     //Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Observing property '{propertyName}' on Owner {owner.GetHashCode()}");
                 }
             }
             return this;
@@ -161,7 +161,7 @@ namespace RimSharp.Core.Commands.Base
                     if (string.IsNullOrEmpty(e.PropertyName) || relevantProperties.Contains(e.PropertyName))
                     {
                         shouldRaise = true;
-                         Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Property '{e.PropertyName ?? "null"}' changed on Owner {owner.GetHashCode()}. Will raise CanExecuteChanged.");
+                         //Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Property '{e.PropertyName ?? "null"}' changed on Owner {owner.GetHashCode()}. Will raise CanExecuteChanged.");
                     }
                 }
             }
@@ -198,7 +198,7 @@ namespace RimSharp.Core.Commands.Base
                     {
                         if (_observedPropertiesPerOwner != null)
                         {
-                             Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Disposing: Unsubscribing from {_observedPropertiesPerOwner.Count} owners.");
+                             //Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Disposing: Unsubscribing from {_observedPropertiesPerOwner.Count} owners.");
                             foreach (var owner in _observedPropertiesPerOwner.Keys)
                             {
                                 if (owner != null) // Safety check
@@ -216,7 +216,7 @@ namespace RimSharp.Core.Commands.Base
                 // Clean up unmanaged resources (if any) here
 
                 _disposed = true;
-                 Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Disposed.");
+                 //Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Disposed.");
             }
         }
 
@@ -314,7 +314,7 @@ namespace RimSharp.Core.Commands.Base
              {
                  if(!_disposed)
                  {
-                    Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] RaiseCanExecuteChanged invoked.");
+                    //Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] RaiseCanExecuteChanged invoked.");
                     CanExecuteChanged?.Invoke(this, EventArgs.Empty);
                  }
              });
@@ -333,7 +333,7 @@ namespace RimSharp.Core.Commands.Base
         {
              if (_disposed)
              {
-                 Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Attempted to observe property on disposed command.");
+                 //Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Attempted to observe property on disposed command.");
                  return this;
              }
 
@@ -354,12 +354,12 @@ namespace RimSharp.Core.Commands.Base
                      observedProperties = new HashSet<string>();
                      _observedPropertiesPerOwner.Add(owner, observedProperties);
                      owner.PropertyChanged += Owner_PropertyChanged;
-                     Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Subscribed to PropertyChanged on Owner {owner.GetHashCode()}");
+                     //Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Subscribed to PropertyChanged on Owner {owner.GetHashCode()}");
                  }
 
                  if (observedProperties.Add(propertyName))
                  {
-                     Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Observing property '{propertyName}' on Owner {owner.GetHashCode()}");
+                     //Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Observing property '{propertyName}' on Owner {owner.GetHashCode()}");
                  }
              }
             return this;
@@ -384,7 +384,7 @@ namespace RimSharp.Core.Commands.Base
                      if (string.IsNullOrEmpty(e.PropertyName) || relevantProperties.Contains(e.PropertyName))
                      {
                          shouldRaise = true;
-                          Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Property '{e.PropertyName ?? "null"}' changed on Owner {owner.GetHashCode()}. Will raise CanExecuteChanged.");
+                          //Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Property '{e.PropertyName ?? "null"}' changed on Owner {owner.GetHashCode()}. Will raise CanExecuteChanged.");
                      }
                  }
              }
@@ -413,7 +413,7 @@ namespace RimSharp.Core.Commands.Base
                     {
                         if (_observedPropertiesPerOwner != null)
                         {
-                             Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Disposing: Unsubscribing from {_observedPropertiesPerOwner.Count} owners.");
+                             //Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Disposing: Unsubscribing from {_observedPropertiesPerOwner.Count} owners.");
                             foreach (var owner in _observedPropertiesPerOwner.Keys)
                             {
                                 if (owner != null) owner.PropertyChanged -= Owner_PropertyChanged;
@@ -424,7 +424,7 @@ namespace RimSharp.Core.Commands.Base
                     }
                 }
                 _disposed = true;
-                 Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Disposed.");
+                 //Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Disposed.");
             }
         }
         #endregion

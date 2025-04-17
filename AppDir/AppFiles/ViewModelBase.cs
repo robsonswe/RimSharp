@@ -157,7 +157,7 @@ namespace RimSharp.AppDir.AppFiles
             var observeMethod = command.GetType().GetMethod("ObservesProperty");
             if (observeMethod != null && observeMethod.GetParameters().Length == 2)
             {
-                 Debug.WriteLine($"[ViewModelBase] Setting up observation for Command {command.GetHashCode()}");
+                 //Debug.WriteLine($"[ViewModelBase] Setting up observation for Command {command.GetHashCode()}");
                 foreach (var propertyName in propertyNames)
                 {
                     if (!string.IsNullOrEmpty(propertyName))

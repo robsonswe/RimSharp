@@ -25,7 +25,7 @@ namespace RimSharp.Shared.Services.Implementations
         private bool _isInitialized = false;
         private readonly object _initLock = new object(); // Lock for initialization
         private readonly ILoggerService _logger;
-
+        private readonly SemaphoreSlim _initSemaphore = new SemaphoreSlim(1, 1);
         // Constructor takes appBasePath and optional logger
         public ModCustomService(string appBasePath, ILoggerService logger = null)
         {
@@ -36,77 +36,57 @@ namespace RimSharp.Shared.Services.Implementations
             // Start with empty, case-insensitive dictionary
             _modsData = new ModsCustomRoot { Mods = new Dictionary<string, ModCustomInfo>(StringComparer.OrdinalIgnoreCase) };
             _logger = logger;
-             _logger?.LogDebug($"ModCustomService initialized. Custom file path: '{_modsJsonPath}'", nameof(ModCustomService));
+            _logger?.LogDebug($"ModCustomService initialized. Custom file path: '{_modsJsonPath}'", nameof(ModCustomService));
         }
 
         // Ensures initialization is complete, creating directory/file if needed.
         private async Task EnsureInitializedAsync()
         {
-             if (_isInitialized) return;
+            if (_isInitialized) return; // Keep outer check for performance IF SAFE, but safer to remove or rely on Semaphore
 
-             bool acquiredLock = false;
-             try
-             {
-                 Monitor.Enter(_initLock, ref acquiredLock);
+            await _initSemaphore.WaitAsync(); // Asynchronously wait for lock
+            try
+            {
+                // Check *after* acquiring the lock
+                if (_isInitialized)
+                {
+                    return; // Already initialized by another thread while we waited.
+                }
 
-                 if (_isInitialized) return; // Double-check after acquiring lock
+                _logger?.LogInfo("Initializing ModCustomService...", nameof(ModCustomService));
 
-                 _logger?.LogInfo("Initializing ModCustomService...", nameof(ModCustomService));
+                // Ensure directory exists
+                if (!Directory.Exists(_customFolderPath))
+                {
+                    Directory.CreateDirectory(_customFolderPath);
+                }
 
-                 // 1. Ensure Custom directory exists
-                 if (!Directory.Exists(_customFolderPath))
-                 {
-                     _logger?.LogInfo($"Creating custom folder at: {_customFolderPath}", nameof(ModCustomService));
-                     Directory.CreateDirectory(_customFolderPath);
-                 }
+                // Check if file exists, create or load (can use await here)
+                if (!File.Exists(_modsJsonPath))
+                {
+                    await File.WriteAllTextAsync(_modsJsonPath, "{\"Mods\":{}}"); // Default content
+                                                                                  // Ensure _modsData.Mods is the correct empty dictionary
+                    _modsData = new ModsCustomRoot { Mods = new Dictionary<string, ModCustomInfo>(StringComparer.OrdinalIgnoreCase) };
+                }
+                else
+                {
+                    await LoadModsDataAsync(); // Load existing file (await is fine with SemaphoreSlim)
+                }
 
-                 // 2. Ensure _modsData is initialized correctly (should be by constructor, but safety check)
-                 if (_modsData == null || _modsData.Mods == null || _modsData.Mods.Comparer != StringComparer.OrdinalIgnoreCase)
-                 {
-                     _logger?.LogWarning("ModsData was null or had wrong comparer during init, re-initializing.", nameof(ModCustomService));
-                     _modsData = new ModsCustomRoot { Mods = new Dictionary<string, ModCustomInfo>(StringComparer.OrdinalIgnoreCase) };
-                 }
-
-                 // 3. Check if Mods.json exists, create with default if not, otherwise load
-                 if (!File.Exists(_modsJsonPath))
-                 {
-                     _logger?.LogInfo($"Mods.json not found at '{_modsJsonPath}'. Creating with default content.", nameof(ModCustomService));
-                     // Write the specified default content
-                     await File.WriteAllTextAsync(_modsJsonPath, "{\"Mods\":{}}");
-                     _logger?.LogInfo("Default Mods.json created.", nameof(ModCustomService));
-                     // Keep the _modsData as the empty initialized dictionary
-                 }
-                 else
-                 {
-                     _logger?.LogDebug($"Loading existing Mods.json from '{_modsJsonPath}'.", nameof(ModCustomService));
-                     await LoadModsDataAsync(); // Load existing file
-                 }
-
-                 _isInitialized = true;
-                 _logger?.LogInfo($"ModCustomService initialized. Loaded/found custom data for {_modsData.Mods.Count} mods.", nameof(ModCustomService));
-             }
-             catch (IOException ioEx)
-             {
-                 _logger?.LogException(ioEx, $"IO error during ModCustomService initialization (Path: '{_customFolderPath}'). Using empty data.", nameof(ModCustomService));
-                 _modsData = new ModsCustomRoot { Mods = new Dictionary<string, ModCustomInfo>(StringComparer.OrdinalIgnoreCase) }; // Reset to safe default
-                 _isInitialized = true; // Mark as initialized even on error to prevent retry loops
-             }
-             catch (UnauthorizedAccessException uaEx)
-             {
-                 _logger?.LogException(uaEx, $"Permission error during ModCustomService initialization (Path: '{_customFolderPath}'). Using empty data.", nameof(ModCustomService));
-                 _modsData = new ModsCustomRoot { Mods = new Dictionary<string, ModCustomInfo>(StringComparer.OrdinalIgnoreCase) }; // Reset to safe default
-                 _isInitialized = true;
-             }
-             catch (Exception ex)
-             {
-                 _logger?.LogException(ex, "Unexpected error initializing ModCustomService. Using empty data.", nameof(ModCustomService));
-                 _modsData = new ModsCustomRoot { Mods = new Dictionary<string, ModCustomInfo>(StringComparer.OrdinalIgnoreCase) }; // Reset to safe default
-                 _isInitialized = true;
-             }
-             finally
-             {
-                 if (acquiredLock) Monitor.Exit(_initLock);
-             }
+                _isInitialized = true; // Mark initialized *before* releasing lock
+                _logger?.LogInfo($"ModCustomService initialized. Loaded custom data for {_modsData.Mods.Count} mods.", nameof(ModCustomService));
+            }
+            catch (Exception ex) // Catch specific exceptions like IO, UnauthorizedAccess, JsonException
+            {
+                _logger?.LogException(ex, "Error initializing ModCustomService. Using empty data.", nameof(ModCustomService));
+                // Ensure safe default state
+                _modsData = new ModsCustomRoot { Mods = new Dictionary<string, ModCustomInfo>(StringComparer.OrdinalIgnoreCase) };
+                _isInitialized = true; // Still mark initialized to prevent retry loops
+            }
+            finally
+            {
+                _initSemaphore.Release(); // Release the lock
+            }
         }
 
 
@@ -134,7 +114,7 @@ namespace RimSharp.Shared.Services.Implementations
                 else
                 {
                     // File exists but is empty or malformed, use empty dictionary
-                     _logger?.LogWarning($"Mods.json at '{_modsJsonPath}' was empty or lacked 'Mods' property. Initializing with empty custom data.", nameof(ModCustomService));
+                    _logger?.LogWarning($"Mods.json at '{_modsJsonPath}' was empty or lacked 'Mods' property. Initializing with empty custom data.", nameof(ModCustomService));
                     _modsData.Mods = new Dictionary<string, ModCustomInfo>(StringComparer.OrdinalIgnoreCase);
                 }
 
@@ -142,8 +122,8 @@ namespace RimSharp.Shared.Services.Implementations
             }
             catch (JsonException ex)
             {
-                 _logger?.LogException(ex, $"Error parsing Mods.json: {ex.Message}. Initializing with empty custom data.", nameof(ModCustomService));
-                 _modsData = new ModsCustomRoot { Mods = new Dictionary<string, ModCustomInfo>(StringComparer.OrdinalIgnoreCase) };
+                _logger?.LogException(ex, $"Error parsing Mods.json: {ex.Message}. Initializing with empty custom data.", nameof(ModCustomService));
+                _modsData = new ModsCustomRoot { Mods = new Dictionary<string, ModCustomInfo>(StringComparer.OrdinalIgnoreCase) };
             }
             catch (Exception ex) // Catch potential IO exceptions during read as well
             {
@@ -159,12 +139,12 @@ namespace RimSharp.Shared.Services.Implementations
         {
             try
             {
-                 // 1. Ensure the target directory exists before writing
-                 if (!Directory.Exists(_customFolderPath))
-                 {
-                      _logger?.LogInfo($"Creating custom directory for saving: '{_customFolderPath}'", nameof(ModCustomService));
-                      Directory.CreateDirectory(_customFolderPath);
-                 }
+                // 1. Ensure the target directory exists before writing
+                if (!Directory.Exists(_customFolderPath))
+                {
+                    _logger?.LogInfo($"Creating custom directory for saving: '{_customFolderPath}'", nameof(ModCustomService));
+                    Directory.CreateDirectory(_customFolderPath);
+                }
 
                 // 2. Prepare serialization options
                 var options = new JsonSerializerOptions
@@ -184,13 +164,13 @@ namespace RimSharp.Shared.Services.Implementations
             }
             catch (IOException ioEx)
             {
-                 _logger?.LogException(ioEx, $"IO error saving Mods.json to '{_modsJsonPath}'", nameof(ModCustomService));
-                 throw; // Rethrow to indicate save failure
+                _logger?.LogException(ioEx, $"IO error saving Mods.json to '{_modsJsonPath}'", nameof(ModCustomService));
+                throw; // Rethrow to indicate save failure
             }
-             catch (UnauthorizedAccessException uaEx)
+            catch (UnauthorizedAccessException uaEx)
             {
-                 _logger?.LogException(uaEx, $"Permission error saving Mods.json to '{_modsJsonPath}'", nameof(ModCustomService));
-                 throw; // Rethrow to indicate save failure
+                _logger?.LogException(uaEx, $"Permission error saving Mods.json to '{_modsJsonPath}'", nameof(ModCustomService));
+                throw; // Rethrow to indicate save failure
             }
             catch (Exception ex)
             {
@@ -202,10 +182,8 @@ namespace RimSharp.Shared.Services.Implementations
         /// <inheritdoc />
         public Dictionary<string, ModCustomInfo> GetAllCustomMods()
         {
-             // Block and wait for initialization if called synchronously
-             EnsureInitializedAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-             // Return a copy to prevent external modification of the cache
-             return new Dictionary<string, ModCustomInfo>(_modsData.Mods, StringComparer.OrdinalIgnoreCase);
+            EnsureInitializedAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+            return new Dictionary<string, ModCustomInfo>(_modsData.Mods, StringComparer.OrdinalIgnoreCase);
         }
 
         /// <inheritdoc />
@@ -263,11 +241,11 @@ namespace RimSharp.Shared.Services.Implementations
             if (removed)
             {
                 await SaveModsDataAsync(); // Save the change
-                 _logger?.LogInfo($"Removed custom info for mod: {packageId}", nameof(ModCustomService));
+                _logger?.LogInfo($"Removed custom info for mod: {packageId}", nameof(ModCustomService));
             }
             else
             {
-                 _logger?.LogWarning($"No custom info found to remove for mod: {packageId}", nameof(ModCustomService));
+                _logger?.LogWarning($"No custom info found to remove for mod: {packageId}", nameof(ModCustomService));
             }
         }
 
@@ -278,7 +256,7 @@ namespace RimSharp.Shared.Services.Implementations
 
             try
             {
-                 // Block and wait for initialization if called synchronously
+                // Block and wait for initialization if called synchronously
                 EnsureInitializedAsync().ConfigureAwait(false).GetAwaiter().GetResult();
 
                 if (_modsData == null || _modsData.Mods == null || !_modsData.Mods.Any())
@@ -322,29 +300,29 @@ namespace RimSharp.Shared.Services.Implementations
             // Apply Tags
             if (!string.IsNullOrEmpty(customInfo.Tags))
             {
-                 var existingTags = mod.TagList;
-                 var customTags = customInfo.Tags.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
-                                                .Select(t => t.Trim())
-                                                .Where(t => !string.IsNullOrEmpty(t));
-                 var combinedTags = existingTags.Union(customTags, StringComparer.OrdinalIgnoreCase).ToList();
-                 mod.Tags = string.Join(", ", combinedTags);
-                 mod.InvalidateTagListCache();
+                var existingTags = mod.TagList;
+                var customTags = customInfo.Tags.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                                               .Select(t => t.Trim())
+                                               .Where(t => !string.IsNullOrEmpty(t));
+                var combinedTags = existingTags.Union(customTags, StringComparer.OrdinalIgnoreCase).ToList();
+                mod.Tags = string.Join(", ", combinedTags);
+                mod.InvalidateTagListCache();
             }
 
             // Apply SupportedVersions
             if (customInfo.SupportedVersions != null && customInfo.SupportedVersions.Count > 0)
             {
-                 var existingVersions = mod.SupportedVersions
-                                         .Select(v => v.Version)
-                                         .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var existingVersions = mod.SupportedVersions
+                                        .Select(v => v.Version)
+                                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
                 foreach (string customVersion in customInfo.SupportedVersions)
                 {
                     if (string.IsNullOrWhiteSpace(customVersion)) continue;
-                     if (existingVersions.Add(customVersion))
-                     {
-                         mod.SupportedVersions.Add(new VersionSupport(customVersion, VersionSource.Custom, unofficial: true));
-                         versionsAdded++;
-                     }
+                    if (existingVersions.Add(customVersion))
+                    {
+                        mod.SupportedVersions.Add(new VersionSupport(customVersion, VersionSource.Custom, unofficial: true));
+                        versionsAdded++;
+                    }
                 }
             }
 
@@ -365,7 +343,7 @@ namespace RimSharp.Shared.Services.Implementations
             {
                 foreach (var target in customInfo.LoadAfter.Keys)
                 {
-                     if (!string.IsNullOrWhiteSpace(target) && !mod.LoadAfter.Contains(target, StringComparer.OrdinalIgnoreCase))
+                    if (!string.IsNullOrWhiteSpace(target) && !mod.LoadAfter.Contains(target, StringComparer.OrdinalIgnoreCase))
                     {
                         mod.LoadAfter.Add(target);
                     }
@@ -399,33 +377,37 @@ namespace RimSharp.Shared.Services.Implementations
         /// </summary>
         private void CleanupEmptyCollections(ModCustomInfo customInfo)
         {
-             if (customInfo.LoadBefore?.Count == 0) customInfo.LoadBefore = null;
-             if (customInfo.LoadAfter?.Count == 0) customInfo.LoadAfter = null;
-             if (customInfo.IncompatibleWith?.Count == 0) customInfo.IncompatibleWith = null;
-             if (customInfo.SupportedVersions?.Count == 0) customInfo.SupportedVersions = null;
-             if (customInfo.LoadBottom != null && !customInfo.LoadBottom.Value) customInfo.LoadBottom = null;
+            if (customInfo.LoadBefore?.Count == 0) customInfo.LoadBefore = null;
+            if (customInfo.LoadAfter?.Count == 0) customInfo.LoadAfter = null;
+            if (customInfo.IncompatibleWith?.Count == 0) customInfo.IncompatibleWith = null;
+            if (customInfo.SupportedVersions?.Count == 0) customInfo.SupportedVersions = null;
+            if (customInfo.LoadBottom != null && !customInfo.LoadBottom.Value) customInfo.LoadBottom = null;
 
-             customInfo.SupportedVersions?.RemoveAll(string.IsNullOrWhiteSpace);
-             if (customInfo.SupportedVersions?.Count == 0) customInfo.SupportedVersions = null;
+            customInfo.SupportedVersions?.RemoveAll(string.IsNullOrWhiteSpace);
+            if (customInfo.SupportedVersions?.Count == 0) customInfo.SupportedVersions = null;
 
-             Action<Dictionary<string, ModDependencyRule>> cleanupDepRule = dict => {
-                 if (dict == null) return;
-                 foreach(var rule in dict.Values) {
+            Action<Dictionary<string, ModDependencyRule>> cleanupDepRule = dict =>
+            {
+                if (dict == null) return;
+                foreach (var rule in dict.Values)
+                {
                     if (rule.Name?.Count == 0) rule.Name = null;
                     if (rule.Comment?.Count == 0) rule.Comment = null;
-                 }
-             };
-             Action<Dictionary<string, ModIncompatibilityRule>> cleanupIncompRule = dict => {
-                 if (dict == null) return;
-                 foreach(var rule in dict.Values) {
+                }
+            };
+            Action<Dictionary<string, ModIncompatibilityRule>> cleanupIncompRule = dict =>
+            {
+                if (dict == null) return;
+                foreach (var rule in dict.Values)
+                {
                     if (rule.Name?.Count == 0) rule.Name = null;
                     if (rule.Comment?.Count == 0) rule.Comment = null;
-                 }
-             };
-             cleanupDepRule(customInfo.LoadBefore);
-             cleanupDepRule(customInfo.LoadAfter);
-             cleanupIncompRule(customInfo.IncompatibleWith);
-             if (customInfo.LoadBottom?.Comment?.Count == 0) customInfo.LoadBottom.Comment = null;
+                }
+            };
+            cleanupDepRule(customInfo.LoadBefore);
+            cleanupDepRule(customInfo.LoadAfter);
+            cleanupIncompRule(customInfo.IncompatibleWith);
+            if (customInfo.LoadBottom?.Comment?.Count == 0) customInfo.LoadBottom.Comment = null;
         }
 
         // Helper class to match the JSON structure {"Mods": {...}}
