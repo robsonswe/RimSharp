@@ -15,7 +15,8 @@ namespace RimSharp.Shared.Services.Implementations
         private const string UseThisInsteadModFolderId = "3396308787";
         private const string UseThisInsteadReplacementsSubFolder = "Replacements";
         private const string DatabaseReplacementsFileName = "replacements.json";
-        private const string DatabaseRulesFolderName = "Rules"; // Assuming rules are in [AppBase]/Rules
+        // Updated: Relative path for the DB rules/replacements folder
+        private readonly string _databaseRulesDbRelativePath = Path.Combine("Rules", "db");
 
         private readonly IPathService _pathService;
         private readonly string _appBasePath; // Need the application base path for the JSON file
@@ -74,7 +75,6 @@ namespace RimSharp.Shared.Services.Implementations
             string normalizedId = packageId.ToLowerInvariant(); // Normalize input
 
             // Find the first match based on the original ModId (case-insensitive)
-            // We assume ModId from the source data might need normalization too
             return cache.Values.FirstOrDefault(r =>
                 !string.IsNullOrEmpty(r.ModId) &&
                 r.ModId.Equals(normalizedId, StringComparison.OrdinalIgnoreCase));
@@ -97,22 +97,35 @@ namespace RimSharp.Shared.Services.Implementations
 
         /// <summary>
         /// Loads replacement data from the replacements.json file.
-        /// Populates the provided dictionary.
+        /// Populates the provided dictionary. Ensures directory and file exist.
         /// </summary>
         /// <returns>The number of items successfully loaded from JSON.</returns>
         private int LoadFromJson(Dictionary<string, ModReplacementInfo> targetDictionary)
         {
-            var jsonFilePath = Path.Combine(_appBasePath, DatabaseRulesFolderName, DatabaseReplacementsFileName);
+            // Updated path calculation using relative path constant
+            var dbDirectoryPath = Path.Combine(_appBasePath, _databaseRulesDbRelativePath);
+            var jsonFilePath = Path.Combine(dbDirectoryPath, DatabaseReplacementsFileName);
             int count = 0;
-
-            if (!File.Exists(jsonFilePath))
-            {
-                _logger.LogWarning($"Replacement database file not found at '{jsonFilePath}'. Skipping.", nameof(ModReplacementService));
-                return 0;
-            }
 
             try
             {
+                // 1. Ensure the directory exists
+                if (!Directory.Exists(dbDirectoryPath))
+                {
+                    _logger.LogInfo($"Creating replacement database directory: '{dbDirectoryPath}'", nameof(ModReplacementService));
+                    Directory.CreateDirectory(dbDirectoryPath);
+                }
+
+                // 2. Check if the file exists, create with default if not
+                if (!File.Exists(jsonFilePath))
+                {
+                    _logger.LogWarning($"Replacement database file '{jsonFilePath}' not found. Creating with default content.", nameof(ModReplacementService));
+                    File.WriteAllText(jsonFilePath, "{\"mods\":{}}"); // Default content
+                    _logger.LogInfo($"Default replacement file created at '{jsonFilePath}'.", nameof(ModReplacementService));
+                    return 0; // Return 0 as no data was loaded from the (newly created) file
+                }
+
+                // 3. File exists, proceed with loading
                 _logger.LogDebug($"Parsing replacement database: '{jsonFilePath}'", nameof(ModReplacementService));
                 string jsonContent = File.ReadAllText(jsonFilePath);
 
@@ -126,7 +139,6 @@ namespace RimSharp.Shared.Services.Implementations
                 {
                     foreach (var kvp in jsonData.Mods)
                     {
-                        // The key in the JSON *is* the SteamId, but let's double-check the data inside too
                         var info = kvp.Value;
                         if (info == null || string.IsNullOrWhiteSpace(info.SteamId))
                         {
@@ -134,20 +146,18 @@ namespace RimSharp.Shared.Services.Implementations
                             continue;
                         }
 
-                        // Ensure consistency - use SteamId from the object data as the key
                         string key = info.SteamId.Trim().ToLowerInvariant();
                         if (string.IsNullOrEmpty(key))
                         {
-                            _logger.LogWarning($"Skipping invalid entry in '{jsonFilePath}': Entry data for key '{kvp.Key}' has empty SteamId.", nameof(ModReplacementService));
+                             _logger.LogWarning($"Skipping invalid entry in '{jsonFilePath}': Entry data for key '{kvp.Key}' has empty SteamId.", nameof(ModReplacementService));
                             continue;
                         }
 
-                        // Normalize the PackageIDs (ModId) if they exist
                         info.ModId = info.ModId?.Trim().ToLowerInvariant();
                         info.ReplacementModId = info.ReplacementModId?.Trim().ToLowerInvariant();
+                        info.Source = ReplacementSource.Database;
 
-                        info.Source = ReplacementSource.Database; // Set source
-                        targetDictionary[key] = info; // Add or overwrite
+                        targetDictionary[key] = info; // Add or overwrite using case-insensitive key
                         count++;
                     }
                 }
@@ -158,7 +168,11 @@ namespace RimSharp.Shared.Services.Implementations
             }
             catch (IOException ioEx)
             {
-                _logger.LogException(ioEx, $"IO error reading file '{jsonFilePath}'.", nameof(ModReplacementService));
+                _logger.LogException(ioEx, $"IO error accessing file '{jsonFilePath}'.", nameof(ModReplacementService));
+            }
+            catch (UnauthorizedAccessException uaEx)
+            {
+                 _logger.LogException(uaEx, $"Permission error accessing directory '{dbDirectoryPath}' or file '{jsonFilePath}'.", nameof(ModReplacementService));
             }
             catch (Exception ex)
             {
@@ -178,13 +192,14 @@ namespace RimSharp.Shared.Services.Implementations
             var modsPath = _pathService.GetModsPath();
             int count = 0;
 
+            // (Existing logic for finding UTI mod path is fine)
             if (string.IsNullOrEmpty(modsPath) || !Directory.Exists(modsPath))
             {
                 _logger.LogWarning($"Mods path not found or not set ('{modsPath}'). Cannot load 'Use This Instead' replacement data.", nameof(ModReplacementService));
                 return 0;
             }
-
-            var utiModPath = Path.Combine(modsPath, UseThisInsteadModFolderId);
+            // ... rest of the existing UTI loading logic ...
+             var utiModPath = Path.Combine(modsPath, UseThisInsteadModFolderId);
             if (!Directory.Exists(utiModPath))
             {
                 _logger.LogInfo($"'Use This Instead' mod ({UseThisInsteadModFolderId}) not found at '{utiModPath}'. Skipping its replacement data.", nameof(ModReplacementService));
@@ -272,6 +287,13 @@ namespace RimSharp.Shared.Services.Implementations
             }
 
             return count;
+        }
+
+        // Helper class to match the JSON structure {"mods": {...}}
+        // Using original name from service file, assuming it matches replacements.json structure
+        private class ReplacementJsonRoot
+        {
+             public Dictionary<string, ModReplacementInfo> Mods { get; set; }
         }
     }
 }

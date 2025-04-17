@@ -180,9 +180,33 @@ namespace RimSharp.Features.ModManager.ViewModels
             }
 
             Debug.WriteLine("[ModsViewModel] Executing refresh request...");
-            await RefreshDataAsync(ct); // Pass cancellation token down
+
+            // ---> ADD PATH REFRESH AND CHILD VM UPDATE HERE <---
+            try
+            {
+                // It's generally safe to call these service methods, but run on UI thread if there's any doubt
+                // about thread safety within the services or if they might trigger UI updates directly.
+                RunOnUIThread(() =>
+                {
+                    Debug.WriteLine("[ModsViewModel] Refreshing PathService and ModActionsViewModel path validity...");
+                    _pathService.RefreshPaths(); // Tell PathService to re-read config/recache its values
+                    ModActionsViewModel?.RefreshPathValidity(); // Tell Actions VM to update its HasValidPaths property based on new service state
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ModsViewModel] Error during path refresh: {ex.Message}");
+                // Decide if you want to stop the refresh or continue despite path errors
+                // Maybe show an error message?
+                // await RunOnUIThreadAsync(() => _dialogService.ShowError("Path Refresh Error", $"Failed to refresh paths: {ex.Message}"));
+                // return; // Optional: stop the refresh if paths are critical and failed to update
+            }
+
+
+            await RefreshDataAsync(ct); // Pass cancellation token down (This also sets IsLoading)
             Debug.WriteLine("[ModsViewModel] Refresh execution complete.");
         }
+
 
 
         private void OnChildRequestSelectionChange(object sender, PropertyChangedEventArgs e)
@@ -242,9 +266,16 @@ namespace RimSharp.Features.ModManager.ViewModels
             Debug.WriteLine("[ModsViewModel - RefreshDataAsync] Refresh complete.");
         }
 
-        private async Task LoadDataAsync(CancellationToken ct = default) // Accept cancellation token
+        private async Task LoadDataAsync(CancellationToken ct = default)
         {
             if (IsLoading) return; // Prevent re-entrancy
+
+            RunOnUIThread(() =>
+            {
+                Debug.WriteLine("[ModsViewModel] Initial path refresh during LoadDataAsync...");
+                _pathService.RefreshPaths();
+                ModActionsViewModel?.RefreshPathValidity();
+            });
 
             IsLoading = true; // Setter updates children and commands
             ProgressDialogViewModel progressDialog = null;

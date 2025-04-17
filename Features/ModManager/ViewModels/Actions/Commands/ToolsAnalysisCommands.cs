@@ -28,23 +28,25 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             ResolveDependenciesCommand = CreateCancellableAsyncCommand(
                 ExecuteResolveDependencies,
                 CanExecuteSimpleCommands,
-                nameof(IsParentLoading));
+                observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
 
             CheckIncompatibilitiesCommand = CreateCancellableAsyncCommand(
                 ExecuteCheckIncompatibilities,
                 CanExecuteCheckIncompatibilities,
-                nameof(IsParentLoading));
+                observedProperties: new[] { nameof(IsParentLoading) }); // Primarily loading state + list content
 
             CheckDuplicatesCommand = CreateCommand(
                 ExecuteCheckDuplicates,
                 CanExecuteSimpleCommands,
-                nameof(IsParentLoading));
-            CheckReplacementsCommand = CreateCancellableAsyncCommand(
-                execute: ExecuteCheckReplacements,
-                canExecute: CanExecuteSimpleCommands,
                 observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
 
+
+            RunGameCommand = CreateCommand(
+                ExecuteRunGame,
+                CanExecuteRunGame, // Uses HasValidPaths
+                observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) }); // Already correctly observes both
         }
+
 
         private void InitializePlaceholderCommands()
         {
@@ -110,15 +112,15 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                         // Show progress dialog for the download/API check phase
                         await RunOnUIThreadAsync(() =>
                         {
-                             // Use non-null cts for cancellation
-                             progressDialog = _dialogService.ShowProgressDialog(
-                                "Verifying Dependencies",
-                                "Checking dependencies with Steam API...",
-                                canCancel: true,
-                                isIndeterminate: false, // Determinate progress
-                                cts: null, // Create linked CTS below
-                                closeable: true);
-                         });
+                            // Use non-null cts for cancellation
+                            progressDialog = _dialogService.ShowProgressDialog(
+                               "Verifying Dependencies",
+                               "Checking dependencies with Steam API...",
+                               canCancel: true,
+                               isIndeterminate: false, // Determinate progress
+                               cts: null, // Create linked CTS below
+                               closeable: true);
+                        });
 
                         if (progressDialog == null) throw new InvalidOperationException("Progress dialog view model was not created.");
 
@@ -221,11 +223,11 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
                                 if (addedMods.Count > 0) // Also mention mods activated locally
                                 {
-                                     sb.AppendLine();
-                                     sb.AppendLine($"{addedMods.Count} inactive dependency mod(s) were automatically activated:");
-                                     foreach (var mod in addedMods.Take(5)) // Show first few
-                                         sb.AppendLine($"- {mod.Name}");
-                                     if(addedMods.Count > 5) sb.AppendLine("  ...");
+                                    sb.AppendLine();
+                                    sb.AppendLine($"{addedMods.Count} inactive dependency mod(s) were automatically activated:");
+                                    foreach (var mod in addedMods.Take(5)) // Show first few
+                                        sb.AppendLine($"- {mod.Name}");
+                                    if (addedMods.Count > 5) sb.AppendLine("  ...");
                                 }
 
 
@@ -239,27 +241,27 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                         }
                         finally
                         {
-                             // Ensure progress dialog is closed and CTS is disposed
-                             await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
-                             linkedCts?.Dispose();
-                             linkedCts = null;
-                             progressDialog = null;
+                            // Ensure progress dialog is closed and CTS is disposed
+                            await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
+                            linkedCts?.Dispose();
+                            linkedCts = null;
+                            progressDialog = null;
                         }
                     }
                     else if (addedMods.Count > 0) // Missing deps exist, but user cancelled download OR no downloadable ones selected
                     {
                         // Still inform about locally activated mods if any
-                         await RunOnUIThreadAsync(() =>
-                         {
-                              var sb = new StringBuilder();
-                              sb.AppendLine("Some required dependencies were missing or not selected for download.");
-                              sb.AppendLine();
-                              sb.AppendLine($"{addedMods.Count} inactive dependency mod(s) were automatically activated:");
-                              foreach (var mod in addedMods.Take(5)) // Show first few
-                                  sb.AppendLine($"- {mod.Name}");
-                              if(addedMods.Count > 5) sb.AppendLine("  ...");
-                              _dialogService.ShowInformation("Dependencies Resolved (Partial)", sb.ToString().Trim());
-                         });
+                        await RunOnUIThreadAsync(() =>
+                        {
+                            var sb = new StringBuilder();
+                            sb.AppendLine("Some required dependencies were missing or not selected for download.");
+                            sb.AppendLine();
+                            sb.AppendLine($"{addedMods.Count} inactive dependency mod(s) were automatically activated:");
+                            foreach (var mod in addedMods.Take(5)) // Show first few
+                                sb.AppendLine($"- {mod.Name}");
+                            if (addedMods.Count > 5) sb.AppendLine("  ...");
+                            _dialogService.ShowInformation("Dependencies Resolved (Partial)", sb.ToString().Trim());
+                        });
                     }
                     // else: Missing dependencies exist, but none were selected and none were activated locally. No extra message needed.
 
@@ -288,7 +290,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             catch (OperationCanceledException)
             {
                 Debug.WriteLine("[ExecuteResolveDependencies] Operation cancelled.");
-                 // Ensure progress dialog is closed if cancellation happened during download phase
+                // Ensure progress dialog is closed if cancellation happened during download phase
                 await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
                 RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Dependency resolution was cancelled."));
             }
@@ -301,8 +303,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             finally
             {
                 // Ensure progress dialog is closed and CTS disposed in all exit paths
-                 await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
-                 linkedCts?.Dispose();
+                await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
+                linkedCts?.Dispose();
                 IsLoadingRequest?.Invoke(this, false);
             }
         }
@@ -573,7 +575,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                             });
 
                             // ... (rest of the API checking and queueing logic) ...
-                             var replacementInfo = selectedItem.ReplacementInfo;
+                            var replacementInfo = selectedItem.ReplacementInfo;
                             if (replacementInfo == null || string.IsNullOrEmpty(replacementInfo.ReplacementSteamId))
                             {
                                 Debug.WriteLine($"[ExecuteCheckReplacements] Skipping selected item without valid ReplacementSteamId: {selectedItem.OriginalMod.Name} -> {replacementInfo?.ReplacementName}");
@@ -654,7 +656,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                             if (errorCount > 0) sb.AppendLine($"{errorCount} selected replacement mod(s) could not be added due to errors or missing info.");
 
                             _dialogService.ShowInformation("Replacements Processed", sb.ToString().Trim());
-                            if (addedCount > 0){
+                            if (addedCount > 0)
+                            {
                                 _navigationService.RequestTabSwitch("Downloader");
                             }
                         });
