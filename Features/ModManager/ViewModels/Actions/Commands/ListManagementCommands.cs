@@ -16,37 +16,44 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         // Partial initialization method
         private void InitializeListManagementCommands()
         {
-            // Use CreateCancellableAsyncCommand/CreateCommand and observe relevant properties
-
             ClearActiveListCommand = CreateCancellableAsyncCommand(
                 ExecuteClearActiveList,
-                CanExecuteSimpleCommands, // Depends on IsParentLoading
-                nameof(IsParentLoading));
+                CanExecuteSimpleCommands,
+                // OBSERVE BOTH IsParentLoading AND HasValidPaths
+                observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
 
             SortActiveListCommand = CreateCancellableAsyncCommand(
                 ExecuteSortActiveList,
-                CanExecuteSimpleCommands, // Depends on IsParentLoading
-                nameof(IsParentLoading));
+                CanExecuteSimpleCommands,
+                // OBSERVE BOTH IsParentLoading AND HasValidPaths
+                observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
 
             SaveCommand = CreateCommand(
                 ExecuteSaveMods,
-                CanExecuteSaveMods, // Depends on HasUnsavedChanges, IsParentLoading
-                nameof(HasUnsavedChanges), nameof(IsParentLoading));
+                CanExecuteSaveMods,
+                // Observe all relevant properties for CanExecuteSaveMods
+                observedProperties: new[] { nameof(HasUnsavedChanges), nameof(IsParentLoading) }); // Save doesn't depend on paths, only unsaved changes and loading state
 
             ImportListCommand = CreateCancellableAsyncCommand(
                 ExecuteImport,
-                CanExecuteSimpleCommands, // Depends on IsParentLoading
-                nameof(IsParentLoading));
+                CanExecuteSimpleCommands,
+                // OBSERVE BOTH IsParentLoading AND HasValidPaths
+                observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
 
+            // ExportListCommand's CanExecuteExport depends on list content, not HasValidPaths.
+            // It relies on CommandManager.InvalidateRequerySuggested triggered by ListChanged, which is fine.
             ExportListCommand = CreateCancellableAsyncCommand(
                 ExecuteExport,
-                CanExecuteExport, // Depends on IsParentLoading and list content
-                nameof(IsParentLoading)); // Also depends on _modListManager state, manual update might be needed via ListChanged
+                CanExecuteExport,
+                observedProperties: new[] { nameof(IsParentLoading) }); // Primarily depends on loading state and list content (handled by InvalidateRequerySuggested)
 
-            // For ExportListCommand, we need to re-evaluate when the list changes.
-            // The ListChanged event handler in ModsViewModel calls CommandManager.InvalidateRequerySuggested,
-            // which should cause this command to re-evaluate its CanExecute.
+            // CheckReplacementsCommand already observes HasValidPaths, keep as is or ensure it's correct:
+            CheckReplacementsCommand = CreateCancellableAsyncCommand(
+                execute: ExecuteCheckReplacements,
+                canExecute: CanExecuteSimpleCommands, // Uses HasValidPaths
+                observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) }); // Already correctly observes both
         }
+
 
         // --- CanExecute Predicates (used by command creation) ---
         // private bool CanExecuteSimpleCommands() => !IsParentLoading; // Defined in InstallationCommands.cs
@@ -134,7 +141,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     Debug.WriteLine("Save cancelled by user due to detected issues.");
                     return; // Exit without saving
                 }
-                 Debug.WriteLine("User confirmed saving despite issues.");
+                Debug.WriteLine("User confirmed saving despite issues.");
             }
 
             // CanExecute checked by framework

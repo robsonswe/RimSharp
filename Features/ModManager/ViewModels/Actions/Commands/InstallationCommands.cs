@@ -19,12 +19,12 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             InstallFromZipCommand = CreateCancellableAsyncCommand(
                 ExecuteInstallFromZip,
                 CanExecuteSimpleCommands,
-                new[] { nameof(IsParentLoading) });
+                observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
 
             InstallFromGithubCommand = CreateCancellableAsyncCommand(
                 ExecuteInstallFromGithub,
                 CanExecuteSimpleCommands,
-                new[] { nameof(IsParentLoading) });
+                observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
         }
 
         public async Task ExecuteInstallFromZip(CancellationToken ct)

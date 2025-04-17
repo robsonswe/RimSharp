@@ -31,60 +31,56 @@
     <PackageReference Include="PInvoke.Shell32" Version="0.7.124" />
     <PackageReference Include="PInvoke.User32" Version="0.7.124" />
   </ItemGroup>
-<ItemGroup>
-  <!-- Add this for the Rules folder -->
-  <None Include="Rules\**\*">
-    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-  </None>
+  <ItemGroup>
+    <!-- Include all files under Rules\db -->
+    <None Include="Rules\db\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
 
-  <!-- Create a default rules.json if it doesn't exist -->
-  <None Include="Rules\rules.json" Condition="!Exists('Rules\rules.json')">
-    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    <Content>{"rules":{}}</Content>
-  </None>
+    <!-- Create default rules.json if it doesn't exist -->
+    <None Include="Rules\db\rules.json" Condition="!Exists('Rules\db\rules.json')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Content>{"rules":{}}</Content>
+    </None>
 
-  <None Include="Custom\**\*">
-    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-  </None>
+    <!-- Create default replacements.json if it doesn't exist -->
+    <None Include="Rules\db\replacements.json" Condition="!Exists('Rules\db\replacements.json')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Content>{"mods":{}}</Content>
+    </None>
 
-  <!-- Create a default rules.json if it doesn't exist -->
-  <None Include="Custom\mods.json" Condition="!Exists('Custom\mods.json')">
-    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    <Content>{"mods":{}}</Content>
-  </None>
+    <!-- Existing items -->
+    <None Include="Lists\**\*" Condition="Exists('Lists\**\*')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
 
-  <!-- Your existing items -->
-  <None Include="Lists\**\*" Condition="Exists('Lists\**\*')">
-    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-  </None>
-  <None Include="config.cfg">
-    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-  </None>
-</ItemGroup>
+  </ItemGroup>
 
-<Target Name="EnsureRulesDirectoryExists" BeforeTargets="PrepareForBuild">
-  <MakeDir Directories="$(ProjectDir)Rules" Condition="!Exists('$(ProjectDir)Rules')" />
-  <!-- Create a default rules.json if it doesn't exist -->
-  <WriteLinesToFile File="$(ProjectDir)Rules\rules.json" Lines="{&quot;rules&quot;:{}}" Overwrite="false" Condition="!Exists('$(ProjectDir)Rules\rules.json')" />
-</Target>
+  <Target Name="EnsureRulesDirectoryExists" BeforeTargets="PrepareForBuild">
+    <!-- Create Rules\db directory if it doesn't exist -->
+    <MakeDir Directories="$(ProjectDir)Rules\db" Condition="!Exists('$(ProjectDir)Rules\db')" />
 
-<Target Name="EnsureRulesDirectoryExists" BeforeTargets="PrepareForBuild">
-  <MakeDir Directories="$(ProjectDir)Custom" Condition="!Exists('$(ProjectDir)Custom')" />
-  <!-- Create a default rules.json if it doesn't exist -->
-  <WriteLinesToFile File="$(ProjectDir)Custom\mods.json" Lines="{&quot;mods&quot;:{}}" Overwrite="false" Condition="!Exists('$(ProjectDir)Custom\mods.json')" />
-</Target>
+    <!-- Create default rules.json if it doesn't exist -->
+    <WriteLinesToFile File="$(ProjectDir)Rules\db\rules.json"
+      Lines="{&quot;rules&quot;:{}}"
+      Overwrite="false"
+      Condition="!Exists('$(ProjectDir)Rules\db\rules.json')" />
 
-<Target Name="PostBuild" AfterTargets="PostBuild">
-  <!-- Create directories and copy files -->
-  <MakeDir Directories="$(OutputPath)Rules" />
-  <MakeDir Directories="$(OutputPath)Lists" />
-  <MakeDir Directories="$(OutputPath)Custom" />
+    <!-- Create default replacements.json if it doesn't exist -->
+    <WriteLinesToFile File="$(ProjectDir)Rules\db\replacements.json"
+      Lines="{&quot;mods&quot;:{}}"
+      Overwrite="false"
+      Condition="!Exists('$(ProjectDir)Rules\db\replacements.json')" />
+  </Target>
 
-  <!-- Copy Rules folder contents - without condition to ensure it always tries -->
-  <Copy SourceFiles="@(None)" DestinationFiles="@(None->'$(OutputPath)%(RelativeDir)%(Filename)%(Extension)')" Condition="'%(None.RelativeDir)' != '' AND '%(None.RelativeDir)'.StartsWith('Rules\')" />
-  <Copy SourceFiles="@(None)" DestinationFiles="@(None->'$(OutputPath)%(RelativeDir)%(Filename)%(Extension)')" Condition="'%(None.RelativeDir)' != '' AND '%(None.RelativeDir)'.StartsWith('Custom\')" />
+  <Target Name="PostBuild" AfterTargets="PostBuild">
+    <!-- Create output folders -->
+    <MakeDir Directories="$(OutputPath)Rules\db" />
+    <MakeDir Directories="$(OutputPath)Lists" />
 
-  <!-- Copy config file -->
-  <Copy SourceFiles="config.cfg" DestinationFolder="$(OutputPath)" Condition="Exists('config.cfg')" />
-</Target>
+    <!-- Copy Rules\db contents -->
+    <Copy SourceFiles="@(None)"
+      DestinationFiles="@(None->'$(OutputPath)%(RelativeDir)%(Filename)%(Extension)')"
+      Condition="'%(None.RelativeDir)' != '' AND '%(None.RelativeDir)'.StartsWith('Rules\db\')" />
+  </Target>
 </Project>

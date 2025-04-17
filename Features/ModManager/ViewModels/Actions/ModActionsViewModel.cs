@@ -255,7 +255,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         }
 
 
-        private void RefreshPathValidity()
+        public void RefreshPathValidity()
         {
             var gamePath = _pathService.GetGamePath();
             var modsPath = _pathService.GetModsPath();
