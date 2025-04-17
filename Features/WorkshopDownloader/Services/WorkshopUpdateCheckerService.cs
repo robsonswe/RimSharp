@@ -162,7 +162,8 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             catch (Exception ex)
             {
                 result.IncrementErrorsEncountered();
-                errorMessages.Add($"Failed API call for '{mod.Name}' ({mod.SteamId}): {ex.Message}");
+                string errorDescription = SteamApiResultHelper.GetDescription((int)SteamApiResultCode.FileNotFound);
+                errorMessages.Add($"API Error for '{mod.Name}' ({mod.SteamId}): {errorDescription} (Details not returned in successful response)");
                 Debug.WriteLine($"Error during API call for {mod.SteamId}: {ex}");
                 return; // Exit processing for this mod on API error
             }
@@ -179,10 +180,10 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
             var details = apiResponse.Response.PublishedFileDetails.First();
 
-            if (details.Result != 1)
-            {
+            if (details.Result != (int)SteamApiResultCode.OK)            {
                 result.IncrementErrorsEncountered();
-                errorMessages.Add($"API indicated failure retrieving details for '{mod.Name}' ({mod.SteamId}). Result Code: {details.Result}");
+                string errorDescription = SteamApiResultHelper.GetDescription(details.Result);
+                errorMessages.Add($"Mod '{mod.Name}' ({mod.SteamId}) - Code {details.Result}: {errorDescription}");
                 return;
             }
 
