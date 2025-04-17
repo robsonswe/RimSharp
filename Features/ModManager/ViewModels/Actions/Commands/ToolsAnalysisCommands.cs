@@ -18,6 +18,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using RimSharp.Features.WorkshopDownloader.Services;
 
 namespace RimSharp.Features.ModManager.ViewModels.Actions
 {
@@ -160,7 +161,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                                     var apiResponse = await _steamApiClient.GetFileDetailsAsync(steamId, combinedToken);
                                     if (apiResponse?.Response?.PublishedFileDetails == null || !apiResponse.Response.PublishedFileDetails.Any())
                                     {
-                                        Debug.WriteLine($"[ExecuteResolveDependencies] No details returned for dependency mod '{steamId}'");
+                                        Debug.WriteLine($"[ExecuteResolveDependencies] No details returned from Steam API for dependency mod '{steamId}'");
                                         errorCount++;
                                         continue;
                                     }
@@ -168,7 +169,10 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                                     var details = apiResponse.Response.PublishedFileDetails.First();
                                     if (details.Result != 1) // 1 = OK according to Steam API docs
                                     {
-                                        Debug.WriteLine($"[ExecuteResolveDependencies] API indicated failure retrieving details for dependency mod '{steamId}'. Result Code: {details.Result}");
+                                        // --- UPDATED ---
+                                        string errorDescription = SteamApiResultHelper.GetDescription(details.Result);
+                                        Debug.WriteLine($"[ExecuteResolveDependencies] Steam API error for dependency mod '{steamId}': {errorDescription} (Result Code: {details.Result})");
+                                        // --- END UPDATED ---
                                         errorCount++;
                                         continue;
                                     }
@@ -219,7 +223,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                                 else sb.AppendLine("No new dependency mods were added to the download queue.");
 
                                 if (alreadyQueuedCount > 0) sb.AppendLine($"{alreadyQueuedCount} selected dependency mod(s) were already in the queue.");
-                                if (errorCount > 0) sb.AppendLine($"{errorCount} selected dependency mod(s) could not be added due to errors or invalid Steam info.");
+                                if (errorCount > 0) sb.AppendLine($"{errorCount} selected dependency mod(s) could not be added due to errors or invalid Steam info (check debug logs for details)."); // Added hint
 
                                 if (addedMods.Count > 0) // Also mention mods activated locally
                                 {
@@ -432,7 +436,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             try
             {
                 // Get loaded mods
-                await Task.Run(() => _modService.LoadMods(), ct);
+                await Task.Run(() => _modService.LoadMods(), ct); // Assuming LoadMods takes CT or is quick
                 ct.ThrowIfCancellationRequested();
                 var loadedMods = _modService.GetLoadedMods().ToList();
                 ct.ThrowIfCancellationRequested();
@@ -463,8 +467,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 // Perform the search and validation operation
                 await Task.Run(() =>
                 {
-                    // int processedCount = 0; // Not needed for message/progress calculation anymore
-
                     foreach (var mod in loadedMods)
                     {
                         combinedToken.ThrowIfCancellationRequested();
@@ -472,23 +474,26 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                         ModReplacementInfo replacement = null;
                         if (!string.IsNullOrEmpty(mod.SteamId))
                         {
+                            // Assuming GetReplacementBySteamId is thread-safe or read-only
                             replacement = _replacementService.GetReplacementBySteamId(mod.SteamId);
                         }
 
                         if (replacement != null)
                         {
-                            var originalSupportedVersions = mod.SupportedVersionStrings?
+                            // Version check logic (seems ok)
+                             var originalSupportedVersions = mod.SupportedVersionStrings?
                                 .Select(v => v.Trim())
                                 .Where(v => !string.IsNullOrEmpty(v))
                                 .ToList() ?? new List<string>();
-                            var replacementSupportedVersions = replacement.ReplacementVersionList;
+                            var replacementSupportedVersions = replacement.ReplacementVersionList ?? new List<string>(); // Ensure list exists
 
                             bool versionsAreValid;
-                            if (!originalSupportedVersions.Any()) versionsAreValid = true;
-                            else if (!replacementSupportedVersions.Any()) versionsAreValid = false;
-                            else
-                            {
+                             if (!originalSupportedVersions.Any()) versionsAreValid = true; // If original supports nothing/any, allow replacement
+                             else if (!replacementSupportedVersions.Any()) versionsAreValid = false; // If replacement supports nothing, fail
+                             else
+                             {
                                 var replacementVersionSet = new HashSet<string>(replacementSupportedVersions, StringComparer.OrdinalIgnoreCase);
+                                // Check if ALL original versions are covered by the replacement
                                 versionsAreValid = originalSupportedVersions.All(ov => replacementVersionSet.Contains(ov));
                             }
 
@@ -498,7 +503,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                             }
                             else
                             {
-                                Debug.WriteLine($"[ExecuteCheckReplacements] Discarding outdated rule for '{mod.Name}' ({mod.SteamId}). " +
+                                Debug.WriteLine($"[ExecuteCheckReplacements] Discarding replacement rule for '{mod.Name}' ({mod.SteamId}) due to version mismatch. " +
                                                 $"Original versions: [{string.Join(", ", originalSupportedVersions)}]. " +
                                                 $"Replacement versions: [{string.Join(", ", replacementSupportedVersions)}].");
                             }
@@ -508,10 +513,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
                 // Close progress dialog cleanly (still useful to signal completion of this phase)
                 await RunOnUIThreadAsync(() => progressViewModel?.CompleteOperation("Check complete."));
-                progressViewModel = null;
-
-                // --- Rest of the method remains the same ---
-                // (Showing results, handling selection, second progress dialog for API checks)
+                progressViewModel = null; // Reset for potential reuse
 
                 if (modsWithValidReplacements.Count == 0)
                 {
@@ -540,6 +542,10 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     int errorCount = 0;
                     var addedNames = new List<string>();
 
+                    // Dispose previous linked CTS and create new one for this stage
+                    linkedCts?.Dispose();
+                    linkedCts = null; // Reset
+
                     await RunOnUIThreadAsync(() =>
                     {
                         progressViewModel = _dialogService.ShowProgressDialog(
@@ -552,10 +558,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     });
                     if (progressViewModel == null) throw new InvalidOperationException("Progress dialog view model was not created.");
 
-                    // Dispose previous linked CTS and create new one for this stage
-                    linkedCts?.Dispose();
                     linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, progressViewModel.CancellationToken);
-                    combinedToken = linkedCts.Token;
+                    combinedToken = linkedCts.Token; // Update combinedToken
 
                     try
                     {
@@ -563,19 +567,19 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                         {
                             combinedToken.ThrowIfCancellationRequested();
                             var selectedItem = selectedReplacements[i];
+                            var replacementInfo = selectedItem.ReplacementInfo; // Already fetched in dialog VM
 
                             // Update progress for the *second* dialog
+                            string progressName = replacementInfo?.ReplacementName ?? selectedItem.OriginalMod.Name + " Replacement";
                             await RunOnUIThreadAsync(() =>
                             {
                                 if (progressViewModel != null && !progressViewModel.CancellationToken.IsCancellationRequested)
                                 {
-                                    progressViewModel.Message = $"Checking {selectedItem.ReplacementInfo.ReplacementName}... ({i + 1}/{selectedReplacements.Count})";
+                                    progressViewModel.Message = $"Checking {progressName}... ({i + 1}/{selectedReplacements.Count})";
                                     progressViewModel.Progress = (int)((double)(i + 1) / selectedReplacements.Count * 100);
                                 }
                             });
 
-                            // ... (rest of the API checking and queueing logic) ...
-                            var replacementInfo = selectedItem.ReplacementInfo;
                             if (replacementInfo == null || string.IsNullOrEmpty(replacementInfo.ReplacementSteamId))
                             {
                                 Debug.WriteLine($"[ExecuteCheckReplacements] Skipping selected item without valid ReplacementSteamId: {selectedItem.OriginalMod.Name} -> {replacementInfo?.ReplacementName}");
@@ -583,19 +587,22 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                                 continue;
                             }
 
-                            if (_downloadQueueService.IsInQueue(replacementInfo.ReplacementSteamId))
+                            string replacementSteamId = replacementInfo.ReplacementSteamId;
+
+                            if (_downloadQueueService.IsInQueue(replacementSteamId))
                             {
-                                Debug.WriteLine($"[ExecuteCheckReplacements] Replacement mod '{replacementInfo.ReplacementName}' ({replacementInfo.ReplacementSteamId}) is already in the download queue.");
+                                Debug.WriteLine($"[ExecuteCheckReplacements] Replacement mod '{replacementInfo.ReplacementName}' ({replacementSteamId}) is already in the download queue.");
                                 alreadyQueuedCount++;
                                 continue;
                             }
 
+                            // --- Steam API Check ---
                             try
                             {
-                                var apiResponse = await _steamApiClient.GetFileDetailsAsync(replacementInfo.ReplacementSteamId, combinedToken);
+                                var apiResponse = await _steamApiClient.GetFileDetailsAsync(replacementSteamId, combinedToken);
                                 if (apiResponse?.Response?.PublishedFileDetails == null || !apiResponse.Response.PublishedFileDetails.Any())
                                 {
-                                    Debug.WriteLine($"[ExecuteCheckReplacements] No details returned for replacement mod '{replacementInfo.ReplacementName}' ({replacementInfo.ReplacementSteamId})");
+                                    Debug.WriteLine($"[ExecuteCheckReplacements] No details returned from Steam API for replacement mod '{replacementInfo.ReplacementName}' ({replacementSteamId})");
                                     errorCount++;
                                     continue;
                                 }
@@ -603,19 +610,23 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                                 var details = apiResponse.Response.PublishedFileDetails.First();
                                 if (details.Result != 1)
                                 {
-                                    Debug.WriteLine($"[ExecuteCheckReplacements] API indicated failure retrieving details for replacement mod '{replacementInfo.ReplacementName}' ({replacementInfo.ReplacementSteamId}). Result Code: {details.Result}");
+                                    // --- UPDATED ---
+                                    string errorDescription = SteamApiResultHelper.GetDescription(details.Result);
+                                    Debug.WriteLine($"[ExecuteCheckReplacements] Steam API error for replacement mod '{replacementInfo.ReplacementName}' ({replacementSteamId}): {errorDescription} (Result Code: {details.Result})");
+                                    // --- END UPDATED ---
                                     errorCount++;
                                     continue;
                                 }
 
+                                // --- Add to Queue ---
                                 DateTimeOffset apiUpdateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(details.TimeUpdated);
                                 DateTime apiUpdateTimeUtc = apiUpdateTimeOffset.UtcDateTime;
 
                                 var modInfoDto = new ModInfoDto
                                 {
-                                    Name = details.Title ?? replacementInfo.ReplacementName,
-                                    SteamId = replacementInfo.ReplacementSteamId,
-                                    Url = $"https://steamcommunity.com/sharedfiles/filedetails/?id={replacementInfo.ReplacementSteamId}",
+                                    Name = details.Title ?? replacementInfo.ReplacementName, // Use API title if available
+                                    SteamId = replacementSteamId,
+                                    Url = $"https://steamcommunity.com/sharedfiles/filedetails/?id={replacementSteamId}",
                                     PublishDate = apiUpdateTimeOffset.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture),
                                     StandardDate = apiUpdateTimeUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
                                 };
@@ -635,9 +646,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                             catch (OperationCanceledException) { throw; }
                             catch (Exception apiEx)
                             {
-                                Debug.WriteLine($"[ExecuteCheckReplacements] Error checking Steam API for replacement mod '{replacementInfo.ReplacementName}' ({replacementInfo.ReplacementSteamId}): {apiEx.Message}");
+                                Debug.WriteLine($"[ExecuteCheckReplacements] Error checking Steam API for replacement mod '{replacementInfo.ReplacementName}' ({replacementSteamId}): {apiEx.Message}");
                                 errorCount++;
-                                continue;
+                                continue; // Continue with the next item
                             }
                         } // end for loop
 
@@ -653,7 +664,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                             if (addedCount > 0) sb.AppendLine($"{addedCount} replacement mod(s) added to the download queue.");
                             else sb.AppendLine("No new replacement mods were added to the download queue.");
                             if (alreadyQueuedCount > 0) sb.AppendLine($"{alreadyQueuedCount} selected replacement mod(s) were already in the queue.");
-                            if (errorCount > 0) sb.AppendLine($"{errorCount} selected replacement mod(s) could not be added due to errors or missing info.");
+                            if (errorCount > 0) sb.AppendLine($"{errorCount} selected replacement mod(s) could not be added due to errors or missing info (check debug logs for details)."); // Added hint
 
                             _dialogService.ShowInformation("Replacements Processed", sb.ToString().Trim());
                             if (addedCount > 0)
