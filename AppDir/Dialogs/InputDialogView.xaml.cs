@@ -1,44 +1,64 @@
 using RimSharp.Infrastructure.Dialog;
 using System;
 using System.Windows;
-using System.Diagnostics;
+using System.Diagnostics; // Keep for Debug messages
 
 namespace RimSharp.AppDir.Dialogs
 {
     public partial class InputDialogView : BaseDialog
     {
-        // No _viewModel field needed
-        // No _isClosing field needed
-
-        public InputDialogView() // Keep default constructor
+        public InputDialogView()
         {
             InitializeComponent();
-            Debug.WriteLine($"[InputDialogView] Default constructor finished.");
-            // Optional: Subscribe/unsubscribe DataContextChanged here if needed for *other* reasons
+            DataContextChanged += OnDataContextChanged;
         }
 
-        public InputDialogView(InputDialogViewModel viewModel) : this() // Chain default constructor
+        public InputDialogView(InputDialogViewModel viewModel) : this()
         {
-            DataContext = viewModel; // BaseDialog handles subscription
-            Debug.WriteLine($"[InputDialogView] Constructor with VM finished for {viewModel?.Title}. DataContext set.");
+            DataContext = viewModel;
         }
 
-        // Optional: Keep OnDataContextChanged ONLY if needed for other reasons
-        /*
         private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
-            Debug.WriteLine($"[InputDialogView] OnDataContextChanged. New VM: {e.NewValue?.GetType().Name}");
+            if (e.OldValue is DialogViewModelBase oldVm)
+            {
+                oldVm.RequestCloseDialog -= ViewModel_RequestCloseDialog;
+            }
+            if (e.NewValue is DialogViewModelBase newVm)
+            {
+                newVm.RequestCloseDialog += ViewModel_RequestCloseDialog;
+            }
         }
-        */
 
-        // No ViewModel_RequestCloseDialog handler needed
+        private void ViewModel_RequestCloseDialog(object sender, EventArgs e)
+        {
+            // Set DialogResult based on ViewModel before closing
+            if (DataContext is DialogViewModelBase<MessageDialogResult> vm)
+            {
+                this.DialogResult = vm.DialogResult switch
+                {
+                    MessageDialogResult.OK => true,
+                    MessageDialogResult.Cancel => false,
+                    _ => null
+                };
+                Debug.WriteLine($"[InputDialogView] Setting DialogResult to {this.DialogResult} based on VM result {vm.DialogResult}");
+            }
 
-        // No manual unsubscription needed in OnClosed
+            // Owner activation is now handled by BaseDialog.OnClosing
+
+            Debug.WriteLine($"[InputDialogView] Calling Close() for {this.Title}.");
+            this.Close(); // This will trigger BaseDialog.OnClosing
+        }
+
         protected override void OnClosed(EventArgs e)
         {
-            Debug.WriteLine($"[InputDialogView] OnClosed for {this.Title}.");
-            // Optional: Unsubscribe DataContextChanged if you kept it
-            base.OnClosed(e); // Call base for its cleanup
+            if (DataContext is DialogViewModelBase vm)
+            {
+                vm.RequestCloseDialog -= ViewModel_RequestCloseDialog;
+            }
+            DataContextChanged -= OnDataContextChanged;
+            base.OnClosed(e);
+            Debug.WriteLine($"[InputDialogView] Closed and cleaned up: {this.Title}");
         }
     }
 }
