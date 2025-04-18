@@ -5,6 +5,7 @@
                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                    xmlns:dialog="clr-namespace:RimSharp.Infrastructure.Dialog"
                    xmlns:local="clr-namespace:RimSharp.Features.ModManager.Dialogs.Filter"
+                   xmlns:converters="clr-namespace:RimSharp.Core.Converters.Text;assembly=RimSharp.Core"
                    mc:Ignorable="d"
                    d:DataContext="{d:DesignInstance Type=local:ModFilterDialogViewModel}"
                    Title="{Binding Title}"
@@ -14,6 +15,8 @@
                    Style="{StaticResource RimworldDialogStyle}">
 
     <dialog:BaseDialog.Resources>
+        <!-- Add Converter if not already present -->
+
         <!-- Style for ListBoxItems within the filter dialog -->
         <Style x:Key="FilterListBoxItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource RimworldListBoxItemStyleNoHover}">
             <Setter Property="Focusable" Value="False"/>
@@ -34,7 +37,7 @@
             <Setter Property="BorderBrush" Value="{StaticResource RimworldBrownBrush}"/>
         </Style>
 
-        
+
         <Style x:Key="FilterRadioButtonStyle" TargetType="RadioButton">
             <Setter Property="Margin" Value="0,0,10,0"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
@@ -147,8 +150,8 @@
                                 <ListBox ItemsSource="{Binding AvailableModTypes}" Style="{StaticResource FilterListBoxStyle}">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate DataType="{x:Type local:SelectableItemViewModel`1}">
-                                            <CheckBox Content="{Binding DisplayName}" 
-                                                      IsChecked="{Binding IsSelected}" 
+                                            <CheckBox Content="{Binding DisplayName}"
+                                                      IsChecked="{Binding IsSelected}"
                                                       Style="{StaticResource FilterCheckBoxStyle}"/>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
@@ -160,8 +163,8 @@
                                 <ListBox ItemsSource="{Binding AvailableVersions}" Style="{StaticResource FilterListBoxStyle}">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate DataType="{x:Type local:SelectableItemViewModel`1}">
-                                            <CheckBox Content="{Binding DisplayName}" 
-                                                      IsChecked="{Binding IsSelected}" 
+                                            <CheckBox Content="{Binding DisplayName}"
+                                                      IsChecked="{Binding IsSelected}"
                                                       Style="{StaticResource FilterCheckBoxStyle}"/>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
@@ -173,8 +176,8 @@
                                 <ListBox ItemsSource="{Binding AvailableTags}" Style="{StaticResource FilterListBoxStyle}">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate DataType="{x:Type local:SelectableItemViewModel`1}">
-                                            <CheckBox Content="{Binding DisplayName}" 
-                                                      IsChecked="{Binding IsSelected}" 
+                                            <CheckBox Content="{Binding DisplayName}"
+                                                      IsChecked="{Binding IsSelected}"
                                                       Style="{StaticResource FilterCheckBoxStyle}"/>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
@@ -190,8 +193,8 @@
                             <StackPanel Margin="0,5">
                                 <TextBlock Text="Has URL:" Style="{StaticResource FilterLabelStyle}"/>
                                 <StackPanel Orientation="Horizontal" Margin="5,0">
-                                    <RadioButton Content="Any" GroupName="HasUrl" IsChecked="{Binding HasUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Margin="0,0,10,0" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                    <RadioButton Content="Yes" GroupName="HasUrl" IsChecked="{Binding HasUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Margin="0,0,10,0" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="Any" GroupName="HasUrl" IsChecked="{Binding HasUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="Yes" GroupName="HasUrl" IsChecked="{Binding HasUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Style="{StaticResource FilterRadioButtonStyle}"/>
                                     <RadioButton Content="No" GroupName="HasUrl" IsChecked="{Binding HasUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
                                 </StackPanel>
                             </StackPanel>
@@ -200,8 +203,8 @@
                             <StackPanel Margin="0,5">
                                 <TextBlock Text="Has Steam URL:" Style="{StaticResource FilterLabelStyle}"/>
                                 <StackPanel Orientation="Horizontal" Margin="5,0">
-                                    <RadioButton Content="Any" GroupName="HasSteamUrl" IsChecked="{Binding HasSteamUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Margin="0,0,10,0" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                    <RadioButton Content="Yes" GroupName="HasSteamUrl" IsChecked="{Binding HasSteamUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Margin="0,0,10,0" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="Any" GroupName="HasSteamUrl" IsChecked="{Binding HasSteamUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="Yes" GroupName="HasSteamUrl" IsChecked="{Binding HasSteamUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Style="{StaticResource FilterRadioButtonStyle}"/>
                                     <RadioButton Content="No" GroupName="HasSteamUrl" IsChecked="{Binding HasSteamUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
                                 </StackPanel>
                             </StackPanel>
@@ -210,8 +213,8 @@
                             <StackPanel Margin="0,5">
                                 <TextBlock Text="Has External URL:" Style="{StaticResource FilterLabelStyle}"/>
                                 <StackPanel Orientation="Horizontal" Margin="5,0">
-                                    <RadioButton Content="Any" GroupName="HasExternalUrl" IsChecked="{Binding HasExternalUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Margin="0,0,10,0" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                    <RadioButton Content="Yes" GroupName="HasExternalUrl" IsChecked="{Binding HasExternalUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Margin="0,0,10,0" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="Any" GroupName="HasExternalUrl" IsChecked="{Binding HasExternalUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="Yes" GroupName="HasExternalUrl" IsChecked="{Binding HasExternalUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Style="{StaticResource FilterRadioButtonStyle}"/>
                                     <RadioButton Content="No" GroupName="HasExternalUrl" IsChecked="{Binding HasExternalUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
                                 </StackPanel>
                             </StackPanel>
@@ -220,14 +223,26 @@
                             <StackPanel Margin="0,5">
                                 <TextBlock Text="Is Outdated RW:" Style="{StaticResource FilterLabelStyle}"/>
                                 <StackPanel Orientation="Horizontal" Margin="5,0">
-                                    <RadioButton Content="Any" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Margin="0,0,10,0" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                    <RadioButton Content="Yes" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Margin="0,0,10,0" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="Any" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="Yes" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Style="{StaticResource FilterRadioButtonStyle}"/>
                                     <RadioButton Content="No" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
                                 </StackPanel>
                             </StackPanel>
+
+                            <!-- <<< START: NEW HAS ASSEMBLIES FILTER >>> -->
+                            <StackPanel Margin="0,5">
+                                <TextBlock Text="Has Assemblies:" Style="{StaticResource FilterLabelStyle}"/>
+                                <StackPanel Orientation="Horizontal" Margin="5,0">
+                                    <RadioButton Content="Any" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="Yes" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="No" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                </StackPanel>
+                            </StackPanel>
+                            <!-- <<< END: NEW HAS ASSEMBLIES FILTER >>> -->
+
                         </UniformGrid>
-                    </Expander>               
- </StackPanel>
+                    </Expander>
+                </StackPanel>
             </ScrollViewer>
         </Border>
     </dialog:BaseDialog.MainContent>

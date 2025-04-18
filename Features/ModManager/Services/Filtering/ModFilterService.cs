@@ -207,6 +207,11 @@ namespace RimSharp.Features.ModManager.Services.Filtering
             {
                 filtered = filtered.Where(m => m.IsOutdatedRW == criteria.IsOutdatedFilter.Value);
             }
+            // <<< APPLY NEW FILTER >>>
+            if (criteria.HasAssembliesFilter.HasValue)
+            {
+                filtered = filtered.Where(m => m.Assemblies == criteria.HasAssembliesFilter.Value);
+            }
 
             return filtered;
         }

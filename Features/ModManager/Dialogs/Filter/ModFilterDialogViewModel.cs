@@ -17,6 +17,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
         private bool? _hasSteamUrlFilter;
         private bool? _hasExternalUrlFilter;
         private bool? _isOutdatedFilter;
+        private bool? _hasAssembliesFilter; // <<< NEW FIELD >>>
 
         private readonly ModFilterCriteria _initialCriteria;
 
@@ -45,6 +46,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
         public bool? HasSteamUrlFilter { get => _hasSteamUrlFilter; set => SetProperty(ref _hasSteamUrlFilter, value); }
         public bool? HasExternalUrlFilter { get => _hasExternalUrlFilter; set => SetProperty(ref _hasExternalUrlFilter, value); }
         public bool? IsOutdatedFilter { get => _isOutdatedFilter; set => SetProperty(ref _isOutdatedFilter, value); }
+        public bool? HasAssembliesFilter { get => _hasAssembliesFilter; set => SetProperty(ref _hasAssembliesFilter, value); } // <<< NEW PROPERTY >>>
 
         // Commands
         public ICommand ApplyCommand { get; }
@@ -67,6 +69,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
             _hasSteamUrlFilter = _initialCriteria.HasSteamUrlFilter;
             _hasExternalUrlFilter = _initialCriteria.HasExternalUrlFilter;
             _isOutdatedFilter = _initialCriteria.IsOutdatedFilter;
+            _hasAssembliesFilter = _initialCriteria.HasAssembliesFilter; // <<< INITIALIZE NEW FILTER >>>
 
             // Populate Mod Types
             var modTypeConverter = new ModTypeToDescriptionConverter();
@@ -119,7 +122,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
                 HasUrlFilter = this.HasUrlFilter,
                 HasSteamUrlFilter = this.HasSteamUrlFilter,
                 HasExternalUrlFilter = this.HasExternalUrlFilter,
-                IsOutdatedFilter = this.IsOutdatedFilter
+                IsOutdatedFilter = this.IsOutdatedFilter,
+                HasAssembliesFilter = this.HasAssembliesFilter // <<< APPLY NEW FILTER >>>
             };
             CloseDialog(ModFilterDialogResult.Apply);
         }
@@ -135,6 +139,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
             HasSteamUrlFilter = null;
             HasExternalUrlFilter = null;
             IsOutdatedFilter = null;
+            HasAssembliesFilter = null; // <<< CLEAR NEW FILTER >>>
 
             CurrentCriteria = new ModFilterCriteria(); // Cleared criteria
             CloseDialog(ModFilterDialogResult.Clear);

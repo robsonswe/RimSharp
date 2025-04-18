@@ -23,6 +23,7 @@ namespace RimSharp.Shared.Models
         public bool? HasSteamUrlFilter { get; set; } = null;
         public bool? HasExternalUrlFilter { get; set; } = null;
         public bool? IsOutdatedFilter { get; set; } = null;
+        public bool? HasAssembliesFilter { get; set; } = null; // <<< NEW FILTER PROPERTY >>>
         // Add other filters here if needed
 
         public bool IsActive()
@@ -35,7 +36,8 @@ namespace RimSharp.Shared.Models
                 || HasUrlFilter.HasValue
                 || HasSteamUrlFilter.HasValue
                 || HasExternalUrlFilter.HasValue
-                || IsOutdatedFilter.HasValue;
+                || IsOutdatedFilter.HasValue
+                || HasAssembliesFilter.HasValue; // <<< ADDED CHECK >>>
         }
 
         public void Clear()
@@ -49,6 +51,7 @@ namespace RimSharp.Shared.Models
             HasSteamUrlFilter = null;
             HasExternalUrlFilter = null;
             IsOutdatedFilter = null;
+            HasAssembliesFilter = null; // <<< CLEAR NEW FILTER >>>
         }
 
         // Optional: Clone method for passing state without modifying original
@@ -64,7 +67,8 @@ namespace RimSharp.Shared.Models
                 HasUrlFilter = this.HasUrlFilter,
                 HasSteamUrlFilter = this.HasSteamUrlFilter,
                 HasExternalUrlFilter = this.HasExternalUrlFilter,
-                IsOutdatedFilter = this.IsOutdatedFilter
+                IsOutdatedFilter = this.IsOutdatedFilter,
+                HasAssembliesFilter = this.HasAssembliesFilter // <<< CLONE NEW FILTER >>>
             };
         }
     }

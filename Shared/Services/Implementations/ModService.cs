@@ -88,7 +88,7 @@ namespace RimSharp.Shared.Services.Implementations
             // 7. Set Active Status
             _logger.LogDebug("Setting active mod status from ModsConfig.xml...", nameof(ModService));
             SetActiveMods(configPath);
-             _logger.LogInfo($"Synchronous mod loading complete. Loaded {_allMods.Count} mods.", nameof(ModService));
+            _logger.LogInfo($"Synchronous mod loading complete. Loaded {_allMods.Count} mods.", nameof(ModService));
         }
 
         /// <summary>
@@ -131,7 +131,7 @@ namespace RimSharp.Shared.Services.Implementations
                     }
                 }
             }
-             _logger.LogDebug($"Applied Mlie versions. Added {versionsAdded} new version entries.", nameof(ModService));
+            _logger.LogDebug($"Applied Mlie versions. Added {versionsAdded} new version entries.", nameof(ModService));
         }
 
 
@@ -342,6 +342,7 @@ namespace RimSharp.Shared.Services.Implementations
                 if (mod == null) continue;
 
                 mod.Path = dir;
+                mod.Assemblies = CheckForAssemblies(mod.Path);
 
                 if (long.TryParse(folderName, out _))
                 {
@@ -429,6 +430,7 @@ namespace RimSharp.Shared.Services.Implementations
                 if (mod == null) return;
 
                 mod.Path = dir;
+                mod.Assemblies = CheckForAssemblies(mod.Path); // <<< ADDED ASSEMBLY CHECK
 
                 if (long.TryParse(folderName, out _))
                 {
@@ -496,6 +498,60 @@ namespace RimSharp.Shared.Services.Implementations
 
                 mods.Add(mod);
             }));
+        }
+
+        /// <summary>
+        /// Checks if a mod directory contains C# assemblies (.dll files)
+        /// either directly in an /Assemblies folder or within versioned subfolders like /1.4/Assemblies.
+        /// </summary>
+        /// <param name="modDirectoryPath">The root path of the mod directory.</param>
+        /// <returns>True if .dll files are found in expected locations, false otherwise.</returns>
+        private bool CheckForAssemblies(string modDirectoryPath)
+        {
+            if (string.IsNullOrEmpty(modDirectoryPath) || !Directory.Exists(modDirectoryPath))
+            {
+                return false;
+            }
+
+            try
+            {
+                // 1. Check direct <modDir>/Assemblies folder
+                string directAssembliesPath = Path.Combine(modDirectoryPath, "Assemblies");
+                if (Directory.Exists(directAssembliesPath))
+                {
+                    // Using EnumerateFiles and Any() is efficient as it stops on the first match
+                    if (Directory.EnumerateFiles(directAssembliesPath, "*.dll", SearchOption.TopDirectoryOnly).Any())
+                    {
+                        return true;
+                    }
+                }
+
+                // 2. Check for versioned subfolders (e.g., <modDir>/1.4/Assemblies, <modDir>/1.5/Assemblies)
+                //    Iterate through immediate subdirectories of the mod path.
+                foreach (var subDir in Directory.EnumerateDirectories(modDirectoryPath, "*", SearchOption.TopDirectoryOnly))
+                {
+                    // We don't strictly need to check if the subDir name is a version (like "1.4")
+                    // as mods sometimes use other folder names. Just check for an Assemblies folder inside.
+                    string subAssembliesPath = Path.Combine(subDir, "Assemblies");
+                    if (Directory.Exists(subAssembliesPath))
+                    {
+                        if (Directory.EnumerateFiles(subAssembliesPath, "*.dll", SearchOption.TopDirectoryOnly).Any())
+                        {
+                            return true; // Found DLLs in a subfolder/Assemblies
+                        }
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is System.Security.SecurityException)
+            {
+                // Log the error but don't crash the loading process. Assume no assemblies if we can't check.
+                _logger.LogWarning($"Could not check for assemblies in '{modDirectoryPath}' due to an error: {ex.Message}", nameof(ModService));
+                Debug.WriteLine($"Could not check for assemblies in '{modDirectoryPath}' due to an error: {ex.Message}");
+                return false;
+            }
+
+            // No DLLs found in expected locations
+            return false;
         }
 
         private ModItem ParseAboutXml(string aboutPath, string folderName = null)
