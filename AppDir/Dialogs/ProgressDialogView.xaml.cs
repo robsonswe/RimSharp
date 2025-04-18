@@ -1,46 +1,55 @@
 using RimSharp.Infrastructure.Dialog;
 using System;
 using System.Windows;
-using System.Diagnostics;
+using System.Diagnostics; // Keep for Debug messages
 
 namespace RimSharp.AppDir.Dialogs
 {
     public partial class ProgressDialogView : BaseDialog
     {
-        // No _viewModel field needed
-        // No _isClosing field needed
-
-        public ProgressDialogView() // Keep default constructor
+        public ProgressDialogView()
         {
             InitializeComponent();
-            Debug.WriteLine($"[ProgressDialogView] Default constructor finished.");
-            // Optional: Subscribe/unsubscribe DataContextChanged here if needed for *other* reasons
+            DataContextChanged += OnDataContextChanged;
         }
 
-        public ProgressDialogView(ProgressDialogViewModel viewModel) : this() // Chain default constructor
+        public ProgressDialogView(ProgressDialogViewModel viewModel) : this()
         {
-            DataContext = viewModel; // BaseDialog handles subscription
-            Debug.WriteLine($"[ProgressDialogView] Constructor with VM finished for {viewModel?.Title}. DataContext set.");
+            DataContext = viewModel;
         }
 
-        // Optional: Keep OnDataContextChanged ONLY if needed for other reasons
-        /*
         private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
-            Debug.WriteLine($"[ProgressDialogView] OnDataContextChanged. New VM: {e.NewValue?.GetType().Name}");
+            if (e.OldValue is DialogViewModelBase oldVm)
+            {
+                oldVm.RequestCloseDialog -= ViewModel_RequestCloseDialog;
+            }
+            if (e.NewValue is DialogViewModelBase newVm)
+            {
+                newVm.RequestCloseDialog += ViewModel_RequestCloseDialog;
+            }
         }
-        */
 
-        // No ViewModel_RequestCloseDialog handler needed
+        private void ViewModel_RequestCloseDialog(object sender, EventArgs e)
+        {
+             // Progress dialog might not set DialogResult in the same way,
+             // but owner activation is handled by BaseDialog.OnClosing anyway.
 
-        // No manual unsubscription needed in OnClosed
+            Debug.WriteLine($"[ProgressDialogView] Calling Close() for {this.Title}.");
+            this.Close(); // This will trigger BaseDialog.OnClosing
+        }
+
         protected override void OnClosed(EventArgs e)
         {
-            Debug.WriteLine($"[ProgressDialogView] OnClosed for {this.Title}.");
-            // Optional: Unsubscribe DataContextChanged if you kept it
-            // Optional: Consider if VM disposal needs explicit handling here or rely on creator/DI scope.
-            // (DataContext as IDisposable)?.Dispose(); // Generally avoid unless View exclusively owns VM
-            base.OnClosed(e); // Call base for its cleanup
+            if (DataContext is DialogViewModelBase vm)
+            {
+                vm.RequestCloseDialog -= ViewModel_RequestCloseDialog;
+            }
+            DataContextChanged -= OnDataContextChanged;
+            // Reminder: ViewModel disposal should be managed by its creator (likely DialogService or caller)
+            // or via DI container scope management. Avoid disposing VM here unless the View truly owns it.
+            base.OnClosed(e);
+            Debug.WriteLine($"[ProgressDialogView] Closed and cleaned up: {this.Title}");
         }
     }
 }

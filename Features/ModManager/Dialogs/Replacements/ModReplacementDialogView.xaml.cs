@@ -12,25 +12,57 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
     /// </summary>
     public partial class ModReplacementDialogView : BaseDialog
     {
-        // No _viewModel field needed
-        // No _isClosing field needed
+        private readonly ModReplacementDialogViewModel _viewModel;
 
-        public ModReplacementDialogView() // Keep default constructor
+        public ModReplacementDialogView()
         {
             InitializeComponent();
         }
 
         public ModReplacementDialogView(ModReplacementDialogViewModel viewModel) : this()
         {
-            // The BaseDialog constructor handles DataContextChanged event subscription
-            DataContext = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
-            Debug.WriteLine($"[ModReplacementDialogView] Constructor with VM finished for {viewModel?.Title}. DataContext set.");
+            _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+            DataContext = _viewModel;
+            
+            // Subscribe to the close event
+            _viewModel.RequestCloseDialog += ViewModel_RequestCloseDialog;
+            
+            // Make sure to unsubscribe when the dialog is closed
+            Closed += (s, e) => 
+            {
+                _viewModel.RequestCloseDialog -= ViewModel_RequestCloseDialog;
+            };
         }
 
-        // No ViewModel_RequestCloseDialog handler needed
-        // No CloseDialog method needed
+        private void ViewModel_RequestCloseDialog(object sender, EventArgs e)
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.Invoke(() => CloseDialog());
+            }
+            else
+            {
+                CloseDialog();
+            }
+        }
 
-        // Keep Hyperlink navigation if needed by your XAML
+        private void CloseDialog()
+        {
+            try
+            {
+                // Set DialogResult to true if the result is not Cancel
+                // This fixes the type mismatch
+                DialogResult = _viewModel.DialogResult != ModReplacementDialogResult.Cancel;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error closing dialog: {ex}");
+                // Attempt to close anyway if there was an error setting the dialog result
+                Close();
+            }
+        }
+
         private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e)
         {
             try
@@ -49,13 +81,6 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
                 MessageBox.Show($"Failed to open URL: {ex.Message}", "Navigation Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
-        }
-
-        // BaseDialog handles cleanup in its OnClosed override
-        protected override void OnClosed(EventArgs e)
-        {
-            Debug.WriteLine($"[ModReplacementDialogView] OnClosed for {this.Title}.");
-            base.OnClosed(e);
         }
     }
 }
