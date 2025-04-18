@@ -21,6 +21,7 @@
     <convViewVisibility:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
     <convViewVisibility:TabVisibilityConverter x:Key="TabVisibilityConverter"/>
     <convViewVisibility:IsNotNullOrEmptyToVisibilityConverter x:Key="IsNotNullOrEmptyToVisibilityConverter"/>
+    <convViewVisibility:IsActiveAndHasIssuesToVisibilityConverter x:Key="IsActiveAndHasIssuesToVisibilityConverter"/>
 
     <!-- Logic Converters -->
     <convLogic:CountToBooleanConverter x:Key="CountToBooleanConverter"/>
@@ -44,8 +45,7 @@
 
     <!-- Utility Converters -->
     <convUtility:PathToExplorerFormatConverter x:Key="PathToExplorerFormatConverter"/>
-
-        <convUtility:FilterButtonTagConverter x:Key="FilterButtonTagConverter"/>
+    <convUtility:FilterButtonTagConverter x:Key="FilterButtonTagConverter"/>
 
 
 

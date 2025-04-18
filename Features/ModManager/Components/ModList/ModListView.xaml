@@ -330,17 +330,24 @@
                                                        ConverterParameter=RimworldErrorRed|RimworldBrown}"/>
 
                                 <!-- Issue Indicator -->
-                                <TextBlock Grid.Column="3" Text="⚠️"
-                                           Foreground="{StaticResource RimworldErrorRedBrush}"
-                                           FontWeight="Bold"
-                                           FontSize="14"
-                                           VerticalAlignment="Center"
-                                           HorizontalAlignment="Right"
-                                           Margin="5,0,2,0"
-                                           ToolTipService.InitialShowDelay="300"
-                                           ToolTipService.ShowDuration="10000"
-                                           ToolTip="{Binding IssueTooltipText}"
-                                           Visibility="{Binding HasIssues, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                            <TextBlock Grid.Column="3" Text="⚠️"
+                                       Foreground="{StaticResource RimworldErrorRedBrush}"
+                                       FontWeight="Bold"
+                                       FontSize="14"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Right"
+                                       Margin="5,0,2,0"
+                                       ToolTipService.InitialShowDelay="300"
+                                       ToolTipService.ShowDuration="10000"
+                                       ToolTip="{Binding IssueTooltipText}">
+                                <TextBlock.Visibility>
+                                    <MultiBinding Converter="{StaticResource IsActiveAndHasIssuesToVisibilityConverter}">
+                                        <Binding Path="HasIssues"/>
+                                        <Binding Path="IsActive"/>
+                                    </MultiBinding>
+                                </TextBlock.Visibility>
+                            </TextBlock>
+
 
                             </Grid>
                         </Border>
