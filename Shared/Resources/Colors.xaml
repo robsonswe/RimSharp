@@ -23,5 +23,7 @@
     <Color x:Key="RimworldRedBorder">#7A1F1F</Color>
     <Color x:Key="RimworldTextBoxShadow">#33000000</Color>
     <Color x:Key="RimworldBlack">#FF000000</Color>
+    <Color x:Key="RimworldCodeBlue">#406090</Color>    <!-- For C# / Assemblies -->
+    <Color x:Key="RimworldConfigOrange">#D09040</Color> <!-- For XML / Config only -->
 
 </ResourceDictionary>

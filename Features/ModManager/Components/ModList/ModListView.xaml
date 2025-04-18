@@ -33,6 +33,14 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="BadgeTextStyle" TargetType="TextBlock">
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{StaticResource RimworldWhiteBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+        </Style>
 
         <Style x:Key="ModTypeBadgeTextStyle" TargetType="TextBlock">
             <Setter Property="HorizontalAlignment" Value="Center"/>
@@ -213,7 +221,8 @@
                             <!-- Item Content - Changed StackPanel to Grid -->
                             <Grid Margin="2,1">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/> <!-- Badge -->
+                                    <ColumnDefinition Width="Auto"/> <!-- ModType Badge -->
+                                    <ColumnDefinition Width="Auto"/> <!-- NEW: Assembly/XML Badge -->
                                     <ColumnDefinition Width="*"/>    <!-- Name -->
                                     <ColumnDefinition Width="Auto"/> <!-- Issue Indicator -->
                                 </Grid.ColumnDefinitions>
@@ -233,9 +242,12 @@
                                             </Style.Triggers>
                                         </Style>
                                     </Border.Style>
-                                    <TextBlock Text="{Binding ModType, Converter={StaticResource ModTypeToInitialConverter}}">
+                                    <TextBlock>
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock" BasedOn="{StaticResource ModTypeBadgeTextStyle}">
+                                                <!-- Set base text from converter -->
+                                                <Setter Property="Text" Value="{Binding ModType, Converter={StaticResource ModTypeToInitialConverter}}"/>
+                                                <!-- Override foreground for specific types -->
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding ModType}" Value="WorkshopL"><Setter Property="Foreground" Value="{StaticResource RimworldBlackBrush}"/></DataTrigger>
                                                 </Style.Triggers>
@@ -244,15 +256,81 @@
                                     </TextBlock>
                                 </Border>
 
+                                <!-- Assembly/XML Badge (MODIFIED) -->
+                                <Border Grid.Column="1"
+                                        Margin="2,0,0,0">
+                                    <Border.Style>
+                                        <Style TargetType="Border" BasedOn="{StaticResource ModTypeBadgeStyle}">
+                                            <!-- No default background here, rely on triggers below -->
+                                            <!-- Default Visibility is Visible -->
+                                            <Style.Triggers>
+                                                <!-- Color based on Assemblies -->
+                                                <DataTrigger Binding="{Binding Assemblies}" Value="True">
+                                                    <Setter Property="ToolTip" Value="Contains custom code (Assemblies / .dll)"/>
+                                                    <!-- Use NEW Blue Brush -->
+                                                    <Setter Property="Background" Value="{StaticResource RimworldCodeBlueBrush}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Assemblies}" Value="False">
+                                                    <Setter Property="ToolTip" Value="Contains custom content (XML / Textures)"/>
+                                                     <!-- Use NEW Orange Brush -->
+                                                    <Setter Property="Background" Value="{StaticResource RimworldConfigOrangeBrush}"/>
+                                                </DataTrigger>
+
+                                                <!-- Tooltip override for Core/Expansion when Assemblies=False -->
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding Assemblies}" Value="False"/>
+                                                        <Condition Binding="{Binding ModType}" Value="Core"/>
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="ToolTip" Value="{Binding ModType, Converter={StaticResource ModTypeToDescriptionConverter}}"/>
+                                                    <!-- NO Background setter here anymore -->
+                                                </MultiDataTrigger>
+                                                 <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding Assemblies}" Value="False"/>
+                                                        <Condition Binding="{Binding ModType}" Value="Expansion"/>
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="ToolTip" Value="{Binding ModType, Converter={StaticResource ModTypeToDescriptionConverter}}"/>
+                                                     <!-- NO Background setter here anymore -->
+                                                </MultiDataTrigger>
+
+                                                <!-- Visibility Control: Hide for Core and Expansion -->
+                                                <DataTrigger Binding="{Binding ModType}" Value="Core">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding ModType}" Value="Expansion">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock>
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource BadgeTextStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Assemblies}" Value="True">
+                                                        <Setter Property="Text" Value="C#"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Assemblies}" Value="False">
+                                                        <Setter Property="Text" Value="&lt;/&gt;"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Border>
+
                                 <!-- Mod Name -->
-                                <TextBlock Grid.Column="1" Text="{Binding Name}"
+                                <TextBlock Grid.Column="2" Text="{Binding Name}"
                                            VerticalAlignment="Center"
                                            Margin="5,0,0,0"
                                            Foreground="{Binding IsOutdatedRW,
                                                        Converter={StaticResource BooleanToColorConverter},
                                                        ConverterParameter=RimworldErrorRed|RimworldBrown}"/>
 
-                                <TextBlock Grid.Column="2" Text="⚠️"
+                                <!-- Issue Indicator -->
+                                <TextBlock Grid.Column="3" Text="⚠️"
                                            Foreground="{StaticResource RimworldErrorRedBrush}"
                                            FontWeight="Bold"
                                            FontSize="14"

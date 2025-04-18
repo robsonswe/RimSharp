@@ -34,5 +34,7 @@
 <SolidColorBrush x:Key="RimworldBlackBrush" Color="{StaticResource RimworldBlack}"/>
 <SolidColorBrush x:Key="RimworldErrorRedBrush" Color="#FFB52828"/>
 <SolidColorBrush x:Key="RimworldOrangeBrush" Color="{StaticResource RimworldOrange}"/>
+    <SolidColorBrush x:Key="RimworldCodeBlueBrush" Color="{StaticResource RimworldCodeBlue}"/>
+    <SolidColorBrush x:Key="RimworldConfigOrangeBrush" Color="{StaticResource RimworldConfigOrange}"/>
 
 </ResourceDictionary>
