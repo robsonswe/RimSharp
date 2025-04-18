@@ -11,67 +11,26 @@ namespace RimSharp.Features.ModManager.Dialogs.Dependencies
     /// </summary>
     public partial class DependencyResolutionDialogView : BaseDialog
     {
-        private readonly DependencyResolutionDialogViewModel _viewModel;
+        // No _viewModel field needed
+        // No _isClosing field needed
 
-        public DependencyResolutionDialogView()
+        public DependencyResolutionDialogView() // Keep default constructor
         {
             InitializeComponent();
+            // Optional: Add specific initialization for this view if needed
         }
 
         public DependencyResolutionDialogView(DependencyResolutionDialogViewModel viewModel) : this()
         {
-            _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
-            DataContext = _viewModel;
-
-            // Subscribe to the close request event from the ViewModel
-            _viewModel.RequestCloseDialog += ViewModel_RequestCloseDialog;
-
-            // Unsubscribe when the dialog is closed to prevent memory leaks
-            Closed += (s, e) =>
-            {
-                if (_viewModel != null)
-                {
-                    _viewModel.RequestCloseDialog -= ViewModel_RequestCloseDialog;
-                }
-            };
+            // The BaseDialog constructor handles DataContextChanged event subscription
+            DataContext = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+            Debug.WriteLine($"[DependencyResolutionDialogView] Constructor with VM finished for {viewModel?.Title}. DataContext set.");
         }
 
-        // Handles the close request from the ViewModel
-        private void ViewModel_RequestCloseDialog(object sender, EventArgs e)
-        {
-            // Ensure we're on the UI thread before closing
-            if (!Dispatcher.CheckAccess())
-            {
-                Dispatcher.Invoke(() => CloseDialogInternal());
-            }
-            else
-            {
-                CloseDialogInternal();
-            }
-        }
+        // No ViewModel_RequestCloseDialog handler needed
+        // No CloseDialogInternal method needed
 
-        // Performs the actual closing logic
-        private void CloseDialogInternal()
-        {
-            try
-            {
-                // Set DialogResult based on the ViewModel's result (true if not Cancel)
-                // This tells the ShowDialog() caller whether the action was confirmed.
-                DialogResult = _viewModel.DialogResult != DependencyResolutionDialogResult.Cancel;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error setting DialogResult: {ex}");
-                // Optionally log this error
-            }
-            finally
-            {
-                // Ensure the window closes even if setting DialogResult fails
-                Close();
-            }
-        }
-
-        // Handles hyperlink navigation (copied from other dialogs)
+        // Keep Hyperlink navigation if needed by your XAML
         private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e)
         {
             try
@@ -81,19 +40,25 @@ namespace RimSharp.Features.ModManager.Dialogs.Dependencies
                     ProcessStartInfo psi = new ProcessStartInfo
                     {
                         FileName = e.Uri.AbsoluteUri,
-                        UseShellExecute = true // Use the default browser
+                        UseShellExecute = true
                     };
                     Process.Start(psi);
-                    e.Handled = true; // Mark the event as handled
+                    e.Handled = true;
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error opening URL '{e.Uri?.AbsoluteUri}': {ex}");
-                // Optionally show an error message to the user
                 MessageBox.Show($"Failed to open the link: {ex.Message}", "Navigation Error",
                                 MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        // BaseDialog handles cleanup in its OnClosed override
+        protected override void OnClosed(EventArgs e)
+        {
+            Debug.WriteLine($"[DependencyResolutionDialogView] OnClosed for {this.Title}.");
+            base.OnClosed(e);
         }
     }
 }

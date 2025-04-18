@@ -15,7 +15,6 @@ namespace RimSharp.AppDir.Dialogs
         private int _progress;
         private bool _isIndeterminate;
         private bool _canCancel;
-        private bool _isDisposed = false; // Track disposal
 
         // Keep the CancellationTokenSource internal
         private readonly CancellationTokenSource _cts;
@@ -56,13 +55,14 @@ namespace RimSharp.AppDir.Dialogs
             : base(title)
         {
             Message = message;
-            // CanCancel = canCancel; // Initial value set via property
             IsIndeterminate = isIndeterminate;
             Progress = 0;
 
             _cts = externalCts ?? new CancellationTokenSource();
 
             // Use standard DelegateCommand and observe CanCancel property
+            // Ensure command creation uses ViewModelBase helpers if possible for consistency,
+            // but the explicit DelegateCommand here is also fine.
             CancelCommand = new DelegateCommand(
                 () => OnCancel(), // Execute lambda
                 () => CanCancel && !_cts.IsCancellationRequested // CanExecute lambda
@@ -70,46 +70,56 @@ namespace RimSharp.AppDir.Dialogs
 
             // Set initial state AFTER command is created
              CanCancel = canCancel && !_cts.IsCancellationRequested;
-             Closeable = closeable;
+             Closeable = closeable; // Set property inherited from DialogViewModelBase
         }
 
         public void UpdateProgress(int value, string message = null)
         {
-             if (_isDisposed || _cts.IsCancellationRequested) return;
+             // Use base class disposed flag
+             if (_disposed || _cts.IsCancellationRequested) return;
 
-             RunOnUIThread(() => // Ensure UI thread for updates
+             RunOnUIThread(() =>
              {
-                Progress = value;
-                if (message != null) Message = message;
-                IsIndeterminate = false;
+                 // Double check after marshalling
+                 if (_disposed || _cts.IsCancellationRequested) return;
+                 Progress = value;
+                 if (message != null) Message = message;
+                 IsIndeterminate = false;
              });
         }
 
         public void CompleteOperation(string message = null)
         {
-             if (_isDisposed || _cts.IsCancellationRequested) return;
+             // Use base class disposed flag
+             if (_disposed || _cts.IsCancellationRequested) return;
 
-             RunOnUIThread(() => // Ensure UI thread for updates
+             RunOnUIThread(() =>
              {
-                if (!string.IsNullOrEmpty(message)) Message = message;
-                CanCancel = false; // Disable cancel on completion
-                CloseDialog(true); // Indicate success
+                 // Double check after marshalling
+                 if (_disposed || _cts.IsCancellationRequested) return;
+                 if (!string.IsNullOrEmpty(message)) Message = message;
+                 CanCancel = false; // Disable cancel on completion
+                 CloseDialog(true); // Indicate success
              });
         }
 
         private void OnCancel(string message = null)
         {
-             if (_isDisposed || !CanCancel || _cts.IsCancellationRequested) return;
+             // Use base class disposed flag
+             if (_disposed || !CanCancel || _cts.IsCancellationRequested) return;
 
-             RunOnUIThread(() => // Ensure UI thread for updates
+             RunOnUIThread(() =>
              {
+                 // Double check after marshalling
+                 if (_disposed || !CanCancel || _cts.IsCancellationRequested) return;
                  if (!string.IsNullOrEmpty(message)) Message = message;
                  IsIndeterminate = true;
                  CanCancel = false; // Disable further cancellation attempts (setter updates command)
 
                  try
                  {
-                     _cts.Cancel(); // Signal cancellation
+                     // Check again before cancelling CTS
+                     if(!_cts.IsCancellationRequested) _cts.Cancel();
                  }
                  catch (ObjectDisposedException) { /* Ignore */ }
 
@@ -120,13 +130,13 @@ namespace RimSharp.AppDir.Dialogs
 
         public void ForceClose()
         {
-             // Ensure called on UI thread if manipulating UI state directly
              RunOnUIThread(() =>
              {
-                 if (!_isDisposed)
+                 // Use base class disposed flag
+                 if (!_disposed)
                  {
-                    // Optionally cancel CTS if forcing closed implies cancellation
-                     // try { if (!_cts.IsCancellationRequested) _cts.Cancel(); } catch { /* ignore */ }
+                     // Optionally cancel CTS if forcing closed implies cancellation
+                     // try { if (!_cts.IsCancellationRequested) _cts.Cancel(); } catch (ObjectDisposedException) { /* ignore */ } catch (Exception ex) { Debug.WriteLine($"Error cancelling CTS on force close: {ex}");}
                      CloseDialog(false); // Indicate failure/external closure
                  }
              });
@@ -136,47 +146,53 @@ namespace RimSharp.AppDir.Dialogs
 
         protected override void Dispose(bool disposing)
         {
-            // Check the base class flag BEFORE doing anything
-            // Assuming DialogViewModelBase provides _disposed or inherits it from ViewModelBase
-            if (_disposed)
+            // Check the base class flag FIRST
+            if (_disposed) // Use the flag from ViewModelBase
             {
+                Debug.WriteLine($"[ProgressDialogViewModel] Already disposed or disposing.");
                 return;
             }
+            Debug.WriteLine($"[ProgressDialogViewModel] Dispose({disposing}) called.");
 
             if (disposing)
             {
-                // --- Derived Class Specific Cleanup ---
-                Debug.WriteLine("[ProgressDialogViewModel] Disposing derived resources (CTS)...");
-                // Dispose managed resources specific to ProgressDialogViewModel
+                // --- Derived Class Specific Managed Cleanup ---
+                Debug.WriteLine("[ProgressDialogViewModel] Disposing derived managed resources (CTS)...");
+                Cancelled = null; // Remove event handlers
+
                 try
                 {
-                    // Cancel first to potentially unblock threads waiting on the token
                     if (!_cts.IsCancellationRequested)
                     {
                          _cts.Cancel();
+                         Debug.WriteLine("[ProgressDialogViewModel] CTS Cancelled.");
                     }
                 }
-                catch (ObjectDisposedException) { /* Ignore */ }
+                catch (ObjectDisposedException) { Debug.WriteLine("[ProgressDialogViewModel] CTS already disposed on Cancel attempt."); }
+                catch (Exception ex) { Debug.WriteLine($"[ProgressDialogViewModel] Error cancelling CTS during dispose: {ex.Message}"); }
                 finally
                 {
-                    // Ensure CTS is disposed even if Cancel throws (though unlikely for ODE)
                     _cts?.Dispose();
+                    Debug.WriteLine("[ProgressDialogViewModel] CTS Disposed.");
                 }
-                 Debug.WriteLine("[ProgressDialogViewModel] Disposed CTS.");
                  // --- End Derived Class Specific Cleanup ---
             }
-            // Dispose unmanaged resources here if any (specific to ProgressDialogViewModel)
+
+            // Clean up unmanaged resources owned *specifically* by ProgressDialogViewModel here (if any)
 
             // IMPORTANT: Call the base class implementation LAST
-            // This calls DialogViewModelBase.Dispose(bool), which should in turn call
-            // ViewModelBase.Dispose(bool) if it inherits correctly.
-             Debug.WriteLine($"[ProgressDialogViewModel] Calling base.Dispose({disposing}).");
-            base.Dispose(disposing);
-            Debug.WriteLine($"[ProgressDialogViewModel] Finished Dispose({disposing}). _disposed = {_disposed}");
+            Debug.WriteLine($"[ProgressDialogViewModel] Calling base.Dispose({disposing}). Current base._disposed = {_disposed}");
+            base.Dispose(disposing); // This sets the base._disposed flag
+            // NOTE: base.Dispose will handle clearing _ownedCommands from ViewModelBase
+            Debug.WriteLine($"[ProgressDialogViewModel] Finished Dispose({disposing}). Final base._disposed = {_disposed}");
         }
 
+         // Optional Finalizer: Only keep if ProgressDialogViewModel DIRECTLY owns UNMANAGED resources.
+         // If CTS is the only "complex" resource, the Dispose(true) path handles it.
+         // Keep it for now as good practice, though CTS is managed.
          ~ProgressDialogViewModel()
          {
+             Debug.WriteLine($"[ProgressDialogViewModel] Finalizer called.");
              Dispose(false);
          }
     }

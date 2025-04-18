@@ -1,63 +1,52 @@
 using RimSharp.Infrastructure.Dialog;
 using System;
 using System.Windows;
+using System.Diagnostics;
 
 namespace RimSharp.AppDir.Dialogs
 {
-    public partial class MessageDialogView : BaseDialog 
+    public partial class MessageDialogView : BaseDialog
     {
-        public MessageDialogView()
+        // No _viewModel field needed
+        // No _isClosing field needed
+
+        public MessageDialogView() // Keep default constructor if used by XAML previewer or DI without VM
         {
             InitializeComponent();
-            DataContextChanged += OnDataContextChanged;
+            // DataContext will be set later or by derived constructor/DI
+            Debug.WriteLine($"[MessageDialogView] Default constructor finished.");
+            // Optional: Subscribe/unsubscribe DataContextChanged here if needed for *other* reasons
+            // DataContextChanged += OnDataContextChanged; // Only if needed
         }
 
-        // Optional: Constructor accepting ViewModel
-        public MessageDialogView(MessageDialogViewModel viewModel) : this()
+        public MessageDialogView(MessageDialogViewModel viewModel) : this() // Chain default constructor
         {
-            DataContext = viewModel;
+            DataContext = viewModel; // BaseDialog handles subscription
+            Debug.WriteLine($"[MessageDialogView] Constructor with VM finished for {viewModel?.Title}. DataContext set.");
         }
 
+        // Optional: If you need OnDataContextChanged for reasons *other* than
+        // subscribing/unsubscribing RequestCloseDialog, keep it. Otherwise, remove it.
+        // BaseDialog now handles the necessary subscription.
+        /*
         private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
-            if (e.OldValue is DialogViewModelBase oldVm)
-            {
-                oldVm.RequestCloseDialog -= ViewModel_RequestCloseDialog;
-            }
-            if (e.NewValue is DialogViewModelBase newVm)
-            {
-                newVm.RequestCloseDialog += ViewModel_RequestCloseDialog;
-            }
+            // Keep this method ONLY if you need to react to DataContext changes
+            // for reasons OTHER than subscribing/unsubscribing RequestCloseDialog.
+            // Example: if view needs to do something specific when VM changes type.
+            Debug.WriteLine($"[MessageDialogView] OnDataContextChanged. New VM: {e.NewValue?.GetType().Name}");
         }
+        */
 
-        private void ViewModel_RequestCloseDialog(object sender, EventArgs e)
-        {
-            // Set DialogResult based on ViewModel before closing if needed for complex scenarios
-             if (DataContext is DialogViewModelBase<MessageDialogResult> vm)
-             {
-                 // Standard WPF DialogResult mechanism (optional but good practice)
-                 this.DialogResult = vm.DialogResult switch
-                 {
-                     MessageDialogResult.OK => true, // Or map appropriately
-                     MessageDialogResult.Yes => true,
-                     MessageDialogResult.Cancel => false,
-                     MessageDialogResult.No => false,
-                     _ => null // Undefined/closed via 'X'
-                 };
-             }
+        // No ViewModel_RequestCloseDialog handler needed
 
-            this.Close();
-        }
-
-        // Ensure cleanup on close
+        // No manual unsubscription needed in OnClosed
         protected override void OnClosed(EventArgs e)
         {
-            if (DataContext is DialogViewModelBase vm)
-            {
-                vm.RequestCloseDialog -= ViewModel_RequestCloseDialog;
-            }
-            DataContextChanged -= OnDataContextChanged; // Unsubscribe DataContext listener too
-            base.OnClosed(e);
+            Debug.WriteLine($"[MessageDialogView] OnClosed for {this.Title}.");
+            // Optional: Unsubscribe DataContextChanged if you kept it
+            // DataContextChanged -= OnDataContextChanged;
+            base.OnClosed(e); // Call base for its cleanup
         }
     }
 }

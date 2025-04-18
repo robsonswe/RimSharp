@@ -8,41 +8,25 @@ namespace RimSharp.Features.ModManager.Dialogs.DuplicateMods
 {
     public partial class DuplicateModDialogView : BaseDialog
     {
-        public DuplicateModDialogView()
+        // No _viewModel field needed
+        // No _isClosing field needed
+
+        public DuplicateModDialogView() // Keep default constructor
         {
             InitializeComponent();
         }
 
         public DuplicateModDialogView(DuplicateModDialogViewModel viewModel) : this()
         {
-            DataContext = viewModel;
-            viewModel.RequestCloseDialog += (sender, e) =>
-            {
-                if (!Dispatcher.CheckAccess())
-                {
-                    Dispatcher.Invoke(() => CloseDialog(viewModel));
-                }
-                else
-                {
-                    CloseDialog(viewModel);
-                }
-            };
+            // The BaseDialog constructor handles DataContextChanged event subscription
+            DataContext = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+            Debug.WriteLine($"[DuplicateModDialogView] Constructor with VM finished for {viewModel?.Title}. DataContext set.");
         }
 
-        private void CloseDialog(DuplicateModDialogViewModel viewModel)
-        {
-            try
-            {
-                DialogResult = viewModel.DialogResult;
-                Close();
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error closing dialog: {ex}");
-                Close();
-            }
-        }
+        // No inline handler for RequestCloseDialog needed
+        // No CloseDialog method needed
 
+        // Keep Hyperlink navigation if needed by your XAML
         private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e)
         {
             try
@@ -61,6 +45,13 @@ namespace RimSharp.Features.ModManager.Dialogs.DuplicateMods
                 MessageBox.Show($"Error opening URL: {ex.Message}", "Navigation Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        // BaseDialog handles cleanup in its OnClosed override
+        protected override void OnClosed(EventArgs e)
+        {
+            Debug.WriteLine($"[DuplicateModDialogView] OnClosed for {this.Title}.");
+            base.OnClosed(e);
         }
     }
 }
