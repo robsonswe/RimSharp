@@ -20,7 +20,8 @@ using System.Windows.Input;
 using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
 using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Features.WorkshopDownloader.Models; // For ModInfoDto
-using System.Globalization; // For CultureInfo
+using System.Globalization;
+using System.Collections.Concurrent; // For CultureInfo
 
 namespace RimSharp.Features.ModManager.ViewModels.Actions
 {
@@ -48,6 +49,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private ModItem _selectedMod; // For single-item actions
         private IList _selectedItems; // For multi-item actions
         protected bool CanExecuteSimpleCommands() => !IsParentLoading && HasValidPaths;
+        private const int MaxParallelRedownloadOperations = 10;
 
         public bool IsParentLoading
         {
@@ -263,25 +265,24 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             return anyValid; // Command is executable if at least one valid item exists
         }
 
-        private async Task ExecuteRedownloadModsAsync(IList selectedItems, CancellationToken ct)
+                private async Task ExecuteRedownloadModsAsync(IList selectedItems, CancellationToken ct)
         {
             var currentSelection = selectedItems ?? SelectedItems;
 
-            // --- STEP 1: Filter the list FIRST ---
+            // STEP 1: Filter the list FIRST
             var modsToRedownload = currentSelection?.Cast<ModItem>()
-                .Where(mod => mod != null && mod.ModType == ModType.WorkshopL && !string.IsNullOrEmpty(mod.SteamId))
+                .Where(mod => mod != null && mod.ModType == ModType.WorkshopL && !string.IsNullOrEmpty(mod.SteamId) && long.TryParse(mod.SteamId, out _))
                 .ToList();
 
-            // --- STEP 2: Check if any valid mods remain AFTER filtering ---
+            // STEP 2: Check if any valid mods remain AFTER filtering
             if (modsToRedownload == null || !modsToRedownload.Any())
             {
-                // This case should ideally not happen if CanExecute uses Any(), but good safety check.
                 Debug.WriteLine("[ExecuteRedownloadModsAsync] No valid WorkshopL mods found in the selection after filtering.");
                 _dialogService.ShowInformation("Redownload Mod", "No selected mods are eligible for redownload (must be locally installed Workshop mods).");
                 return;
             }
 
-            // --- STEP 3: Generate confirmation based on the FILTERED list ---
+            // STEP 3: Generate confirmation based on the FILTERED list
             string confirmMessage = modsToRedownload.Count == 1
                 ? $"Are you sure you want to queue '{modsToRedownload.First().Name}' for redownload?\n\nThis will add the mod to the download queue. It will *not* check if an update is available."
                 : $"Are you sure you want to queue {modsToRedownload.Count} Workshop mod(s) for redownload?\n\nThis will add the selected mods to the download queue. It will *not* check if updates are available.";
@@ -293,16 +294,20 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 return;
             }
 
-            // --- STEP 4: Proceed with the execution using the FILTERED list ---
+            // STEP 4: Proceed with the execution using the FILTERED list (Now parallelized)
             IsLoadingRequest?.Invoke(this, true);
             ProgressDialogViewModel progressDialog = null;
             CancellationTokenSource linkedCts = null;
+            using var semaphore = new SemaphoreSlim(MaxParallelRedownloadOperations); // Limit concurrency
 
+            // Use thread-safe collections/counters
+            int processedCount = 0; // Total mods processed (started)
             int addedCount = 0;
             int alreadyQueuedCount = 0;
             int errorCount = 0;
-            var apiErrorMessages = new List<string>();
-            var addedNames = new List<string>();
+            var apiErrorMessages = new ConcurrentBag<string>(); // Thread-safe bag for errors
+            var addedNames = new ConcurrentBag<string>(); // Thread-safe bag for names (if needed, less critical)
+            var tasks = new List<Task>();
 
             try
             {
@@ -311,7 +316,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 {
                     progressDialog = _dialogService.ShowProgressDialog(
                        "Queueing Mods for Redownload",
-                       "Checking mods with Steam API...",
+                       "Starting...", // Initial message
                        canCancel: true,
                        isIndeterminate: false, // Determinate progress
                        cts: null, // Will create linked CTS below
@@ -323,123 +328,188 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, progressDialog.CancellationToken);
                 var combinedToken = linkedCts.Token;
 
-                for (int i = 0; i < modsToRedownload.Count; i++)
+                int totalMods = modsToRedownload.Count;
+                await RunOnUIThreadAsync(() => // Initial progress update
                 {
-                    combinedToken.ThrowIfCancellationRequested();
-                    var mod = modsToRedownload[i];
-                    var steamId = mod.SteamId; // Already validated
+                    progressDialog.Message = $"Preparing to check {totalMods} mod(s)...";
+                    progressDialog.Progress = 0;
+                });
 
-                    // Update progress
-                    string progressMessage = $"Checking '{mod.Name}' ({steamId})... ({i + 1}/{modsToRedownload.Count})";
-                    await RunOnUIThreadAsync(() =>
+
+                foreach (var mod in modsToRedownload)
+                {
+                    combinedToken.ThrowIfCancellationRequested(); // Check before waiting/starting task
+
+                    // Wait for a slot to become available
+                    await semaphore.WaitAsync(combinedToken);
+
+                    // Create and start a task for each mod
+                    tasks.Add(Task.Run(async () =>
                     {
-                        if (progressDialog != null && !progressDialog.CancellationToken.IsCancellationRequested)
+                        var steamId = mod.SteamId; // Capture loop variable
+                        var modName = mod.Name; // Capture loop variable
+
+                        try
                         {
-                            progressDialog.Message = progressMessage;
-                            progressDialog.Progress = (int)((double)(i + 1) / modsToRedownload.Count * 100);
+                            combinedToken.ThrowIfCancellationRequested(); // Check at the start of the task
+
+                            // --- Report Progress ---
+                            int currentCount = Interlocked.Increment(ref processedCount);
+                            string progressMessage = $"Checking '{modName}' ({steamId})... ({currentCount}/{totalMods})";
+                            await RunOnUIThreadAsync(() =>
+                            {
+                                if (progressDialog != null && !progressDialog.CancellationToken.IsCancellationRequested)
+                                {
+                                    progressDialog.Message = progressMessage;
+                                    progressDialog.Progress = (int)((double)currentCount / totalMods * 100);
+                                }
+                            });
+
+                            // --- Check if already in queue ---
+                            if (_downloadQueueService.IsInQueue(steamId))
+                            {
+                                Debug.WriteLine($"[ExecuteRedownloadModsAsync Task] Mod '{modName}' ({steamId}) is already in the download queue.");
+                                Interlocked.Increment(ref alreadyQueuedCount);
+                                return; // Exit this task's execution
+                            }
+
+                            // --- Steam API Check ---
+                            combinedToken.ThrowIfCancellationRequested(); // Check before API call
+                            SteamApiResponse apiResponse = null;
+                            try
+                            {
+                                apiResponse = await _steamApiClient.GetFileDetailsAsync(steamId, combinedToken);
+                            }
+                            catch (OperationCanceledException) { throw; } // Re-throw cancellation
+                            catch (Exception apiExInner)
+                            {
+                                // Handle API call exceptions specifically
+                                var errorMsgInner = $"Network/API error for '{modName}' ({steamId}): {apiExInner.Message}";
+                                Debug.WriteLine($"[ExecuteRedownloadModsAsync Task] {errorMsgInner}");
+                                apiErrorMessages.Add(errorMsgInner);
+                                Interlocked.Increment(ref errorCount);
+                                return; // Exit this task's execution
+                            }
+
+                            combinedToken.ThrowIfCancellationRequested(); // Check after API call
+
+                            // Process API Response
+                            if (apiResponse?.Response?.PublishedFileDetails == null || !apiResponse.Response.PublishedFileDetails.Any())
+                            {
+                                var errorMsg = $"No details returned from Steam API for '{modName}' ({steamId}).";
+                                Debug.WriteLine($"[ExecuteRedownloadModsAsync Task] {errorMsg}");
+                                apiErrorMessages.Add(errorMsg);
+                                Interlocked.Increment(ref errorCount);
+                                return;
+                            }
+
+                            var details = apiResponse.Response.PublishedFileDetails.First();
+                            if (details.Result != 1) // 1 = OK
+                            {
+                                string errorDescription = SteamApiResultHelper.GetDescription(details.Result);
+                                var errorMsg = $"Steam API error for '{modName}' ({steamId}): {errorDescription} (Code: {details.Result})";
+                                Debug.WriteLine($"[ExecuteRedownloadModsAsync Task] {errorMsg}");
+                                apiErrorMessages.Add(errorMsg);
+                                Interlocked.Increment(ref errorCount);
+                                return;
+                            }
+
+                            // --- Add to Queue ---
+                            DateTimeOffset apiUpdateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(details.TimeUpdated);
+                            DateTime apiUpdateTimeUtc = apiUpdateTimeOffset.UtcDateTime;
+
+                            var modInfoDto = new ModInfoDto
+                            {
+                                Name = details.Title ?? modName, // Prefer API title
+                                SteamId = steamId,
+                                Url = $"https://steamcommunity.com/sharedfiles/filedetails/?id={steamId}",
+                                PublishDate = apiUpdateTimeOffset.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture),
+                                StandardDate = apiUpdateTimeUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                            };
+
+                            // Assume AddToQueue is thread-safe or handles its own locking if necessary
+                            if (_downloadQueueService.AddToQueue(modInfoDto))
+                            {
+                                Interlocked.Increment(ref addedCount);
+                                addedNames.Add(modInfoDto.Name); // Add to concurrent bag if needed later
+                                Debug.WriteLine($"[ExecuteRedownloadModsAsync Task] Added '{modInfoDto.Name}' ({modInfoDto.SteamId}) to download queue.");
+                            }
+                            else
+                            {
+                                // AddToQueue returned false (e.g., internal failure?)
+                                var errorMsg = $"Failed to add '{modInfoDto.Name}' ({modInfoDto.SteamId}) to queue internally.";
+                                Debug.WriteLine($"[ExecuteRedownloadModsAsync Task] {errorMsg}");
+                                apiErrorMessages.Add(errorMsg); // Log it as an error
+                                Interlocked.Increment(ref errorCount);
+                            }
                         }
-                    });
-
-                    // Check if already in queue
-                    if (_downloadQueueService.IsInQueue(steamId))
-                    {
-                        Debug.WriteLine($"[ExecuteRedownloadModsAsync] Mod '{mod.Name}' ({steamId}) is already in the download queue.");
-                        alreadyQueuedCount++;
-                        continue;
-                    }
-
-                    // --- Steam API Check ---
-                    SteamApiResponse apiResponse = null;
-                    try
-                    {
-                        apiResponse = await _steamApiClient.GetFileDetailsAsync(steamId, combinedToken);
-
-                        if (apiResponse?.Response?.PublishedFileDetails == null || !apiResponse.Response.PublishedFileDetails.Any())
+                        catch (OperationCanceledException)
                         {
-                            var errorMsg = $"No details returned from Steam API for '{mod.Name}' ({steamId}).";
-                            Debug.WriteLine($"[ExecuteRedownloadModsAsync] {errorMsg}");
+                            // Don't increment error count, just acknowledge cancellation for this task
+                             Debug.WriteLine($"[ExecuteRedownloadModsAsync Task] Task cancelled for mod '{modName}' ({steamId}).");
+                             // Do not add error message for cancellation itself unless desired
+                        }
+                        catch (Exception taskEx)
+                        {
+                            // Catch unexpected errors within the task
+                            var errorMsg = $"Unexpected error processing '{modName}' ({steamId}): {taskEx.Message}";
+                            Debug.WriteLine($"[ExecuteRedownloadModsAsync Task] {errorMsg}");
                             apiErrorMessages.Add(errorMsg);
-                            errorCount++;
-                            continue;
+                            Interlocked.Increment(ref errorCount);
                         }
-
-                        var details = apiResponse.Response.PublishedFileDetails.First();
-                        if (details.Result != 1) // 1 = OK
+                        finally
                         {
-                            string errorDescription = SteamApiResultHelper.GetDescription(details.Result);
-                            var errorMsg = $"Steam API error for '{mod.Name}' ({steamId}): {errorDescription} (Code: {details.Result})";
-                            Debug.WriteLine($"[ExecuteRedownloadModsAsync] {errorMsg}");
-                            apiErrorMessages.Add(errorMsg);
-                            errorCount++;
-                            continue;
+                            // Release the semaphore slot regardless of success, failure, or cancellation
+                            semaphore.Release();
                         }
+                    }, combinedToken)); // Pass token to Task.Run
+                } // --- End ForEach Loop ---
 
-                        // --- Add to Queue ---
-                        // No date comparison needed here
-                        DateTimeOffset apiUpdateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(details.TimeUpdated);
-                        DateTime apiUpdateTimeUtc = apiUpdateTimeOffset.UtcDateTime;
+                // Asynchronously wait for all tasks to complete
+                await Task.WhenAll(tasks);
 
-                        var modInfoDto = new ModInfoDto
-                        {
-                            Name = details.Title ?? mod.Name, // Prefer API title
-                            SteamId = steamId,
-                            Url = $"https://steamcommunity.com/sharedfiles/filedetails/?id={steamId}",
-                            PublishDate = apiUpdateTimeOffset.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture),
-                            StandardDate = apiUpdateTimeUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
-                        };
-
-                        if (_downloadQueueService.AddToQueue(modInfoDto))
-                        {
-                            addedCount++;
-                            addedNames.Add(modInfoDto.Name);
-                            Debug.WriteLine($"[ExecuteRedownloadModsAsync] Added '{modInfoDto.Name}' ({modInfoDto.SteamId}) to download queue.");
-                        }
-                        else
-                        {
-                            // AddToQueue returned false (e.g., internal failure?)
-                            var errorMsg = $"Failed to add '{modInfoDto.Name}' ({modInfoDto.SteamId}) to queue internally.";
-                            Debug.WriteLine($"[ExecuteRedownloadModsAsync] {errorMsg}");
-                            apiErrorMessages.Add(errorMsg); // Log it as an error
-                            errorCount++;
-                        }
-                    }
-                    catch (OperationCanceledException) { throw; } // Re-throw cancellation
-                    catch (Exception apiEx)
-                    {
-                        var errorMsg = $"Error checking Steam API for '{mod.Name}' ({steamId}): {apiEx.Message}";
-                        Debug.WriteLine($"[ExecuteRedownloadModsAsync] {errorMsg}");
-                        apiErrorMessages.Add(errorMsg);
-                        errorCount++;
-                        // Continue with the next item
-                    }
-                } // --- End For Loop ---
-
-                // --- Show Summary ---
+                 // --- Show Summary ---
                 await RunOnUIThreadAsync(() =>
                 {
+                    // Check if cancellation was requested *after* WhenAll finishes
+                    // (Tasks might have completed before cancellation was processed by WhenAll)
+                    if (combinedToken.IsCancellationRequested)
+                    {
+                         Debug.WriteLine("[ExecuteRedownloadModsAsync] Operation cancelled during or after task execution.");
+                         progressDialog?.ForceClose(); // Close progress if still open
+                         _dialogService.ShowWarning("Operation Cancelled", "Queueing mods for redownload was cancelled.");
+                         return; // Don't show the summary if cancelled
+                    }
+
                     progressDialog?.CompleteOperation("Redownload queueing complete.");
 
+                    // Use the final values of the Interlocked counters
+                    int finalAddedCount = addedCount;
+                    int finalAlreadyQueuedCount = alreadyQueuedCount;
+                    int finalErrorCount = errorCount;
+                    List<string> finalErrorMessages = apiErrorMessages.ToList(); // Get errors from concurrent bag
+
                     var sb = new StringBuilder();
-                    if (addedCount > 0) sb.AppendLine($"{addedCount} mod(s) added to the download queue.");
+                    if (finalAddedCount > 0) sb.AppendLine($"{finalAddedCount} mod(s) added to the download queue.");
                     else sb.AppendLine("No new mods were added to the download queue.");
 
-                    if (alreadyQueuedCount > 0) sb.AppendLine($"{alreadyQueuedCount} selected mod(s) were already in the queue.");
-                    if (errorCount > 0)
+                    if (finalAlreadyQueuedCount > 0) sb.AppendLine($"{finalAlreadyQueuedCount} selected mod(s) were already in the queue.");
+                    if (finalErrorCount > 0)
                     {
-                        sb.AppendLine($"{errorCount} selected mod(s) could not be added due to errors:");
-                        foreach (var errMsg in apiErrorMessages.Take(5)) // Show first few errors
+                        sb.AppendLine($"{finalErrorCount} selected mod(s) could not be added due to errors:");
+                        foreach (var errMsg in finalErrorMessages.Take(5)) // Show first few errors
                         {
                             sb.AppendLine($"  - {errMsg}");
                         }
-                        if (apiErrorMessages.Count > 5) sb.AppendLine("    (Check debug logs for more...)");
+                        if (finalErrorMessages.Count > 5) sb.AppendLine("    (Check debug logs for more...)");
                     }
 
                     // Show appropriate dialog
-                    if (errorCount > 0 && addedCount > 0) // Partial success
+                    if (finalErrorCount > 0 && finalAddedCount > 0) // Partial success
                     {
                         _dialogService.ShowWarning("Redownload Partially Queued", sb.ToString().Trim());
                     }
-                    else if (errorCount > 0 && addedCount == 0) // All failed or skipped
+                    else if (finalErrorCount > 0 && finalAddedCount == 0) // All failed or skipped
                     {
                         _dialogService.ShowError("Redownload Queue Failed", sb.ToString().Trim());
                     }
@@ -449,28 +519,31 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     }
 
 
-                    if (addedCount > 0)
+                    if (finalAddedCount > 0)
                     {
                         _navigationService.RequestTabSwitch("Downloader"); // Navigate if items were added
                     }
                 });
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) // Catch cancellation during semaphore waits or Task.WhenAll
             {
                 Debug.WriteLine("[ExecuteRedownloadModsAsync] Operation cancelled.");
                 await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
-                RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Queueing mods for redownload was cancelled."));
+                // Don't show the summary dialog here, it might have already been shown/handled above
+                // or will be handled by the UI thread check inside the final RunOnUIThreadAsync block.
+                // Avoid showing duplicate cancellation messages.
             }
-            catch (Exception ex)
+            catch (Exception ex) // Catch unexpected errors during setup or Task.WhenAll itself
             {
-                Debug.WriteLine($"[ExecuteRedownloadModsAsync] Error: {ex}");
+                Debug.WriteLine($"[ExecuteRedownloadModsAsync] Outer error: {ex}");
                 await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
                 RunOnUIThread(() => _dialogService.ShowError("Redownload Error", $"An unexpected error occurred: {ex.Message}"));
             }
             finally
             {
-                await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
+                await RunOnUIThreadAsync(() => progressDialog?.ForceClose()); // Ensure closed
                 linkedCts?.Dispose();
+                // SemaphoreSlim is disposed by the 'using' statement at the top
                 IsLoadingRequest?.Invoke(this, false);
             }
         }
