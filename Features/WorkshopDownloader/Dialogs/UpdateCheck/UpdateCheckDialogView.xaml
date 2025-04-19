@@ -150,13 +150,14 @@
                             </GridViewColumn>
 
                             <!-- For the Date column -->
+                             <!-- <<< MODIFIED CommandParameter >>> -->
                             <GridViewColumn DisplayMemberBinding="{Binding LocalUpdateDate}" Width="150">
                                 <GridViewColumn.HeaderTemplate>
                                     <DataTemplate>
                                         <Button Content="Last Update"
                                                 Style="{StaticResource SortableHeaderButtonStyle}"
                                                 Command="{Binding DataContext.SortCommand, RelativeSource={RelativeSource AncestorType={x:Type views:UpdateCheckDialogView}}}"
-                                                CommandParameter="{x:Static vm:UpdateCheckItemViewModel.LocalUpdateDatePropertyName}"
+                                                CommandParameter="{x:Static vm:UpdateCheckItemViewModel.LocalUpdateDateTimePropertyName}"
                                                 ToolTip="Sort by Last Update"/>
                                     </DataTemplate>
                                 </GridViewColumn.HeaderTemplate>
