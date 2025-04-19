@@ -141,56 +141,83 @@ namespace RimSharp.Shared.Services.Implementations
         #region Timestamp File Creation
 
         /// <summary>
-        /// Creates the DateStamp and timestamp.txt files for a successfully downloaded mod.
+        /// Creates the DateStamp and timestamp.txt files for a successfully downloaded mod
+        /// within the specified directory.
         /// </summary>
-        public async Task CreateTimestampFilesAsync(string steamId, string publishDate, string standardDate)
+        /// <param name="modDirectoryPath">The full path to the directory containing the downloaded mod files (e.g., the temporary SteamCMD location).</param>
+        /// <param name="steamId">The Steam Workshop ID of the mod (used for context/logging).</param>
+        /// <param name="publishDate">The publish date in Steam's format (d MMM yyyy @ h:mmtt).</param>
+        /// <param name="standardDate">The publish date in standard format (dd/MM/yyyy HH:mm:ss).</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous file creation operation.</returns>
+        public async Task CreateTimestampFilesAsync(string modDirectoryPath, string steamId, string publishDate, string standardDate)
         {
+            // Validate inputs
+            if (string.IsNullOrWhiteSpace(modDirectoryPath))
+            {
+                _logger.LogError($"[CreateTimestampFilesAsync] Invalid modDirectoryPath provided: null or whitespace", nameof(ModService));
+                throw new ArgumentNullException(nameof(modDirectoryPath)); // Or handle differently if needed
+            }
             if (string.IsNullOrWhiteSpace(steamId) || !long.TryParse(steamId, out _))
             {
-                Debug.WriteLine($"[CreateTimestampFilesAsync] Invalid SteamId provided: '{steamId}'");
-                return; // Invalid input
+                _logger.LogError($"[CreateTimestampFilesAsync] Invalid SteamId provided: '{steamId}' for path '{modDirectoryPath}'", nameof(ModService));
+                // Don't throw here, maybe log and return? Or let caller handle? Let's log and return for now.
+                // Caller (SteamCmdDownloader) should handle this failure if it's critical.
+                return;
             }
-
-            // Normalize dates to prevent issues, use fallback if null/empty
-            string finalPublishDate = string.IsNullOrWhiteSpace(publishDate) ? DateTime.UtcNow.ToString("d MMM yyyy @ h:mmtt", CultureInfo.InvariantCulture) : publishDate.Trim();
-            string finalStandardDate = string.IsNullOrWhiteSpace(standardDate) ? DateTime.UtcNow.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture) : standardDate.Trim();
+             if (string.IsNullOrWhiteSpace(publishDate) || string.IsNullOrWhiteSpace(standardDate))
+             {
+                 _logger.LogWarning($"[CreateTimestampFilesAsync] Missing publishDate ('{publishDate}') or standardDate ('{standardDate}') for mod {steamId} at '{modDirectoryPath}'. Timestamp files will not be created.", nameof(ModService));
+                  // Throw an exception because the caller expects these files to be created
+                 throw new ArgumentException("PublishDate and StandardDate cannot be null or empty for timestamp creation.");
+             }
 
 
             try
             {
-                var modsPath = _pathService.GetModsPath();
-                if (string.IsNullOrEmpty(modsPath) || !Directory.Exists(modsPath))
+                // Use the provided modDirectoryPath directly
+                if (!Directory.Exists(modDirectoryPath))
                 {
-                    Debug.WriteLine($"[CreateTimestampFilesAsync] Mods path is not set or does not exist: '{modsPath}'");
-                    return; // Mods path needed
+                    _logger.LogError($"[CreateTimestampFilesAsync] Target mod directory does not exist: '{modDirectoryPath}' for SteamID {steamId}", nameof(ModService));
+                    throw new DirectoryNotFoundException($"Target mod directory does not exist: {modDirectoryPath}");
                 }
 
-                var modDir = Path.Combine(modsPath, steamId);
-                var aboutDir = Path.Combine(modDir, "About");
-                var dateStampPath = Path.Combine(modDir, "DateStamp");
-                var timestampPath = Path.Combine(aboutDir, "timestamp.txt");
+                var aboutDir = Path.Combine(modDirectoryPath, "About");
+                var dateStampPath = Path.Combine(modDirectoryPath, "DateStamp"); // Stays in root of mod folder
+                var timestampPath = Path.Combine(aboutDir, "timestamp.txt"); // Goes inside About folder
 
-                // Ensure the target directory exists
-                Directory.CreateDirectory(aboutDir); // Creates 'About' if needed (modDir should exist from download)
+                _logger.LogDebug($"[CreateTimestampFilesAsync] Preparing to write timestamps for mod {steamId} in '{modDirectoryPath}'", nameof(ModService));
+
+                // Ensure the 'About' subdirectory exists
+                Directory.CreateDirectory(aboutDir);
+                _logger.LogDebug($"[CreateTimestampFilesAsync] Ensured 'About' directory exists: '{aboutDir}'", nameof(ModService));
 
                 // Write the files asynchronously
-                await File.WriteAllTextAsync(dateStampPath, finalPublishDate);
-                await File.WriteAllTextAsync(timestampPath, finalStandardDate);
+                // Trim dates just in case
+                string finalPublishDate = publishDate.Trim();
+                string finalStandardDate = standardDate.Trim();
 
-                Debug.WriteLine($"[CreateTimestampFilesAsync] Successfully created timestamp files for mod {steamId} in {aboutDir}");
+                await File.WriteAllTextAsync(dateStampPath, finalPublishDate);
+                _logger.LogDebug($"[CreateTimestampFilesAsync] Wrote DateStamp: '{dateStampPath}'", nameof(ModService));
+
+                await File.WriteAllTextAsync(timestampPath, finalStandardDate);
+                 _logger.LogDebug($"[CreateTimestampFilesAsync] Wrote timestamp.txt: '{timestampPath}'", nameof(ModService));
+
+                _logger.LogInfo($"[CreateTimestampFilesAsync] Successfully created timestamp files for mod {steamId} in '{modDirectoryPath}'", nameof(ModService));
             }
             catch (UnauthorizedAccessException ex)
             {
-                Debug.WriteLine($"[CreateTimestampFilesAsync] Permission error writing timestamp files for mod {steamId}: {ex.Message}");
-                // Potentially inform the user via a different mechanism if critical
+                _logger.LogError($"[CreateTimestampFilesAsync] Permission error writing timestamp files for mod {steamId} at '{modDirectoryPath}': {ex.Message}", nameof(ModService));
+                throw; // Re-throw so the caller knows the operation failed
             }
             catch (IOException ex)
             {
-                Debug.WriteLine($"[CreateTimestampFilesAsync] IO error writing timestamp files for mod {steamId}: {ex.Message}");
+                _logger.LogError($"[CreateTimestampFilesAsync] IO error writing timestamp files for mod {steamId} at '{modDirectoryPath}': {ex.Message}", nameof(ModService));
+                throw; // Re-throw
             }
             catch (Exception ex) // Catch unexpected errors
             {
-                Debug.WriteLine($"[CreateTimestampFilesAsync] Unexpected error writing timestamp files for mod {steamId}: {ex.Message}");
+                _logger.LogError($"[CreateTimestampFilesAsync] Unexpected error writing timestamp files for mod {steamId} at '{modDirectoryPath}': {ex.Message}\n{ex.StackTrace}", nameof(ModService));
+                throw; // Re-throw
             }
         }
 
