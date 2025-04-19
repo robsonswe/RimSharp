@@ -34,13 +34,15 @@ namespace RimSharp.Shared.Services.Contracts
         Task LoadModsAsync();
         
         /// <summary>
-        /// Creates the DateStamp and timestamp.txt files for a successfully downloaded mod.
+        /// Creates the DateStamp and timestamp.txt files for a successfully downloaded mod
+        /// within the specified directory.
         /// </summary>
-        /// <param name="steamId">The Steam Workshop ID of the mod.</param>
+        /// <param name="modDirectoryPath">The full path to the directory containing the downloaded mod files.</param>
+        /// <param name="steamId">The Steam Workshop ID of the mod (used for context/logging).</param>
         /// <param name="publishDate">The publish date in Steam's format (d MMM yyyy @ h:mmtt).</param>
         /// <param name="standardDate">The publish date in standard format (dd/MM/yyyy HH:mm:ss).</param>
         /// <returns>A <see cref="Task"/> representing the asynchronous file creation operation.</returns>
-        Task CreateTimestampFilesAsync(string steamId, string publishDate, string standardDate);
+        Task CreateTimestampFilesAsync(string modDirectoryPath, string steamId, string publishDate, string standardDate);
         
         /// <summary>
         /// Retrieves the custom information for a specific mod.
