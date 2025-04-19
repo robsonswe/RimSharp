@@ -54,6 +54,7 @@
                                       FilterCommand="{Binding ModListViewModel.FilterInactiveCommand}"
                                       DoubleClickCommand="{Binding ModListViewModel.ActivateModCommand}"
                                       GroupName="Inactive"
+                                    SelectedItems="{Binding SelectedItems, Mode=TwoWay}"
                                       DropCommand="{Binding ModListViewModel.DropModCommand}"
                                       DragItemType="{x:Type models:ModItem}"
                                       Margin="0,0,4,0"/>
@@ -70,6 +71,7 @@
                                       FilterCommand="{Binding ModListViewModel.FilterActiveCommand}"
                                       DoubleClickCommand="{Binding ModListViewModel.DeactivateModCommand}"
                                       GroupName="Active"
+                                                         SelectedItems="{Binding SelectedItems, Mode=TwoWay}"
                                       DropCommand="{Binding ModListViewModel.DropModCommand}"
                                       DragItemType="{x:Type models:ModItem}"
                                       Margin="4,0,0,0"/>

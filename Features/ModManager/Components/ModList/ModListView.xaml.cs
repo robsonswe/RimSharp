@@ -9,15 +9,26 @@ namespace RimSharp.Features.ModManager.Components.ModList
 {
     public partial class ModListView : UserControl
     {
+        public IList SelectedItems
+        {
+            get { return (IList)GetValue(SelectedItemsProperty); }
+            set { SetValue(SelectedItemsProperty, value); }
+        }
+
         public ModListView()
         {
             InitializeComponent();
             // Set default values for derived properties
             SearchPlaceholder = $"Search {HeaderText}...";
             FilterToolTip = $"Filter {HeaderText} mods";
+
         }
 
         // --- Dependency Properties ---
+        public static readonly DependencyProperty SelectedItemsProperty =
+            DependencyProperty.Register("SelectedItems", typeof(IList), typeof(ModListView),
+                // Use FrameworkPropertyMetadata for TwoWay binding by default and add PropertyChangedCallback
+                new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnSelectedItemsChanged));
 
         public IEnumerable ItemsSource
         {
@@ -133,6 +144,20 @@ namespace RimSharp.Features.ModManager.Components.ModList
 
         // --- Event Handlers ---
 
+        private static void OnSelectedItemsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            var modListView = d as ModListView;
+            if (modListView != null && modListView.InternalListBox != null)
+            {
+                // This part is tricky for multi-select. Setting InternalListBox.SelectedItems directly
+                // often doesn't work reliably. We mainly rely on the change coming FROM the ListBox TO the DP.
+                // If you needed to programmatically set the selection FROM the ViewModel, more complex logic
+                // synchronizing the InternalListBox.SelectedItems collection with the DP value would be required.
+                // For now, we focus on getting the selection OUT.
+                // Debug.WriteLine($"[ModListView.OnSelectedItemsChanged] DP Updated. New count: {(e.NewValue as IList)?.Count ?? 0}");
+            }
+        }
+
         private void InternalListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             // Find the ListBoxItem that was clicked
@@ -151,8 +176,24 @@ namespace RimSharp.Features.ModManager.Components.ModList
 
         private void InternalListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            // 1. Update the context menu holder (as before)
             var holder = (SelectedItemsHolder)Resources["selectedItemsHolder"];
-            holder.SelectedItems = InternalListBox.SelectedItems.Cast<object>().ToList();
+            var currentSelectedItems = InternalListBox.SelectedItems.Cast<object>().ToList();
+            holder.SelectedItems = currentSelectedItems; // Update holder for context menu parameters
+
+            // 2. Update the control's own SelectedItems Dependency Property
+            // This will propagate OUTWARD via the binding set in ModsView.xaml
+            // Important: Create a *new* list instance if directly binding to ObservableCollection,
+            // otherwise WPF might not detect the change if you just modify the existing list.
+            // Since we're binding to IList on the VM, assigning the result of ToList() is fine.
+            this.SelectedItems = currentSelectedItems; // Set the DP value
+                                                       // Debug.WriteLine($"[ModListView.InternalListBox_SelectionChanged] Updated DP. Count: {currentSelectedItems.Count}");
+
+            // 3. Also update the single SelectedItem DP (if still needed)
+            // Make sure this doesn't conflict with the multi-selection update logic
+            // If SelectedItems binding works, you might not need the single SelectedItem DP anymore
+            // unless specifically used elsewhere. For now, keep it synchronized.
+            this.SelectedItem = InternalListBox.SelectedItem;
         }
 
         // Optional: Helper to scroll item into view when selected
