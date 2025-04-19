@@ -29,6 +29,7 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
         public ICommand CancelCommand { get; }
         public ICommand SortCommand { get; }
 
+        // <<< MODIFIED: Default sort by Name >>>
         private string _currentSortProperty = UpdateCheckItemViewModel.NamePropertyName;
         public string CurrentSortProperty
         {
@@ -43,7 +44,8 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
             private set => SetProperty(ref _currentSortDirection, value);
         }
 
-        private string _nameSortState = "SortedAscending";
+        // Sort state indicators (used for UI feedback, e.g., arrows)
+        private string _nameSortState = "SortedAscending"; // Default sort
         public string NameSortState { get => _nameSortState; private set => SetProperty(ref _nameSortState, value); }
         private string _packageIdSortState = "";
         public string PackageIdSortState { get => _packageIdSortState; private set => SetProperty(ref _packageIdSortState, value); }
@@ -63,12 +65,13 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
         public UpdateCheckDialogViewModel(IEnumerable<ModItem> workshopMods)
             : base("Check Mod Updates")
         {
-            var checkItems = workshopMods
-                .Select(mod => new UpdateCheckItemViewModel(mod))
-                .OrderBy(vm => vm.Name);
-            _modsToCheck = new ObservableCollection<UpdateCheckItemViewModel>(checkItems);
+             var checkItems = workshopMods
+                 .Select(mod => new UpdateCheckItemViewModel(mod)); // Let sorting happen via ICollectionView
+             _modsToCheck = new ObservableCollection<UpdateCheckItemViewModel>(checkItems);
 
             ModsView = CollectionViewSource.GetDefaultView(_modsToCheck);
+            // Apply initial sort
+            ApplySort();
 
             // Initialize commands using ViewModelBase helpers
             SelectAllCommand = CreateCommand(ExecuteSelectAll);
@@ -161,7 +164,8 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
                 case UpdateCheckItemViewModel.NamePropertyName: NameSortState = sortState; break;
                 case UpdateCheckItemViewModel.PackageIdPropertyName: PackageIdSortState = sortState; break;
                 case UpdateCheckItemViewModel.SteamIdPropertyName: SteamIdSortState = sortState; break;
-                case UpdateCheckItemViewModel.LocalUpdateDatePropertyName: LocalUpdateDateSortState = sortState; break;
+                // <<< MODIFIED: Check against the DateTime property name for setting indicator state >>>
+                case UpdateCheckItemViewModel.LocalUpdateDateTimePropertyName: LocalUpdateDateSortState = sortState; break;
             }
         }
 
@@ -170,6 +174,8 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
             return _modsToCheck.Where(vm => vm.IsSelected).Select(vm => vm.Mod);
         }
 
+        // Cleanup might be needed if the dialog is shown multiple times without recreating the ViewModel
+        // Consider adding this to an IDisposable pattern if necessary.
         public void Cleanup()
         {
             foreach (var item in _modsToCheck)
