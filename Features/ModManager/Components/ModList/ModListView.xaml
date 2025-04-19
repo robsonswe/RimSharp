@@ -212,6 +212,68 @@
                                     <MenuItem Header="Open URL" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.OpenUrlsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" Visibility="{Binding HasUrl, Converter={StaticResource BooleanToVisibilityConverter}}"><MenuItem.Icon><TextBlock Text="🔗" FontSize="14"/></MenuItem.Icon></MenuItem>
                                     <MenuItem Header="Open Workshop Page" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.OpenWorkshopPagesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" Visibility="{Binding HasSteamUrl, Converter={StaticResource BooleanToVisibilityConverter}}"><MenuItem.Icon><TextBlock Text="☁️" FontSize="14"/></MenuItem.Icon></MenuItem>
                                     <MenuItem Header="Open Other URL" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.OpenOtherUrlsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" Visibility="{Binding HasExternalUrl, Converter={StaticResource BooleanToVisibilityConverter}}"><MenuItem.Icon><TextBlock Text="🌐" FontSize="14"/></MenuItem.Icon></MenuItem>
+<MenuItem Header="Redownload Mod"
+          Command="{Binding PlacementTarget.Tag.ModActionsViewModel.RedownloadModsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+          CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}">
+    <MenuItem.Icon><TextBlock Text="🔄" FontSize="14"/></MenuItem.Icon>
+    <MenuItem.Style>
+        <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Style.Triggers>
+                <!-- Hide if selection count is 0 -->
+                <DataTrigger Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="0">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+
+                <!-- NEW: Hide if only ONE item is selected AND it's NOT WorkshopL -->
+                <!-- We need MultiDataTrigger because we check Count AND ModType of the single item -->
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <!-- Condition 1: Only one item selected -->
+                        <Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/>
+                        <!-- Condition 2: The DataContext (ModItem)'s ModType is NOT WorkshopL -->
+                        <!-- Note: This assumes the DataContext of the MenuItem's container is the ModItem -->
+                        <Condition Binding="{Binding ModType}" Value="Core"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </MultiDataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/>
+                        <Condition Binding="{Binding ModType}" Value="Expansion"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </MultiDataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/>
+                        <Condition Binding="{Binding ModType}" Value="Workshop"/> <!-- Regular Workshop -->
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </MultiDataTrigger>
+                 <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/>
+                        <Condition Binding="{Binding ModType}" Value="Git"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </MultiDataTrigger>
+                 <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/>
+                        <Condition Binding="{Binding ModType}" Value="Zipped"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </MultiDataTrigger>
+                 <!-- Add similar MultiDataTriggers for other non-WorkshopL types if necessary -->
+
+                 <!-- Command's CanExecute will handle disabling if multiple are selected but NONE are WorkshopL -->
+
+            </Style.Triggers>
+        </Style>
+    </MenuItem.Style>
+</MenuItem>
+
                                     <Separator Margin="2"><Separator.Style><Style TargetType="Separator" BasedOn="{StaticResource {x:Static MenuItem.SeparatorStyleKey}}"><Style.Triggers><DataTrigger Binding="{Binding ModType}" Value="Core"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Expansion"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Separator.Style></Separator>
                                     <MenuItem Header="Customize Mod" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.CustomizeModCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding}"><MenuItem.Icon><TextBlock Text="⚙️" FontSize="14"/></MenuItem.Icon><MenuItem.Style><Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding ModType}" Value="Core"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Expansion"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="0"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"><Setter Property="Visibility" Value="Visible"/></DataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/><Condition Binding="{Binding ModType}" Value="Core"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed"/></MultiDataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/><Condition Binding="{Binding ModType}" Value="Expansion"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed"/></MultiDataTrigger><DataTrigger Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="2"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></MenuItem.Style></MenuItem>
                                     <MenuItem Header="Delete Mod" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.DeleteModsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}"><MenuItem.Icon><TextBlock Text="🗑️" FontSize="14"/></MenuItem.Icon><MenuItem.Style><Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}"><Setter Property="Foreground" Value="{StaticResource RimworldErrorRedBrush}"/><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding ModType}" Value="Core"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Expansion"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></MenuItem.Style></MenuItem>
