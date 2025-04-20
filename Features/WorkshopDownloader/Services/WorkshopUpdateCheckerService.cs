@@ -264,7 +264,8 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                     SteamId = mod.SteamId,
                     Url = $"https://steamcommunity.com/sharedfiles/filedetails/?id={mod.SteamId}",
                     PublishDate = apiUpdateTimeOffset.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture), // Use API Offset for original TZ if needed, or UTC
-                    StandardDate = apiUpdateTimeUtc.ToString(LocalDateFormat, CultureInfo.InvariantCulture) // Store consistent format (UTC recommended)
+                    StandardDate = apiUpdateTimeUtc.ToString(LocalDateFormat, CultureInfo.InvariantCulture), // Store consistent format (UTC recommended)
+                    FileSize = details.FileSize // Added
                 };
 
                 try

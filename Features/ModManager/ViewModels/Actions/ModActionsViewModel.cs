@@ -265,7 +265,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             return anyValid; // Command is executable if at least one valid item exists
         }
 
-                private async Task ExecuteRedownloadModsAsync(IList selectedItems, CancellationToken ct)
+        private async Task ExecuteRedownloadModsAsync(IList selectedItems, CancellationToken ct)
         {
             var currentSelection = selectedItems ?? SelectedItems;
 
@@ -424,7 +424,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                                 SteamId = steamId,
                                 Url = $"https://steamcommunity.com/sharedfiles/filedetails/?id={steamId}",
                                 PublishDate = apiUpdateTimeOffset.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture),
-                                StandardDate = apiUpdateTimeUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                                StandardDate = apiUpdateTimeUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture),
+                                FileSize = details.FileSize // <-- Added FileSize population
                             };
 
                             // Assume AddToQueue is thread-safe or handles its own locking if necessary

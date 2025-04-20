@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Shared.Services.Contracts;
 
-namespace RimSharp.Infrastructure.Workshop
+namespace RimSharp.Infrastructure.Workshop.Core
 {
     /// <summary>
     /// Handles the installation and setup of SteamCMD.

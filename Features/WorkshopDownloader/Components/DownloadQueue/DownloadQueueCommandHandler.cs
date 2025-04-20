@@ -14,7 +14,8 @@ using RimSharp.AppDir.AppFiles;
 using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
-using System.Collections; // Required for ExecuteRemoveItems parameter
+using System.Collections;
+using RimSharp.Infrastructure.Workshop.Download.Models; // Required for ExecuteRemoveItems parameter
 
 namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 {

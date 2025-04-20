@@ -4,7 +4,7 @@ using System.IO;
 using System.Threading.Tasks;
 using RimSharp.Shared.Services.Contracts;
 
-namespace RimSharp.Infrastructure.Workshop
+namespace RimSharp.Infrastructure.Workshop.Core
 {
     /// <summary>
     /// Manages paths related to SteamCMD installation and operation.

@@ -3,7 +3,8 @@ function Show-Tree {
         [string]$Path = (Get-Location),
         [string]$Indent = "",
         [string[]]$Ignore = @('bin', 'obj', 'tmp', '.github', '.vscode'),
-        [string]$SpecialFolder = 'ublock'
+        [string]$SpecialFolder = 'ublock',
+        [ref]$Output = [ref]::new('')
     )
 
     $Items = Get-ChildItem -Path $Path | Where-Object {
@@ -12,16 +13,24 @@ function Show-Tree {
     }
 
     foreach ($Item in $Items) {
+        $Line = "$Indent|-- $($Item.Name)"
+        $Output.Value += "$Line`n"
+
         if ($Item.PSIsContainer) {
-            Write-Host "$Indent|-- $($Item.Name)" -ForegroundColor Cyan
+            Write-Host $Line -ForegroundColor Cyan
 
             if ($Item.Name -ne $SpecialFolder) {
-                Show-Tree -Path $Item.FullName -Indent "$Indent|   " -Ignore $Ignore -SpecialFolder $SpecialFolder
+                Show-Tree -Path $Item.FullName -Indent "$Indent|   " -Ignore $Ignore -SpecialFolder $SpecialFolder -Output $Output
             }
         } else {
-            Write-Host "$Indent|-- $($Item.Name)" -ForegroundColor White
+            Write-Host $Line -ForegroundColor White
         }
     }
 }
 
-Show-Tree
+# Create a ref to capture output
+$outputRef = [ref]::new('')
+Show-Tree -Output $outputRef
+
+# Copy result to clipboard
+$outputRef.Value | Set-Clipboard

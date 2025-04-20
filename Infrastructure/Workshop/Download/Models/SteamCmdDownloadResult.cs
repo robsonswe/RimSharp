@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using RimSharp.Features.WorkshopDownloader.Models;
 
-namespace RimSharp.Infrastructure.Workshop
+namespace RimSharp.Infrastructure.Workshop.Download.Models
 {
     public class SteamCmdDownloadResult
     {

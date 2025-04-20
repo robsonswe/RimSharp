@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace RimSharp.Infrastructure.Workshop
+namespace RimSharp.Infrastructure.Workshop.Core
 {
     /// <summary>
     /// Holds platform-specific information related to SteamCMD installation and execution.
