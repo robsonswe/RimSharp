@@ -7,6 +7,7 @@ using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
 using RimSharp.Features.ModManager.Dialogs.Filter;
 using RimSharp.Features.ModManager.Dialogs.Replacements;
 using RimSharp.Features.ModManager.Dialogs.Dependencies;
+using RimSharp.Features.ModManager.Dialogs.MissingMods;
 
 namespace RimSharp.Infrastructure.Dialog
 {
@@ -129,7 +130,8 @@ namespace RimSharp.Infrastructure.Dialog
         public DependencyResolutionDialogResult ShowDependencyResolutionDialog(DependencyResolutionDialogViewModel viewModel)
         {
             DependencyResolutionDialogResult result = DependencyResolutionDialogResult.Cancel;
-            Application.Current.Dispatcher.Invoke(() => {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
                 var dialog = new DependencyResolutionDialogView(viewModel)
                 {
                     Owner = Application.Current?.MainWindow,
@@ -141,5 +143,22 @@ namespace RimSharp.Infrastructure.Dialog
             return result;
         }
 
+        public MissingModSelectionDialogOutput ShowMissingModSelectionDialog(MissingModSelectionDialogViewModel viewModel)
+        {
+            MissingModSelectionDialogOutput result = null; // Default to null initially
+            Application.Current.Dispatcher.Invoke(() =>
+            { // Ensure UI thread
+                var dialog = new MissingModSelectionDialogView(viewModel)
+                {
+                    Owner = Application.Current?.MainWindow,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+                // ShowDialog blocks until closed and DialogResult is set (or window is closed manually)
+                dialog.ShowDialog();
+                // Retrieve the strongly-typed result from the ViewModel AFTER the dialog is closed
+                result = viewModel.DialogResult ?? new MissingModSelectionDialogOutput(); // Use default if VM result is null
+            });
+            return result ?? new MissingModSelectionDialogOutput(); // Return default if dispatcher invoke fails?
+        }
     }
 }

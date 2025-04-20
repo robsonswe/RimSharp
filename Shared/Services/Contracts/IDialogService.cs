@@ -5,6 +5,8 @@ using RimSharp.Features.ModManager.Dialogs.Dependencies;
 using RimSharp.Features.ModManager.Dialogs.Filter;
 using RimSharp.Features.ModManager.Dialogs.Replacements;
 using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
+using RimSharp.Features.ModManager.Dialogs.MissingMods;
+
 using RimSharp.AppDir.Dialogs;
 
 namespace RimSharp.Shared.Services.Contracts
@@ -23,6 +25,7 @@ namespace RimSharp.Shared.Services.Contracts
         ModFilterDialogResult ShowModFilterDialog(ModFilterDialogViewModel viewModel);
         ModReplacementDialogResult ShowModReplacementDialog(ModReplacementDialogViewModel viewModel);
         DependencyResolutionDialogResult ShowDependencyResolutionDialog(DependencyResolutionDialogViewModel viewModel);
+        MissingModSelectionDialogOutput ShowMissingModSelectionDialog(MissingModSelectionDialogViewModel viewModel);
 
     }
 }
