@@ -39,6 +39,23 @@
         </Setter>
     </Style>
 
+    <Style x:Key="RimworldSeparatorStyle" TargetType="Separator">
+        <Setter Property="Background" Value="{StaticResource RimworldBorderBrush}"/> 
+        <Setter Property="Height" Value="1"/>
+        <Setter Property="Margin" Value="0,5,0,5"/> 
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Separator">
+                    <Border Background="{TemplateBinding Background}"
+                            Height="{TemplateBinding Height}"
+                            SnapsToDevicePixels="True"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
 
     <Style x:Key="RimworldExpanderStyle" TargetType="{x:Type Expander}">
         <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
@@ -102,6 +119,15 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+        <Style x:Key="RimworldSubtlePanelBorder" TargetType="Border" BasedOn="{StaticResource RimworldPanelBorder}">
+        <!-- Override properties from RimworldPanelBorder as needed -->
+        <Setter Property="Background" Value="{StaticResource RimworldLightBackgroundBrush}"/> <!-- Use a lighter background -->
+        <Setter Property="BorderThickness" Value="1"/> <!-- Thinner border -->
+        <Setter Property="Padding" Value="5"/> <!-- Slightly less padding -->
+        <Setter Property="Effect" Value="{x:Null}"/> <!-- Remove drop shadow for subtlety -->
+    </Style>
+
 
     <Style x:Key="RimworldToolTip" TargetType="ToolTip">
         <!-- Style Setters go here -->

@@ -10,6 +10,7 @@ using RimSharp.AppDir.AppFiles; // Correct namespace for App itself
 using RimSharp.Infrastructure.Configuration;
 using RimSharp.Infrastructure.Dialog;
 using RimSharp.Infrastructure.Logging;
+using RimSharp.Core.Extensions; // <<< ADDED for ThreadHelper
 
 // --- Shared Contracts & Models ---
 using RimSharp.Shared.Models;
@@ -117,6 +118,15 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<ILoggerService>()
                 ));
 
+            // --- Mod Dictionary Service --- // <<< ADDED Registration
+            services.AddSingleton<IModDictionaryService>(provider =>
+                new ModDictionaryService(
+                    provider.GetRequiredService<IPathService>(),
+                    provider.GetRequiredService<string>(), // appBasePath
+                    provider.GetRequiredService<ILoggerService>()
+                ));
+
+
             // --- Core Mod Services ---
             services.AddSingleton<IModService>(provider =>
                 new ModService(
@@ -138,8 +148,24 @@ namespace RimSharp.AppDir.AppFiles
                 ));
             services.AddSingleton<IModFilterService, ModFilterService>();
             services.AddSingleton<IModCommandService, ModCommandService>();
-            services.AddSingleton<IModListIOService, ModListIOService>();
+
+            // --- ModListIOService Registration UPDATED ---
+            services.AddSingleton<IModListIOService>(provider =>
+                new ModListIOService(
+                    provider.GetRequiredService<IPathService>(),
+                    provider.GetRequiredService<IModListManager>(),
+                    provider.GetRequiredService<IDialogService>(),
+                    // --- Add the new dependencies ---
+                    provider.GetRequiredService<IModDictionaryService>(), // <<< ADDED
+                    provider.GetRequiredService<ISteamApiClient>(),       // <<< ADDED
+                    provider.GetRequiredService<IDownloadQueueService>(), // <<< ADDED
+                    provider.GetRequiredService<IApplicationNavigationService>(), // <<< ADDED
+                    provider.GetRequiredService<ILoggerService>()         // <<< ADDED
+                ));
+            // --- End ModListIOService Update ---
+
             services.AddSingleton<IModIncompatibilityService, ModIncompatibilityService>();
+
 
             // --- Workshop Downloader Feature Services ---
             services.AddSingleton<IWebNavigationService, WebNavigationService>();
@@ -242,7 +268,24 @@ namespace RimSharp.AppDir.AppFiles
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            _logger.LogInfo("Application starting up (OnStartup entered).", "App.OnStartup");
+            base.OnStartup(e); // Call base startup first
+
+            // --- Initialize ThreadHelper ---
+            try
+            {
+                ThreadHelper.Initialize(); // <<< Initialized here
+                _logger?.LogInfo("ThreadHelper initialized.", "App.OnStartup");
+            }
+            catch (Exception initEx)
+            {
+                _logger?.LogException(initEx, "Failed to initialize ThreadHelper.", "App.OnStartup");
+                MessageBox.Show($"Critical error initializing threading: {initEx.Message}", "Initialization Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Shutdown(-3);
+                return;
+            }
+            // --- End ThreadHelper Initialization ---
+
+            _logger.LogInfo("Application starting up (OnStartup entered).", "App.OnStartup"); // Keep existing log
 
             try
             {
@@ -268,7 +311,7 @@ namespace RimSharp.AppDir.AppFiles
                     return;
                 }
 
-                base.OnStartup(e);
+                // base.OnStartup(e); // <<< MOVED TO THE TOP
                 _logger.LogInfo("Application startup complete (OnStartup finished).", "App.OnStartup");
             }
             catch (Exception ex)
