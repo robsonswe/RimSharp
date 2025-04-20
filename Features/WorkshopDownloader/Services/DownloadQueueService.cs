@@ -48,7 +48,8 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 Url = modInfo.Url,
                 SteamId = modInfo.SteamId,
                 PublishDate = modInfo.PublishDate,
-                StandardDate = modInfo.StandardDate
+                StandardDate = modInfo.StandardDate,
+                FileSize = modInfo.FileSize
             };
 
             if (_dispatcher.CheckAccess())

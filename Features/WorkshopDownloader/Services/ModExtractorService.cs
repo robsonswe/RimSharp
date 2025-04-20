@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -13,6 +15,9 @@ namespace RimSharp.Features.WorkshopDownloader.Services
     {
         Task<string> ExtractModName();
         Task<string> ExtractModDateInfo();
+        Task<string> ExtractFileSizeRawString(); // Added
+        Task<long> ParseFileSizeAsync(string sizeString); // Added
+
         Task<string> ConvertToStandardDate(string dateString);
         Task<ModInfoDto> ExtractFullModInfo();
         bool IsModInfoAvailable { get; } // <<< ADDED
@@ -137,6 +142,95 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 return null;
             }
         }
+        public async Task<string> ExtractFileSizeRawString() // Added
+        {
+            if (_webView?.CoreWebView2 == null) return null;
+
+            try
+            {
+                // Script targets the FIRST element, which should be the file size
+                string script = @"(function() {
+                    const detailsContainer = document.querySelector('.detailsStatsContainerRight');
+                    if (!detailsContainer) return '';
+                    const statElements = detailsContainer.querySelectorAll('.detailsStatRight');
+                    if (statElements.length > 0) {
+                        return statElements[0].textContent.trim(); // Get the first element
+                    }
+                    return ''; // Return empty if no elements
+                })();";
+
+                string result = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+                return UnwrapJsonString(result);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error extracting file size string: {ex.Message}");
+                return null;
+            }
+        }
+
+        public Task<long> ParseFileSizeAsync(string sizeString) // Added
+        {
+            if (string.IsNullOrWhiteSpace(sizeString))
+            {
+                return Task.FromResult(0L); // Return 0 if input is empty
+            }
+
+            long fileSizeInBytes = 0;
+            try
+            {
+                // Normalize string: remove extra spaces, use invariant culture for decimals
+                sizeString = sizeString.Trim();
+                var match = Regex.Match(sizeString, @"^([\d.,]+)\s*([a-zA-Z]*)", RegexOptions.IgnoreCase);
+
+                if (match.Success)
+                {
+                    string numberPart = match.Groups[1].Value.Replace(",", ""); // Remove thousands separators if any
+                    string unitPart = match.Groups[2].Value.Trim().ToUpperInvariant();
+
+                    // Use InvariantCulture to handle '.' as decimal separator regardless of system locale
+                    if (double.TryParse(numberPart, NumberStyles.Any, CultureInfo.InvariantCulture, out double sizeValue))
+                    {
+                        switch (unitPart)
+                        {
+                            case "GB":
+                                fileSizeInBytes = (long)(sizeValue * 1024 * 1024 * 1024);
+                                break;
+                            case "MB":
+                                fileSizeInBytes = (long)(sizeValue * 1024 * 1024);
+                                break;
+                            case "KB":
+                                fileSizeInBytes = (long)(sizeValue * 1024);
+                                break;
+                            case "B":
+                            case "": // Assume bytes if no unit
+                                fileSizeInBytes = (long)sizeValue;
+                                break;
+                            default:
+                                Debug.WriteLine($"[ParseFileSizeAsync] Unknown unit: '{unitPart}' in string '{sizeString}'");
+                                fileSizeInBytes = 0; // Unknown unit
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[ParseFileSizeAsync] Could not parse number part: '{numberPart}' from string '{sizeString}'");
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine($"[ParseFileSizeAsync] Could not match pattern in string: '{sizeString}'");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ParseFileSizeAsync] Error parsing '{sizeString}': {ex.Message}");
+                fileSizeInBytes = 0; // Return 0 on error
+            }
+
+            return Task.FromResult(fileSizeInBytes);
+        }
+
 
         // No changes needed in ConvertToStandardDate, ExtractFullModInfo, or UnwrapJsonString
         // as they don't directly use the IsMod...Available properties.
@@ -212,30 +306,29 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
         public async Task<ModInfoDto> ExtractFullModInfo()
         {
-            // (Existing checks for URL, ID etc remain)
             if (_webView?.Source == null || _webView.CoreWebView2 == null) return null;
 
             var url = _webView.Source.ToString();
-            // Use Uri class for robust parsing
             Uri uri;
             if (!Uri.TryCreate(url, UriKind.Absolute, out uri) ||
                 !(uri.Host.EndsWith("steamcommunity.com") && uri.AbsolutePath.Contains("/sharedfiles/filedetails/")))
             {
-                Console.WriteLine($"URL is not a valid Steam Workshop item page: {url}");
+                Debug.WriteLine($"URL is not a valid Steam Workshop item page: {url}");
                 return null;
             }
             var queryParams = System.Web.HttpUtility.ParseQueryString(uri.Query);
             var id = queryParams["id"];
             if (string.IsNullOrEmpty(id))
             {
-                Console.WriteLine($"Could not extract 'id' from URL: {url}");
+                Debug.WriteLine($"Could not extract 'id' from URL: {url}");
                 return null;
             }
 
-            // These calls will now trigger notifications if state changes
             string modName = await ExtractModName();
             string dateInfo = await ExtractModDateInfo();
             string standardDate = await ConvertToStandardDate(dateInfo);
+            string fileSizeRaw = await ExtractFileSizeRawString(); // Added
+            long fileSize = await ParseFileSizeAsync(fileSizeRaw); // Added
 
             if (string.IsNullOrEmpty(modName)) modName = $"Mod {id}";
             if (string.IsNullOrEmpty(dateInfo)) dateInfo = "Unknown Date";
@@ -248,14 +341,15 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 Url = url,
                 SteamId = id,
                 PublishDate = dateInfo,
-                StandardDate = standardDate
+                StandardDate = standardDate,
+                FileSize = fileSize // Added
             };
         }
 
 
         private string UnwrapJsonString(string jsonValue)
         {
-            // This utility function likely works fine as is
+             // (Implementation remains the same)
             if (string.IsNullOrEmpty(jsonValue) || jsonValue == "null")
                 return string.Empty;
 

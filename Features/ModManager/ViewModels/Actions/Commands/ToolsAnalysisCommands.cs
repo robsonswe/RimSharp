@@ -187,8 +187,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                                         SteamId = steamId,
                                         Url = $"https://steamcommunity.com/sharedfiles/filedetails/?id={steamId}",
                                         PublishDate = apiUpdateTimeOffset.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture),
-                                        StandardDate = apiUpdateTimeUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                                        StandardDate = apiUpdateTimeUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture),
                                         // Add other relevant info if available from details (Author, etc.)
+                                        FileSize = details.FileSize
                                     };
 
                                     if (_downloadQueueService.AddToQueue(modInfoDto))
@@ -628,7 +629,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                                     SteamId = replacementSteamId,
                                     Url = $"https://steamcommunity.com/sharedfiles/filedetails/?id={replacementSteamId}",
                                     PublishDate = apiUpdateTimeOffset.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture),
-                                    StandardDate = apiUpdateTimeUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                                    StandardDate = apiUpdateTimeUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture),
+                                    FileSize = details.FileSize
                                 };
 
                                 if (_downloadQueueService.AddToQueue(modInfoDto))

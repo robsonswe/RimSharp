@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Shared.Services.Contracts;
 
-namespace RimSharp.Infrastructure.Workshop
+namespace RimSharp.Infrastructure.Workshop.Core
 {
     /// <summary>
     /// Handles file system operations related to SteamCMD, primarily managing the depot cache.

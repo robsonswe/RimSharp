@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Features.WorkshopDownloader.Models;
 using RimSharp.Infrastructure.Workshop;
+using RimSharp.Infrastructure.Workshop.Download.Models;
 
 public interface ISteamCmdDownloader
 {

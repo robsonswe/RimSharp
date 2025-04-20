@@ -1,26 +1,47 @@
-﻿using System;
-using System.Net.Http; // <<< Keep this
+﻿// App.xaml.cs
+using System;
+using System.Net.Http; // Keep this
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
+
+// --- Framework & App Structure ---
+using RimSharp.AppDir.MainPage;
+using RimSharp.AppDir.AppFiles; // Correct namespace for App itself
+using RimSharp.Infrastructure.Configuration;
+using RimSharp.Infrastructure.Dialog;
+using RimSharp.Infrastructure.Logging;
+
+// --- Shared Contracts & Models ---
+using RimSharp.Shared.Models;
+using RimSharp.Shared.Services.Contracts;
+using RimSharp.Shared.Services.Implementations;
+
+// --- Mod Manager Feature ---
 using RimSharp.Features.ModManager.Services.Commands;
 using RimSharp.Features.ModManager.Services.Data;
 using RimSharp.Features.ModManager.Services.Filtering;
 using RimSharp.Features.ModManager.Services.Management;
 using RimSharp.Features.ModManager.ViewModels;
+using RimSharp.Infrastructure.Mods.IO;
+using RimSharp.Infrastructure.Mods.Rules;
+using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
+
+// --- Git Mod Manager Feature ---
+using RimSharp.Features.GitModManager.ViewModels;
+
+// --- Workshop Downloader Feature ---
 using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Features.WorkshopDownloader.ViewModels;
-using RimSharp.Infrastructure.Configuration;
-using RimSharp.Infrastructure.Dialog;
-using RimSharp.Infrastructure.Mods.IO;
-using RimSharp.Infrastructure.Mods.Rules; // Needed for JsonModRulesRepository
-using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
-using RimSharp.AppDir.MainPage;
-using RimSharp.Shared.Models;
-using RimSharp.Shared.Services.Contracts;
-using RimSharp.Shared.Services.Implementations;
-using RimSharp.Infrastructure.Workshop;
-using RimSharp.Infrastructure.Logging;
-using RimSharp.Features.GitModManager.ViewModels;
+
+// --- Workshop Infrastructure (Refactored Namespaces) ---
+using RimSharp.Infrastructure.Workshop;              // For SteamCmdService itself
+using RimSharp.Infrastructure.Workshop.Core;        // For PlatformInfo, PathService, FileSystem, Installer interfaces/classes
+using RimSharp.Infrastructure.Workshop.Download;    // For Downloader interface/class
+using RimSharp.Infrastructure.Workshop.Download.Execution; // For Runner, ScriptGenerator interfaces/classes
+using RimSharp.Infrastructure.Workshop.Download.Parsing;   // For LogParser interface/class
+using RimSharp.Infrastructure.Workshop.Download.Processing;// For ItemProcessor interface/class
+// --- IMPORTANT: Keep this if SteamCmdDownloadResult stays here ---
+using RimSharp.Infrastructure.Workshop.Download.Models;  // For SteamCmdDownloadResult DTO
 
 namespace RimSharp.AppDir.AppFiles
 {
@@ -72,42 +93,31 @@ namespace RimSharp.AppDir.AppFiles
                 return pathSettings;
             });
 
-            // Register App Base Path as a singleton string
             services.AddSingleton<string>(provider =>
             {
-                // Get the base path of the application
                 var basePath = AppDomain.CurrentDomain.BaseDirectory;
                 provider.GetRequiredService<ILoggerService>()?.LogDebug($"Application base path registered: {basePath}", "App.ConfigureServices");
                 return basePath;
             });
 
             // --- Mod Rules ---
-            // Updated: Inject appBasePath into JsonModRulesRepository constructor
             services.AddSingleton<IModRulesRepository>(provider =>
-                new JsonModRulesRepository(
-                    provider.GetRequiredService<string>() // Provide appBasePath
-                ));
-            services.AddSingleton<IModRulesService, ModRulesService>(); // Depends on IModRulesRepository
-
-            // Updated: Inject appBasePath and Logger into ModCustomService constructor
+                new JsonModRulesRepository(provider.GetRequiredService<string>())); // appBasePath
+            services.AddSingleton<IModRulesService, ModRulesService>();
             services.AddSingleton<IModCustomService>(provider =>
                 new ModCustomService(
-                    provider.GetRequiredService<string>(), // Provide appBasePath
-                    provider.GetRequiredService<ILoggerService>() // Provide logger
+                    provider.GetRequiredService<string>(), // appBasePath
+                    provider.GetRequiredService<ILoggerService>()
                  ));
-
             services.AddSingleton<IMlieVersionService, MlieVersionService>();
-
-            // ModReplacementService already correctly takes appBasePath and Logger
-            services.AddSingleton<IModReplacementService, ModReplacementService>(provider =>
+            services.AddSingleton<IModReplacementService>(provider =>
                 new ModReplacementService(
                     provider.GetRequiredService<IPathService>(),
-                    provider.GetRequiredService<string>(), // Provide appBasePath
-                    provider.GetRequiredService<ILoggerService>() // Provide logger
+                    provider.GetRequiredService<string>(), // appBasePath
+                    provider.GetRequiredService<ILoggerService>()
                 ));
 
             // --- Core Mod Services ---
-            // ModService dependencies are fine
             services.AddSingleton<IModService>(provider =>
                 new ModService(
                     provider.GetRequiredService<IPathService>(),
@@ -117,10 +127,9 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<ILoggerService>()
                 ));
             services.AddSingleton<IModListManager, ModListManager>();
-            services.AddSingleton<ModLookupService>();
+            services.AddSingleton<ModLookupService>(); // Assuming concrete type needed directly
 
             // --- Mod Manager Feature Services ---
-            // Dependencies seem fine
             services.AddSingleton<IModDataService>(provider =>
                 new ModDataService(
                     provider.GetRequiredService<IModService>(),
@@ -133,30 +142,54 @@ namespace RimSharp.AppDir.AppFiles
             services.AddSingleton<IModIncompatibilityService, ModIncompatibilityService>();
 
             // --- Workshop Downloader Feature Services ---
-            // Dependencies seem fine
             services.AddSingleton<IWebNavigationService, WebNavigationService>();
             services.AddSingleton<IDownloadQueueService, DownloadQueueService>();
             services.AddHttpClient(); // Registers IHttpClientFactory
             services.AddSingleton<ISteamApiClient, SteamApiClient>();
             services.AddSingleton<IWorkshopUpdateCheckerService, WorkshopUpdateCheckerService>();
 
-            // --- SteamCMD Infrastructure ---
-            // Dependencies seem fine
-            services.AddSingleton<SteamCmdPlatformInfo>();
-            services.AddSingleton<ISteamCmdPathService>(provider =>
+            // --- SteamCMD Infrastructure (Refactored) ---
+            // Core Setup Components
+            services.AddSingleton<SteamCmdPlatformInfo>(); // Lives in Core
+            services.AddSingleton<ISteamCmdPathService>(provider => // Lives in Core
             {
                 var configService = provider.GetRequiredService<IConfigService>();
                 var platformInfo = provider.GetRequiredService<SteamCmdPlatformInfo>();
+                // SteamCmdPathService constructor takes IConfigService, exeName
                 return new SteamCmdPathService(configService, platformInfo.SteamCmdExeName);
             });
-            services.AddSingleton<ISteamCmdFileSystem, SteamCmdFileSystem>();
-            services.AddSingleton<ISteamCmdInstaller, SteamCmdInstaller>();
-            services.AddSingleton<ISteamCmdDownloader, SteamCmdDownloader>();
+            services.AddSingleton<ISteamCmdFileSystem, SteamCmdFileSystem>(); // Lives in Core
+            services.AddSingleton<ISteamCmdInstaller, SteamCmdInstaller>(); // Lives in Core
+
+            // NEW: Register components from Download sub-namespaces
+            services.AddSingleton<ISteamCmdScriptGenerator, SteamCmdScriptGenerator>(); // Lives in Download.Execution
+            services.AddSingleton<ISteamCmdProcessRunner, SteamCmdProcessRunner>();     // Lives in Download.Execution
+            services.AddSingleton<ISteamCmdLogParser, SteamCmdLogParser>();             // Lives in Download.Parsing
+            services.AddSingleton<IDownloadedItemProcessor, DownloadedItemProcessor>(); // Lives in Download.Processing
+
+            // UPDATED: SteamCmdDownloader registration (lives in Download)
+            // Needs explicit factory due to many dependencies, including the new ones above
+            services.AddSingleton<ISteamCmdDownloader>(provider =>
+                new SteamCmdDownloader(
+                    provider.GetRequiredService<ISteamCmdPathService>(),
+                    provider.GetRequiredService<ISteamCmdInstaller>(),
+                    provider.GetRequiredService<IDialogService>(),
+                    provider.GetRequiredService<ILoggerService>(),
+                    provider.GetRequiredService<IPathService>(), // Game path service
+                    provider.GetRequiredService<ISteamCmdScriptGenerator>(), // New dependency
+                    provider.GetRequiredService<ISteamCmdProcessRunner>(),     // New dependency
+                    provider.GetRequiredService<ISteamCmdLogParser>(),         // New dependency
+                    provider.GetRequiredService<IDownloadedItemProcessor>()    // New dependency
+                ));
+
+            // SteamCmdService Facade (lives at Workshop root)
+            // Constructor takes Path, Installer, Downloader, FileSystem interfaces
+            // Simple registration should work now that its dependencies are registered
             services.AddSingleton<ISteamCmdService, SteamCmdService>();
 
             // --- ViewModels ---
-            // Register ViewModels - Use AddTransient unless specifically needed
-            services.AddTransient<ModsViewModel>(provider =>
+            // Register ViewModels - Use AddTransient unless specifically needed as singleton
+             services.AddTransient<ModsViewModel>(provider =>
                new ModsViewModel(
                    provider.GetRequiredService<IModDataService>(),
                    provider.GetRequiredService<IModFilterService>(),
@@ -180,7 +213,7 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IModService>(),
                     provider.GetRequiredService<IDialogService>(),
                     provider.GetRequiredService<IWorkshopUpdateCheckerService>(),
-                    provider.GetRequiredService<ISteamCmdService>(),
+                    provider.GetRequiredService<ISteamCmdService>(), // Depends on the facade
                     provider.GetRequiredService<IModListManager>()
                 ));
 
@@ -246,41 +279,60 @@ namespace RimSharp.AppDir.AppFiles
             }
         }
 
-        // --- Global Exception Handlers --- (Remain unchanged)
+        // --- Global Exception Handlers ---
 
         private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
         {
             _logger?.LogException(e.Exception, "Unhandled UI exception occurred.", "App.DispatcherUnhandled");
             var dialogService = ServiceProvider?.GetService<IDialogService>();
+            // Avoid showing dialog if MainWindow isn't visible or available (e.g., during early startup crash)
             if (dialogService != null && Application.Current?.MainWindow != null && Application.Current.MainWindow.IsVisible)
             {
-                dialogService.ShowError("Unhandled Error", $"An unexpected error occurred: {e.Exception.Message}\n\nThe application may become unstable. Please check logs.");
+                 try
+                 {
+                    dialogService.ShowError("Unhandled Error", $"An unexpected error occurred: {e.Exception.Message}\n\nThe application may become unstable. Please check logs.");
+                 }
+                 catch(Exception /*dialogEx*/)
+                 {
+                     // Fallback if even the dialog service fails
+                    MessageBox.Show($"An unexpected error occurred: {e.Exception.Message}\n\nError displaying detailed message. Check logs.", "Unhandled Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                 }
             }
-            else
+            else // Fallback message box
             {
                 MessageBox.Show($"An unexpected error occurred: {e.Exception.Message}\n\nThe application may become unstable. Please check logs.", "Unhandled Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+            // Decide whether to terminate. For many UI errors, allowing continuation might be possible.
+            // For critical errors, consider Shutdown(). For now, we just handle it.
             e.Handled = true;
         }
 
         private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
-            string message = "Unhandled non-UI exception occurred.";
-            if (e.ExceptionObject is Exception ex)
+            string message;
+            Exception? ex = e.ExceptionObject as Exception;
+
+            if (ex != null)
             {
                  message = $"Unhandled non-UI exception occurred. IsTerminating: {e.IsTerminating}";
                 _logger?.LogException(ex, message, "App.CurrentDomainUnhandled");
             }
             else
             {
-                 message = $"Unhandled non-UI exception occurred with non-exception object: {e.ExceptionObject}";
+                 message = $"Unhandled non-UI exception occurred with non-exception object: {e.ExceptionObject}. IsTerminating: {e.IsTerminating}";
                 _logger?.LogCritical(message, "App.CurrentDomainUnhandled");
             }
+
+            // Optionally show a message box, but be careful as this is often on a background thread
+             MessageBox.Show($"A critical non-UI error occurred: {(ex?.Message ?? "Unknown error")}\n\nApplication will likely terminate. Please check logs.", "Critical Error", MessageBoxButton.OK, MessageBoxImage.Error);
+
+            // If e.IsTerminating is true, the CLR is already shutting down.
         }
 
         protected override void OnExit(ExitEventArgs e)
         {
             _logger?.LogInfo($"Application exiting with code {e.ApplicationExitCode}.", "App.OnExit");
+            // Dispose the service provider if it implements IDisposable (standard practice)
             (ServiceProvider as IDisposable)?.Dispose();
             base.OnExit(e);
         }

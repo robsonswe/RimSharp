@@ -10,6 +10,7 @@ namespace RimSharp.Features.WorkshopDownloader.Models
         private string? _steamId;
         private string? _publishDate; // Date from Workshop
         private string? _standardDate; // Parsed Workshop Date
+        private long _fileSize;
 
         private bool _isInstalled;
         private string? _localDateStamp; // Date from local timestamp file
@@ -45,7 +46,11 @@ namespace RimSharp.Features.WorkshopDownloader.Models
             get => _standardDate;
             set => SetProperty(ref _standardDate, value);
         }
-
+      public long FileSize // Added: Size in bytes
+        {
+            get => _fileSize;
+            set => SetProperty(ref _fileSize, value);
+        }
         public bool IsInstalled
         {
             get => _isInstalled;
