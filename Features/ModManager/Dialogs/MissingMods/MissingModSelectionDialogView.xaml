@@ -8,145 +8,179 @@
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:MissingModSelectionDialogViewModel, IsDesignTimeCreatable=False}"
         Title="{Binding Title}"
-        Width="750" MinWidth="600" MaxWidth="900"
-        Height="550" MinHeight="400" MaxHeight="700"
+        Width="750" MinWidth="650" MaxWidth="1000"
+        Height="600" MinHeight="450" MaxHeight="800"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
 
     <dialogs:BaseDialog.Resources>
-        <!-- DataTemplate for a single Mod Variant (RadioButton and details) -->
-        <DataTemplate x:Key="ModVariantTemplate" DataType="{x:Type vm:MissingModVariantViewModel}">
-            <!-- Make the Grid non-focusable -->
-            <Grid Margin="0,2" Focusable="False">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/> <!-- Radio Button -->
-                    <ColumnDefinition Width="*"/> <!-- Details -->
-                </Grid.ColumnDefinitions>
+        <ResourceDictionary>
 
-                 <!-- RadioButton should be the main focus target within the item -->
-                 <!-- Bind IsEnabled to the IsSelectable property (derived from IsPublished) -->
-                <RadioButton Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0"
-                            GroupName="{Binding DataContext.PackageId, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
-                            IsChecked="{Binding IsSelected, RelativeSource={RelativeSource AncestorType={x:Type ListBoxItem}}}"
-                            IsEnabled="{Binding IsSelectable}"/> <!-- Binding is correct -->
+            <!-- DataTemplate for a single Mod Variant (RadioButton and details) -->
+            <DataTemplate x:Key="ModVariantTemplate" DataType="{x:Type vm:MissingModVariantViewModel}">
+                <!-- Use a Border for consistent spacing/look -->
+                <Border Padding="8,5" Margin="0,3,0,3" BorderBrush="{StaticResource RimworldBorderBrush}" BorderThickness="0,0,0,1" Background="Transparent">
+                    <Grid Focusable="False">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/> <!-- Radio Button -->
+                            <ColumnDefinition Width="*"/>   <!-- Details -->
+                        </Grid.ColumnDefinitions>
 
-                 <!-- Make the Border non-focusable -->
-                <Border Grid.Column="1" Style="{StaticResource RimworldSubtlePanelBorder}" Padding="8,5" Focusable="False">
-                     <!-- Make the StackPanel non-focusable -->
-                     <StackPanel Orientation="Vertical" Focusable="False">
-                        <!-- TextBlocks are generally not focusable by default, which is fine -->
-                        <!-- FIXED: Added Mode=OneWay -->
-                        <TextBlock FontWeight="SemiBold" Text="{Binding Name, Mode=OneWay}" Foreground="{StaticResource RimworldDarkBrownBrush}" TextWrapping="Wrap"/>
+                        <!-- RadioButton should be the main focus target within the item -->
+                        <RadioButton Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0"
+                                    GroupName="{Binding DataContext.PackageId, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
+                                    IsChecked="{Binding IsSelected, RelativeSource={RelativeSource AncestorType={x:Type ListBoxItem}}}"
+                                    IsEnabled="{Binding IsSelectable}"/>
 
-                        <!-- ADDED: Indicator for Unpublished Mods -->
-                        <TextBlock Text="(This mod variant is not available in the Workshop anymore)"
-                                   Foreground="{StaticResource RimworldDarkBrownBrush}" FontStyle="Italic" FontSize="10"
-                                   Visibility="{Binding IsPublished, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
-                                   Margin="0,1,0,0"/>
+                        <!-- Details Panel -->
+                        <StackPanel Grid.Column="1" Orientation="Vertical" Focusable="False">
+                            <TextBlock FontWeight="SemiBold" Text="{Binding Name, Mode=OneWay}" Foreground="{StaticResource RimworldDarkBrownBrush}" TextWrapping="Wrap"/>
 
-                        <TextBlock FontSize="11" Margin="0,2,0,0" Foreground="{StaticResource RimworldDarkBrownBrush}">
-                             <!-- FIXED: Added Mode=OneWay -->
-                            <Run Text="Author(s):"/> <Run Text="{Binding Authors, Mode=OneWay}"/>
-                        </TextBlock>
-                        <TextBlock FontSize="11" Margin="0,1,0,0" Foreground="{StaticResource RimworldDarkBrownBrush}">
-                             <!-- FIXED: Added Mode=OneWay -->
-                            <Run Text="Supported Versions:"/> <Run Text="{Binding VersionsString, Mode=OneWay}"/>
-                        </TextBlock>
-                        <TextBlock FontSize="11" FontStyle="Italic" Margin="0,1,0,0" Foreground="{StaticResource RimworldDarkBrownBrush}">
-                             <!-- SteamId already had Mode=OneWay, but adding explicit Mode=OneWay for safety/consistency -->
-                            <Run Text="Steam ID:"/> <Run Text="{Binding SteamId, Mode=OneWay}"/>
-                        </TextBlock>
-                    </StackPanel>
+                            <!-- Indicator for Unpublished Mods -->
+                            <TextBlock Text="(This mod variant is not available in the Workshop anymore)"
+                                       Foreground="{StaticResource RimworldLightBrownBrush}" FontStyle="Italic" FontSize="11"
+                                       Visibility="{Binding IsPublished, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                                       Margin="0,2,0,0"/>
+
+                            <TextBlock FontSize="11" Margin="0,3,0,0" Foreground="{StaticResource RimworldDarkBrownBrush}">
+                                <Run Text="Author(s):"/> <Run Text="{Binding Authors, Mode=OneWay}"/>
+                            </TextBlock>
+                            <TextBlock FontSize="11" Margin="0,1,0,0" Foreground="{StaticResource RimworldDarkBrownBrush}">
+                                <Run Text="Supported Versions:"/> <Run Text="{Binding VersionsString, Mode=OneWay}"/>
+                            </TextBlock>
+                            <TextBlock FontSize="11" FontStyle="Italic" Margin="0,1,0,0" Foreground="{StaticResource RimworldDarkBrownBrush}">
+                                <Run Text="Steam ID:"/> <Run Text="{Binding SteamId, Mode=OneWay}"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Grid>
                 </Border>
-            </Grid>
-        </DataTemplate>
+            </DataTemplate>
 
-         <!-- DataTemplate for a Group of Mod Variants (Expander with ListBox) -->
-        <DataTemplate x:Key="ModGroupTemplate" DataType="{x:Type vm:MissingModGroupViewModel}">
-            <!-- FIXED: Added Mode=OneWay for Header Binding -->
-            <Expander Header="{Binding PackageId, Mode=OneWay}" IsExpanded="True" Margin="0,5,0,5" Style="{StaticResource RimworldExpanderStyle}">
-                 <!-- SelectedItem needs TwoWay, which is correct as SelectedVariant has a public setter -->
-                 <ListBox ItemsSource="{Binding Variants}"
-                        ItemTemplate="{StaticResource ModVariantTemplate}"
-                        SelectedItem="{Binding SelectedVariant, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                        BorderThickness="0" Background="Transparent"
-                        ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                    <ListBox.ItemContainerStyle>
-                         <!-- Style already has Focusable="False", which is correct -->
-                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
-                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                            <Setter Property="Padding" Value="0"/>
-                            <Setter Property="Margin" Value="1"/>
-                            <Setter Property="Focusable" Value="False"/>
-                        </Style>
-                    </ListBox.ItemContainerStyle>
-                </ListBox>
-            </Expander>
-        </DataTemplate>
+            <!-- DataTemplate for a Group of Mod Variants (Expander with ListBox) -->
+            <DataTemplate x:Key="ModGroupTemplate" DataType="{x:Type vm:MissingModGroupViewModel}">
+                <!-- Add more margin to the expander itself -->
+                <Expander Header="{Binding PackageId, Mode=OneWay}" IsExpanded="True" Margin="0,8,0,8" Style="{StaticResource RimworldExpanderStyle}">
+                     <!-- Use ItemsControl instead of ListBox to potentially avoid scroll/selection conflicts if ListBoxItem style interferes -->
+                     <!-- Make sure ItemContainerStyle is correctly defined for ListBox if sticking with ListBox -->
+                     <ListBox ItemsSource="{Binding Variants}"
+                              ItemTemplate="{StaticResource ModVariantTemplate}"
+                              SelectedItem="{Binding SelectedVariant, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              BorderThickness="0" Background="Transparent"
+                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                              ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                              Padding="5,0,0,0"> <!-- Add some padding for variants -->
+                        <ListBox.ItemContainerStyle>
+                             <!-- Style to remove default ListBoxItem visuals and focus -->
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="Margin" Value="0"/>
+                                <Setter Property="Focusable" Value="False"/> <!-- Important -->
+                                <Setter Property="Template">
+                                     <Setter.Value>
+                                         <ControlTemplate TargetType="ListBoxItem">
+                                             <ContentPresenter/>
+                                         </ControlTemplate>
+                                     </Setter.Value>
+                                 </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                    </ListBox>
+                </Expander>
+            </DataTemplate>
+
+            <!-- NEW: DataTemplate for an Unknown Mod Item -->
+            <DataTemplate x:Key="UnknownModItemTemplate">
+                 <!-- Use a Border to mimic the look of an item group, add margin -->
+                 <Border Style="{StaticResource RimworldSubtlePanelBorder}" Padding="10,8" Margin="0,8,0,8" Background="{StaticResource RimworldDarkBeigeBrush}">
+                    <StackPanel Orientation="Vertical">
+                        <!-- Display the PackageId (which is the bound string itself) -->
+                        <TextBlock Text="{Binding ., Mode=OneWay}"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource RimworldDarkBrownBrush}"
+                                   TextWrapping="Wrap"/>
+                         <!-- Message indicating it's unknown -->
+                         <TextBlock Text="Not found in local database - Cannot be downloaded automatically."
+                                   FontStyle="Italic"
+                                   FontSize="11"
+                                   Foreground="{StaticResource RimworldLightBrownBrush}"
+                                   TextWrapping="Wrap"
+                                   Margin="0,5,0,0"/>
+                    </StackPanel>
+                 </Border>
+            </DataTemplate>
+
+        </ResourceDictionary>
     </dialogs:BaseDialog.Resources>
 
     <!-- Define Main Content -->
     <dialogs:BaseDialog.MainContent>
-        <Grid Margin="10">
+        <Grid Margin="15"> <!-- Increased outer margin -->
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/> <!-- Header Text -->
-                <RowDefinition Height="*"/> <!-- Known Mods ScrollViewer -->
-                <RowDefinition Height="Auto"/> <!-- Unknown Mods Separator/Header -->
-                <RowDefinition Height="Auto"/> <!-- Unknown Mods List -->
+                <RowDefinition Height="*"/>    <!-- Unified Scrollable List -->
             </Grid.RowDefinitions>
 
             <!-- Header text -->
-            <TextBlock Grid.Row="0" TextWrapping="Wrap" Margin="0,0,0,10" Foreground="{StaticResource RimworldDarkBrownBrush}">
-                The following mods from the imported list were not found locally. If multiple versions exist in the database, please select the one you wish to download.
-                <LineBreak/><LineBreak/>
-                <Run FontStyle="Italic">Note: Mods marked as 'Unavailable' are no longer published on the Steam Workshop and cannot be selected for download.</Run>
+            <TextBlock Grid.Row="0" TextWrapping="Wrap" Margin="0,0,0,15" Foreground="{StaticResource RimworldDarkBrownBrush}" LineHeight="18">
+                The following mods from the imported list were not found locally or need clarification:
+                <LineBreak/>
+                <Run FontStyle="Italic"> - Select a variant for mods found in the database to enable download.</Run><LineBreak/>
+                <Run FontStyle="Italic"> - Unavailable variants (not on Workshop) cannot be selected.</Run><LineBreak/>
+                <Run FontStyle="Italic"> - Mods marked 'Not found' cannot be downloaded automatically.</Run>
             </TextBlock>
 
-            <!-- Scrollable List for Known Mod Groups -->
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                          Visibility="{Binding HasKnownMods, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <ItemsControl ItemsSource="{Binding ModGroups}"
-                            ItemTemplate="{StaticResource ModGroupTemplate}"/>
+            <!-- Unified ScrollViewer for ALL items -->
+            <!-- Set CanContentScroll=False to improve mouse wheel scrolling over nested items -->
+            <ScrollViewer Grid.Row="1"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          PanningMode="VerticalOnly"
+                          Focusable="False"
+                          ScrollViewer.CanContentScroll="False"> <!-- ** Important for scrolling reliability ** -->
+
+                <!-- StackPanel to hold both known and unknown items sequentially -->
+                <StackPanel Orientation="Vertical">
+
+                     <!-- ItemsControl for Known Mod Groups -->
+                    <ItemsControl ItemsSource="{Binding ModGroups}"
+                                  ItemTemplate="{StaticResource ModGroupTemplate}"
+                                  Visibility="{Binding HasKnownMods, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                  Focusable="False"/> <!-- Prevent ItemsControl itself stealing focus -->
+
+                     <!-- Separator only if BOTH known and unknown mods are present -->
+                    <Separator Style="{StaticResource RimworldSeparatorStyle}" Margin="0,15,0,5">
+                        <Separator.Visibility>
+                            <MultiBinding Converter="{StaticResource BooleanAndToVisibilityConverter}"> <!-- Assumes you have/create this converter -->
+                                <Binding Path="HasKnownMods"/>
+                                <Binding Path="HasUnknownMods"/>
+                            </MultiBinding>
+                        </Separator.Visibility>
+                    </Separator>
+
+                     <!-- ItemsControl for Unknown Mod IDs -->
+                     <ItemsControl ItemsSource="{Binding UnknownModIds}"
+                                  ItemTemplate="{StaticResource UnknownModItemTemplate}"
+                                  Visibility="{Binding HasUnknownMods, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                  Focusable="False"/> <!-- Prevent ItemsControl itself stealing focus -->
+
+                </StackPanel>
             </ScrollViewer>
-
-            <!-- Separator and Header for Unknown Mods -->
-             <StackPanel Grid.Row="2" Margin="0,15,0,5"
-                        Visibility="{Binding HasUnknownMods, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <Separator Style="{StaticResource RimworldSeparatorStyle}"/>
-                <TextBlock Text="Unknown Mods (Not found in database):" FontWeight="SemiBold" Margin="0,8,0,5" Foreground="{StaticResource RimworldDarkBrownBrush}"/>
-                <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}">
-                    These mods could not be matched to a Steam ID in the local database. They cannot be downloaded automatically.
-                </TextBlock>
-             </StackPanel>
-
-            <!-- List for Unknown Mod IDs -->
-            <ListBox Grid.Row="3" ItemsSource="{Binding UnknownModIds}" Margin="0,0,0,5" MaxHeight="100"
-                    BorderBrush="{StaticResource RimworldBorderBrush}" BorderThickness="1" Background="{StaticResource RimworldLightBackgroundBrush}"
-                    ScrollViewer.VerticalScrollBarVisibility="Auto"
-                    Visibility="{Binding HasUnknownMods, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <!-- FIXED: Added Mode=OneWay (string is immutable, binding won't change it anyway, but good practice) -->
-                        <TextBlock Text="{Binding ., Mode=OneWay}" Margin="5,2" Foreground="{StaticResource RimworldDarkBrownBrush}"/>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
 
         </Grid>
     </dialogs:BaseDialog.MainContent>
 
-    <!-- Define Button Content -->
+    <!-- Define Button Content (Unchanged, but ensure styles are loaded) -->
     <dialogs:BaseDialog.ButtonContent>
-        <Grid Margin="0,12,0,5">
-             <!-- Make sure Button Styles exist -->
+        <Grid Margin="10,12,10,10"> <!-- Adjusted margin slightly -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <!-- Download Button -->
                 <Button Content="Download Selected"
                         Command="{Binding DownloadCommand}"
                         Style="{StaticResource RimworldSaveButtonStyle}"
-                        MinWidth="120"
-                        Height="30"
+                        MinWidth="140"
+                        Height="32"
                         Margin="5,0,5,0"/>
 
                 <!-- Cancel Button -->
@@ -154,8 +188,8 @@
                         Command="{Binding CancelCommand}"
                         Style="{StaticResource RimworldRunButtonStyle}"
                         IsCancel="True"
-                        MinWidth="80"
-                        Height="30"
+                        MinWidth="90"
+                        Height="32"
                         Margin="5,0,0,0"/>
             </StackPanel>
         </Grid>

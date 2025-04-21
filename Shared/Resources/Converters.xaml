@@ -29,6 +29,7 @@
     <convLogic:IsNotNullOrEmptyConverter x:Key="IsNotNullOrEmptyConverter"/>
     <convLogic:TabActiveConverter x:Key="TabActiveConverter"/>
     <convLogic:NullToBoolConverter x:Key="NullToBoolConverter"/>
+<convLogic:BooleanAndToVisibilityConverter x:Key="BooleanAndToVisibilityConverter"/>
 
     <!-- Numeric Converters -->
     <convNumeric:ClampValueConverter x:Key="ClampValueConverter"/>
