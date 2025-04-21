@@ -319,7 +319,7 @@ namespace RimSharp.Infrastructure.Mods.IO
                     $"Successfully imported mod list from {fileName} with {importedCount} active mods.");
             }
         }
-        // --- New Method to Handle Download Request ---
+        // --- Updated Method to Handle Download Request ---
         private async Task HandleMissingModDownloadRequestAsync(List<string> missingModIds)
         {
             if (missingModIds == null || !missingModIds.Any()) return;
@@ -382,12 +382,12 @@ namespace RimSharp.Infrastructure.Mods.IO
                                 group.Variants.Add(new MissingModVariantViewModel(entry));
                             }
 
-                            // --- START: Set Default Selection ---
-                            if (group.Variants.Any())
-                            {
-                                group.SelectedVariant = group.Variants.FirstOrDefault(); // Select the first item
-                            }
-                            // --- END: Set Default Selection ---
+                            // --- START: Updated Default Selection ---
+                            // Select the *first published* variant by default.
+                            // If none are published, leave SelectedVariant as null.
+                            group.SelectedVariant = group.Variants
+                                                        .FirstOrDefault(v => v.IsPublished);
+                            // --- END: Updated Default Selection ---
 
                             groups.Add(group);
                         }
@@ -414,13 +414,13 @@ namespace RimSharp.Infrastructure.Mods.IO
 
                 if (selectionResult?.Result == MissingModSelectionResult.Download && selectionResult.SelectedSteamIds.Any())
                 {
-                    _logger.LogInfo($"User selected {selectionResult.SelectedSteamIds.Count} mod variants to download.", nameof(ModListIOService));
+                    _logger.LogInfo($"User selected {selectionResult.SelectedSteamIds.Count} published mod variants to download.", nameof(ModListIOService));
                     // --- Trigger the actual download process ---
                     await QueueModsForDownloadAsync(selectionResult.SelectedSteamIds, CancellationToken.None); // Use CancellationToken.None for now, or pass a real one if needed
                 }
                 else
                 {
-                    _logger.LogInfo("User cancelled or did not select any mods in the missing mod selection dialog.", nameof(ModListIOService));
+                    _logger.LogInfo("User cancelled or did not select any (published) mods in the missing mod selection dialog.", nameof(ModListIOService));
                 }
             }
             catch (OperationCanceledException)
@@ -449,6 +449,7 @@ namespace RimSharp.Infrastructure.Mods.IO
         }
 
         // --- New Reusable Method to Queue Mods (Similar to ExecuteRedownloadModsAsync) ---
+        // No changes needed in this method for the 'Published' logic, as it deals with Steam IDs already selected.
         private async Task QueueModsForDownloadAsync(List<string> steamIds, CancellationToken ct)
         {
             if (steamIds == null || !steamIds.Any())
@@ -567,6 +568,11 @@ namespace RimSharp.Infrastructure.Mods.IO
                                 Interlocked.Increment(ref errorCount);
                                 return;
                             }
+
+                            // Sanity Check: Double-check if the mod is *actually* available via API, although dictionary said Published=true
+                            // The workshop visibility might have changed between dictionary update and now.
+                            // `details.Result == 1` already covers most cases (like Removed, FriendsOnly, Private).
+                            // We could potentially add a check for `details.visibility` if needed, but Result==1 is usually sufficient.
 
                             DateTimeOffset apiUpdateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(details.TimeUpdated);
                             DateTime apiUpdateTimeUtc = apiUpdateTimeOffset.UtcDateTime;

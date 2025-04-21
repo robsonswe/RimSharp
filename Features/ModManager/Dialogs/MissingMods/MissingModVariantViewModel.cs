@@ -11,31 +11,37 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
         private string _authors = string.Empty;
         private string _versionsString = string.Empty;
         private string _steamId = string.Empty;
+        // private bool _isPublished = false; // No backing field needed if get-only
 
         public string Name
         {
             get => _name;
-            set => SetProperty(ref _name, value);
+            private set => SetProperty(ref _name, value); // Keep private set if needed internally
         }
 
         public string Authors
         {
             get => _authors;
-            set => SetProperty(ref _authors, value);
+            private set => SetProperty(ref _authors, value);
         }
 
         public string VersionsString
         {
             get => _versionsString;
-            set => SetProperty(ref _versionsString, value);
+            private set => SetProperty(ref _versionsString, value);
         }
 
-        public string SteamId
-        {
-            get => _steamId;
-            // REMOVE the private set if it was there, ensure it's truly get-only
-            // private set => SetProperty(ref _steamId, value);
-        }
+        public string SteamId { get; } // Keep get-only
+
+        /// <summary>
+        /// Indicates whether the mod variant is currently published on Steam Workshop.
+        /// </summary>
+        public bool IsPublished { get; } // Make this get-only, set in constructor
+
+        /// <summary>
+        /// Helper property for XAML binding, indicates if this variant can be selected.
+        /// </summary>
+        public bool IsSelectable => IsPublished;
 
         // Constructor to populate from ModDictionaryEntry
         public MissingModVariantViewModel(ModDictionaryEntry entry)
@@ -45,7 +51,8 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
             VersionsString = entry.Versions != null && entry.Versions.Any()
                             ? string.Join(", ", entry.Versions)
                             : "Unknown Version";
-            _steamId = entry.SteamId; // Assign only in constructor
+            SteamId = entry.SteamId; // Assign only in constructor
+            IsPublished = entry.Published; // Assign the Published status
         }
     }
 }

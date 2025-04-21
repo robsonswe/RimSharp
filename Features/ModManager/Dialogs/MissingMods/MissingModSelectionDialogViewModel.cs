@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Input;
 using RimSharp.AppDir.Dialogs; // For DialogViewModelBase<T>
+using RimSharp.Core.Commands.Base; // For IDelegateCommand
 
 namespace RimSharp.Features.ModManager.Dialogs.MissingMods
 {
@@ -68,7 +69,7 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
             CancelCommand = CreateCommand(ExecuteCancel);
 
             // Initial CanExecute check
-            (DownloadCommand as Core.Commands.Base.IDelegateCommand)?.RaiseCanExecuteChanged();
+            (DownloadCommand as IDelegateCommand)?.RaiseCanExecuteChanged();
         }
 
         private void Group_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -76,25 +77,37 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
             if (e.PropertyName == nameof(MissingModGroupViewModel.SelectedVariant))
             {
                  // Re-evaluate CanExecute when a selection changes
-                (DownloadCommand as Core.Commands.Base.IDelegateCommand)?.RaiseCanExecuteChanged();
+                (DownloadCommand as IDelegateCommand)?.RaiseCanExecuteChanged();
             }
         }
 
         private bool CanExecuteDownload()
         {
-            // Can download only if ALL groups have a variant selected
-             // And there must be at least one group to select from
-            return ModGroups.Any() && ModGroups.All(g => g.SelectedVariant != null);
+            // Can download only if:
+            // 1. There is at least one group to select from.
+            // 2. ALL groups have a variant selected.
+            // 3. The selected variant in ALL groups is published (IsPublished == true).
+            return ModGroups.Any() && ModGroups.All(g => g.SelectedVariant != null && g.SelectedVariant.IsPublished);
         }
 
         private void ExecuteDownload()
         {
             var selectedSteamIds = ModGroups
-                .Where(g => g.SelectedVariant != null)
-                .Select(g => g.SelectedVariant!.SteamId) // Safe due to CanExecute check
+                // Ensure we only take selections that are valid according to CanExecute
+                .Where(g => g.SelectedVariant != null && g.SelectedVariant.IsPublished)
+                .Select(g => g.SelectedVariant!.SteamId) // Safe due to Where clause
                 .Where(id => !string.IsNullOrEmpty(id)) // Extra safety
                 .Distinct() // Ensure unique IDs
                 .ToList();
+
+            // Double-check if any IDs were actually collected (although CanExecute should prevent this being empty)
+            if (!selectedSteamIds.Any())
+            {
+                 // This case should ideally not happen if CanExecuteDownload is correct,
+                 // but handle defensively. Maybe log a warning.
+                 System.Diagnostics.Debug.WriteLine("WARNING: ExecuteDownload called but no valid published mods selected.");
+                 return;
+            }
 
             var output = new MissingModSelectionDialogOutput
             {

@@ -25,23 +25,36 @@
                 </Grid.ColumnDefinitions>
 
                  <!-- RadioButton should be the main focus target within the item -->
+                 <!-- Bind IsEnabled to the IsSelectable property (derived from IsPublished) -->
                 <RadioButton Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0"
                             GroupName="{Binding DataContext.PackageId, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
-                            IsChecked="{Binding IsSelected, RelativeSource={RelativeSource AncestorType={x:Type ListBoxItem}}}"/>
+                            IsChecked="{Binding IsSelected, RelativeSource={RelativeSource AncestorType={x:Type ListBoxItem}}}"
+                            IsEnabled="{Binding IsSelectable}"/> <!-- Binding is correct -->
 
                  <!-- Make the Border non-focusable -->
                 <Border Grid.Column="1" Style="{StaticResource RimworldSubtlePanelBorder}" Padding="8,5" Focusable="False">
                      <!-- Make the StackPanel non-focusable -->
                      <StackPanel Orientation="Vertical" Focusable="False">
                         <!-- TextBlocks are generally not focusable by default, which is fine -->
-                        <TextBlock FontWeight="SemiBold" Text="{Binding Name}" Foreground="{StaticResource RimworldDarkBrownBrush}" TextWrapping="Wrap"/>
+                        <!-- FIXED: Added Mode=OneWay -->
+                        <TextBlock FontWeight="SemiBold" Text="{Binding Name, Mode=OneWay}" Foreground="{StaticResource RimworldDarkBrownBrush}" TextWrapping="Wrap"/>
+
+                        <!-- ADDED: Indicator for Unpublished Mods -->
+                        <TextBlock Text="(This mod variant is not available in the Workshop anymore)"
+                                   Foreground="{StaticResource RimworldDarkBrownBrush}" FontStyle="Italic" FontSize="10"
+                                   Visibility="{Binding IsPublished, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                                   Margin="0,1,0,0"/>
+
                         <TextBlock FontSize="11" Margin="0,2,0,0" Foreground="{StaticResource RimworldDarkBrownBrush}">
-                            <Run Text="Author(s):"/> <Run Text="{Binding Authors}"/>
+                             <!-- FIXED: Added Mode=OneWay -->
+                            <Run Text="Author(s):"/> <Run Text="{Binding Authors, Mode=OneWay}"/>
                         </TextBlock>
                         <TextBlock FontSize="11" Margin="0,1,0,0" Foreground="{StaticResource RimworldDarkBrownBrush}">
-                            <Run Text="Supported Versions:"/> <Run Text="{Binding VersionsString}"/>
+                             <!-- FIXED: Added Mode=OneWay -->
+                            <Run Text="Supported Versions:"/> <Run Text="{Binding VersionsString, Mode=OneWay}"/>
                         </TextBlock>
                         <TextBlock FontSize="11" FontStyle="Italic" Margin="0,1,0,0" Foreground="{StaticResource RimworldDarkBrownBrush}">
+                             <!-- SteamId already had Mode=OneWay, but adding explicit Mode=OneWay for safety/consistency -->
                             <Run Text="Steam ID:"/> <Run Text="{Binding SteamId, Mode=OneWay}"/>
                         </TextBlock>
                     </StackPanel>
@@ -51,8 +64,10 @@
 
          <!-- DataTemplate for a Group of Mod Variants (Expander with ListBox) -->
         <DataTemplate x:Key="ModGroupTemplate" DataType="{x:Type vm:MissingModGroupViewModel}">
-            <Expander Header="{Binding PackageId}" IsExpanded="True" Margin="0,5,0,5" Style="{StaticResource RimworldExpanderStyle}">
-                <ListBox ItemsSource="{Binding Variants}"
+            <!-- FIXED: Added Mode=OneWay for Header Binding -->
+            <Expander Header="{Binding PackageId, Mode=OneWay}" IsExpanded="True" Margin="0,5,0,5" Style="{StaticResource RimworldExpanderStyle}">
+                 <!-- SelectedItem needs TwoWay, which is correct as SelectedVariant has a public setter -->
+                 <ListBox ItemsSource="{Binding Variants}"
                         ItemTemplate="{StaticResource ModVariantTemplate}"
                         SelectedItem="{Binding SelectedVariant, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                         BorderThickness="0" Background="Transparent"
@@ -81,8 +96,11 @@
                 <RowDefinition Height="Auto"/> <!-- Unknown Mods List -->
             </Grid.RowDefinitions>
 
+            <!-- Header text -->
             <TextBlock Grid.Row="0" TextWrapping="Wrap" Margin="0,0,0,10" Foreground="{StaticResource RimworldDarkBrownBrush}">
                 The following mods from the imported list were not found locally. If multiple versions exist in the database, please select the one you wish to download.
+                <LineBreak/><LineBreak/>
+                <Run FontStyle="Italic">Note: Mods marked as 'Unavailable' are no longer published on the Steam Workshop and cannot be selected for download.</Run>
             </TextBlock>
 
             <!-- Scrollable List for Known Mod Groups -->
@@ -109,7 +127,8 @@
                     Visibility="{Binding HasUnknownMods, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <TextBlock Text="{Binding}" Margin="5,2" Foreground="{StaticResource RimworldDarkBrownBrush}"/>
+                        <!-- FIXED: Added Mode=OneWay (string is immutable, binding won't change it anyway, but good practice) -->
+                        <TextBlock Text="{Binding ., Mode=OneWay}" Margin="5,2" Foreground="{StaticResource RimworldDarkBrownBrush}"/>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
