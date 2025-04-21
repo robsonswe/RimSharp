@@ -64,7 +64,7 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
 
             DownloadCommand = CreateCommand(
                 ExecuteDownload,
-                CanExecuteDownload); // No need to list properties here, handled by event subscription
+                CanExecuteDownload); // CanExecute logic changed below
 
             CancelCommand = CreateCommand(ExecuteCancel);
 
@@ -83,30 +83,56 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
 
         private bool CanExecuteDownload()
         {
-            // Can download only if:
-            // 1. There is at least one group to select from.
-            // 2. ALL groups have a variant selected.
-            // 3. The selected variant in ALL groups is published (IsPublished == true).
-            return ModGroups.Any() && ModGroups.All(g => g.SelectedVariant != null && g.SelectedVariant.IsPublished);
+            // 1. Filter out groups that ONLY contain unpublished mods (these don't require selection).
+            var groupsRequiringSelection = ModGroups
+                .Where(g => g.Variants.Any(v => v.IsPublished)) // Find groups that HAVE at least one published variant
+                .ToList();
+
+            // 2. If there are no groups that require a selection (e.g., all mods were unpublished or the list was empty),
+            //    then we cannot download anything.
+            if (!groupsRequiringSelection.Any())
+            {
+                 // Optional: Add debug logging if needed
+                 // System.Diagnostics.Debug.WriteLine("[CanExecuteDownload] Result: false (No groups require selection or have published variants)");
+                return false;
+            }
+
+            // 3. Check if ALL groups that *require* a selection actually *have* a selection made.
+            //    We already know the selection MUST be a published one if IsSelectable works correctly,
+            //    but checking SelectedVariant != null is sufficient here because only published ones are selectable.
+            bool allRequiredSelectionsMade = groupsRequiringSelection
+                .All(g => g.SelectedVariant != null);
+
+            // Optional: Add debug logging if needed
+            // System.Diagnostics.Debug.WriteLine($"[CanExecuteDownload] {groupsRequiringSelection.Count} groups require selection. All selections made = {allRequiredSelectionsMade}");
+
+            return allRequiredSelectionsMade;
         }
 
         private void ExecuteDownload()
         {
             var selectedSteamIds = ModGroups
-                // Ensure we only take selections that are valid according to CanExecute
+                // Filter groups: Ensure a variant is selected AND it's published
                 .Where(g => g.SelectedVariant != null && g.SelectedVariant.IsPublished)
-                .Select(g => g.SelectedVariant!.SteamId) // Safe due to Where clause
-                .Where(id => !string.IsNullOrEmpty(id)) // Extra safety
-                .Distinct() // Ensure unique IDs
+                 // Select the SteamId (safe due to Where clause)
+                .Select(g => g.SelectedVariant!.SteamId)
+                 // Extra safety: Ensure ID isn't empty (shouldn't happen)
+                .Where(id => !string.IsNullOrEmpty(id))
+                 // Ensure unique IDs
+                .Distinct()
                 .ToList();
 
-            // Double-check if any IDs were actually collected (although CanExecute should prevent this being empty)
+            // Defensive check: Although CanExecuteDownload should now allow this only
+            // if at least one valid selection exists, we double-check.
             if (!selectedSteamIds.Any())
             {
-                 // This case should ideally not happen if CanExecuteDownload is correct,
-                 // but handle defensively. Maybe log a warning.
-                 System.Diagnostics.Debug.WriteLine("WARNING: ExecuteDownload called but no valid published mods selected.");
+                 // This case might occur if CanExecuteDownload logic changes or has edge cases.
+                 System.Diagnostics.Debug.WriteLine("WARNING: ExecuteDownload called but no valid published mods selected. This might indicate an issue in CanExecuteDownload logic.");
+                 // Optionally, show a message to the user or just return.
+                 // For now, we just return, preventing the dialog close with Download result.
                  return;
+                 // OR: If you decide even empty selection is ok (e.g., user cleared selections after enabling),
+                 //     you might proceed, but the current Output structure expects IDs.
             }
 
             var output = new MissingModSelectionDialogOutput
@@ -116,6 +142,7 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
             };
             CloseDialog(output);
         }
+
 
         private void ExecuteCancel()
         {
@@ -142,7 +169,9 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
         // Override the mapping for the Window's DialogResult
         protected override void MapResultToWindowResult(MissingModSelectionDialogOutput result)
         {
-            DialogResultForWindow = result?.Result == MissingModSelectionResult.Download;
+             // DialogResult = true only if the user explicitly chose Download AND there were IDs selected.
+             // The check in ExecuteDownload should prevent closing with Download result if selectedSteamIds is empty.
+            DialogResultForWindow = result?.Result == MissingModSelectionResult.Download && (result?.SelectedSteamIds.Any() ?? false);
         }
     }
 }
