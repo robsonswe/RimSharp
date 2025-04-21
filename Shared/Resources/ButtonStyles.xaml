@@ -67,6 +67,7 @@
         </Setter>
     </Style>
 
+
     <!-- RimWorld-style Save Button -->
     <Style x:Key="RimworldSaveButtonStyle" TargetType="Button" BasedOn="{StaticResource RimworldButtonStyle}">
         <Setter Property="Template">
@@ -241,6 +242,7 @@
         </Setter>
     </Style>
 
+
     <!-- Style for list header buttons (from ModsView) - Generalizing -->
     <Style TargetType="Button" x:Key="SmallUtilityButtonStyle" BasedOn="{StaticResource RimworldButtonStyle}">
         <Setter Property="Width" Value="30"/>
@@ -270,6 +272,45 @@
         <!-- Padding is same as base, so no need to redefine unless different -->
         <!--<Setter Property="Padding" Value="8,4"/>-->
     </Style>
+
+        <!-- Modern Browser Navigation Button Style -->
+<Style x:Key="BrowserNavButtonStyle" TargetType="Button" BasedOn="{StaticResource DownloaderButtonStyle}">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{StaticResource RimworldWhiteBrush}"/>
+    <Setter Property="Width" Value="28"/>
+    <Setter Property="Height" Value="24"/>
+    <Setter Property="Padding" Value="0"/>
+    <Setter Property="FontWeight" Value="Normal"/>
+    <Setter Property="Template">
+        <Setter.Value>
+            <ControlTemplate TargetType="Button">
+                <Border x:Name="ButtonBorder"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="2"
+                        Padding="{TemplateBinding Padding}">
+                    <ContentPresenter HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"/>
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" TargetName="ButtonBorder" Value="{StaticResource RimworldLightBrownBrush}"/>
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter Property="Background" TargetName="ButtonBorder" Value="{StaticResource RimworldDarkBeigeBrush}"/>
+                        <Setter Property="Foreground" Value="{StaticResource RimworldHighlightBrush}"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.5"/>
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate>
+        </Setter.Value>
+    </Setter>
+</Style>
+
 
 
 </ResourceDictionary>

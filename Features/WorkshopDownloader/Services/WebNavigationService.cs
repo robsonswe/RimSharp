@@ -17,12 +17,12 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         bool CanGoForward { get; }
         bool IsValidModUrl { get; }
         string CurrentUrl { get; }
-
+        event EventHandler<string> SourceUrlChanged;
 
         event EventHandler<string> StatusChanged;
         event EventHandler NavigationStateChanged;
         event EventHandler<bool> ModUrlValidityChanged;
-        event EventHandler<string> NavigationSucceededAndUrlValid; 
+        event EventHandler<string> NavigationSucceededAndUrlValid;
     }
 
     public class WebNavigationService : IWebNavigationService
@@ -78,6 +78,8 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
         public string CurrentUrl => _webView?.Source?.ToString();
 
+        public event EventHandler<string> SourceUrlChanged;
+
         public event EventHandler<string> StatusChanged;
         public event EventHandler NavigationStateChanged; // Now invoked by property setters
         public event EventHandler<bool> ModUrlValidityChanged; // Now invoked by property setter
@@ -113,7 +115,14 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                     // If CoreWebView2 is already available, hook events immediately
                     HookCoreWebView2Events();
                     UpdateNavigationState(); // Update state based on current CoreWebView2
+                    string initialUrl = _webView.Source?.ToString();
                     CheckUrlValidity(_webView.Source?.ToString()); // Check initial URL
+                    if (!string.IsNullOrEmpty(initialUrl) && initialUrl != "about:blank")
+                    {
+                        SourceUrlChanged?.Invoke(this, initialUrl);
+                        Debug.WriteLine($"[WebNavService] Raised initial SourceUrlChanged: {initialUrl}");
+                    }
+
                 }
             }
         }
@@ -124,7 +133,15 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             {
                 HookCoreWebView2Events();
                 UpdateNavigationState(); // Update state now that CoreWebView2 is ready
+                string initialUrl = _webView.Source?.ToString();
+
                 CheckUrlValidity(_webView.Source?.ToString()); // Check initial URL
+                if (!string.IsNullOrEmpty(initialUrl) && initialUrl != "about:blank")
+                {
+                    SourceUrlChanged?.Invoke(this, initialUrl);
+                    Debug.WriteLine($"[WebNavService] Raised SourceUrlChanged after CoreInit: {initialUrl}");
+                }
+
             }
             else
             {
@@ -152,8 +169,15 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         {
             // This event fires when the Source property itself changes.
             // It's a good place to update navigation state as well.
+            string newUrl = _webView?.Source?.ToString();
+
             UpdateNavigationState();
             CheckUrlValidity(_webView?.Source?.ToString());
+            if (!string.IsNullOrEmpty(newUrl)) // Avoid raising for potentially empty intermediate states
+            {
+                SourceUrlChanged?.Invoke(this, newUrl);
+            }
+
         }
 
 
@@ -221,37 +245,36 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
         private void WebView_NavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
         {
-            UpdateNavigationState(); // Update CanGoBack/Forward
+            // SourceChanged should have already fired and raised SourceUrlChanged for the URL update.
+            // This handler primarily updates status and raises the specific NavSucceededAndValid event.
+
+            UpdateNavigationState(); // Update CanGoBack/Forward again just in case
 
             string currentSource = _webView?.Source?.ToString() ?? "Unknown URL";
             string status;
 
             // Check validity AFTER navigation attempt completes
-            // This will set the IsValidModUrl property and raise ModUrlValidityChanged event
+            // This sets the IsValidModUrl property and raises ModUrlValidityChanged event
             CheckUrlValidity(currentSource);
 
             if (e.IsSuccess)
             {
                 status = $"Loaded: {currentSource}";
-                // *** If successful AND the URL is now considered valid, raise the new event ***
                 if (IsValidModUrl) // Check the property state after CheckUrlValidity ran
                 {
-                    Debug.WriteLine($"[WebNavService] Navigation succeeded for valid URL: {currentSource}. Raising NavigationSucceededAndUrlValid.");
-                    NavigationSucceededAndUrlValid?.Invoke(this, currentSource); // Raise the new event
+                    Debug.WriteLine($"[WebNavService] Nav completed successfully for valid URL: {currentSource}. Raising NavSucceededAndValid.");
+                    NavigationSucceededAndUrlValid?.Invoke(this, currentSource);
                 }
-                else
-                {
-                     Debug.WriteLine($"[WebNavService] Navigation succeeded but URL is not a valid mod URL: {currentSource}");
-                }
+                else { Debug.WriteLine($"[WebNavService] Nav completed successfully but URL is not valid mod URL: {currentSource}"); }
             }
             else
             {
                 status = $"Failed to load: {currentSource} (Error: {e.WebErrorStatus})";
                 Debug.WriteLine($"[WebNavService] Navigation failed for URL: {currentSource}");
-                // IsValidModUrl would have been set by CheckUrlValidity above, possibly to false if URL invalid, or maybe still true if it was valid but failed to load
             }
 
             StatusChanged?.Invoke(this, status);
+            // No need to raise SourceUrlChanged here, SourceChanged event handles it.
         }
 
 
@@ -267,7 +290,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             bool coreWebViewAvailable = _webView?.CoreWebView2 != null;
             CanGoBack = coreWebViewAvailable && _webView.CoreWebView2.CanGoBack;
             CanGoForward = coreWebViewAvailable && _webView.CoreWebView2.CanGoForward;
-    Debug.WriteLine($"[WebNav] CanGoBack: {CanGoBack}, CanGoForward: {CanGoForward}"); // Add debug
+            Debug.WriteLine($"[WebNav] CanGoBack: {CanGoBack}, CanGoForward: {CanGoForward}"); // Add debug
 
             // No need to invoke NavigationStateChanged here, the property setters do it.
         }
