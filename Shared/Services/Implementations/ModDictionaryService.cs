@@ -135,7 +135,7 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
 
                 var options = new JsonSerializerOptions
                 {
-                    PropertyNameCaseInsensitive = true // Handle "mods" or "Mods" etc.
+                    PropertyNameCaseInsensitive = true // Handle "mods" or "Mods", "published" or "Published" etc.
                 };
 
                 // Deserialize into the structure matching db.json
@@ -178,7 +178,8 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
                                 SteamId = steamIdLower,
                                 Name = details.Name,
                                 Versions = details.Versions ?? new List<string>(), // Ensure list exists
-                                Authors = details.Authors
+                                Authors = details.Authors,
+                                Published = details.Published
                             };
 
                             // Add to the target dictionary using lowercase SteamId as the key
@@ -196,7 +197,7 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
             }
             catch (JsonException jsonEx)
             {
-                _logger.LogException(jsonEx, $"Error parsing JSON file '{jsonFilePath}'.", nameof(ModDictionaryService));
+                _logger.LogException(jsonEx, $"Error parsing JSON file '{jsonFilePath}'. Check for invalid boolean values for 'published'.", nameof(ModDictionaryService)); // Added note about boolean
             }
             catch (IOException ioEx)
             {
@@ -204,7 +205,7 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
             }
             catch (UnauthorizedAccessException uaEx)
             {
-                 _logger.LogException(uaEx, $"Permission error accessing directory '{dbDirectoryPath}' or file '{jsonFilePath}'.", nameof(ModDictionaryService));
+                _logger.LogException(uaEx, $"Permission error accessing directory '{dbDirectoryPath}' or file '{jsonFilePath}'.", nameof(ModDictionaryService));
             }
             catch (Exception ex)
             {
@@ -234,6 +235,7 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
             public string Name { get; set; }
             public List<string> Versions { get; set; }
             public string Authors { get; set; }
+            public bool Published { get; set; }
         }
     }
 }

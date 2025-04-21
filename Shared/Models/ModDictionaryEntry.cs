@@ -33,6 +33,12 @@ namespace RimSharp.Shared.Models // Adjust namespace as needed
         /// </summary>
         public string Authors { get; set; }
 
+        /// <summary>
+        /// Indicates whether the mod is currently published (e.g., on Steam Workshop).
+        /// Defaults to false if not specified in the source JSON.
+        /// </summary>
+        public bool Published { get; set; } // <-- ADDED PROPERTY
+
         // Add any calculated properties or methods if needed later
         // Example:
         // [JsonIgnore]
