@@ -22985,6 +22985,14 @@
                 ],
                 "authors": "Roolo,Updated by Ogliss",
                 "published": true
+            },
+            "3221373644": {
+                "name": "RunAndGun (1.5 Updated by Nillas)",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Roolo, Owlchemist, Nillas",
+                "published": true
             }
         },
         "marvinkosh453.combathreadinesshcheck": {
@@ -139479,6 +139487,17 @@
                 ],
                 "authors": "Kikohi",
                 "published": false
+            },
+            "3203277064": {
+                "name": "What's for sale?",
+                "versions": [
+                    "1.2",
+                    "1.3",
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Kikohi, Sarg",
+                "published": true
             }
         },
         "toyama.neclose": {
@@ -175137,6 +175156,15 @@
                 "versions": [
                     "1.3",
                     "1.4"
+                ],
+                "authors": "FrozenSnowFox",
+                "published": true
+            },
+            "3172074919": {
+                "name": "[FSF] Better Camp Loot",
+                "versions": [
+                    "1.4",
+                    "1.5"
                 ],
                 "authors": "FrozenSnowFox",
                 "published": true
@@ -271133,6 +271161,1966 @@
                     "1.5"
                 ],
                 "authors": "Gerik Uylerk",
+                "published": true
+            }
+        },
+        "a3i.mods.vrpq": {
+            "3194207768": {
+                "name": "Vanilla Research Panel - Queue",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "ComradeAlexey",
+                "published": true
+            }
+        },
+        "alexispopcorn.vac.base": {
+            "3306119571": {
+                "name": "Voice Acted Colonists",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "AlexisPopcorn",
+                "published": true
+            }
+        },
+        "alleykat.persistentprecepts": {
+            "2944765939": {
+                "name": "Persistent Precepts",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Alleykat",
+                "published": true
+            }
+        },
+        "alt4s.visitsettlements": {
+            "3247900860": {
+                "name": "Visit Settlements",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "alt4s",
+                "published": true
+            }
+        },
+        "andromeda.pawnquickinfo": {
+            "3078081326": {
+                "name": "Pawn quick info",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Andromeda",
+                "published": true
+            }
+        },
+        "antihydrogen.donotgothere": {
+            "3312299671": {
+                "name": "[AntiHydrogen] Do Not Go There!",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "AntiHydrogen",
+                "published": true
+            }
+        },
+        "argon.tribalmedicineremake": {
+            "2950258180": {
+                "name": "Tribal Medicine",
+                "versions": [
+                    "1.1",
+                    "1.2",
+                    "1.3",
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Argón",
+                "published": true
+            }
+        },
+        "bart.app": {
+            "2903717987": {
+                "name": "[1.5] Advanced Pollution Pump",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "ThatBartGuy",
+                "published": true
+            }
+        },
+        "bonible.reconmech": {
+            "2888077043": {
+                "name": "Recon Mechanoid",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Bonible",
+                "published": true
+            }
+        },
+        "cedaro.multilineresearchtab": {
+            "3056091524": {
+                "name": "Multi-line Research Tab",
+                "versions": [
+                    "1.4"
+                ],
+                "authors": "cedaro",
+                "published": true
+            }
+        },
+        "cedaro.sortresearchtab": {
+            "3144393385": {
+                "name": "Sort Research Tab",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "cedaro",
+                "published": true
+            }
+        },
+        "com.yayo.pollution2": {
+            "2891389292": {
+                "name": "Yayo's Pollution 2",
+                "versions": [
+                    "1.4"
+                ],
+                "authors": "YAYO",
+                "published": true
+            }
+        },
+        "cyanobot.talkingisnteverything": {
+            "3265662295": {
+                "name": "Talking Isn't Everything",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "cyanobot",
+                "published": true
+            }
+        },
+        "dubiousphoenix.verbose": {
+            "2923745916": {
+                "name": "Verbose",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "DubiousPhoenix",
+                "published": true
+            }
+        },
+        "evyatar108.seedspleaseliteredux": {
+            "3159269638": {
+                "name": "SeedsPlease: Lite Redux",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Evyatar108",
+                "published": true
+            }
+        },
+        "farxmai2.vanillafurnitureexpandedpack": {
+            "2915484451": {
+                "name": "Vanilla Furniture Expanded Pack",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Farxmai2",
+                "published": true
+            }
+        },
+        "ferny.networkcategory": {
+            "3289192668": {
+                "name": "Network Category",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "ferny",
+                "published": true
+            }
+        },
+        "ferny.progressionaesthetics": {
+            "3294950875": {
+                "name": "Progression: Aesthetics",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "ferny",
+                "published": true
+            }
+        },
+        "ferny.progressioncore": {
+            "3301868772": {
+                "name": "Progression: Core",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "ferny",
+                "published": true
+            }
+        },
+        "ferny.progressiongenetics": {
+            "3239506998": {
+                "name": "Progression: Genetics",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "ferny",
+                "published": true
+            }
+        },
+        "ferny.progressionhospitality": {
+            "3265298940": {
+                "name": "Progression: Hospitality",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "ferny",
+                "published": true
+            }
+        },
+        "ferny.progressionrobotics": {
+            "3229328782": {
+                "name": "Progression: Robotics",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "ferny",
+                "published": true
+            }
+        },
+        "ferny.progressiontemperature": {
+            "3253283971": {
+                "name": "Progression: Temperature",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "ferny",
+                "published": true
+            }
+        },
+        "ferny.rescuesrequesttorecruit": {
+            "3256244944": {
+                "name": "Rescues Request to Recruit",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "ferny",
+                "published": true
+            }
+        },
+        "ferretwithacathat.cultureunlocksallotherresearch": {
+            "3082436927": {
+                "name": "Ferret's Culture unlocks all other research",
+                "versions": [
+                    "1.4"
+                ],
+                "authors": "FerretWithACatHat",
+                "published": true
+            }
+        },
+        "frozensnowfox.simpleeducation": {
+            "3235678612": {
+                "name": "[FSF] Simple Education",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "FrozenSnowFox",
+                "published": true
+            }
+        },
+        "garethp.rimworld.simplechecklist": {
+            "3011064252": {
+                "name": "Simple Checklist",
+                "versions": [
+                    "1.0",
+                    "1.1",
+                    "1.2",
+                    "1.3",
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Garethp",
+                "published": true
+            }
+        },
+        "ghost.tribalicons": {
+            "3083595998": {
+                "name": "Tribal Ideology Icons",
+                "versions": [
+                    "1.3",
+                    "1.4"
+                ],
+                "authors": "GHOST",
+                "published": true
+            }
+        },
+        "gideon.simplestorage": {
+            "3236289318": {
+                "name": "Simple Storage Reborn",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Gideon",
+                "published": true
+            }
+        },
+        "gomi.simplestairs": {
+            "2926310517": {
+                "name": "SimpleStairs",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "gomi",
+                "published": true
+            }
+        },
+        "gt.sam.basicdoubledoors": {
+            "3223646936": {
+                "name": "Basic Double Doors",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Sam",
+                "published": true
+            }
+        },
+        "hellrevenger.quickarea": {
+            "3252220145": {
+                "name": "Quick Area",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "HellRevenger",
+                "published": true
+            }
+        },
+        "hlx.reinforcedmechanoids2": {
+            "2910050186": {
+                "name": "Reinforced Mechanoid 2",
+                "versions": [
+                    "1.4"
+                ],
+                "authors": "Helixien, Taranchuk, OskarPotocki, Luizi, IcingWithCheeseCake, Sir Van, Reann_Shepard",
+                "published": false
+            }
+        },
+        "hlx.vanometricgenerator": {
+            "3041187151": {
+                "name": "Vanometric Generator",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Helixien",
+                "published": true
+            }
+        },
+        "isorex.pawneditor": {
+            "3219801790": {
+                "name": "Pawn Editor",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "legodude17, ISOREX",
+                "published": true
+            }
+        },
+        "issaczhuang.muzzleflash": {
+            "2917732219": {
+                "name": "Muzzle Flash",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Issac Zhuang",
+                "published": true
+            }
+        },
+        "jgh.wvcwvc": {
+            "2913464579": {
+                "name": "[JGH] WVC - Work Modes retexture",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "jeonggihun",
+                "published": true
+            }
+        },
+        "joseasoler.peerpressure": {
+            "3057626086": {
+                "name": "Peer Pressure",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "José Ángel Soler Ortiz",
+                "published": true
+            }
+        },
+        "kongkim.researchdatatheory": {
+            "3290446007": {
+                "name": "Research Data Theory",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "kongkim",
+                "published": true
+            }
+        },
+        "krkr.rule56": {
+            "2938891185": {
+                "name": "[1.5-1.4] CAI 5000 - Advanced AI + Fog Of War",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Krkr",
+                "published": true
+            }
+        },
+        "localghost.alpharefabsblueprint": {
+            "3149896551": {
+                "name": "Alpha Prefabs Addon - Blueprints",
+                "versions": [
+                    "1.4"
+                ],
+                "authors": "Local Ghost",
+                "published": true
+            }
+        },
+        "ludeon.rimworld": {
+            "Core": {
+                "name": "Core",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": ""
+            }
+        },
+        "ludeon.rimworld.anomaly": {
+            "Anomaly": {
+                "name": "Anomaly",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Ludeon Studios"
+            }
+        },
+        "ludeon.rimworld.biotech": {
+            "Biotech": {
+                "name": "Biotech",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Ludeon Studios"
+            }
+        },
+        "ludeon.rimworld.ideology": {
+            "Ideology": {
+                "name": "Ideology",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Ludeon Studios"
+            }
+        },
+        "ludeon.rimworld.royalty": {
+            "Royalty": {
+                "name": "Royalty",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Ludeon Studios"
+            }
+        },
+        "lwm.deepstoragehotfix": {
+            "3220688225": {
+                "name": "LWM's Deep Storage (Unofficial 1.5)",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Little White Mouse",
+                "published": false
+            }
+        },
+        "lyn.vverenamed": {
+            "3014810352": {
+                "name": "[LYN] VVE Renamed",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Lyn the Cookie",
+                "published": true
+            }
+        },
+        "madexoff.scarsandbeauty": {
+            "3295348430": {
+                "name": "Scars And Beauty",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "MadExOff",
+                "published": true
+            }
+        },
+        "mlie.adjacentlight": {
+            "2889841817": {
+                "name": "Adjacent Light (Continued)",
+                "versions": [
+                    "1.4"
+                ],
+                "authors": "JisPichi",
+                "published": false
+            }
+        },
+        "mlie.moveinteractioncell": {
+            "3235960401": {
+                "name": "Move Interaction Cell",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Mlie",
+                "published": true
+            }
+        },
+        "mlie.repairingpriority": {
+            "3229907892": {
+                "name": "Repairing Priority",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Mlie",
+                "published": true
+            }
+        },
+        "mlie.showmodupdates": {
+            "3218690663": {
+                "name": "Show Mod Updates",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Mlie",
+                "published": true
+            }
+        },
+        "mlie.smartervisitors": {
+            "3012491521": {
+                "name": "Smarter Visitors",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Mlie",
+                "published": true
+            }
+        },
+        "mlie.somethingsfloat": {
+            "2940072380": {
+                "name": "Some Things Float",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Mlie",
+                "published": true
+            }
+        },
+        "mlie.turretidleposition": {
+            "3296768739": {
+                "name": "Turret Idle Position",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Mlie",
+                "published": true
+            }
+        },
+        "mlie.watergazingspot": {
+            "2935998359": {
+                "name": "Watergazing Spot",
+                "versions": [
+                    "1.3",
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Mlie",
+                "published": true
+            }
+        },
+        "mortstrudel.corporationfaction": {
+            "2974334010": {
+                "name": "The Corporation - Mort's Factions",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Mort Strudel",
+                "published": true
+            }
+        },
+        "mortstrudel.mortideology": {
+            "2932322843": {
+                "name": "Political Compass - Mort's Ideologies",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Mort Strudel",
+                "published": true
+            }
+        },
+        "mosi.bridgecolor2": {
+            "2985505036": {
+                "name": "Paintable Bridges",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "dickmosi",
+                "published": true
+            }
+        },
+        "mrhydralisk.voedeliverylogistics": {
+            "3006726393": {
+                "name": "Vanilla Outposts Expanded: Delivery Logistics",
+                "versions": [
+                    "1.3",
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "MrHydralisk",
+                "published": true
+            }
+        },
+        "mrkociak.biotechmoremechstuffmechupgradepod": {
+            "2926928394": {
+                "name": "Biotech Mech Stuff Elongated - Mechanoid Upgrades V2",
+                "versions": [
+                    "1.4"
+                ],
+                "authors": "MrKociak",
+                "published": true
+            }
+        },
+        "n1taxe.billmanager": {
+            "2957278626": {
+                "name": "Bill Manager",
+                "versions": [
+                    "1.4"
+                ],
+                "authors": "N1TAXE",
+                "published": true
+            }
+        },
+        "nightmare.sandstorms": {
+            "2967158643": {
+                "name": "Sandstorms",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "NightmareCorporation",
+                "published": true
+            }
+        },
+        "oganesson.secondary.immune.response": {
+            "2920337086": {
+                "name": "[Og]Secondary Immune Response",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oganesson",
+                "published": true
+            }
+        },
+        "oppey.eyegenes2": {
+            "2898151329": {
+                "name": "[BT] EyeGenes2 | Base - [NL] Facial Animation |",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "OPERATOR",
+                "published": true
+            }
+        },
+        "oskarpotocki.vanillavehiclesexpanded": {
+            "3014906877": {
+                "name": "Vanilla Vehicles Expanded",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, xrushha, Smash Phil, Taranchuk, Reann Shepard, Sarg",
+                "published": true
+            }
+        },
+        "oskarpotocki.vanillavehiclesexpandedtier3": {
+            "3047892432": {
+                "name": "Vanilla Vehicles Expanded - Tier 3",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, xrushha, Smash Phil, Taranchuk, Reann Shepard",
+                "published": true
+            }
+        },
+        "oskarpotocki.vanillavehiclesexpandedupgrades": {
+            "3302208420": {
+                "name": "Vanilla Vehicles Expanded - Upgrades",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Smash Phil",
+                "published": true
+            }
+        },
+        "overheadmeal.patch": {
+            "2986525461": {
+                "name": "Not Overhead Meal",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Si-Cafe",
+                "published": true
+            }
+        },
+        "owlchemist.owlscolonistbar": {
+            "2623453038": {
+                "name": "Owl's Colonist Bar (dev)",
+                "versions": [
+                    "1.3",
+                    "1.4"
+                ],
+                "authors": "Owlchemist",
+                "published": true
+            }
+        },
+        "owlchemist.powertab": {
+            "2952716728": {
+                "name": "Power Tab 2",
+                "versions": [
+                    "1.4"
+                ],
+                "authors": "Compilatron, Owlchemist",
+                "published": true
+            }
+        },
+        "pal5k.personamechs": {
+            "2925172029": {
+                "name": "Persona Mechanoid Pawns",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Pal 5k",
+                "published": true
+            }
+        },
+        "pal5k.scramblermechanoid": {
+            "2983719211": {
+                "name": "Scrambler Mechanoid",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Pal 5k",
+                "published": true
+            }
+        },
+        "pathfinding.framework": {
+            "3070914628": {
+                "name": "Pathfinding Framework",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "José Ángel Soler Ortiz",
+                "published": true
+            }
+        },
+        "pawntracker.jdmiller95": {
+            "3072118260": {
+                "name": "Pawn Tracker",
+                "versions": [
+                    "1.4"
+                ],
+                "authors": "jdmiller95",
+                "published": false
+            }
+        },
+        "phaneron.basic.storage": {
+            "3201536200": {
+                "name": "Phaneron's Basic Storage",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Phaneron",
+                "published": true
+            }
+        },
+        "phaneron.primitivestorageretexture": {
+            "3030732174": {
+                "name": "Primitive Storage Retexture",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Phaneron",
+                "published": true
+            }
+        },
+        "phaneron.primitiveworkbenchesretexture": {
+            "3038407835": {
+                "name": "Primitive Workbenches Retexture",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Phaneron",
+                "published": true
+            }
+        },
+        "phaneron.simplelearningretexture": {
+            "3026005966": {
+                "name": "Simple Learning Retexture",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Phaneron",
+                "published": true
+            }
+        },
+        "phaneron.simplestorageretexture": {
+            "2978992573": {
+                "name": "Simple Storage Retexture",
+                "versions": [
+                    "1.4"
+                ],
+                "authors": "Phaneron",
+                "published": true
+            }
+        },
+        "pogo.ai": {
+            "2945497357": {
+                "name": "Smarter Raider AI",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "pogoman",
+                "published": true
+            }
+        },
+        "qm.floorsarelight": {
+            "3019487727": {
+                "name": "Floors Are Light! (Update)",
+                "versions": [
+                    "1.4"
+                ],
+                "authors": "qm",
+                "published": true
+            }
+        },
+        "raug.realistictrade": {
+            "2945931715": {
+                "name": "Realistic Trade",
+                "versions": [
+                    "1.3",
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Raug",
+                "published": true
+            }
+        },
+        "rebuild.cotr.doorsandcorners": {
+            "3262718980": {
+                "name": "ReBuild: Doors and Corners",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Helixien, Oracle of Thessia",
+                "published": true
+            }
+        },
+        "redmattis.betterconversion": {
+            "3108763487": {
+                "name": "Wololoo - Better Conversion and Recruitment",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "RedMattis",
+                "published": true
+            }
+        },
+        "reel.expanded.storage": {
+            "3237638097": {
+                "name": "Reel's Expanded Storage",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Reel",
+                "published": true
+            }
+        },
+        "reel.insectorfaction": {
+            "3309022698": {
+                "name": "Reel's Insector Faction",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Reel",
+                "published": true
+            }
+        },
+        "regrowth.botr.boilingforest": {
+            "2981924439": {
+                "name": "ReGrowth: Boiling",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Helixien",
+                "published": true
+            }
+        },
+        "rimedieval.ice.revamped": {
+            "3168102959": {
+                "name": "Rimedieval - Ice Revamped",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Ogam, Taranchuk, Fumblesneeze, cedaro",
+                "published": true
+            }
+        },
+        "rokk.personalitiessocialcompatibilityaddon": {
+            "3087672617": {
+                "name": "Social Compatibility for 1-2-3 Personalities",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Rokk",
+                "published": true
+            }
+        },
+        "safetemperature.1trickpwnyta": {
+            "3003414541": {
+                "name": "Safe Temperature",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "1trickPwnyta",
+                "published": true
+            }
+        },
+        "sarahlambar.voemopatch": {
+            "2935868796": {
+                "name": "Vanilla Outpost Expanded Medieval Overhaul Patch",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "SarahLambar",
+                "published": true
+            }
+        },
+        "sincere.incidenttoggler.1.5": {
+            "3047488301": {
+                "name": "Incident Toggler",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Sincere",
+                "published": false
+            }
+        },
+        "sincere.silkroad.1.5": {
+            "3228244709": {
+                "name": "Silk Road",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Sincere",
+                "published": false
+            }
+        },
+        "sirvan.mechanitorretexture": {
+            "2943977908": {
+                "name": "Van's Retexture : Mechanitor",
+                "versions": [
+                    "1.4",
+                    "1.5",
+                    "1.6"
+                ],
+                "authors": "SirVan",
+                "published": true
+            }
+        },
+        "sirvan.mvtretexture": {
+            "2944945338": {
+                "name": "Van's Retexture : More Vanilla Turrets",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "SirVan",
+                "published": true
+            }
+        },
+        "sl4vp0wer.weareunited": {
+            "3030804445": {
+                "name": "We Are United",
+                "versions": [
+                    "1.3",
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Sl4vP0weR",
+                "published": true
+            }
+        },
+        "smashphil.vehicleframework": {
+            "3014915404": {
+                "name": "Vehicle Framework",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Smash Phil",
+                "published": true
+            }
+        },
+        "sovereign.reworkedice": {
+            "3304280049": {
+                "name": "Simple Ice reworked",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Sovereign, Alite",
+                "published": true
+            }
+        },
+        "spacemoth.showknowntechprints": {
+            "2920370783": {
+                "name": "Show Known Techprints",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "SpaceMoth",
+                "published": true
+            }
+        },
+        "stagz.vsierationaltraitdevelopment": {
+            "2916405546": {
+                "name": "VSIE - Rational Trait Development",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Stagz",
+                "published": true
+            }
+        },
+        "temmie3754.retend.1": {
+            "2996971119": {
+                "name": "ReTend",
+                "versions": [
+                    "1.2",
+                    "1.3",
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Temmie3754",
+                "published": true
+            }
+        },
+        "tests.cpdl": {
+            "2976985884": {
+                "name": "Cherry Picker Duplicates List",
+                "versions": [
+                    "1.3",
+                    "1.4"
+                ],
+                "authors": "test",
+                "published": true
+            }
+        },
+        "tied.parkaretex": {
+            "2984307648": {
+                "name": "Parka Retexture",
+                "versions": [
+                    "1.0",
+                    "1.1",
+                    "1.2",
+                    "1.3",
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Tied",
+                "published": true
+            }
+        },
+        "tk421storm.prioritytreatmentressurected": {
+            "3009738919": {
+                "name": "Priority Treatment Ressurected",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "tk421storm",
+                "published": true
+            }
+        },
+        "tk421storm.ragdoll": {
+            "3179116177": {
+                "name": "Ragdoll Physics",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "tk421storm",
+                "published": true
+            }
+        },
+        "tractor.therealcaptrex": {
+            "3276694110": {
+                "name": "Tractor",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "TheRealCaptRex",
+                "published": true
+            }
+        },
+        "tro.soundscape.enhanced": {
+            "3276642170": {
+                "name": "Rimworld: Soundscape Enhanced",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "trocapalot",
+                "published": true
+            }
+        },
+        "trojan.aicore": {
+            "3269938006": {
+                "name": "RimWorldAI Core",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Trojan",
+                "published": true
+            }
+        },
+        "trojan.aiitems": {
+            "3269938552": {
+                "name": "RimWorldAI Items",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Trojan",
+                "published": true
+            }
+        },
+        "trvi.warwagon.vehicles": {
+            "3101449290": {
+                "name": "Medieval Vehicles: War Wagon",
+                "versions": [
+                    "1.4"
+                ],
+                "authors": "Tr.Vi",
+                "published": true
+            }
+        },
+        "ushanka.biologicalwarfare": {
+            "3221550806": {
+                "name": "Ushankas Biological Warfare",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Ushanka",
+                "published": true
+            }
+        },
+        "uuugggg.tdfindlib": {
+            "2895299310": {
+                "name": "TD Find Lib",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Uuugggg",
+                "published": true
+            }
+        },
+        "uuugggg.tdsbugfixes": {
+            "2895035527": {
+                "name": "TDS Bug Fixes",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Uuugggg",
+                "published": true
+            }
+        },
+        "v337.vpeskipdoorpathing": {
+            "2995157602": {
+                "name": "VPE Skipdoor Pathing",
+                "versions": [
+                    "1.4"
+                ],
+                "authors": "V337",
+                "published": true
+            }
+        },
+        "vanillaexpanded.ideo.sophianstyle": {
+            "3194606539": {
+                "name": "Vanilla Ideology Expanded - Sophian Style",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Sarg Bjornson",
+                "published": true
+            }
+        },
+        "vanillaexpanded.recycling": {
+            "3155781848": {
+                "name": "Vanilla Recycling Expanded",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "OskarPotocki, Sarg Bjornson, xrushha",
+                "published": true
+            }
+        },
+        "vanillaexpanded.temperature": {
+            "3202046258": {
+                "name": "Vanilla Temperature Expanded",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, xrushha, Arquebus, Taranchuk",
+                "published": true
+            }
+        },
+        "vanillaexpanded.vnutriente": {
+            "2920385763": {
+                "name": "Vanilla Nutrient Paste Expanded",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Kikohi",
+                "published": true
+            }
+        },
+        "vanillaexpanded.vpe.hemosage": {
+            "2990596478": {
+                "name": "Vanilla Psycasts Expanded - Hemosage",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Taranchuk, Reann Shepard, Sir Van",
+                "published": true
+            }
+        },
+        "vanillaexpanded.vpe.puppeteer": {
+            "3033779606": {
+                "name": "Vanilla Psycasts Expanded - Puppeteer",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Taranchuk, Reann Shepard",
+                "published": true
+            }
+        },
+        "vanillaexpanded.vplantsemushrooms": {
+            "3006389281": {
+                "name": "Vanilla Plants Expanded - Mushrooms",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Taranchuk, Sarg Bjornson, Oskar Potocki",
+                "published": true
+            }
+        },
+        "vanillaracesexpanded.android": {
+            "2975771801": {
+                "name": "Vanilla Races Expanded - Android",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Taranchuk, ISOREX, Sarg Bjornson",
+                "published": true
+            }
+        },
+        "vanillaracesexpanded.archon": {
+            "3067715093": {
+                "name": "Vanilla Races Expanded - Archon",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Sarg Bjornson, Taranchuk, Reann Shepard, xrushha",
+                "published": true
+            }
+        },
+        "vanillaracesexpanded.customicons": {
+            "2917311689": {
+                "name": "Vanilla Races Expanded - Custom Icons",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Sarg Bjornson",
+                "published": true
+            }
+        },
+        "vanillaracesexpanded.fungoid": {
+            "3042690053": {
+                "name": "Vanilla Races Expanded - Fungoid",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Sarg Bjornson",
+                "published": true
+            }
+        },
+        "vanillaracesexpanded.genie": {
+            "2901424072": {
+                "name": "Vanilla Races Expanded - Genie",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Sarg Bjornson",
+                "published": true
+            }
+        },
+        "vanillaracesexpanded.highmate": {
+            "2995385834": {
+                "name": "Vanilla Races Expanded - Highmate",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Taranchuk, Sarg Bjornson",
+                "published": true
+            }
+        },
+        "vanillaracesexpanded.hussar": {
+            "2893586390": {
+                "name": "Vanilla Races Expanded - Hussar",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, xrushha, Taranchuk, Sarg",
+                "published": true
+            }
+        },
+        "vanillaracesexpanded.insector": {
+            "3260509684": {
+                "name": "Vanilla Races Expanded - Insector",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Taranchuk, Sarg",
+                "published": true
+            }
+        },
+        "vanillaracesexpanded.lycanthrope": {
+            "3114453100": {
+                "name": "Vanilla Races Expanded - Lycanthrope",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Sarg Bjornson",
+                "published": true
+            }
+        },
+        "vanillaracesexpanded.phytokin": {
+            "2927323805": {
+                "name": "Vanilla Races Expanded - Phytokin",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Sarg Bjornson, Allie, Erin, Sir Van, Reann Shepard",
+                "published": true
+            }
+        },
+        "vanillaracesexpanded.pigskin": {
+            "3164798809": {
+                "name": "Vanilla Races Expanded - Pigskin",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Sarg Bjornson, RedMattis",
+                "published": true
+            }
+        },
+        "vanillaracesexpanded.sanguophage": {
+            "2963116383": {
+                "name": "Vanilla Races Expanded - Sanguophage",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Sarg Bjornson, Erin",
+                "published": true
+            }
+        },
+        "vanillaracesexpanded.waster": {
+            "2983471725": {
+                "name": "Vanilla Races Expanded - Waster",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Sarg Bjornson",
+                "published": true
+            }
+        },
+        "victor.wallsaresolid": {
+            "2896548513": {
+                "name": "Walls are solid",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Victor, wilki24",
+                "published": true
+            }
+        },
+        "weishanmaowei.waitaofix": {
+            "3236976580": {
+                "name": "Some Vanilla Clothing Rendering Layer Adjustment",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "伪善猫尾",
+                "published": true
+            }
+        },
+        "wvc.sergkart.biotech.moremechanoidsworkmodes": {
+            "2888380373": {
+                "name": "WVC - Work Modes",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Sergkart",
+                "published": true
+            }
+        },
+        "yourname.imissmylimbs": {
+            "3301381349": {
+                "name": "I Miss My Limbs",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Lewkah0",
+                "published": true
+            }
+        },
+        "zal.silkroad": {
+            "3303819120": {
+                "name": "Silk Road (Continued)",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Zaljerem",
+                "published": true
+            }
+        },
+        "zal.vfetmodpatches": {
+            "3080282352": {
+                "name": "VFE Tribals - Mod Patches",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Zaljerem",
+                "published": true
+            }
+        },
+        "zetrith.prepatcher": {
+            "2934420800": {
+                "name": "Prepatcher",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Zetrith",
+                "published": true
+            }
+        },
+        "zzz.mechsndmode": {
+            "2894366789": {
+                "name": "Mech: Search and Destroy",
+                "versions": [
+                    "1.4"
+                ],
+                "authors": "zzz",
+                "published": true
+            }
+        },
+        "frozensnowfox.bettercamplootclassic": {
+            "2584485274": {
+                "name": "[FSF] Better Camp Loot Classic",
+                "versions": [
+                    "1.3",
+                    "1.4"
+                ],
+                "authors": "FrozenSnowFox",
+                "published": true
+            }
+        },
+        "redmattis.vanillagenesrebalanced": {
+            "2905707100": {
+                "name": "Vanilla Genes Rebalanced",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "RedMattis",
+                "published": true
+            }
+        },
+        "mortstrudel.mortideologynationalism": {
+            "2961657515": {
+                "name": "Nationalist Structures - Mort's Ideologies",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Mort Strudel",
+                "published": true
+            }
+        },
+        "ferny.transportcategory": {
+            "3136085172": {
+                "name": "Transport Category",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "ferny",
+                "published": true
+            }
+        },
+        "deadmano.rimanoarchitecticons": {
+            "3212495112": {
+                "name": "Rimano: Architect Icons",
+                "versions": [
+                    "1.3",
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Deadmano",
+                "published": true
+            }
+        },
+        "marpatninja.wheelchairs": {
+            "3212614016": {
+                "name": "Wheelchairs",
+                "versions": [
+                    "1.3",
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Lilscoot + Bustedbunny (Updated by SL4VP0WER, slightly edited by Pearasect), updated to 1.5 by MarpatNinja",
+                "published": true
+            }
+        },
+        "archie.turrettargetpatch": {
+            "3221646589": {
+                "name": "Turrets Shoot Hunting Predators",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Archie",
+                "published": true
+            }
+        },
+        "arvkus.simplerecycling": {
+            "3239309389": {
+                "name": "Simple Recycling",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Arvkus, Proxyer, Lanilor",
+                "published": true
+            }
+        },
+        "raccooncuddler.showhair": {
+            "3255379190": {
+                "name": "Show Hair Under Stuff",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Raccoon Cuddler",
+                "published": true
+            }
+        },
+        "keepercraft.rimkeeperanimals": {
+            "3259367736": {
+                "name": "RimKeeper - Wild Animal Procreation",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Keepercraft",
+                "published": true
+            }
+        },
+        "ferny.trashmod": {
+            "3263035126": {
+                "name": "Trash Mod",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "ferny",
+                "published": true
+            }
+        },
+        "ionfrigate12345.sos2veepatch": {
+            "3263146781": {
+                "name": "SOS2 - VE Events Compatibility Patch",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Ionfrigate12345",
+                "published": true
+            }
+        },
+        "puremj.mjrimmods.showresearcheta": {
+            "3283434105": {
+                "name": "Show Research ETA",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "pureMJ",
+                "published": true
+            }
+        },
+        "ferny.progressionstorage": {
+            "3292746186": {
+                "name": "Progression: Storage",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "ferny",
+                "published": true
+            }
+        },
+        "redtech.vfe.mechanoids.quarrycompat": {
+            "3314865938": {
+                "name": "VFE Mechanoids Quarry Compatibility Patch",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "RedTech",
+                "published": true
+            }
+        },
+        "sirvan.deeprimretexture": {
+            "3320967700": {
+                "name": "Van's Retexture : DeepRim",
+                "versions": [
+                    "1.0",
+                    "1.1",
+                    "1.2",
+                    "1.3",
+                    "1.4",
+                    "1.5",
+                    "1.6"
+                ],
+                "authors": "SirVan",
+                "published": true
+            }
+        },
+        "spacemoth.vehicleneedsfix": {
+            "3324340437": {
+                "name": "Vehicle Dubs Needs Fix",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "SpaceMoth",
+                "published": true
+            }
+        },
+        "spacemoth.youdriveisleep": {
+            "3324430833": {
+                "name": "You Drive, I Sleep",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "SpaceMoth",
+                "published": true
+            }
+        },
+        "shashlichnik.situationalanimalgraphics": {
+            "3325889359": {
+                "name": "Situational Animal Graphics",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Shashlichnik ;p (aka Шашлычник ;р)",
+                "published": true
+            }
+        },
+        "andromeda.nicehealthtab": {
+            "3328729902": {
+                "name": "Nice Health Tab",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Andromeda",
+                "published": true
+            }
+        },
+        "mlie.norandomideologies": {
+            "3337263133": {
+                "name": "No Random Ideologies",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Mlie",
+                "published": true
+            }
+        },
+        "vanillaexpanded.vanomalyeinsanity": {
+            "3342412435": {
+                "name": "Vanilla Anomaly Expanded - Insanity",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Taranchuk",
+                "published": true
+            }
+        },
+        "redmattis.optimization": {
+            "3343465955": {
+                "name": "Red's Performance Fixes (aka. Comp EggLayer Fix)",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "RedMattis",
+                "published": true
+            }
+        },
+        "lukespacewalker.windowsuserebuildglass": {
+            "3351761181": {
+                "name": "Windows Use ReBuild Glass",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "LukeSpacewalker",
+                "published": true
+            }
+        },
+        "arylice.rimworld.automaticstumpchopping": {
+            "3357749890": {
+                "name": "[ARY] Automatic Stump Chopping [1.5]",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Arylice",
+                "published": true
+            }
+        },
+        "ferny.usermediaprops": {
+            "3359330248": {
+                "name": "User Media Props",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "ferny",
+                "published": true
+            }
+        },
+        "ferny.progressionscenarios": {
+            "3378384387": {
+                "name": "Progression: Scenarios",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "ferny",
+                "published": true
+            }
+        },
+        "telardo.multifloors": {
+            "3384660931": {
+                "name": "MultiFloors",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "telardo",
+                "published": true
+            }
+        },
+        "mlie.reinforcedmechanoid2": {
+            "3400713047": {
+                "name": "Reinforced Mechanoid 2 (Continued)",
+                "versions": [
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Helixien, Taranchuk, OskarPotocki, Luizi, IcingWithCheeseCake, Sir Van, Reann_Shepard",
+                "published": true
+            }
+        },
+        "vanillaquestsexpanded.generator": {
+            "3411401573": {
+                "name": "Vanilla Quests Expanded - The Generator",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Sarg Bjornson, Taranchuk, Bread mo",
+                "published": true
+            }
+        },
+        "ferny.progressionverticality": {
+            "3416136317": {
+                "name": "Progression: Verticality",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "ferny",
+                "published": true
+            }
+        },
+        "sbz.neatstorage": {
+            "3416243474": {
+                "name": "[sbz] Neat Storage",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "seobongzu",
+                "published": true
+            }
+        },
+        "inoshishi3.smallvehicleaddons": {
+            "3420948947": {
+                "name": "Small Vehicle Add-ons",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "いのしし_3",
+                "published": true
+            }
+        },
+        "ferny.progressiondefenses": {
+            "3422293321": {
+                "name": "Progression: Defenses",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "ferny",
+                "published": true
+            }
+        },
+        "ferny.progressionkitchen": {
+            "3424640315": {
+                "name": "Progression: Kitchen",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "ferny",
+                "published": true
+            }
+        },
+        "capybara.workprofiles": {
+            "3444953230": {
+                "name": "WorkProfiles",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Capybara",
+                "published": true
+            }
+        },
+        "arodoid.semirandomprogression": {
+            "3455432792": {
+                "name": "Semi Random Research: Progression Fork",
+                "versions": [
+                    "1.2",
+                    "1.3",
+                    "1.4",
+                    "1.5"
+                ],
+                "authors": "Original author: Captain Muscles (Nathan Harbour)\n    Since this fork: Arodoid",
+                "published": true
+            }
+        },
+        "vanillaexpanded.vcookehaute": {
+            "3455694362": {
+                "name": "Vanilla Cooking Expanded - Haute",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Sarg Bjornson, Oskar Potocki",
+                "published": true
+            }
+        },
+        "vanillaquestsexpanded.cryptoforge": {
+            "3461526070": {
+                "name": "Vanilla Quests Expanded - Cryptoforge",
+                "versions": [
+                    "1.5"
+                ],
+                "authors": "Oskar Potocki, Sarg Bjornson, Taranchuk",
                 "published": true
             }
         }
