@@ -160,7 +160,8 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<ISteamApiClient>(),       // <<< ADDED
                     provider.GetRequiredService<IDownloadQueueService>(), // <<< ADDED
                     provider.GetRequiredService<IApplicationNavigationService>(), // <<< ADDED
-                    provider.GetRequiredService<ILoggerService>()         // <<< ADDED
+                    provider.GetRequiredService<ILoggerService>(),         // <<< ADDED
+                    provider.GetRequiredService<ISteamWorkshopQueueProcessor>()
                 ));
             // --- End ModListIOService Update ---
 
@@ -173,6 +174,7 @@ namespace RimSharp.AppDir.AppFiles
             services.AddHttpClient(); // Registers IHttpClientFactory
             services.AddSingleton<ISteamApiClient, SteamApiClient>();
             services.AddSingleton<IWorkshopUpdateCheckerService, WorkshopUpdateCheckerService>();
+            services.AddSingleton<ISteamWorkshopQueueProcessor, SteamWorkshopQueueProcessor>();
 
             // --- SteamCMD Infrastructure (Refactored) ---
             // Core Setup Components
@@ -229,7 +231,8 @@ namespace RimSharp.AppDir.AppFiles
                    provider.GetRequiredService<IModReplacementService>(),
                    provider.GetRequiredService<IDownloadQueueService>(),
                    provider.GetRequiredService<ISteamApiClient>(),
-                   provider.GetRequiredService<IApplicationNavigationService>()
+                   provider.GetRequiredService<IApplicationNavigationService>(),
+                   provider.GetRequiredService<ISteamWorkshopQueueProcessor>()
                ));
 
             services.AddTransient<DownloaderViewModel>(provider =>

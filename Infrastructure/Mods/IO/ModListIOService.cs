@@ -30,6 +30,7 @@ namespace RimSharp.Infrastructure.Mods.IO
         private readonly ISteamApiClient _steamApiClient;
         private readonly IDownloadQueueService _downloadQueueService;
         private readonly IApplicationNavigationService _navigationService;
+        private readonly ISteamWorkshopQueueProcessor _steamWorkshopQueueProcessor;
         private readonly ILoggerService _logger; // Assuming logging is desired
         private const int MaxParallelApiOperations = 10; // Max parallel downloads/API checks
 
@@ -42,7 +43,8 @@ namespace RimSharp.Infrastructure.Mods.IO
             ISteamApiClient steamApiClient,
             IDownloadQueueService downloadQueueService,
             IApplicationNavigationService navigationService,
-            ILoggerService logger)
+            ILoggerService logger,
+            ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor)
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
             _modListManager = modListManager ?? throw new ArgumentNullException(nameof(modListManager));
@@ -52,6 +54,7 @@ namespace RimSharp.Infrastructure.Mods.IO
             _downloadQueueService = downloadQueueService ?? throw new ArgumentNullException(nameof(downloadQueueService));
             _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _steamWorkshopQueueProcessor = steamWorkshopQueueProcessor ?? throw new ArgumentNullException(nameof(steamWorkshopQueueProcessor));
 
         }
 
@@ -328,51 +331,51 @@ namespace RimSharp.Infrastructure.Mods.IO
             List<string> unknownIds = new List<string>();
             Dictionary<string, ModDictionaryEntry> allEntries = null;
 
-            ProgressDialogViewModel progressDialog = null;
-            CancellationTokenSource cts = new CancellationTokenSource(); // For potential cancellation
+            ProgressDialogViewModel? prepProgressDialog = null; // Renamed for clarity
+            CancellationTokenSource? prepCts = null; // Renamed for clarity
 
             try
             {
-                // Show initial progress (might be quick)
+                // Show initial progress (Preparation Phase)
                 await ThreadHelper.RunOnUIThreadAsync(() =>
                 {
-                    progressDialog = _dialogService.ShowProgressDialog(
+                    prepCts = new CancellationTokenSource(); // Create CTS for prep phase
+                    prepProgressDialog = _dialogService.ShowProgressDialog(
                         "Preparing Download Options",
                         "Loading mod dictionary...",
-                        canCancel: true, // Allow cancelling this prep stage
+                        canCancel: true,
                         isIndeterminate: true,
-                        cts: cts,
+                        cts: prepCts, // Use the specific CTS
                         closeable: false);
                 });
-                if (progressDialog == null) throw new InvalidOperationException("Progress dialog not created");
+                if (prepProgressDialog == null) throw new InvalidOperationException("Preparation progress dialog not created");
+                if (prepCts == null) throw new InvalidOperationException("Preparation CTS not created");
 
 
                 // Load *all* dictionary entries once
-                await Task.Run(() => // Run dictionary loading in background
+                await Task.Run(() =>
                 {
                     allEntries = _modDictionaryService.GetAllEntries();
-                }, cts.Token); // Pass token
+                }, prepCts.Token); // Pass token
 
-                cts.Token.ThrowIfCancellationRequested(); // Check cancellation after loading
+                prepCts.Token.ThrowIfCancellationRequested(); // Check cancellation after loading
 
                 // Update progress
-                await ThreadHelper.RunOnUIThreadAsync(() => progressDialog.Message = "Matching missing mods...");
+                await ThreadHelper.RunOnUIThreadAsync(() => prepProgressDialog.Message = "Matching missing mods...");
 
                 // Filter and group (this should be quick)
                 await Task.Run(() =>
                 {
-                    var allEntriesList = allEntries.Values.ToList(); // Work with a list
-
+                    var allEntriesList = allEntries.Values.ToList();
                     foreach (var missingId in missingModIds.Distinct(StringComparer.OrdinalIgnoreCase))
                     {
-                        cts.Token.ThrowIfCancellationRequested();
+                        prepCts.Token.ThrowIfCancellationRequested();
+                        // ... (rest of the matching and grouping logic remains the same) ...
                         var normalizedMissingId = missingId.ToLowerInvariant();
-
-                        // Find matches in the loaded dictionary entries
                         var matchingEntries = allEntriesList
-                            .Where(entry => !string.IsNullOrEmpty(entry.PackageId) &&
-                                           entry.PackageId.Equals(normalizedMissingId, StringComparison.OrdinalIgnoreCase))
-                            .ToList();
+                           .Where(entry => !string.IsNullOrEmpty(entry.PackageId) &&
+                                          entry.PackageId.Equals(normalizedMissingId, StringComparison.OrdinalIgnoreCase))
+                           .ToList();
 
                         if (matchingEntries.Any())
                         {
@@ -381,14 +384,8 @@ namespace RimSharp.Infrastructure.Mods.IO
                             {
                                 group.Variants.Add(new MissingModVariantViewModel(entry));
                             }
-
-                            // --- START: Updated Default Selection ---
-                            // Select the *first published* variant by default.
-                            // If none are published, leave SelectedVariant as null.
                             group.SelectedVariant = group.Variants
                                                         .FirstOrDefault(v => v.IsPublished);
-                            // --- END: Updated Default Selection ---
-
                             groups.Add(group);
                         }
                         else
@@ -397,15 +394,15 @@ namespace RimSharp.Infrastructure.Mods.IO
                             _logger.LogDebug($"Missing mod ID '{missingId}' not found in dictionary.", nameof(ModListIOService));
                         }
                     }
-                }, cts.Token); // Pass token
+                }, prepCts.Token); // Pass token
 
-                cts.Token.ThrowIfCancellationRequested(); // Check after grouping
+                prepCts.Token.ThrowIfCancellationRequested(); // Check after grouping
 
                 // Close the preparation progress dialog
-                await ThreadHelper.RunOnUIThreadAsync(() => progressDialog?.CompleteOperation("Ready."));
+                await ThreadHelper.RunOnUIThreadAsync(() => prepProgressDialog?.CompleteOperation("Ready."));
 
                 // Show the selection dialog
-                MissingModSelectionDialogOutput selectionResult = null;
+                MissingModSelectionDialogOutput? selectionResult = null;
                 await ThreadHelper.RunOnUIThreadAsync(() =>
                 {
                     var selectionViewModel = new MissingModSelectionDialogViewModel(groups, unknownIds);
@@ -415,20 +412,21 @@ namespace RimSharp.Infrastructure.Mods.IO
                 if (selectionResult?.Result == MissingModSelectionResult.Download && selectionResult.SelectedSteamIds.Any())
                 {
                     _logger.LogInfo($"User selected {selectionResult.SelectedSteamIds.Count} published mod variants to download.", nameof(ModListIOService));
-                    // --- Trigger the actual download process ---
-                    await QueueModsForDownloadAsync(selectionResult.SelectedSteamIds, CancellationToken.None); // Use CancellationToken.None for now, or pass a real one if needed
+
+                    // --- Trigger the actual download process using the new service ---
+                    await ProcessAndQueueSelectedModsAsync(selectionResult.SelectedSteamIds, CancellationToken.None); // Use CancellationToken.None or a relevant token
                 }
                 else
                 {
                     _logger.LogInfo("User cancelled or did not select any (published) mods in the missing mod selection dialog.", nameof(ModListIOService));
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) // Catches cancellation from prepCts
             {
                 _logger.LogInfo("Preparation for missing mod download was cancelled.", nameof(ModListIOService));
                 await ThreadHelper.RunOnUIThreadAsync(() =>
                 {
-                    progressDialog?.ForceClose();
+                    prepProgressDialog?.ForceClose();
                     _dialogService.ShowWarning("Operation Cancelled", "Preparing download options was cancelled.");
                 });
             }
@@ -437,50 +435,40 @@ namespace RimSharp.Infrastructure.Mods.IO
                 _logger.LogException(ex, "Error preparing missing mod download options.", nameof(ModListIOService));
                 await ThreadHelper.RunOnUIThreadAsync(() =>
                 {
-                    progressDialog?.ForceClose();
+                    prepProgressDialog?.ForceClose();
                     _dialogService.ShowError("Error", $"Failed to prepare download options: {ex.Message}");
                 });
             }
             finally
             {
-                await ThreadHelper.RunOnUIThreadAsync(() => progressDialog?.ForceClose()); // Ensure closed
-                cts?.Dispose();
+                await ThreadHelper.RunOnUIThreadAsync(() => prepProgressDialog?.ForceClose()); // Ensure closed
+                prepCts?.Dispose();
             }
         }
 
-        // --- New Reusable Method to Queue Mods (Similar to ExecuteRedownloadModsAsync) ---
-        // No changes needed in this method for the 'Published' logic, as it deals with Steam IDs already selected.
-        private async Task QueueModsForDownloadAsync(List<string> steamIds, CancellationToken ct)
+        private async Task ProcessAndQueueSelectedModsAsync(List<string> steamIds, CancellationToken ct)
         {
             if (steamIds == null || !steamIds.Any())
             {
-                _logger.LogWarning("QueueModsForDownloadAsync called with no Steam IDs.", nameof(ModListIOService));
+                _logger.LogWarning("ProcessAndQueueSelectedModsAsync called with no Steam IDs.", nameof(ModListIOService));
                 return;
             }
 
-            ProgressDialogViewModel progressDialog = null;
-            CancellationTokenSource linkedCts = null;
-            using var semaphore = new SemaphoreSlim(MaxParallelApiOperations);
-
-            // Use thread-safe collections/counters
-            int processedCount = 0;
-            int addedCount = 0;
-            int alreadyQueuedCount = 0;
-            int errorCount = 0;
-            var apiErrorMessages = new ConcurrentBag<string>();
-            var addedNames = new ConcurrentBag<string>();
+            ProgressDialogViewModel? progressDialog = null;
+            CancellationTokenSource? linkedCts = null;
+            QueueProcessResult queueResult = new QueueProcessResult();
 
             try
             {
-                // Show progress dialog
+                // Setup progress dialog and cancellation
                 await ThreadHelper.RunOnUIThreadAsync(() =>
                 {
                     progressDialog = _dialogService.ShowProgressDialog(
-                       "Queueing Mods for Download",
+                       "Queueing Missing Mods",
                        "Starting...",
                        canCancel: true,
                        isIndeterminate: false,
-                       cts: null, // Will create linked CTS below
+                       cts: null,
                        closeable: true);
                 });
                 if (progressDialog == null) throw new InvalidOperationException("Progress dialog view model was not created.");
@@ -488,174 +476,54 @@ namespace RimSharp.Infrastructure.Mods.IO
                 linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, progressDialog.CancellationToken);
                 var combinedToken = linkedCts.Token;
 
-                int totalMods = steamIds.Count;
-                await ThreadHelper.RunOnUIThreadAsync(() => // Initial progress update
+                // Setup Progress Reporter
+                var progressReporter = new Progress<QueueProcessProgress>(update =>
                 {
-                    progressDialog.Message = $"Preparing to queue {totalMods} mod(s)...";
-                    progressDialog.Progress = 0;
+                    ThreadHelper.EnsureUiThread(() => // Use EnsureUiThread or BeginInvokeOnUiThread
+                                    {
+                                        if (progressDialog != null && !progressDialog.CancellationToken.IsCancellationRequested)
+                                        {
+                                            progressDialog.Message = $"{update.Message} ({update.CurrentItem}/{update.TotalItems})";
+                                            progressDialog.Progress = (int)((double)update.CurrentItem / update.TotalItems * 100);
+                                        }
+                                    });
+
                 });
 
+                // Call the central service
+                queueResult = await _steamWorkshopQueueProcessor.ProcessAndEnqueueModsAsync(steamIds, progressReporter, combinedToken);
 
-                var tasks = new List<Task>();
-                foreach (var steamId in steamIds)
-                {
-                    combinedToken.ThrowIfCancellationRequested();
-                    await semaphore.WaitAsync(combinedToken);
-
-                    tasks.Add(Task.Run(async () =>
-                    {
-                        string currentSteamId = steamId; // Capture loop variable
-                        string modIdentifier = $"Steam ID {currentSteamId}"; // Placeholder name
-
-                        try
-                        {
-                            combinedToken.ThrowIfCancellationRequested();
-
-                            int currentCount = Interlocked.Increment(ref processedCount);
-                            string progressMessage = $"Checking {modIdentifier}... ({currentCount}/{totalMods})";
-                            await ThreadHelper.RunOnUIThreadAsync(() =>
-                            {
-                                if (progressDialog != null && !progressDialog.CancellationToken.IsCancellationRequested)
-                                {
-                                    progressDialog.Message = progressMessage;
-                                    progressDialog.Progress = (int)((double)currentCount / totalMods * 100);
-                                }
-                            });
-
-                            if (_downloadQueueService.IsInQueue(currentSteamId))
-                            {
-                                _logger.LogDebug($"Mod {currentSteamId} is already in the download queue.", nameof(ModListIOService));
-                                Interlocked.Increment(ref alreadyQueuedCount);
-                                return;
-                            }
-
-                            combinedToken.ThrowIfCancellationRequested();
-                            SteamApiResponse apiResponse = null;
-                            try
-                            {
-                                apiResponse = await _steamApiClient.GetFileDetailsAsync(currentSteamId, combinedToken);
-                            }
-                            catch (OperationCanceledException) { throw; }
-                            catch (Exception apiExInner)
-                            {
-                                var errorMsgInner = $"Network/API error for {modIdentifier}: {apiExInner.Message}";
-                                _logger.LogWarning(errorMsgInner, nameof(ModListIOService));
-                                apiErrorMessages.Add(errorMsgInner);
-                                Interlocked.Increment(ref errorCount);
-                                return;
-                            }
-
-                            combinedToken.ThrowIfCancellationRequested();
-
-                            if (apiResponse?.Response?.PublishedFileDetails == null || !apiResponse.Response.PublishedFileDetails.Any())
-                            {
-                                var errorMsg = $"No details returned from Steam API for {modIdentifier}.";
-                                _logger.LogWarning(errorMsg, nameof(ModListIOService));
-                                apiErrorMessages.Add(errorMsg);
-                                Interlocked.Increment(ref errorCount);
-                                return;
-                            }
-
-                            var details = apiResponse.Response.PublishedFileDetails.First();
-                            modIdentifier = $"'{details.Title ?? currentSteamId}' ({currentSteamId})"; // Update identifier with real name
-
-                            if (details.Result != 1) // 1 = OK
-                            {
-                                string errorDescription = SteamApiResultHelper.GetDescription(details.Result);
-                                var errorMsg = $"Steam API error for {modIdentifier}: {errorDescription} (Code: {details.Result})";
-                                _logger.LogWarning(errorMsg, nameof(ModListIOService));
-                                apiErrorMessages.Add(errorMsg);
-                                Interlocked.Increment(ref errorCount);
-                                return;
-                            }
-
-                            // Sanity Check: Double-check if the mod is *actually* available via API, although dictionary said Published=true
-                            // The workshop visibility might have changed between dictionary update and now.
-                            // `details.Result == 1` already covers most cases (like Removed, FriendsOnly, Private).
-                            // We could potentially add a check for `details.visibility` if needed, but Result==1 is usually sufficient.
-
-                            DateTimeOffset apiUpdateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(details.TimeUpdated);
-                            DateTime apiUpdateTimeUtc = apiUpdateTimeOffset.UtcDateTime;
-
-                            var modInfoDto = new ModInfoDto
-                            {
-                                Name = details.Title ?? $"Unknown Mod {currentSteamId}",
-                                SteamId = currentSteamId,
-                                Url = $"https://steamcommunity.com/sharedfiles/filedetails/?id={currentSteamId}",
-                                PublishDate = apiUpdateTimeOffset.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture),
-                                StandardDate = apiUpdateTimeUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture),
-                                FileSize = details.FileSize
-                            };
-
-                            if (_downloadQueueService.AddToQueue(modInfoDto))
-                            {
-                                Interlocked.Increment(ref addedCount);
-                                addedNames.Add(modInfoDto.Name);
-                                _logger.LogInfo($"Added {modIdentifier} to download queue.", nameof(ModListIOService));
-                            }
-                            else
-                            {
-                                var errorMsg = $"Failed to add {modIdentifier} to queue internally.";
-                                _logger.LogWarning(errorMsg, nameof(ModListIOService));
-                                apiErrorMessages.Add(errorMsg);
-                                Interlocked.Increment(ref errorCount);
-                            }
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            _logger.LogInfo($"Task cancelled for mod {modIdentifier}.", nameof(ModListIOService));
-                        }
-                        catch (Exception taskEx)
-                        {
-                            var errorMsg = $"Unexpected error processing {modIdentifier}: {taskEx.Message}";
-                            _logger.LogException(taskEx, errorMsg, nameof(ModListIOService));
-                            apiErrorMessages.Add(errorMsg);
-                            Interlocked.Increment(ref errorCount);
-                        }
-                        finally
-                        {
-                            semaphore.Release();
-                        }
-                    }, combinedToken));
-                }
-
-                await Task.WhenAll(tasks);
-
+                // --- Show Summary ---
                 await ThreadHelper.RunOnUIThreadAsync(() =>
                 {
-                    if (combinedToken.IsCancellationRequested)
+                    if (queueResult.WasCancelled)
                     {
-                        _logger.LogInfo("Operation cancelled during or after task execution.", nameof(ModListIOService));
+                        _logger.LogInfo("Queueing missing mods was cancelled.", nameof(ModListIOService));
                         progressDialog?.ForceClose();
-                        _dialogService.ShowWarning("Operation Cancelled", "Queueing mods for download was cancelled.");
+                        _dialogService.ShowWarning("Operation Cancelled", "Queueing selected mods for download was cancelled.");
                         return;
                     }
 
                     progressDialog?.CompleteOperation("Download queueing complete.");
 
-                    int finalAddedCount = addedCount;
-                    int finalAlreadyQueuedCount = alreadyQueuedCount;
-                    int finalErrorCount = errorCount;
-                    List<string> finalErrorMessages = apiErrorMessages.ToList();
-
                     var sb = new StringBuilder();
-                    if (finalAddedCount > 0) sb.AppendLine($"{finalAddedCount} mod(s) added to the download queue.");
+                    if (queueResult.SuccessfullyAdded > 0) sb.AppendLine($"{queueResult.SuccessfullyAdded} mod(s) added to the download queue.");
                     else sb.AppendLine("No new mods were added to the download queue.");
 
-                    if (finalAlreadyQueuedCount > 0) sb.AppendLine($"{finalAlreadyQueuedCount} selected mod(s) were already in the queue.");
-                    if (finalErrorCount > 0)
+                    if (queueResult.AlreadyQueued > 0) sb.AppendLine($"{queueResult.AlreadyQueued} selected mod(s) were already in the queue.");
+                    if (queueResult.FailedProcessing > 0)
                     {
-                        sb.AppendLine($"{finalErrorCount} selected mod(s) could not be added due to errors:");
-                        foreach (var errMsg in finalErrorMessages.Take(5)) sb.AppendLine($"  - {errMsg}");
-                        if (finalErrorMessages.Count > 5) sb.AppendLine("    (Check logs for more details...)");
+                        sb.AppendLine($"{queueResult.FailedProcessing} selected mod(s) could not be added due to errors:");
+                        foreach (var errMsg in queueResult.ErrorMessages.Take(5)) sb.AppendLine($"  - {errMsg}");
+                        if (queueResult.ErrorMessages.Count > 5) sb.AppendLine("    (Check logs for more details...)");
                     }
 
                     // Show appropriate dialog
-                    if (finalErrorCount > 0 && finalAddedCount > 0) _dialogService.ShowWarning("Download Partially Queued", sb.ToString().Trim());
-                    else if (finalErrorCount > 0 && finalAddedCount == 0) _dialogService.ShowError("Download Queue Failed", sb.ToString().Trim());
+                    if (queueResult.FailedProcessing > 0 && queueResult.SuccessfullyAdded > 0) _dialogService.ShowWarning("Download Partially Queued", sb.ToString().Trim());
+                    else if (queueResult.FailedProcessing > 0 && queueResult.SuccessfullyAdded == 0) _dialogService.ShowError("Download Queue Failed", sb.ToString().Trim());
                     else _dialogService.ShowInformation("Download Queued", sb.ToString().Trim());
 
-                    if (finalAddedCount > 0)
+                    if (queueResult.SuccessfullyAdded > 0)
                     {
                         _navigationService.RequestTabSwitch("Downloader");
                     }
@@ -665,11 +533,10 @@ namespace RimSharp.Infrastructure.Mods.IO
             {
                 _logger.LogInfo("Queueing mods for download was cancelled.", nameof(ModListIOService));
                 await ThreadHelper.RunOnUIThreadAsync(() => progressDialog?.ForceClose());
-                // Don't show summary dialog
             }
             catch (Exception ex)
             {
-                _logger.LogException(ex, "Outer error during QueueModsForDownloadAsync.", nameof(ModListIOService));
+                _logger.LogException(ex, "Outer error during ProcessAndQueueSelectedModsAsync.", nameof(ModListIOService));
                 await ThreadHelper.RunOnUIThreadAsync(() => progressDialog?.ForceClose());
                 await ThreadHelper.RunOnUIThreadAsync(() => _dialogService.ShowError("Queueing Error", $"An unexpected error occurred: {ex.Message}"));
             }
@@ -677,9 +544,9 @@ namespace RimSharp.Infrastructure.Mods.IO
             {
                 await ThreadHelper.RunOnUIThreadAsync(() => progressDialog?.ForceClose());
                 linkedCts?.Dispose();
-                // Semaphore disposed by using statement
             }
         }
+
         #endregion
     }
 }
