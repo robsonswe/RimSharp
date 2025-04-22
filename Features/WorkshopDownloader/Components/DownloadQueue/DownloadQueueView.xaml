@@ -40,7 +40,7 @@
                         Command="{Binding AddModCommand}"
                         Style="{StaticResource RimworldButtonStyle}"
                         Margin="0,0,2.5,0"
-                        IsEnabled="{Binding CanAddMod}"/>
+                        IsEnabled="{Binding BrowserViewModel.CanAddMod}"/>
                 <Button Grid.Column="1"
                         Content="Download"
                         Command="{Binding DownloadCommand}"

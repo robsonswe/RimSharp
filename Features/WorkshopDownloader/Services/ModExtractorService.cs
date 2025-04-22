@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
@@ -16,6 +17,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         Task<string> ExtractModName();
         Task<string> ExtractModDateInfo();
         Task<string> ExtractFileSizeRawString(); // Added
+        Task<List<CollectionItemInfo>> ExtractCollectionItemsAsync();
         Task<long> ParseFileSizeAsync(string sizeString); // Added
 
         Task<string> ConvertToStandardDate(string dateString);
@@ -378,5 +380,99 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 return jsonValue;
             }
         }
+                public async Task<List<CollectionItemInfo>> ExtractCollectionItemsAsync()
+        {
+            var items = new List<CollectionItemInfo>();
+            if (_webView?.CoreWebView2 == null)
+            {
+                Debug.WriteLine("[ModExtractorService] WebView not ready for collection extraction.");
+                return items; // Return empty list
+            }
+
+            try
+            {
+                // JavaScript to extract IDs, Names, and Authors from collection items
+                string script = @"(function() {
+                    const collectionItems = document.querySelectorAll('.collectionItem');
+                    const results = [];
+                    const idRegex = /sharedfile_(\d+)/;
+
+                    collectionItems.forEach(item => {
+                        const idMatch = item.id ? item.id.match(idRegex) : null;
+                        const steamId = idMatch ? idMatch[1] : null;
+                        const titleElement = item.querySelector('.collectionItemDetails .workshopItemTitle');
+                        const name = titleElement ? titleElement.textContent.trim() : 'Unknown Name';
+                        const authorElement = item.querySelector('.collectionItemDetails .workshopItemAuthorName a');
+                        const author = authorElement ? authorElement.textContent.trim() : 'Unknown Author';
+
+                        if (steamId) {
+                            results.push({ steamId: steamId, name: name, author: author });
+                        } else {
+                             console.warn('Could not extract Steam ID from collection item:', item.id);
+                        }
+                    });
+                    return JSON.stringify(results); // Return as JSON string
+                })();";
+
+                string jsonResult = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+                Debug.WriteLine($"[ModExtractorService] Raw JSON result from collection script: {jsonResult?.Substring(0, Math.Min(jsonResult?.Length ?? 0, 500))}");
+
+                // Check if the result is null or empty JSON string representation like "\"[]\"" or "null"
+                 if (string.IsNullOrEmpty(jsonResult) || jsonResult == "null" || jsonResult == "\"[]\"")
+                 {
+                     Debug.WriteLine("[ModExtractorService] Collection script returned no data.");
+                     return items;
+                 }
+
+
+                // Deserialize the JSON array string
+                // Note: ExecuteScriptAsync often returns the result as a JSON *string* itself (double-encoded)
+                string unwrappedJson = UnwrapJsonString(jsonResult); // Use existing helper
+
+                if (string.IsNullOrWhiteSpace(unwrappedJson))
+                 {
+                     Debug.WriteLine("[ModExtractorService] Unwrapped JSON string is empty.");
+                     return items;
+                 }
+
+
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var extractedData = JsonSerializer.Deserialize<List<Dictionary<string, string>>>(unwrappedJson, options);
+
+                if (extractedData != null)
+                {
+                    foreach (var data in extractedData)
+                    {
+                        items.Add(new CollectionItemInfo
+                        {
+                            SteamId = data.GetValueOrDefault("steamId", string.Empty),
+                            Name = data.GetValueOrDefault("name", "Unknown Name"),
+                            Author = data.GetValueOrDefault("author", "Unknown Author")
+                        });
+                    }
+                     Debug.WriteLine($"[ModExtractorService] Successfully extracted {items.Count} items from collection.");
+                }
+                else
+                {
+                     Debug.WriteLine("[ModExtractorService] Deserialization of collection data resulted in null.");
+                }
+
+            }
+            catch (JsonException jsonEx)
+            {
+                // Log the error and the problematic JSON if possible
+                Debug.WriteLine($"[ModExtractorService] Error deserializing collection items JSON: {jsonEx.Message}");
+                // Debug.WriteLine($"[ModExtractorService] Problematic JSON: {jsonResult}"); // Be careful logging potentially large strings
+                // Consider logging only a snippet around jsonEx.Path or BytePositionInLine if available
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ModExtractorService] Error extracting collection items: {ex.Message}");
+                // Optionally raise an event or log more formally
+            }
+
+            return items;
+        }
+
     }
 }

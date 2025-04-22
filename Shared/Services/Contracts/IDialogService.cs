@@ -8,6 +8,8 @@ using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
 using RimSharp.Features.ModManager.Dialogs.MissingMods;
 
 using RimSharp.AppDir.Dialogs;
+using RimSharp.Features.WorkshopDownloader.Dialogs.Collection;
+using System.Collections.Generic;
 
 namespace RimSharp.Shared.Services.Contracts
 {
@@ -26,6 +28,6 @@ namespace RimSharp.Shared.Services.Contracts
         ModReplacementDialogResult ShowModReplacementDialog(ModReplacementDialogViewModel viewModel);
         DependencyResolutionDialogResult ShowDependencyResolutionDialog(DependencyResolutionDialogViewModel viewModel);
         MissingModSelectionDialogOutput ShowMissingModSelectionDialog(MissingModSelectionDialogViewModel viewModel);
-
+        List<string>? ShowCollectionDialog(CollectionDialogViewModel viewModel);
     }
 }
