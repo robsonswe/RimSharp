@@ -1,0 +1,92 @@
+<dialogs:BaseDialog x:Class="RimSharp.Features.WorkshopDownloader.Dialogs.Collection.CollectionDialogView"
+                    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                    xmlns:local="clr-namespace:RimSharp.Features.WorkshopDownloader.Dialogs.Collection"
+                    xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+                    xmlns:vm="clr-namespace:RimSharp.Features.WorkshopDownloader.Dialogs.Collection"
+                    mc:Ignorable="d"
+                    d:DataContext="{d:DesignInstance Type=vm:CollectionDialogViewModel}"
+                    Title="{Binding Title}"
+                    Width="600" Height="500" MinWidth="450" MinHeight="350"
+                    ResizeMode="CanResizeWithGrip">
+
+    <dialogs:BaseDialog.MainContent>
+        <DockPanel Margin="5">
+            <!-- Top Buttons -->
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
+                <Button Content="Select All" Command="{Binding SelectAllCommand}" Style="{StaticResource RimworldButtonStyle}" Margin="0,0,5,0"/>
+                <Button Content="Select None" Command="{Binding SelectNoneCommand}" Style="{StaticResource RimworldButtonStyle}" Margin="0,0,5,0"/>
+            </StackPanel>
+
+            <!-- Item List -->
+            <!-- Removed Style attribute again, just in case. Using default ListView -->
+            <ListView ItemsSource="{Binding Items}"
+                      SelectionMode="Extended"
+                      ScrollViewer.VerticalScrollBarVisibility="Auto">
+                <ListView.View>
+                    <GridView AllowsColumnReorder="False">
+                        <!-- Checkbox Column -->
+                        <GridViewColumn Width="40">
+                            <GridViewColumn.Header>
+                                <CheckBox IsEnabled="False" IsChecked="True"/> <!-- Visual cue -->
+                            </GridViewColumn.Header>
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <!-- This CheckBox handles the IsSelected binding -->
+                                    <CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <!-- Name Column -->
+                        <GridViewColumn Header="Name" Width="250">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <!-- Author Column -->
+                        <GridViewColumn Header="Author" Width="150">
+                             <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Author}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Author}" VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <!-- Steam ID Column -->
+                        <GridViewColumn Header="Steam ID" Width="100">
+                             <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding SteamId}" VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                    </GridView>
+                </ListView.View>
+
+                <!-- REMOVED ItemContainerStyle section entirely -->
+
+            </ListView>
+        </DockPanel>
+    </dialogs:BaseDialog.MainContent>
+
+    <dialogs:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button Content="Add Selected"
+                    Command="{Binding AddSelectedCommand}"
+                    Style="{StaticResource RimworldSaveButtonStyle}"
+                    MinWidth="100"
+                    Margin="0,0,10,0"/>
+            <Button Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    Style="{StaticResource RimworldRunButtonStyle}"
+                    MinWidth="100"/>
+        </StackPanel>
+    </dialogs:BaseDialog.ButtonContent>
+
+</dialogs:BaseDialog>

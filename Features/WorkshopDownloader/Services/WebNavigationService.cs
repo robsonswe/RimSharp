@@ -17,6 +17,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         bool CanGoBack { get; }
         bool CanGoForward { get; }
         bool IsValidModUrl { get; }
+        bool IsCollectionUrl { get; }
         string CurrentUrl { get; } // Represents the *actual* current URL after completion/source change
         string? IntendedUrl { get; } // Represents the URL being navigated *to*
 
@@ -24,6 +25,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         event EventHandler<string> StatusChanged;
         event EventHandler NavigationStateChanged;
         event EventHandler<bool> ModUrlValidityChanged;
+        event EventHandler<bool> CollectionUrlValidityChanged;
         event EventHandler<string> NavigationSucceededAndUrlValid;
 
         // --- New Events for Loading State ---
@@ -41,6 +43,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         private bool _canGoBack;
         private bool _canGoForward;
         private bool _isValidModUrl;
+        private bool _isCollectionUrl;
         private string _currentUrl = string.Empty; // Backing field for CurrentUrl property
         private string? _intendedUrl; // Backing field for IntendedUrl property
 
@@ -83,6 +86,18 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 }
             }
         }
+        public bool IsCollectionUrl // <<< ADDED Property
+        {
+            get => _isCollectionUrl;
+            private set
+            {
+                if (_isCollectionUrl != value)
+                {
+                    _isCollectionUrl = value;
+                    CollectionUrlValidityChanged?.Invoke(this, _isCollectionUrl); // <<< Raise new event
+                }
+            }
+        }
 
         public string CurrentUrl
         {
@@ -118,6 +133,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         public event EventHandler<string>? StatusChanged;
         public event EventHandler? NavigationStateChanged;
         public event EventHandler<bool>? ModUrlValidityChanged;
+        public event EventHandler<bool>? CollectionUrlValidityChanged;
         public event EventHandler<string>? NavigationSucceededAndUrlValid;
         public event EventHandler<string>? NavigationStarted; // Passes intended URL
         public event EventHandler? NavigationEnded;
@@ -155,7 +171,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         private void WebView_CoreWebView2InitializationCompleted(object? sender, CoreWebView2InitializationCompletedEventArgs e)
         {
             // Unsubscribe to prevent multiple calls if SetWebView is called again before init completes
-             if (_webView != null) _webView.CoreWebView2InitializationCompleted -= WebView_CoreWebView2InitializationCompleted;
+            if (_webView != null) _webView.CoreWebView2InitializationCompleted -= WebView_CoreWebView2InitializationCompleted;
 
             if (e.IsSuccess && _webView?.CoreWebView2 != null)
             {
@@ -177,8 +193,8 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         {
             if (_webView?.CoreWebView2 == null)
             {
-                 Debug.WriteLine("[WebNavService] HookCoreWebView2Events: Attempted to hook but CoreWebView2 is null.");
-                 return;
+                Debug.WriteLine("[WebNavService] HookCoreWebView2Events: Attempted to hook but CoreWebView2 is null.");
+                return;
             }
             Debug.WriteLine("[WebNavService] Hooking CoreWebView2 events...");
 
@@ -192,26 +208,27 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             _webView.CoreWebView2.NavigationStarting += WebView_NavigationStarting;
             _webView.CoreWebView2.NavigationCompleted += WebView_NavigationCompleted;
             _webView.CoreWebView2.SourceChanged += WebView_SourceChanged; // Renamed from WebView_SourceChanged
-             _webView.CoreWebView2.NewWindowRequested += CoreWebView2_NewWindowRequested; // Add NewWindowRequested
+            _webView.CoreWebView2.NewWindowRequested += CoreWebView2_NewWindowRequested; // Add NewWindowRequested
 
-             Debug.WriteLine("[WebNavService] CoreWebView2 events hooked.");
+            Debug.WriteLine("[WebNavService] CoreWebView2 events hooked.");
         }
 
         private void DisposeCurrentWebViewEvents()
         {
-             if (_webView?.CoreWebView2 != null)
-             {
-                 Debug.WriteLine("[WebNavService] Unhooking CoreWebView2 events from previous WebView...");
-                 _webView.CoreWebView2.NavigationStarting -= WebView_NavigationStarting;
-                 _webView.CoreWebView2.NavigationCompleted -= WebView_NavigationCompleted;
-                 _webView.CoreWebView2.SourceChanged -= WebView_SourceChanged;
-                 _webView.CoreWebView2.NewWindowRequested -= CoreWebView2_NewWindowRequested;
-                  _webView.CoreWebView2InitializationCompleted -= WebView_CoreWebView2InitializationCompleted; // Also unsubscribe this
-                 Debug.WriteLine("[WebNavService] Unhooked CoreWebView2 events.");
-             }
-             else if (_webView != null) {
-                  _webView.CoreWebView2InitializationCompleted -= WebView_CoreWebView2InitializationCompleted; // Still need to unsub this if CoreWebView2 was null
-             }
+            if (_webView?.CoreWebView2 != null)
+            {
+                Debug.WriteLine("[WebNavService] Unhooking CoreWebView2 events from previous WebView...");
+                _webView.CoreWebView2.NavigationStarting -= WebView_NavigationStarting;
+                _webView.CoreWebView2.NavigationCompleted -= WebView_NavigationCompleted;
+                _webView.CoreWebView2.SourceChanged -= WebView_SourceChanged;
+                _webView.CoreWebView2.NewWindowRequested -= CoreWebView2_NewWindowRequested;
+                _webView.CoreWebView2InitializationCompleted -= WebView_CoreWebView2InitializationCompleted; // Also unsubscribe this
+                Debug.WriteLine("[WebNavService] Unhooked CoreWebView2 events.");
+            }
+            else if (_webView != null)
+            {
+                _webView.CoreWebView2InitializationCompleted -= WebView_CoreWebView2InitializationCompleted; // Still need to unsub this if CoreWebView2 was null
+            }
             _webView = null; // Clear the reference after unsubscribing
         }
 
@@ -257,13 +274,13 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 // Ignore specific errors like cancellation or navigation aborts if needed
                 if (e.WebErrorStatus != CoreWebView2WebErrorStatus.OperationCanceled)
                 {
-                     status = $"Failed to load: {finalUrl} (Error: {e.WebErrorStatus})";
-                     Debug.WriteLine($"[WebNavService] Navigation failed for URL: {finalUrl}");
+                    status = $"Failed to load: {finalUrl} (Error: {e.WebErrorStatus})";
+                    Debug.WriteLine($"[WebNavService] Navigation failed for URL: {finalUrl}");
                 }
-                 else
+                else
                 {
                     status = $"Navigation cancelled/aborted: {finalUrl}";
-                     Debug.WriteLine($"[WebNavService] Navigation cancelled/aborted for URL: {finalUrl}");
+                    Debug.WriteLine($"[WebNavService] Navigation cancelled/aborted for URL: {finalUrl}");
                 }
 
             }
@@ -275,44 +292,44 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         {
             // This fires when the CoreWebView2.Source property changes, AFTER navigation is successful
             // or due to history navigation (back/forward).
-             // Avoid redundant updates if NavigationCompleted already handled it.
-             string newSource = _webView?.CoreWebView2?.Source ?? string.Empty;
-             Debug.WriteLine($"[WebNavService] SourceChanged: IsNewDocument={e.IsNewDocument}, New Source={newSource}");
+            // Avoid redundant updates if NavigationCompleted already handled it.
+            string newSource = _webView?.CoreWebView2?.Source ?? string.Empty;
+            Debug.WriteLine($"[WebNavService] SourceChanged: IsNewDocument={e.IsNewDocument}, New Source={newSource}");
 
-             if(CurrentUrl != newSource) // Only update if different from what NavigationCompleted set
-             {
+            if (CurrentUrl != newSource) // Only update if different from what NavigationCompleted set
+            {
                 CurrentUrl = newSource;
-                 // Do NOT update IntendedUrl here
-                 CheckUrlValidity(newSource);
-                 UpdateNavigationState(); // Update CanGoBack/Forward
-                 SourceUrlChanged?.Invoke(this, newSource); // Signal the *confirmed* source has changed
-                 Debug.WriteLine($"[WebNavService] Raised SourceUrlChanged from SourceChanged handler: {newSource}");
-             }
+                // Do NOT update IntendedUrl here
+                CheckUrlValidity(newSource);
+                UpdateNavigationState(); // Update CanGoBack/Forward
+                SourceUrlChanged?.Invoke(this, newSource); // Signal the *confirmed* source has changed
+                Debug.WriteLine($"[WebNavService] Raised SourceUrlChanged from SourceChanged handler: {newSource}");
+            }
         }
 
         private void CoreWebView2_NewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs e)
         {
-             string targetUri = e.Uri;
-             Debug.WriteLine($"[WebNavService] NewWindowRequested for: {targetUri}. Handling in current view.");
-             StatusChanged?.Invoke(this, $"Opening link in current view: {targetUri}...");
+            string targetUri = e.Uri;
+            Debug.WriteLine($"[WebNavService] NewWindowRequested for: {targetUri}. Handling in current view.");
+            StatusChanged?.Invoke(this, $"Opening link in current view: {targetUri}...");
 
-             // Prevent the default new window behavior
-             e.Handled = true;
+            // Prevent the default new window behavior
+            e.Handled = true;
 
-             // Raise an event for the ViewModel or navigate directly if preferred
-             // Raising an event gives more control to the VM/View layer
-             // NewWindowNavigationRequested?.Invoke(this, targetUri);
+            // Raise an event for the ViewModel or navigate directly if preferred
+            // Raising an event gives more control to the VM/View layer
+            // NewWindowNavigationRequested?.Invoke(this, targetUri);
 
-             // --- OR --- Navigate directly within this service (simpler for now)
-              if (_webView?.CoreWebView2 != null)
-              {
-                  _webView.CoreWebView2.Navigate(targetUri);
-              }
-              else
-              {
-                   Debug.WriteLine("[WebNavService] Cannot navigate new window request: CoreWebView2 is null.");
-                   StatusChanged?.Invoke(this, $"Error: Cannot navigate - browser not fully initialized.");
-              }
+            // --- OR --- Navigate directly within this service (simpler for now)
+            if (_webView?.CoreWebView2 != null)
+            {
+                _webView.CoreWebView2.Navigate(targetUri);
+            }
+            else
+            {
+                Debug.WriteLine("[WebNavService] Cannot navigate new window request: CoreWebView2 is null.");
+                StatusChanged?.Invoke(this, $"Error: Cannot navigate - browser not fully initialized.");
+            }
         }
 
 
@@ -322,37 +339,37 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         {
             if (_webView?.CoreWebView2 != null)
             {
-                 try
-                 {
+                try
+                {
                     _webView.CoreWebView2.Navigate(url);
                     // IntendedUrl and NavigationStarted event will be set by WebView_NavigationStarting handler
-                 }
-                 catch (ArgumentException ex)
-                 {
-                     Debug.WriteLine($"[WebNavService] Invalid URL format for navigation: {url} - {ex.Message}");
-                     StatusChanged?.Invoke(this, $"Invalid URL format: {url}");
-                      NavigationEnded?.Invoke(this, EventArgs.Empty); // Ensure loading state resets on error
-                 }
-                 catch (Exception ex)
-                 {
-                     Debug.WriteLine($"[WebNavService] Navigation error for URL {url}: {ex.Message}");
-                     StatusChanged?.Invoke(this, $"Error navigating: {ex.Message}");
-                      NavigationEnded?.Invoke(this, EventArgs.Empty); // Ensure loading state resets on error
-                 }
+                }
+                catch (ArgumentException ex)
+                {
+                    Debug.WriteLine($"[WebNavService] Invalid URL format for navigation: {url} - {ex.Message}");
+                    StatusChanged?.Invoke(this, $"Invalid URL format: {url}");
+                    NavigationEnded?.Invoke(this, EventArgs.Empty); // Ensure loading state resets on error
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[WebNavService] Navigation error for URL {url}: {ex.Message}");
+                    StatusChanged?.Invoke(this, $"Error navigating: {ex.Message}");
+                    NavigationEnded?.Invoke(this, EventArgs.Empty); // Ensure loading state resets on error
+                }
             }
             else if (_webView != null && Uri.TryCreate(url, UriKind.Absolute, out var uri))
             {
-                 // Fallback - less ideal as it bypasses CoreWebView2 events slightly
-                 Debug.WriteLine("[WebNavService] Warning: Navigating via Source property (CoreWebView2 might not be ready).");
-                 _webView.Source = uri; // This will trigger SourceChanged eventually
-                 IntendedUrl = url; // Manually set intended URL
-                 NavigationStarted?.Invoke(this, url); // Manually raise started event
+                // Fallback - less ideal as it bypasses CoreWebView2 events slightly
+                Debug.WriteLine("[WebNavService] Warning: Navigating via Source property (CoreWebView2 might not be ready).");
+                _webView.Source = uri; // This will trigger SourceChanged eventually
+                IntendedUrl = url; // Manually set intended URL
+                NavigationStarted?.Invoke(this, url); // Manually raise started event
             }
-             else
-             {
-                 Debug.WriteLine("[WebNavService] WebView or CoreWebView2 not available/initialized, cannot navigate.");
-                 StatusChanged?.Invoke(this, "Browser component not ready for navigation.");
-             }
+            else
+            {
+                Debug.WriteLine("[WebNavService] WebView or CoreWebView2 not available/initialized, cannot navigate.");
+                StatusChanged?.Invoke(this, "Browser component not ready for navigation.");
+            }
         }
 
 
@@ -398,40 +415,53 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
         private void UpdateNavigationState()
         {
-             // Use Dispatcher? Not strictly necessary if only read by UI thread later, but safer.
-             // Application.Current?.Dispatcher.Invoke(() => { ... }); // If needed
+            // Use Dispatcher? Not strictly necessary if only read by UI thread later, but safer.
+            // Application.Current?.Dispatcher.Invoke(() => { ... }); // If needed
 
             bool coreAvailable = _webView?.CoreWebView2 != null;
             CanGoBack = coreAvailable && _webView!.CoreWebView2.CanGoBack;
             CanGoForward = coreAvailable && _webView!.CoreWebView2.CanGoForward;
-             // Debug logging happens in property setters now via OnNavigationStateChanged
+            // Debug logging happens in property setters now via OnNavigationStateChanged
         }
 
         // Wrapper to ensure event is raised correctly
         private void OnNavigationStateChanged()
         {
-             Debug.WriteLine($"[WebNavService] Raising NavigationStateChanged. CanGoBack={CanGoBack}, CanGoForward={CanGoForward}");
+            Debug.WriteLine($"[WebNavService] Raising NavigationStateChanged. CanGoBack={CanGoBack}, CanGoForward={CanGoForward}");
             NavigationStateChanged?.Invoke(this, EventArgs.Empty);
         }
 
 
         private void CheckUrlValidity(string? url)
         {
-             if (string.IsNullOrWhiteSpace(url))
-             {
-                 IsValidModUrl = false;
-                 return;
-             }
+            bool isSingleMod = false;
+            bool isCollection = false;
 
-            bool isValid = false;
-            if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            if (!string.IsNullOrWhiteSpace(url) && Uri.TryCreate(url, UriKind.Absolute, out var uri))
             {
-                isValid = (uri.Host.EndsWith("steamcommunity.com", StringComparison.OrdinalIgnoreCase) ||
-                           uri.Host.EndsWith("steamworkshopdownloader.io", StringComparison.OrdinalIgnoreCase)) // Added downloader site
-                          && uri.AbsolutePath.Contains("/sharedfiles/filedetails/", StringComparison.OrdinalIgnoreCase)
-                          && !string.IsNullOrEmpty(HttpUtility.ParseQueryString(uri.Query).Get("id")); // Using System.Web
+                bool isSteamWorkshop = uri.Host.EndsWith("steamcommunity.com", StringComparison.OrdinalIgnoreCase);
+                bool hasFileDetailsPath = uri.AbsolutePath.Contains("/sharedfiles/filedetails/", StringComparison.OrdinalIgnoreCase);
+                bool hasWorkshopPath = uri.AbsolutePath.Contains("/workshop/filedetails/", StringComparison.OrdinalIgnoreCase); // Collection path
+                string? id = HttpUtility.ParseQueryString(uri.Query).Get("id");
+                bool hasId = !string.IsNullOrEmpty(id);
+
+                if (isSteamWorkshop && hasId)
+                {
+                    if (hasFileDetailsPath)
+                    {
+                        isSingleMod = true; // Path for single mods
+                    }
+                    else if (hasWorkshopPath)
+                    {
+                        isCollection = true; // Path for collections
+                    }
+                }
             }
-            IsValidModUrl = isValid; // Setter raises ModUrlValidityChanged
+
+            // Set properties - setters will raise events if changed
+            IsValidModUrl = isSingleMod;
+            IsCollectionUrl = isCollection;
+            Debug.WriteLine($"[WebNavService] URL Validity Check for '{url}': IsSingleMod={isSingleMod}, IsCollection={isCollection}");
         }
 
         // --- IDisposable ---
@@ -450,7 +480,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                     // _extractorService = null;
                 }
                 _disposed = true;
-                 Debug.WriteLine("[WebNavService] Dispose finished.");
+                Debug.WriteLine("[WebNavService] Dispose finished.");
             }
         }
 
@@ -459,8 +489,9 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
-         ~WebNavigationService() {
-             Dispose(false);
-         }
+        ~WebNavigationService()
+        {
+            Dispose(false);
+        }
     }
 }

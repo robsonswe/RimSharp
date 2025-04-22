@@ -15,7 +15,8 @@ using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using System.Collections;
-using RimSharp.Infrastructure.Workshop.Download.Models; // Required for ExecuteRemoveItems parameter
+using RimSharp.Infrastructure.Workshop.Download.Models;
+using RimSharp.Features.WorkshopDownloader.Dialogs.Collection; // Required for ExecuteRemoveItems parameter
 
 namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 {
@@ -30,6 +31,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
         private readonly Func<CancellationToken> _getCancellationToken;
         private readonly IModListManager _modListManager;
         private readonly ModInfoEnricher _modInfoEnricher;
+        private readonly ISteamWorkshopQueueProcessor _steamWorkshopQueueProcessor;
+        private readonly ILoggerService _logger;
         private EventHandler<string>? _queueServiceStatusHandler;
         private EventHandler<bool>? _steamCmdSetupStateChangedHandler; // Keep handler reference for unsubscribing
 
@@ -50,7 +53,9 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             BrowserViewModel browserViewModel,
             Func<CancellationToken> getCancellationToken,
             IModListManager modListManager,
-            ModInfoEnricher modInfoEnricher)
+            ModInfoEnricher modInfoEnricher,
+            ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor,
+            ILoggerService logger)
         {
             _queueService = queueService ?? throw new ArgumentNullException(nameof(queueService));
             _modService = modService ?? throw new ArgumentNullException(nameof(modService)); // Keep for mod list check
@@ -61,6 +66,9 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             _getCancellationToken = getCancellationToken ?? throw new ArgumentNullException(nameof(getCancellationToken));
             _modListManager = modListManager ?? throw new ArgumentNullException(nameof(modListManager));
             _modInfoEnricher = modInfoEnricher ?? throw new ArgumentNullException(nameof(modInfoEnricher));
+            _steamWorkshopQueueProcessor = steamWorkshopQueueProcessor ?? throw new ArgumentNullException(nameof(steamWorkshopQueueProcessor));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger)); // <<< ADDED
+
 
             _queueServiceStatusHandler = (s, msg) => StatusChanged?.Invoke(this, msg);
             _queueService.StatusChanged += _queueServiceStatusHandler;
@@ -74,7 +82,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
         // Event handler for SetupStateChanged
         private void SteamCmdService_SetupStateChanged(object? sender, bool isSetup)
         {
-            RunOnUIThread(() => { // Ensure UI thread if needed for bindings
+            RunOnUIThread(() =>
+            { // Ensure UI thread if needed for bindings
                 bool previousState = IsSteamCmdReady;
                 IsSteamCmdReady = isSetup;
                 if (IsSteamCmdReady != previousState)
@@ -120,15 +129,16 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             bool isReady = await _steamCmdService.CheckSetupAsync();
             // The event handler SteamCmdService_SetupStateChanged will update IsSteamCmdReady
             // This initial check ensures IsSteamCmdReady is correct on startup before the first event might fire.
-             RunOnUIThread(() => {
-                 bool previousState = IsSteamCmdReady;
-                 IsSteamCmdReady = isReady;
-                 if (IsSteamCmdReady != previousState)
-                 {
-                      SteamCmdReadyStatusChanged?.Invoke(this, EventArgs.Empty); // Fire event if changed on initial check
-                      Debug.WriteLine($"[CommandHandler] Initial SteamCmdReady check: {IsSteamCmdReady}");
-                 }
-             });
+            RunOnUIThread(() =>
+            {
+                bool previousState = IsSteamCmdReady;
+                IsSteamCmdReady = isReady;
+                if (IsSteamCmdReady != previousState)
+                {
+                    SteamCmdReadyStatusChanged?.Invoke(this, EventArgs.Empty); // Fire event if changed on initial check
+                    Debug.WriteLine($"[CommandHandler] Initial SteamCmdReady check: {IsSteamCmdReady}");
+                }
+            });
         }
 
         public async Task ExecuteSetupSteamCmdAsync(CancellationToken token)
@@ -196,9 +206,9 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             }
             if (!IsSteamCmdReady)
             {
-                 StatusChanged?.Invoke(this, "SteamCMD is not ready. Please run setup first.");
-                 _dialogService.ShowWarning("SteamCMD Not Ready", "SteamCMD setup needs to be completed before downloading mods.");
-                 return;
+                StatusChanged?.Invoke(this, "SteamCMD is not ready. Please run setup first.");
+                _dialogService.ShowWarning("SteamCMD Not Ready", "SteamCMD setup needs to be completed before downloading mods.");
+                return;
             }
 
             token = _getCancellationToken(); // Get the active cancellation token
@@ -278,7 +288,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                     if (downloadResult.FailedItems.Any() && downloadResult.SucceededItems.Any())
                         summary = $"Download finished with issues. {downloadResult.SucceededItems.Count} succeeded, {downloadResult.FailedItems.Count} failed (failed items remain in queue). Check messages/logs for details.";
                     else if (downloadResult.FailedItems.Any())
-                         summary = $"Download failed. {downloadResult.FailedItems.Count} item(s) could not be downloaded or processed. Check SteamCMD log and status messages for errors.";
+                        summary = $"Download failed. {downloadResult.FailedItems.Count} item(s) could not be downloaded or processed. Check SteamCMD log and status messages for errors.";
                     else if (downloadResult.ExitCode != 0)
                         summary = $"SteamCMD process failed (Exit Code {downloadResult.ExitCode}). No items successfully processed. Check log.";
                     else
@@ -292,15 +302,15 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
                 // Choose dialog type based on outcome
                 if (token.IsCancellationRequested)
-                     _dialogService.ShowInformation("Download Cancelled", summary);
+                    _dialogService.ShowInformation("Download Cancelled", summary);
                 else if (downloadResult.OverallSuccess && downloadResult.SucceededItems.Any())
-                     _dialogService.ShowInformation("Download Complete", summary);
+                    _dialogService.ShowInformation("Download Complete", summary);
                 else if (!downloadResult.OverallSuccess && downloadResult.SucceededItems.Any()) // Partial success
-                     _dialogService.ShowWarning("Download Partially Complete", summary);
+                    _dialogService.ShowWarning("Download Partially Complete", summary);
                 else if (!downloadResult.OverallSuccess && downloadResult.FailedItems.Any()) // All failed or process error
-                     _dialogService.ShowError("Download Failed", summary);
+                    _dialogService.ShowError("Download Failed", summary);
                 else // Other cases (e.g., no items succeeded but no explicit failures reported / exit code 0)
-                     _dialogService.ShowInformation("Download Finished", summary);
+                    _dialogService.ShowInformation("Download Finished", summary);
 
 
                 Debug.WriteLine("[CommandHandler] Download attempt finished, re-enriching remaining queue items.");
@@ -338,54 +348,192 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
         public async Task ExecuteAddModAsync(CancellationToken token)
         {
-            if (!IsSteamCmdReady) // Prevent adding if SteamCMD isn't ready (as download won't work)
+            if (!IsSteamCmdReady)
             {
-                 StatusChanged?.Invoke(this, "Cannot add mod: SteamCMD is not ready.");
-                 _dialogService.ShowWarning("SteamCMD Not Ready", "SteamCMD setup needs to be completed before adding mods to the download queue.");
-                 return;
+                StatusChanged?.Invoke(this, "Cannot add mod: SteamCMD is not ready.");
+                _dialogService.ShowWarning("SteamCMD Not Ready", "SteamCMD setup needs to be completed before adding mods.");
+                return;
             }
-            if (!_browserViewModel.IsValidModUrl || !_browserViewModel.IsModInfoAvailable)
-            {
-                 StatusChanged?.Invoke(this, "Cannot add mod: Browser info is not valid or available.");
-                 return;
-            }
-            token = _getCancellationToken();
 
-            StatusChanged?.Invoke(this, "Extracting mod info from browser...");
+            // Use combined token
+            token = CancellationTokenSource.CreateLinkedTokenSource(_getCancellationToken(), token).Token;
+
+            OperationStarted?.Invoke(this, EventArgs.Empty);
             try
             {
-                ModInfoDto? modInfo = await _browserViewModel.GetCurrentModInfoAsync(token);
-
-                if (token.IsCancellationRequested)
+                if (_browserViewModel.IsCollectionUrl)
                 {
-                    StatusChanged?.Invoke(this, "Add mod cancelled.");
-                    return;
+                    // --- Handle Collection ---
+                    await AddItemsFromCollectionAsync(token);
                 }
-
-                if (modInfo != null)
+                else if (_browserViewModel.IsValidModUrl && _browserViewModel.IsModInfoAvailable)
                 {
-                    if (_queueService.AddToQueue(modInfo))
-                    {
-                        // Success message handled by queue service StatusChanged
-                        StatusChanged?.Invoke(this, $"Added '{modInfo.Name}' to download queue.");
-                    }
-                    // Else: Queue service handles message for duplicates etc.
+                    // --- Handle Single Mod ---
+                    await AddSingleModFromBrowserAsync(token);
                 }
                 else
                 {
-                    StatusChanged?.Invoke(this, "Could not extract mod info from the current page.");
-                    _dialogService.ShowWarning("Extraction Failed", "Could not get mod details from the current page. Ensure it's a valid Steam Workshop item page.");
+                    StatusChanged?.Invoke(this, "Cannot add mod: Current page is not a valid mod or collection page, or required info is missing.");
+                    _dialogService.ShowWarning("Cannot Add Mod", "The current browser page is not recognized as a valid mod or collection, or essential information couldn't be extracted.");
                 }
             }
             catch (OperationCanceledException)
             {
-                StatusChanged?.Invoke(this, "Add mod cancelled.");
+                StatusChanged?.Invoke(this, "Add mod operation cancelled.");
             }
             catch (Exception ex)
             {
-                StatusChanged?.Invoke(this, $"Error adding mod: {ex.Message}");
+                StatusChanged?.Invoke(this, $"Error adding mod(s): {ex.Message}");
                 Debug.WriteLine($"[ExecuteAddModAsync] Error: {ex}");
-                _dialogService.ShowError("Add Mod Error", $"An error occurred while trying to add the mod: {ex.Message}");
+                _dialogService.ShowError("Add Mod Error", $"An error occurred while trying to add the mod(s): {ex.Message}");
+            }
+            finally
+            {
+                OperationCompleted?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        private async Task AddSingleModFromBrowserAsync(CancellationToken token)
+        {
+            StatusChanged?.Invoke(this, "Extracting single mod info from browser...");
+            ModInfoDto? modInfo = await _browserViewModel.GetCurrentModInfoAsync(token);
+
+            token.ThrowIfCancellationRequested();
+
+            if (modInfo != null)
+            {
+                if (_queueService.AddToQueue(modInfo))
+                {
+                    // Success message handled by queue service StatusChanged
+                    StatusChanged?.Invoke(this, $"Added '{modInfo.Name}' to download queue.");
+                }
+                // Else: Queue service handles message for duplicates etc.
+            }
+            else
+            {
+                StatusChanged?.Invoke(this, "Could not extract mod info from the current page.");
+                _dialogService.ShowWarning("Extraction Failed", "Could not get mod details from the current page. Ensure it's a valid Steam Workshop item page.");
+            }
+        }
+
+        private async Task AddItemsFromCollectionAsync(CancellationToken token)
+        {
+            StatusChanged?.Invoke(this, "Extracting collection items from browser...");
+            List<CollectionItemInfo> collectionItems = await _browserViewModel.ExtractCollectionItemsAsync(token);
+
+            token.ThrowIfCancellationRequested();
+
+            if (collectionItems == null || !collectionItems.Any())
+            {
+                StatusChanged?.Invoke(this, "No items found in the collection or extraction failed.");
+                _dialogService.ShowWarning("Extraction Failed", "Could not find any items in the collection on the current page, or an error occurred during extraction.");
+                return;
+            }
+
+            StatusChanged?.Invoke(this, $"Found {collectionItems.Count} items. Showing selection dialog...");
+
+            // --- Show Selection Dialog ---
+            var dialogViewModel = new CollectionDialogViewModel(collectionItems);
+            List<string>? selectedIds = _dialogService.ShowCollectionDialog(dialogViewModel); // Runs on UI thread internally
+
+            token.ThrowIfCancellationRequested();
+
+            if (selectedIds == null)
+            {
+                StatusChanged?.Invoke(this, "Collection add cancelled by user.");
+                return; // User cancelled the dialog
+            }
+
+            if (!selectedIds.Any())
+            {
+                StatusChanged?.Invoke(this, "No items selected from the collection to add.");
+                return; // User selected none
+            }
+
+            // --- Process Selected Items ---
+            StatusChanged?.Invoke(this, $"Adding {selectedIds.Count} selected item(s) to queue via Steam API check...");
+            ProgressDialogViewModel? progressDialog = null;
+            QueueProcessResult? processResult = null;
+
+            // --- Prepare linked cancellation source for the progress dialog ---
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(token); // Use using for disposal
+
+            try
+            {
+                progressDialog = _dialogService.ShowProgressDialog(
+                    "Processing Collection Items",
+                    "Starting API checks...",
+                    canCancel: true, // Allow cancellation of the API processing
+                    isIndeterminate: false, // Show progress
+                    cts: linkedCts, // Pass the LINKED CTS
+                    closeable: false // Keep open until done
+                );
+                // Note: Cancelled event handler is attached internally by ShowProgressDialog or its view now
+
+                var progressReporter = new Progress<QueueProcessProgress>(p =>
+                {
+                    // --- FIX: Use CancellationToken property ---
+                    if (progressDialog?.CancellationToken.IsCancellationRequested ?? true) return;
+                    RunOnUIThread(() =>
+                    {
+                        if (progressDialog != null) // Check again after switching thread
+                        {
+                            progressDialog.Progress = (int)(((double)p.CurrentItem / p.TotalItems) * 100);
+                            progressDialog.Message = $"Checking {p.CurrentItemName ?? p.CurrentSteamId}... ({p.CurrentItem}/{p.TotalItems})\n{p.Message}";
+                        }
+                        StatusChanged?.Invoke(this, $"Processing {p.CurrentItem}/{p.TotalItems}: {p.CurrentItemName ?? p.CurrentSteamId} - {p.Message}");
+                    });
+                });
+
+                // Use the injected queue processor
+                processResult = await _steamWorkshopQueueProcessor.ProcessAndEnqueueModsAsync(
+                    selectedIds,
+                    progressReporter,
+                    linkedCts.Token // --- FIX: Use the token from the LINKED source ---
+                );
+
+                // --- Show Summary (unchanged) ---
+                string summary;
+                if (processResult.WasCancelled)
+                {
+                    summary = $"Processing cancelled. Successfully added {processResult.SuccessfullyAdded} mods before cancellation.";
+                    // Don't call CompleteOperation if already cancelled? Or call with cancel message?
+                    progressDialog?.ForceClose(); // Force close if cancelled externally or via button
+                    _dialogService.ShowInformation("Processing Cancelled", summary);
+                }
+                else
+                {
+                    summary = $"Processing complete. Attempted: {processResult.TotalAttempted}, Added: {processResult.SuccessfullyAdded}, Already Queued: {processResult.AlreadyQueued}, Failed: {processResult.FailedProcessing}.";
+                    progressDialog?.CompleteOperation("Processing Complete."); // Complete normally
+
+                    if (processResult.FailedProcessing > 0)
+                    {
+                        string errors = string.Join("\n- ", processResult.ErrorMessages.Take(5)); // Show first 5 errors
+                        _dialogService.ShowWarning("Processing Issues", $"{summary}\n\nSome items failed:\n- {errors}{(processResult.ErrorMessages.Count > 5 ? "\n..." : "")}");
+                    }
+                    else
+                    {
+                        _dialogService.ShowInformation("Processing Complete", summary);
+                    }
+                }
+                StatusChanged?.Invoke(this, summary);
+            }
+            catch (OperationCanceledException) // Catch cancellation from the LINKED token
+            {
+                StatusChanged?.Invoke(this, "Collection item processing cancelled.");
+                progressDialog?.ForceClose(); // Force close on cancellation
+                                              // Optionally show an info dialog, but might be redundant if cancelled via UI
+            }
+            catch (Exception ex)
+            {
+                StatusChanged?.Invoke(this, $"Error processing collection items: {ex.Message}");
+                progressDialog?.CompleteOperation($"Error: {ex.Message}"); // Show error before force close
+                Debug.WriteLine($"[AddItemsFromCollectionAsync] Error: {ex}");
+                _dialogService.ShowError("Processing Error", $"An unexpected error occurred while processing collection items: {ex.Message}");
+            }
+            finally
+            {
+                progressDialog?.ForceClose(); // Ensure it's closed
             }
         }
 
@@ -472,12 +620,12 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
         public async Task ExecuteCheckUpdatesAsync(CancellationToken token)
         {
-             if (!IsSteamCmdReady)
-             {
-                 StatusChanged?.Invoke(this, "Cannot check updates: SteamCMD is not ready.");
-                 _dialogService.ShowWarning("SteamCMD Not Ready", "SteamCMD setup needs to be completed before checking for mod updates.");
-                 return;
-             }
+            if (!IsSteamCmdReady)
+            {
+                StatusChanged?.Invoke(this, "Cannot check updates: SteamCMD is not ready.");
+                _dialogService.ShowWarning("SteamCMD Not Ready", "SteamCMD setup needs to be completed before checking for mod updates.");
+                return;
+            }
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(_getCancellationToken(), token); // Combine tokens
             token = cts.Token; // Use combined token
@@ -573,8 +721,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
                     if (updateResult.UpdatesFound > 0)
                     {
-                         // Items are added to queue by the UpdateCheckerService, show confirmation
-                         _dialogService.ShowInformation("Updates Found", $"Found {updateResult.UpdatesFound} mod(s) with updates available. They have been added to the download queue.");
+                        // Items are added to queue by the UpdateCheckerService, show confirmation
+                        _dialogService.ShowInformation("Updates Found", $"Found {updateResult.UpdatesFound} mod(s) with updates available. They have been added to the download queue.");
                     }
                     else if (updateResult.ErrorsEncountered == 0)
                     {
@@ -612,8 +760,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             // Unsubscribe from events
             if (_queueServiceStatusHandler != null && _queueService != null)
                 _queueService.StatusChanged -= _queueServiceStatusHandler;
-             if (_steamCmdSetupStateChangedHandler != null && _steamCmdService != null)
-                 _steamCmdService.SetupStateChanged -= _steamCmdSetupStateChangedHandler;
+            if (_steamCmdSetupStateChangedHandler != null && _steamCmdService != null)
+                _steamCmdService.SetupStateChanged -= _steamCmdSetupStateChangedHandler;
 
 
             // Clear handler references

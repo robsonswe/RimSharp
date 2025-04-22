@@ -52,13 +52,19 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
         private EventHandler<bool>? _steamCmdSetupStateChangedHandler;
 
         public DownloaderViewModel(
+            // Existing Dependencies
             IWebNavigationService navigationService,
             IDownloadQueueService queueService,
             IModService modService,
             IDialogService dialogService,
             IWorkshopUpdateCheckerService updateCheckerService,
             ISteamCmdService steamCmdService,
-            IModListManager modListManager)
+            IModListManager modListManager,
+            // New Dependencies (passed down to QueueViewModel/CommandHandler)
+            ModInfoEnricher modInfoEnricher,                     // <<< ADDED parameter
+            ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor, // <<< ADDED parameter
+            ILoggerService loggerService                         // <<< ADDED parameter
+            )
         {
             _dialogService = dialogService;
             _steamCmdService = steamCmdService;
@@ -67,9 +73,11 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
 
             BrowserViewModel = new BrowserViewModel(navigationService, this);
             QueueViewModel = new DownloadQueueViewModel(
-                queueService, modService, dialogService, updateCheckerService,
-                steamCmdService, BrowserViewModel, getCancellationTokenFunc, modListManager
-            );
+                            queueService, modService, dialogService, updateCheckerService,
+                            steamCmdService, BrowserViewModel, getCancellationTokenFunc, modListManager,
+                            steamWorkshopQueueProcessor, // <<< Already correctly passed
+                            loggerService                // <<< Already correctly passed
+                        );
             StatusBarViewModel = new StatusBarViewModel();
 
             _browserStatusHandler = (s, message) => StatusBarViewModel.SetStatus(message);

@@ -8,6 +8,8 @@ using RimSharp.Features.ModManager.Dialogs.Filter;
 using RimSharp.Features.ModManager.Dialogs.Replacements;
 using RimSharp.Features.ModManager.Dialogs.Dependencies;
 using RimSharp.Features.ModManager.Dialogs.MissingMods;
+using RimSharp.Features.WorkshopDownloader.Dialogs.Collection;
+using System.Collections.Generic;
 
 namespace RimSharp.Infrastructure.Dialog
 {
@@ -160,5 +162,29 @@ namespace RimSharp.Infrastructure.Dialog
             });
             return result ?? new MissingModSelectionDialogOutput(); // Return default if dispatcher invoke fails?
         }
+
+        public List<string>? ShowCollectionDialog(CollectionDialogViewModel viewModel)
+        {
+            List<string>? result = null;
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                var dialog = new CollectionDialogView(viewModel)
+                {
+                    Owner = Application.Current?.MainWindow,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+                // ShowDialog blocks execution until the dialog is closed.
+                // The DialogResult (bool?) on the window will be set by the View's code-behind
+                // based on the ViewModel's RequestCloseDialog event.
+                dialog.ShowDialog();
+
+                // We retrieve the actual List<string> result directly from the ViewModel
+                // after the dialog closes.
+                result = viewModel.DialogResult;
+            });
+            // Return the list of IDs (which could be null if cancelled)
+            return result;
+        }
+
     }
 }
