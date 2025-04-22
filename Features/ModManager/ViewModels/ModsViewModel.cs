@@ -26,6 +26,7 @@ namespace RimSharp.Features.ModManager.ViewModels
         private readonly IDialogService _dialogService;
         private readonly IPathService _pathService;
         private readonly IModService _modService;
+        private readonly ISteamWorkshopQueueProcessor _steamWorkshopQueueProcessor;
 
         // --- Child ViewModels ---
         public ModListViewModel ModListViewModel { get; private set; }
@@ -125,7 +126,8 @@ namespace RimSharp.Features.ModManager.ViewModels
             IModReplacementService replacementService,
             IDownloadQueueService downloadQueueService,
             ISteamApiClient steamApiClient,
-            IApplicationNavigationService navigationService)
+            IApplicationNavigationService navigationService,
+            ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor)
         {
             _dataService = dataService;
             _filterService = filterService;
@@ -133,6 +135,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             _dialogService = dialogService;
             _pathService = pathService;
             _modService = modService;
+            _steamWorkshopQueueProcessor = steamWorkshopQueueProcessor;
 
             // Initialize command using base helper, observing IsLoading
             // Use CreateCancellableAsyncCommand as ExecuteRequestRefreshAsync accepts a CancellationToken
@@ -143,7 +146,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             ModDetailsViewModel = new ModDetailsViewModel(_dialogService);
             ModActionsViewModel = new ModActionsViewModel(
                 _dataService, commandService, ioService, _modListManager, incompatibilityService, _dialogService, _pathService, _modService,
-                        replacementService, downloadQueueService, steamApiClient, navigationService
+                        replacementService, downloadQueueService, steamApiClient, navigationService, steamWorkshopQueueProcessor
                         );
 
             // --- Event Wiring ---
