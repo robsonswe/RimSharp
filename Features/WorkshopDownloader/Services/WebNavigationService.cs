@@ -1,42 +1,50 @@
+#nullable enable
 using System;
 using System.Diagnostics;
 using Microsoft.Web.WebView2.Core;
-// Use the WPF version of WebView2
-using Microsoft.Web.WebView2.Wpf; // <<< CHANGED
+using Microsoft.Web.WebView2.Wpf;
+using System.Web; // Required for HttpUtility if you use it in CheckUrlValidity
 
 namespace RimSharp.Features.WorkshopDownloader.Services
 {
-    // Interface remains the same
     public interface IWebNavigationService
     {
-        void SetWebView(Microsoft.Web.WebView2.Wpf.WebView2 webView); // <<< CHANGED TYPE
+        void SetWebView(WebView2 webView);
         void GoBack();
         void GoForward();
         void GoHome();
+        void Navigate(string url); // Added for explicit navigation requests
         bool CanGoBack { get; }
         bool CanGoForward { get; }
         bool IsValidModUrl { get; }
-        string CurrentUrl { get; }
-        event EventHandler<string> SourceUrlChanged;
+        string CurrentUrl { get; } // Represents the *actual* current URL after completion/source change
+        string? IntendedUrl { get; } // Represents the URL being navigated *to*
 
+        event EventHandler<string> SourceUrlChanged; // Raised when the Source property actually changes (or potentially on start)
         event EventHandler<string> StatusChanged;
         event EventHandler NavigationStateChanged;
         event EventHandler<bool> ModUrlValidityChanged;
         event EventHandler<string> NavigationSucceededAndUrlValid;
+
+        // --- New Events for Loading State ---
+        event EventHandler<string> NavigationStarted; // Passes the intended URL
+        event EventHandler NavigationEnded; // Signals completion or failure
+        // --- New Window Handling Event ---
+        event EventHandler<string> NewWindowNavigationRequested;
     }
 
-    public class WebNavigationService : IWebNavigationService
+    public class WebNavigationService : IWebNavigationService, IDisposable
     {
-        // Use the WPF WebView2 type
-        private Microsoft.Web.WebView2.Wpf.WebView2 _webView; // <<< CHANGED
+        private WebView2? _webView;
+        private ModExtractorService? _extractorService; // Keep extractor handling separate maybe? ViewModel owns it now.
 
-        private bool _canGoBack; // Backing fields for properties
+        private bool _canGoBack;
         private bool _canGoForward;
         private bool _isValidModUrl;
-        private ModExtractorService _extractorService;
+        private string _currentUrl = string.Empty; // Backing field for CurrentUrl property
+        private string? _intendedUrl; // Backing field for IntendedUrl property
 
-
-
+        // --- Properties ---
         public bool CanGoBack
         {
             get => _canGoBack;
@@ -45,7 +53,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 if (_canGoBack != value)
                 {
                     _canGoBack = value;
-                    NavigationStateChanged?.Invoke(this, EventArgs.Empty); // Notify on change
+                    OnNavigationStateChanged();
                 }
             }
         }
@@ -58,7 +66,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 if (_canGoForward != value)
                 {
                     _canGoForward = value;
-                    NavigationStateChanged?.Invoke(this, EventArgs.Empty); // Notify on change
+                    OnNavigationStateChanged();
                 }
             }
         }
@@ -71,113 +79,280 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 if (_isValidModUrl != value)
                 {
                     _isValidModUrl = value;
-                    ModUrlValidityChanged?.Invoke(this, _isValidModUrl); // Notify on change
+                    ModUrlValidityChanged?.Invoke(this, _isValidModUrl);
                 }
             }
         }
 
-        public string CurrentUrl => _webView?.Source?.ToString();
-
-        public event EventHandler<string> SourceUrlChanged;
-
-        public event EventHandler<string> StatusChanged;
-        public event EventHandler NavigationStateChanged; // Now invoked by property setters
-        public event EventHandler<bool> ModUrlValidityChanged; // Now invoked by property setter
-        public event EventHandler<string> NavigationSucceededAndUrlValid;
-
-        // Accept the WPF WebView2 type
-        public void SetWebView(Microsoft.Web.WebView2.Wpf.WebView2 webView) // <<< CHANGED
+        public string CurrentUrl
         {
-            // Unsubscribe from old instance if any
-            if (_webView != null)
+            get => _currentUrl;
+            private set
             {
-                _webView.NavigationStarting -= WebView_NavigationStarting;
-                _webView.NavigationCompleted -= WebView_NavigationCompleted;
-                _webView.SourceChanged -= WebView_SourceChanged;
-                _webView.CoreWebView2InitializationCompleted -= WebView_CoreWebView2InitializationCompleted;
-            }
-
-            _webView = webView;
-            _extractorService = new ModExtractorService(webView);
-
-            if (_webView != null)
-            {
-                // Prefer waiting for CoreWebView2 to be ready if it isn't already
-                if (_webView.CoreWebView2 == null)
+                // Only update if truly different and not null/empty unless intended
+                if (_currentUrl != value && !string.IsNullOrEmpty(value))
                 {
-                    _webView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
-                    // Ensure initialization is triggered if not done externally (e.g., by setting Source in XAML)
-                    // It's often better to let the View handle EnsureCoreWebView2Async or rely on XAML Source.
-                    // _webView.EnsureCoreWebView2Async(); // Consider if needed here vs. View
-                }
-                else
-                {
-                    // If CoreWebView2 is already available, hook events immediately
-                    HookCoreWebView2Events();
-                    UpdateNavigationState(); // Update state based on current CoreWebView2
-                    string initialUrl = _webView.Source?.ToString();
-                    CheckUrlValidity(_webView.Source?.ToString()); // Check initial URL
-                    if (!string.IsNullOrEmpty(initialUrl) && initialUrl != "about:blank")
-                    {
-                        SourceUrlChanged?.Invoke(this, initialUrl);
-                        Debug.WriteLine($"[WebNavService] Raised initial SourceUrlChanged: {initialUrl}");
-                    }
-
+                    _currentUrl = value;
+                    Debug.WriteLine($"[WebNavService] CurrentUrl updated to: {value}");
+                    // Maybe raise SourceUrlChanged here *if* it represents the final confirmed URL
+                    // SourceUrlChanged?.Invoke(this, _currentUrl); // Let's stick to SourceChanged event for this
                 }
             }
         }
 
-        private void WebView_CoreWebView2InitializationCompleted(object sender, CoreWebView2InitializationCompletedEventArgs e)
+        public string? IntendedUrl
         {
-            if (e.IsSuccess)
+            get => _intendedUrl;
+            private set
             {
-                HookCoreWebView2Events();
-                UpdateNavigationState(); // Update state now that CoreWebView2 is ready
-                string initialUrl = _webView.Source?.ToString();
-
-                CheckUrlValidity(_webView.Source?.ToString()); // Check initial URL
-                if (!string.IsNullOrEmpty(initialUrl) && initialUrl != "about:blank")
+                if (_intendedUrl != value)
                 {
-                    SourceUrlChanged?.Invoke(this, initialUrl);
-                    Debug.WriteLine($"[WebNavService] Raised SourceUrlChanged after CoreInit: {initialUrl}");
+                    _intendedUrl = value;
+                    Debug.WriteLine($"[WebNavService] IntendedUrl set to: {value ?? "null"}");
                 }
+            }
+        }
 
+        // --- Events ---
+        public event EventHandler<string>? SourceUrlChanged;
+        public event EventHandler<string>? StatusChanged;
+        public event EventHandler? NavigationStateChanged;
+        public event EventHandler<bool>? ModUrlValidityChanged;
+        public event EventHandler<string>? NavigationSucceededAndUrlValid;
+        public event EventHandler<string>? NavigationStarted; // Passes intended URL
+        public event EventHandler? NavigationEnded;
+        public event EventHandler<string>? NewWindowNavigationRequested; // For handling new windows
+
+        public void SetWebView(WebView2 webView)
+        {
+            if (_webView == webView) return; // No change
+
+            DisposeCurrentWebViewEvents(); // Unsubscribe from old one
+
+            _webView = webView ?? throw new ArgumentNullException(nameof(webView));
+
+            // ModExtractorService is now created and managed by BrowserViewModel
+            // _extractorService?.Dispose();
+            // _extractorService = new ModExtractorService(webView);
+
+            if (_webView.CoreWebView2 == null)
+            {
+                Debug.WriteLine("[WebNavService] CoreWebView2 not ready, attaching handler.");
+                _webView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
+                // Ensure initialization is triggered (often done by View's EnsureCoreWebView2Async)
             }
             else
             {
-                StatusChanged?.Invoke(this, $"WebView2 Core Initialization Failed: {e.InitializationException}");
+                Debug.WriteLine("[WebNavService] CoreWebView2 ready, hooking events immediately.");
+                HookCoreWebView2Events();
+                UpdateNavigationState();
+                CurrentUrl = _webView.Source?.ToString() ?? string.Empty; // Update initial confirmed URL
+                CheckUrlValidity(CurrentUrl);
+                SourceUrlChanged?.Invoke(this, CurrentUrl); // Raise initial URL change
+            }
+        }
+
+        private void WebView_CoreWebView2InitializationCompleted(object? sender, CoreWebView2InitializationCompletedEventArgs e)
+        {
+            // Unsubscribe to prevent multiple calls if SetWebView is called again before init completes
+             if (_webView != null) _webView.CoreWebView2InitializationCompleted -= WebView_CoreWebView2InitializationCompleted;
+
+            if (e.IsSuccess && _webView?.CoreWebView2 != null)
+            {
+                Debug.WriteLine("[WebNavService] CoreWebView2InitializationCompleted successfully.");
+                HookCoreWebView2Events();
+                UpdateNavigationState();
+                CurrentUrl = _webView.Source?.ToString() ?? string.Empty; // Update confirmed URL
+                CheckUrlValidity(CurrentUrl);
+                SourceUrlChanged?.Invoke(this, CurrentUrl); // Raise initial URL change
+            }
+            else
+            {
+                Debug.WriteLine($"[WebNavService] CoreWebView2 Initialization Failed: {e.InitializationException}");
+                StatusChanged?.Invoke(this, $"WebView2 Core Initialization Failed: {e.InitializationException?.Message}");
             }
         }
 
         private void HookCoreWebView2Events()
         {
-            if (_webView?.CoreWebView2 == null) return;
+            if (_webView?.CoreWebView2 == null)
+            {
+                 Debug.WriteLine("[WebNavService] HookCoreWebView2Events: Attempted to hook but CoreWebView2 is null.");
+                 return;
+            }
+            Debug.WriteLine("[WebNavService] Hooking CoreWebView2 events...");
 
-            // Unsubscribe first to prevent duplicates if called multiple times
-            _webView.NavigationStarting -= WebView_NavigationStarting;
-            _webView.NavigationCompleted -= WebView_NavigationCompleted;
-            _webView.SourceChanged -= WebView_SourceChanged;
+            // Unsubscribe first
+            _webView.CoreWebView2.NavigationStarting -= WebView_NavigationStarting;
+            _webView.CoreWebView2.NavigationCompleted -= WebView_NavigationCompleted;
+            _webView.CoreWebView2.SourceChanged -= WebView_SourceChanged; // Renamed from WebView_SourceChanged
+            _webView.CoreWebView2.NewWindowRequested -= CoreWebView2_NewWindowRequested; // Add NewWindowRequested
 
-            // Subscribe to events
-            _webView.NavigationStarting += WebView_NavigationStarting;
-            _webView.NavigationCompleted += WebView_NavigationCompleted;
-            // SourceChanged is useful for detecting navigations initiated by script or user typing URL
-            _webView.SourceChanged += WebView_SourceChanged;
+            // Subscribe
+            _webView.CoreWebView2.NavigationStarting += WebView_NavigationStarting;
+            _webView.CoreWebView2.NavigationCompleted += WebView_NavigationCompleted;
+            _webView.CoreWebView2.SourceChanged += WebView_SourceChanged; // Renamed from WebView_SourceChanged
+             _webView.CoreWebView2.NewWindowRequested += CoreWebView2_NewWindowRequested; // Add NewWindowRequested
+
+             Debug.WriteLine("[WebNavService] CoreWebView2 events hooked.");
         }
 
-        private void WebView_SourceChanged(object sender, CoreWebView2SourceChangedEventArgs e)
+        private void DisposeCurrentWebViewEvents()
         {
-            // This event fires when the Source property itself changes.
-            // It's a good place to update navigation state as well.
-            string newUrl = _webView?.Source?.ToString();
+             if (_webView?.CoreWebView2 != null)
+             {
+                 Debug.WriteLine("[WebNavService] Unhooking CoreWebView2 events from previous WebView...");
+                 _webView.CoreWebView2.NavigationStarting -= WebView_NavigationStarting;
+                 _webView.CoreWebView2.NavigationCompleted -= WebView_NavigationCompleted;
+                 _webView.CoreWebView2.SourceChanged -= WebView_SourceChanged;
+                 _webView.CoreWebView2.NewWindowRequested -= CoreWebView2_NewWindowRequested;
+                  _webView.CoreWebView2InitializationCompleted -= WebView_CoreWebView2InitializationCompleted; // Also unsubscribe this
+                 Debug.WriteLine("[WebNavService] Unhooked CoreWebView2 events.");
+             }
+             else if (_webView != null) {
+                  _webView.CoreWebView2InitializationCompleted -= WebView_CoreWebView2InitializationCompleted; // Still need to unsub this if CoreWebView2 was null
+             }
+            _webView = null; // Clear the reference after unsubscribing
+        }
 
-            UpdateNavigationState();
-            CheckUrlValidity(_webView?.Source?.ToString());
-            if (!string.IsNullOrEmpty(newUrl)) // Avoid raising for potentially empty intermediate states
+        // --- Event Handlers ---
+
+        private void WebView_NavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
+        {
+            string targetUrl = e.Uri ?? "about:blank";
+            Debug.WriteLine($"[WebNavService] NavigationStarting: {targetUrl}");
+            IntendedUrl = targetUrl; // Set the intended URL
+            StatusChanged?.Invoke(this, $"Loading: {targetUrl}");
+            NavigationStarted?.Invoke(this, targetUrl); // Raise NavigationStarted with the URL
+            // CheckUrlValidity(targetUrl); // Maybe too early? Validity depends on successful load often.
+        }
+
+        private void WebView_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
+        {
+            // This event confirms the outcome of a navigation attempt initiated by Navigate or user action.
+            string finalUrl = _webView?.CoreWebView2?.Source ?? _intendedUrl ?? "Unknown URL"; // Use CoreWebView2.Source as the most reliable final URL
+            Debug.WriteLine($"[WebNavService] NavigationCompleted: Success={e.IsSuccess}, Status={e.WebErrorStatus}, Final URL={finalUrl}");
+
+            CurrentUrl = finalUrl; // Update the confirmed current URL
+            IntendedUrl = null; // Clear intended URL after completion
+            CheckUrlValidity(finalUrl); // Check validity based on the final URL
+            UpdateNavigationState(); // Update CanGoBack/Forward
+
+            string status;
+            if (e.IsSuccess)
             {
-                SourceUrlChanged?.Invoke(this, newUrl);
+                status = $"Loaded: {finalUrl}";
+                if (IsValidModUrl)
+                {
+                    Debug.WriteLine($"[WebNavService] Navigation completed successfully for valid mod URL: {finalUrl}. Raising NavSucceededAndValid.");
+                    NavigationSucceededAndUrlValid?.Invoke(this, finalUrl);
+                }
+                else
+                {
+                    Debug.WriteLine($"[WebNavService] Navigation completed successfully, but URL is not a valid mod URL: {finalUrl}");
+                }
             }
+            else
+            {
+                // Ignore specific errors like cancellation or navigation aborts if needed
+                if (e.WebErrorStatus != CoreWebView2WebErrorStatus.OperationCanceled)
+                {
+                     status = $"Failed to load: {finalUrl} (Error: {e.WebErrorStatus})";
+                     Debug.WriteLine($"[WebNavService] Navigation failed for URL: {finalUrl}");
+                }
+                 else
+                {
+                    status = $"Navigation cancelled/aborted: {finalUrl}";
+                     Debug.WriteLine($"[WebNavService] Navigation cancelled/aborted for URL: {finalUrl}");
+                }
 
+            }
+            StatusChanged?.Invoke(this, status);
+            NavigationEnded?.Invoke(this, EventArgs.Empty); // Signal navigation attempt has finished
+        }
+
+        private void WebView_SourceChanged(object? sender, CoreWebView2SourceChangedEventArgs e)
+        {
+            // This fires when the CoreWebView2.Source property changes, AFTER navigation is successful
+            // or due to history navigation (back/forward).
+             // Avoid redundant updates if NavigationCompleted already handled it.
+             string newSource = _webView?.CoreWebView2?.Source ?? string.Empty;
+             Debug.WriteLine($"[WebNavService] SourceChanged: IsNewDocument={e.IsNewDocument}, New Source={newSource}");
+
+             if(CurrentUrl != newSource) // Only update if different from what NavigationCompleted set
+             {
+                CurrentUrl = newSource;
+                 // Do NOT update IntendedUrl here
+                 CheckUrlValidity(newSource);
+                 UpdateNavigationState(); // Update CanGoBack/Forward
+                 SourceUrlChanged?.Invoke(this, newSource); // Signal the *confirmed* source has changed
+                 Debug.WriteLine($"[WebNavService] Raised SourceUrlChanged from SourceChanged handler: {newSource}");
+             }
+        }
+
+        private void CoreWebView2_NewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs e)
+        {
+             string targetUri = e.Uri;
+             Debug.WriteLine($"[WebNavService] NewWindowRequested for: {targetUri}. Handling in current view.");
+             StatusChanged?.Invoke(this, $"Opening link in current view: {targetUri}...");
+
+             // Prevent the default new window behavior
+             e.Handled = true;
+
+             // Raise an event for the ViewModel or navigate directly if preferred
+             // Raising an event gives more control to the VM/View layer
+             // NewWindowNavigationRequested?.Invoke(this, targetUri);
+
+             // --- OR --- Navigate directly within this service (simpler for now)
+              if (_webView?.CoreWebView2 != null)
+              {
+                  _webView.CoreWebView2.Navigate(targetUri);
+              }
+              else
+              {
+                   Debug.WriteLine("[WebNavService] Cannot navigate new window request: CoreWebView2 is null.");
+                   StatusChanged?.Invoke(this, $"Error: Cannot navigate - browser not fully initialized.");
+              }
+        }
+
+
+        // --- Actions ---
+
+        public void Navigate(string url)
+        {
+            if (_webView?.CoreWebView2 != null)
+            {
+                 try
+                 {
+                    _webView.CoreWebView2.Navigate(url);
+                    // IntendedUrl and NavigationStarted event will be set by WebView_NavigationStarting handler
+                 }
+                 catch (ArgumentException ex)
+                 {
+                     Debug.WriteLine($"[WebNavService] Invalid URL format for navigation: {url} - {ex.Message}");
+                     StatusChanged?.Invoke(this, $"Invalid URL format: {url}");
+                      NavigationEnded?.Invoke(this, EventArgs.Empty); // Ensure loading state resets on error
+                 }
+                 catch (Exception ex)
+                 {
+                     Debug.WriteLine($"[WebNavService] Navigation error for URL {url}: {ex.Message}");
+                     StatusChanged?.Invoke(this, $"Error navigating: {ex.Message}");
+                      NavigationEnded?.Invoke(this, EventArgs.Empty); // Ensure loading state resets on error
+                 }
+            }
+            else if (_webView != null && Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
+                 // Fallback - less ideal as it bypasses CoreWebView2 events slightly
+                 Debug.WriteLine("[WebNavService] Warning: Navigating via Source property (CoreWebView2 might not be ready).");
+                 _webView.Source = uri; // This will trigger SourceChanged eventually
+                 IntendedUrl = url; // Manually set intended URL
+                 NavigationStarted?.Invoke(this, url); // Manually raise started event
+            }
+             else
+             {
+                 Debug.WriteLine("[WebNavService] WebView or CoreWebView2 not available/initialized, cannot navigate.");
+                 StatusChanged?.Invoke(this, "Browser component not ready for navigation.");
+             }
         }
 
 
@@ -185,15 +360,15 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         {
             try
             {
-                if (_webView?.CoreWebView2 != null && _webView.CoreWebView2.CanGoBack)
+                if (_webView?.CoreWebView2?.CanGoBack ?? false)
                 {
                     _webView.CoreWebView2.GoBack();
-                    // Navigation state will update via NavigationCompleted/SourceChanged
                 }
             }
             catch (Exception ex)
             {
                 StatusChanged?.Invoke(this, $"Error going back: {ex.Message}");
+                NavigationEnded?.Invoke(this, EventArgs.Empty); // Ensure loading resets on error
             }
         }
 
@@ -201,112 +376,91 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         {
             try
             {
-                if (_webView?.CoreWebView2 != null && _webView.CoreWebView2.CanGoForward)
+                if (_webView?.CoreWebView2?.CanGoForward ?? false)
                 {
                     _webView.CoreWebView2.GoForward();
-                    // Navigation state will update via NavigationCompleted/SourceChanged
                 }
             }
             catch (Exception ex)
             {
                 StatusChanged?.Invoke(this, $"Error going forward: {ex.Message}");
+                NavigationEnded?.Invoke(this, EventArgs.Empty); // Ensure loading resets on error
             }
         }
 
         public void GoHome()
         {
-            try
-            {
-                const string homeUrl = "https://steamcommunity.com/app/294100/workshop/";
-                if (_webView?.CoreWebView2 != null)
-                {
-                    _webView.CoreWebView2.Navigate(homeUrl);
-                    // Navigation state will update via NavigationStarting/Completed/SourceChanged
-                }
-                else if (_webView != null)
-                {
-                    // If CoreWebView2 isn't ready yet, set the Source property
-                    // This might trigger initialization if EnsureCoreWebView2Async hasn't been called
-                    _webView.Source = new Uri(homeUrl);
-                }
-            }
-            catch (Exception ex)
-            {
-                StatusChanged?.Invoke(this, $"Error navigating home: {ex.Message}");
-            }
+            const string homeUrl = "https://steamcommunity.com/app/294100/workshop/";
+            Navigate(homeUrl); // Use the common Navigate method
         }
 
-        private void WebView_NavigationStarting(object sender, CoreWebView2NavigationStartingEventArgs e)
-        {
-            StatusChanged?.Invoke(this, $"Loading: {e.Uri}");
-            // Check validity early, but final decision often waits for completion
-            // CheckUrlValidity(e.Uri);
-        }
-
-        private void WebView_NavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
-        {
-            // SourceChanged should have already fired and raised SourceUrlChanged for the URL update.
-            // This handler primarily updates status and raises the specific NavSucceededAndValid event.
-
-            UpdateNavigationState(); // Update CanGoBack/Forward again just in case
-
-            string currentSource = _webView?.Source?.ToString() ?? "Unknown URL";
-            string status;
-
-            // Check validity AFTER navigation attempt completes
-            // This sets the IsValidModUrl property and raises ModUrlValidityChanged event
-            CheckUrlValidity(currentSource);
-
-            if (e.IsSuccess)
-            {
-                status = $"Loaded: {currentSource}";
-                if (IsValidModUrl) // Check the property state after CheckUrlValidity ran
-                {
-                    Debug.WriteLine($"[WebNavService] Nav completed successfully for valid URL: {currentSource}. Raising NavSucceededAndValid.");
-                    NavigationSucceededAndUrlValid?.Invoke(this, currentSource);
-                }
-                else { Debug.WriteLine($"[WebNavService] Nav completed successfully but URL is not valid mod URL: {currentSource}"); }
-            }
-            else
-            {
-                status = $"Failed to load: {currentSource} (Error: {e.WebErrorStatus})";
-                Debug.WriteLine($"[WebNavService] Navigation failed for URL: {currentSource}");
-            }
-
-            StatusChanged?.Invoke(this, status);
-            // No need to raise SourceUrlChanged here, SourceChanged event handles it.
-        }
-
-
+        // --- Helpers ---
 
         private void UpdateNavigationState()
         {
-            // Use Dispatcher if updating UI-bound properties from a non-UI thread,
-            // but CanGoBack/CanGoForward are typically checked on the UI thread for commands.
-            // However, WebView2 events might come back on different threads.
-            // Safest is to marshal back if there's doubt, but often unnecessary for simple bools
-            // that are read later by UI thread commands. Let's assume direct update is okay for now.
+             // Use Dispatcher? Not strictly necessary if only read by UI thread later, but safer.
+             // Application.Current?.Dispatcher.Invoke(() => { ... }); // If needed
 
-            bool coreWebViewAvailable = _webView?.CoreWebView2 != null;
-            CanGoBack = coreWebViewAvailable && _webView.CoreWebView2.CanGoBack;
-            CanGoForward = coreWebViewAvailable && _webView.CoreWebView2.CanGoForward;
-            Debug.WriteLine($"[WebNav] CanGoBack: {CanGoBack}, CanGoForward: {CanGoForward}"); // Add debug
-
-            // No need to invoke NavigationStateChanged here, the property setters do it.
+            bool coreAvailable = _webView?.CoreWebView2 != null;
+            CanGoBack = coreAvailable && _webView!.CoreWebView2.CanGoBack;
+            CanGoForward = coreAvailable && _webView!.CoreWebView2.CanGoForward;
+             // Debug logging happens in property setters now via OnNavigationStateChanged
         }
 
-        private void CheckUrlValidity(string url)
+        // Wrapper to ensure event is raised correctly
+        private void OnNavigationStateChanged()
         {
-            // Use Uri for more robust checking
+             Debug.WriteLine($"[WebNavService] Raising NavigationStateChanged. CanGoBack={CanGoBack}, CanGoForward={CanGoForward}");
+            NavigationStateChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+
+        private void CheckUrlValidity(string? url)
+        {
+             if (string.IsNullOrWhiteSpace(url))
+             {
+                 IsValidModUrl = false;
+                 return;
+             }
+
             bool isValid = false;
             if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
             {
-                isValid = uri.Host.EndsWith("steamcommunity.com") &&
-                          uri.AbsolutePath.Contains("/sharedfiles/filedetails/") &&
-                          !string.IsNullOrEmpty(System.Web.HttpUtility.ParseQueryString(uri.Query).Get("id"));
+                isValid = (uri.Host.EndsWith("steamcommunity.com", StringComparison.OrdinalIgnoreCase) ||
+                           uri.Host.EndsWith("steamworkshopdownloader.io", StringComparison.OrdinalIgnoreCase)) // Added downloader site
+                          && uri.AbsolutePath.Contains("/sharedfiles/filedetails/", StringComparison.OrdinalIgnoreCase)
+                          && !string.IsNullOrEmpty(HttpUtility.ParseQueryString(uri.Query).Get("id")); // Using System.Web
             }
-            IsValidModUrl = isValid;
-            // No need to invoke ModUrlValidityChanged here, the property setter does it.
+            IsValidModUrl = isValid; // Setter raises ModUrlValidityChanged
         }
+
+        // --- IDisposable ---
+        private bool _disposed = false;
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Dispose managed state (managed objects).
+                    Debug.WriteLine("[WebNavService] Disposing...");
+                    DisposeCurrentWebViewEvents(); // Unhook events
+                    // _extractorService?.Dispose(); // ViewModel owns this now
+                    // _extractorService = null;
+                }
+                _disposed = true;
+                 Debug.WriteLine("[WebNavService] Dispose finished.");
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+         ~WebNavigationService() {
+             Dispose(false);
+         }
     }
 }

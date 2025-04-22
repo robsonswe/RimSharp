@@ -3,186 +3,182 @@ using System;
 using System.ComponentModel;
 using System.Windows.Input;
 using Microsoft.Web.WebView2.Wpf;
-using RimSharp.Core.Commands.Base; // Added for DelegateCommand
-using RimSharp.Features.WorkshopDownloader.ViewModels; // For DownloaderViewModel
-using RimSharp.AppDir.AppFiles; // For ViewModelBase
-using RimSharp.Shared.Services.Contracts; // For services if needed (like IDialogService - though not used directly here)
+using RimSharp.Core.Commands.Base;
+using RimSharp.Features.WorkshopDownloader.ViewModels;
+using RimSharp.AppDir.AppFiles;
+using RimSharp.Shared.Services.Contracts;
 using System.Diagnostics;
-using RimSharp.Features.WorkshopDownloader.Services; // For IWebNavigationService, IModExtractorService
-using RimSharp.Features.WorkshopDownloader.Models; // For ModInfoDto
+using RimSharp.Features.WorkshopDownloader.Services;
+using RimSharp.Features.WorkshopDownloader.Models;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Web; // For HttpUtility.UrlEncode
+using System.Net; // For WebUtility.UrlEncode (alternative)
 
 namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 {
-    /// <summary>
-    /// ViewModel for the browser component, handling navigation, URL display, and mod info extraction triggering.
-    /// </summary>
     public class BrowserViewModel : ViewModelBase, IDisposable
     {
         private readonly IWebNavigationService _navigationService;
         private readonly DownloaderViewModel _parentViewModel;
-        private WebView2? _webView; // Keep a reference for potential direct manipulation if needed (e.g., fallback navigation)
-        private IModExtractorService? _extractorService; // Instance specific to this ViewModel
+        private WebView2? _webView;
+        private IModExtractorService? _extractorService;
 
         // --- Properties ---
-
         private bool _canGoBack;
-        /// <summary>
-        /// Gets a value indicating whether the browser can navigate back.
-        /// </summary>
         public bool CanGoBack { get => _canGoBack; private set => SetProperty(ref _canGoBack, value); }
 
         private bool _canGoForward;
-        /// <summary>
-        /// Gets a value indicating whether the browser can navigate forward.
-        /// </summary>
         public bool CanGoForward { get => _canGoForward; private set => SetProperty(ref _canGoForward, value); }
 
         private bool _isValidModUrl;
-        /// <summary>
-        /// Gets a value indicating whether the current URL is recognized as a valid Steam Workshop mod page URL.
-        /// </summary>
         public bool IsValidModUrl { get => _isValidModUrl; private set => SetProperty(ref _isValidModUrl, value); }
 
-        private string _actualCurrentUrl = string.Empty;
-        /// <summary>
-        /// Gets the actual current URL reported by the navigation service.
-        /// </summary>
+        private string _actualCurrentUrl = string.Empty; // Last *confirmed* URL
         public string ActualCurrentUrl { get => _actualCurrentUrl; private set => SetProperty(ref _actualCurrentUrl, value); }
 
-        private string _addressBarUrl = string.Empty;
-        /// <summary>
-        /// Gets or sets the text displayed in the address bar. This is bound to the TextBox.
-        /// </summary>
+        private string _addressBarUrl = string.Empty; // URL shown in the address bar (updated early)
         public string AddressBarUrl { get => _addressBarUrl; set => SetProperty(ref _addressBarUrl, value); }
 
-        private bool _isModInfoAvailable;
+        // --- New Properties ---
+        private bool _isLoading;
         /// <summary>
-        /// Gets a value indicating whether mod information (like title, ID) could be extracted from the current page.
+        /// Gets a value indicating whether the browser is currently loading a page.
         /// </summary>
+        public bool IsLoading { get => _isLoading; private set => SetProperty(ref _isLoading, value); }
+
+        private bool _isSecure; // Basic HTTPS indicator
+        /// <summary>
+        /// Gets a value indicating whether the current URL is HTTPS.
+        /// </summary>
+        public bool IsSecure { get => _isSecure; private set => SetProperty(ref _isSecure, value); }
+
+        private string _searchText = string.Empty;
+        /// <summary>
+        /// Gets or sets the text entered in the search box.
+        /// </summary>
+        public string SearchText { get => _searchText; set => SetProperty(ref _searchText, value); }
+        // --- End New Properties ---
+
+        private bool _isModInfoAvailable;
         public bool IsModInfoAvailable { get => _isModInfoAvailable; private set => SetProperty(ref _isModInfoAvailable, value); }
 
-        private bool _isOperationInProgress;
-        /// <summary>
-        /// Gets a value indicating whether a long-running operation (like downloading) is in progress in the parent context.
-        /// Affects command CanExecute states.
-        /// </summary>
+        private bool _isOperationInProgress; // From parent
         public bool IsOperationInProgress { get => _isOperationInProgress; private set => SetProperty(ref _isOperationInProgress, value); }
 
         // --- Commands ---
         public ICommand GoBackCommand { get; }
         public ICommand GoForwardCommand { get; }
         public ICommand GoHomeCommand { get; }
+        public ICommand RefreshCommand { get; } // Added Refresh command
         public ICommand NavigateToUrlCommand { get; }
+        public ICommand SearchCommand { get; } // Added Search command
 
         // --- Events ---
-        /// <summary>
-        /// Raised when the status message changes (e.g., loading, loaded, error).
-        /// </summary>
         public event EventHandler<string>? StatusChanged;
-        /// <summary>
-        /// Raised when the availability of extractable mod info on the current page changes.
-        /// </summary>
         public event EventHandler? ModInfoAvailabilityChanged;
 
-        // --- Named Event Handlers for Unsubscribing ---
+        // --- Named Event Handlers ---
         private EventHandler<string>? _navStatusHandler;
         private EventHandler? _navStateChangedHandler;
         private EventHandler<bool>? _navModUrlValidityHandler;
         private EventHandler<string>? _navSucceededAndValidHandler;
-        private EventHandler<string>? _navSourceUrlChangedHandler; // Handler for SourceUrlChanged event
+        private EventHandler<string>? _navSourceUrlChangedHandler;
         private EventHandler? _extractorModInfoAvailableHandler;
         private PropertyChangedEventHandler? _parentPropertyChangedHandler;
+        // New event handlers
+        private EventHandler<string>? _navStartedHandler;
+        private EventHandler? _navEndedHandler;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="BrowserViewModel"/> class.
-        /// </summary>
-        /// <param name="navigationService">The web navigation service.</param>
-        /// <param name="parentViewModel">The parent DownloaderViewModel.</param>
-        public BrowserViewModel(IWebNavigationService navigationService, DownloaderViewModel parentViewModel) : base() // Call base constructor
+
+        public BrowserViewModel(IWebNavigationService navigationService, DownloaderViewModel parentViewModel) : base()
         {
             _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
             _parentViewModel = parentViewModel ?? throw new ArgumentNullException(nameof(parentViewModel));
 
-            // Initialize properties from service/parent state
             _canGoBack = _navigationService.CanGoBack;
             _canGoForward = _navigationService.CanGoForward;
             _isValidModUrl = _navigationService.IsValidModUrl;
             _actualCurrentUrl = _navigationService.CurrentUrl ?? string.Empty;
-            _addressBarUrl = _actualCurrentUrl; // Initialize address bar with current URL
+            _addressBarUrl = _actualCurrentUrl;
+            IsSecure = _actualCurrentUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
             _isOperationInProgress = _parentViewModel.IsOperationInProgress;
 
             // Subscribe to navigation service events
             _navStatusHandler = NavigationService_StatusChanged;
             _navigationService.StatusChanged += _navStatusHandler;
 
-            _navStateChangedHandler = NavigationService_NavigationStateChanged; // Handles CanGoBack/Forward
+            _navStateChangedHandler = NavigationService_NavigationStateChanged;
             _navigationService.NavigationStateChanged += _navStateChangedHandler;
 
             _navModUrlValidityHandler = NavigationService_ModUrlValidityChanged;
             _navigationService.ModUrlValidityChanged += _navModUrlValidityHandler;
 
-            _navSucceededAndValidHandler = NavigationService_NavigationSucceededAndUrlValid; // Triggers info extraction
+            _navSucceededAndValidHandler = NavigationService_NavigationSucceededAndUrlValid;
             _navigationService.NavigationSucceededAndUrlValid += _navSucceededAndValidHandler;
 
-            _navSourceUrlChangedHandler = NavigationService_SourceUrlChanged; // Updates AddressBarUrl
+            _navSourceUrlChangedHandler = NavigationService_SourceUrlChanged; // Handles *confirmed* URL changes
             _navigationService.SourceUrlChanged += _navSourceUrlChangedHandler;
 
-            // Subscribe to parent VM's IsOperationInProgress changes
+            // --- Subscribe to new events ---
+            _navStartedHandler = NavigationService_NavigationStarted;
+            _navigationService.NavigationStarted += _navStartedHandler;
+
+            _navEndedHandler = NavigationService_NavigationEnded;
+            _navigationService.NavigationEnded += _navEndedHandler;
+            // --- End Subscribe ---
+
+
             _parentPropertyChangedHandler = ParentViewModel_PropertyChanged;
             _parentViewModel.PropertyChanged += _parentPropertyChangedHandler;
 
-            // Initialize commands using ViewModelBase helpers
+            // --- Initialize Commands ---
             GoBackCommand = CreateCommand(
                 execute: () => _navigationService.GoBack(),
-                canExecute: () => !IsOperationInProgress && CanGoBack,
-                observedProperties: new[] { nameof(IsOperationInProgress), nameof(CanGoBack) }
+                canExecute: () => !IsLoading && !IsOperationInProgress && CanGoBack,
+                observedProperties: new[] { nameof(IsLoading), nameof(IsOperationInProgress), nameof(CanGoBack) }
             );
 
             GoForwardCommand = CreateCommand(
                 execute: () => _navigationService.GoForward(),
-                canExecute: () => !IsOperationInProgress && CanGoForward,
-                observedProperties: new[] { nameof(IsOperationInProgress), nameof(CanGoForward) }
+                canExecute: () => !IsLoading && !IsOperationInProgress && CanGoForward,
+                observedProperties: new[] { nameof(IsLoading), nameof(IsOperationInProgress), nameof(CanGoForward) }
             );
 
             GoHomeCommand = CreateCommand(
                 execute: () => _navigationService.GoHome(),
-                canExecute: () => !IsOperationInProgress,
-                observedProperties: new[] { nameof(IsOperationInProgress) }
+                canExecute: () => !IsLoading && !IsOperationInProgress,
+                observedProperties: new[] { nameof(IsLoading), nameof(IsOperationInProgress) }
+            );
+
+            RefreshCommand = CreateCommand( // Define Refresh Command
+                execute: () => _webView?.CoreWebView2?.Reload(),
+                canExecute: () => !IsLoading && !IsOperationInProgress && _webView?.CoreWebView2 != null,
+                observedProperties: new[] { nameof(IsLoading), nameof(IsOperationInProgress) } // Add dependency if needed
             );
 
             NavigateToUrlCommand = CreateCommand<string>(
-                execute: ExecuteNavigateToUrlCommand,
-                canExecute: url => !IsOperationInProgress && !string.IsNullOrWhiteSpace(url),
-                observedProperties: new[] { nameof(IsOperationInProgress) } // Only needs to observe busy state
+                execute: ExecuteNavigateToUrlCommand, // Logic now handles search-or-go
+                canExecute: url => !IsLoading && !IsOperationInProgress && !string.IsNullOrWhiteSpace(url),
+                observedProperties: new[] { nameof(IsLoading), nameof(IsOperationInProgress) }
             );
+
+            SearchCommand = CreateCommand( // Define Search Command
+                execute: ExecuteSearchCommand,
+                canExecute: () => !IsLoading && !IsOperationInProgress && !string.IsNullOrWhiteSpace(SearchText),
+                observedProperties: new[] { nameof(IsLoading), nameof(IsOperationInProgress), nameof(SearchText) }
+            );
+            // --- End Initialize Commands ---
 
             Debug.WriteLine("[BrowserVM] Initialized.");
         }
 
-        /// <summary>
-        /// Sets the WebView2 control instance for this ViewModel to interact with.
-        /// </summary>
-        /// <param name="webView">The WebView2 control.</param>
         public void SetWebView(WebView2 webView)
         {
-            if (_disposed) // Use base class _disposed
-            {
-                Debug.WriteLine("[BrowserVM] SetWebView called but already disposed.");
-                return;
-            }
-             if (webView == null)
-             {
-                  Debug.WriteLine("[BrowserVM] SetWebView called with null WebView.");
-                  // Potentially throw or handle this error state
-                  return;
-             }
+            if (_disposed || webView == null) return;
+            _webView = webView;
 
-            _webView = webView; // Store reference
-
-            // --- Setup ModExtractorService ---
-            // Dispose the old extractor if replacing the WebView
+            // Dispose old extractor if exists
             if (_extractorService != null)
             {
                  if (_extractorModInfoAvailableHandler != null)
@@ -191,60 +187,45 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                  _extractorService = null;
                  Debug.WriteLine("[BrowserVM] Disposed previous ModExtractorService.");
             }
+
             // Create and setup the new extractor
-            _extractorService = new ModExtractorService(webView);
-            _extractorModInfoAvailableHandler = ExtractorService_IsModInfoAvailableChanged;
-            _extractorService.IsModInfoAvailableChanged += _extractorModInfoAvailableHandler;
-            Debug.WriteLine("[BrowserVM] Created and subscribed to new ModExtractorService.");
-            // --- End ModExtractorService Setup ---
+             try {
+                _extractorService = new ModExtractorService(webView); // Ensure this constructor is robust
+                 _extractorModInfoAvailableHandler = ExtractorService_IsModInfoAvailableChanged;
+                 _extractorService.IsModInfoAvailableChanged += _extractorModInfoAvailableHandler;
+                 Debug.WriteLine("[BrowserVM] Created and subscribed to new ModExtractorService.");
+             } catch (Exception ex) {
+                  Debug.WriteLine($"[BrowserVM] Error creating ModExtractorService: {ex.Message}");
+                  // Handle error appropriately, maybe disable extraction features
+             }
 
 
-            // --- Pass WebView to Navigation Service ---
-            // This is crucial: it hooks up the core WebView2 events within the service
-            _navigationService.SetWebView(webView);
-            // The service will now raise SourceUrlChanged, NavigationStateChanged etc. based on the webView events.
+            _navigationService.SetWebView(webView); // Hook up service
             Debug.WriteLine("[BrowserVM] Passed WebView to NavigationService.");
 
-
-            // --- Update internal state ---
             RunOnUIThread(() =>
             {
-                // Update extractor state based on the *new* instance
                 IsModInfoAvailable = _extractorService?.IsModInfoAvailable ?? false;
                 ModInfoAvailabilityChanged?.Invoke(this, EventArgs.Empty);
-
-                // AddressBarUrl will be updated by the NavigationService_SourceUrlChanged handler
-                // when the service raises the event after SetWebView connects.
-                // Update CanGoBack/Forward based on initial state from service after SetWebView
                 CanGoBack = _navigationService.CanGoBack;
                 CanGoForward = _navigationService.CanGoForward;
+                // Refresh command CanExecute state if WebView reference changes
+                (RefreshCommand as DelegateCommand)?.RaiseCanExecuteChanged();
             });
         }
 
-        /// <summary>
-        /// Attempts to extract mod information from the current page asynchronously.
-        /// </summary>
-        /// <param name="token">Cancellation token.</param>
-        /// <returns>A task representing the asynchronous operation, containing the extracted ModInfoDto or null.</returns>
         public Task<ModInfoDto?> GetCurrentModInfoAsync(CancellationToken token = default)
         {
-            if (_disposed)
+            if (_disposed || _extractorService == null)
             {
-                 Debug.WriteLine("[BrowserVM] GetCurrentModInfoAsync called but disposed.");
-                 return Task.FromResult<ModInfoDto?>(null);
-            }
-            if (_extractorService == null)
-            {
-                Debug.WriteLine("[BrowserVM] GetCurrentModInfoAsync: Mod extractor not initialized.");
-                StatusChanged?.Invoke(this, "Mod extractor not initialized.");
+                Debug.WriteLine($"[BrowserVM] GetCurrentModInfoAsync called but disposed({_disposed}) or extractor is null.");
                 return Task.FromResult<ModInfoDto?>(null);
             }
 
             try
             {
                 Debug.WriteLine("[BrowserVM] Calling _extractorService.ExtractFullModInfo().");
-                // Use the ModExtractorService instance owned by this ViewModel
-                return _extractorService.ExtractFullModInfo(); // Note: This method itself might need CancellationToken support
+                return _extractorService.ExtractFullModInfo();
             }
             catch (Exception ex)
             {
@@ -261,12 +242,10 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             if (_disposed) return;
             if (e.PropertyName == nameof(DownloaderViewModel.IsOperationInProgress))
             {
-                // Update local property and notify commands
                 RunOnUIThread(() =>
                 {
                     IsOperationInProgress = _parentViewModel.IsOperationInProgress;
                     Debug.WriteLine($"[BrowserVM] Parent IsOperationInProgress changed: {IsOperationInProgress}");
-                    // Command CanExecute changes are handled by the base class observation mechanism
                 });
             }
         }
@@ -274,85 +253,92 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         private void NavigationService_StatusChanged(object? sender, string message)
         {
             if (_disposed) return;
-            StatusChanged?.Invoke(this, message); // Forward status messages
+             RunOnUIThread(() => StatusChanged?.Invoke(this, message));
         }
 
-        // Handles the event signaling the WebView's Source URL has changed
+        // Handles the NavigationStarted event from the service
+        private void NavigationService_NavigationStarted(object? sender, string intendedUrl)
+        {
+            if (_disposed) return;
+            Debug.WriteLine($"[BrowserVM] Handling NavigationStarted: {intendedUrl}");
+            RunOnUIThread(() =>
+            {
+                IsLoading = true;
+                AddressBarUrl = intendedUrl; // <<<< UPDATE ADDRESS BAR EARLY
+                IsSecure = intendedUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+                Debug.WriteLine($"[BrowserVM] Updated AddressBarUrl to: {AddressBarUrl}, IsLoading: {IsLoading}, IsSecure: {IsSecure}");
+            });
+        }
+
+        // Handles the NavigationEnded event from the service
+        private void NavigationService_NavigationEnded(object? sender, EventArgs e)
+        {
+            if (_disposed) return;
+             Debug.WriteLine("[BrowserVM] Handling NavigationEnded.");
+             RunOnUIThread(() =>
+             {
+                IsLoading = false;
+                 // AddressBarUrl should ideally match ActualCurrentUrl now, but
+                 // SourceUrlChanged might provide the final confirmation if needed.
+                 Debug.WriteLine($"[BrowserVM] IsLoading set to: {IsLoading}");
+             });
+        }
+
+
+        // Handles *confirmed* source URL changes (after navigation completes or history changes)
         private void NavigationService_SourceUrlChanged(object? sender, string newUrl)
         {
             if (_disposed) return;
-            Debug.WriteLine($"[BrowserVM] Handling SourceUrlChanged: {newUrl}");
+            Debug.WriteLine($"[BrowserVM] Handling *Confirmed* SourceUrlChanged: {newUrl}");
             RunOnUIThread(() =>
             {
-                ActualCurrentUrl = newUrl; // Update internal tracker
-                AddressBarUrl = newUrl;    // Directly update the address bar text property
-                Debug.WriteLine($"[BrowserVM] Updated AddressBarUrl to: {AddressBarUrl}");
+                ActualCurrentUrl = newUrl; // Update internal *confirmed* tracker
+                // Only update AddressBar if it somehow diverged from the started URL
+                // or if navigation happened without a 'NavigationStarted' event (e.g., history jump)
+                if (AddressBarUrl != newUrl && !IsLoading) // Check if not currently loading
+                {
+                    AddressBarUrl = newUrl;
+                    Debug.WriteLine($"[BrowserVM] Corrected AddressBarUrl based on confirmed source: {AddressBarUrl}");
+                }
+                 IsSecure = newUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
             });
         }
 
-        // Handles the event signaling changes in CanGoBack/CanGoForward state
         private void NavigationService_NavigationStateChanged(object? sender, EventArgs e)
         {
             if (_disposed) return;
-            Debug.WriteLine("[BrowserVM] Handling NavigationStateChanged (for CanGoBack/Forward)");
+            // Debug.WriteLine("[BrowserVM] Handling NavigationStateChanged (for CanGoBack/Forward)"); // Can be noisy
             RunOnUIThread(() =>
             {
-                bool changed = false;
-                if (CanGoBack != _navigationService.CanGoBack)
-                {
-                    CanGoBack = _navigationService.CanGoBack;
-                    changed = true;
-                }
-                if (CanGoForward != _navigationService.CanGoForward)
-                {
-                     CanGoForward = _navigationService.CanGoForward;
-                     changed = true;
-                }
-
-                if(changed)
-                    Debug.WriteLine($"[BrowserVM] Updated CanGoBack: {CanGoBack}, CanGoForward: {CanGoForward}");
-
-                // Command CanExecute updates handled by base class observation
+                 CanGoBack = _navigationService.CanGoBack;
+                 CanGoForward = _navigationService.CanGoForward;
             });
         }
 
-        // Handles the event signaling changes in whether the current URL is a valid mod URL
         private void NavigationService_ModUrlValidityChanged(object? sender, bool isValid)
         {
             if (_disposed) return;
-            Debug.WriteLine($"[BrowserVM] Handling ModUrlValidityChanged: {isValid}");
+             Debug.WriteLine($"[BrowserVM] Handling ModUrlValidityChanged: {isValid}");
             RunOnUIThread(() => IsValidModUrl = isValid);
         }
 
-        // Handles the event signaling navigation succeeded AND the URL is a valid mod URL
-        // Primary purpose here is to trigger automatic mod info extraction.
         private async void NavigationService_NavigationSucceededAndUrlValid(object? sender, string url)
         {
-            if (_disposed) return;
-            if (_extractorService == null)
-            {
-                 Debug.WriteLine("[BrowserVM] NavigationSucceededAndUrlValid: Extractor service is null, skipping extraction.");
-                 return;
-            }
-            // AddressBarUrl should already be up-to-date via SourceUrlChanged handler.
-
+             if (_disposed || _extractorService == null) return;
             Debug.WriteLine($"[BrowserVM] Handling NavigationSucceededAndUrlValid for URL ({url}). Triggering info extraction.");
-            StatusChanged?.Invoke(this, "Extracting mod details...");
+            RunOnUIThread(() => StatusChanged?.Invoke(this, "Extracting mod details..."));
             try
             {
-                // No need to pass token here unless GetCurrentModInfoAsync accepts one and cancellation is desired
                 await GetCurrentModInfoAsync();
-                // Status update might happen inside GetCurrentModInfoAsync or based on its result if needed
-                 StatusChanged?.Invoke(this, "Mod details extracted (if available).");
+                 RunOnUIThread(() => StatusChanged?.Invoke(this, "Mod details extracted (if available)."));
             }
-            catch (Exception ex) // Catch potential exceptions from GetCurrentModInfoAsync or the await
+            catch (Exception ex)
             {
                 Debug.WriteLine($"[BrowserVM] Extraction failed after NavSucceededAndValid: {ex.Message}");
                 RunOnUIThread(() => StatusChanged?.Invoke(this, $"Error during automatic info extraction: {ex.Message}"));
             }
         }
 
-        // Handles changes in mod info availability from the extractor service
         private void ExtractorService_IsModInfoAvailableChanged(object? sender, EventArgs e)
         {
             if (_disposed || _extractorService == null) return;
@@ -370,111 +356,111 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
         // --- Command Logic ---
 
-        // Executes navigation based on the URL provided (typically from Address Bar Enter key)
+        // Handles Enter key in Address Bar OR explicit call
         private void ExecuteNavigateToUrlCommand(string? urlString)
         {
-            if (_disposed) return;
+            if (_disposed || string.IsNullOrWhiteSpace(urlString)) return;
 
-            if (string.IsNullOrWhiteSpace(urlString))
+            string processedInput = urlString.Trim();
+
+            // Check if it looks like a URL
+            bool isUrl = Uri.TryCreate(processedInput, UriKind.Absolute, out var uriResult)
+                         && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps || uriResult.Scheme == Uri.UriSchemeFtp);
+
+            // Check if it's a scheme-less potential URL (e.g., google.com)
+            if (!isUrl && processedInput.Contains('.') && !processedInput.Contains(' ') && !processedInput.StartsWith("about:"))
             {
-                Debug.WriteLine("[BrowserVM] ExecuteNavigateToUrlCommand: URL is null or empty.");
-                StatusChanged?.Invoke(this, "Please enter a valid URL.");
-                return;
+                 // Try prepending https://
+                 string potentialUrl = "https://" + processedInput;
+                 if (Uri.TryCreate(potentialUrl, UriKind.Absolute, out uriResult)
+                     && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps))
+                 {
+                     processedInput = potentialUrl;
+                     isUrl = true;
+                     Debug.WriteLine($"[BrowserVM] Prepended https:// to likely domain: {processedInput}");
+                 }
             }
 
-            string processedUrl = urlString.Trim(); // Trim whitespace
 
-            // Basic check: Add scheme if missing (default to https)
-            if (!processedUrl.Contains("://") && !processedUrl.StartsWith("about:", StringComparison.OrdinalIgnoreCase))
+            if (isUrl)
             {
-                processedUrl = "https://" + processedUrl;
-                Debug.WriteLine($"[BrowserVM] Prepended https:// to URL: {processedUrl}");
+                // It's a URL, navigate directly
+                Debug.WriteLine($"[BrowserVM] Navigating directly to URL: {processedInput}");
+                // Status update will happen via NavigationStarted event
+                _navigationService.Navigate(processedInput); // Use service's Navigate method
             }
+            else
+            {
+                // Not a URL, treat as search term
+                Debug.WriteLine($"[BrowserVM] Treating input as search term: {processedInput}");
+                PerformSteamWorkshopSearch(processedInput);
+            }
+        }
 
-            Debug.WriteLine($"[BrowserVM] Attempting to navigate to: {processedUrl}");
-            StatusChanged?.Invoke(this, $"Navigating to {processedUrl}...");
+        // Handles Enter key in Search Box OR explicit call
+        private void ExecuteSearchCommand()
+        {
+             if (_disposed || string.IsNullOrWhiteSpace(SearchText)) return;
+             PerformSteamWorkshopSearch(SearchText.Trim());
+        }
+
+        private void PerformSteamWorkshopSearch(string searchTerm)
+        {
+            if (string.IsNullOrWhiteSpace(searchTerm)) return;
 
             try
             {
-                // Prefer using CoreWebView2.Navigate for robustness
-                if (_webView?.CoreWebView2 != null)
-                {
-                    _webView.CoreWebView2.Navigate(processedUrl);
-                    // Navigation state/URL updates will be handled by the service events
-                }
-                // Fallback: Use Source property if CoreWebView2 isn't ready (less ideal)
-                else if (_webView != null && Uri.TryCreate(processedUrl, UriKind.Absolute, out var uri))
-                {
-                    _webView.Source = uri; // Setting Source triggers SourceChanged event
-                    Debug.WriteLine("[BrowserVM] Warning: Navigating via Source property (CoreWebView2 might not be ready).");
-                }
-                else
-                {
-                    Debug.WriteLine("[BrowserVM] WebView or CoreWebView2 not available/initialized, cannot navigate.");
-                    StatusChanged?.Invoke(this, "Browser component not ready for navigation.");
-                }
+                // Encode the search term properly for a URL query string
+                string encodedSearchText = WebUtility.UrlEncode(searchTerm); // Use System.Net
+                // string encodedSearchText = HttpUtility.UrlEncode(searchTerm); // Alternative: Use System.Web (needs reference)
+
+                string searchUrl = $"https://steamcommunity.com/workshop/browse/?appid=294100&searchtext={encodedSearchText}&childpublishedfileid=0&browsesort=textsearch§ion=";
+
+                Debug.WriteLine($"[BrowserVM] Performing search with URL: {searchUrl}");
+                // Status update will happen via NavigationStarted event
+                _navigationService.Navigate(searchUrl); // Use service's Navigate method
             }
-            catch (ArgumentException ex) // Catch invalid URI formats specifically
+            catch (Exception ex)
             {
-                Debug.WriteLine($"[BrowserVM] Invalid URL format during navigation: {processedUrl} - {ex.Message}");
-                StatusChanged?.Invoke(this, $"Invalid URL format: {urlString}"); // Show original user input in error
-            }
-            catch (Exception ex) // Catch other general navigation errors
-            {
-                Debug.WriteLine($"[BrowserVM] Navigation error for URL {processedUrl}: {ex.Message}");
-                StatusChanged?.Invoke(this, $"Error navigating: {ex.Message}");
+                Debug.WriteLine($"[BrowserVM] Error constructing or executing search: {ex.Message}");
+                 RunOnUIThread(() => StatusChanged?.Invoke(this, $"Error performing search: {ex.Message}"));
             }
         }
 
 
         // --- Dispose Implementation ---
-
-        /// <summary>
-        /// Releases resources used by the ViewModel.
-        /// </summary>
-        /// <param name="disposing">True if called from Dispose(), false if called from the finalizer.</param>
         protected override void Dispose(bool disposing)
         {
-            // Use the inherited _disposed field check FIRST
-            if (_disposed)
-            {
-                 return;
-            }
+            if (_disposed) return;
 
-            if (disposing) // Only dispose managed resources if called from Dispose()
+            if (disposing)
             {
-                // --- Derived Class Specific Managed Resource Cleanup ---
                 Debug.WriteLine("[BrowserVM] Disposing derived managed resources...");
-
-                // Unsubscribe from Navigation Service events
                 if (_navigationService != null)
                 {
                     if (_navStatusHandler != null) _navigationService.StatusChanged -= _navStatusHandler;
                     if (_navStateChangedHandler != null) _navigationService.NavigationStateChanged -= _navStateChangedHandler;
                     if (_navModUrlValidityHandler != null) _navigationService.ModUrlValidityChanged -= _navModUrlValidityHandler;
                     if (_navSucceededAndValidHandler != null) _navigationService.NavigationSucceededAndUrlValid -= _navSucceededAndValidHandler;
-                    if (_navSourceUrlChangedHandler != null) _navigationService.SourceUrlChanged -= _navSourceUrlChangedHandler; // Unsubscribe new handler
+                    if (_navSourceUrlChangedHandler != null) _navigationService.SourceUrlChanged -= _navSourceUrlChangedHandler;
+                    // --- Unsubscribe new handlers ---
+                    if (_navStartedHandler != null) _navigationService.NavigationStarted -= _navStartedHandler;
+                    if (_navEndedHandler != null) _navigationService.NavigationEnded -= _navEndedHandler;
+                    // --- End Unsubscribe ---
                     Debug.WriteLine("[BrowserVM] Unsubscribed from NavigationService events.");
                 }
-
-                // Unsubscribe from and dispose the owned ModExtractorService
                 if (_extractorService != null)
                 {
-                    if (_extractorModInfoAvailableHandler != null)
-                        _extractorService.IsModInfoAvailableChanged -= _extractorModInfoAvailableHandler;
-                    (_extractorService as IDisposable)?.Dispose(); // Dispose if it implements IDisposable
-                    _extractorService = null; // Clear reference
+                    if (_extractorModInfoAvailableHandler != null) _extractorService.IsModInfoAvailableChanged -= _extractorModInfoAvailableHandler;
+                    (_extractorService as IDisposable)?.Dispose();
+                    _extractorService = null;
                     Debug.WriteLine("[BrowserVM] Unsubscribed from and disposed ModExtractorService.");
                 }
-
-                // Unsubscribe from Parent ViewModel events
                 if (_parentViewModel != null && _parentPropertyChangedHandler != null)
                 {
                     _parentViewModel.PropertyChanged -= _parentPropertyChangedHandler;
                     Debug.WriteLine("[BrowserVM] Unsubscribed from ParentViewModel PropertyChanged.");
                 }
-
-                // Clear handler references to help garbage collection
                 _navStatusHandler = null;
                 _navStateChangedHandler = null;
                 _navModUrlValidityHandler = null;
@@ -482,27 +468,19 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 _navSourceUrlChangedHandler = null;
                 _extractorModInfoAvailableHandler = null;
                 _parentPropertyChangedHandler = null;
-
-                _webView = null; // Clear reference to the UI control
-
+                _navStartedHandler = null; // Clear new handler refs
+                _navEndedHandler = null;   // Clear new handler refs
+                _webView = null;
                 Debug.WriteLine("[BrowserVM] Dispose complete (derived managed resources).");
-                // --- End Derived Class Specific Managed Resource Cleanup ---
             }
-
-            // Dispose unmanaged resources here (if BrowserViewModel directly owned any - unlikely)
-
-            // IMPORTANT: Call the base class implementation LAST
-            // This will set the _disposed flag and dispose commands created by CreateCommand helpers.
             Debug.WriteLine($"[BrowserVM] Calling base.Dispose({disposing})...");
             base.Dispose(disposing);
-            Debug.WriteLine($"[BrowserVM] Finished Dispose({disposing}). Base class disposed state: {_disposed}");
+             Debug.WriteLine($"[BrowserVM] Finished Dispose({disposing}). Base class disposed state: {_disposed}");
         }
-
-         // Finalizer (optional, only needed if BrowserViewModel DIRECTLY owns unmanaged resources)
          ~BrowserViewModel()
          {
-             Debug.WriteLine("[BrowserVM] Finalizer called. Disposing unmanaged resources.");
-             Dispose(false); // Dispose only unmanaged resources from finalizer
+             Debug.WriteLine("[BrowserVM] Finalizer called.");
+             Dispose(false);
          }
     }
 }
