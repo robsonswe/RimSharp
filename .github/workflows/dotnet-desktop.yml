@@ -6,22 +6,19 @@ on:
       - 'v*'
 
 permissions:
-  contents: write
+  contents: write # Needed for softprops/action-gh-release
 
 jobs:
-  build:
+  build-and-release: # Combined job
     runs-on: windows-latest
     env:
       Project_Path: RimSharp.csproj
-    outputs:
-      tag_name: ${{ steps.extract_tag.outputs.tag_name }}
-      is_prerelease: ${{ steps.check_prerelease.outputs.is_prerelease }}
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0
+        fetch-depth: 0 # Needed by softprops/action-gh-release to find the tag
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
@@ -52,8 +49,10 @@ jobs:
     - name: Execute unit tests
       run: dotnet test $env:Project_Path --configuration Release --no-build
 
-    - name: Publish Release
+    - name: Publish and Package
+      id: package
       run: |
+        # Publish step
         dotnet publish $env:Project_Path `
           -r win-x64 `
           -c Release `
@@ -63,6 +62,7 @@ jobs:
           -p:EnableCompressionInSingleFile=true `
           --output ./publish
 
+        # Packaging step
         $folderName = "RimSharp"
         $zipName = "RimSharp_${{ steps.extract_tag.outputs.tag_name }}.zip"
 
@@ -71,33 +71,17 @@ jobs:
 
         Compress-Archive -Path $folderName -DestinationPath $zipName
 
+        # Output the zip name for the release step
         echo "zip_name=$zipName" >> $env:GITHUB_OUTPUT
-      id: publish
       shell: pwsh
-
-    - name: Upload Release Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: RimSharp_${{ steps.extract_tag.outputs.tag_name }}
-        path: ${{ steps.publish.outputs.zip_name }}
-
-  create-release:
-    needs: build
-    runs-on: windows-latest
-
-    steps:
-    - name: Download Artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: RimSharp_${{ needs.build.outputs.tag_name }}
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: ${{ needs.build.outputs.tag_name }}
-        name: RimSharp Release ${{ needs.build.outputs.tag_name }}
+        # tag_name: ${{ steps.extract_tag.outputs.tag_name }}
+        name: RimSharp Release ${{ steps.extract_tag.outputs.tag_name }}
         body: |
           RimSharp WPF Application
-          Tag: ${{ needs.build.outputs.tag_name }}
-        prerelease: ${{ needs.build.outputs.is_prerelease == 'true' }}
-        files: RimSharp_${{ needs.build.outputs.tag_name }}.zip
+          Tag: ${{ steps.extract_tag.outputs.tag_name }}
+        prerelease: ${{ steps.check_prerelease.outputs.is_prerelease == 'true' }}
+        files: ${{ steps.package.outputs.zip_name }}
