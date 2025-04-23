@@ -139,7 +139,14 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IMlieVersionService>(),
                     provider.GetRequiredService<ILoggerService>()
                 ));
-            services.AddSingleton<IModListManager, ModListManager>();
+            services.AddSingleton<IModListManager>(provider => // Ensure Singleton if needed
+            {
+                _logger?.LogDebug("Creating IModListManager instance.", "App.ConfigureServices");
+                return new ModListManager(
+                    // Pass the required service instance
+                    provider.GetRequiredService<IModDictionaryService>()
+                );
+            });
             services.AddSingleton<ModLookupService>();
 
             // --- Mod Manager Feature Services ---
@@ -163,19 +170,19 @@ namespace RimSharp.AppDir.AppFiles
             // --- ModListIOService Registration UPDATED ---
             services.AddSingleton<IModListIOService>(provider =>
             {
-                 _logger?.LogDebug("Creating IModListIOService instance.", "App.ConfigureServices");
-                 return new ModListIOService(
-                    provider.GetRequiredService<IPathService>(),
-                    provider.GetRequiredService<IModListManager>(),
-                    provider.GetRequiredService<IDialogService>(),
-                    // --- Inject the new dependencies ---
-                    provider.GetRequiredService<IModDictionaryService>(),       // <<< INJECTED
-                    provider.GetRequiredService<ISteamApiClient>(),           // <<< INJECTED
-                    provider.GetRequiredService<IDownloadQueueService>(),     // <<< INJECTED
-                    provider.GetRequiredService<IApplicationNavigationService>(),// <<< INJECTED
-                    provider.GetRequiredService<ILoggerService>(),             // <<< INJECTED
-                    provider.GetRequiredService<ISteamWorkshopQueueProcessor>()// <<< INJECTED
-                );
+                _logger?.LogDebug("Creating IModListIOService instance.", "App.ConfigureServices");
+                return new ModListIOService(
+                   provider.GetRequiredService<IPathService>(),
+                   provider.GetRequiredService<IModListManager>(),
+                   provider.GetRequiredService<IDialogService>(),
+                   // --- Inject the new dependencies ---
+                   provider.GetRequiredService<IModDictionaryService>(),       // <<< INJECTED
+                   provider.GetRequiredService<ISteamApiClient>(),           // <<< INJECTED
+                   provider.GetRequiredService<IDownloadQueueService>(),     // <<< INJECTED
+                   provider.GetRequiredService<IApplicationNavigationService>(),// <<< INJECTED
+                   provider.GetRequiredService<ILoggerService>(),             // <<< INJECTED
+                   provider.GetRequiredService<ISteamWorkshopQueueProcessor>()// <<< INJECTED
+               );
             });
             // --- End ModListIOService Update ---
 
@@ -346,9 +353,10 @@ namespace RimSharp.AppDir.AppFiles
             var dialogService = ServiceProvider?.GetService<IDialogService>();
             if (dialogService != null && Application.Current?.MainWindow != null && Application.Current.MainWindow.IsVisible)
             {
-                 try { dialogService.ShowError("Unhandled Error", $"An unexpected error occurred: {e.Exception.Message}\n\nThe application may become unstable. Please check logs."); }
-                 catch { MessageBox.Show($"An unexpected error occurred: {e.Exception.Message}\n\nError displaying detailed message. Check logs.", "Unhandled Error", MessageBoxButton.OK, MessageBoxImage.Warning); }
-            } else { MessageBox.Show($"An unexpected error occurred: {e.Exception.Message}\n\nThe application may become unstable. Please check logs.", "Unhandled Error", MessageBoxButton.OK, MessageBoxImage.Error); }
+                try { dialogService.ShowError("Unhandled Error", $"An unexpected error occurred: {e.Exception.Message}\n\nThe application may become unstable. Please check logs."); }
+                catch { MessageBox.Show($"An unexpected error occurred: {e.Exception.Message}\n\nError displaying detailed message. Check logs.", "Unhandled Error", MessageBoxButton.OK, MessageBoxImage.Warning); }
+            }
+            else { MessageBox.Show($"An unexpected error occurred: {e.Exception.Message}\n\nThe application may become unstable. Please check logs.", "Unhandled Error", MessageBoxButton.OK, MessageBoxImage.Error); }
             e.Handled = true;
         }
 
@@ -358,7 +366,7 @@ namespace RimSharp.AppDir.AppFiles
             Exception? ex = e.ExceptionObject as Exception;
             if (ex != null) { message = $"Unhandled non-UI exception occurred. IsTerminating: {e.IsTerminating}"; _logger?.LogException(ex, message, "App.CurrentDomainUnhandled"); }
             else { message = $"Unhandled non-UI exception occurred with non-exception object: {e.ExceptionObject}. IsTerminating: {e.IsTerminating}"; _logger?.LogCritical(message, "App.CurrentDomainUnhandled"); }
-             MessageBox.Show($"A critical non-UI error occurred: {(ex?.Message ?? "Unknown error")}\n\nApplication will likely terminate. Please check logs.", "Critical Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show($"A critical non-UI error occurred: {(ex?.Message ?? "Unknown error")}\n\nApplication will likely terminate. Please check logs.", "Critical Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
 
         protected override void OnExit(ExitEventArgs e)

@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using RimSharp.Infrastructure.Mods.Sorting;
 using RimSharp.Shared.Models;
-using RimSharp.Shared.Services.Contracts;
+using RimSharp.Shared.Services.Contracts; // Ensure this is included
 
 namespace RimSharp.Features.ModManager.Services.Management
 {
@@ -14,13 +14,17 @@ namespace RimSharp.Features.ModManager.Services.Management
         private readonly ModOrderService _orderService;
         private readonly ModDependencySorter _dependencySorter;
         private readonly ModLookupService _lookupService;
+        private readonly IModDictionaryService _modDictionaryService; // Service for dictionary lookups
         private readonly List<ModItem> _allAvailableMods = new();
         private bool _hasAnyActiveModIssues = false;
 
         public event EventHandler ListChanged;
 
-        public ModListManager()
+        // Constructor requires IModDictionaryService
+        public ModListManager(IModDictionaryService modDictionaryService)
         {
+            _modDictionaryService = modDictionaryService ?? throw new ArgumentNullException(nameof(modDictionaryService));
+
             _stateTracker = new ModStateTracker();
             _orderService = new ModOrderService();
             _dependencySorter = new ModDependencySorter();
@@ -29,7 +33,6 @@ namespace RimSharp.Features.ModManager.Services.Management
 
         public IReadOnlyList<(ModItem Mod, int LoadOrder)> VirtualActiveMods => _orderService.VirtualActiveMods;
         public IReadOnlyList<ModItem> AllInactiveMods => _stateTracker.AllInactiveMods;
-       // public IReadOnlyList<string> MissingModIds => _stateTracker.MissingModIds; // Assuming this was needed elsewhere
         public bool HasAnyActiveModIssues => _hasAnyActiveModIssues;
 
         public void Initialize(IEnumerable<ModItem> allAvailableMods, IEnumerable<string> activeModPackageIds)
@@ -46,56 +49,45 @@ namespace RimSharp.Features.ModManager.Services.Management
                 .ToList()
                 ?? new List<string>();
 
-             // Let StateTracker determine initial active/inactive states and missing IDs
             _stateTracker.Initialize(_allAvailableMods, _lookupService.GetLookupDictionary(), activeIdList);
 
-             // Build initial active mods list for OrderService based on StateTracker's results
-             var initialActiveModsForOrder = new List<(ModItem Mod, int LoadOrder)>();
-             for (int index = 0; index < activeIdList.Count; index++)
-             {
-                 string packageId = activeIdList[index];
-                 // Use TryGetMod which uses the lookup initialized above
-                 if (_lookupService.TryGetMod(packageId, out var mod) && _stateTracker.IsModActive(mod)) // Ensure it's marked active by tracker
-                 {
-                     initialActiveModsForOrder.Add((Mod: mod, LoadOrder: index));
-                 }
-             }
+            var initialActiveModsForOrder = new List<(ModItem Mod, int LoadOrder)>();
+            for (int index = 0; index < activeIdList.Count; index++)
+            {
+                string packageId = activeIdList[index];
+                if (_lookupService.TryGetMod(packageId, out var mod) && _stateTracker.IsModActive(mod))
+                {
+                    initialActiveModsForOrder.Add((Mod: mod, LoadOrder: index));
+                }
+            }
 
             _orderService.Initialize(initialActiveModsForOrder);
-            RecalculateActiveModIssues(); 
+            RecalculateActiveModIssues();
 
             RaiseListChanged();
-            Debug.WriteLine($"ModListManager Initialized: {_orderService.VirtualActiveMods.Count} active, {_stateTracker.AllInactiveMods.Count} inactive."); // Removed missing count reference
+            Debug.WriteLine($"ModListManager Initialized: {_orderService.VirtualActiveMods.Count} active, {_stateTracker.AllInactiveMods.Count} inactive.");
         }
 
-        // --- Single Item Methods (delegate to bulk methods where appropriate for consistency) ---
+        // --- Single Item Methods ---
         public void ActivateMod(ModItem mod) => ActivateModsAt(new[] { mod }, _orderService.VirtualActiveMods.Count);
-
         public void ActivateModAt(ModItem mod, int index) => ActivateModsAt(new[] { mod }, index);
-
         public void DeactivateMod(ModItem mod) => DeactivateMods(new[] { mod });
-
         public void ReorderMod(ModItem mod, int newIndex) => ReorderMods(new[] { mod }, newIndex);
 
-
-        // --- Existing Methods (Modified slightly if needed) ---
+        // --- Existing Methods ---
         public void ClearActiveList()
         {
-            var modsToKeep = _orderService.VirtualActiveMods // Use OrderService's view
+            var modsToKeep = _orderService.VirtualActiveMods
                 .Where(x => x.Mod != null && (x.Mod.ModType == ModType.Core || x.Mod.ModType == ModType.Expansion))
                 .Select(x => x.Mod)
                 .ToList();
 
-            // Get mods to deactivate (all active except those to keep)
             var modsToDeactivate = _orderService.VirtualActiveMods
                                      .Select(x => x.Mod)
                                      .Except(modsToKeep)
                                      .ToList();
 
-            // Deactivate using the bulk method
-            DeactivateMods(modsToDeactivate); // This will update both state tracker and order service
-
-            // Note: DeactivateMods already handles raising ListChanged if changes occurred.
+            DeactivateMods(modsToDeactivate);
             Debug.WriteLine($"Cleared active list, kept {modsToKeep.Count} core/expansion mods.");
         }
 
@@ -109,24 +101,20 @@ namespace RimSharp.Features.ModManager.Services.Management
                 .Select(mod => mod?.PackageId?.ToLowerInvariant() ?? Guid.NewGuid().ToString())
                 .ToList();
 
-            // Identify mods with explicit load before/after requirements (already implemented logic)
             var hasExplicitLoadBefore = new HashSet<ModItem>();
             var hasExplicitForceLoadBefore = new HashSet<ModItem>();
             foreach (var mod in currentActiveMods)
             {
-                 if(mod == null) continue; // Safety check
-                 if (mod.LoadBefore?.Count > 0 || mod.ForceLoadBefore?.Count > 0) hasExplicitLoadBefore.Add(mod);
-                 if (mod.ForceLoadBefore?.Count > 0) hasExplicitForceLoadBefore.Add(mod);
-                 // Consider LoadAfter/ForceLoadAfter as well if your sorter uses them
+                if (mod == null) continue;
+                if (mod.LoadBefore?.Count > 0 || mod.ForceLoadBefore?.Count > 0) hasExplicitLoadBefore.Add(mod);
+                if (mod.ForceLoadBefore?.Count > 0) hasExplicitForceLoadBefore.Add(mod);
             }
 
-
-            // Perform topological sort
             var sortedMods = _dependencySorter.TopologicalSort(currentActiveMods, hasExplicitLoadBefore, hasExplicitForceLoadBefore);
             if (sortedMods == null || sortedMods.Count != currentActiveMods.Count)
             {
-                 Debug.WriteLine("Sorting failed or resulted in a different number of mods (cycle?).");
-                return false; // Sort failed or removed items (shouldn't happen in pure sort)
+                Debug.WriteLine("Sorting failed or resulted in a different number of mods (cycle?).");
+                return false;
             }
 
             var newOrderIds = sortedMods
@@ -137,11 +125,9 @@ namespace RimSharp.Features.ModManager.Services.Management
 
             if (orderChanged)
             {
-                // Rebuild the order service list completely based on the sort result
                 _orderService.Clear();
-                _orderService.AddModsAt(sortedMods, 0); // Add all sorted mods starting at index 0
-
-                RaiseListChanged(); // Raise event only if order actually changed
+                _orderService.AddModsAt(sortedMods, 0);
+                RaiseListChanged();
                 Debug.WriteLine("Active mod list sorted successfully. Order changed.");
             }
             else
@@ -159,12 +145,11 @@ namespace RimSharp.Features.ModManager.Services.Management
         private void RaiseListChanged()
         {
             RecalculateActiveModIssues();
-             Debug.WriteLine("ModListManager: Raising ListChanged event.");
+            Debug.WriteLine("ModListManager: Raising ListChanged event.");
             ListChanged?.Invoke(this, EventArgs.Empty);
         }
 
-
-        // --- IMPLEMENTATION OF NEW BULK METHODS ---
+        // --- IMPLEMENTATION OF BULK METHODS ---
 
         public void ActivateModsAt(IEnumerable<ModItem> mods, int index)
         {
@@ -176,53 +161,41 @@ namespace RimSharp.Features.ModManager.Services.Management
 
             Debug.WriteLine($"ModListManager: ActivateModsAt called for {modsToProcess.Count} mods at index {index}.");
 
-            // Separate into mods to newly activate vs mods already active (potential reorder)
             var modsToActivate = modsToProcess.Where(m => !_stateTracker.IsModActive(m)).ToList();
             var modsToReorder = modsToProcess.Where(m => _stateTracker.IsModActive(m)).ToList();
 
-            // --- Handle Reordering First ---
             if (modsToReorder.Any())
             {
-                // We need to move these existing active mods towards the target index.
-                // Call the specific ReorderMods method which handles index calculations correctly.
-                 Debug.WriteLine($"ActivateModsAt: Reordering {modsToReorder.Count} already active mods.");
-                 // Note: ReorderMods assumes all items in its list *are* active.
-                 bool reorderChanged = _orderService.ReorderMods(modsToReorder, index);
-                 listChanged |= reorderChanged;
-                 // Adjust the insertion index for *new* mods based on where the reordered block ended up.
-                 // Find the index of the last item from the reordered block.
-                 var lastReorderedMod = modsToReorder.LastOrDefault(m => _orderService.VirtualActiveMods.Any(vm => vm.Mod == m)); // Find last one actually present after reorder
-                 if(lastReorderedMod != null)
-                 {
-                     index = _orderService.VirtualActiveMods.ToList().FindIndex(vm => vm.Mod == lastReorderedMod) + 1;
-                 }
-                 // Ensure index is still valid after potential reordering
-                 index = Math.Clamp(index, 0, _orderService.VirtualActiveMods.Count);
+                Debug.WriteLine($"ActivateModsAt: Reordering {modsToReorder.Count} already active mods.");
+                bool reorderChanged = _orderService.ReorderMods(modsToReorder, index);
+                listChanged |= reorderChanged;
+                var lastReorderedMod = modsToReorder.LastOrDefault(m => _orderService.VirtualActiveMods.Any(vm => vm.Mod == m));
+                if (lastReorderedMod != null)
+                {
+                    index = _orderService.VirtualActiveMods.ToList().FindIndex(vm => vm.Mod == lastReorderedMod) + 1;
+                }
+                index = Math.Clamp(index, 0, _orderService.VirtualActiveMods.Count);
             }
 
-            // --- Handle Activation of New Mods ---
             if (modsToActivate.Any())
             {
                 Debug.WriteLine($"ActivateModsAt: Activating {modsToActivate.Count} new mods.");
-                // Activate in state tracker
                 foreach (var mod in modsToActivate)
                 {
-                    _stateTracker.Activate(mod); // Updates inactive list and active set
+                    _stateTracker.Activate(mod);
                 }
-
-                // Add to order service at the (potentially adjusted) index
                 bool added = _orderService.AddModsAt(modsToActivate, index);
                 listChanged |= added;
             }
 
-             if (listChanged)
-             {
-                 RaiseListChanged();
-             }
-             else
-             {
-                  Debug.WriteLine($"ModListManager: ActivateModsAt resulted in no changes.");
-             }
+            if (listChanged)
+            {
+                RaiseListChanged();
+            }
+            else
+            {
+                Debug.WriteLine($"ModListManager: ActivateModsAt resulted in no changes.");
+            }
         }
 
 
@@ -231,38 +204,35 @@ namespace RimSharp.Features.ModManager.Services.Management
             if (mods == null) return;
             bool listChanged = false;
 
-            // Filter out nulls, core mods, and ensure distinctness
             var modsToDeactivate = mods
-                .Where(m => m != null && m.ModType != ModType.Core) // Do not allow Core deactivation
+                .Where(m => m != null && m.ModType != ModType.Core)
                 .Distinct()
                 .ToList();
 
             if (!modsToDeactivate.Any())
             {
-                 Debug.WriteLine($"ModListManager: No valid mods to deactivate.");
+                Debug.WriteLine($"ModListManager: No valid mods to deactivate.");
                 return;
             }
 
             Debug.WriteLine($"ModListManager: DeactivateMods called for {modsToDeactivate.Count} mods.");
 
-            // Deactivate in state tracker first
             foreach (var mod in modsToDeactivate)
             {
-                _stateTracker.Deactivate(mod); // Updates active set and adds to inactive list
+                _stateTracker.Deactivate(mod);
             }
 
-            // Remove from order service
             bool removed = _orderService.RemoveMods(modsToDeactivate);
-            listChanged = removed; // If OrderService removed something, the list changed
+            listChanged = removed;
 
             if (listChanged)
             {
                 RaiseListChanged();
             }
-             else
-             {
-                  Debug.WriteLine($"ModListManager: DeactivateMods resulted in no changes.");
-             }
+            else
+            {
+                Debug.WriteLine($"ModListManager: DeactivateMods resulted in no changes.");
+            }
         }
 
 
@@ -270,61 +240,48 @@ namespace RimSharp.Features.ModManager.Services.Management
         {
             if (modsToMove == null) return;
 
-            // Ensure all mods are actually active and not null/core (core shouldn't be manually reordered usually)
             var validModsToMove = modsToMove
-                .Where(m => m != null && _stateTracker.IsModActive(m) /* && m.ModType != ModType.Core */ ) // Allow reordering core if needed? Decide based on requirements.
+                .Where(m => m != null && _stateTracker.IsModActive(m))
                 .Distinct()
                 .ToList();
 
             if (!validModsToMove.Any())
             {
-                 Debug.WriteLine($"ModListManager: No valid active mods provided for ReorderMods.");
+                Debug.WriteLine($"ModListManager: No valid active mods provided for ReorderMods.");
                 return;
             }
 
             Debug.WriteLine($"ModListManager: ReorderMods called for {validModsToMove.Count} mods to target index {targetIndex}.");
 
-            // Delegate directly to the order service's bulk reorder method
             bool changed = _orderService.ReorderMods(validModsToMove, targetIndex);
 
             if (changed)
             {
                 RaiseListChanged();
             }
-             else
-             {
-                  Debug.WriteLine($"ModListManager: ReorderMods resulted in no change in order.");
-             }
+            else
+            {
+                Debug.WriteLine($"ModListManager: ReorderMods resulted in no change in order.");
+            }
         }
 
-        // --- END IMPLEMENTATION OF NEW BULK METHODS ---
-
-
-        // ResolveDependencies remains the same as provided in the previous turn
+        // --- Resolve Dependencies with Dictionary Lookup & steam:// Fix ---
         public (List<ModItem> addedMods, List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)> missingDependencies) ResolveDependencies()
         {
             var addedMods = new List<ModItem>();
-            var missingDependencies = new List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)>();
+            var tempMissingDependencies = new List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)>();
             bool listChanged = false;
 
-            // Use OrderService view to get current active mods
             var activeModsForCheck = _orderService.VirtualActiveMods
                 .Select(x => x.Mod)
-                // .Where(m => m.ModType != ModType.Core && m.ModType != ModType.Expansion) // Keep this filtering? Dependencies might be needed even for core/exp
                 .ToList();
 
-            // Use StateTracker view for inactive mods
             var inactiveModsLookup = _stateTracker.AllInactiveMods.ToDictionary(m => m.PackageId, m => m, StringComparer.OrdinalIgnoreCase);
-
-            // Use a HashSet for efficient checking of already active/processed dependencies
             var activePackageIds = new HashSet<string>(_orderService.GetActiveModIds(), StringComparer.OrdinalIgnoreCase);
-
             var modsToCheckQueue = new Queue<ModItem>(activeModsForCheck);
-            var processedDependencies = new HashSet<string>(StringComparer.OrdinalIgnoreCase); // Track dependencies we've looked for
+            var processedDependencies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-             // Dictionary to aggregate missing dependencies and their requesters
-             var missingDepsDict = new Dictionary<string, (string displayName, string steamUrl, List<string> requiredBy)>(StringComparer.OrdinalIgnoreCase);
-
+            var missingDepsDict = new Dictionary<string, (string displayName, string steamUrl, List<string> requiredBy)>(StringComparer.OrdinalIgnoreCase);
 
             while (modsToCheckQueue.Count > 0)
             {
@@ -333,77 +290,146 @@ namespace RimSharp.Features.ModManager.Services.Management
 
                 foreach (var dependency in currentMod.ModDependencies)
                 {
-                    var depPackageIdLower = dependency.PackageId.ToLowerInvariant();
+                    if (string.IsNullOrWhiteSpace(dependency.PackageId))
+                    {
+                        Debug.WriteLine($"[ResolveDependencies] Skipping dependency for '{currentMod.Name}' because PackageId is missing.");
+                        continue;
+                    }
 
-                    // Skip if already active or already processed as a dependency
+                    var depPackageIdLower = dependency.PackageId.ToLowerInvariant(); // Outer declaration
+
                     if (activePackageIds.Contains(depPackageIdLower) || processedDependencies.Contains(depPackageIdLower))
                         continue;
 
-                    processedDependencies.Add(depPackageIdLower); // Mark this dependency as processed
+                    processedDependencies.Add(depPackageIdLower);
 
-                    // Try find it in the inactive list
                     if (inactiveModsLookup.TryGetValue(depPackageIdLower, out var dependencyMod))
                     {
-                        Debug.WriteLine($"ResolveDependencies: Found inactive dependency '{dependencyMod.Name}' ({depPackageIdLower}) required by '{currentMod.Name}'. Activating.");
-                        // Activate it (using single-item method is fine here as it's iterative)
-                         _stateTracker.Activate(dependencyMod);
-                         _orderService.AddMod(dependencyMod, _orderService.VirtualActiveMods.Count); // Add to end for now, sort later
+                        Debug.WriteLine($"[ResolveDependencies] Found inactive dependency '{dependencyMod.Name}' ({depPackageIdLower}) required by '{currentMod.Name}'. Activating.");
+                        _stateTracker.Activate(dependencyMod);
+                        _orderService.AddMod(dependencyMod, _orderService.VirtualActiveMods.Count);
 
                         addedMods.Add(dependencyMod);
-                        activePackageIds.Add(depPackageIdLower); // Add to active set for subsequent checks
-                        modsToCheckQueue.Enqueue(dependencyMod); // Check dependencies of the newly added mod
+                        activePackageIds.Add(depPackageIdLower);
+                        modsToCheckQueue.Enqueue(dependencyMod);
                         listChanged = true;
                     }
-                    else
+                    else // Dependency not found in inactive list, treat as missing
                     {
-                        // Dependency is missing entirely
-                         Debug.WriteLine($"ResolveDependencies: Missing dependency '{dependency.DisplayName}' ({depPackageIdLower}) required by '{currentMod.Name}'.");
-                         if (missingDepsDict.TryGetValue(depPackageIdLower, out var existingMissing))
-                         {
-                             existingMissing.requiredBy.Add(currentMod.Name);
-                         }
-                         else
-                         {
-                             missingDepsDict[depPackageIdLower] = (
-                                 displayName: dependency.DisplayName ?? depPackageIdLower,
-                                 steamUrl: dependency.SteamWorkshopUrl,
-                                 requiredBy: new List<string> { currentMod.Name ?? "Unknown Mod" }
-                             );
-                         }
+                        // Get initial values from the dependency definition in the requiring mod's About.xml
+                        // Use the depPackageIdLower declared in the outer scope
+                        string initialDisplayName = dependency.DisplayName ?? depPackageIdLower;
+                        string initialSteamUrl = dependency.SteamWorkshopUrl;
+
+                        // Initialize final values, starting with the initial ones
+                        string finalDisplayName = initialDisplayName;
+                        string finalSteamUrl = initialSteamUrl; // This might be null, whitespace, steam://, or https://
+
+                        // --- Force dictionary lookup for missing or invalid URLs ---
+                        bool needsDictionaryLookup = false;
+
+                        // Condition 1: URL is completely missing from About.xml
+                        if (string.IsNullOrWhiteSpace(initialSteamUrl))
+                        {
+                            Debug.WriteLine($"[ResolveDependencies] Dependency '{finalDisplayName}' ({depPackageIdLower}) is missing SteamWorkshopUrl in About.xml. Flagging for dictionary lookup.");
+                            needsDictionaryLookup = true;
+                            finalSteamUrl = null; // Ensure we start fresh if lookup occurs
+                        }
+                        // Condition 2: URL from About.xml exists but is the invalid 'steam://' format
+                        else if (initialSteamUrl.Trim().StartsWith("steam://", StringComparison.OrdinalIgnoreCase))
+                        {
+                            Debug.WriteLine($"[ResolveDependencies] Dependency '{finalDisplayName}' ({depPackageIdLower}) has invalid 'steam://' URL ('{initialSteamUrl}') in About.xml. Discarding it and flagging for dictionary lookup.");
+                            needsDictionaryLookup = true;
+                            finalSteamUrl = null; // Discard the bad URL, prioritize dictionary result
+                        }
+
+                        // Perform dictionary lookup if needed
+                        if (needsDictionaryLookup)
+                        {
+                            var dictionaryEntry = _modDictionaryService.GetEntryByPackageId(depPackageIdLower); // Use prioritized lookup
+
+                            if (dictionaryEntry != null && !string.IsNullOrWhiteSpace(dictionaryEntry.SteamId))
+                            {
+                                // Construct the correct HTTPS URL from the dictionary entry.
+                                string constructedUrl = $"https://steamcommunity.com/workshop/filedetails/?id={dictionaryEntry.SteamId}";
+                                finalSteamUrl = constructedUrl; // Update finalSteamUrl with the good one
+
+                                // Optionally update display name if it was missing/generic and dictionary has one
+                                if (string.Equals(finalDisplayName, depPackageIdLower, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(dictionaryEntry.Name))
+                                {
+                                    finalDisplayName = dictionaryEntry.Name;
+                                }
+                                Debug.WriteLine($"[ResolveDependencies] Dictionary lookup successful for '{depPackageIdLower}'. Using SteamID: {dictionaryEntry.SteamId}, Constructed URL: {finalSteamUrl}");
+                            }
+                            else
+                            {
+                                Debug.WriteLine($"[ResolveDependencies] Dictionary lookup failed for '{depPackageIdLower}' or entry has no SteamID. Final URL remains null.");
+                                // finalSteamUrl remains null if lookup failed after discarding steam:// or missing URL.
+                            }
+                        }
+                        // --- End Force dictionary lookup ---
+
+
+                        // Now add or update the missing dependency using the potentially corrected finalDisplayName and finalSteamUrl
+                        Debug.WriteLine($"[ResolveDependencies] Marking dependency '{finalDisplayName}' ({depPackageIdLower}) as missing, required by '{currentMod.Name}'. Final URL: '{finalSteamUrl ?? "None"}'");
+
+                        if (missingDepsDict.TryGetValue(depPackageIdLower, out var existingMissing))
+                        {
+                            if (!existingMissing.requiredBy.Contains(currentMod.Name ?? "Unknown Mod"))
+                            {
+                                existingMissing.requiredBy.Add(currentMod.Name ?? "Unknown Mod");
+                            }
+                            // Update URL/Name if this iteration found a better one (prioritize the HTTPS one)
+                            if ((string.IsNullOrWhiteSpace(existingMissing.steamUrl) && !string.IsNullOrWhiteSpace(finalSteamUrl)) ||
+                                (!string.IsNullOrWhiteSpace(finalSteamUrl) && finalSteamUrl.StartsWith("https://") && !(existingMissing.steamUrl?.StartsWith("https://") ?? false)))
+                            {
+                                existingMissing.steamUrl = finalSteamUrl;
+                            }
+                            if (string.Equals(existingMissing.displayName, depPackageIdLower, StringComparison.OrdinalIgnoreCase) && !string.Equals(finalDisplayName, depPackageIdLower, StringComparison.OrdinalIgnoreCase))
+                            {
+                                existingMissing.displayName = finalDisplayName;
+                            }
+                        }
+                        else
+                        {
+                            missingDepsDict[depPackageIdLower] = (
+                                displayName: finalDisplayName,
+                                steamUrl: finalSteamUrl, // Use potentially updated URL
+                                requiredBy: new List<string> { currentMod.Name ?? "Unknown Mod" }
+                            );
+                        }
                     }
                 }
             }
 
-            // Convert dictionary to list format for return
-             missingDependencies = missingDepsDict.Select(kvp => (
-                 kvp.Value.displayName,
-                 kvp.Key, // packageId
-                 kvp.Value.steamUrl,
-                 kvp.Value.requiredBy
-             )).ToList();
-
+            tempMissingDependencies = missingDepsDict.Select(kvp => (
+                kvp.Value.displayName,
+                kvp.Key, // packageId
+                kvp.Value.steamUrl,
+                kvp.Value.requiredBy
+            )).ToList();
 
             if (listChanged)
             {
-                // Optional: Re-sort if dependencies were added?
-                // SortActiveList(); // Uncomment if adding dependencies should trigger immediate resort
+                // Optional: SortActiveList();
                 RaiseListChanged();
             }
 
-            return (addedMods, missingDependencies);
+            return (addedMods, tempMissingDependencies);
         }
-                private void RecalculateActiveModIssues()
+
+        // --- Recalculate Active Mod Issues ---
+        private void RecalculateActiveModIssues()
         {
             var activeModsWithOrder = _orderService.VirtualActiveMods.ToList();
             if (!activeModsWithOrder.Any())
             {
                 _hasAnyActiveModIssues = false;
-                return; // Nothing to check
+                return;
             }
 
-            // Create lookup structures for efficiency
             var activeModLookup = activeModsWithOrder
-                .Where(m => m.Mod != null && !string.IsNullOrEmpty(m.Mod.PackageId)) // Safety checks
+                .Where(m => m.Mod != null && !string.IsNullOrEmpty(m.Mod.PackageId))
                 .ToDictionary(m => m.Mod.PackageId.ToLowerInvariant(), m => m, StringComparer.OrdinalIgnoreCase);
 
             var activePackageIds = activeModLookup.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -413,10 +439,9 @@ namespace RimSharp.Features.ModManager.Services.Management
             foreach (var currentEntry in activeModsWithOrder)
             {
                 var currentMod = currentEntry.Mod;
-                if (currentMod == null) continue; // Skip if mod is null
+                if (currentMod == null) continue;
 
                 var issues = new List<string>();
-                // Reset previous issues
                 currentMod.HasIssues = false;
                 currentMod.IssueTooltipText = string.Empty;
 
@@ -431,7 +456,7 @@ namespace RimSharp.Features.ModManager.Services.Management
                         {
                             issues.Add($"Dependency missing: '{dep.DisplayName ?? dep.PackageId}'");
                         }
-                        // 2. Check Dependency Load Order (must load *before* current mod)
+                        // 2. Check Dependency Load Order
                         else if (activeModLookup.TryGetValue(depIdLower, out var depEntry))
                         {
                             if (depEntry.LoadOrder > currentEntry.LoadOrder)
@@ -447,11 +472,10 @@ namespace RimSharp.Features.ModManager.Services.Management
                 {
                     foreach (var incompatibleId in currentMod.IncompatibleWith)
                     {
-                         if (string.IsNullOrEmpty(incompatibleId)) continue;
-                         var incIdLower = incompatibleId.ToLowerInvariant();
+                        if (string.IsNullOrEmpty(incompatibleId)) continue;
+                        var incIdLower = incompatibleId.ToLowerInvariant();
                         if (activePackageIds.Contains(incIdLower))
                         {
-                            // Try to get the name for a better message
                             string incompatibleName = activeModLookup.TryGetValue(incIdLower, out var incEntry)
                                                     ? incEntry.Mod?.Name ?? incIdLower
                                                     : incIdLower;
@@ -478,7 +502,7 @@ namespace RimSharp.Features.ModManager.Services.Management
                 }
 
                 // 5. Check Load After Order
-                 var loadAfterIds = (currentMod.LoadAfter ?? Enumerable.Empty<string>())
+                var loadAfterIds = (currentMod.LoadAfter ?? Enumerable.Empty<string>())
                                    .Concat(currentMod.ForceLoadAfter ?? Enumerable.Empty<string>())
                                    .Where(id => !string.IsNullOrEmpty(id))
                                    .Select(id => id.ToLowerInvariant());
@@ -488,7 +512,7 @@ namespace RimSharp.Features.ModManager.Services.Management
                     {
                         if (targetEntry.LoadOrder > currentEntry.LoadOrder)
                         {
-                             string targetName = targetEntry.Mod?.Name ?? afterIdLower;
+                            string targetName = targetEntry.Mod?.Name ?? afterIdLower;
                             issues.Add($"Load order: Should load after '{targetName}', but loads before.");
                         }
                     }
@@ -505,8 +529,7 @@ namespace RimSharp.Features.ModManager.Services.Management
             }
 
             _hasAnyActiveModIssues = anyIssuesFound;
-             Debug.WriteLine($"[RecalculateActiveModIssues] Finished. AnyIssuesFound: {_hasAnyActiveModIssues}");
+            Debug.WriteLine($"[RecalculateActiveModIssues] Finished. AnyIssuesFound: {_hasAnyActiveModIssues}");
         }
-
     }
 }
