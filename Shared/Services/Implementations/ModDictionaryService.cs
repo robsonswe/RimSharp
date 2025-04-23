@@ -15,13 +15,14 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
         // Re-use the same relative path as replacements.json
         private readonly string _databaseRulesDbRelativePath = Path.Combine("Rules", "db");
 
-        private readonly IPathService _pathService;
+        private readonly IPathService _pathService; // Now needed for GetEntryByPackageId logic
         private readonly string _appBasePath;
         private readonly ILoggerService _logger;
         private Dictionary<string, ModDictionaryEntry> _dictionaryCache = null; // Cache keyed by lowercase SteamId
         private bool _isInitialized = false;
         private readonly object _lock = new object();
 
+        // Constructor remains the same - IPathService is already injected
         public ModDictionaryService(IPathService pathService, string appBasePath, ILoggerService logger)
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
@@ -70,11 +71,62 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
             var cache = GetAllEntries(); // Ensures cache is loaded
             string normalizedId = packageId.ToLowerInvariant();
 
-            // Find the first match based on the PackageId (case-insensitive)
-            // Note: Order is not guaranteed if multiple entries exist for the same packageId.
-            return cache.Values.FirstOrDefault(entry =>
+            // 1. Find all potential candidates matching the packageId (case-insensitive)
+            var candidates = cache.Values.Where(entry =>
                 !string.IsNullOrEmpty(entry.PackageId) &&
-                entry.PackageId.Equals(normalizedId, StringComparison.OrdinalIgnoreCase));
+                entry.PackageId.Equals(normalizedId, StringComparison.OrdinalIgnoreCase))
+                .ToList(); // Materialize the list
+
+            // 2. Handle simple cases: no matches or only one match
+            if (candidates.Count == 0)
+            {
+                return null;
+            }
+            if (candidates.Count == 1)
+            {
+                return candidates[0];
+            }
+
+            // 3. Multiple candidates exist - apply prioritization logic
+            _logger.LogDebug($"Found {candidates.Count} potential dictionary entries for packageId '{packageId}'. Applying prioritization.", nameof(ModDictionaryService));
+
+            // 3a. Get the current major game version
+            string majorGameVersion = _pathService.GetMajorGameVersion();
+            bool isVersionValid = !string.IsNullOrEmpty(majorGameVersion) && !majorGameVersion.StartsWith("N/A");
+
+            if (isVersionValid)
+            {
+                 _logger.LogDebug($"Prioritizing based on major game version: '{majorGameVersion}'", nameof(ModDictionaryService));
+            }
+            else
+            {
+                 _logger.LogDebug($"Cannot prioritize based on game version (Version: '{majorGameVersion}'). Proceeding with Published status.", nameof(ModDictionaryService));
+            }
+
+            // 3b. Sort the candidates based on the rules
+            //    - Rule 1: Prioritize matching major game version (if version is valid)
+            //    - Rule 2: Prioritize Published = true
+            //    - Rule 3: FirstOrDefault handles the final tie-break if still needed
+            var prioritizedEntry = candidates
+                .OrderByDescending(entry =>
+                    isVersionValid &&
+                    entry.Versions != null && // Safety check
+                    entry.Versions.Contains(majorGameVersion))
+                .ThenByDescending(entry => entry.Published)
+                .FirstOrDefault(); // Select the highest priority entry
+
+            if (prioritizedEntry != null)
+            {
+                 _logger.LogDebug($"Selected entry for packageId '{packageId}' with SteamId '{prioritizedEntry.SteamId}' after prioritization.", nameof(ModDictionaryService));
+            }
+            else
+            {
+                 // This case should theoretically not happen if candidates.Count > 0,
+                 // but log just in case.
+                 _logger.LogWarning($"Prioritization resulted in null for packageId '{packageId}' despite having {candidates.Count} candidates.", nameof(ModDictionaryService));
+            }
+
+            return prioritizedEntry;
         }
 
         public List<ModDictionaryEntry> GetAllEntriesByPackageId(string packageId)
@@ -100,11 +152,6 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
             return results;
         }
 
-        /// <summary>
-        /// Loads dictionary data from the db.json file.
-        /// Populates the provided dictionary. Ensures directory and file exist.
-        /// </summary>
-        /// <returns>The number of items successfully loaded from JSON.</returns>
         private int LoadFromJson(Dictionary<string, ModDictionaryEntry> targetDictionary)
         {
             var dbDirectoryPath = Path.Combine(_appBasePath, _databaseRulesDbRelativePath);
@@ -179,12 +226,10 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
                                 Name = details.Name,
                                 Versions = details.Versions ?? new List<string>(), // Ensure list exists
                                 Authors = details.Authors,
-                                Published = details.Published
+                                Published = details.Published // Ensure this property exists in ModDetails and ModDictionaryEntry
                             };
 
                             // Add to the target dictionary using lowercase SteamId as the key
-                            // This will overwrite if duplicate SteamIDs are found across different PackageIDs (unlikely but possible)
-                            // Or if the same packageId/steamId combo appears twice in the file (last one wins)
                             if (targetDictionary.ContainsKey(steamIdLower))
                             {
                                 _logger.LogWarning($"Duplicate Steam ID '{steamIdLower}' found in '{jsonFilePath}'. Overwriting entry. Previous package: '{targetDictionary[steamIdLower].PackageId}', New package: '{packageIdLower}'.", nameof(ModDictionaryService));
@@ -197,7 +242,8 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
             }
             catch (JsonException jsonEx)
             {
-                _logger.LogException(jsonEx, $"Error parsing JSON file '{jsonFilePath}'. Check for invalid boolean values for 'published'.", nameof(ModDictionaryService)); // Added note about boolean
+                // Updated error message to include potential boolean issues
+                _logger.LogException(jsonEx, $"Error parsing JSON file '{jsonFilePath}'. Check for invalid boolean values for 'published' (must be true or false, not strings like \"true\").", nameof(ModDictionaryService));
             }
             catch (IOException ioEx)
             {
@@ -235,6 +281,7 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
             public string Name { get; set; }
             public List<string> Versions { get; set; }
             public string Authors { get; set; }
+            // Ensure this matches the case in your JSON or use [JsonPropertyName("published")] if needed
             public bool Published { get; set; }
         }
     }
