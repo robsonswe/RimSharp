@@ -14,7 +14,8 @@ using System.Threading.Tasks;
 using System.Threading;
 using System.Web; // For HttpUtility.UrlEncode
 using System.Net;
-using System.Collections.Generic; // For WebUtility.UrlEncode (alternative)
+using System.Collections.Generic;
+using System.Linq; // For WebUtility.UrlEncode (alternative)
 
 namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 {
@@ -24,7 +25,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         private readonly DownloaderViewModel _parentViewModel;
         private WebView2? _webView;
         private IModExtractorService? _extractorService;
-
+        private bool _isAnalyzingContent = false;
         // --- Properties ---
         private bool _canGoBack;
         public bool CanGoBack { get => _canGoBack; private set => SetProperty(ref _canGoBack, value); }
@@ -33,9 +34,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         public bool CanGoForward { get => _canGoForward; private set => SetProperty(ref _canGoForward, value); }
 
         private bool _isValidModUrl;
-        // Make setter public or internal if DownloadQueueViewModel needs to set it,
-        // but preferably keep private and let events handle updates.
-        // Raising PropertyChanged is essential for DownloadQueueViewModel to react.
         public bool IsValidModUrl
         {
             get => _isValidModUrl;
@@ -43,7 +41,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         }
 
         private bool _isCollectionUrl;
-        // Raising PropertyChanged is essential for DownloadQueueViewModel to react.
         public bool IsCollectionUrl
         {
             get => _isCollectionUrl;
@@ -111,16 +108,13 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         // --- Named Event Handlers ---
         private EventHandler<string>? _navStatusHandler;
         private EventHandler? _navStateChangedHandler;
-        private EventHandler<bool>? _navModUrlValidityHandler;
-        private EventHandler<bool>? _navCollectionUrlValidityHandler;
-        private EventHandler<string>? _navSucceededAndValidHandler;
         private EventHandler<string>? _navSourceUrlChangedHandler;
         private EventHandler? _extractorModInfoAvailableHandler; // Still needed to update IsModInfoAvailable property
         private PropertyChangedEventHandler? _parentPropertyChangedHandler;
         // New event handlers
         private EventHandler<string>? _navStartedHandler;
         private EventHandler? _navEndedHandler;
-
+        private EventHandler<string>? _potentialWorkshopPageLoadedHandler;
 
         public BrowserViewModel(IWebNavigationService navigationService, DownloaderViewModel parentViewModel) : base()
         {
@@ -130,8 +124,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             // Initialize properties from service/parent state
             _canGoBack = _navigationService.CanGoBack;
             _canGoForward = _navigationService.CanGoForward;
-            _isValidModUrl = _navigationService.IsValidModUrl;
-            _isCollectionUrl = _navigationService.IsCollectionUrl;
             _actualCurrentUrl = _navigationService.CurrentUrl ?? string.Empty;
             _addressBarUrl = _actualCurrentUrl;
             IsSecure = _actualCurrentUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
@@ -145,15 +137,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             _navStateChangedHandler = NavigationService_NavigationStateChanged;
             _navigationService.NavigationStateChanged += _navStateChangedHandler;
 
-            _navModUrlValidityHandler = NavigationService_ModUrlValidityChanged;
-            _navigationService.ModUrlValidityChanged += _navModUrlValidityHandler;
-
-            _navCollectionUrlValidityHandler = NavigationService_CollectionUrlValidityChanged;
-            _navigationService.CollectionUrlValidityChanged += _navCollectionUrlValidityHandler; // Ensure this is subscribed
-
-            _navSucceededAndValidHandler = NavigationService_NavigationSucceededAndUrlValid;
-            _navigationService.NavigationSucceededAndUrlValid += _navSucceededAndValidHandler;
-
             _navSourceUrlChangedHandler = NavigationService_SourceUrlChanged; // Handles *confirmed* URL changes
             _navigationService.SourceUrlChanged += _navSourceUrlChangedHandler;
 
@@ -165,6 +148,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             _navigationService.NavigationEnded += _navEndedHandler;
             // --- End Subscribe ---
 
+            _potentialWorkshopPageLoadedHandler = NavigationService_PotentialWorkshopPageLoaded; // <<< SUBSCRIBE
+            _navigationService.PotentialWorkshopPageLoaded += _potentialWorkshopPageLoadedHandler;
 
             _parentPropertyChangedHandler = ParentViewModel_PropertyChanged;
             _parentViewModel.PropertyChanged += _parentPropertyChangedHandler;
@@ -337,12 +322,16 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             RunOnUIThread(() =>
             {
                 IsLoading = true;
-                AddressBarUrl = intendedUrl; // <<<< UPDATE ADDRESS BAR EARLY
+                AddressBarUrl = intendedUrl; // Update address bar early
                 IsSecure = intendedUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
-                // Reset validity flags during navigation start? Optional.
-                // IsValidModUrl = false;
-                // IsCollectionUrl = false;
-                // IsModInfoAvailable = false; // Might be too early, wait for extractor
+
+                IsValidModUrl = false;
+                IsCollectionUrl = false;
+                IsModInfoAvailable = false;
+                _isAnalyzingContent = false; // Also reset analysis flag if navigation interrupts it
+                Debug.WriteLine($"[BrowserVM] Reset validity flags for new navigation to {intendedUrl}.");
+                // --- End FIX ---
+
                 Debug.WriteLine($"[BrowserVM] Updated AddressBarUrl to: {AddressBarUrl}, IsLoading: {IsLoading}, IsSecure: {IsSecure}");
             });
         }
@@ -354,10 +343,18 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             Debug.WriteLine("[BrowserVM] Handling NavigationEnded.");
             RunOnUIThread(() =>
             {
-                IsLoading = false;
+                // If navigation ended (success or failure) but we were analyzing, stop analyzing
+                if (_isAnalyzingContent)
+                {
+                    _isAnalyzingContent = false;
+                     Debug.WriteLine("[BrowserVM] Analysis flag cleared due to NavigationEnded.");
+                }
+                IsLoading = false; // Main loading flag off
                 Debug.WriteLine($"[BrowserVM] IsLoading set to: {IsLoading}");
+                // Reset validity if navigation failed or was cancelled? Maybe not needed, depends on desired behaviour.
             });
         }
+
 
 
         // Handles *confirmed* source URL changes (after navigation completes or history changes)
@@ -387,47 +384,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             });
         }
 
-        // Just updates the property. DownloadQueueViewModel listens for PropertyChanged.
-        private void NavigationService_ModUrlValidityChanged(object? sender, bool isValid)
-        {
-            if (_disposed) return;
-            Debug.WriteLine($"[BrowserVM] Handling ModUrlValidityChanged: {isValid}");
-            RunOnUIThread(() => {
-                IsValidModUrl = isValid;
-                // ---- CalculateCanAddMod() call REMOVED ----
-            });
-        }
-
-        // Just updates the property. DownloadQueueViewModel listens for PropertyChanged.
-        private void NavigationService_CollectionUrlValidityChanged(object? sender, bool isValid)
-        {
-            if (_disposed) return;
-            Debug.WriteLine($"[BrowserVM] Handling CollectionUrlValidityChanged: {isValid}");
-            RunOnUIThread(() => {
-                IsCollectionUrl = isValid;
-                // ---- CalculateCanAddMod() call REMOVED ----
-            });
-        }
-
-
-        // Still useful to trigger extraction on successful navigation
-        private async void NavigationService_NavigationSucceededAndUrlValid(object? sender, string url)
-        {
-            if (_disposed || _extractorService == null) return;
-            Debug.WriteLine($"[BrowserVM] Handling NavigationSucceededAndUrlValid for URL ({url}). Triggering info extraction.");
-            RunOnUIThread(() => StatusChanged?.Invoke(this, "Extracting mod details..."));
-            try
-            {
-                // Get info, which will trigger ExtractorService_IsModInfoAvailableChanged if needed
-                await GetCurrentModInfoAsync();
-                RunOnUIThread(() => StatusChanged?.Invoke(this, "Mod details extracted (if available)."));
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[BrowserVM] Extraction failed after NavSucceededAndValid: {ex.Message}");
-                RunOnUIThread(() => StatusChanged?.Invoke(this, $"Error during automatic info extraction: {ex.Message}"));
-            }
-        }
 
         // Updates the IsModInfoAvailable property. DownloadQueueViewModel listens for PropertyChanged.
         private void ExtractorService_IsModInfoAvailableChanged(object? sender, EventArgs e)
@@ -441,6 +397,131 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 Debug.WriteLine($"[BrowserVM] Handling ExtractorService_IsModInfoAvailableChanged. IsModInfoAvailable: {IsModInfoAvailable}");
             });
         }
+
+       private async void NavigationService_PotentialWorkshopPageLoaded(object? sender, string url)
+        // --- FIX: Change Task back to void ---
+        {
+            if (_disposed || _extractorService == null || _isAnalyzingContent)
+            {
+                Debug.WriteLine($"[BrowserVM] Skipping PotentialWorkshopPageLoaded handler: Disposed={_disposed}, ExtractorNull={_extractorService == null}, Analyzing={_isAnalyzingContent}, Url='{url}'");
+                return; // Avoid concurrent analysis or if disposed/no extractor
+            }
+
+            Debug.WriteLine($"[BrowserVM] Handling PotentialWorkshopPageLoaded for URL: {url}. Starting content analysis.");
+            _isAnalyzingContent = true;
+
+            // Reset state before analysis
+            // Use RunOnUIThread for UI updates like StatusChanged, direct property sets are usually fine if INPC handles marshalling
+             RunOnUIThread(() => StatusChanged?.Invoke(this, "Analyzing page content..."));
+            // Setting properties directly here is okay, PropertyChanged will fire.
+            IsValidModUrl = false;
+            IsCollectionUrl = false;
+            IsModInfoAvailable = false; // Reset this too
+
+            try
+            {
+                List<CollectionItemInfo>? collectionItems = null;
+                try
+                {
+                    if (_webView?.CoreWebView2 == null)
+                    {
+                         Debug.WriteLine($"[BrowserVM] PotentialWorkshopPageLoaded: CoreWebView2 is null, skipping collection extraction for {url}.");
+                         throw new InvalidOperationException("WebView2 Core is not available for script execution.");
+                    }
+                    // Await the collection check
+                    collectionItems = await _extractorService.ExtractCollectionItemsAsync();
+                    Debug.WriteLine($"[BrowserVM] Collection extraction for {url} resulted in {collectionItems?.Count ?? 0} items.");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[BrowserVM] Error during ExtractCollectionItemsAsync for {url}: {ex.Message}");
+                    collectionItems = null; // Treat error as "not a collection"
+                     // Log the exception
+                    // _parentViewModel?.LogService.Error($"[BrowserVM] Failed to extract collection items from {url}: {ex}", ex);
+                }
+
+                bool isCollection = collectionItems != null && collectionItems.Any();
+
+                if (isCollection)
+                {
+                     // It's a collection - update state on UI thread
+                     RunOnUIThread(() =>
+                     {
+                        IsCollectionUrl = true;
+                        IsValidModUrl = false; // Explicitly set false
+                        IsModInfoAvailable = false; // Not applicable for collections
+                        StatusChanged?.Invoke(this, $"Collection detected ({collectionItems.Count} items).");
+                        Debug.WriteLine($"[BrowserVM] Content analysis determined: IsCollectionUrl=True for {url}");
+                     });
+                }
+                else // Not a collection, treat as potential single mod
+                {
+                    Debug.WriteLine($"[BrowserVM] Content analysis determined: Not a collection for {url}. Attempting single mod info extraction.");
+
+                    if (_webView?.CoreWebView2 == null)
+                    {
+                         Debug.WriteLine($"[BrowserVM] PotentialWorkshopPageLoaded: CoreWebView2 is null, skipping single mod info extraction for {url}.");
+                         throw new InvalidOperationException("WebView2 Core is not available for script execution.");
+                    }
+
+                    ModInfoDto? modInfo = null;
+                    bool extractionSucceeded = false;
+                    try
+                    {
+                        // --- Await the single mod info extraction FIRST ---
+                        modInfo = await GetCurrentModInfoAsync();
+                        // If GetCurrentModInfoAsync completes without error, IsModInfoAvailable *should* be true
+                        // (assuming the extractor service correctly sets its internal state and raises the event).
+                        extractionSucceeded = modInfo != null && _extractorService.IsModInfoAvailable; // Check if info was actually available
+                        Debug.WriteLine($"[BrowserVM] Single mod info extraction completed for {url}. Mod Name: '{modInfo?.Name ?? "N/A"}'. IsModInfoAvailable: {extractionSucceeded}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[BrowserVM] Error during GetCurrentModInfoAsync for {url}: {ex.Message}");
+                        extractionSucceeded = false; // Failed extraction means info not available
+                        // Log the exception
+                        // _parentViewModel?.LogService.Error($"[BrowserVM] Failed to extract single mod info from {url}: {ex}", ex);
+                        // The InvalidOperationException might happen here!
+                    }
+
+                    // --- Now update the state AFTER awaiting ---
+                    RunOnUIThread(() =>
+                    {
+                        IsCollectionUrl = false; // Explicitly set false
+                        IsValidModUrl = true; // Set this true as we've determined it's not a collection
+                        // IsModInfoAvailable should already be set by the event handler triggered from the awaited call.
+                        // We just reflect the success state.
+                        StatusChanged?.Invoke(this, extractionSucceeded ? "Single mod page detected." : "Single mod page detected, but info extraction failed.");
+                        Debug.WriteLine($"[BrowserVM] Final state after single mod check for {url}: IsValidModUrl=True, IsModInfoAvailable={IsModInfoAvailable}, IsCollectionUrl=False");
+                    });
+                }
+            }
+            catch (Exception ex) // Catch unexpected errors during the handler logic itself
+            {
+                Debug.WriteLine($"[BrowserVM] Unexpected error during PotentialWorkshopPageLoaded handler for {url}: {ex.Message}");
+                // Log the exception
+                // _parentViewModel?.LogService.Error($"[BrowserVM] Unexpected error analyzing {url}: {ex}", ex);
+                RunOnUIThread(() => {
+                    StatusChanged?.Invoke(this, $"Error analyzing page: {ex.Message}");
+                    IsValidModUrl = false; // Reset on error
+                    IsCollectionUrl = false;
+                    IsModInfoAvailable = false;
+                });
+            }
+            finally // Ensure analysis flag is reset
+            {
+                RunOnUIThread(() => {
+                    _isAnalyzingContent = false;
+                    Debug.WriteLine($"[BrowserVM] Content analysis finished for {url}. Analysis flag reset.");
+                    // Explicitly trigger CanExecuteChanged for AddModCommand in QueueViewModel if needed,
+                    // although observation of IsValidModUrl/IsModInfoAvailable/IsCollectionUrl should handle it.
+                    // (_parentViewModel.QueueViewModel.AddModCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+                });
+            }
+        }
+
+
+
 
 
         // --- Command Logic (Unchanged) ---
@@ -517,12 +598,10 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 {
                     if (_navStatusHandler != null) _navigationService.StatusChanged -= _navStatusHandler;
                     if (_navStateChangedHandler != null) _navigationService.NavigationStateChanged -= _navStateChangedHandler;
-                    if (_navModUrlValidityHandler != null) _navigationService.ModUrlValidityChanged -= _navModUrlValidityHandler;
-                    if (_navCollectionUrlValidityHandler != null) _navigationService.CollectionUrlValidityChanged -= _navCollectionUrlValidityHandler; // Unsubscribe
-                    if (_navSucceededAndValidHandler != null) _navigationService.NavigationSucceededAndUrlValid -= _navSucceededAndValidHandler;
                     if (_navSourceUrlChangedHandler != null) _navigationService.SourceUrlChanged -= _navSourceUrlChangedHandler;
                     if (_navStartedHandler != null) _navigationService.NavigationStarted -= _navStartedHandler;
                     if (_navEndedHandler != null) _navigationService.NavigationEnded -= _navEndedHandler;
+                    if (_potentialWorkshopPageLoadedHandler != null) _navigationService.PotentialWorkshopPageLoaded -= _potentialWorkshopPageLoadedHandler;
                     Debug.WriteLine("[BrowserVM] Unsubscribed from NavigationService events.");
                 }
                 // Unsubscribe from Extractor Service
@@ -543,9 +622,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 // Clear handler references
                 _navStatusHandler = null;
                 _navStateChangedHandler = null;
-                _navModUrlValidityHandler = null;
-                _navCollectionUrlValidityHandler = null; // Clear ref
-                _navSucceededAndValidHandler = null;
                 _navSourceUrlChangedHandler = null;
                 _extractorModInfoAvailableHandler = null;
                 _parentPropertyChangedHandler = null;
