@@ -16,21 +16,18 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         void Navigate(string url); // Added for explicit navigation requests
         bool CanGoBack { get; }
         bool CanGoForward { get; }
-        bool IsValidModUrl { get; }
-        bool IsCollectionUrl { get; }
         string CurrentUrl { get; } // Represents the *actual* current URL after completion/source change
         string? IntendedUrl { get; } // Represents the URL being navigated *to*
 
         event EventHandler<string> SourceUrlChanged; // Raised when the Source property actually changes (or potentially on start)
         event EventHandler<string> StatusChanged;
         event EventHandler NavigationStateChanged;
-        event EventHandler<bool> ModUrlValidityChanged;
-        event EventHandler<bool> CollectionUrlValidityChanged;
-        event EventHandler<string> NavigationSucceededAndUrlValid;
 
         // --- New Events for Loading State ---
         event EventHandler<string> NavigationStarted; // Passes the intended URL
         event EventHandler NavigationEnded; // Signals completion or failure
+        event EventHandler<string> PotentialWorkshopPageLoaded; // Raised when a potential workshop page finishes loading successfully
+
         // --- New Window Handling Event ---
         event EventHandler<string> NewWindowNavigationRequested;
     }
@@ -38,12 +35,9 @@ namespace RimSharp.Features.WorkshopDownloader.Services
     public class WebNavigationService : IWebNavigationService, IDisposable
     {
         private WebView2? _webView;
-        private ModExtractorService? _extractorService; // Keep extractor handling separate maybe? ViewModel owns it now.
 
         private bool _canGoBack;
         private bool _canGoForward;
-        private bool _isValidModUrl;
-        private bool _isCollectionUrl;
         private string _currentUrl = string.Empty; // Backing field for CurrentUrl property
         private string? _intendedUrl; // Backing field for IntendedUrl property
 
@@ -70,31 +64,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 {
                     _canGoForward = value;
                     OnNavigationStateChanged();
-                }
-            }
-        }
-
-        public bool IsValidModUrl
-        {
-            get => _isValidModUrl;
-            private set
-            {
-                if (_isValidModUrl != value)
-                {
-                    _isValidModUrl = value;
-                    ModUrlValidityChanged?.Invoke(this, _isValidModUrl);
-                }
-            }
-        }
-        public bool IsCollectionUrl // <<< ADDED Property
-        {
-            get => _isCollectionUrl;
-            private set
-            {
-                if (_isCollectionUrl != value)
-                {
-                    _isCollectionUrl = value;
-                    CollectionUrlValidityChanged?.Invoke(this, _isCollectionUrl); // <<< Raise new event
                 }
             }
         }
@@ -132,11 +101,9 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         public event EventHandler<string>? SourceUrlChanged;
         public event EventHandler<string>? StatusChanged;
         public event EventHandler? NavigationStateChanged;
-        public event EventHandler<bool>? ModUrlValidityChanged;
-        public event EventHandler<bool>? CollectionUrlValidityChanged;
-        public event EventHandler<string>? NavigationSucceededAndUrlValid;
         public event EventHandler<string>? NavigationStarted; // Passes intended URL
         public event EventHandler? NavigationEnded;
+        public event EventHandler<string>? PotentialWorkshopPageLoaded;
         public event EventHandler<string>? NewWindowNavigationRequested; // For handling new windows
 
         public void SetWebView(WebView2 webView)
@@ -147,9 +114,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
             _webView = webView ?? throw new ArgumentNullException(nameof(webView));
 
-            // ModExtractorService is now created and managed by BrowserViewModel
-            // _extractorService?.Dispose();
-            // _extractorService = new ModExtractorService(webView);
 
             if (_webView.CoreWebView2 == null)
             {
@@ -163,7 +127,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 HookCoreWebView2Events();
                 UpdateNavigationState();
                 CurrentUrl = _webView.Source?.ToString() ?? string.Empty; // Update initial confirmed URL
-                CheckUrlValidity(CurrentUrl);
                 SourceUrlChanged?.Invoke(this, CurrentUrl); // Raise initial URL change
             }
         }
@@ -179,7 +142,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 HookCoreWebView2Events();
                 UpdateNavigationState();
                 CurrentUrl = _webView.Source?.ToString() ?? string.Empty; // Update confirmed URL
-                CheckUrlValidity(CurrentUrl);
                 SourceUrlChanged?.Invoke(this, CurrentUrl); // Raise initial URL change
             }
             else
@@ -241,7 +203,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             IntendedUrl = targetUrl; // Set the intended URL
             StatusChanged?.Invoke(this, $"Loading: {targetUrl}");
             NavigationStarted?.Invoke(this, targetUrl); // Raise NavigationStarted with the URL
-            // CheckUrlValidity(targetUrl); // Maybe too early? Validity depends on successful load often.
         }
 
         private void WebView_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
@@ -252,22 +213,23 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
             CurrentUrl = finalUrl; // Update the confirmed current URL
             IntendedUrl = null; // Clear intended URL after completion
-            CheckUrlValidity(finalUrl); // Check validity based on the final URL
             UpdateNavigationState(); // Update CanGoBack/Forward
 
             string status;
             if (e.IsSuccess)
             {
                 status = $"Loaded: {finalUrl}";
-                if (IsValidModUrl)
+                // --- NEW: Check if it's potentially a workshop page and raise event ---
+                if (IsPotentiallyWorkshopPage(finalUrl))
                 {
-                    Debug.WriteLine($"[WebNavService] Navigation completed successfully for valid mod URL: {finalUrl}. Raising NavSucceededAndValid.");
-                    NavigationSucceededAndUrlValid?.Invoke(this, finalUrl);
+                    Debug.WriteLine($"[WebNavService] Navigation succeeded for potentially valid workshop page: {finalUrl}. Raising PotentialWorkshopPageLoaded.");
+                    PotentialWorkshopPageLoaded?.Invoke(this, finalUrl); // <<< RAISE NEW EVENT
                 }
                 else
                 {
-                    Debug.WriteLine($"[WebNavService] Navigation completed successfully, but URL is not a valid mod URL: {finalUrl}");
+                    Debug.WriteLine($"[WebNavService] Navigation succeeded, but URL is not a potential workshop page: {finalUrl}");
                 }
+                // --- End NEW ---
             }
             else
             {
@@ -282,7 +244,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                     status = $"Navigation cancelled/aborted: {finalUrl}";
                     Debug.WriteLine($"[WebNavService] Navigation cancelled/aborted for URL: {finalUrl}");
                 }
-
             }
             StatusChanged?.Invoke(this, status);
             NavigationEnded?.Invoke(this, EventArgs.Empty); // Signal navigation attempt has finished
@@ -296,14 +257,17 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             string newSource = _webView?.CoreWebView2?.Source ?? string.Empty;
             Debug.WriteLine($"[WebNavService] SourceChanged: IsNewDocument={e.IsNewDocument}, New Source={newSource}");
 
-            if (CurrentUrl != newSource) // Only update if different from what NavigationCompleted set
+            if (CurrentUrl != newSource)
             {
                 CurrentUrl = newSource;
-                // Do NOT update IntendedUrl here
-                CheckUrlValidity(newSource);
-                UpdateNavigationState(); // Update CanGoBack/Forward
-                SourceUrlChanged?.Invoke(this, newSource); // Signal the *confirmed* source has changed
+                UpdateNavigationState();
+                SourceUrlChanged?.Invoke(this, newSource);
                 Debug.WriteLine($"[WebNavService] Raised SourceUrlChanged from SourceChanged handler: {newSource}");
+                if (IsPotentiallyWorkshopPage(newSource))
+                {
+                    Debug.WriteLine($"[WebNavService] SourceChanged to potentially valid workshop page: {newSource}. Raising PotentialWorkshopPageLoaded.");
+                    PotentialWorkshopPageLoaded?.Invoke(this, newSource); // <<< RAISE NEW EVENT
+                }
             }
         }
 
@@ -432,38 +396,25 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         }
 
 
-        private void CheckUrlValidity(string? url)
+        private bool IsPotentiallyWorkshopPage(string? url)
         {
-            bool isSingleMod = false;
-            bool isCollection = false;
-
             if (!string.IsNullOrWhiteSpace(url) && Uri.TryCreate(url, UriKind.Absolute, out var uri))
             {
                 bool isSteamWorkshop = uri.Host.EndsWith("steamcommunity.com", StringComparison.OrdinalIgnoreCase);
+                // Check for *either* path segment associated with items/collections
                 bool hasFileDetailsPath = uri.AbsolutePath.Contains("/sharedfiles/filedetails/", StringComparison.OrdinalIgnoreCase);
-                bool hasWorkshopPath = uri.AbsolutePath.Contains("/workshop/filedetails/", StringComparison.OrdinalIgnoreCase); // Collection path
+                bool hasWorkshopPath = uri.AbsolutePath.Contains("/workshop/filedetails/", StringComparison.OrdinalIgnoreCase);
                 string? id = HttpUtility.ParseQueryString(uri.Query).Get("id");
                 bool hasId = !string.IsNullOrEmpty(id);
 
-                if (isSteamWorkshop && hasId)
-                {
-                    if (hasFileDetailsPath)
-                    {
-                        isSingleMod = true; // Path for single mods
-                    }
-                    else if (hasWorkshopPath)
-                    {
-                        isCollection = true; // Path for collections
-                    }
-                }
+                // Needs to be steam, have an ID, and contain one of the known path segments
+                bool isPotential = isSteamWorkshop && hasId && (hasFileDetailsPath || hasWorkshopPath);
+                Debug.WriteLine($"[WebNavService] Potential Workshop Page Check for '{url}': {isPotential}");
+                return isPotential;
             }
-
-            // Set properties - setters will raise events if changed
-            IsValidModUrl = isSingleMod;
-            IsCollectionUrl = isCollection;
-            Debug.WriteLine($"[WebNavService] URL Validity Check for '{url}': IsSingleMod={isSingleMod}, IsCollection={isCollection}");
+            Debug.WriteLine($"[WebNavService] Potential Workshop Page Check for '{url}': False (invalid URL)");
+            return false;
         }
-
         // --- IDisposable ---
         private bool _disposed = false;
 
