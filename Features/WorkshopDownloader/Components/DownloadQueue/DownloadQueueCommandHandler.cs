@@ -226,12 +226,12 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
             try
             {
-                StatusChanged?.Invoke(this, $"Starting download of {itemsToDownload.Count} mod(s). Please observe the SteamCMD window...");
+                StatusChanged?.Invoke(this, $"Downloading {itemsToDownload.Count} mod(s) trough SteamCMD. Do not close the app...");
 
                 // Show non-cancelable, indeterminate progress dialog during SteamCMD execution
                 progressDialog = _dialogService.ShowProgressDialog(
                     "Downloading Mods",
-                    $"Running SteamCMD for {itemsToDownload.Count} mod(s). See console window for details...",
+                    $"Downloading {itemsToDownload.Count} mod(s) trough SteamCMD. Do not close the app...",
                     canCancel: false, // SteamCMD cancellation happens via main cancel button/token
                     isIndeterminate: true,
                     closeable: false // Keep open until processing finishes
