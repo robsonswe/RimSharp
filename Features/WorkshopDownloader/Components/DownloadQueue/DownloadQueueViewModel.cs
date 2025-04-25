@@ -23,6 +23,9 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
         private readonly ISteamCmdService _steamCmdService;
         private readonly DownloadQueueCommandHandler _commandHandler;
         private readonly ModInfoEnricher _modInfoEnricher;
+
+        public BrowserViewModel BrowserViewModel => _browserViewModel;
+
         private bool _isOperationInProgress;
         public bool IsOperationInProgress
         {
@@ -101,7 +104,9 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             Func<CancellationToken> getCancellationToken,
             IModListManager modListManager,
             ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor,
-            ILoggerService logger)
+            ILoggerService logger,
+            ISteamApiClient steamApiClient
+            )
         {
             _queueService = queueService ?? throw new ArgumentNullException(nameof(queueService));
             _browserViewModel = browserViewModel ?? throw new ArgumentNullException(nameof(browserViewModel));
@@ -110,7 +115,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             _modInfoEnricher = new ModInfoEnricher(modListManager);
             _commandHandler = new DownloadQueueCommandHandler(
                 queueService, modService, dialogService, updateCheckerService,
-                steamCmdService, browserViewModel, getCancellationToken, modListManager, _modInfoEnricher, steamWorkshopQueueProcessor, logger
+                steamCmdService, browserViewModel, getCancellationToken, modListManager, _modInfoEnricher, steamWorkshopQueueProcessor, logger, steamApiClient
             );
 
             // Initialize properties based on initial handler state
@@ -217,14 +222,13 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
         private void CalculateCanAddMod()
         {
-            // Combine all conditions here
-            CanAddMod = IsSteamCmdReady // State owned by this VM
-                        && !IsOperationInProgress // State owned by this VM
-                        && _browserViewModel != null // Check browser VM exists
-                        && ((_browserViewModel.IsValidModUrl && _browserViewModel.IsModInfoAvailable) // Browser state
-                             || _browserViewModel.IsCollectionUrl); // Browser state
+            // Use the public property now for consistency, or keep using _browserViewModel
+            CanAddMod = IsSteamCmdReady
+                        && !IsOperationInProgress
+                        && BrowserViewModel != null // Use public property
+                        && (BrowserViewModel.IsValidModUrl || BrowserViewModel.IsCollectionUrl); // Use public property
 
-            Debug.WriteLine($"[QueueVM] Calculated CanAddMod: {CanAddMod} (IsSteamCmdReady={IsSteamCmdReady}, !InProg={!IsOperationInProgress}, IsValidModUrl={_browserViewModel?.IsValidModUrl}, IsModInfoAvailable={_browserViewModel?.IsModInfoAvailable}, IsCollectionUrl={_browserViewModel?.IsCollectionUrl})");
+            Debug.WriteLine($"[QueueVM] Calculated CanAddMod: {CanAddMod} (IsSteamCmdReady={IsSteamCmdReady}, !InProg={!IsOperationInProgress}, IsValidModUrl={BrowserViewModel?.IsValidModUrl}, IsCollectionUrl={BrowserViewModel?.IsCollectionUrl})");
         }
 
         private void QueueService_ItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)

@@ -263,11 +263,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 UpdateNavigationState();
                 SourceUrlChanged?.Invoke(this, newSource);
                 Debug.WriteLine($"[WebNavService] Raised SourceUrlChanged from SourceChanged handler: {newSource}");
-                if (IsPotentiallyWorkshopPage(newSource))
-                {
-                    Debug.WriteLine($"[WebNavService] SourceChanged to potentially valid workshop page: {newSource}. Raising PotentialWorkshopPageLoaded.");
-                    PotentialWorkshopPageLoaded?.Invoke(this, newSource); // <<< RAISE NEW EVENT
-                }
             }
         }
 
