@@ -1,7 +1,7 @@
 #nullable enable
 using System.Windows.Input;
 using System.Windows.Forms; // Add reference to System.Windows.Forms assembly for FolderBrowserDialog
-using System.IO; // For Directory.Exists and Path.Combine
+using System.IO; // For Directory.Exists, Path.Combine, Path.GetPathRoot
 using System.Diagnostics;
 using System;
 using RimSharp.AppDir.AppFiles;
@@ -114,11 +114,15 @@ namespace RimSharp.AppDir.MainPage
 
             // Subscribe to navigation requests
             _navigationService.TabSwitchRequested += OnTabSwitchRequested;
+
+            // Initial drive check on startup if GamePath is already set
+             CheckAndWarnDifferentDrives(PathSettings.GamePath);
         }
         // --- END Constructor ---
 
         private void OnTabSwitchRequested(object? sender, string tabName)
         { RunOnUIThread(() => SwitchTab(tabName)); }
+
         private void PathSettings_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             OnPropertyChanged(nameof(PathSettings)); // Notify UI about the whole object change
@@ -127,12 +131,15 @@ namespace RimSharp.AppDir.MainPage
             string? value = null;
             bool refreshNeeded = false;
             bool pathSettingsChanged = false;
+            string? potentiallyChangedGamePath = null; // Store the new game path temporarily
 
             switch (e.PropertyName)
             {
                 case nameof(PathSettings.GamePath):
                     key = "game_folder";
                     value = PathSettings.GamePath;
+                    potentiallyChangedGamePath = value; // Capture the new game path
+
                     // Update related properties
                     PathSettings.GameVersion = _pathService.GetGameVersion(value ?? string.Empty);
                     // *** Derive and update ModsPath ***
@@ -146,12 +153,6 @@ namespace RimSharp.AppDir.MainPage
                     refreshNeeded = true; // Config path change *might* require refresh (e.g., active mod list)
                     pathSettingsChanged = true;
                     break;
-                // case nameof(PathSettings.ModsPath): // REMOVED - ModsPath is now derived
-                //     key = "mods_folder";
-                //     value = PathSettings.ModsPath;
-                //     refreshNeeded = true;
-                //     pathSettingsChanged = true;
-                //     break;
                 case nameof(PathSettings.GameVersion):
                     // GameVersion change doesn't require saving config or full refresh,
                     // but notify UI if needed. PathSettings object notification handles this.
@@ -168,6 +169,14 @@ namespace RimSharp.AppDir.MainPage
                 _configService.SetConfigValue(key, value);
                 _configService.SaveConfig();
             }
+
+            // --- Add Drive Check Here ---
+            if (e.PropertyName == nameof(PathSettings.GamePath))
+            {
+                CheckAndWarnDifferentDrives(potentiallyChangedGamePath);
+            }
+            // --- End Drive Check ---
+
 
             if (refreshNeeded && RefreshCommand.CanExecute(null))
             {
@@ -187,6 +196,60 @@ namespace RimSharp.AppDir.MainPage
             {
                 // Update CanExecute for commands that depend on path validity
                 RunOnUIThread(() => ((DelegateCommand<string>)OpenFolderCommand).RaiseCanExecuteChanged());
+            }
+        }
+
+        /// <summary>
+        /// Checks if the provided game path is on a different drive than the application
+        /// and shows a warning dialog if it is.
+        /// </summary>
+        /// <param name="gamePath">The game path to check.</param>
+        private void CheckAndWarnDifferentDrives(string? gamePath)
+        {
+            if (string.IsNullOrEmpty(gamePath))
+            {
+                return; // No path set, nothing to compare
+            }
+
+            try
+            {
+                string? appBasePath = AppContext.BaseDirectory;
+                if (string.IsNullOrEmpty(appBasePath))
+                {
+                    Debug.WriteLine("[MainViewModel] Could not determine application base directory.");
+                    return; // Cannot compare if we don't know where the app is
+                }
+
+                string? appRoot = Path.GetPathRoot(appBasePath);
+                string? gameRoot = Path.GetPathRoot(gamePath);
+
+                // Ensure roots could be determined and compare them (case-insensitive)
+                if (!string.IsNullOrEmpty(appRoot) &&
+                    !string.IsNullOrEmpty(gameRoot) &&
+                    !string.Equals(appRoot, gameRoot, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Show warning dialog on the UI thread
+                    RunOnUIThread(() =>
+                    {
+                        _dialogService.ShowWarning(
+                            "Different Drives Detected",
+                            $"The selected game folder ('{gameRoot}') is on a different drive than RimSharp ('{appRoot}').\n\n" +
+                            "While RimSharp should still function, this configuration might occasionally lead to unexpected behavior or slightly reduced performance with file operations.\n\n" +
+                            "For the most stable experience, it's recommended to install RimSharp on the same drive as your RimWorld installation."
+                        );
+                    });
+                }
+            }
+            catch (ArgumentException ex)
+            {
+                // Path.GetPathRoot can throw ArgumentException for invalid paths
+                Debug.WriteLine($"[MainViewModel] Error getting path root during drive check: {ex.Message}");
+                // Optionally show a less specific error or just log it
+            }
+            catch (Exception ex) // Catch other potential exceptions
+            {
+                 Debug.WriteLine($"[MainViewModel] Unexpected error during drive check: {ex}");
+                 // Avoid crashing the app, just log the error.
             }
         }
 
@@ -333,7 +396,7 @@ namespace RimSharp.AppDir.MainPage
                     switch (pathType)
                     {
                         case "GamePath":
-                            // Setting GamePath will trigger PropertyChanged, which handles updating ModsPath, Version, saving, etc.
+                            // Setting GamePath will trigger PropertyChanged, which handles updating ModsPath, Version, saving, drive check etc.
                             PathSettings.GamePath = selectedPath;
                             break;
                         case "ConfigPath":
