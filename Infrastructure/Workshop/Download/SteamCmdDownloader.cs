@@ -146,8 +146,54 @@ namespace RimSharp.Infrastructure.Workshop.Download
 
             try
             {
-                // --- Step 1: Clean Temp Download Location ---
+                // --- Step 1: Clean Old Download Leftovers ---
                 await CleanTemporaryLocationAsync(steamCmdWorkshopContentPath, result, cancellationToken);
+                // Clean the downloads state folder (CRUCIAL NEW STEP)
+                string downloadsPath = Path.Combine(_pathService.SteamCmdSteamAppsPath, "steamapps", "workshop", "downloads");
+                await CleanDirectoryContentsAsync(downloadsPath, "Workshop Downloads", result, cancellationToken);
+                // Clean the temp folder (if it exists)
+                string workshopTempPath = Path.Combine(_pathService.SteamCmdSteamAppsPath, "steamapps", "workshop", "temp");
+                await CleanDirectoryContentsAsync(workshopTempPath, "Workshop Temp", result, cancellationToken);
+                // --- Delete the Workshop Manifest file (ACF) ---
+                string acfFileName = $"appworkshop_294100.acf";
+                string acfPath = Path.Combine(_pathService.SteamCmdSteamAppsPath, "steamapps", "workshop", acfFileName);
+                _logger.LogInfo($"Attempting cleanup of Workshop Manifest file: {acfPath}", "SteamCmdDownloader");
+                result.LogMessages.Add($"Cleaning Workshop Manifest file ({acfFileName})...");
+                try
+                {
+                    if (File.Exists(acfPath))
+                    {
+                        File.Delete(acfPath);
+                        await Task.Delay(50, cancellationToken); // Brief pause for file system
+
+                        if (!File.Exists(acfPath)) // Verify deletion
+                        {
+                            _logger.LogInfo($"Successfully deleted Workshop Manifest file: {acfPath}", "SteamCmdDownloader");
+                            result.LogMessages.Add("Workshop Manifest file deleted.");
+                        }
+                        else
+                        {
+                            // Log warning if deletion verification failed, but don't necessarily abort yet.
+                            _logger.LogWarning($"Failed to verify deletion of Workshop Manifest file after attempt: {acfPath}", "SteamCmdDownloader");
+                            result.LogMessages.Add($"Warning: Failed to verify deletion of {acfFileName}. It might be locked.");
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogDebug($"Workshop Manifest file not found, skipping deletion: {acfPath}", "SteamCmdDownloader");
+                        result.LogMessages.Add("Workshop Manifest file not found, no cleanup needed.");
+                    }
+                }
+                catch (OperationCanceledException) { throw; } // Propagate cancellation
+                catch (Exception ex)
+                {
+                    // Log a warning if the ACF file couldn't be deleted. It might indicate a permission issue
+                    // or the file being locked, which could still cause problems later.
+                    _logger.LogWarning($"Failed to delete Workshop Manifest file '{acfPath}': {ex.Message}", "SteamCmdDownloader");
+                    result.LogMessages.Add($"Warning: Failed to delete Workshop Manifest file '{acfFileName}'. Error: {ex.Message}");
+                    // Decide if this should be a fatal error or just a warning. For now, warning seems reasonable.
+                }
+                cancellationToken.ThrowIfCancellationRequested();
 
                 // --- Step 2: Retry Loop for Downloading ---
                 for (int attempt = 1; attempt <= MaxDownloadAttempts && itemsToAttemptIds.Any(); attempt++)
@@ -440,7 +486,7 @@ namespace RimSharp.Infrastructure.Workshop.Download
             return true;
         }
 
-private async Task CleanTemporaryLocationAsync(string tempPath, SteamCmdDownloadResult result, CancellationToken cancellationToken)
+        private async Task CleanTemporaryLocationAsync(string tempPath, SteamCmdDownloadResult result, CancellationToken cancellationToken)
         {
             const int maxRetries = 3; // Number of times to retry deleting an item
             const int retryDelayMilliseconds = 250; // Wait time between retries
@@ -459,7 +505,7 @@ private async Task CleanTemporaryLocationAsync(string tempPath, SteamCmdDownload
                     if (!string.IsNullOrEmpty(parentDir))
                     {
                         Directory.CreateDirectory(parentDir);
-                         _logger.LogDebug($"Ensured parent directory exists: {parentDir}", "SteamCmdDownloader");
+                        _logger.LogDebug($"Ensured parent directory exists: {parentDir}", "SteamCmdDownloader");
                     }
                 }
                 catch (Exception ex)
@@ -489,9 +535,9 @@ private async Task CleanTemporaryLocationAsync(string tempPath, SteamCmdDownload
 
             if (!itemsToDelete.Any())
             {
-                 _logger.LogInfo($"Temporary location '{tempPath}' is already empty.", "SteamCmdDownloader");
-                 result.LogMessages.Add("Temporary download location is already empty.");
-                 return;
+                _logger.LogInfo($"Temporary location '{tempPath}' is already empty.", "SteamCmdDownloader");
+                result.LogMessages.Add("Temporary download location is already empty.");
+                return;
             }
 
 
@@ -521,20 +567,20 @@ private async Task CleanTemporaryLocationAsync(string tempPath, SteamCmdDownload
                             }
                             else
                             {
-                                 _logger.LogDebug($"Directory '{itemName}' disappeared before delete attempt {attempt}. Skipping.", "SteamCmdDownloader");
+                                _logger.LogDebug($"Directory '{itemName}' disappeared before delete attempt {attempt}. Skipping.", "SteamCmdDownloader");
                             }
                         }
                         else // Assume it's a file if not a directory (or check File.Exists for certainty)
                         {
-                             if (File.Exists(itemPath)) // Double check it exists
-                             {
+                            if (File.Exists(itemPath)) // Double check it exists
+                            {
                                 File.Delete(itemPath);
                                 _logger.LogDebug($"Successfully deleted file '{itemName}' on attempt {attempt}.", "SteamCmdDownloader");
-                             }
-                             else
-                             {
-                                 _logger.LogDebug($"File '{itemName}' disappeared before delete attempt {attempt}. Skipping.", "SteamCmdDownloader");
-                             }
+                            }
+                            else
+                            {
+                                _logger.LogDebug($"File '{itemName}' disappeared before delete attempt {attempt}. Skipping.", "SteamCmdDownloader");
+                            }
                         }
                         deletedSuccessfully = true;
                         break; // Exit retry loop on success
@@ -579,16 +625,16 @@ private async Task CleanTemporaryLocationAsync(string tempPath, SteamCmdDownload
             } // End foreach loop over items
 
             // Log cleanup summary
-             if (cleanupErrors == 0)
-             {
-                 _logger.LogInfo($"Successfully cleaned {itemsToDelete.Length} item(s) from '{tempPath}'.", "SteamCmdDownloader");
-                 result.LogMessages.Add("Temporary download location cleaned successfully.");
-             }
-             else
-             {
-                 _logger.LogWarning($"Finished cleaning temporary location '{tempPath}' with {cleanupErrors} error(s). Some items may remain.", "SteamCmdDownloader");
-                 result.LogMessages.Add($"Finished cleaning temporary location with {cleanupErrors} error(s).");
-             }
+            if (cleanupErrors == 0)
+            {
+                _logger.LogInfo($"Successfully cleaned {itemsToDelete.Length} item(s) from '{tempPath}'.", "SteamCmdDownloader");
+                result.LogMessages.Add("Temporary download location cleaned successfully.");
+            }
+            else
+            {
+                _logger.LogWarning($"Finished cleaning temporary location '{tempPath}' with {cleanupErrors} error(s). Some items may remain.", "SteamCmdDownloader");
+                result.LogMessages.Add($"Finished cleaning temporary location with {cleanupErrors} error(s).");
+            }
 
 
             // Post-Cleanup Verification (optional but recommended)
@@ -600,15 +646,15 @@ private async Task CleanTemporaryLocationAsync(string tempPath, SteamCmdDownload
                     _logger.LogWarning($"Cleanup verification FAILED. {remainingItems.Length} item(s) still exist in '{tempPath}'. This could be due to persistent locks or permission issues.", "SteamCmdDownloader");
                     result.LogMessages.Add($"Warning: Verification check found {remainingItems.Length} item(s) remaining in the temporary download folder after cleanup attempt. Check logs.");
                 }
-                 else
-                 {
+                else
+                {
                     _logger.LogInfo($"Cleanup verification PASSED. Temporary location '{tempPath}' is empty.", "SteamCmdDownloader");
-                 }
+                }
             }
             catch (Exception verifyEx)
             {
-                 _logger.LogWarning($"Error during post-cleanup verification of '{tempPath}': {verifyEx.Message}", "SteamCmdDownloader");
-                 result.LogMessages.Add($"Warning: Error verifying temporary location cleanup: {verifyEx.Message}");
+                _logger.LogWarning($"Error during post-cleanup verification of '{tempPath}': {verifyEx.Message}", "SteamCmdDownloader");
+                result.LogMessages.Add($"Warning: Error verifying temporary location cleanup: {verifyEx.Message}");
             }
 
             cancellationToken.ThrowIfCancellationRequested(); // Final check after potentially long cleanup
@@ -645,6 +691,44 @@ private async Task CleanTemporaryLocationAsync(string tempPath, SteamCmdDownload
                 catch (Exception ex) { _logger.LogWarning($"Failed to clean up script file '{scriptPath}': {ex.Message}", "SteamCmdDownloader"); }
             }
         }
+
+        private async Task CleanDirectoryContentsAsync(string directoryPath, string description, SteamCmdDownloadResult result, CancellationToken cancellationToken)
+        {
+            if (!Directory.Exists(directoryPath))
+            {
+                _logger.LogDebug($"Cleanup skipped: '{description}' directory not found at '{directoryPath}'", "SteamCmdDownloader");
+                return;
+            }
+
+            _logger.LogInfo($"Attempting cleanup of '{description}' directory contents: {directoryPath}", "SteamCmdDownloader");
+            result.LogMessages.Add($"Cleaning {description} directory...");
+            int errors = 0;
+            try
+            {
+                var dirInfo = new DirectoryInfo(directoryPath);
+                foreach (FileInfo file in dirInfo.GetFiles())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    try { file.Delete(); }
+                    catch (Exception ex) { _logger.LogWarning($"Failed to delete file during cleanup: {file.FullName} - {ex.Message}", "SteamCmdDownloader"); errors++; }
+                }
+                foreach (DirectoryInfo subDir in dirInfo.GetDirectories())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    try { subDir.Delete(true); } // Recursive delete for subdirs
+                    catch (Exception ex) { _logger.LogWarning($"Failed to delete directory during cleanup: {subDir.FullName} - {ex.Message}", "SteamCmdDownloader"); errors++; }
+                }
+                _logger.LogInfo($"Cleanup of '{description}' contents finished with {errors} errors.", "SteamCmdDownloader");
+                result.LogMessages.Add($"Cleanup of {description} finished ({errors} errors).");
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error during cleanup of '{description}' directory '{directoryPath}': {ex.Message}", "SteamCmdDownloader");
+                result.LogMessages.Add($"Error cleaning up {description}: {ex.Message}");
+            }
+        }
+
 
         private async Task ProcessSucceededItemsAsync(
             IEnumerable<string> successIds,
