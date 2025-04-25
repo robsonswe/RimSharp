@@ -191,6 +191,11 @@
          Parameter: None
          Output: string (e.g., "Core Game", "Expansion/DLC", "Workshop Mod", etc.). -->
     <convText:ModTypeToDescriptionConverter x:Key="ModTypeToDescriptionConverter"/>
+    <!-- Converts a boolean input to one of two strings specified in the parameter ("FalseText|TrueText").
+         Input: bool
+         Parameter: string "TextForFalse|TextForTrue"
+         Output: string -->
+    <convText:ConditionalTextConverter x:Key="ConditionalTextConverter"/>
 
     <!-- ===================== -->
     <!-- Utility Converters    -->

@@ -11,7 +11,7 @@
              mc:Ignorable="d"
              x:Name="DownloadQueueUserControl">
 
-    
+
     <DockPanel>
         <Border DockPanel.Dock="Top"
                 Style="{StaticResource RimworldInfoHeaderBorder}">
@@ -36,12 +36,17 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <Button Grid.Column="0"
-                        Content="Add Mod"
+                        Content="{Binding BrowserViewModel.IsCollectionUrl,
+                                          Converter={StaticResource ConditionalTextConverter},
+                                          ConverterParameter='Add Mod|Add Collection',
+                                          FallbackValue='Add Mod'}"
                         Command="{Binding AddModCommand}"
                         Style="{StaticResource RimworldButtonStyle}"
                         Margin="0,0,2.5,0"
-                        IsEnabled="{Binding BrowserViewModel.CanAddMod}"/>
-                <Button Grid.Column="1"
+                        IsEnabled="{Binding CanAddMod}">
+                </Button>
+              
+            <Button Grid.Column="1"
                         Content="Download"
                         Command="{Binding DownloadCommand}"
                         Style="{StaticResource RimworldRunButtonStyle}"
@@ -66,11 +71,14 @@
                  ContextMenuOpening="DownloadQueueListBox_ContextMenuOpening">
             <ListBox.Resources>
                 <!-- Binding Proxies -->
-                <helpers:BindingProxy x:Key="DataContextProxy" Data="{Binding DataContext, ElementName=DownloadQueueUserControl}"/>
-                <helpers:BindingProxy x:Key="ListBoxProxy" Data="{Binding ., ElementName=DownloadQueueListBox}"/>
+                <helpers:BindingProxy x:Key="DataContextProxy"
+                        Data="{Binding DataContext, ElementName=DownloadQueueUserControl}"/>
+                <helpers:BindingProxy x:Key="ListBoxProxy"
+                        Data="{Binding ., ElementName=DownloadQueueListBox}"/>
 
                 <!-- Context Menus defined here -->
-                <ContextMenu x:Key="ItemContextMenu" DataContext="{Binding Data, Source={StaticResource DataContextProxy}}">
+                <ContextMenu x:Key="ItemContextMenu"
+                        DataContext="{Binding Data, Source={StaticResource DataContextProxy}}">
                     <MenuItem Header="Go to Mod Page"
                               Command="{Binding NavigateToUrlCommand}"
                               CommandParameter="{Binding Url}"/>
@@ -79,7 +87,8 @@
                               CommandParameter="{Binding}"/>
                 </ContextMenu>
 
-                <ContextMenu x:Key="MultiItemContextMenu" DataContext="{Binding Data, Source={StaticResource DataContextProxy}}">
+                <ContextMenu x:Key="MultiItemContextMenu"
+                        DataContext="{Binding Data, Source={StaticResource DataContextProxy}}">
                     <MenuItem Header="Remove Selected"
                               Command="{Binding RemoveItemsCommand}"
                               CommandParameter="{Binding Data.SelectedItems, Source={StaticResource ListBoxProxy}}"/>
@@ -109,37 +118,82 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/> <!-- Added for File Size -->
-                            <RowDefinition Height="Auto"/> <!-- Existing row shifted down -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Added for File Size -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Existing row shifted down -->
                         </Grid.RowDefinitions>
 
                         <!-- Row 0: Name -->
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Name}" FontWeight="Bold" Foreground="{StaticResource RimworldBrownBrush}" TextWrapping="Wrap"/>
+                        <TextBlock Grid.Row="0"
+                                Grid.Column="0"
+                                Text="{Binding Name}"
+                                FontWeight="Bold"
+                                Foreground="{StaticResource RimworldBrownBrush}"
+                                TextWrapping="Wrap"/>
 
                         <!-- Row 1: ID, Installed, Active -->
-                        <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal">
-                            <TextBlock Text="ID: " FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}"/>
-                            <TextBlock Text="{Binding SteamId}" FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}" Margin="0,0,5,0"/>
-                            <TextBlock Text="(Installed)" FontSize="11" FontWeight="SemiBold" Foreground="ForestGreen" Margin="5,0,0,0" Visibility="{Binding IsInstalled, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                            <TextBlock Text="(Active)" FontSize="11" Foreground="DodgerBlue" Margin="5,0,0,0" Visibility="{Binding IsActive, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        <StackPanel Grid.Row="1"
+                                Grid.Column="0"
+                                Orientation="Horizontal">
+                            <TextBlock Text="ID: "
+                                    FontSize="11"
+                                    Foreground="{StaticResource RimworldLightBrownBrush}"/>
+                            <TextBlock Text="{Binding SteamId}"
+                                    FontSize="11"
+                                    Foreground="{StaticResource RimworldLightBrownBrush}"
+                                    Margin="0,0,5,0"/>
+                            <TextBlock Text="(Installed)"
+                                    FontSize="11"
+                                    FontWeight="SemiBold"
+                                    Foreground="ForestGreen"
+                                    Margin="5,0,0,0"
+                                    Visibility="{Binding IsInstalled, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                            <TextBlock Text="(Active)"
+                                    FontSize="11"
+                                    Foreground="DodgerBlue"
+                                    Margin="5,0,0,0"
+                                    Visibility="{Binding IsActive, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         </StackPanel>
 
                         <!-- Row 2: Latest Version (Date) -->
-                        <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal">
-                            <TextBlock Text="Latest: " FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}"/>
-                            <TextBlock Text="{Binding PublishDate}" FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}" ToolTip="{Binding PublishDate}"/>
+                        <StackPanel Grid.Row="2"
+                                Grid.Column="0"
+                                Orientation="Horizontal">
+                            <TextBlock Text="Latest: "
+                                    FontSize="11"
+                                    Foreground="{StaticResource RimworldLightBrownBrush}"/>
+                            <TextBlock Text="{Binding PublishDate}"
+                                    FontSize="11"
+                                    Foreground="{StaticResource RimworldLightBrownBrush}"
+                                    ToolTip="{Binding PublishDate}"/>
                         </StackPanel>
 
                         <!-- Row 3: Installed Version (Date) -->
-                        <StackPanel Grid.Row="3" Grid.Column="0" Orientation="Horizontal" Visibility="{Binding IsInstalled, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <TextBlock Text="Installed: " FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}"/>
-                            <TextBlock Text="{Binding LocalDateStamp}" FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}" ToolTip="{Binding LocalDateStamp}"/>
+                        <StackPanel Grid.Row="3"
+                                Grid.Column="0"
+                                Orientation="Horizontal"
+                                Visibility="{Binding IsInstalled, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock Text="Installed: "
+                                    FontSize="11"
+                                    Foreground="{StaticResource RimworldLightBrownBrush}"/>
+                            <TextBlock Text="{Binding LocalDateStamp}"
+                                    FontSize="11"
+                                    Foreground="{StaticResource RimworldLightBrownBrush}"
+                                    ToolTip="{Binding LocalDateStamp}"/>
                         </StackPanel>
 
                         <!-- Row 4: File Size (Added) -->
-                        <StackPanel Grid.Row="4" Grid.Column="0" Orientation="Horizontal">
-                            <TextBlock Text="Size: " FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}"/>
-                            <TextBlock Text="{Binding FileSize, Converter={StaticResource FileSizeConverter}}" FontSize="11" Foreground="{StaticResource RimworldLightBrownBrush}" ToolTip="{Binding FileSize, StringFormat={}{0} Bytes}"/>
+                        <StackPanel Grid.Row="4"
+                                Grid.Column="0"
+                                Orientation="Horizontal">
+                            <TextBlock Text="Size: "
+                                    FontSize="11"
+                                    Foreground="{StaticResource RimworldLightBrownBrush}"/>
+                            <TextBlock Text="{Binding FileSize, Converter={StaticResource FileSizeConverter}}"
+                                    FontSize="11"
+                                    Foreground="{StaticResource RimworldLightBrownBrush}"
+                                    ToolTip="{Binding FileSize, StringFormat={}{0} Bytes}"/>
                         </StackPanel>
 
 

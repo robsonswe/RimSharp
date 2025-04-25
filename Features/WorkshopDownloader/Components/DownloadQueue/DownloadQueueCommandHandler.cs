@@ -16,7 +16,8 @@ using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using System.Collections;
 using RimSharp.Infrastructure.Workshop.Download.Models;
-using RimSharp.Features.WorkshopDownloader.Dialogs.Collection; // Required for ExecuteRemoveItems parameter
+using RimSharp.Features.WorkshopDownloader.Dialogs.Collection;
+using System.Globalization; // Required for ExecuteRemoveItems parameter
 
 namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 {
@@ -33,6 +34,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
         private readonly ModInfoEnricher _modInfoEnricher;
         private readonly ISteamWorkshopQueueProcessor _steamWorkshopQueueProcessor;
         private readonly ILoggerService _logger;
+        private readonly ISteamApiClient _steamApiClient;
+
         private EventHandler<string>? _queueServiceStatusHandler;
         private EventHandler<bool>? _steamCmdSetupStateChangedHandler; // Keep handler reference for unsubscribing
 
@@ -55,7 +58,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             IModListManager modListManager,
             ModInfoEnricher modInfoEnricher,
             ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor,
-            ILoggerService logger)
+            ILoggerService logger,
+            ISteamApiClient steamApiClient)
         {
             _queueService = queueService ?? throw new ArgumentNullException(nameof(queueService));
             _modService = modService ?? throw new ArgumentNullException(nameof(modService)); // Keep for mod list check
@@ -67,7 +71,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             _modListManager = modListManager ?? throw new ArgumentNullException(nameof(modListManager));
             _modInfoEnricher = modInfoEnricher ?? throw new ArgumentNullException(nameof(modInfoEnricher));
             _steamWorkshopQueueProcessor = steamWorkshopQueueProcessor ?? throw new ArgumentNullException(nameof(steamWorkshopQueueProcessor));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger)); // <<< ADDED
+            _steamApiClient = steamApiClient ?? throw new ArgumentNullException(nameof(steamApiClient));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
 
             _queueServiceStatusHandler = (s, msg) => StatusChanged?.Invoke(this, msg);
@@ -366,7 +371,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                     // --- Handle Collection ---
                     await AddItemsFromCollectionAsync(token);
                 }
-                else if (_browserViewModel.IsValidModUrl && _browserViewModel.IsModInfoAvailable)
+                else if (_browserViewModel.IsValidModUrl)
                 {
                     // --- Handle Single Mod ---
                     await AddSingleModFromBrowserAsync(token);
@@ -395,26 +400,117 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
         private async Task AddSingleModFromBrowserAsync(CancellationToken token)
         {
-            StatusChanged?.Invoke(this, "Extracting single mod info from browser...");
-            ModInfoDto? modInfo = await _browserViewModel.GetCurrentModInfoAsync(token);
+            ModInfoDto? modInfo = null;
+            string? failedReason = null;
+            string? steamId = null;
+            string? url = _browserViewModel.ActualCurrentUrl; // Get current URL
 
-            token.ThrowIfCancellationRequested();
+            // --- 1. Extract Steam ID from URL ---
+            if (!string.IsNullOrEmpty(url) && Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
+                var queryParams = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                steamId = queryParams["id"];
+            }
 
+            if (string.IsNullOrEmpty(steamId))
+            {
+                failedReason = "Could not extract Steam ID from the browser URL.";
+                _dialogService.ShowError("Add Mod Failed", failedReason);
+                StatusChanged?.Invoke(this, failedReason);
+                return;
+            }
+
+            // --- 2. Try ModExtractorService first ---
+            try
+            {
+                StatusChanged?.Invoke(this, "Attempting to extract mod info from browser page...");
+                modInfo = await _browserViewModel.GetCurrentModInfoAsync(token);
+                token.ThrowIfCancellationRequested();
+                if (modInfo != null)
+                {
+                    Debug.WriteLine($"[CommandHandler] Successfully extracted mod info via browser: {modInfo.Name}");
+                }
+                else
+                {
+                    Debug.WriteLine("[CommandHandler] Browser extraction returned null.");
+                }
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[CommandHandler] Error during browser extraction: {ex.Message}");
+                // Don't fail yet, proceed to API fallback
+                StatusChanged?.Invoke(this, "Browser extraction failed, trying Steam API fallback...");
+            }
+
+            // --- 3. If browser extraction failed, try Steam API fallback ---
+            if (modInfo == null)
+            {
+                Debug.WriteLine($"[CommandHandler] Attempting Steam API fallback for ID: {steamId}");
+                StatusChanged?.Invoke(this, $"Trying Steam API fallback for ID {steamId}...");
+                try
+                {
+                    SteamApiResponse? apiResponse = await _steamApiClient.GetFileDetailsAsync(steamId, token);
+                    token.ThrowIfCancellationRequested();
+
+                    if (apiResponse?.Response?.PublishedFileDetails?.FirstOrDefault() is SteamPublishedFileDetails details && details.Result == 1)
+                    {
+                        DateTimeOffset apiUpdateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(details.TimeUpdated);
+                        modInfo = new ModInfoDto
+                        {
+                            Name = details.Title ?? $"Unknown Mod {steamId}",
+                            SteamId = steamId,
+                            Url = url, // Use the original browser URL
+                            PublishDate = apiUpdateTimeOffset.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture),
+                            StandardDate = apiUpdateTimeOffset.UtcDateTime.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture),
+                            FileSize = details.FileSize
+                        };
+                        Debug.WriteLine($"[CommandHandler] Successfully obtained mod info via Steam API: {modInfo.Name}");
+                        StatusChanged?.Invoke(this, "Successfully obtained mod info via Steam API.");
+                    }
+                    else
+                    {
+                        string errorDescription = "Unknown API failure.";
+                        if (apiResponse?.Response?.PublishedFileDetails?.FirstOrDefault() is SteamPublishedFileDetails errorDetails)
+                        {
+                            errorDescription = SteamApiResultHelper.GetDescription(errorDetails.Result);
+                        }
+                        else if (apiResponse == null)
+                        {
+                            errorDescription = "API request failed or returned no data.";
+                        }
+                        Debug.WriteLine($"[CommandHandler] Steam API fallback failed for ID {steamId}. Reason: {errorDescription}");
+                        failedReason = $"Steam API fallback failed: {errorDescription}";
+                    }
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[CommandHandler] Error during Steam API fallback: {ex.Message}");
+                    failedReason = $"Steam API fallback failed with error: {ex.Message}";
+                }
+            }
+
+            // --- 4. Add to queue if successful, otherwise show error ---
             if (modInfo != null)
             {
                 if (_queueService.AddToQueue(modInfo))
                 {
-                    // Success message handled by queue service StatusChanged
-                    StatusChanged?.Invoke(this, $"Added '{modInfo.Name}' to download queue.");
+                    // Queue service raises its own status message on success
+                    Debug.WriteLine($"[CommandHandler] Added '{modInfo.Name}' to queue.");
+                    // StatusChanged?.Invoke(this, $"Added '{modInfo.Name}' to download queue."); // Optional: Redundant if queue service already does it
                 }
-                // Else: Queue service handles message for duplicates etc.
+                // Else: Queue service handles duplicates/errors silently or via its own status message
             }
             else
             {
-                StatusChanged?.Invoke(this, "Could not extract mod info from the current page.");
-                _dialogService.ShowWarning("Extraction Failed", "Could not get mod details from the current page. Ensure it's a valid Steam Workshop item page.");
+                // If modInfo is still null, both methods failed
+                failedReason ??= "Could not retrieve mod information using browser extraction or Steam API.";
+                _dialogService.ShowError("Add Mod Failed", failedReason);
+                StatusChanged?.Invoke(this, failedReason);
             }
         }
+
 
         private async Task AddItemsFromCollectionAsync(CancellationToken token)
         {

@@ -259,7 +259,8 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IModListManager>(),
                     provider.GetRequiredService<ModInfoEnricher>(),             // <<< INJECTED
                     provider.GetRequiredService<ISteamWorkshopQueueProcessor>(),// <<< INJECTED
-                    provider.GetRequiredService<ILoggerService>()              // <<< INJECTED
+                    provider.GetRequiredService<ILoggerService>(),              // <<< INJECTED
+                    provider.GetRequiredService<ISteamApiClient>()
                 ));
 
             services.AddTransient<GitModsViewModel>(provider =>
