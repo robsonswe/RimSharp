@@ -53,6 +53,9 @@ namespace RimSharp.AppDir.MainPage
             get => _statusMessage;
             set => SetProperty(ref _statusMessage, value);
         }
+        
+        // Helper property to centralize the "Is anything busy?" logic
+        private bool IsIdle => !(ModsVM?.IsLoading ?? false) && !(DownloaderVM?.IsOperationInProgress ?? false);
 
 
         // --- Constructor ---
@@ -82,7 +85,6 @@ namespace RimSharp.AppDir.MainPage
             // Initialize Path Settings
             PathSettings = new PathSettings
             {
-                // Get initial values from the service
                 GamePath = _pathService.GetGamePath(),
                 ConfigPath = _pathService.GetConfigPath(),
                 ModsPath = _pathService.GetModsPath(), // Still get derived path initially
@@ -94,18 +96,40 @@ namespace RimSharp.AppDir.MainPage
             CurrentViewModel = ModsVM;
             _selectedTab = "Mods";
 
-            SwitchTabCommand = CreateCommand<string>(SwitchTab);
+            // --- Command Initialization using corrected CanExecute logic ---
+            SwitchTabCommand = CreateCommand<string>(SwitchTab, CanExecuteGlobalActions);
             BrowsePathCommand = CreateCommand<string>(BrowsePath, CanBrowsePath);
-            SettingsCommand = CreateCommand(OpenSettings);
-            RefreshCommand = CreateCommand(RefreshData, CanRefreshData);
+            SettingsCommand = CreateCommand(OpenSettings, CanExecuteGlobalActions);
+            RefreshCommand = CreateCommand(RefreshData, CanExecuteGlobalActions);
             OpenFolderCommand = CreateCommand<string>(OpenFolder, CanOpenFolder);
 
-            // Observe ModsVM.IsLoading for RefreshCommand's CanExecute state
-            ((DelegateCommand)RefreshCommand).ObservesProperty(ModsVM, nameof(ModsViewModel.IsLoading));
+            // --- CORRECTED Command Observation Setup ---
+            // Cast each command to its concrete type to access the 'ObservesProperty' method.
+            var switchTabCmd = (DelegateCommand<string>)SwitchTabCommand;
+            var browsePathCmd = (DelegateCommand<string>)BrowsePathCommand;
+            var settingsCmd = (DelegateCommand)SettingsCommand;
+            var refreshCmd = (DelegateCommand)RefreshCommand;
+            var openFolderCmd = (DelegateCommand<string>)OpenFolderCommand;
+
+            // Observe the IsLoading property on the ModsViewModel for all commands
+            switchTabCmd.ObservesProperty(ModsVM, nameof(ModsViewModel.IsLoading));
+            browsePathCmd.ObservesProperty(ModsVM, nameof(ModsViewModel.IsLoading));
+            settingsCmd.ObservesProperty(ModsVM, nameof(ModsViewModel.IsLoading));
+            refreshCmd.ObservesProperty(ModsVM, nameof(ModsViewModel.IsLoading));
+            openFolderCmd.ObservesProperty(ModsVM, nameof(ModsViewModel.IsLoading));
+
+            // Also observe the IsOperationInProgress property on the DownloaderViewModel for all commands
+            if (DownloaderVM != null)
+            {
+                switchTabCmd.ObservesProperty(DownloaderVM, nameof(DownloaderViewModel.IsOperationInProgress));
+                browsePathCmd.ObservesProperty(DownloaderVM, nameof(DownloaderViewModel.IsOperationInProgress));
+                settingsCmd.ObservesProperty(DownloaderVM, nameof(DownloaderViewModel.IsOperationInProgress));
+                refreshCmd.ObservesProperty(DownloaderVM, nameof(DownloaderViewModel.IsOperationInProgress));
+                openFolderCmd.ObservesProperty(DownloaderVM, nameof(DownloaderViewModel.IsOperationInProgress));
+            }
+            // --- END of Correction ---
 
             // Initial CanExecute update for commands dependent on PathSettings properties
-            // This happens implicitly via the initial property sets triggering PropertyChanged
-            // but an explicit call ensures it after all setup.
             RunOnUIThread(() =>
                 {
                     ((DelegateCommand<string>)OpenFolderCommand).RaiseCanExecuteChanged();
@@ -119,6 +143,52 @@ namespace RimSharp.AppDir.MainPage
              CheckAndWarnDifferentDrives(PathSettings.GamePath);
         }
         // --- END Constructor ---
+
+        #region CanExecute Predicates
+
+        /// <summary>
+        /// A generic predicate for actions that should be disabled when any background process is running.
+        /// </summary>
+        private bool CanExecuteGlobalActions()
+        {
+            return IsIdle;
+        }
+
+        /// <summary>
+        /// Overload for generic commands that should be disabled when any background process is running.
+        /// </summary>
+        private bool CanExecuteGlobalActions<T>(T parameter)
+        {
+            return IsIdle;
+        }
+
+        private bool CanOpenFolder(string pathType)
+        {
+            // First, check if the app is busy
+            if (!IsIdle) return false;
+            
+            if (string.IsNullOrEmpty(pathType)) return false;
+
+            string? path = pathType switch
+            {
+                "GamePath" => PathSettings.GamePath,
+                "ConfigPath" => PathSettings.ConfigPath,
+                _ => null
+            };
+            
+            return !string.IsNullOrEmpty(path) && Directory.Exists(path);
+        }
+
+        private bool CanBrowsePath(string pathType)
+        {
+            // First, check if the app is busy
+            if (!IsIdle) return false;
+
+            return !string.IsNullOrEmpty(pathType) &&
+                   (pathType == "GamePath" || pathType == "ConfigPath");
+        }
+
+        #endregion
 
         private void OnTabSwitchRequested(object? sender, string tabName)
         { RunOnUIThread(() => SwitchTab(tabName)); }
@@ -308,25 +378,7 @@ namespace RimSharp.AppDir.MainPage
                 _dialogService.ShowWarning("Path Not Found", $"The path for '{pathType}' ('{path ?? "N/A"}') does not exist or is not set.");
             }
         }
-
-
-        private bool CanOpenFolder(string pathType)
-        {
-            if (string.IsNullOrEmpty(pathType)) return false;
-
-            string? path = pathType switch
-            {
-                "GamePath" => PathSettings.GamePath,
-                "ConfigPath" => PathSettings.ConfigPath,
-                // "ModsPath" case removed
-                _ => null
-            };
-
-            // Check if the path string is non-empty AND the directory actually exists
-            return !string.IsNullOrEmpty(path) && Directory.Exists(path);
-        }
-
-
+        
         public ViewModelBase? CurrentViewModel
         {
             get => _currentViewModel;
@@ -408,28 +460,16 @@ namespace RimSharp.AppDir.MainPage
                 }
             }
         }
-
-        private bool CanBrowsePath(string pathType)
-        {
-            // Only allow browsing for paths that have a browse button
-            return !string.IsNullOrEmpty(pathType) &&
-                   (pathType == "GamePath" || pathType == "ConfigPath"); // Removed "ModsPath"
-        }
-
+        
         private void OpenSettings()
         {
             _dialogService.ShowInformation("Settings", "Settings dialog functionality is not yet implemented.");
         }
-
-        private bool CanRefreshData()
-        {
-            return ModsVM != null && !ModsVM.IsLoading;
-        }
-
+        
         // Centralized refresh logic
         private void RefreshData()
         {
-            if (!CanRefreshData()) return;
+            if (!CanExecuteGlobalActions()) return;
 
             StatusMessage = "Refreshing paths and mod data...";
             Debug.WriteLine("[MainViewModel] RefreshData executing...");
@@ -537,7 +577,5 @@ namespace RimSharp.AppDir.MainPage
         {
             Dispose(false);
         }
-
-
     }
 }
