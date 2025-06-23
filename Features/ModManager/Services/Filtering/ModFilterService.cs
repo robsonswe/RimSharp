@@ -147,16 +147,18 @@ namespace RimSharp.Features.ModManager.Services.Filtering
         {
             IEnumerable<ModItem> filtered = source;
 
-            // 1. Text Search (Name or PackageId) - Now with Fuzzy Matching
+            // 1. Text Search (Name/PackageId) - Now with improved Fuzzy Matching
             if (!string.IsNullOrWhiteSpace(criteria.SearchText))
             {
                 string searchLower = criteria.SearchText.ToLowerInvariant();
-                // Prioritize exact contains, then fallback to fuzzy
                 filtered = filtered.Where(m =>
+                    // Tier 1: Standard 'Contains' search
                     (m.Name?.ToLowerInvariant().Contains(searchLower) ?? false) ||
                     (m.PackageId?.ToLowerInvariant().Contains(searchLower) ?? false) ||
-                    Fuzz.PartialRatio(m.Name?.ToLowerInvariant() ?? "", searchLower) >= FuzzySearchThreshold ||
-                    Fuzz.PartialRatio(m.PackageId?.ToLowerInvariant() ?? "", searchLower) >= FuzzySearchThreshold
+                    (m.Description?.ToLowerInvariant().Contains(searchLower) ?? false) ||
+
+                    // Tier 2: Fuzzy search on token sets
+                    Fuzz.TokenSetRatio(m.Name?.ToLowerInvariant() ?? "", searchLower) >= FuzzySearchThreshold
                 );
             }
 
