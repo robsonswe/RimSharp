@@ -15,12 +15,30 @@ namespace RimSharp.Core.Converters.Text
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            // Check if the value is a List<VersionSupport> and if it's not null or empty
             if (value is not List<VersionSupport> versions || !versions.Any())
             {
-                // Return a simple Run if there are no versions
                 return new Run("None");
             }
+
+            // --- BEGIN MODIFICATION: Use a copy of the list that may be filtered ---
+            var versionsToDisplay = versions.AsEnumerable(); // Start with the full list
+
+            // Check if the parameter is the "OfficialOnly" flag
+            if (parameter is string paramString && paramString == "OfficialOnly")
+            {
+                // If so, apply the filter
+                versionsToDisplay = versions.Where(v => v.Source == VersionSource.Official);
+            }
+
+            var displayList = versionsToDisplay.ToList(); // Final list to iterate over
+
+            // If, after potential filtering, there are no versions, display "None"
+            if (!displayList.Any())
+            {
+                return new Run("None");
+            }
+            // --- END MODIFICATION ---
+
 
             // Create a TextBlock to hold the formatted version strings
             var textBlock = new TextBlock();
@@ -32,10 +50,10 @@ namespace RimSharp.Core.Converters.Text
             var toolTipStyle = Application.Current.TryFindResource("RimworldToolTip") as Style;
 
 
-            // Iterate through the list of supported versions
-            for (int i = 0; i < versions.Count; i++)
+            // Iterate through the potentially filtered list of supported versions
+            for (int i = 0; i < displayList.Count; i++)
             {
-                var versionSupport = versions[i];
+                var versionSupport = displayList[i];
                 // Create a Run element for the version string
                 var run = new Run(versionSupport.Version);
 
@@ -76,7 +94,7 @@ namespace RimSharp.Core.Converters.Text
                 textBlock.Inlines.Add(run);
 
                 // Add a separator (comma and space) if it's not the last version in the list
-                if (i < versions.Count - 1)
+                if (i < displayList.Count - 1)
                 {
                     textBlock.Inlines.Add(new Run(", "));
                 }

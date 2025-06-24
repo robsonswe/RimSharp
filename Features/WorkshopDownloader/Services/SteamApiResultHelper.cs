@@ -1,6 +1,9 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using RimSharp.Features.WorkshopDownloader.Models;
 
 namespace RimSharp.Features.WorkshopDownloader.Services
 {
@@ -24,7 +27,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 case SteamApiResultCode.Fail: return "Generic failure reported by Steam.";
                 case SteamApiResultCode.NoConnection: return "No connection to Steam services.";
                 case SteamApiResultCode.InvalidParam: return "Invalid parameter sent to Steam API.";
-                case SteamApiResultCode.FileNotFound: return "Workshop item not found (Maybe deleted or private?).";
+                case SteamApiResultCode.FileNotFound: return "Workshop item not found (Item is deleted or unlisted).";
                 case SteamApiResultCode.Busy: return "Steam API is busy, try again later.";
                 case SteamApiResultCode.InvalidState: return "Steam API reported an invalid internal state.";
                 case SteamApiResultCode.AccessDenied: return "Access Denied (Item might be hidden, friends-only, or require login).";
@@ -43,6 +46,29 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 default:
                     return $"Unknown or unhandled Steam API result code ({resultCode}).";
             }
+        }
+        
+        /// <summary>
+        /// Extracts version-like tags from a list of Steam API tags, then sorts them.
+        /// </summary>
+        /// <param name="apiTags">The list of tags from the API response.</param>
+        /// <returns>A sorted list of version strings.</returns>
+        public static List<string> ExtractAndSortVersionTags(List<SteamTag>? apiTags)
+        {
+            if (apiTags == null || !apiTags.Any())
+            {
+                return new List<string>();
+            }
+
+            var versionTags = apiTags
+                .Select(t => t.Tag)
+                .Where(t => !string.IsNullOrWhiteSpace(t) && Version.TryParse(t, out _))
+                .ToList();
+
+            // Sort using Version class for correct numeric sorting (e.g., 1.10 > 1.2)
+            versionTags.Sort((v1, v2) => new Version(v1).CompareTo(new Version(v2)));
+
+            return versionTags;
         }
     }
 }

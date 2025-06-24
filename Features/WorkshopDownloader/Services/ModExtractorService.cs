@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 // Use the WPF version of WebView2
 using Microsoft.Web.WebView2.Wpf; // <<< CHANGED
 using RimSharp.Features.WorkshopDownloader.Models;
+using System.Linq;
 
 namespace RimSharp.Features.WorkshopDownloader.Services
 {
@@ -19,6 +20,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         Task<string> ExtractFileSizeRawString(); // Added
         Task<List<CollectionItemInfo>> ExtractCollectionItemsAsync();
         Task<long> ParseFileSizeAsync(string sizeString); // Added
+        Task<List<string>> ExtractVersionTagsAsync();
 
         Task<string> ConvertToStandardDate(string dateString);
         Task<ModInfoDto> ExtractFullModInfo();
@@ -168,6 +170,39 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             {
                 Debug.WriteLine($"Error extracting file size string: {ex.Message}");
                 return null;
+            }
+        }
+
+        public async Task<List<string>> ExtractVersionTagsAsync()
+        {
+            if (_webView?.CoreWebView2 == null) return new List<string>();
+
+            try
+            {
+                string script = @"(function() {
+                    const detailsBlock = document.querySelector('.rightDetailsBlock');
+                    if (!detailsBlock) return '[]';
+                    const tagElements = detailsBlock.querySelectorAll('a');
+                    const tags = Array.from(tagElements).map(a => a.textContent.trim());
+                    return JSON.stringify(tags);
+                })();";
+
+                string jsonResult = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+                string unwrappedJson = UnwrapJsonString(jsonResult);
+                var tags = JsonSerializer.Deserialize<List<string>>(unwrappedJson) ?? new List<string>();
+                
+                var versionTags = tags
+                    .Where(t => !string.IsNullOrWhiteSpace(t) && Version.TryParse(t, out _))
+                    .ToList();
+                
+                versionTags.Sort((v1, v2) => new Version(v1).CompareTo(new Version(v2)));
+
+                return versionTags;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error extracting version tags from page: {ex.Message}");
+                return new List<string>();
             }
         }
 
@@ -331,6 +366,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             string standardDate = await ConvertToStandardDate(dateInfo);
             string fileSizeRaw = await ExtractFileSizeRawString(); // Added
             long fileSize = await ParseFileSizeAsync(fileSizeRaw); // Added
+            List<string> latestVersions = await ExtractVersionTagsAsync();
 
             if (string.IsNullOrEmpty(modName)) modName = $"Mod {id}";
             if (string.IsNullOrEmpty(dateInfo)) dateInfo = "Unknown Date";
@@ -344,7 +380,8 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 SteamId = id,
                 PublishDate = dateInfo,
                 StandardDate = standardDate,
-                FileSize = fileSize // Added
+                FileSize = fileSize, // Added
+                LatestVersions = latestVersions
             };
         }
 

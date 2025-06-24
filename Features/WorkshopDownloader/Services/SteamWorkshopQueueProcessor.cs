@@ -150,7 +150,8 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                                 Url = $"https://steamcommunity.com/sharedfiles/filedetails/?id={currentSteamId}",
                                 PublishDate = apiUpdateTimeOffset.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture),
                                 StandardDate = apiUpdateTimeUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture),
-                                FileSize = details.FileSize
+                                FileSize = details.FileSize,
+                                LatestVersions = SteamApiResultHelper.ExtractAndSortVersionTags(details.Tags) // <-- THIS LINE WAS MISSING
                             };
 
                              // --- Report Before Queueing ---

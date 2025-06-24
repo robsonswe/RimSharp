@@ -42,8 +42,16 @@ namespace RimSharp.Features.WorkshopDownloader.Models
         [JsonPropertyName("file_size")] // Added
         public long FileSize { get; set; } // Added: Size in bytes
 
+        [JsonPropertyName("tags")]
+        public List<SteamTag> Tags { get; set; }
         // Add other fields if needed later, like description, preview_url etc.
         // [JsonPropertyName("description")]
         // public string Description { get; set; }
+    }
+
+    public class SteamTag
+    {
+        [JsonPropertyName("tag")]
+        public string Tag { get; set; }
     }
 }
