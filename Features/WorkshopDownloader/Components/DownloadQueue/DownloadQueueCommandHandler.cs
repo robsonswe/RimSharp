@@ -321,10 +321,12 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 Debug.WriteLine("[CommandHandler] Download attempt finished, re-enriching remaining queue items.");
                 _modInfoEnricher.EnrichAllDownloadItems(_queueService.Items); // Refresh info for failed/remaining items
 
+                // --- Signal for UI Refresh AFTER operation is fully completed ---
+                // This ensures IsOperationInProgress is false before the refresh is requested.
                 if (refreshIsNeeded && !token.IsCancellationRequested)
                 {
-                    Debug.WriteLine("[CommandHandler] Download completed with successes, requesting parent refresh.");
-                    DownloadCompletedAndRefreshNeeded?.Invoke(this, EventArgs.Empty); // Signal UI refresh
+                    Debug.WriteLine("[CommandHandler] Download operation completed. Now signaling for UI refresh.");
+                    DownloadCompletedAndRefreshNeeded?.Invoke(this, EventArgs.Empty);
                 }
             }
             catch (OperationCanceledException)
