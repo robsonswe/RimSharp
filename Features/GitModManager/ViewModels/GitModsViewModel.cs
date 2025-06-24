@@ -525,10 +525,23 @@ namespace RimSharp.Features.GitModManager.ViewModels
 
             try
             {
-                // Basic URL construction, assumes github.com if not a full URL
-                string url = gitRepo.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                    ? gitRepo
-                    : $"https://github.com/{gitRepo}";
+                string url;
+                // Handle different formats for the git repo string to construct a valid URL.
+                if (gitRepo.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Case 1: Already a full URL (e.g., "https://github.com/user/repo")
+                    url = gitRepo;
+                }
+                else if (gitRepo.Contains("github.com", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Case 2: Contains domain but no protocol (e.g., "github.com/user/repo")
+                    url = $"https://{gitRepo}";
+                }
+                else
+                {
+                    // Case 3: Assumed to be just the user/repo part (e.g., "user/repo")
+                    url = $"https://github.com/{gitRepo}";
+                }
 
                 // Validate the constructed URL (optional but good practice)
                 if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
