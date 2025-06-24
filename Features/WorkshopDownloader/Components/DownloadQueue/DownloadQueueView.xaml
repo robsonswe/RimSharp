@@ -115,88 +115,109 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <!-- Added for File Size -->
-                            <RowDefinition Height="Auto"/>
-                            <!-- Existing row shifted down -->
+                            <RowDefinition Height="Auto"/> <!-- Name -->
+                            <RowDefinition Height="Auto"/> <!-- ID, Status -->
+                            <RowDefinition Height="Auto"/> <!-- Latest Date -->
+                            <RowDefinition Height="Auto"/> <!-- Latest Versions -->
+                            <RowDefinition Height="Auto"/> <!-- Installed Date -->
+                            <RowDefinition Height="Auto"/> <!-- Installed Versions -->
+                            <RowDefinition Height="Auto"/> <!-- File Size -->
                         </Grid.RowDefinitions>
 
                         <!-- Row 0: Name -->
                         <TextBlock Grid.Row="0"
-                                Grid.Column="0"
-                                Text="{Binding Name}"
-                                FontWeight="Bold"
-                                Foreground="{StaticResource RimworldBrownBrush}"
-                                TextWrapping="Wrap"/>
+                                   Text="{Binding Name}"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource RimworldBrownBrush}"
+                                   TextWrapping="Wrap"/>
 
                         <!-- Row 1: ID, Installed, Active -->
                         <StackPanel Grid.Row="1"
-                                Grid.Column="0"
-                                Orientation="Horizontal">
+                                    Orientation="Horizontal">
                             <TextBlock Text="ID: "
-                                    FontSize="11"
-                                    Foreground="{StaticResource RimworldLightBrownBrush}"/>
+                                       FontSize="11"
+                                       Foreground="{StaticResource RimworldLightBrownBrush}"/>
                             <TextBlock Text="{Binding SteamId}"
-                                    FontSize="11"
-                                    Foreground="{StaticResource RimworldLightBrownBrush}"
-                                    Margin="0,0,5,0"/>
+                                       FontSize="11"
+                                       Foreground="{StaticResource RimworldLightBrownBrush}"
+                                       Margin="0,0,5,0"/>
                             <TextBlock Text="(Installed)"
-                                    FontSize="11"
-                                    FontWeight="SemiBold"
-                                    Foreground="ForestGreen"
-                                    Margin="5,0,0,0"
-                                    Visibility="{Binding IsInstalled, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="ForestGreen"
+                                       Margin="5,0,0,0"
+                                       Visibility="{Binding IsInstalled, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                             <TextBlock Text="(Active)"
-                                    FontSize="11"
-                                    Foreground="DodgerBlue"
-                                    Margin="5,0,0,0"
-                                    Visibility="{Binding IsActive, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                       FontSize="11"
+                                       Foreground="DodgerBlue"
+                                       Margin="5,0,0,0"
+                                       Visibility="{Binding IsActive, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         </StackPanel>
 
                         <!-- Row 2: Latest Version (Date) -->
                         <StackPanel Grid.Row="2"
-                                Grid.Column="0"
-                                Orientation="Horizontal">
+                                    Orientation="Horizontal">
                             <TextBlock Text="Latest: "
-                                    FontSize="11"
-                                    Foreground="{StaticResource RimworldLightBrownBrush}"/>
+                                       FontSize="11"
+                                       Foreground="{StaticResource RimworldLightBrownBrush}"/>
                             <TextBlock Text="{Binding PublishDate}"
-                                    FontSize="11"
-                                    Foreground="{StaticResource RimworldLightBrownBrush}"
-                                    ToolTip="{Binding PublishDate}"/>
+                                       FontSize="11"
+                                       Foreground="{StaticResource RimworldLightBrownBrush}"
+                                       ToolTip="{Binding PublishDate}"/>
                         </StackPanel>
 
-                        <!-- Row 3: Installed Version (Date) -->
+                        <!-- Row 3: Latest Versions -->
                         <StackPanel Grid.Row="3"
-                                Grid.Column="0"
-                                Orientation="Horizontal"
-                                Visibility="{Binding IsInstalled, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <TextBlock Text="Installed: "
-                                    FontSize="11"
-                                    Foreground="{StaticResource RimworldLightBrownBrush}"/>
-                            <TextBlock Text="{Binding LocalDateStamp}"
-                                    FontSize="11"
-                                    Foreground="{StaticResource RimworldLightBrownBrush}"
-                                    ToolTip="{Binding LocalDateStamp}"/>
+                                    Orientation="Horizontal"
+                                    Visibility="{Binding LatestVersions.Count, Converter={StaticResource CountToVisibilityConverter}}">
+                            <TextBlock Text="Versions: "
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource RimworldLightBrownBrush}"/>
+                            <TextBlock Text="{Binding LatestVersions, Converter={StaticResource ListToStringConverter}}"
+                                       FontSize="11"
+                                       Foreground="{StaticResource RimworldLightBrownBrush}"
+                                       TextWrapping="Wrap"/>
                         </StackPanel>
 
-                        <!-- Row 4: File Size (Added) -->
+                        <!-- Row 4: Installed Version (Date) -->
                         <StackPanel Grid.Row="4"
-                                Grid.Column="0"
-                                Orientation="Horizontal">
-                            <TextBlock Text="Size: "
-                                    FontSize="11"
-                                    Foreground="{StaticResource RimworldLightBrownBrush}"/>
-                            <TextBlock Text="{Binding FileSize, Converter={StaticResource FileSizeConverter}}"
-                                    FontSize="11"
-                                    Foreground="{StaticResource RimworldLightBrownBrush}"
-                                    ToolTip="{Binding FileSize, StringFormat={}{0} Bytes}"/>
+                                    Orientation="Horizontal"
+                                    Visibility="{Binding IsInstalled, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock Text="Installed: "
+                                       FontSize="11"
+                                       Foreground="{StaticResource RimworldLightBrownBrush}"/>
+                            <TextBlock Text="{Binding LocalDateStamp}"
+                                       FontSize="11"
+                                       Foreground="{StaticResource RimworldLightBrownBrush}"
+                                       ToolTip="{Binding LocalDateStamp}"/>
                         </StackPanel>
 
+                        <!-- Row 5: Installed Versions -->
+                        <StackPanel Grid.Row="5"
+                                    Orientation="Horizontal"
+                                    Visibility="{Binding IsInstalled, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock Text="Versions: "
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource RimworldLightBrownBrush}"/>
+                            <ContentControl Content="{Binding InstalledVersions, Converter={StaticResource VersionSupportConverter}, ConverterParameter='OfficialOnly'}"
+                                            FontSize="11"
+                                            Foreground="{StaticResource RimworldLightBrownBrush}"
+                                            VerticalAlignment="Center"/>
+                        </StackPanel>
 
+                        <!-- Row 6: File Size -->
+                        <StackPanel Grid.Row="6"
+                                    Orientation="Horizontal">
+                            <TextBlock Text="Size: "
+                                       FontSize="11"
+                                       Foreground="{StaticResource RimworldLightBrownBrush}"/>
+                            <TextBlock Text="{Binding FileSize, Converter={StaticResource FileSizeConverter}}"
+                                       FontSize="11"
+                                       Foreground="{StaticResource RimworldLightBrownBrush}"
+                                       ToolTip="{Binding FileSize, StringFormat={}{0} Bytes}"/>
+                        </StackPanel>
                     </Grid>
                 </DataTemplate>
             </ListBox.ItemTemplate>

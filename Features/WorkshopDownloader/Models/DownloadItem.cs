@@ -1,5 +1,7 @@
 #nullable enable
 using RimSharp.AppDir.AppFiles;
+using RimSharp.Shared.Models;
+using System.Collections.Generic;
 
 namespace RimSharp.Features.WorkshopDownloader.Models
 {
@@ -11,6 +13,8 @@ namespace RimSharp.Features.WorkshopDownloader.Models
         private string? _publishDate; // Date from Workshop
         private string? _standardDate; // Parsed Workshop Date
         private long _fileSize;
+        private List<string>? _latestVersions;
+        private List<VersionSupport>? _installedVersions;
 
         private bool _isInstalled;
         private string? _localDateStamp; // Date from local timestamp file
@@ -51,6 +55,18 @@ namespace RimSharp.Features.WorkshopDownloader.Models
             get => _fileSize;
             set => SetProperty(ref _fileSize, value);
         }
+
+        public List<string>? LatestVersions
+        {
+            get => _latestVersions;
+            set => SetProperty(ref _latestVersions, value);
+        }
+
+        public List<VersionSupport>? InstalledVersions
+        {
+            get => _installedVersions;
+            set => SetProperty(ref _installedVersions, value);
+        }
         public bool IsInstalled
         {
             get => _isInstalled;
@@ -82,6 +98,7 @@ namespace RimSharp.Features.WorkshopDownloader.Models
             LocalDateStamp = null;
             IsActive = false;
             IsLocallyOutdatedRW = false;
+            InstalledVersions = null;
         }
     }
 }

@@ -463,7 +463,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                             Url = url, // Use the original browser URL
                             PublishDate = apiUpdateTimeOffset.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture),
                             StandardDate = apiUpdateTimeOffset.UtcDateTime.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture),
-                            FileSize = details.FileSize
+                            FileSize = details.FileSize,
+                            LatestVersions = SteamApiResultHelper.ExtractAndSortVersionTags(details.Tags)
                         };
                         Debug.WriteLine($"[CommandHandler] Successfully obtained mod info via Steam API: {modInfo.Name}");
                         StatusChanged?.Invoke(this, "Successfully obtained mod info via Steam API.");
