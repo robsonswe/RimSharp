@@ -324,18 +324,53 @@ namespace RimSharp.AppDir.MainPage
         }
 
 
-        private void DownloaderVM_DownloadCompletedAndRefreshNeeded(object? sender, EventArgs e)
+        private void DownloaderVM_DownloadCompletedAndRefreshNeeded(object? sender, EventArgs e) // This is called after a download operation succeeds
         {
             StatusMessage = "Download complete. Refreshing mod list...";
-            Console.WriteLine("[MainViewModel] Received DownloadCompletedAndRefreshNeeded event. Triggering RefreshCommand.");
-            if (RefreshCommand.CanExecute(null))
+            Debug.WriteLine("[MainViewModel] Received DownloadCompletedAndRefreshNeeded event. Mimicking RefreshCommand logic directly.");
+
+            // This logic is a streamlined version of the main RefreshData method, tailored for this event.
+            // We bypass the global CanExecute check on RefreshCommand because we know the download operation just finished,
+            // which avoids a potential race condition with the IsOperationInProgress flag.
+
+            try
             {
-                RefreshCommand.Execute(null);
+                Debug.WriteLine("[MainViewModel] Refreshing PathService cache after download...");
+                // 1. Refresh paths service cache to recognize any new directories
+                _pathService.RefreshPaths();
+
+                // 2. Update MainViewModel's PathSettings properties from the refreshed service state
+                string tempGame = _pathService.GetGamePath();
+                string tempConfig = _pathService.GetConfigPath();
+                string tempMods = _pathService.GetModsPath();
+                string tempVersion = _pathService.GetGameVersion();
+
+                // Check and set properties, which will trigger PropertyChanged events if values actually differ
+                if (PathSettings.GamePath != tempGame) { PathSettings.GamePath = tempGame; }
+                if (PathSettings.ConfigPath != tempConfig) { PathSettings.ConfigPath = tempConfig; }
+                if (PathSettings.ModsPath != tempMods) { PathSettings.ModsPath = tempMods; }
+                if (PathSettings.GameVersion != tempVersion) { PathSettings.GameVersion = tempVersion; }
+
+                // 3. Trigger data refresh in the ModsViewModel via its own command
+                Debug.WriteLine("[MainViewModel] Requesting ModsViewModel refresh...");
+                if (ModsVM != null && ModsVM.RequestRefreshCommand.CanExecute(null))
+                {
+                    // We don't need to await this. The command will set IsLoading properties
+                    // which will disable relevant UI elements.
+                    ModsVM.RequestRefreshCommand.Execute(null);
+                    StatusMessage = "Mod list refresh initiated.";
+                }
+                else
+                {
+                    StatusMessage = "Mod list refresh skipped: Another mod operation is already in progress.";
+                    Debug.WriteLine("[MainViewModel] ModsVM.RequestRefreshCommand cannot execute; likely already loading.");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                StatusMessage = "Cannot start refresh: Another operation might be in progress.";
-                Console.WriteLine("[MainViewModel] RefreshCommand cannot execute after download completion.");
+                StatusMessage = $"Error during post-download refresh: {ex.Message}";
+                Debug.WriteLine($"[MainViewModel] DownloaderVM_DownloadCompletedAndRefreshNeeded Error: {ex}");
+                _dialogService.ShowError("Post-Download Refresh Error", $"An error occurred during the automatic refresh after download: {ex.Message}");
             }
         }
 
