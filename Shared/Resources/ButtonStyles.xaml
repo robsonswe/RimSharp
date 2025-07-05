@@ -368,6 +368,67 @@
         </Style.Triggers>
     </Style>
 
+    <!-- <<< NEW STYLE: For the top-level MenuItem that looks like a button >>> -->
+    <Style x:Key="RimworldDropDownButtonStyle" TargetType="{x:Type MenuItem}">
+        <Setter Property="Foreground" Value="{StaticResource RimworldWhiteBrush}"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="MinWidth" Value="80"/>
+        <Setter Property="MinHeight" Value="24"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type MenuItem}">
+                    <Grid SnapsToDevicePixels="true">
+                        <Border x:Name="ButtonBackground"
+                                Background="{StaticResource RimworldBrownBrush}"
+                                BorderBrush="{StaticResource RimworldDarkBrownBrush}"
+                                BorderThickness="1"
+                                CornerRadius="3">
+                            <Border.Effect>
+                                <DropShadowEffect Color="{StaticResource RimworldShadow}"
+                                                  Direction="320" ShadowDepth="1" BlurRadius="2" Opacity="0.3"/>
+                            </Border.Effect>
+                        </Border>
+                        
+                        <Grid>
+                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ContentPresenter ContentSource="Header"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}" />
+                            <TextBlock Text="▼" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" FontSize="8" IsHitTestVisible="False" />
+                        </Grid>
+
+                        <Popup x:Name="PART_Popup"
+                               AllowsTransparency="true"
+                               Focusable="false"
+                               IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                               PopupAnimation="{DynamicResource {x:Static SystemParameters.MenuPopupAnimationKey}}"
+                               Placement="Bottom"
+                               PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}">
+                             <Border Background="{StaticResource RimworldBeigeBrush}" BorderBrush="{StaticResource RimworldBrownBrush}" BorderThickness="1" Margin="0,3,0,0">
+                                <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                            </Border>
+                        </Popup>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter Property="Background" TargetName="ButtonBackground" Value="{StaticResource RimworldLightBrownBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Background" TargetName="ButtonBackground" Value="{StaticResource RimworldLightBrownBrush}"/>
+                            <Setter Property="Opacity" Value="0.6"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Style for Context Menus (used for dropdowns) -->
     <Style x:Key="RimworldContextMenuStyle" TargetType="ContextMenu">
         <Setter Property="Background" Value="{StaticResource RimworldBeigeBrush}"/>
@@ -397,7 +458,7 @@
         <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
         <Setter Property="Padding" Value="8,5"/>
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Height" Value="28"/>
+        <Setter Property="Height" Value="Auto"/> <!-- <<< MODIFIED: Allow dynamic height for two-line text -->
         <Style.Triggers>
         <Trigger Property="IsHighlighted" Value="true">
             <Setter Property="Background" Value="{StaticResource RimworldDarkBeigeBrush}"/>
