@@ -25,11 +25,11 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
         public ICommand SelectAllCommand { get; }
         public ICommand SelectNoneCommand { get; }
         public ICommand SelectActiveCommand { get; }
+        public ICommand SelectByTimeframeCommand { get; } // <<< NEW COMMAND
         public ICommand UpdateCommand { get; }
         public ICommand CancelCommand { get; }
         public ICommand SortCommand { get; }
 
-        // <<< MODIFIED: Default sort by Name >>>
         private string _currentSortProperty = UpdateCheckItemViewModel.NamePropertyName;
         public string CurrentSortProperty
         {
@@ -54,48 +54,48 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
         private string _localUpdateDateSortState = "";
         public string LocalUpdateDateSortState { get => _localUpdateDateSortState; private set => SetProperty(ref _localUpdateDateSortState, value); }
 
-        // Track selection state to simplify CanExecute
         private bool _hasSelectedItems;
         public bool HasSelectedItems
         {
             get => _hasSelectedItems;
             private set => SetProperty(ref _hasSelectedItems, value);
         }
+        
+        // <<< NEW PROPERTIES FOR SELECTION COUNTER >>>
+        public int SelectedModCount => _modsToCheck.Count(m => m.IsSelected);
+        public int TotalModCount => _modsToCheck.Count;
 
         public UpdateCheckDialogViewModel(IEnumerable<ModItem> workshopMods)
             : base("Check Mod Updates")
         {
              var checkItems = workshopMods
-                 .Select(mod => new UpdateCheckItemViewModel(mod)); // Let sorting happen via ICollectionView
+                 .Select(mod => new UpdateCheckItemViewModel(mod));
              _modsToCheck = new ObservableCollection<UpdateCheckItemViewModel>(checkItems);
 
             ModsView = CollectionViewSource.GetDefaultView(_modsToCheck);
-            // Apply initial sort
             ApplySort();
 
-            // Initialize commands using ViewModelBase helpers
             SelectAllCommand = CreateCommand(ExecuteSelectAll);
             SelectNoneCommand = CreateCommand(ExecuteSelectNone);
             SelectActiveCommand = CreateCommand(ExecuteSelectActive);
+            SelectByTimeframeCommand = CreateCommand<string>(ExecuteSelectByTimeframe); // <<< NEW COMMAND INITIALIZATION
             CancelCommand = CreateCommand(() => CloseDialog(UpdateCheckDialogResult.Cancel));
             SortCommand = CreateCommand<string>(ExecuteSort);
 
-            // UpdateCommand observes HasSelectedItems
             UpdateCommand = CreateCommand(
                 () => CloseDialog(UpdateCheckDialogResult.CheckUpdates),
                 () => HasSelectedItems,
                 nameof(HasSelectedItems)
             );
 
-            // Subscribe to item changes to update HasSelectedItems
             foreach (var item in _modsToCheck)
             {
                 item.PropertyChanged += Item_PropertyChanged;
             }
-            // Initialize selection state
+            
             UpdateSelectionState();
-            // Update sort indicators
             UpdateSortIndicators();
+            OnPropertyChanged(nameof(TotalModCount)); // <<< INITIALIZE TOTAL COUNT
         }
 
         private void Item_PropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -109,21 +109,57 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
         private void UpdateSelectionState()
         {
             HasSelectedItems = _modsToCheck.Any(item => item.IsSelected);
+            OnPropertyChanged(nameof(SelectedModCount)); // <<< NOTIFY COUNTER UPDATE
         }
 
-        private void ExecuteSelectAll()
+        // <<< NEW: Helper for performant batch selections >>>
+        private void BatchUpdateSelection(Func<UpdateCheckItemViewModel, bool> selectionCriteria)
         {
-            foreach (var item in _modsToCheck) item.IsSelected = true;
+            foreach (var item in _modsToCheck) item.PropertyChanged -= Item_PropertyChanged;
+            
+            foreach (var item in _modsToCheck)
+            {
+                item.IsSelected = selectionCriteria(item);
+            }
+            
+            foreach (var item in _modsToCheck) item.PropertyChanged += Item_PropertyChanged;
+            
+            UpdateSelectionState();
         }
+        
+        // <<< REFACTORED selection methods >>>
+        private void ExecuteSelectAll() => BatchUpdateSelection(item => true);
 
-        private void ExecuteSelectNone()
-        {
-            foreach (var item in _modsToCheck) item.IsSelected = false;
-        }
+        private void ExecuteSelectNone() => BatchUpdateSelection(item => false);
 
-        private void ExecuteSelectActive()
+        private void ExecuteSelectActive() => BatchUpdateSelection(item => item.Mod?.IsActive ?? false);
+        
+        // <<< NEW: Logic for smart selection >>>
+        private void ExecuteSelectByTimeframe(string timeframe)
         {
-            foreach (var item in _modsToCheck) item.IsSelected = item.Mod?.IsActive ?? false;
+            var now = DateTime.Now;
+            switch (timeframe)
+            {
+                case "outdated":
+                    BatchUpdateSelection(item => item.Mod?.IsOutdatedRW ?? false);
+                    break;
+                case "week":
+                    var cutoffWeek = now.AddDays(-7);
+                    BatchUpdateSelection(item => item.LocalUpdateDateTime < cutoffWeek && item.LocalUpdateDateTime != DateTime.MinValue);
+                    break;
+                case "month":
+                    var cutoffMonth = now.AddMonths(-1);
+                    BatchUpdateSelection(item => item.LocalUpdateDateTime < cutoffMonth && item.LocalUpdateDateTime != DateTime.MinValue);
+                    break;
+                case "6months":
+                    var cutoff6Months = now.AddMonths(-6);
+                    BatchUpdateSelection(item => item.LocalUpdateDateTime < cutoff6Months && item.LocalUpdateDateTime != DateTime.MinValue);
+                    break;
+                case "year":
+                    var cutoffYear = now.AddYears(-1);
+                    BatchUpdateSelection(item => item.LocalUpdateDateTime < cutoffYear && item.LocalUpdateDateTime != DateTime.MinValue);
+                    break;
+            }
         }
 
         private void ExecuteSort(string propertyName)
@@ -164,7 +200,6 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
                 case UpdateCheckItemViewModel.NamePropertyName: NameSortState = sortState; break;
                 case UpdateCheckItemViewModel.PackageIdPropertyName: PackageIdSortState = sortState; break;
                 case UpdateCheckItemViewModel.SteamIdPropertyName: SteamIdSortState = sortState; break;
-                // <<< MODIFIED: Check against the DateTime property name for setting indicator state >>>
                 case UpdateCheckItemViewModel.LocalUpdateDateTimePropertyName: LocalUpdateDateSortState = sortState; break;
             }
         }
@@ -174,8 +209,6 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
             return _modsToCheck.Where(vm => vm.IsSelected).Select(vm => vm.Mod);
         }
 
-        // Cleanup might be needed if the dialog is shown multiple times without recreating the ViewModel
-        // Consider adding this to an IDisposable pattern if necessary.
         public void Cleanup()
         {
             foreach (var item in _modsToCheck)

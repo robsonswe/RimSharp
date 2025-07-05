@@ -8,7 +8,7 @@
         xmlns:views="clr-namespace:RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:UpdateCheckDialogViewModel}"
-        Width="750" Height="500"
+        Width="850" Height="550"
         SizeToContent="Manual"
         ResizeMode="CanResizeWithGrip"
         >
@@ -66,12 +66,75 @@
                        Margin="0,0,0,10" FontSize="14" FontWeight="Medium"
                        Foreground="{StaticResource RimworldBrownBrush}"/>
 
-            <!-- Updated StackPanel -->
-            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,5">
-                <Button Content="Select All" Command="{Binding SelectAllCommand}" Style="{StaticResource RimworldButtonStyle}" Margin="0,0,5,0"/>
-                <Button Content="Select Active" Command="{Binding SelectActiveCommand}" Style="{StaticResource RimworldButtonStyle}" Margin="0,0,5,0"/>
-                <Button Content="Select None" Command="{Binding SelectNoneCommand}" Style="{StaticResource RimworldButtonStyle}"/>
-            </StackPanel>
+            <!-- <<< MODIFIED: Use a Grid for flexible layout with a right-aligned counter >>> -->
+            <Grid Grid.Row="1" Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <Button Content="Select All" Command="{Binding SelectAllCommand}" Style="{StaticResource RimworldButtonStyle}" Margin="0,0,5,0"/>
+                    <Button Content="Select Active" Command="{Binding SelectActiveCommand}" Style="{StaticResource RimworldButtonStyle}" Margin="0,0,5,0"/>
+                    <Button Content="Select None" Command="{Binding SelectNoneCommand}" Style="{StaticResource RimworldButtonStyle}" Margin="0,0,5,0"/>
+                    
+                    <!-- <<< NEW: Dropdown Menu for smart selections >>> -->
+                    <Menu Background="Transparent" VerticalAlignment="Center">
+                        <MenuItem Header="Select by Update" Style="{StaticResource RimworldDropDownButtonStyle}">
+                            <MenuItem Command="{Binding SelectByTimeframeCommand}" CommandParameter="outdated" Style="{StaticResource RimworldMenuItemStyle}">
+                                <MenuItem.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="Outdated (Game Version)" FontWeight="Medium"/>
+                                        <TextBlock Text="Mods not updated for current version" FontSize="10" Foreground="{StaticResource RimworldLightBrownBrush}"/>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
+                            <Separator Style="{StaticResource RimworldSeparatorStyle}"/>
+                            <MenuItem Command="{Binding SelectByTimeframeCommand}" CommandParameter="week" Style="{StaticResource RimworldMenuItemStyle}">
+                                <MenuItem.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="Not updated in 1 week" FontWeight="Medium"/>
+                                        <TextBlock Text="Recent but potentially stale" FontSize="10" Foreground="{StaticResource RimworldLightBrownBrush}"/>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
+                             <MenuItem Command="{Binding SelectByTimeframeCommand}" CommandParameter="month" Style="{StaticResource RimworldMenuItemStyle}">
+                                <MenuItem.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="Not updated in 1 month" FontWeight="Medium"/>
+                                        <TextBlock Text="Moderately outdated" FontSize="10" Foreground="{StaticResource RimworldLightBrownBrush}"/>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
+                             <MenuItem Command="{Binding SelectByTimeframeCommand}" CommandParameter="6months" Style="{StaticResource RimworldMenuItemStyle}">
+                                <MenuItem.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="Not updated in 6 months" FontWeight="Medium"/>
+                                        <TextBlock Text="Significantly outdated" FontSize="10" Foreground="{StaticResource RimworldLightBrownBrush}"/>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
+                             <MenuItem Command="{Binding SelectByTimeframeCommand}" CommandParameter="year" Style="{StaticResource RimworldMenuItemStyle}">
+                                <MenuItem.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="Not updated in 1 year" FontWeight="Medium"/>
+                                        <TextBlock Text="Very outdated or abandoned" FontSize="10" Foreground="{StaticResource RimworldLightBrownBrush}"/>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
+                        </MenuItem>
+                    </Menu>
+                </StackPanel>
+
+                <!-- <<< NEW: Selection Counter >>> -->
+                <TextBlock Grid.Column="2" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}" FontWeight="Medium">
+                    <Run Text="{Binding SelectedModCount, Mode=OneWay}"/>
+                    <Run Text="of"/>
+                    <Run Text="{Binding TotalModCount, Mode=OneWay}"/>
+                    <Run Text="selected"/>
+                </TextBlock>
+            </Grid>
 
             <Border Grid.Row="2" BorderBrush="{StaticResource RimworldBrownBrush}" BorderThickness="1">
                  <!-- Replace ListBox with ListView -->
@@ -94,7 +157,7 @@
                             </GridViewColumn>
 
                             <!-- Column 1: Name (Sortable) -->
-                            <GridViewColumn DisplayMemberBinding="{Binding Name}" Width="200">
+                            <GridViewColumn DisplayMemberBinding="{Binding Name}" Width="250">
                                 <GridViewColumn.HeaderTemplate>
                                     <DataTemplate>
                                         <Button Content="Name"
@@ -114,7 +177,7 @@
 
                             <!-- Column 2: Package ID (Sortable) -->
                             <!-- For the Package ID column -->
-                            <GridViewColumn DisplayMemberBinding="{Binding PackageId}" Width="180">
+                            <GridViewColumn DisplayMemberBinding="{Binding PackageId}" Width="200">
                                 <GridViewColumn.HeaderTemplate>
                                     <DataTemplate>
                                         <Button Content="Package ID"
@@ -132,7 +195,7 @@
                             </GridViewColumn>
 
                             <!-- For the Steam ID column -->
-                            <GridViewColumn DisplayMemberBinding="{Binding SteamId}" Width="100">
+                            <GridViewColumn DisplayMemberBinding="{Binding SteamId}" Width="110">
                                 <GridViewColumn.HeaderTemplate>
                                     <DataTemplate>
                                         <Button Content="Steam ID"
