@@ -216,41 +216,45 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             DateTimeOffset apiUpdateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(details.TimeUpdated);
             DateTime apiUpdateTimeUtc = apiUpdateTimeOffset.UtcDateTime;
             
-            // --- BEGIN TIMEZONE ARTIFACT DETECTION LOGIC ---
-            // Check if the difference might be just a timezone artifact
-            TimeSpan rawDifference = apiUpdateTimeUtc - localUpdateTimeUtc;
-            
-            // Extract only time parts (hours, minutes) for checking timezone related patterns
-            DateTime apiTimeOnly = new DateTime(1, 1, 1, apiUpdateTimeUtc.Hour, apiUpdateTimeUtc.Minute, 0);
-            DateTime localTimeOnly = new DateTime(1, 1, 1, localUpdateTimeUtc.Hour, localUpdateTimeUtc.Minute, 0);
-
-            // Calculate minute difference between the times (irrespective of date)
-            int minutesDifference = (int)Math.Abs((apiTimeOnly - localTimeOnly).TotalMinutes);
-            
-            // Handle wrap-around difference (e.g., 23:30 vs 00:30 = 1 hour difference, not 23 hours)
-            if (minutesDifference > 12 * 60)
-            {
-                minutesDifference = 24 * 60 - minutesDifference;
-            }
-
-            // Check for common timezone offset patterns (whole hours, half-hours, quarter-hours)
+            // --- BEGIN CORRECTED TIMEZONE ARTIFACT DETECTION LOGIC ---
             bool isLikelyTimezoneArtifact = false;
-            if (minutesDifference % 60 == 0)         // Full hour offsets (most timezone differences)
+            TimeSpan rawDifference = apiUpdateTimeUtc - localUpdateTimeUtc;
+
+            // A timezone artifact can only reasonably occur if the total time difference is small
+            // (e.g., less than 25 hours to account for all possible timezones and DST shifts).
+            // If the difference spans multiple days, months, or years, it is a real update.
+            if (Math.Abs(rawDifference.TotalHours) < 25)
             {
-                isLikelyTimezoneArtifact = true;
+                // The total difference is small, NOW we can check if it's a common timezone offset.
+                
+                // Extract only time parts (hours, minutes) for checking timezone related patterns
+                DateTime apiTimeOnly = new DateTime(1, 1, 1, apiUpdateTimeUtc.Hour, apiUpdateTimeUtc.Minute, 0);
+                DateTime localTimeOnly = new DateTime(1, 1, 1, localUpdateTimeUtc.Hour, localUpdateTimeUtc.Minute, 0);
+
+                // Calculate minute difference between the times (irrespective of date)
+                int minutesDifference = (int)Math.Abs((apiTimeOnly - localTimeOnly).TotalMinutes);
+                
+                // Handle wrap-around difference (e.g., 23:30 vs 00:30 = 1 hour difference, not 23 hours)
+                if (minutesDifference > 12 * 60)
+                {
+                    minutesDifference = 24 * 60 - minutesDifference;
+                }
+
+                // All common timezone offsets (full, half, quarter) are multiples of 15 minutes.
+                // This single check is sufficient.
+                if (minutesDifference % 15 == 0)
+                {
+                    isLikelyTimezoneArtifact = true;
+                }
+                
+                Debug.WriteLine($"Timezone detection for '{mod.Name}' ({mod.SteamId}): Total diff < 25h. Minutes difference: {minutesDifference}, Likely TZ artifact: {isLikelyTimezoneArtifact}");
             }
-            else if (minutesDifference % 30 == 0)    // Half-hour offsets (like India, Australia)
+            else
             {
-                isLikelyTimezoneArtifact = true;
+                // The difference is too large to be a timezone artifact. It's a genuine time difference.
+                Debug.WriteLine($"Timezone detection for '{mod.Name}' ({mod.SteamId}): Total diff >= 25h ({rawDifference.TotalHours:F1}h). This is a real update, not a timezone artifact.");
             }
-            else if (minutesDifference % 15 == 0)    // Quarter-hour offsets (like Nepal, Chatham Islands)
-            {
-                isLikelyTimezoneArtifact = true;
-            }
-            
-            // Log the detailed timezone detection info for troubleshooting
-            Debug.WriteLine($"Timezone detection for '{mod.Name}' ({mod.SteamId}): Minutes difference: {minutesDifference}, Likely TZ artifact: {isLikelyTimezoneArtifact}");
-            // --- END TIMEZONE ARTIFACT DETECTION LOGIC ---
+            // --- END CORRECTED TIMEZONE ARTIFACT DETECTION LOGIC ---
 
             // Only consider it an update if the API time is newer AND it's not just a timezone artifact
             if (apiUpdateTimeUtc > localUpdateTimeUtc && !isLikelyTimezoneArtifact)
