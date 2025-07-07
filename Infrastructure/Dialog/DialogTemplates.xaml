@@ -11,16 +11,8 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="local:BaseDialog">
-                    <Border Background="Transparent">
-                        <!-- Drop shadow effect for the window -->
-                        <Border.Effect>
-                            <DropShadowEffect Color="{StaticResource RimworldShadow}"
-                                            Direction="270"
-                                            ShadowDepth="5"
-                                            BlurRadius="10"
-                                            Opacity="0.5"/>
-                        </Border.Effect>
-                        
+                    <!-- High-Performance Shadow: A slightly larger border with a transparent brush behind the main border -->
+                    <Border Background="#44000000" CornerRadius="6" Padding="0,0,2,3">
                         <!-- Main window container -->
                         <Grid>
                             <!-- Background and border -->

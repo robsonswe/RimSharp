@@ -7,216 +7,221 @@
                     xmlns:convText="clr-namespace:RimSharp.Core.Converters.Text"
                     xmlns:convUtility="clr-namespace:RimSharp.Core.Converters.Utility">
 
-    <!-- ===================== -->
-    <!-- Visual Converters     -->
-    <!-- ===================== -->
+     <!-- ===================== -->
+     <!-- Visual Converters     -->
+     <!-- ===================== -->
 
-    <!-- Converts a boolean input to a specific Brush resource.
+     <!-- Converts a boolean input to a specific Brush resource.
          Input: bool
          Parameter: string "FalseBrushKey|TrueBrushKey" (Resource keys for Brushes)
          Output: Brush corresponding to the boolean state. Falls back to Transparent. -->
-    <convVisual:BooleanToBrushConverter x:Key="BooleanToBrushConverter"/>
+     <convVisual:BooleanToBrushConverter x:Key="BooleanToBrushConverter"/>
 
-    <!-- Converts a boolean input to a specific Color or Brush resource, returning a SolidColorBrush.
+     <!-- Converts a boolean input to a specific Color or Brush resource, returning a SolidColorBrush.
          Input: bool
          Parameter: string "TrueResourceKey|FalseResourceKey" (Resource keys for Colors or Brushes)
          Output: SolidColorBrush based on the boolean state and resolved resource. Falls back to UnsetValue. -->
-    <convVisual:BooleanToColorConverter x:Key="BooleanToColorConverter"/>
+     <convVisual:BooleanToColorConverter x:Key="BooleanToColorConverter"/>
 
-    <!-- Darkens a given Color or SolidColorBrush by a configurable factor.
+     <!-- Darkens a given Color or SolidColorBrush by a configurable factor.
          Input: Color or SolidColorBrush
          Parameter: (Optional) Can be used to override the default DarkenFactor (0.7) if implemented in code, otherwise not used.
          Output: Darkened Color or SolidColorBrush. -->
-    <convVisual:DarkenColorConverter x:Key="DarkenColorConverter" />
+     <convVisual:DarkenColorConverter x:Key="DarkenColorConverter"/>
 
-    <!-- Converts a file path string into a BitmapImage object suitable for Image Source binding.
+     <!-- Converts a file path string into a BitmapImage object suitable for Image Source binding.
          Input: string (Full path to an image file)
          Parameter: None
          Output: BitmapImage if the path is valid and points to an existing file, otherwise null. -->
-    <convVisual:ImagePathConverter x:Key="ImagePathConverter"/>
+     <convVisual:ImagePathConverter x:Key="ImagePathConverter"/>
 
-    <!-- Converts a string representing an update status into a specific Brush resource for visual feedback.
+     <!-- Converts a string representing an update status into a specific Brush resource for visual feedback.
          Input: string (e.g., "Up to date", "New updates available", "Error checking updates", "No tracking branch")
          Parameter: None
          Output: Brush corresponding to the status (e.g., Green, Yellow, Red, Gray). Uses fallback Brushes if resources not found. -->
-    <convVisual:UpdateStatusToColorConverter x:Key="UpdateStatusToColorConverter"/>
+     <convVisual:UpdateStatusToColorConverter x:Key="UpdateStatusToColorConverter"/>
 
-    <!-- ============================== -->
-    <!-- View Visibility Converters     -->
-    <!-- ============================== -->
+     <!-- ============================== -->
+     <!-- View Visibility Converters     -->
+     <!-- ============================== -->
 
-    <!-- Converts a boolean input to a Visibility value (Visible/Collapsed).
+     <!-- Converts a boolean input to a Visibility value (Visible/Collapsed).
          Input: bool
          Parameter: None (See InverseBooleanToVisibilityConverter for inversion)
          Output: Visibility (true -> Visible, false -> Collapsed). -->
-    <convViewVisibility:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+     <convViewVisibility:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
 
-    <!-- Converts a boolean input to a Visibility value (Visible/Collapsed), inverting the logic.
+     <!-- Converts a boolean input to a Visibility value (Visible/Collapsed), inverting the logic.
          Input: bool
          Parameter: None (Uses the Inverse=True property set here)
          Output: Visibility (true -> Collapsed, false -> Visible). -->
-    <convViewVisibility:BooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" Inverse="True"/>
+     <convViewVisibility:BooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"
+               Inverse="True"/>
 
-    <!-- Converts an integer count to a Visibility value.
+     <!-- Converts an integer count to a Visibility value.
          Input: int (typically a collection's Count)
          Parameter: None
          Output: Visibility (count > 0 -> Visible, count <= 0 -> Collapsed). -->
-    <convViewVisibility:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
+     <convViewVisibility:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
 
-    <!-- Converts a null/non-null input to a Visibility value.
+     <!-- Converts a null/non-null input to a Visibility value.
          Input: object
          Parameter: (Optional) string "Invert" - If present, reverses the logic (null -> Visible, non-null -> Collapsed).
          Output: Visibility (Default: null -> Collapsed, non-null -> Visible). -->
-    <convViewVisibility:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+     <convViewVisibility:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
 
-    <!-- Converts an input value (typically the currently selected tab identifier) to Visibility based on equality with the parameter.
+     <!-- Converts an input value (typically the currently selected tab identifier) to Visibility based on equality with the parameter.
          Input: object (e.g., string, enum representing the selected tab)
          Parameter: object (e.g., string, enum representing the tab this element belongs to)
          Output: Visibility (Visible if input equals parameter (using ToString comparison), Collapsed otherwise). -->
-    <convViewVisibility:TabVisibilityConverter x:Key="TabVisibilityConverter"/>
+     <convViewVisibility:TabVisibilityConverter x:Key="TabVisibilityConverter"/>
 
-    <!-- Converts an input value to Visibility based on whether it's not null and not an empty/whitespace string.
+     <!-- Converts an input value to Visibility based on whether it's not null and not an empty/whitespace string.
          Input: object
          Parameter: None (See Inverse property usage if needed, requires adding Inverse="True" here)
          Output: Visibility (Visible if input is not null/empty/whitespace, Collapsed otherwise). Can be inverted via the Inverse property. -->
-    <convViewVisibility:IsNotNullOrEmptyToVisibilityConverter x:Key="IsNotNullOrEmptyToVisibilityConverter"/>
+     <convViewVisibility:IsNotNullOrEmptyToVisibilityConverter x:Key="IsNotNullOrEmptyToVisibilityConverter"/>
 
-    <!-- MultiValueConverter: Converts two boolean inputs (HasIssues, IsActive) to Visibility.
+     <!-- MultiValueConverter: Converts two boolean inputs (HasIssues, IsActive) to Visibility.
          Input: object[] { bool HasIssues, bool IsActive }
          Parameter: None
          Output: Visibility (Visible if BOTH HasIssues and IsActive are true, Collapsed otherwise). -->
-    <convViewVisibility:IsActiveAndHasIssuesToVisibilityConverter x:Key="IsActiveAndHasIssuesToVisibilityConverter"/>
+     <convViewVisibility:IsActiveAndHasIssuesToVisibilityConverter x:Key="IsActiveAndHasIssuesToVisibilityConverter"/>
 
-    <!-- ===================== -->
-    <!-- Logic Converters      -->
-    <!-- ===================== -->
+     <!-- ===================== -->
+     <!-- Logic Converters      -->
+     <!-- ===================== -->
 
-    <!-- Converts an integer count or ICollection count to a boolean value.
+     <!-- Converts an integer count or ICollection count to a boolean value.
          Input: int or ICollection
          Parameter: None
          Output: bool (true if count > 0, false otherwise). -->
-    <convLogic:CountToBooleanConverter x:Key="CountToBooleanConverter"/>
+     <convLogic:CountToBooleanConverter x:Key="CountToBooleanConverter"/>
 
-    <!-- MultiValueConverter: Checks if the first two input values are NOT equal (using string comparison, handles nulls).
+     <!-- MultiValueConverter: Checks if the first two input values are NOT equal (using string comparison, handles nulls).
          Input: object[] { value1, value2 }
          Parameter: None
          Output: bool (true if value1 != value2, false if value1 == value2). -->
-    <convLogic:InequalityConverter x:Key="InequalityConverter"/>
+     <convLogic:InequalityConverter x:Key="InequalityConverter"/>
 
-    <!-- Converts an input value to a boolean based on whether it's not null and not an empty/whitespace string.
+     <!-- Converts an input value to a boolean based on whether it's not null and not an empty/whitespace string.
          Input: object
          Parameter: None
          Output: bool (true if input is not null/empty/whitespace, false otherwise). -->
-    <convLogic:IsNotNullOrEmptyConverter x:Key="IsNotNullOrEmptyConverter"/>
+     <convLogic:IsNotNullOrEmptyConverter x:Key="IsNotNullOrEmptyConverter"/>
 
-    <!-- Converts an input value (typically the currently selected tab identifier) to a boolean based on inequality with the parameter.
+     <!-- Converts an input value (typically the currently selected tab identifier) to a boolean based on inequality with the parameter.
          Input: object (e.g., string, enum representing the selected tab)
          Parameter: object (e.g., string, enum representing the tab this element belongs to)
          Output: bool (true if input is NOT equal to parameter (using ToString comparison), false otherwise). Often used for disabling the active tab button. -->
-    <convLogic:TabActiveConverter x:Key="TabActiveConverter"/>
+     <convLogic:TabActiveConverter x:Key="TabActiveConverter"/>
 
-    <!-- Converts between a nullable boolean (bool?) view model property and the IsChecked state of multiple RadioButtons (e.g., Yes/No/Any).
+     <!-- Converts between a nullable boolean (bool?) view model property and the IsChecked state of multiple RadioButtons (e.g., Yes/No/Any).
          Input (Convert): bool? (ViewModel value)
          Parameter (Convert): string ("True", "False", or "Null") representing the value this RadioButton corresponds to.
          Output (Convert): bool (true if the RadioButton's parameter matches the ViewModel state, false otherwise).
          Input (ConvertBack): bool (IsChecked state of the RadioButton triggering the change - typically true)
          Parameter (ConvertBack): string ("True", "False", or "Null") representing the value this RadioButton corresponds to.
          Output (ConvertBack): bool? (The value to set back on the ViewModel property based on the Parameter). -->
-    <convLogic:NullToBoolConverter x:Key="NullToBoolConverter"/>
+     <convLogic:NullToBoolConverter x:Key="NullToBoolConverter"/>
 
-    <!-- MultiValueConverter: Converts multiple boolean inputs to Visibility based on whether ALL are true.
+     <!-- MultiValueConverter: Converts multiple boolean inputs to Visibility based on whether ALL are true.
          Input: object[] { bool value1, bool value2, ... }
          Parameter: None
          Output: Visibility (Visible if ALL inputs are true, Collapsed otherwise). -->
-    <convLogic:BooleanAndToVisibilityConverter x:Key="BooleanAndToVisibilityConverter"/>
+     <convLogic:BooleanAndToVisibilityConverter x:Key="BooleanAndToVisibilityConverter"/>
 
-    <!-- ===================== -->
-    <!-- Numeric Converters    -->
-    <!-- ===================== -->
+     <!-- ===================== -->
+     <!-- Numeric Converters    -->
+     <!-- ===================== -->
 
-    <!-- Clamps an input double value proportionally within a specified min/max range defined by the parameter. Assumes input is scaled (e.g., 0-1000).
+     <!-- Clamps an input double value proportionally within a specified min/max range defined by the parameter. Assumes input is scaled (e.g., 0-1000).
          Input: double (Value to be clamped, expected to be on a scale like 0-1000)
          Parameter: string "minValue,maxValue" (e.g., "10,100")
          Output: double (The input value scaled and clamped between minValue and maxValue). -->
-    <convNumeric:ClampValueConverter x:Key="ClampValueConverter"/>
+     <convNumeric:ClampValueConverter x:Key="ClampValueConverter"/>
 
-    <!-- MultiValueConverter: Multiplies multiple numeric input values together. Optionally multiplies by a parameter.
+     <!-- MultiValueConverter: Multiplies multiple numeric input values together. Optionally multiplies by a parameter.
          Input: object[] { double/int/float value1, double/int/float value2, ... }
          Parameter: (Optional) string parsable to double (Acts as an additional multiplier)
          Output: double (The product of all input values [and the parameter if provided]). -->
-    <convNumeric:MultiplyMultiValueConverter x:Key="MultiplyMultiValueConverter"/>
+     <convNumeric:MultiplyMultiValueConverter x:Key="MultiplyMultiValueConverter"/>
 
-    <!-- Multiplies an input double value by a factor specified in the parameter.
+     <!-- Multiplies an input double value by a factor specified in the parameter.
          Input: double
          Parameter: string parsable to double (The multiplier)
          Output: double (input value * multiplier). -->
-    <convNumeric:MultiplyValueConverter x:Key="MultiplyValueConverter"/>
+     <convNumeric:MultiplyValueConverter x:Key="MultiplyValueConverter"/>
 
-    <!-- ===================== -->
-    <!-- Text Converters       -->
-    <!-- ===================== -->
+     <!-- ===================== -->
+     <!-- Text Converters       -->
+     <!-- ===================== -->
 
-    <!-- Converts a boolean input to one of two specified text strings.
+     <!-- Converts a boolean input to one of two specified text strings.
          Input: bool
          Parameter: string "FalseText|TrueText"
          Output: string (Returns FalseText if input is false, TrueText if input is true). -->
-    <convText:BooleanToTextConverter x:Key="BooleanToTextConverter"/>
+     <convText:BooleanToTextConverter x:Key="BooleanToTextConverter"/>
 
-    <!-- Converts a List<string> into a single comma-separated string.
+     <!-- Converts a List<string> into a single comma-separated string.
          Input: List<string>
          Parameter: (Optional) string (Separator to use instead of ", ").
          Output: string (Joined list items or "None" if list is null/empty). -->
-    <convText:ListToStringConverter x:Key="ListToStringConverter"/>
+     <convText:ListToStringConverter x:Key="ListToStringConverter"/>
 
-    <!-- Converts a string URL into a System.Uri object, validating it for common web schemes.
+     <!-- Converts a string URL into a System.Uri object, validating it for common web schemes.
          Input: string (Potential URL)
          Parameter: None
          Output: System.Uri if the input is a well-formed absolute URI with http, https, ftp, or mailto scheme, otherwise null. -->
-    <convText:StringToUriConverter x:Key="StringToUriConverter"/>
+     <convText:StringToUriConverter x:Key="StringToUriConverter"/>
 
-    <!-- Converts a List<VersionSupport> into a formatted TextBlock for display, highlighting unofficial sources.
+     <!-- Converts a List<VersionSupport> into a formatted TextBlock for display, highlighting unofficial sources.
          Input: List<RimSharp.Shared.Models.VersionSupport>
          Parameter: None
          Output: TextBlock containing Runs for each version, styled differently for unofficial versions (italic, colored) with tooltips explaining the source. Returns a simple Run("None") if the list is null/empty. -->
-    <convText:VersionSupportConverter x:Key="VersionSupportConverter"/>
+     <convText:VersionSupportConverter x:Key="VersionSupportConverter"/>
 
-    <!-- Converts a ModType enum value into a short initial/abbreviation string.
+     <!-- Converts a ModType enum value into a short initial/abbreviation string.
          Input: RimSharp.Shared.Models.ModType
          Parameter: None
          Output: string (e.g., "C", "E", "W", "WL", "G", "Z", or empty string for unknown). -->
-    <convText:ModTypeToInitialConverter x:Key="ModTypeToInitialConverter"/>
+     <convText:ModTypeToInitialConverter x:Key="ModTypeToInitialConverter"/>
 
-    <!-- Converts a ModType enum value into a user-friendly description string.
+     <!-- Converts a ModType enum value into a user-friendly description string.
          Input: RimSharp.Shared.Models.ModType
          Parameter: None
          Output: string (e.g., "Core Game", "Expansion/DLC", "Workshop Mod", etc.). -->
-    <convText:ModTypeToDescriptionConverter x:Key="ModTypeToDescriptionConverter"/>
-    <!-- Converts a boolean input to one of two strings specified in the parameter ("FalseText|TrueText").
+     <convText:ModTypeToDescriptionConverter x:Key="ModTypeToDescriptionConverter"/>
+
+     <convText:TrimmedTextTooltipConverter x:Key="TrimmedTextTooltipConverter"/>
+
+     <!-- Converts a boolean input to one of two strings specified in the parameter ("FalseText|TrueText").
          Input: bool
          Parameter: string "TextForFalse|TextForTrue"
          Output: string -->
-    <convText:ConditionalTextConverter x:Key="ConditionalTextConverter"/>
+     <convText:ConditionalTextConverter x:Key="ConditionalTextConverter"/>
 
-    <!-- ===================== -->
-    <!-- Utility Converters    -->
-    <!-- ===================== -->
 
-    <!-- Intended to format a path for opening in Explorer, but currently just returns the path as-is.
+     <!-- ===================== -->
+     <!-- Utility Converters    -->
+     <!-- ===================== -->
+
+     <!-- Intended to format a path for opening in Explorer, but currently just returns the path as-is.
          Input: string (File or directory path)
          Parameter: None
          Output: string (The original path). -->
-    <convUtility:PathToExplorerFormatConverter x:Key="PathToExplorerFormatConverter"/>
+     <convUtility:PathToExplorerFormatConverter x:Key="PathToExplorerFormatConverter"/>
 
-    <!-- MultiValueConverter: Determines a tag string for filter buttons based on the button's header and filter active states.
+     <!-- MultiValueConverter: Determines a tag string for filter buttons based on the button's header and filter active states.
          Input: object[] { string HeaderText, bool IsActiveFilterSet, bool IsInactiveFilterSet }
          Parameter: None
          Output: string ("ActiveFiltered", "InactiveFiltered", or "Unfiltered"). -->
-    <convUtility:FilterButtonTagConverter x:Key="FilterButtonTagConverter"/>
+     <convUtility:FilterButtonTagConverter x:Key="FilterButtonTagConverter"/>
 
-    <!-- Converts a file size in bytes (long) into a human-readable string (e.g., "1.5 MB", "2.0 GB", "512 KB").
+     <!-- Converts a file size in bytes (long) into a human-readable string (e.g., "1.5 MB", "2.0 GB", "512 KB").
          Input: long (File size in bytes)
          Parameter: None
          Output: string (Formatted size with appropriate unit, or "N/A" for invalid input). -->
-    <convUtility:FileSizeConverter x:Key="FileSizeConverter"/>
+     <convUtility:FileSizeConverter x:Key="FileSizeConverter"/>
 
 </ResourceDictionary>
