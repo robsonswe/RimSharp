@@ -163,7 +163,7 @@
                      VirtualizingPanel.IsVirtualizing="True"
                      VirtualizingPanel.VirtualizationMode="Recycling"
                      ScrollViewer.CanContentScroll="True"
-                     ScrollViewer.IsDeferredScrollingEnabled="True">
+                     >
                 <b:Interaction.Behaviors>
                     <behaviors:ListBoxDragDropBehavior
                         DropCommand="{Binding DropCommand, ElementName=RootModListView}"
