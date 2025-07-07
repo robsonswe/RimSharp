@@ -30,6 +30,7 @@
     <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
     <PackageReference Include="PInvoke.Shell32" Version="0.7.124" />
     <PackageReference Include="PInvoke.User32" Version="0.7.124" />
+    <PackageReference Include="QuikGraph" Version="2.5.0" />
   </ItemGroup>
   <ItemGroup>
     <!-- Include all files under Rules\db -->
@@ -61,16 +62,10 @@
     <MakeDir Directories="$(ProjectDir)Rules\db" Condition="!Exists('$(ProjectDir)Rules\db')" />
 
     <!-- Create default rules.json if it doesn't exist -->
-    <WriteLinesToFile File="$(ProjectDir)Rules\db\rules.json"
-      Lines="{&quot;rules&quot;:{}}"
-      Overwrite="false"
-      Condition="!Exists('$(ProjectDir)Rules\db\rules.json')" />
+    <WriteLinesToFile File="$(ProjectDir)Rules\db\rules.json" Lines="{&quot;rules&quot;:{}}" Overwrite="false" Condition="!Exists('$(ProjectDir)Rules\db\rules.json')" />
 
     <!-- Create default replacements.json if it doesn't exist -->
-    <WriteLinesToFile File="$(ProjectDir)Rules\db\replacements.json"
-      Lines="{&quot;mods&quot;:{}}"
-      Overwrite="false"
-      Condition="!Exists('$(ProjectDir)Rules\db\replacements.json')" />
+    <WriteLinesToFile File="$(ProjectDir)Rules\db\replacements.json" Lines="{&quot;mods&quot;:{}}" Overwrite="false" Condition="!Exists('$(ProjectDir)Rules\db\replacements.json')" />
   </Target>
 
   <Target Name="PostBuild" AfterTargets="PostBuild">
@@ -79,8 +74,6 @@
     <MakeDir Directories="$(OutputPath)Lists" />
 
     <!-- Copy Rules\db contents -->
-    <Copy SourceFiles="@(None)"
-      DestinationFiles="@(None->'$(OutputPath)%(RelativeDir)%(Filename)%(Extension)')"
-      Condition="'%(None.RelativeDir)' != '' AND '%(None.RelativeDir)'.StartsWith('Rules\db\')" />
+    <Copy SourceFiles="@(None)" DestinationFiles="@(None->'$(OutputPath)%(RelativeDir)%(Filename)%(Extension)')" Condition="'%(None.RelativeDir)' != '' AND '%(None.RelativeDir)'.StartsWith('Rules\db\')" />
   </Target>
 </Project>

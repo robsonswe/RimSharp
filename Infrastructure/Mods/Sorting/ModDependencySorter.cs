@@ -4,6 +4,10 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using RimSharp.Shared.Models;
+using QuikGraph;
+using QuikGraph.Algorithms.Search;
+using QuikGraph.Algorithms.Observers;
+using QuikGraph.Algorithms;
 
 namespace RimSharp.Infrastructure.Mods.Sorting
 {
@@ -62,6 +66,10 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             _logger = logger ?? new ConsoleLogger();
         }
 
+        /// <summary>
+        /// Sorts a list of mods using a topological sort, backed by the QuikGraph library.
+        /// It detects cycles and uses a priority queue to resolve order for independent mods.
+        /// </summary>
         public SortResult TopologicalSort(List<ModItem> mods)
         {
             if (mods == null || mods.Count == 0)
@@ -69,34 +77,33 @@ namespace RimSharp.Infrastructure.Mods.Sorting
                 return new SortResult { IsSuccess = true };
             }
 
-            _logger.LogDebug($"TopologicalSort called with {mods.Count} mods.");
+            _logger.LogDebug($"TopologicalSort called with {mods.Count} mods. Using QuikGraph backend.");
 
             try
             {
-                var modLookup = mods.ToDictionary(m => m.PackageId.ToLowerInvariant(), m => m, StringComparer.OrdinalIgnoreCase);
-                var loadBottomMods = mods.Where(m => m.LoadBottom).ToHashSet();
+                // Build the graph using QuikGraph's data structures
+                var (graph, warnings) = BuildGraph(mods);
 
-                var (graph, warnings) = BuildDependencyGraph(mods, modLookup);
-
-                var cycleResult = DetectCyclesWithTarjan(graph);
-                if (cycleResult.Any())
+                // Detect cycles using QuikGraph's built-in, optimized Tarjan's algorithm
+                var cycles = DetectCycles(graph);
+                if (cycles.Any())
                 {
                     return new SortResult
                     {
                         IsSuccess = false,
                         ErrorMessage = "Circular dependencies were detected, sorting cannot continue.",
-                        CyclicDependencies = cycleResult,
+                        CyclicDependencies = cycles,
                         Warnings = warnings
                     };
                 }
 
+                // Perform the sort. We use our custom Kahn's implementation to allow for
+                // a PriorityQueue, which QuikGraph's default sorter doesn't support.
                 var sortedMods = PerformKahnSort(graph, mods);
 
                 if (sortedMods.Count != mods.Count)
                 {
-                    // This indicates a graph issue not caught by cycle detection, which can happen
-                    // if there are disconnected components that still contain cycles.
-                    _logger.LogError("Sort resulted in an incomplete list. This may indicate an issue with the dependency graph.");
+                    _logger.LogError("Sort resulted in an incomplete list. This may indicate a graph issue.");
                     return new SortResult
                     {
                         IsSuccess = false,
@@ -105,7 +112,8 @@ namespace RimSharp.Infrastructure.Mods.Sorting
                     };
                 }
 
-                var finalMods = ApplyLoadBottomRules(sortedMods, loadBottomMods);
+                // Post-processing for LoadBottom mods remains the same.
+                var finalMods = ApplyLoadBottomRules(sortedMods, mods.Where(m => m.LoadBottom).ToHashSet());
 
                 return new SortResult
                 {
@@ -124,51 +132,52 @@ namespace RimSharp.Infrastructure.Mods.Sorting
                 };
             }
         }
-        
-        private (DependencyGraph graph, List<string> warnings) BuildDependencyGraph(List<ModItem> mods, Dictionary<string, ModItem> modLookup)
-        {
-            var graph = new DependencyGraph(mods);
-            var warnings = new List<string>();
 
+        /// <summary>
+        /// Builds a QuikGraph AdjacencyGraph from the mod list and their dependency rules.
+        /// </summary>
+        private (AdjacencyGraph<ModItem, Edge<ModItem>> graph, List<string> warnings) BuildGraph(List<ModItem> mods)
+        {
+            var graph = new AdjacencyGraph<ModItem, Edge<ModItem>>();
+            var warnings = new List<string>();
+            var modLookup = mods.ToDictionary(m => m.PackageId.ToLowerInvariant(), m => m, StringComparer.OrdinalIgnoreCase);
+
+            // 1. Add all mods as vertices to the graph
+            graph.AddVertexRange(mods);
+
+            // 2. Add edges based on dependency rules
             foreach (var mod in mods)
             {
                 if (string.IsNullOrEmpty(mod.PackageId)) continue;
                 
-                // Process LoadBefore
+                // LoadBefore: An edge from 'mod' to 'otherMod'
                 var beforeDeps = mod.LoadBefore.Concat(mod.ForceLoadBefore);
-                ProcessDependencies(mod, beforeDeps, modLookup, graph, warnings, isBefore: true);
+                foreach (var depId in beforeDeps.Where(id => !string.IsNullOrEmpty(id)))
+                {
+                    if (modLookup.TryGetValue(depId, out var otherMod) && otherMod != mod)
+                        graph.AddEdge(new Edge<ModItem>(mod, otherMod));
+                    else if (!modLookup.ContainsKey(depId))
+                        warnings.Add($"Mod '{mod.Name}' has a LoadBefore rule for '{depId}', which is not in the active list.");
+                }
 
-                // Process LoadAfter
+                // LoadAfter & ModDependencies: An edge from 'otherMod' to 'mod'
                 var afterDeps = mod.LoadAfter.Concat(mod.ForceLoadAfter).Concat(mod.ModDependencies.Select(d => d.PackageId));
-                ProcessDependencies(mod, afterDeps, modLookup, graph, warnings, isBefore: false);
+                foreach (var depId in afterDeps.Where(id => !string.IsNullOrEmpty(id)))
+                {
+                    if (modLookup.TryGetValue(depId, out var otherMod) && otherMod != mod)
+                        graph.AddEdge(new Edge<ModItem>(otherMod, mod));
+                    else if (!modLookup.ContainsKey(depId))
+                        warnings.Add($"Mod '{mod.Name}' has a LoadAfter rule for '{depId}', which is not in the active list.");
+                }
             }
-            
-            // Add implicit dependencies (Core/Expansions first)
+
+            // 3. Add implicit dependencies (Core/Expansions first)
             AddImplicitDependencies(mods, graph);
 
             return (graph, warnings);
         }
 
-        private void ProcessDependencies(ModItem mod, IEnumerable<string> dependencyIds, Dictionary<string, ModItem> lookup, DependencyGraph graph, List<string> warnings, bool isBefore)
-        {
-            foreach (var depId in dependencyIds.Where(id => !string.IsNullOrEmpty(id)))
-            {
-                if (lookup.TryGetValue(depId, out var otherMod))
-                {
-                    if (otherMod == mod) continue; // Mod cannot depend on itself.
-                    
-                    var from = isBefore ? mod : otherMod;
-                    var to = isBefore ? otherMod : mod;
-                    graph.AddDependency(from, to, new DependencyInfo(isBefore ? DependencyType.LoadBefore : DependencyType.LoadAfter));
-                }
-                else
-                {
-                    warnings.Add($"Mod '{mod.Name}' has a rule referencing '{depId}', which is not in the active mod list.");
-                }
-            }
-        }
-
-        private void AddImplicitDependencies(List<ModItem> mods, DependencyGraph graph)
+        private void AddImplicitDependencies(List<ModItem> mods, AdjacencyGraph<ModItem, Edge<ModItem>> graph)
         {
             var coreMod = mods.FirstOrDefault(m => m.ModType == ModType.Core);
             var expansionMods = mods.Where(m => m.ModType == ModType.Expansion).ToList();
@@ -180,9 +189,9 @@ namespace RimSharp.Infrastructure.Mods.Sorting
                 {
                     if (mod == coreMod) continue;
                     // Add implicit dependency only if no explicit path already exists between them.
-                    if (!graph.HasPath(mod, coreMod) && !graph.HasPath(coreMod, mod))
+                    if (!HasPath(graph, mod, coreMod) && !HasPath(graph, coreMod, mod))
                     {
-                        graph.AddDependency(coreMod, mod, new DependencyInfo(DependencyType.Implicit));
+                        graph.AddEdge(new Edge<ModItem>(coreMod, mod));
                     }
                 }
             }
@@ -191,9 +200,9 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             foreach (var expansion in expansionMods)
             {
                 // Ensure expansion is after Core
-                if (coreMod != null && !graph.HasPath(coreMod, expansion))
+                if (coreMod != null && !HasPath(graph, coreMod, expansion))
                 {
-                    graph.AddDependency(coreMod, expansion, new DependencyInfo(DependencyType.Implicit));
+                    graph.AddEdge(new Edge<ModItem>(coreMod, expansion));
                 }
 
                 // Ensure other mods are after expansions
@@ -201,28 +210,117 @@ namespace RimSharp.Infrastructure.Mods.Sorting
                 {
                     if (mod.ModType != ModType.Core && mod.ModType != ModType.Expansion)
                     {
-                        if (!graph.HasPath(mod, expansion) && !graph.HasPath(expansion, mod))
+                        if (!HasPath(graph, mod, expansion) && !HasPath(graph, expansion, mod))
                         {
-                            graph.AddDependency(expansion, mod, new DependencyInfo(DependencyType.Implicit));
+                            graph.AddEdge(new Edge<ModItem>(expansion, mod));
                         }
                     }
                 }
             }
         }
 
-        private List<ModItem> PerformKahnSort(DependencyGraph graph, List<ModItem> mods)
+        // Helper to check for path existence using QuikGraph's search algorithms
+        private bool HasPath(IVertexListGraph<ModItem, Edge<ModItem>> graph, ModItem from, ModItem to)
         {
-            var sortedList = new List<ModItem>(mods.Count);
-            var inDegree = graph.GetInDegrees();
+            var bfs = new BreadthFirstSearchAlgorithm<ModItem, Edge<ModItem>>(graph);
+            var found = false;
+            bfs.TreeEdge += (edge) =>
+            {
+                if (edge.Target.Equals(to))
+                    found = true;
+            };
+            bfs.Compute(from);
+            return found;
+        }
+
+        /// <summary>
+        /// Detects cycles using QuikGraph's optimized implementation of Tarjan's algorithm.
+        /// </summary>
+        private List<CycleInfo> DetectCycles(AdjacencyGraph<ModItem, Edge<ModItem>> graph)
+        {
+            var cycles = new List<CycleInfo>();
+            var sccDict = new Dictionary<ModItem, int>();
+            int componentCount = graph.StronglyConnectedComponents(sccDict);
+
+            var components = new Dictionary<int, List<ModItem>>();
+            foreach (var kvp in sccDict)
+            {
+                if (!components.ContainsKey(kvp.Value))
+                    components[kvp.Value] = new List<ModItem>();
+                components[kvp.Value].Add(kvp.Key);
+            }
+
+            foreach (var component in components.Values)
+            {
+                if (component.Count > 1)
+                {
+                    var description = BuildCycleDescription(component, graph);
+                    cycles.Add(new CycleInfo(component, description));
+                }
+                else
+                {
+                    // Self-loop
+                    var mod = component[0];
+                    if (graph.TryGetOutEdges(mod, out var outEdges) && outEdges.Any(e => e.Target == mod))
+                    {
+                        var description = BuildCycleDescription(component, graph);
+                        cycles.Add(new CycleInfo(component, description));
+                    }
+                }
+            }
+
+            return cycles;
+        }
+
+        private string BuildCycleDescription(List<ModItem> scc, AdjacencyGraph<ModItem, Edge<ModItem>> graph)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("A dependency cycle was found involving these mods:");
+            foreach (var mod in scc) sb.AppendLine($"  - {mod.Name} ({mod.PackageId})");
+
+            sb.AppendLine("The conflicting rules within this cycle are:");
+            foreach (var fromMod in scc)
+            {
+                if (graph.TryGetOutEdges(fromMod, out var outEdges))
+                {
+                    foreach (var edge in outEdges)
+                    {
+                        if (scc.Contains(edge.Target))
+                        {
+                            sb.AppendLine($"  - A rule forces '{fromMod.Name}' to load before '{edge.Target.Name}'.");
+                        }
+                    }
+                }
+            }
+            return sb.ToString();
+        }
+
+       // In ModDependencySorter.cs
+
+        /// <summary>
+        /// Performs Kahn's topological sort using the provided QuikGraph object.
+        /// This custom implementation is necessary to support a PriorityQueue for tie-breaking.
+        /// </summary>
+        private List<ModItem> PerformKahnSort(AdjacencyGraph<ModItem, Edge<ModItem>> graph, IEnumerable<ModItem> mods)
+        {
+            var sortedList = new List<ModItem>();
             
-            // Using a PriorityQueue to respect sorting priorities.
+            // --- FIX START ---
+            // The original call to graph.InDegree() inside a LINQ expression was causing a compiler error.
+            // This is a more robust and efficient way to calculate all in-degrees.
+            var inDegrees = mods.ToDictionary(mod => mod, _ => 0); // 1. Initialize all in-degrees to 0.
+            foreach (var edge in graph.Edges)                       // 2. Iterate through all edges once.
+            {
+                inDegrees[edge.Target]++;                           // 3. Increment the in-degree of the target vertex.
+            }
+            // --- FIX END ---
+
             var queue = new PriorityQueue<ModItem, int>();
 
             foreach (var mod in mods)
             {
-                if (inDegree[mod] == 0)
+                if (inDegrees[mod] == 0)
                 {
-                    // Using original priority logic as requested
                     queue.Enqueue(mod, GetPriority(mod));
                 }
             }
@@ -231,12 +329,17 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             {
                 sortedList.Add(currentMod);
 
-                foreach (var neighbor in graph.GetDependencies(currentMod).OrderBy(m => GetPriority(m)))
+                // Use QuikGraph to get outgoing edges efficiently
+                if (graph.TryGetOutEdges(currentMod, out var outEdges))
                 {
-                    inDegree[neighbor]--;
-                    if (inDegree[neighbor] == 0)
+                    foreach (var edge in outEdges)
                     {
-                        queue.Enqueue(neighbor, GetPriority(neighbor));
+                        var neighbor = edge.Target;
+                        inDegrees[neighbor]--;
+                        if (inDegrees[neighbor] == 0)
+                        {
+                            queue.Enqueue(neighbor, GetPriority(neighbor));
+                        }
                     }
                 }
             }
@@ -256,7 +359,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             if (mod.LoadAfter.Any() || mod.ForceLoadAfter.Any() || mod.ModDependencies.Any()) return 4;
             return 5; // Regular mods
         }
-        
+
         private List<ModItem> ApplyLoadBottomRules(List<ModItem> sortedMods, HashSet<ModItem> loadBottomMods)
         {
             if (!loadBottomMods.Any())
@@ -269,201 +372,19 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             var nonBottomMods = sortedMods.Where(m => !m.LoadBottom).ToList();
             var bottomModsToSort = sortedMods.Where(m => m.LoadBottom).ToList();
 
-            // We can do a simple topological sort on just the bottom mods to respect their internal ordering rules.
-            // This is safer than calculating a simple priority number.
+            // Use QuikGraph for bottom mods as well
             var bottomModLookup = bottomModsToSort.ToDictionary(m => m.PackageId.ToLowerInvariant(), m => m, StringComparer.OrdinalIgnoreCase);
-            var (bottomGraph, _) = BuildDependencyGraph(bottomModsToSort, bottomModLookup);
+            var (bottomGraph, _) = BuildGraph(bottomModsToSort);
             var sortedBottomMods = PerformKahnSort(bottomGraph, bottomModsToSort);
 
-            // If the sub-sort fails, just add them in their current relative order as a fallback.
             if (sortedBottomMods.Count != bottomModsToSort.Count)
             {
                 _logger.LogError("Could not determine a stable order for LoadBottom mods due to internal conflicts. Using relative order from main sort.");
                 sortedBottomMods = bottomModsToSort;
             }
-            
+
             nonBottomMods.AddRange(sortedBottomMods);
             return nonBottomMods;
         }
-
-        #region Tarjan's Algorithm for Cycle Detection (from v3)
-
-        private List<CycleInfo> DetectCyclesWithTarjan(DependencyGraph graph)
-        {
-            var cycles = new List<CycleInfo>();
-            var index = 0;
-            var stack = new Stack<ModItem>();
-            var onStack = new HashSet<ModItem>();
-            var indices = new Dictionary<ModItem, int>();
-            var lowLinks = new Dictionary<ModItem, int>();
-
-            foreach (var mod in graph.AllMods)
-            {
-                if (!indices.ContainsKey(mod))
-                {
-                    StrongConnect(mod);
-                }
-            }
-
-            void StrongConnect(ModItem v)
-            {
-                indices[v] = index;
-                lowLinks[v] = index;
-                index++;
-                stack.Push(v);
-                onStack.Add(v);
-
-                foreach (var w in graph.GetDependencies(v))
-                {
-                    if (!indices.ContainsKey(w))
-                    {
-                        StrongConnect(w);
-                        lowLinks[v] = Math.Min(lowLinks[v], lowLinks[w]);
-                    }
-                    else if (onStack.Contains(w))
-                    {
-                        lowLinks[v] = Math.Min(lowLinks[v], indices[w]);
-                    }
-                }
-
-                if (lowLinks[v] == indices[v])
-                {
-                    var scc = new List<ModItem>();
-                    ModItem w;
-                    do
-                    {
-                        w = stack.Pop();
-                        onStack.Remove(w);
-                        scc.Add(w);
-                    } while (v != w);
-
-                    if (scc.Count > 1 || graph.GetDependencies(v).Contains(v))
-                    {
-                        var description = BuildCycleDescription(scc, graph);
-                        cycles.Add(new CycleInfo(scc, description));
-                    }
-                }
-            }
-
-            return cycles;
-        }
-
-        private string BuildCycleDescription(List<ModItem> scc, DependencyGraph graph)
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine("A cycle or strongly connected component was found involving:");
-            foreach (var mod in scc)
-            {
-                sb.AppendLine($"  - {mod.Name} ({mod.PackageId})");
-            }
-            sb.AppendLine("The conflicting rules are:");
-
-            foreach (var fromMod in scc)
-            {
-                foreach (var toMod in graph.GetDependencies(fromMod))
-                {
-                    if (scc.Contains(toMod))
-                    {
-                        var depInfo = graph.GetDependencyInfo(fromMod, toMod);
-                        var reason = depInfo.Type switch {
-                            DependencyType.LoadBefore => $"'{fromMod.Name}' must load before '{toMod.Name}'",
-                            DependencyType.LoadAfter => $"'{toMod.Name}' must load after '{fromMod.Name}'",
-                            DependencyType.Implicit => $"Implicit rule: '{fromMod.Name}' should precede '{toMod.Name}'",
-                            _ => "An unknown rule"
-                        };
-                        sb.AppendLine($"  - {reason}");
-                    }
-                }
-            }
-            return sb.ToString();
-        }
-
-        #endregion
-
-        #region Internal DependencyGraph Class (from v3)
-
-        private class DependencyGraph
-        {
-            private readonly Dictionary<ModItem, HashSet<ModItem>> _adj = new();
-            private readonly Dictionary<ModItem, Dictionary<ModItem, bool>> _pathCache = new();
-            private readonly Dictionary<(ModItem from, ModItem to), DependencyInfo> _depInfo = new();
-
-            public DependencyGraph(IEnumerable<ModItem> mods)
-            {
-                foreach (var mod in mods) _adj[mod] = new HashSet<ModItem>();
-            }
-
-            public IEnumerable<ModItem> AllMods => _adj.Keys;
-            public void AddDependency(ModItem from, ModItem to, DependencyInfo info)
-            {
-                if (_adj.ContainsKey(from) && _adj[from].Add(to))
-                {
-                    _depInfo[(from, to)] = info;
-                    _pathCache.Clear(); // Invalidate cache on graph modification
-                }
-            }
-            public HashSet<ModItem> GetDependencies(ModItem mod) => _adj[mod];
-            public DependencyInfo GetDependencyInfo(ModItem from, ModItem to) => _depInfo.GetValueOrDefault((from, to));
-
-            public Dictionary<ModItem, int> GetInDegrees()
-            {
-                var inDegrees = _adj.Keys.ToDictionary(m => m, _ => 0);
-                foreach (var neighbors in _adj.Values)
-                {
-                    foreach (var neighbor in neighbors)
-                    {
-                        if (inDegrees.ContainsKey(neighbor))
-                        {
-                            inDegrees[neighbor]++;
-                        }
-                    }
-                }
-                return inDegrees;
-            }
-            
-            public bool HasPath(ModItem from, ModItem to)
-            {
-                if (_pathCache.TryGetValue(from, out var cached) && cached.TryGetValue(to, out var result))
-                {
-                    return result;
-                }
-                
-                var visited = new HashSet<ModItem>();
-                var queue = new Queue<ModItem>();
-                queue.Enqueue(from);
-                visited.Add(from);
-
-                while (queue.Count > 0)
-                {
-                    var current = queue.Dequeue();
-                    if (current == to)
-                    {
-                        CachePath(from, to, true);
-                        return true;
-                    }
-                    foreach (var neighbor in _adj[current])
-                    {
-                        if (visited.Add(neighbor))
-                        {
-                            queue.Enqueue(neighbor);
-                        }
-                    }
-                }
-                
-                CachePath(from, to, false);
-                return false;
-            }
-
-            private void CachePath(ModItem from, ModItem to, bool result)
-            {
-                if (!_pathCache.ContainsKey(from))
-                {
-                    _pathCache[from] = new Dictionary<ModItem, bool>();
-                }
-                _pathCache[from][to] = result;
-            }
-        }
-
-        #endregion
     }
 }
