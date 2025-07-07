@@ -240,17 +240,15 @@
                     BorderBrush="{StaticResource RimworldLightBrownBrush}"
                     BorderThickness="0,1,0,0"
                     Padding="0,10,0,0">
-                <ScrollViewer VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
-                    <!-- Bind to CurrentMod property -->
-                    <TextBox Text="{Binding CurrentMod.Description, Mode=OneWay}"
-                             TextWrapping="Wrap"
-                             Foreground="{StaticResource RimworldBrownBrush}"
-                             IsReadOnly="True"
-                             BorderThickness="0"
-                             Background="Transparent"
-                             VerticalScrollBarVisibility="Auto"/>
-                </ScrollViewer>
+                <!-- The TextBox is now the direct child of the Border. Removed outer ScrollViewer. -->
+                <TextBox Text="{Binding CurrentMod.Description, Mode=OneWay}"
+                         TextWrapping="Wrap"
+                         Foreground="{StaticResource RimworldBrownBrush}"
+                         IsReadOnly="True"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Disabled"/>
             </Border>
         </Grid>
     </Grid>

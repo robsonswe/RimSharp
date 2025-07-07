@@ -27,11 +27,14 @@
             <Setter Property="HorizontalAlignment" Value="Center"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="CornerRadius" Value="4"/>
+            <!-- Removed DropShadowEffect for performance -->
+            <!--
             <Setter Property="Effect">
                 <Setter.Value>
                     <DropShadowEffect ShadowDepth="1" Opacity="0.3" BlurRadius="2"/>
                 </Setter.Value>
             </Setter>
+            -->
         </Style>
         <Style x:Key="BadgeTextStyle" TargetType="TextBlock">
             <Setter Property="HorizontalAlignment" Value="Center"/>
@@ -156,7 +159,11 @@
                      AllowDrop="True"
                      Background="Transparent"
                      SelectionMode="Extended"
-                     SelectionChanged="InternalListBox_SelectionChanged">
+                     SelectionChanged="InternalListBox_SelectionChanged"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.VirtualizationMode="Recycling"
+                     ScrollViewer.CanContentScroll="True"
+                     ScrollViewer.IsDeferredScrollingEnabled="True">
                 <b:Interaction.Behaviors>
                     <behaviors:ListBoxDragDropBehavior
                         DropCommand="{Binding DropCommand, ElementName=RootModListView}"

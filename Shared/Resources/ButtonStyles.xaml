@@ -15,33 +15,25 @@
         <Setter Property="MinWidth" Value="80"/>
         <Setter Property="MinHeight" Value="24"/>
         <Setter Property="FontWeight" Value="Medium"/>
-        <Setter Property="FocusVisualStyle" Value="{x:Null}"/> <!-- Remove dotted focus rectangle -->
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
+                    <!-- NEW, HIGH-PERFORMANCE TEMPLATE -->
                     <Grid>
-                        <!-- Base button with slight offset shadow effect -->
+                        <!-- 1. The "Shadow" Border: A simple, dark border offset slightly. -->
+                        <!-- This is extremely fast for the GPU to render. -->
+                        <Border x:Name="ButtonShadow"
+                                Background="{StaticResource RimworldDarkBrownBrush}"
+                                CornerRadius="3"
+                                Margin="0,1,0,0" /> 
+                                
+                        <!-- 2. The Main Button Border -->
                         <Border x:Name="ButtonBackground"
                                 Background="{StaticResource RimworldBrownBrush}"
                                 BorderBrush="{StaticResource RimworldDarkBrownBrush}"
                                 BorderThickness="1"
-                                CornerRadius="3"
-                                Margin="0,0,0,2"> <!-- Bottom margin creates "depth" -->
-                            <Border.Effect>
-                                <DropShadowEffect Color="{StaticResource RimworldShadow}"
-                                                  Direction="320"
-                                                  ShadowDepth="1"
-                                                  BlurRadius="2"
-                                                  Opacity="0.3"/>
-                            </Border.Effect>
-                        </Border>
-
-                        <!-- Content -->
-                        <Border Background="Transparent"
-                                BorderBrush="{StaticResource RimworldDarkBrownBrush}"
-                                BorderThickness="1"
-                                CornerRadius="3"
-                                Margin="0,0,0,2">
+                                CornerRadius="3">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center"
                                               Margin="{TemplateBinding Padding}"/>
@@ -52,9 +44,9 @@
                             <Setter Property="Background" TargetName="ButtonBackground" Value="{StaticResource RimworldLightBrownBrush}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <!-- Simulate button press by removing margin and maybe slightly changing color -->
-                            <Setter Property="Margin" TargetName="ButtonBackground" Value="0,1,0,1"/>
-                             <Setter Property="Background" TargetName="ButtonBackground" Value="{StaticResource RimworldDarkBrownBrush}"/>
+                            <!-- Simulate press by moving the main border down over the shadow -->
+                            <Setter Property="Margin" TargetName="ButtonBackground" Value="0,1,0,-1"/>
+                            <Setter Property="Background" TargetName="ButtonBackground" Value="{StaticResource RimworldDarkBrownBrush}"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Background" TargetName="ButtonBackground" Value="{StaticResource RimworldLightBrownBrush}"/>
