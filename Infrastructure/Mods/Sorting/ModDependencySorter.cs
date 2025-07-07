@@ -46,7 +46,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             Description = description;
         }
     }
-    
+
     internal enum DependencyType { LoadBefore, LoadAfter, ModDependency, Implicit }
 
     internal class DependencyInfo
@@ -149,7 +149,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             foreach (var mod in mods)
             {
                 if (string.IsNullOrEmpty(mod.PackageId)) continue;
-                
+
                 // LoadBefore: An edge from 'mod' to 'otherMod'
                 var beforeDeps = mod.LoadBefore.Concat(mod.ForceLoadBefore);
                 foreach (var depId in beforeDeps.Where(id => !string.IsNullOrEmpty(id)))
@@ -295,7 +295,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             return sb.ToString();
         }
 
-       // In ModDependencySorter.cs
+        // In ModDependencySorter.cs
 
         /// <summary>
         /// Performs Kahn's topological sort using the provided QuikGraph object.
@@ -304,24 +304,25 @@ namespace RimSharp.Infrastructure.Mods.Sorting
         private List<ModItem> PerformKahnSort(AdjacencyGraph<ModItem, Edge<ModItem>> graph, IEnumerable<ModItem> mods)
         {
             var sortedList = new List<ModItem>();
-            
-            // --- FIX START ---
-            // The original call to graph.InDegree() inside a LINQ expression was causing a compiler error.
-            // This is a more robust and efficient way to calculate all in-degrees.
-            var inDegrees = mods.ToDictionary(mod => mod, _ => 0); // 1. Initialize all in-degrees to 0.
-            foreach (var edge in graph.Edges)                       // 2. Iterate through all edges once.
-            {
-                inDegrees[edge.Target]++;                           // 3. Increment the in-degree of the target vertex.
-            }
-            // --- FIX END ---
 
-            var queue = new PriorityQueue<ModItem, int>();
+            var inDegrees = mods.ToDictionary(mod => mod, _ => 0);
+            foreach (var edge in graph.Edges)
+            {
+                inDegrees[edge.Target]++;
+            }
+
+            // --- FIX: Use a stable tie-breaker for the priority ---
+            // The priority is now a tuple: (integer priority, packageId string).
+            // This ensures that if two mods have the same integer priority,
+            // they are sorted alphabetically by their PackageId, making the sort deterministic.
+            var queue = new PriorityQueue<ModItem, (int, string)>();
 
             foreach (var mod in mods)
             {
                 if (inDegrees[mod] == 0)
                 {
-                    queue.Enqueue(mod, GetPriority(mod));
+                    // Enqueue with the tuple as the priority.
+                    queue.Enqueue(mod, (GetPriority(mod), mod.PackageId));
                 }
             }
 
@@ -329,7 +330,6 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             {
                 sortedList.Add(currentMod);
 
-                // Use QuikGraph to get outgoing edges efficiently
                 if (graph.TryGetOutEdges(currentMod, out var outEdges))
                 {
                     foreach (var edge in outEdges)
@@ -338,7 +338,8 @@ namespace RimSharp.Infrastructure.Mods.Sorting
                         inDegrees[neighbor]--;
                         if (inDegrees[neighbor] == 0)
                         {
-                            queue.Enqueue(neighbor, GetPriority(neighbor));
+                            // Enqueue neighbors with the same stable priority tuple.
+                            queue.Enqueue(neighbor, (GetPriority(neighbor), neighbor.PackageId));
                         }
                     }
                 }
