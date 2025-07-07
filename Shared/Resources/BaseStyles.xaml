@@ -109,15 +109,7 @@
         <Setter Property="BorderThickness" Value="2"/>
         <Setter Property="CornerRadius" Value="3"/>
         <Setter Property="Padding" Value="8"/>
-        <Setter Property="Effect">
-            <Setter.Value>
-                <DropShadowEffect Color="{StaticResource RimworldShadow}"
-                                  Direction="320"
-                                  ShadowDepth="2"
-                                  BlurRadius="4"
-                                  Opacity="0.3"/>
-            </Setter.Value>
-        </Setter>
+        <!-- Removed DropShadowEffect as requested -->
     </Style>
 
         <Style x:Key="RimworldSubtlePanelBorder" TargetType="Border" BasedOn="{StaticResource RimworldPanelBorder}">
@@ -168,13 +160,6 @@
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="2">
-                            <Border.Effect>
-                                <DropShadowEffect ShadowDepth="1"
-                                                  Direction="270"
-                                                  Color="{StaticResource RimworldTextBoxShadow}"
-                                                  BlurRadius="1"
-                                                  Opacity="0.5"/>
-                            </Border.Effect>
                         </Border>
                         <ScrollViewer x:Name="PART_ContentHost"
                                       Background="Transparent"
@@ -198,10 +183,7 @@
                                     <MultiDataTrigger>
                                         <MultiDataTrigger.Conditions>
                                             <Condition Binding="{Binding Path=Text, RelativeSource={RelativeSource TemplatedParent}}" Value=""/>
-                                            <!-- !!! USE THE CORRECT CONVERTER !!! -->
                                             <Condition Binding="{Binding Path=Tag, RelativeSource={RelativeSource TemplatedParent}, FallbackValue='', Converter={StaticResource IsNotNullOrEmptyConverter}}" Value="True"/>
-                                             <!-- Removed TargetNullValue and Parameter, handled by converter -->
-                                             <!-- Added FallbackValue as good practice -->
                                         </MultiDataTrigger.Conditions>
                                         <Setter Property="Visibility" Value="Visible"/>
                                     </MultiDataTrigger>
