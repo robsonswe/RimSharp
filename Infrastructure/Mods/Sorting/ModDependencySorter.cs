@@ -2,278 +2,251 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using RimSharp.Shared.Models;
 
 namespace RimSharp.Infrastructure.Mods.Sorting
 {
+    // Best-practice: Define interfaces for dependency injection and testing.
+    public interface ILogger
+    {
+        void LogDebug(string message);
+        void LogError(string message);
+    }
+
+    public class ConsoleLogger : ILogger
+    {
+        public void LogDebug(string message) => Debug.WriteLine($"[Sorter-DEBUG] {message}");
+        public void LogError(string message) => Debug.WriteLine($"[Sorter-ERROR] {message}");
+    }
+
+    #region Result and Data Holder Classes (from v3)
+
+    public class SortResult
+    {
+        public bool IsSuccess { get; set; }
+        public List<ModItem> SortedMods { get; set; } = new List<ModItem>();
+        public string ErrorMessage { get; set; }
+        public List<string> Warnings { get; set; } = new List<string>();
+        public List<CycleInfo> CyclicDependencies { get; set; } = new List<CycleInfo>();
+    }
+
+    public class CycleInfo
+    {
+        public List<ModItem> CyclePath { get; }
+        public string Description { get; }
+
+        public CycleInfo(List<ModItem> cyclePath, string description)
+        {
+            CyclePath = cyclePath;
+            Description = description;
+        }
+    }
+    
+    internal enum DependencyType { LoadBefore, LoadAfter, ModDependency, Implicit }
+
+    internal class DependencyInfo
+    {
+        public DependencyType Type { get; }
+        public DependencyInfo(DependencyType type) { Type = type; }
+    }
+
+    #endregion
+
     public class ModDependencySorter
     {
-        public List<ModItem> TopologicalSort(List<ModItem> mods, HashSet<ModItem> hasExplicitLoadBefore, HashSet<ModItem> hasExplicitForceLoadBefore)
+        private readonly ILogger _logger;
+
+        public ModDependencySorter(ILogger logger = null)
         {
-            if (mods.Count == 0) return new List<ModItem>();
+            _logger = logger ?? new ConsoleLogger();
+        }
 
-            Console.WriteLine($"[DEBUG] TopologicalSort called with {mods.Count} mods");
-
-            var localModLookup = mods.ToDictionary(m => m.PackageId.ToLowerInvariant(), m => m, StringComparer.OrdinalIgnoreCase);
-            var graph = new Dictionary<ModItem, HashSet<ModItem>>();
-            var inDegree = new Dictionary<ModItem, int>();
-
-            var coreMod = mods.FirstOrDefault(m => m.ModType == ModType.Core);
-            var expansionMods = mods.Where(m => m.ModType == ModType.Expansion).ToList();
-            var loadBottomMods = mods.Where(m => m.LoadBottom).ToList();
-
-            Console.WriteLine($"[DEBUG] Found {loadBottomMods.Count} LoadBottom mods: {string.Join(", ", loadBottomMods.Select(m => m.PackageId))}");
-
-            foreach (var mod in mods)
+        public SortResult TopologicalSort(List<ModItem> mods)
+        {
+            if (mods == null || mods.Count == 0)
             {
-                graph[mod] = new HashSet<ModItem>();
-                inDegree[mod] = 0;
+                return new SortResult { IsSuccess = true };
             }
+
+            _logger.LogDebug($"TopologicalSort called with {mods.Count} mods.");
+
+            try
+            {
+                var modLookup = mods.ToDictionary(m => m.PackageId.ToLowerInvariant(), m => m, StringComparer.OrdinalIgnoreCase);
+                var loadBottomMods = mods.Where(m => m.LoadBottom).ToHashSet();
+
+                var (graph, warnings) = BuildDependencyGraph(mods, modLookup);
+
+                var cycleResult = DetectCyclesWithTarjan(graph);
+                if (cycleResult.Any())
+                {
+                    return new SortResult
+                    {
+                        IsSuccess = false,
+                        ErrorMessage = "Circular dependencies were detected, sorting cannot continue.",
+                        CyclicDependencies = cycleResult,
+                        Warnings = warnings
+                    };
+                }
+
+                var sortedMods = PerformKahnSort(graph, mods);
+
+                if (sortedMods.Count != mods.Count)
+                {
+                    // This indicates a graph issue not caught by cycle detection, which can happen
+                    // if there are disconnected components that still contain cycles.
+                    _logger.LogError("Sort resulted in an incomplete list. This may indicate an issue with the dependency graph.");
+                    return new SortResult
+                    {
+                        IsSuccess = false,
+                        ErrorMessage = "Topological sort failed. The mod list is inconsistent.",
+                        Warnings = warnings
+                    };
+                }
+
+                var finalMods = ApplyLoadBottomRules(sortedMods, loadBottomMods);
+
+                return new SortResult
+                {
+                    IsSuccess = true,
+                    SortedMods = finalMods,
+                    Warnings = warnings
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"An unexpected error occurred during sorting: {ex}");
+                return new SortResult
+                {
+                    IsSuccess = false,
+                    ErrorMessage = "An unexpected error occurred during sorting. Check logs for details."
+                };
+            }
+        }
+        
+        private (DependencyGraph graph, List<string> warnings) BuildDependencyGraph(List<ModItem> mods, Dictionary<string, ModItem> modLookup)
+        {
+            var graph = new DependencyGraph(mods);
+            var warnings = new List<string>();
 
             foreach (var mod in mods)
             {
                 if (string.IsNullOrEmpty(mod.PackageId)) continue;
+                
+                // Process LoadBefore
+                var beforeDeps = mod.LoadBefore.Concat(mod.ForceLoadBefore);
+                ProcessDependencies(mod, beforeDeps, modLookup, graph, warnings, isBefore: true);
 
-                ProcessDependencies(mod, mod.LoadBefore.Concat(mod.ForceLoadBefore), localModLookup, graph, inDegree, isBefore: true);
-                ProcessDependencies(mod, mod.LoadAfter.Concat(mod.ForceLoadAfter).Concat(mod.ModDependencies.Select(d => d.PackageId)), localModLookup, graph, inDegree, isBefore: false);
+                // Process LoadAfter
+                var afterDeps = mod.LoadAfter.Concat(mod.ForceLoadAfter).Concat(mod.ModDependencies.Select(d => d.PackageId));
+                ProcessDependencies(mod, afterDeps, modLookup, graph, warnings, isBefore: false);
             }
+            
+            // Add implicit dependencies (Core/Expansions first)
+            AddImplicitDependencies(mods, graph);
 
-            if (coreMod != null)
+            return (graph, warnings);
+        }
+
+        private void ProcessDependencies(ModItem mod, IEnumerable<string> dependencyIds, Dictionary<string, ModItem> lookup, DependencyGraph graph, List<string> warnings, bool isBefore)
+        {
+            foreach (var depId in dependencyIds.Where(id => !string.IsNullOrEmpty(id)))
             {
-                AddImplicitDependencies(mods, coreMod, graph, inDegree);
-            }
-
-            foreach (var expansionMod in expansionMods)
-            {
-                AddImplicitDependencies(mods, expansionMod, graph, inDegree);
-            }
-
-            // IMPORTANT: We no longer add LoadBottom dependencies here to avoid cycles
-            // This will be handled after the topological sort
-
-            if (coreMod != null)
-            {
-                foreach (var expansionMod in expansionMods)
+                if (lookup.TryGetValue(depId, out var otherMod))
                 {
-                    if (!HasExplicitOrImpliedBeforeDependency(expansionMod, coreMod))
-                    {
-                        if (graph[coreMod].Add(expansionMod))
-                            inDegree[expansionMod]++;
-                    }
-                }
-            }
-
-            var cycle = DetectCycle(graph);
-            if (cycle != null)
-            {
-                Console.WriteLine($"[DEBUG] Cycle detected: {string.Join(" -> ", cycle.Select(m => m.Name))}");
-                return null;
-            }
-
-            // Get the standard topological sort
-            var sortedMods = KahnTopologicalSort(mods, graph, inDegree);
-
-            if (sortedMods == null || sortedMods.Count != mods.Count)
-            {
-                Console.WriteLine($"[DEBUG] Topological sort failed or returned incomplete list");
-                return null;
-            }
-
-            // NEW APPROACH: Now, move all LoadBottom mods to the end
-            // We do this as a post-processing step, maintaining their relative order
-            if (loadBottomMods.Count > 0)
-            {
-                Console.WriteLine($"[DEBUG] Moving LoadBottom mods to the end of the sorted list");
-
-                // Remove all LoadBottom mods from the sorted list
-                var nonBottomMods = sortedMods.Where(m => !m.LoadBottom).ToList();
-
-                // Add all LoadBottom mods back at the end
-                // Sort them by priority first
-                var sortedBottomMods = loadBottomMods.OrderBy(m =>
-                {
-                    // Start with higher priority values for more important ones
-                    int priority = 0;
-
-                    // If a LoadBottom mod is marked as loadAfter another LoadBottom mod,
-                    // it should come after it in the final order
-                    foreach (var otherBottomMod in loadBottomMods)
-                    {
-                        if (otherBottomMod == m) continue;
-
-                        if (m.LoadAfter.Contains(otherBottomMod.PackageId, StringComparer.OrdinalIgnoreCase) ||
-                            m.ForceLoadAfter.Contains(otherBottomMod.PackageId, StringComparer.OrdinalIgnoreCase))
-                        {
-                            priority++;
-                        }
-
-                        if (otherBottomMod.LoadBefore.Contains(m.PackageId, StringComparer.OrdinalIgnoreCase) ||
-                            otherBottomMod.ForceLoadBefore.Contains(m.PackageId, StringComparer.OrdinalIgnoreCase))
-                        {
-                            priority++;
-                        }
-                    }
-
-                    return priority;
-                }).ToList();
-
-                // Combine the lists
-                var result = new List<ModItem>(nonBottomMods.Count + sortedBottomMods.Count);
-                result.AddRange(nonBottomMods);
-                result.AddRange(sortedBottomMods);
-
-                // Log the positions of LoadBottom mods
-                foreach (var mod in sortedBottomMods)
-                {
-                    int position = result.IndexOf(mod);
-                    Console.WriteLine($"[DEBUG] LoadBottom mod {mod.PackageId} placed at position {position} of {result.Count}");
-                }
-
-                return result;
-            }
-
-            return sortedMods;
-        }
-
-
-        private void AddImplicitDependencies(List<ModItem> mods, ModItem specialMod,
-                                     Dictionary<ModItem, HashSet<ModItem>> graph,
-                                     Dictionary<ModItem, int> inDegree)
-        {
-            foreach (var mod in mods)
-            {
-                // Avoid forcing Core to come after anything
-                if (mod == specialMod || mod.ModType == ModType.Core) continue;
-
-                if (HasExplicitOrImpliedBeforeDependency(mod, specialMod)) continue;
-
-                if (graph[specialMod].Add(mod))
-                    inDegree[mod]++;
-            }
-        }
-
-        private bool HasExplicitBeforeDependency(ModItem mod, ModItem target)
-        {
-            return mod.LoadBefore.Contains(target.PackageId, StringComparer.OrdinalIgnoreCase) ||
-                   mod.ForceLoadBefore.Contains(target.PackageId, StringComparer.OrdinalIgnoreCase);
-        }
-
-        private bool HasExplicitAfterDependency(ModItem mod, ModItem target)
-        {
-            return mod.LoadAfter.Contains(target.PackageId, StringComparer.OrdinalIgnoreCase) ||
-                   mod.ForceLoadAfter.Contains(target.PackageId, StringComparer.OrdinalIgnoreCase) ||
-                   mod.ModDependencies.Any(d => string.Equals(d.PackageId, target.PackageId, StringComparison.OrdinalIgnoreCase));
-        }
-
-        private bool HasExplicitOrImpliedBeforeDependency(ModItem mod, ModItem target)
-        {
-            if (HasExplicitBeforeDependency(mod, target)) return true;
-
-            if (target.ModType == ModType.Expansion &&
-                mod.LoadBefore.Contains("ludeon.rimworld", StringComparer.OrdinalIgnoreCase))
-                return true;
-
-            return false;
-        }
-
-        private void ProcessDependencies(ModItem mod, IEnumerable<string> dependencies,
-                                         Dictionary<string, ModItem> lookup,
-                                         Dictionary<ModItem, HashSet<ModItem>> graph,
-                                         Dictionary<ModItem, int> inDegree, bool isBefore)
-        {
-            foreach (var depId in dependencies.Where(d => !string.IsNullOrEmpty(d)))
-            {
-                if (!lookup.TryGetValue(depId, out var otherMod) || otherMod == mod) continue;
-
-                if (isBefore)
-                {
-                    if (graph[mod].Add(otherMod)) inDegree[otherMod]++;
+                    if (otherMod == mod) continue; // Mod cannot depend on itself.
+                    
+                    var from = isBefore ? mod : otherMod;
+                    var to = isBefore ? otherMod : mod;
+                    graph.AddDependency(from, to, new DependencyInfo(isBefore ? DependencyType.LoadBefore : DependencyType.LoadAfter));
                 }
                 else
                 {
-                    if (graph[otherMod].Add(mod)) inDegree[mod]++;
+                    warnings.Add($"Mod '{mod.Name}' has a rule referencing '{depId}', which is not in the active mod list.");
                 }
             }
         }
 
-        private List<ModItem> KahnTopologicalSort(
-                                 List<ModItem> mods,
-                                 Dictionary<ModItem, HashSet<ModItem>> graph,
-                                 Dictionary<ModItem, int> inDegree)
+        private void AddImplicitDependencies(List<ModItem> mods, DependencyGraph graph)
         {
-            var result = new List<ModItem>(mods.Count);
-            var pq = new PriorityQueue<ModItem, (int, string)>();
+            var coreMod = mods.FirstOrDefault(m => m.ModType == ModType.Core);
+            var expansionMods = mods.Where(m => m.ModType == ModType.Expansion).ToList();
 
-            Console.WriteLine("[DEBUG] Starting KahnTopologicalSort");
-
-            foreach (var mod in mods.Where(m => inDegree[m] == 0))
+            // Core should load before everything else
+            if (coreMod != null)
             {
-                int priority = GetPriority(mod);
-                pq.Enqueue(mod, (priority, mod.Name));
+                foreach (var mod in mods)
+                {
+                    if (mod == coreMod) continue;
+                    // Add implicit dependency only if no explicit path already exists between them.
+                    if (!graph.HasPath(mod, coreMod) && !graph.HasPath(coreMod, mod))
+                    {
+                        graph.AddDependency(coreMod, mod, new DependencyInfo(DependencyType.Implicit));
+                    }
+                }
             }
 
-            while (pq.Count > 0)
+            // Expansions should load after Core but before other mods.
+            foreach (var expansion in expansionMods)
             {
-                pq.TryDequeue(out var current, out var priority);
-                result.Add(current);
+                // Ensure expansion is after Core
+                if (coreMod != null && !graph.HasPath(coreMod, expansion))
+                {
+                    graph.AddDependency(coreMod, expansion, new DependencyInfo(DependencyType.Implicit));
+                }
 
-                foreach (var neighbor in graph[current])
+                // Ensure other mods are after expansions
+                foreach (var mod in mods)
+                {
+                    if (mod.ModType != ModType.Core && mod.ModType != ModType.Expansion)
+                    {
+                        if (!graph.HasPath(mod, expansion) && !graph.HasPath(expansion, mod))
+                        {
+                            graph.AddDependency(expansion, mod, new DependencyInfo(DependencyType.Implicit));
+                        }
+                    }
+                }
+            }
+        }
+
+        private List<ModItem> PerformKahnSort(DependencyGraph graph, List<ModItem> mods)
+        {
+            var sortedList = new List<ModItem>(mods.Count);
+            var inDegree = graph.GetInDegrees();
+            
+            // Using a PriorityQueue to respect sorting priorities.
+            var queue = new PriorityQueue<ModItem, int>();
+
+            foreach (var mod in mods)
+            {
+                if (inDegree[mod] == 0)
+                {
+                    // Using original priority logic as requested
+                    queue.Enqueue(mod, GetPriority(mod));
+                }
+            }
+
+            while (queue.TryDequeue(out var currentMod, out _))
+            {
+                sortedList.Add(currentMod);
+
+                foreach (var neighbor in graph.GetDependencies(currentMod).OrderBy(m => GetPriority(m)))
                 {
                     inDegree[neighbor]--;
                     if (inDegree[neighbor] == 0)
                     {
-                        int neighborPriority = GetPriority(neighbor);
-                        pq.Enqueue(neighbor, (neighborPriority, neighbor.Name));
+                        queue.Enqueue(neighbor, GetPriority(neighbor));
                     }
                 }
             }
 
-            Console.WriteLine($"[DEBUG] KahnTopologicalSort completed. Result count: {result.Count}, Expected: {mods.Count}");
-
-            return result.Count == mods.Count ? result : null;
+            return sortedList;
         }
 
-
-
-        private List<ModItem> DetectCycle(Dictionary<ModItem, HashSet<ModItem>> graph)
-        {
-            var visited = new HashSet<ModItem>();
-            var stack = new HashSet<ModItem>();
-            var cyclePath = new List<ModItem>();
-
-            bool DFS(ModItem node)
-            {
-                if (stack.Contains(node))
-                {
-                    cyclePath.Add(node);
-                    return true;
-                }
-                if (visited.Contains(node)) return false;
-
-                visited.Add(node);
-                stack.Add(node);
-
-                foreach (var neighbor in graph[node])
-                {
-                    if (DFS(neighbor))
-                    {
-                        cyclePath.Add(node);
-                        return true;
-                    }
-                }
-
-                stack.Remove(node);
-                return false;
-            }
-
-            foreach (var mod in graph.Keys)
-            {
-                if (DFS(mod)) return cyclePath.Reverse<ModItem>().ToList();
-            }
-
-            return null;
-        }
-
+        /// <summary>
+        /// The original priority calculation logic from v1.
+        /// </summary>
         private int GetPriority(ModItem mod)
         {
             if (mod.ForceLoadBefore.Any()) return 0;
@@ -283,7 +256,214 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             if (mod.LoadAfter.Any() || mod.ForceLoadAfter.Any() || mod.ModDependencies.Any()) return 4;
             return 5; // Regular mods
         }
+        
+        private List<ModItem> ApplyLoadBottomRules(List<ModItem> sortedMods, HashSet<ModItem> loadBottomMods)
+        {
+            if (!loadBottomMods.Any())
+            {
+                return sortedMods;
+            }
 
+            _logger.LogDebug($"Applying LoadBottom rules to {loadBottomMods.Count} mods.");
 
+            var nonBottomMods = sortedMods.Where(m => !m.LoadBottom).ToList();
+            var bottomModsToSort = sortedMods.Where(m => m.LoadBottom).ToList();
+
+            // We can do a simple topological sort on just the bottom mods to respect their internal ordering rules.
+            // This is safer than calculating a simple priority number.
+            var bottomModLookup = bottomModsToSort.ToDictionary(m => m.PackageId.ToLowerInvariant(), m => m, StringComparer.OrdinalIgnoreCase);
+            var (bottomGraph, _) = BuildDependencyGraph(bottomModsToSort, bottomModLookup);
+            var sortedBottomMods = PerformKahnSort(bottomGraph, bottomModsToSort);
+
+            // If the sub-sort fails, just add them in their current relative order as a fallback.
+            if (sortedBottomMods.Count != bottomModsToSort.Count)
+            {
+                _logger.LogError("Could not determine a stable order for LoadBottom mods due to internal conflicts. Using relative order from main sort.");
+                sortedBottomMods = bottomModsToSort;
+            }
+            
+            nonBottomMods.AddRange(sortedBottomMods);
+            return nonBottomMods;
+        }
+
+        #region Tarjan's Algorithm for Cycle Detection (from v3)
+
+        private List<CycleInfo> DetectCyclesWithTarjan(DependencyGraph graph)
+        {
+            var cycles = new List<CycleInfo>();
+            var index = 0;
+            var stack = new Stack<ModItem>();
+            var onStack = new HashSet<ModItem>();
+            var indices = new Dictionary<ModItem, int>();
+            var lowLinks = new Dictionary<ModItem, int>();
+
+            foreach (var mod in graph.AllMods)
+            {
+                if (!indices.ContainsKey(mod))
+                {
+                    StrongConnect(mod);
+                }
+            }
+
+            void StrongConnect(ModItem v)
+            {
+                indices[v] = index;
+                lowLinks[v] = index;
+                index++;
+                stack.Push(v);
+                onStack.Add(v);
+
+                foreach (var w in graph.GetDependencies(v))
+                {
+                    if (!indices.ContainsKey(w))
+                    {
+                        StrongConnect(w);
+                        lowLinks[v] = Math.Min(lowLinks[v], lowLinks[w]);
+                    }
+                    else if (onStack.Contains(w))
+                    {
+                        lowLinks[v] = Math.Min(lowLinks[v], indices[w]);
+                    }
+                }
+
+                if (lowLinks[v] == indices[v])
+                {
+                    var scc = new List<ModItem>();
+                    ModItem w;
+                    do
+                    {
+                        w = stack.Pop();
+                        onStack.Remove(w);
+                        scc.Add(w);
+                    } while (v != w);
+
+                    if (scc.Count > 1 || graph.GetDependencies(v).Contains(v))
+                    {
+                        var description = BuildCycleDescription(scc, graph);
+                        cycles.Add(new CycleInfo(scc, description));
+                    }
+                }
+            }
+
+            return cycles;
+        }
+
+        private string BuildCycleDescription(List<ModItem> scc, DependencyGraph graph)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("A cycle or strongly connected component was found involving:");
+            foreach (var mod in scc)
+            {
+                sb.AppendLine($"  - {mod.Name} ({mod.PackageId})");
+            }
+            sb.AppendLine("The conflicting rules are:");
+
+            foreach (var fromMod in scc)
+            {
+                foreach (var toMod in graph.GetDependencies(fromMod))
+                {
+                    if (scc.Contains(toMod))
+                    {
+                        var depInfo = graph.GetDependencyInfo(fromMod, toMod);
+                        var reason = depInfo.Type switch {
+                            DependencyType.LoadBefore => $"'{fromMod.Name}' must load before '{toMod.Name}'",
+                            DependencyType.LoadAfter => $"'{toMod.Name}' must load after '{fromMod.Name}'",
+                            DependencyType.Implicit => $"Implicit rule: '{fromMod.Name}' should precede '{toMod.Name}'",
+                            _ => "An unknown rule"
+                        };
+                        sb.AppendLine($"  - {reason}");
+                    }
+                }
+            }
+            return sb.ToString();
+        }
+
+        #endregion
+
+        #region Internal DependencyGraph Class (from v3)
+
+        private class DependencyGraph
+        {
+            private readonly Dictionary<ModItem, HashSet<ModItem>> _adj = new();
+            private readonly Dictionary<ModItem, Dictionary<ModItem, bool>> _pathCache = new();
+            private readonly Dictionary<(ModItem from, ModItem to), DependencyInfo> _depInfo = new();
+
+            public DependencyGraph(IEnumerable<ModItem> mods)
+            {
+                foreach (var mod in mods) _adj[mod] = new HashSet<ModItem>();
+            }
+
+            public IEnumerable<ModItem> AllMods => _adj.Keys;
+            public void AddDependency(ModItem from, ModItem to, DependencyInfo info)
+            {
+                if (_adj.ContainsKey(from) && _adj[from].Add(to))
+                {
+                    _depInfo[(from, to)] = info;
+                    _pathCache.Clear(); // Invalidate cache on graph modification
+                }
+            }
+            public HashSet<ModItem> GetDependencies(ModItem mod) => _adj[mod];
+            public DependencyInfo GetDependencyInfo(ModItem from, ModItem to) => _depInfo.GetValueOrDefault((from, to));
+
+            public Dictionary<ModItem, int> GetInDegrees()
+            {
+                var inDegrees = _adj.Keys.ToDictionary(m => m, _ => 0);
+                foreach (var neighbors in _adj.Values)
+                {
+                    foreach (var neighbor in neighbors)
+                    {
+                        if (inDegrees.ContainsKey(neighbor))
+                        {
+                            inDegrees[neighbor]++;
+                        }
+                    }
+                }
+                return inDegrees;
+            }
+            
+            public bool HasPath(ModItem from, ModItem to)
+            {
+                if (_pathCache.TryGetValue(from, out var cached) && cached.TryGetValue(to, out var result))
+                {
+                    return result;
+                }
+                
+                var visited = new HashSet<ModItem>();
+                var queue = new Queue<ModItem>();
+                queue.Enqueue(from);
+                visited.Add(from);
+
+                while (queue.Count > 0)
+                {
+                    var current = queue.Dequeue();
+                    if (current == to)
+                    {
+                        CachePath(from, to, true);
+                        return true;
+                    }
+                    foreach (var neighbor in _adj[current])
+                    {
+                        if (visited.Add(neighbor))
+                        {
+                            queue.Enqueue(neighbor);
+                        }
+                    }
+                }
+                
+                CachePath(from, to, false);
+                return false;
+            }
+
+            private void CachePath(ModItem from, ModItem to, bool result)
+            {
+                if (!_pathCache.ContainsKey(from))
+                {
+                    _pathCache[from] = new Dictionary<ModItem, bool>();
+                }
+                _pathCache[from][to] = result;
+            }
+        }
+
+        #endregion
     }
 }

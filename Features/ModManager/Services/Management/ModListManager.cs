@@ -95,44 +95,76 @@ namespace RimSharp.Features.ModManager.Services.Management
         public bool SortActiveList()
         {
             var currentActiveMods = _orderService.VirtualActiveMods.Select(x => x.Mod).ToList();
-            if (currentActiveMods.Count <= 1) return false;
-
-            var originalOrderIds = currentActiveMods
-                .Select(mod => mod?.PackageId?.ToLowerInvariant() ?? Guid.NewGuid().ToString())
-                .ToList();
-
-            var hasExplicitLoadBefore = new HashSet<ModItem>();
-            var hasExplicitForceLoadBefore = new HashSet<ModItem>();
-            foreach (var mod in currentActiveMods)
+            if (currentActiveMods.Count <= 1)
             {
-                if (mod == null) continue;
-                if (mod.LoadBefore?.Count > 0 || mod.ForceLoadBefore?.Count > 0) hasExplicitLoadBefore.Add(mod);
-                if (mod.ForceLoadBefore?.Count > 0) hasExplicitForceLoadBefore.Add(mod);
+                Debug.WriteLine("Sorting not needed for a list with 1 or 0 mods.");
+                return false; // No change was made
             }
 
-            var sortedMods = _dependencySorter.TopologicalSort(currentActiveMods, hasExplicitLoadBefore, hasExplicitForceLoadBefore);
-            if (sortedMods == null || sortedMods.Count != currentActiveMods.Count)
+            var originalOrderIds = currentActiveMods.Select(mod => mod.PackageId.ToLowerInvariant()).ToList();
+
+            // --- 1. Call the new, more powerful sorter ---
+            var sortResult = _dependencySorter.TopologicalSort(currentActiveMods);
+
+            // --- 2. Handle warnings (non-fatal issues) ---
+            if (sortResult.Warnings.Any())
             {
-                Debug.WriteLine("Sorting failed or resulted in a different number of mods (cycle?).");
+                Debug.WriteLine("Sorting generated warnings:");
+                foreach (var warning in sortResult.Warnings)
+                {
+                    Debug.WriteLine($"- {warning}");
+                    // TODO: You could display these warnings in the UI.
+                }
+            }
+
+            // --- 3. Handle catastrophic failure (e.g., cycles) ---
+            if (!sortResult.IsSuccess)
+            {
+                Debug.WriteLine($"Sorting failed: {sortResult.ErrorMessage}");
+
+                // The best part: you can now tell the user *exactly* what the cycle is!
+                if (sortResult.CyclicDependencies.Any())
+                {
+                    Debug.WriteLine("The following circular dependencies were detected:");
+                    foreach (var cycle in sortResult.CyclicDependencies)
+                    {
+                        // The CycleInfo object contains a pre-formatted, human-readable description.
+                        Debug.WriteLine(cycle.Description);
+                        
+                        // You could now, for example, flag all mods in the cycle as having issues.
+                        foreach (var modInCycle in cycle.CyclePath) 
+                        { 
+                            // modInCycle.HasIssues = true; 
+                            // modInCycle.IssueTooltipText = "Part of a dependency cycle.";
+                        }
+                    }
+                    // TODO: Display this critical error to the user.
+                }
+                return false; // Sorting failed, no changes made to the list.
+            }
+
+            // --- 4. Process the successful result ---
+            var sortedMods = sortResult.SortedMods;
+
+            if (sortedMods.Count != currentActiveMods.Count)
+            {
+                Debug.WriteLine("Error: Sorting resulted in a different number of mods. This indicates a critical error in the sorting logic.");
                 return false;
             }
 
-            var newOrderIds = sortedMods
-                .Select(mod => mod?.PackageId?.ToLowerInvariant() ?? Guid.NewGuid().ToString())
-                .ToList();
-
+            var newOrderIds = sortedMods.Select(mod => mod.PackageId.ToLowerInvariant()).ToList();
             bool orderChanged = !originalOrderIds.SequenceEqual(newOrderIds);
 
             if (orderChanged)
             {
                 _orderService.Clear();
-                _orderService.AddModsAt(sortedMods, 0);
-                RaiseListChanged();
-                Debug.WriteLine("Active mod list sorted successfully. Order changed.");
+                _orderService.AddModsAt(sortedMods, 0); // This now takes an IEnumerable
+                RaiseListChanged(); // This will also trigger RecalculateActiveModIssues
+                Debug.WriteLine("Active mod list sorted successfully. Order has been changed.");
             }
             else
             {
-                Debug.WriteLine("Sorting completed. Mod order sequence unchanged.");
+                Debug.WriteLine("Sorting completed. Mod order is already optimal.");
             }
 
             return orderChanged;
