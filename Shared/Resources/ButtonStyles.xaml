@@ -19,10 +19,8 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <!-- NEW, HIGH-PERFORMANCE TEMPLATE -->
                     <Grid>
                         <!-- 1. The "Shadow" Border: A simple, dark border offset slightly. -->
-                        <!-- This is extremely fast for the GPU to render. -->
                         <Border x:Name="ButtonShadow"
                                 Background="{StaticResource RimworldDarkBrownBrush}"
                                 CornerRadius="3"
@@ -66,25 +64,17 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Grid>
+                        <!-- Performant Shadow -->
+                        <Border x:Name="ButtonShadow"
+                                Background="{StaticResource RimworldDarkGreenBorderBrush}"
+                                CornerRadius="3"
+                                Margin="0,1,0,0" /> 
+                        <!-- Main Button -->
                         <Border x:Name="ButtonBackground"
                                 Background="{StaticResource RimworldDarkGreenBrush}"
                                 BorderBrush="{StaticResource RimworldDarkGreenBorderBrush}"
                                 BorderThickness="1"
-                                CornerRadius="3"
-                                Margin="0,0,0,2">
-                            <Border.Effect>
-                                <DropShadowEffect Color="{StaticResource RimworldShadow}"
-                                                  Direction="320"
-                                                  ShadowDepth="1"
-                                                  BlurRadius="2"
-                                                  Opacity="0.3"/>
-                            </Border.Effect>
-                        </Border>
-                        <Border Background="Transparent"
-                                BorderBrush="{StaticResource RimworldDarkGreenBorderBrush}"
-                                BorderThickness="1"
-                                CornerRadius="3"
-                                Margin="0,0,0,2">
+                                CornerRadius="3">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center"
                                               Margin="{TemplateBinding Padding}"
@@ -96,7 +86,7 @@
                             <Setter Property="Background" TargetName="ButtonBackground" Value="{StaticResource RimworldDarkGreenHoverBrush}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter Property="Margin" TargetName="ButtonBackground" Value="0,1,0,1"/>
+                            <Setter Property="Margin" TargetName="ButtonBackground" Value="0,1,0,-1"/>
                             <Setter Property="Background" TargetName="ButtonBackground" Value="{StaticResource RimworldDarkGreenBorderBrush}"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
@@ -116,25 +106,17 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Grid>
+                        <!-- Performant Shadow -->
+                        <Border x:Name="ButtonShadow"
+                                Background="{StaticResource RimworldRedBorderBrush}"
+                                CornerRadius="3"
+                                Margin="0,1,0,0" />
+                        <!-- Main Button -->
                         <Border x:Name="ButtonBackground"
                                 Background="{StaticResource RimworldRedBrush}"
                                 BorderBrush="{StaticResource RimworldRedBorderBrush}"
                                 BorderThickness="1"
-                                CornerRadius="3"
-                                Margin="0,0,0,2">
-                            <Border.Effect>
-                                <DropShadowEffect Color="{StaticResource RimworldShadow}"
-                                                  Direction="320"
-                                                  ShadowDepth="1"
-                                                  BlurRadius="2"
-                                                  Opacity="0.3"/>
-                            </Border.Effect>
-                        </Border>
-                        <Border Background="Transparent"
-                                BorderBrush="{StaticResource RimworldRedBorderBrush}"
-                                BorderThickness="1"
-                                CornerRadius="3"
-                                Margin="0,0,0,2">
+                                CornerRadius="3">
                              <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center"
                                               Margin="{TemplateBinding Padding}"
@@ -146,7 +128,7 @@
                             <Setter Property="Background" TargetName="ButtonBackground" Value="{StaticResource RimworldRedHoverBrush}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter Property="Margin" TargetName="ButtonBackground" Value="0,1,0,1"/>
+                            <Setter Property="Margin" TargetName="ButtonBackground" Value="0,1,0,-1"/>
                              <Setter Property="Background" TargetName="ButtonBackground" Value="{StaticResource RimworldRedBorderBrush}"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
@@ -372,15 +354,17 @@
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type MenuItem}">
                     <Grid SnapsToDevicePixels="true">
+                        <!-- Performant Shadow -->
+                        <Border x:Name="ButtonShadow"
+                                Background="{StaticResource RimworldDarkBrownBrush}"
+                                CornerRadius="3"
+                                Margin="0,1,0,0" /> 
+                        <!-- Main Button -->
                         <Border x:Name="ButtonBackground"
                                 Background="{StaticResource RimworldBrownBrush}"
                                 BorderBrush="{StaticResource RimworldDarkBrownBrush}"
                                 BorderThickness="1"
                                 CornerRadius="3">
-                            <Border.Effect>
-                                <DropShadowEffect Color="{StaticResource RimworldShadow}"
-                                                  Direction="320" ShadowDepth="1" BlurRadius="2" Opacity="0.3"/>
-                            </Border.Effect>
                         </Border>
                         
                         <Grid>
@@ -408,6 +392,10 @@
                         </Popup>
                     </Grid>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="IsSubmenuOpen" Value="True">
+                             <Setter Property="Margin" TargetName="ButtonBackground" Value="0,1,0,-1"/>
+                             <Setter Property="Background" TargetName="ButtonBackground" Value="{StaticResource RimworldDarkBrownBrush}"/>
+                        </Trigger>
                         <Trigger Property="IsHighlighted" Value="True">
                             <Setter Property="Background" TargetName="ButtonBackground" Value="{StaticResource RimworldLightBrownBrush}"/>
                         </Trigger>

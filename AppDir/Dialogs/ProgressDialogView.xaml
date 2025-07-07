@@ -28,20 +28,13 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ProgressBar">
                         <Grid>
-                            <!-- Track Background with Enhanced Depth Effect -->
+                            <!-- Track Background with Depth Effect -->
                             <Border x:Name="PART_Track" 
                                     Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
                                     CornerRadius="3">
-                                <Border.Effect>
-                                    <DropShadowEffect ShadowDepth="1" 
-                                                    Direction="270" 
-                                                    Color="#22000000" 
-                                                    BlurRadius="3" 
-                                                    Opacity="0.4"/>
-                                </Border.Effect>
-                                <!-- Inner Shadow for Depth -->
+                                <!-- Inner Shadow for Depth - A very performant way to add depth -->
                                 <Border Background="#10000000" 
                                         CornerRadius="2" 
                                         Margin="1" 
@@ -117,8 +110,6 @@
                                     </Rectangle.Fill>
                                 </Rectangle>
                             </Canvas>
-                            
-                            <!-- Percentage Text Overlay - Removed from template since it's duplicated in the main view -->
                         </Grid>
                         
                         <ControlTemplate.Triggers>
@@ -159,11 +150,10 @@
             <Grid Margin="20,18">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <!-- Removed Row Definition for the "Operation in progress..." text -->
+                    <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 
-                <!-- Message with Enhanced Typography -->
+                <!-- Message with Enhanced Typography (Removed DropShadowEffect) -->
                 <TextBlock Grid.Row="0" 
                            Text="{Binding Message}"
                            TextWrapping="Wrap"
@@ -171,51 +161,23 @@
                            LineHeight="22"
                            VerticalAlignment="Center"
                            Foreground="{StaticResource RimworldDarkBrownBrush}"
-                           Margin="0,0,0,22">
-                    <TextBlock.Effect>
-                        <DropShadowEffect ShadowDepth="1" 
-                                          BlurRadius="1" 
-                                          Opacity="0.2" 
-                                          Color="{StaticResource RimworldShadow}"/>
-                    </TextBlock.Effect>
-                </TextBlock>
+                           Margin="0,0,0,22"/>
 
-                <!-- Progress Bar Container with Improved Layout -->
+                <!-- Progress Bar Container with Improved Layout (Removed DropShadowEffect) -->
                 <Grid Grid.Row="1" Margin="0,0,0,20">
-                    <!-- Outer Shadow for Progress Bar -->
-                    <Border CornerRadius="4" 
-                            BorderThickness="0"
-                            Margin="-1,-1,1,1"
-                            Padding="0">
-                        <Border.Effect>
-                            <DropShadowEffect ShadowDepth="1" 
-                                              Direction="315"
-                                              BlurRadius="2" 
-                                              Opacity="0.25" 
-                                              Color="{StaticResource RimworldShadow}"/>
-                        </Border.Effect>
-                    </Border>
-                    
                     <!-- Progress Bar -->
                     <ProgressBar Value="{Binding Progress}"
                                 IsIndeterminate="{Binding IsIndeterminate}"
                                 Style="{StaticResource RimworldProgressBarStyle}"/>
                                 
-                    <!-- Progress Percentage Overlay - Only shown when NOT indeterminate -->
+                    <!-- Progress Percentage Overlay (Removed DropShadowEffect) -->
                     <TextBlock Text="{Binding Progress, StringFormat={}{0}%}"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"
                                FontWeight="Medium"
                                FontSize="13"
                                Foreground="{StaticResource RimworldWhiteBrush}"
-                                Visibility="{Binding IsIndeterminate, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
-                        <TextBlock.Effect>
-                            <DropShadowEffect ShadowDepth="1" 
-                                              BlurRadius="2" 
-                                              Opacity="0.6" 
-                                              Color="{StaticResource RimworldShadow}"/>
-                        </TextBlock.Effect>
-                    </TextBlock>
+                               Visibility="{Binding IsIndeterminate, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
                 </Grid>
                 
             </Grid>
@@ -228,7 +190,7 @@
                 BorderThickness="0">
             <StackPanel Orientation="Horizontal" 
                        HorizontalAlignment="Right">
-                <!-- Cancel Button with Enhanced Styling -->
+                <!-- Cancel Button with Enhanced Styling (Removed DropShadowEffect, Style handles shadow now) -->
                 <Button Content="Cancel"
                         Command="{Binding CancelCommand}"
                         Style="{StaticResource RimworldRunButtonStyle}"
@@ -237,12 +199,6 @@
                         Height="36"
                         Margin="5,0,5,0"
                         Visibility="{Binding CanCancel, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <Button.Effect>
-                        <DropShadowEffect ShadowDepth="2" 
-                                         BlurRadius="3" 
-                                         Opacity="0.3" 
-                                         Color="{StaticResource RimworldShadow}"/>
-                    </Button.Effect>
                     <!-- Button Content with Enhanced Font -->
                     <Button.ContentTemplate>
                         <DataTemplate>
