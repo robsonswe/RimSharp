@@ -93,6 +93,9 @@
                                                                     Foreground="{StaticResource RimworldDarkBrownBrush}"/>
                                                                     <Run Text="{Binding Name, Mode=OneWay}"
                                                                     Foreground="{StaticResource RimworldDarkGreenBrush}"/>
+                                                                     <Run FontStyle="Italic"
+                                                                        Text="{Binding IsOriginal, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='| (Original)'}"/>
+
                                                         </TextBlock>
                                                         <StackPanel Margin="20,8,0,0">
                                                             <TextBlock Text="{Binding Authors}" FontSize="12"/>

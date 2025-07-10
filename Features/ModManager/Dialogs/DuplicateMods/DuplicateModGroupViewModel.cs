@@ -45,7 +45,24 @@ namespace RimSharp.Features.ModManager.Dialogs.DuplicateMods
                     Mods.Add(wrapper);
                 }
             }
+            // Determine the original mod based on the lowest SteamId, if possible.
+            // 1. Check if ALL mods in the group have a valid, non-empty SteamId.
+            bool allHaveSteamId = Mods.All(w => !string.IsNullOrEmpty(w.SteamId) && long.TryParse(w.SteamId, out _));
 
+            if (allHaveSteamId)
+            {
+                // 2. If so, find the one with the minimum SteamId using LINQ.
+                var originalModWrapper = Mods
+                    .OrderBy(w => long.Parse(w.SteamId))
+                    .FirstOrDefault();
+
+                // 3. Set the IsOriginal flag on that wrapper.
+                if (originalModWrapper != null)
+                {
+                    originalModWrapper.IsOriginal = true;
+                }
+            }
+            
             // Updated to work with the new VersionSupport type
             var defaultMod = group.OrderByDescending(m => m?.IsActive ?? false)
                   .ThenByDescending(m => m?.SupportedVersions?.FirstOrDefault()?.Version)
