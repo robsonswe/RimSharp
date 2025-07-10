@@ -28,16 +28,13 @@ namespace RimSharp.Shared.Models
         // Source of this information
         public ReplacementSource Source { get; set; }
 
-        // --- ADD THIS CALCULATED PROPERTY ---
-        [JsonIgnore] // Don't serialize this derived property
+        [JsonIgnore]
         public string ReplacementSteamUrl => !string.IsNullOrEmpty(ReplacementSteamId)
                                             ? $"https://steamcommunity.com/sharedfiles/filedetails/?id={ReplacementSteamId}"
-                                            : null; // Return null or string.Empty if no ID exists
-        // --- END OF ADDED PROPERTY ---
+                                            : null;
 
-
-        // Calculated properties (optional but can be useful)
-        [JsonIgnore] // Don't serialize calculated properties if saving this object
+        // Calculated properties now correctly return simple string lists
+        [JsonIgnore]
         public List<string> OriginalVersionList => ParseVersionString(Versions);
         [JsonIgnore]
         public List<string> ReplacementVersionList => ParseVersionString(ReplacementVersions);

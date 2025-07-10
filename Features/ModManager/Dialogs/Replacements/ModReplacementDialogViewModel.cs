@@ -101,40 +101,45 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
 
         public ModReplacementDialogViewModel(
             IEnumerable<(ModItem Original, ModReplacementInfo Replacement)> replacements,
-            IEnumerable<ModItem> allInstalledMods) // Keep original signature
+            IEnumerable<ModItem> allInstalledMods)
             : base("Mod Replacements Available")
         {
-            // --- IMPROVED LOOKUP ---
-            // Create HashSet for efficient, case-insensitive lookups of installed mod IDs
-            var installedSteamIds = new HashSet<string>(
+            // --- FIXED LOOKUP LOGIC ---
+            // Create a lookup for all installed mods by their unique Steam ID.
+            var installedModsBySteamId = new HashSet<string>(
                 allInstalledMods
                     .Where(m => !string.IsNullOrEmpty(m.SteamId))
                     .Select(m => m.SteamId),
                 StringComparer.OrdinalIgnoreCase);
 
-            var installedPackageIds = new HashSet<string>(
+            // Create a separate lookup for installed mods that DO NOT have a Steam ID, keyed by their PackageID.
+            // This explicitly prevents a Steam mod's PackageID from causing a false positive match.
+            var installedLocalModsByPackageId = new HashSet<string>(
                 allInstalledMods
-                    .Where(m => !string.IsNullOrEmpty(m.PackageId))
+                    .Where(m => string.IsNullOrEmpty(m.SteamId) && !string.IsNullOrEmpty(m.PackageId))
                     .Select(m => m.PackageId),
                 StringComparer.OrdinalIgnoreCase);
-            // --- END IMPROVED LOOKUP ---
+            // --- END FIXED LOOKUP LOGIC ---
 
             var itemGroups = replacements
                 .Select(r =>
                 {
-                    // --- REVISED INSTALLED CHECK ---
-                    // Prioritize Steam ID check for the REPLACEMENT mod
-                    bool installedBySteamId = !string.IsNullOrEmpty(r.Replacement.ReplacementSteamId) &&
-                                              installedSteamIds.Contains(r.Replacement.ReplacementSteamId);
+                    var replacementInfo = r.Replacement;
+                    bool alreadyInstalled = false;
 
-                    // If not found by Steam ID, check by Package ID for the REPLACEMENT mod
-                    // Note: This is less reliable due to non-unique PackageIds, but acts as a fallback
-                    bool installedByPackageId = !installedBySteamId &&
-                                                !string.IsNullOrEmpty(r.Replacement.ReplacementModId) &&
-                                                installedPackageIds.Contains(r.Replacement.ReplacementModId);
-
-                    bool alreadyInstalled = installedBySteamId || installedByPackageId;
-                    // --- END REVISED INSTALLED CHECK ---
+                    // --- ACCURATE INSTALLED CHECK ---
+                    // 1. Prioritize check by the replacement's Steam ID. This is the unique identifier.
+                    if (!string.IsNullOrEmpty(replacementInfo.ReplacementSteamId))
+                    {
+                        alreadyInstalled = installedModsBySteamId.Contains(replacementInfo.ReplacementSteamId);
+                    }
+                    // 2. If the replacement has NO Steam ID, it might be a local mod.
+                    //    Check against our list of installed *local* mods using its Package ID.
+                    else if (!string.IsNullOrEmpty(replacementInfo.ReplacementModId))
+                    {
+                        alreadyInstalled = installedLocalModsByPackageId.Contains(replacementInfo.ReplacementModId);
+                    }
+                    // --- END ACCURATE INSTALLED CHECK ---
 
                     return new ModReplacementItem
                     {
@@ -162,13 +167,9 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
             }
 
             // Set the collections
-            // Important: Assign to the property to trigger the setter logic (event handling, count update)
             Replacements = new ObservableCollection<ModReplacementItem>(regularItems);
             AlreadyInstalledReplacements = new ObservableCollection<ModReplacementItem>(alreadyInstalledItems);
             HasAlreadyInstalledReplacements = alreadyInstalledItems.Count > 0;
-
-            // Initial count update is handled by the Replacements property setter
-            // UpdateSelectedCount(); // This call is redundant now if setter calls it
         }
 
         private void ReplacementItem_PropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -183,7 +184,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
         {
             foreach (var item in Replacements)
             {
-                item.IsSelected = true; // PropertyChanged triggers count update via event handler
+                item.IsSelected = true;
             }
         }
 
@@ -191,19 +192,17 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
         {
             foreach (var item in Replacements)
             {
-                item.IsSelected = false; // PropertyChanged triggers count update via event handler
+                item.IsSelected = false;
             }
         }
 
         private void UpdateSelectedCount()
         {
-            // Recalculate count from the collection that allows selection
             SelectedCount = Replacements.Count(r => r.IsSelected);
         }
 
         public List<ReplacementSelectionViewModel> GetSelectedReplacements()
         {
-            // Get selected items from the main list
             return Replacements
                 .Where(r => r.IsSelected)
                 .Select(r => new ReplacementSelectionViewModel(r.OriginalMod, r.ReplacementInfo))
