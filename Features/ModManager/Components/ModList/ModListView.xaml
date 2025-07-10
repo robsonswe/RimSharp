@@ -18,6 +18,23 @@
 
         <local:SelectedItemsHolder x:Key="selectedItemsHolder" />
         
+        <Style x:Key="IntegratedListBoxStyle" TargetType="ListBox" BasedOn="{StaticResource RimworldListBox}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBox">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="0">
+                        <ScrollViewer Focusable="False" Padding="{TemplateBinding Padding}" CanContentScroll="True">
+                            <ItemsPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                        </ScrollViewer>
+                    </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Badge Styles -->
         <Style x:Key="UnifiedBadgeBorderStyle" TargetType="Border">
             <Setter Property="Width" Value="24"/>
@@ -87,7 +104,7 @@
             </Border>
 
             <!-- ListBox -->
-            <ListBox Grid.Row="1" x:Name="InternalListBox" ItemsSource="{Binding ItemsSource, ElementName=RootModListView}" SelectedItem="{Binding SelectedItem, ElementName=RootModListView, Mode=TwoWay}" Style="{StaticResource RimworldListBox}" MouseDoubleClick="InternalListBox_MouseDoubleClick" AllowDrop="True" Background="Transparent" SelectionMode="Extended" SelectionChanged="InternalListBox_SelectionChanged" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True">
+           <ListBox Grid.Row="1" x:Name="InternalListBox" ItemsSource="{Binding ItemsSource, ElementName=RootModListView}" SelectedItem="{Binding SelectedItem, ElementName=RootModListView, Mode=TwoWay}" Style="{StaticResource IntegratedListBoxStyle}" MouseDoubleClick="InternalListBox_MouseDoubleClick" AllowDrop="True" Background="Transparent" SelectionMode="Extended" SelectionChanged="InternalListBox_SelectionChanged" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True">
                 <b:Interaction.Behaviors>
                     <behaviors:ListBoxDragDropBehavior DropCommand="{Binding DropCommand, ElementName=RootModListView}" DragItemType="{Binding DragItemType, ElementName=RootModListView}" ListGroupName="{Binding GroupName, ElementName=RootModListView}"/>
                 </b:Interaction.Behaviors>
