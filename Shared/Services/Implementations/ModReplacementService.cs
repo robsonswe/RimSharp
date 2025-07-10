@@ -67,6 +67,7 @@ namespace RimSharp.Shared.Services.Implementations
             return replacement; // Returns null if not found
         }
 
+        // --- MODIFIED METHOD ---
         public ModReplacementInfo GetReplacementByPackageId(string packageId)
         {
             if (string.IsNullOrWhiteSpace(packageId)) return null;
@@ -74,11 +75,16 @@ namespace RimSharp.Shared.Services.Implementations
             var cache = GetAllReplacements(); // Ensures cache is loaded
             string normalizedId = packageId.ToLowerInvariant(); // Normalize input
 
-            // Find the first match based on the original ModId (case-insensitive)
+            // To prevent ambiguity where a replacement mod shares a packageId with the original,
+            // this method will only find replacements for mods that are defined *without* a Steam ID in our database.
+            // If an original mod has a Steam ID in a replacement rule, it MUST be looked up via GetReplacementBySteamId.
+            // This makes packageId a true fallback identifier for local or non-workshop mods.
             return cache.Values.FirstOrDefault(r =>
+                string.IsNullOrEmpty(r.SteamId) && // CRITICAL: Only match rules where the original mod lacks a SteamID.
                 !string.IsNullOrEmpty(r.ModId) &&
                 r.ModId.Equals(normalizedId, StringComparison.OrdinalIgnoreCase));
         }
+        // --- END OF MODIFICATION ---
 
 
         private Dictionary<string, ModReplacementInfo> LoadReplacements()
@@ -140,24 +146,32 @@ namespace RimSharp.Shared.Services.Implementations
                     foreach (var kvp in jsonData.Mods)
                     {
                         var info = kvp.Value;
-                        if (info == null || string.IsNullOrWhiteSpace(info.SteamId))
+                        if (info == null) // Simplified check
                         {
-                            _logger.LogWarning($"Skipping invalid entry in '{jsonFilePath}': Key '{kvp.Key}' has missing or empty SteamId.", nameof(ModReplacementService));
+                            _logger.LogWarning($"Skipping null entry in '{jsonFilePath}' for key '{kvp.Key}'.", nameof(ModReplacementService));
                             continue;
                         }
 
-                        string key = info.SteamId.Trim().ToLowerInvariant();
+                        // Use the original mod's SteamId as the primary key for the dictionary
+                        string key = info.SteamId?.Trim().ToLowerInvariant();
                         if (string.IsNullOrEmpty(key))
                         {
-                             _logger.LogWarning($"Skipping invalid entry in '{jsonFilePath}': Entry data for key '{kvp.Key}' has empty SteamId.", nameof(ModReplacementService));
-                            continue;
+                             // This is a rule for a non-steam mod, so it can't be a primary key in our SteamId-keyed dictionary.
+                             // It will still be added to the dictionary values and can be found by GetReplacementByPackageId.
+                             // We'll use a unique key for it to store it.
+                             key = $"packageid_{info.ModId?.Trim().ToLowerInvariant() ?? Guid.NewGuid().ToString()}";
+                        }
+                        
+                        if (targetDictionary.ContainsKey(key))
+                        {
+                            _logger.LogWarning($"Duplicate key '{key}' detected in '{jsonFilePath}'. Overwriting previous entry.", nameof(ModReplacementService));
                         }
 
                         info.ModId = info.ModId?.Trim().ToLowerInvariant();
                         info.ReplacementModId = info.ReplacementModId?.Trim().ToLowerInvariant();
                         info.Source = ReplacementSource.Database;
 
-                        targetDictionary[key] = info; // Add or overwrite using case-insensitive key
+                        targetDictionary[key] = info; // Add or overwrite
                         count++;
                     }
                 }
@@ -192,13 +206,11 @@ namespace RimSharp.Shared.Services.Implementations
             var modsPath = _pathService.GetModsPath();
             int count = 0;
 
-            // (Existing logic for finding UTI mod path is fine)
             if (string.IsNullOrEmpty(modsPath) || !Directory.Exists(modsPath))
             {
                 _logger.LogWarning($"Mods path not found or not set ('{modsPath}'). Cannot load 'Use This Instead' replacement data.", nameof(ModReplacementService));
                 return 0;
             }
-            // ... rest of the existing UTI loading logic ...
              var utiModPath = Path.Combine(modsPath, UseThisInsteadModFolderId);
             if (!Directory.Exists(utiModPath))
             {
@@ -247,24 +259,22 @@ namespace RimSharp.Shared.Services.Implementations
                             Source = ReplacementSource.UseThisInstead // Set source
                         };
 
-                        // Validate mandatory field (SteamId)
-                        if (string.IsNullOrWhiteSpace(info.SteamId))
+                        string key = info.SteamId?.Trim().ToLowerInvariant();
+
+                        // Use a placeholder key if the original mod has no SteamID
+                        if (string.IsNullOrEmpty(key))
                         {
-                            _logger.LogWarning($"Skipping file '{filePath}'. Missing or empty <SteamId> element.", nameof(ModReplacementService));
-                            continue;
+                            key = $"packageid_{info.ModId ?? Guid.NewGuid().ToString()}";
                         }
 
-                        string key = info.SteamId.ToLowerInvariant(); // Normalize key
-
                         // --- PRIORITY CHECK ---
-                        // Only add if this SteamId hasn't been loaded from the database (JSON) already.
+                        // Only add if this key hasn't been loaded from the database (JSON) already.
+                        // Database source has priority over 'Use This Instead'.
                         if (!targetDictionary.ContainsKey(key))
                         {
                             targetDictionary.Add(key, info);
                             count++;
-                            // _logger.LogTrace($"Added UTI replacement: {info.SteamId} -> {info.ReplacementSteamId}", nameof(ModReplacementService));
                         }
-                        // else: Already exists from DB source, skip UTI version.
 
                     }
                     catch (System.Xml.XmlException xmlEx)
