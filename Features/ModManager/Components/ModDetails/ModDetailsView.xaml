@@ -6,10 +6,14 @@
              xmlns:local="clr-namespace:RimSharp.Features.ModManager.Components.ModDetails"
              xmlns:models="clr-namespace:RimSharp.Shared.Models"
              xmlns:vm="clr-namespace:RimSharp.Features.ModManager.ViewModels"
+             xmlns:convViewVisibility="clr-namespace:RimSharp.Core.Converters.ViewVisibility"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:ModDetailsViewModel, IsDesignTimeCreatable=False}"
              d:DesignHeight="600" d:DesignWidth="450">
     <UserControl.Resources>
+        <!-- Converter to HIDE an element if the bound string is NOT null/empty -->
+        <convViewVisibility:IsNotNullOrEmptyToVisibilityConverter x:Key="IsNotNullOrEmptyToCollapsedConverter" Inverse="True"/>
+
         <Style x:Key="InfoItemContainerStyle" TargetType="StackPanel">
             <Setter Property="Orientation" Value="Horizontal"/>
             <Setter Property="Margin" Value="0,0,0,8"/>
@@ -28,11 +32,38 @@
             <Setter Property="Margin" Value="0,0,5,0"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
-        <Style x:Key="InfoValueStyle" TargetType="TextBlock">
+        
+        <!-- Style for selectable info fields with standard IBeam cursor -->
+        <Style x:Key="SelectableLabelStyle" TargetType="TextBox">
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
             <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource RimworldBrownBrush}"/> <!-- Use standard caret -->
+            <!-- The Cursor property is NOT set, allowing default IBeam behavior -->
         </Style>
+
+        <!-- Style for a read-only, selectable TextBox that looks and acts like a hyperlink -->
+        <Style x:Key="SelectableHyperlinkStyle" TargetType="TextBox">
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource RimworldDarkGreenBrush}"/>
+            <Setter Property="CaretBrush" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="TextDecorations" Value="None"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="TextDecorations" Value="Underline"/>
+                    <Setter Property="Foreground" Value="{StaticResource RimworldDarkGreenHoverBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="CodeBoxStyle" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource RimworldBeigeBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource RimworldLightBrownBrush}"/>
@@ -50,14 +81,15 @@
             <RowDefinition Height="*"/>   <!-- SCROLLABLE Description Content -->
         </Grid.RowDefinitions>
 
-        <!-- Mod Preview (Unchanged) -->
+        <!-- Mod Preview -->
         <Border Grid.Row="0" Margin="10,10,10,0" HorizontalAlignment="Stretch" VerticalAlignment="Top">
             <Border Background="{StaticResource RimworldDarkBrownBrush}" CornerRadius="3" MaxWidth="560" MaxHeight="360">
                 <Viewbox Stretch="Uniform">
                     <Grid Width="560" Height="308">
                         <Rectangle Fill="{StaticResource RimworldDarkBrownBrush}" />
                         <Image Source="{Binding PreviewImagePath, Converter={StaticResource ImagePathConverter}, TargetNullValue={x:Null}}" Stretch="Uniform"/>
-                        <TextBlock Text="NO PREVIEW IMAGE" FontSize="18" Foreground="{StaticResource RimworldLightBrownBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" FontStyle="Italic" Visibility="{Binding PreviewImagePath, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=InvertIfNull}"/>
+                        <TextBlock Text="NO PREVIEW IMAGE" FontSize="18" Foreground="{StaticResource RimworldLightBrownBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" FontStyle="Italic"
+                                   Visibility="{Binding PreviewImagePath, Converter={StaticResource IsNotNullOrEmptyToCollapsedConverter}}"/>
                     </Grid>
                 </Viewbox>
             </Border>
@@ -65,7 +97,7 @@
         
         <!-- NON-SCROLLING Info Section -->
         <StackPanel Grid.Row="1" Margin="10,10,10,0">
-            <!-- Main Info Grid - Reverted to a Grid for stable columns -->
+            <!-- Main Info Grid -->
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -74,25 +106,70 @@
                 
                 <!-- Left Column -->
                 <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                    <StackPanel Style="{StaticResource InfoItemContainerStyle}"><TextBlock Text="" Style="{StaticResource InfoIconStyle}"/><TextBlock Text="Name:" Style="{StaticResource InfoLabelStyle}"/><TextBlock Text="{Binding Name}" Style="{StaticResource InfoValueStyle}" FontWeight="Bold" /></StackPanel>
-                    <StackPanel Style="{StaticResource InfoItemContainerStyle}"><TextBlock Text="" Style="{StaticResource InfoIconStyle}"/><TextBlock Text="Authors:" Style="{StaticResource InfoLabelStyle}"/><TextBlock Text="{Binding Authors}" Style="{StaticResource InfoValueStyle}"/></StackPanel>
-                    <StackPanel Style="{StaticResource InfoItemContainerStyle}"><TextBlock Text="" Style="{StaticResource InfoIconStyle}"/><TextBlock Text="Mod Type:" Style="{StaticResource InfoLabelStyle}"/><TextBlock Text="{Binding ModType, Converter={StaticResource ModTypeToDescriptionConverter}}" Style="{StaticResource InfoValueStyle}"/></StackPanel>
-                    <StackPanel Style="{StaticResource InfoItemContainerStyle}" Visibility="{Binding Tags, Converter={StaticResource IsNotNullOrEmptyToVisibilityConverter}}"><TextBlock Text="" Style="{StaticResource InfoIconStyle}"/><TextBlock Text="Tags:" Style="{StaticResource InfoLabelStyle}"/><TextBlock Text="{Binding Tags}" Style="{StaticResource InfoValueStyle}"/></StackPanel>
+                    <StackPanel Style="{StaticResource InfoItemContainerStyle}"><TextBlock Text="" Style="{StaticResource InfoIconStyle}"/><TextBlock Text="Name:" Style="{StaticResource InfoLabelStyle}"/><TextBox Text="{Binding Name}" Style="{StaticResource SelectableLabelStyle}" FontWeight="Bold" /></StackPanel>
+                    <StackPanel Style="{StaticResource InfoItemContainerStyle}"><TextBlock Text="" Style="{StaticResource InfoIconStyle}"/><TextBlock Text="Authors:" Style="{StaticResource InfoLabelStyle}"/><TextBox Text="{Binding Authors}" Style="{StaticResource SelectableLabelStyle}"/></StackPanel>
+                    <StackPanel Style="{StaticResource InfoItemContainerStyle}"><TextBlock Text="" Style="{StaticResource InfoIconStyle}"/><TextBlock Text="Mod Type:" Style="{StaticResource InfoLabelStyle}"/><TextBox Text="{Binding ModType, Converter={StaticResource ModTypeToDescriptionConverter}}" Style="{StaticResource SelectableLabelStyle}"/></StackPanel>
+                    <StackPanel Style="{StaticResource InfoItemContainerStyle}" Visibility="{Binding Tags, Converter={StaticResource IsNotNullOrEmptyToVisibilityConverter}}"><TextBlock Text="" Style="{StaticResource InfoIconStyle}"/><TextBlock Text="Tags:" Style="{StaticResource InfoLabelStyle}"/><TextBox Text="{Binding Tags}" Style="{StaticResource SelectableLabelStyle}"/></StackPanel>
                 </StackPanel>
                 
                 <!-- Right Column -->
                 <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                    <StackPanel Style="{StaticResource InfoItemContainerStyle}"><TextBlock Text="" Style="{StaticResource InfoIconStyle}"/><TextBlock Text="Content:" Style="{StaticResource InfoLabelStyle}"/><TextBlock Style="{StaticResource InfoValueStyle}" Text="{Binding Assemblies, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='XML-Only|C# Code'}"/></StackPanel>
+                    <StackPanel Style="{StaticResource InfoItemContainerStyle}"><TextBlock Text="" Style="{StaticResource InfoIconStyle}"/><TextBlock Text="Content:" Style="{StaticResource InfoLabelStyle}"/><TextBox Style="{StaticResource SelectableLabelStyle}" Text="{Binding Assemblies, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='XML-Only|C# Code'}"/></StackPanel>
                     <StackPanel Style="{StaticResource InfoItemContainerStyle}"><TextBlock Text="" Style="{StaticResource InfoIconStyle}"/><TextBlock Text="Game Versions:" Style="{StaticResource InfoLabelStyle}"/><ContentControl Content="{Binding SupportedVersions, Converter={StaticResource VersionSupportConverter}}" VerticalAlignment="Center"/></StackPanel>
-                    <StackPanel Style="{StaticResource InfoItemContainerStyle}" Visibility="{Binding ModVersion, Converter={StaticResource IsNotNullOrEmptyToVisibilityConverter}}"><TextBlock Text="" Style="{StaticResource InfoIconStyle}"/><TextBlock Text="Mod Version:" Style="{StaticResource InfoLabelStyle}"/><TextBlock Text="{Binding ModVersion}" Style="{StaticResource InfoValueStyle}"/></StackPanel>
+                    <StackPanel Style="{StaticResource InfoItemContainerStyle}" Visibility="{Binding ModVersion, Converter={StaticResource IsNotNullOrEmptyToVisibilityConverter}}"><TextBlock Text="" Style="{StaticResource InfoIconStyle}"/><TextBlock Text="Mod Version:" Style="{StaticResource InfoLabelStyle}"/><TextBox Text="{Binding ModVersion}" Style="{StaticResource SelectableLabelStyle}"/></StackPanel>
                 </StackPanel>
             </Grid>
             
-            <!-- Package/Path Section -->
-            <Grid Margin="0,5,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                <Border Grid.Column="0" Style="{StaticResource CodeBoxStyle}" Margin="0,0,5,0"><StackPanel><StackPanel Orientation="Horizontal" Margin="0,0,0,4"><TextBlock Text="" Style="{StaticResource InfoIconStyle}" Margin="0"/><TextBlock Text="Package ID" Style="{StaticResource InfoLabelStyle}"/></StackPanel><TextBox Text="{Binding PackageId}" FontFamily="Consolas" FontSize="11" IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="{StaticResource RimworldBrownBrush}"/></StackPanel></Border>
-                <Border Grid.Column="1" Style="{StaticResource CodeBoxStyle}" Margin="5,0,0,0"><StackPanel><StackPanel Orientation="Horizontal" Margin="0,0,0,4"><TextBlock Text="" Style="{StaticResource InfoIconStyle}" Margin="0"/><TextBlock Text="Path" Style="{StaticResource InfoLabelStyle}"/></StackPanel><TextBlock Style="{StaticResource InfoValueStyle}" FontSize="11"><Hyperlink Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding Path}" Style="{StaticResource RimworldHyperlinkStyle}"><TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Path}"/></Hyperlink></TextBlock></StackPanel></Border>
+            <!-- 3-COLUMN GRID for Package/Steam/Path -->
+            <Grid Margin="0,8,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Package ID -->
+                <Border Grid.Column="0" Style="{StaticResource CodeBoxStyle}" Margin="0,0,5,0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4"><TextBlock Text="" Style="{StaticResource InfoIconStyle}" Margin="0"/><TextBlock Text="Package ID" Style="{StaticResource InfoLabelStyle}"/></StackPanel>
+                        <TextBox Text="{Binding PackageId}" FontFamily="Consolas" FontSize="11" IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="{StaticResource RimworldBrownBrush}" CaretBrush="Transparent"/>
+                    </StackPanel>
+                </Border>
+                
+                <!-- Steam ID -->
+                <Border Grid.Column="1" Style="{StaticResource CodeBoxStyle}" Margin="5,0,5,0" Visibility="{Binding SteamId, Converter={StaticResource IsNotNullOrEmptyToVisibilityConverter}}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4"><TextBlock Text="" Style="{StaticResource InfoIconStyle}" Margin="0"/><TextBlock Text="Steam ID" Style="{StaticResource InfoLabelStyle}"/></StackPanel>
+                        <TextBox Text="{Binding SteamId}" FontFamily="Consolas" FontSize="11" IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="{StaticResource RimworldBrownBrush}" CaretBrush="Transparent"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Path (with responsive column spanning and restored Hyperlink) -->
+                <Border Margin="5,0,0,0">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource CodeBoxStyle}">
+                            <Setter Property="Grid.Column" Value="2"/>
+                            <Setter Property="Grid.ColumnSpan" Value="1"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SteamId, Converter={StaticResource IsNotNullOrEmptyToVisibilityConverter}}" Value="Collapsed">
+                                    <Setter Property="Grid.Column" Value="1"/>
+                                    <Setter Property="Grid.ColumnSpan" Value="2"/>
+                                    <Setter Property="Margin" Value="5,0,0,0"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4"><TextBlock Text="" Style="{StaticResource InfoIconStyle}" Margin="0"/><TextBlock Text="Path" Style="{StaticResource InfoLabelStyle}"/></StackPanel>
+                        <TextBox Style="{StaticResource SelectableHyperlinkStyle}" FontSize="11" Text="{Binding Path}" ToolTip="{Binding Path}">
+                            <TextBox.InputBindings>
+                                <MouseBinding MouseAction="LeftClick" 
+                                              Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                              CommandParameter="{Binding Path}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
+                    </StackPanel>
+                </Border>
             </Grid>
         </StackPanel>
 
@@ -102,7 +179,7 @@
              <TextBlock Text="Description" Style="{StaticResource InfoLabelStyle}" FontSize="16" Margin="0,0,0,5"/>
         </StackPanel>
         
-        <!-- SCROLLABLE Description TextBox -->
+        <!-- Description field with forced Arrow cursor -->
         <TextBox Grid.Row="3" 
                  Text="{Binding Description, Mode=OneWay}"
                  Margin="10,0,10,10"
@@ -112,6 +189,8 @@
                  Background="Transparent"
                  Foreground="{StaticResource RimworldBrownBrush}"
                  VerticalScrollBarVisibility="Auto"
-                 HorizontalScrollBarVisibility="Disabled"/>
+                 HorizontalScrollBarVisibility="Disabled"
+                 Cursor="Arrow"
+                 CaretBrush="Transparent"/>
     </Grid>
 </UserControl>

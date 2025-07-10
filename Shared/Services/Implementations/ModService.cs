@@ -164,12 +164,12 @@ namespace RimSharp.Shared.Services.Implementations
                 // Caller (SteamCmdDownloader) should handle this failure if it's critical.
                 return;
             }
-             if (string.IsNullOrWhiteSpace(publishDate) || string.IsNullOrWhiteSpace(standardDate))
-             {
-                 _logger.LogWarning($"[CreateTimestampFilesAsync] Missing publishDate ('{publishDate}') or standardDate ('{standardDate}') for mod {steamId} at '{modDirectoryPath}'. Timestamp files will not be created.", nameof(ModService));
-                  // Throw an exception because the caller expects these files to be created
-                 throw new ArgumentException("PublishDate and StandardDate cannot be null or empty for timestamp creation.");
-             }
+            if (string.IsNullOrWhiteSpace(publishDate) || string.IsNullOrWhiteSpace(standardDate))
+            {
+                _logger.LogWarning($"[CreateTimestampFilesAsync] Missing publishDate ('{publishDate}') or standardDate ('{standardDate}') for mod {steamId} at '{modDirectoryPath}'. Timestamp files will not be created.", nameof(ModService));
+                // Throw an exception because the caller expects these files to be created
+                throw new ArgumentException("PublishDate and StandardDate cannot be null or empty for timestamp creation.");
+            }
 
 
             try
@@ -200,7 +200,7 @@ namespace RimSharp.Shared.Services.Implementations
                 _logger.LogDebug($"[CreateTimestampFilesAsync] Wrote DateStamp: '{dateStampPath}'", nameof(ModService));
 
                 await File.WriteAllTextAsync(timestampPath, finalStandardDate);
-                 _logger.LogDebug($"[CreateTimestampFilesAsync] Wrote timestamp.txt: '{timestampPath}'", nameof(ModService));
+                _logger.LogDebug($"[CreateTimestampFilesAsync] Wrote timestamp.txt: '{timestampPath}'", nameof(ModService));
 
                 _logger.LogInfo($"[CreateTimestampFilesAsync] Successfully created timestamp files for mod {steamId} in '{modDirectoryPath}'", nameof(ModService));
             }
@@ -317,6 +317,16 @@ namespace RimSharp.Shared.Services.Implementations
                 {
                     mod.Name = $"{mod.Name} [DLC]";
                 }
+                // If it's a Core or Expansion mod, its supported version is the current game version.
+                // Only add as a fallback if the About.xml list was empty.
+                if ((mod.ModType == ModType.Core || mod.ModType == ModType.Expansion) && !mod.SupportedVersions.Any())
+                {
+                    if (!string.IsNullOrEmpty(_currentMajorVersion) && !_currentMajorVersion.StartsWith("N/A"))
+                    {
+                        mod.SupportedVersions.Add(new VersionSupport(_currentMajorVersion, VersionSource.Official, unofficial: false));
+                    }
+                }
+
 
                 _allMods.Add(mod);
             }
@@ -349,6 +359,15 @@ namespace RimSharp.Shared.Services.Implementations
                 if (mod.ModType == ModType.Expansion && !string.IsNullOrEmpty(mod.Name))
                 {
                     mod.Name = $"{mod.Name} [DLC]";
+                }
+                // If it's a Core or Expansion mod, its supported version is the current game version.
+                // Only add as a fallback if the About.xml list was empty.
+                if ((mod.ModType == ModType.Core || mod.ModType == ModType.Expansion) && !mod.SupportedVersions.Any())
+                {
+                    if (!string.IsNullOrEmpty(_currentMajorVersion) && !_currentMajorVersion.StartsWith("N/A"))
+                    {
+                        mod.SupportedVersions.Add(new VersionSupport(_currentMajorVersion, VersionSource.Official, unofficial: false));
+                    }
                 }
 
                 mods.Add(mod);
@@ -604,6 +623,30 @@ namespace RimSharp.Shared.Services.Implementations
                     .Select(x => new VersionSupport(x.Value, VersionSource.Official, unofficial: false))
                     .ToList() ?? new List<VersionSupport>();
 
+
+                string urlFromXml = root.Element("url")?.Value?.Trim(); // Trim whitespace from the input.
+                string validatedUrl = null;
+
+                if (!string.IsNullOrWhiteSpace(urlFromXml))
+                {
+                    // First, check if the string is already a well-formed absolute URI with a web scheme.
+                    if (Uri.TryCreate(urlFromXml, UriKind.Absolute, out Uri uriResult) &&
+                        (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps))
+                    {
+                        validatedUrl = urlFromXml; // The URL is valid as-is.
+                    }
+                    // Otherwise, check if it is a valid schemaless domain. To be valid,
+                    // it must not contain a scheme and MUST contain a dot.
+                    // This correctly rejects single-word strings like "none".
+                    else if (!urlFromXml.Contains("://") && urlFromXml.Contains("."))
+                    {
+                        if (Uri.TryCreate("http://" + urlFromXml, UriKind.Absolute, out Uri tempUri) && tempUri.Host.Equals(urlFromXml, StringComparison.OrdinalIgnoreCase))
+                        {
+                            validatedUrl = "http://" + urlFromXml; // Prepend scheme to make it navigable.
+                        }
+                    }
+                }
+
                 var mod = new ModItem
                 {
                     Name = name,
@@ -613,7 +656,7 @@ namespace RimSharp.Shared.Services.Implementations
                     Description = root.Element("description")?.Value,
                     ModVersion = root.Element("modVersion")?.Value,
                     ModIconPath = root.Element("modIconPath")?.Value,
-                    Url = root.Element("url")?.Value,
+                    Url = validatedUrl,
                     SupportedVersions = supportedVersions,
                     PreviewImagePath = File.Exists(previewImagePath) ? previewImagePath : null,
                 };
