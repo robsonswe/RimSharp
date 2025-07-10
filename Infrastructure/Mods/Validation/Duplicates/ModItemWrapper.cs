@@ -28,6 +28,12 @@ namespace RimSharp.Infrastructure.Mods.Validation.Duplicates
                 }
             }
         }
+        private bool _isOriginal;
+        public bool IsOriginal
+        {
+            get => _isOriginal;
+            set => SetProperty(ref _isOriginal, value);
+        }
 
         public ModItem Original { get; }
         public DuplicateModGroupViewModel ParentGroup { get; }
