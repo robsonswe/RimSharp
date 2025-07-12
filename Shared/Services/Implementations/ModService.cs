@@ -746,7 +746,9 @@ namespace RimSharp.Shared.Services.Implementations
 
             foreach (var packageId in incompatibleIds)
             {
-                mod.IncompatibleWith.Add(packageId, new ModIncompatibilityRule { HardIncompatibility = true, Comment = new List<string> { "Incompatible according to the mod author" } });
+                var reason = $"Incompatible according to '{mod.Name}' authors";
+
+                mod.IncompatibleWith.Add(packageId, new ModIncompatibilityRule { HardIncompatibility = true, Comment = new List<string> { reason } });
             }
         }
 
