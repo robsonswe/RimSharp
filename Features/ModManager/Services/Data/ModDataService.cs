@@ -79,11 +79,15 @@ namespace RimSharp.Features.ModManager.Services.Data
                     messageBuilder.AppendLine();
                     messageBuilder.AppendLine($"Successfully loaded {allModIds.Count - missingModIds.Count} installed mods.");
 
-                    _dialogService.ShowMessageWithCopy(
-                        "Missing Mods",
-                        messageBuilder.ToString(),
-                        MessageDialogType.Warning);
+                    ThreadHelper.EnsureUiThread(() =>
+                    {
+                        _dialogService.ShowMessageWithCopy(
+                            "Missing Mods",
+                            messageBuilder.ToString(),
+                            MessageDialogType.Warning);
+                    });
                 }
+
 
                 return allModIds;
             }
