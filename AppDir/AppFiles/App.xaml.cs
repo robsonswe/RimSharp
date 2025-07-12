@@ -1,4 +1,5 @@
 ﻿// App.xaml.cs
+#nullable enable
 using System;
 using System.Net.Http;
 using System.Windows;
@@ -306,7 +307,7 @@ namespace RimSharp.AppDir.AppFiles
             }
             // --- End ThreadHelper Initialization ---
 
-            _logger.LogInfo("Application starting up (OnStartup entered).", "App.OnStartup");
+            _logger!.LogInfo("Application starting up (OnStartup entered).", "App.OnStartup");
 
             try
             {

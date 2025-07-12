@@ -1,3 +1,4 @@
+#nullable enable
 using System.Windows;
 using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Services.Contracts;
@@ -74,7 +75,9 @@ namespace RimSharp.Infrastructure.Dialog
             ShowDialogInternal(viewModel);
         }
 
-        public ProgressDialogViewModel ShowProgressDialog(string title, string message, bool canCancel = false, bool isIndeterminate = true, CancellationTokenSource cts = null, bool closeable = true)
+        // FIX: The `cts` parameter is now explicitly marked as nullable (`CancellationTokenSource?`).
+        // This informs the compiler that `null` is a valid value for this optional parameter.
+        public ProgressDialogViewModel ShowProgressDialog(string title, string message, bool canCancel = false, bool isIndeterminate = true, CancellationTokenSource? cts = null, bool closeable = true)
         {
             var viewModel = new ProgressDialogViewModel(title, message, canCancel, isIndeterminate, cts);
             var dialog = new ProgressDialogView(viewModel)
@@ -147,7 +150,8 @@ namespace RimSharp.Infrastructure.Dialog
 
         public MissingModSelectionDialogOutput ShowMissingModSelectionDialog(MissingModSelectionDialogViewModel viewModel)
         {
-            MissingModSelectionDialogOutput result = null; // Default to null initially
+            // FIX: Declare the result variable as nullable to align with the nullable context.
+            MissingModSelectionDialogOutput? result = null; 
             Application.Current.Dispatcher.Invoke(() =>
             { // Ensure UI thread
                 var dialog = new MissingModSelectionDialogView(viewModel)
@@ -158,9 +162,11 @@ namespace RimSharp.Infrastructure.Dialog
                 // ShowDialog blocks until closed and DialogResult is set (or window is closed manually)
                 dialog.ShowDialog();
                 // Retrieve the strongly-typed result from the ViewModel AFTER the dialog is closed
-                result = viewModel.DialogResult ?? new MissingModSelectionDialogOutput(); // Use default if VM result is null
+                // The null-coalescing operator ensures we never assign a null value back to result.
+                result = viewModel.DialogResult ?? new MissingModSelectionDialogOutput();
             });
-            return result ?? new MissingModSelectionDialogOutput(); // Return default if dispatcher invoke fails?
+            // Return the result, or a new instance if the dispatcher failed to run.
+            return result ?? new MissingModSelectionDialogOutput(); 
         }
 
         public List<string>? ShowCollectionDialog(CollectionDialogViewModel viewModel)
@@ -185,6 +191,5 @@ namespace RimSharp.Infrastructure.Dialog
             // Return the list of IDs (which could be null if cancelled)
             return result;
         }
-
     }
 }

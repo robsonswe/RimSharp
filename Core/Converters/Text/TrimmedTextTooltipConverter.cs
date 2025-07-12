@@ -17,6 +17,9 @@ namespace RimSharp.Core.Converters.Text
                 return null;
             }
 
+            // Get the PixelsPerDip for the current display
+            var pixelsPerDip = VisualTreeHelper.GetDpi(textBlock).PixelsPerDip;
+
             // Create a FormattedText object to measure the desired width of the text
             var formattedText = new FormattedText(
                 textBlock.Text,
@@ -26,7 +29,8 @@ namespace RimSharp.Core.Converters.Text
                 textBlock.FontSize,
                 textBlock.Foreground,
                 new NumberSubstitution(),
-                TextFormattingMode.Display
+                TextFormattingMode.Display,
+                pixelsPerDip
             );
 
             // If the desired width is greater than the available width, the text is trimmed.

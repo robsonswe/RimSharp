@@ -145,27 +145,30 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
             }
         }
         
-        private async Task<bool> AttemptRollbackAsync(string targetPath, string backupPath, string itemId, CancellationToken cancellationToken)
+        private Task<bool> AttemptRollbackAsync(string targetPath, string backupPath, string itemId, CancellationToken cancellationToken)
         {
-            _logger.LogWarning($"Item {itemId}: An error occurred. Attempting to rollback from '{backupPath}' to '{targetPath}'.", "DownloadedItemProcessor");
-            try
+            return Task.Run(() =>
             {
-                if (Directory.Exists(targetPath))
+                _logger.LogWarning($"Item {itemId}: An error occurred. Attempting to rollback from '{backupPath}' to '{targetPath}'.", "DownloadedItemProcessor");
+                try
                 {
-                    Directory.Delete(targetPath, true);
+                    if (Directory.Exists(targetPath))
+                    {
+                        Directory.Delete(targetPath, true);
+                    }
+                    Directory.Move(backupPath, targetPath);
+                    if (!Directory.Exists(targetPath) || Directory.Exists(backupPath))
+                        throw new IOException("Verification failed after restoring backup.");
+
+                    _logger.LogInfo($"Item {itemId}: Rollback successful. Previous version has been restored.", "DownloadedItemProcessor");
+                    return true;
                 }
-                Directory.Move(backupPath, targetPath);
-                if (!Directory.Exists(targetPath) || Directory.Exists(backupPath))
-                    throw new IOException("Verification failed after restoring backup.");
-                
-                _logger.LogInfo($"Item {itemId}: Rollback successful. Previous version has been restored.", "DownloadedItemProcessor");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogCritical($"Item {itemId}: CRITICAL ROLLBACK FAILURE. Could not restore backup '{backupPath}'. The mod is likely broken or missing. Error: {ex.Message}", "DownloadedItemProcessor");
-                return false;
-            }
+                catch (Exception ex)
+                {
+                    _logger.LogCritical($"Item {itemId}: CRITICAL ROLLBACK FAILURE. Could not restore backup '{backupPath}'. The mod is likely broken or missing. Error: {ex.Message}", "DownloadedItemProcessor");
+                    return false;
+                }
+            }, cancellationToken);
         }
 
         private bool AreOnSameVolume(string path1, string path2)

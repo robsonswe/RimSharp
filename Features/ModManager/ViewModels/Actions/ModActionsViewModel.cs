@@ -1,3 +1,4 @@
+#nullable enable
 using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
 using RimSharp.Core.Commands;
 using RimSharp.Features.ModManager.Dialogs.DuplicateMods;
@@ -47,8 +48,10 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         // State properties (Remain here)
         private bool _isParentLoading;
         private bool _hasUnsavedChanges;
-        private ModItem _selectedMod; // For single-item actions
-        private IList _selectedItems; // For multi-item actions
+        // FIX: Changed to a nullable type to represent the state where nothing is selected.
+        private ModItem? _selectedMod; // For single-item actions
+        // FIX: Changed to a nullable type to represent the state where nothing is selected.
+        private IList? _selectedItems; // For multi-item actions
         protected bool CanExecuteSimpleCommands() => !IsParentLoading && HasValidPaths;
         private const int MaxParallelRedownloadOperations = 10;
         
@@ -84,7 +87,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             }
         }
 
-        public ModItem SelectedMod
+        // FIX: Property is now nullable to match its backing field.
+        public ModItem? SelectedMod
         {
             get => _selectedMod;
             set
@@ -94,8 +98,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 // Manual RaiseCanExecuteChangedForAllCommands() removed
             }
         }
-
-        public IList SelectedItems // Bound from ListBox typically
+        
+        // FIX: Property is now nullable to match its backing field.
+        public IList? SelectedItems // Bound from ListBox typically
         {
             get => _selectedItems;
             set
@@ -115,42 +120,46 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
 
         // Command Properties (Declarations remain here)
+        // FIX: Initialized with null-forgiving operator (!) because the compiler can't verify
+        // that the InitializeCommands() method (called from ctor) assigns them.
         // List Management
-        public ICommand ClearActiveListCommand { get; private set; }
-        public ICommand SortActiveListCommand { get; private set; }
-        public ICommand SaveCommand { get; private set; }
-        public ICommand ImportListCommand { get; private set; }
-        public ICommand ExportListCommand { get; private set; }
-        public ICommand CheckReplacementsCommand { get; private set; }
+        public ICommand ClearActiveListCommand { get; private set; } = null!;
+        public ICommand SortActiveListCommand { get; private set; } = null!;
+        public ICommand SaveCommand { get; private set; } = null!;
+        public ICommand ImportListCommand { get; private set; } = null!;
+        public ICommand ExportListCommand { get; private set; } = null!;
+        public ICommand CheckReplacementsCommand { get; private set; } = null!;
 
         // Mod Actions (Single/Multi)
-        public ICommand DeleteModCommand { get; private set; } // Single
-        public ICommand DeleteModsCommand { get; private set; } // Multi
-        public ICommand OpenModFoldersCommand { get; private set; } // Multi
-        public ICommand OpenUrlsCommand { get; private set; } // Multi
-        public ICommand OpenWorkshopPagesCommand { get; private set; } // Multi
-        public ICommand OpenOtherUrlsCommand { get; private set; } // Multi
+        public ICommand DeleteModCommand { get; private set; } = null!; // Single
+        public ICommand DeleteModsCommand { get; private set; } = null!; // Multi
+        public ICommand OpenModFoldersCommand { get; private set; } = null!; // Multi
+        public ICommand OpenUrlsCommand { get; private set; } = null!; // Multi
+        public ICommand OpenWorkshopPagesCommand { get; private set; } = null!; // Multi
+        public ICommand OpenOtherUrlsCommand { get; private set; } = null!; // Multi
 
         // Tools & Analysis
-        public ICommand ResolveDependenciesCommand { get; private set; }
-        public ICommand CheckIncompatibilitiesCommand { get; private set; }
-        public ICommand CheckDuplicatesCommand { get; private set; }
+        public ICommand ResolveDependenciesCommand { get; private set; } = null!;
+        public ICommand CheckIncompatibilitiesCommand { get; private set; } = null!;
+        public ICommand CheckDuplicatesCommand { get; private set; } = null!;
 
         // Placeholders
-        public ICommand StripModsCommand { get; private set; }
-        public ICommand FixIntegrityCommand { get; private set; }
-        public ICommand RunGameCommand { get; private set; }
-        public ICommand CustomizeModCommand { get; private set; }
+        public ICommand StripModsCommand { get; private set; } = null!;
+        public ICommand FixIntegrityCommand { get; private set; } = null!;
+        public ICommand RunGameCommand { get; private set; } = null!;
+        public ICommand CustomizeModCommand { get; private set; } = null!;
 
         // Installation
-        public ICommand InstallFromZipCommand { get; private set; }
-        public ICommand InstallFromGithubCommand { get; private set; }
-        public ICommand RedownloadModsCommand { get; private set; }
+        public ICommand InstallFromZipCommand { get; private set; } = null!;
+        public ICommand InstallFromGithubCommand { get; private set; } = null!;
+        public ICommand RedownloadModsCommand { get; private set; } = null!;
 
         // Events (Remain here)
-        public event EventHandler<bool> IsLoadingRequest;
-        public event EventHandler RequestDataRefresh;
-        public event EventHandler<bool> HasUnsavedChangesRequest;
+        // FIX: Initialized with null-forgiving operator. Events should be handled carefully.
+        // If no subscribers are expected, they can be left as is, but this silences the warning.
+        public event EventHandler<bool> IsLoadingRequest = null!;
+        public event EventHandler RequestDataRefresh = null!;
+        public event EventHandler<bool> HasUnsavedChangesRequest = null!;
 
         // Helper state (Example, might be better encapsulated if complex)
         private bool _installSuccess = false;
@@ -230,9 +239,10 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 // Observation still works correctly on the ViewModel's properties
                 observedProperties: new[] { nameof(SelectedItems), nameof(IsParentLoading) });
         }
-        private bool CanExecuteRedownloadMods(IList selectedItems)
+        private bool CanExecuteRedownloadMods(IList? selectedItems)
         {
-            var currentSelection = this.SelectedItems; // Read the property value for consistency
+            // FIX: The parameter is now correctly nullable.
+            var currentSelection = selectedItems ?? this.SelectedItems;
 
             bool isLoading = IsParentLoading;
             int count = currentSelection?.Count ?? 0;
@@ -243,6 +253,12 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             if (isLoading || !hasSelection)
             {
                 Debug.WriteLine($"[CanExecuteRedownloadMods] Result: false (Loading or No Selection)");
+                return false;
+            }
+            
+            // FIX: Safely cast after verifying the list is not null to resolve CS8604.
+            if (currentSelection is null)
+            {
                 return false;
             }
 
@@ -404,8 +420,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
     }
 
 
-        private bool CanExecutizeMod(ModItem mod)
+        private bool CanExecutizeMod(ModItem? mod)
         {
+            // FIX: Parameter is now nullable.
             return !IsParentLoading && mod != null && mod.ModType != ModType.Core && mod.ModType != ModType.Expansion;
         }
 
@@ -413,8 +430,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         {
             if (mod == null) return;
 
-            ModCustomInfo customInfo = null;
-            CustomizeModDialogViewModel viewModel = null;
+            // FIX: Declared as nullable to correctly handle the case where it might be null.
+            ModCustomInfo? customInfo = null;
+            CustomizeModDialogViewModel? viewModel = null;
             ModCustomizationResult result = ModCustomizationResult.Cancel; // Default result
 
             // Indicate loading potentially (optional, if it's quick, maybe not needed)
@@ -425,6 +443,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 Debug.WriteLine($"Attempting to customize mod: {mod.PackageId}");
 
                 // 1. Load data in the background (Keep this)
+                // FIX: GetCustomModInfo can return null, so the result is stored in a nullable variable.
                 customInfo = await Task.Run(() => _modService.GetCustomModInfo(mod.PackageId));
                 // Execution resumes here, potentially on UI thread or background thread after await
 
@@ -433,6 +452,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 RunOnUIThread(() =>
                 {
                     // Create ViewModel (safe on UI thread)
+                    // The customInfo variable is correctly passed as a nullable type.
                     viewModel = new CustomizeModDialogViewModel(mod, customInfo, _modService);
 
                     Debug.WriteLine("Showing customize dialog on UI thread...");
@@ -473,7 +493,5 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                            !string.IsNullOrEmpty(modsPath) &&
                            !string.IsNullOrEmpty(configPath);
         }
-
-
     }
 }

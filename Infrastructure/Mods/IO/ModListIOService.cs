@@ -1,3 +1,4 @@
+#nullable enable
 using Microsoft.Win32;
 using RimSharp.AppDir.Dialogs;
 using RimSharp.Core.Extensions;
@@ -83,7 +84,7 @@ namespace RimSharp.Infrastructure.Mods.IO
                 // Check which mods are missing
                 var availableModIds = allMods
                     .Where(m => !string.IsNullOrEmpty(m.PackageId))
-                    .Select(m => m.PackageId.ToLowerInvariant())
+                    .Select(m => m.PackageId!.ToLowerInvariant()) // Use null-forgiving operator as we've already checked
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
                 var missingModIds = activeModIds
@@ -97,14 +98,12 @@ namespace RimSharp.Infrastructure.Mods.IO
 
                 await Task.Run(() => _modListManager.Initialize(allMods, availableActiveModIds));
 
-                // Display appropriate message with missing mods if any
-                DisplayImportResultsAsync(Path.GetFileName(filePath), availableActiveModIds.Count, missingModIds);
+                // FIX: Await the async method to ensure the import process doesn't end prematurely.
+                await DisplayImportResultsAsync(Path.GetFileName(filePath), availableActiveModIds.Count, missingModIds);
             }
             catch (Exception ex)
             {
-                // --- Replaced MessageBox ---
                 _dialogService.ShowError("Import Error", $"An unexpected error occurred during import: {ex.Message}");
-                // -------------------------
             }
         }
 
@@ -131,21 +130,15 @@ namespace RimSharp.Infrastructure.Mods.IO
                 // Create XML document with active mods
                 await SaveModListFileAsync(filePath, validActiveMods);
 
-                // --- Replaced MessageBox ---
                 _dialogService.ShowInformation("Export Successful", $"Mod list exported successfully to {Path.GetFileName(filePath)}!");
-                // -------------------------
             }
             catch (UnauthorizedAccessException)
             {
-                // --- Replaced MessageBox ---
                 _dialogService.ShowError("Export Error", "Error: Permission denied when saving the file.");
-                // -------------------------
             }
             catch (Exception ex)
             {
-                // --- Replaced MessageBox ---
                 _dialogService.ShowError("Export Error", $"An unexpected error occurred during export: {ex.Message}");
-                // -------------------------
             }
         }
 
@@ -166,12 +159,14 @@ namespace RimSharp.Infrastructure.Mods.IO
         }
 
         private enum FileDialogType { Open, Save }
-
-        private Task<string> ShowFileDialogAsync(string initialDirectory, FileDialogType dialogType)
+        
+        // FIX: Changed return type to Task<string?> to indicate the result can be null.
+        private Task<string?> ShowFileDialogAsync(string initialDirectory, FileDialogType dialogType)
         {
             return Task.Run(() =>
             {
-                string result = null;
+                // FIX: Declared result as string? to match the return type.
+                string? result = null;
 
                 Application.Current.Dispatcher.Invoke(() =>
                 {
@@ -212,7 +207,8 @@ namespace RimSharp.Infrastructure.Mods.IO
             });
         }
 
-        private async Task<List<string>> ParseModListFileAsync(string filePath)
+        // FIX: Changed return type to Task<List<string>?> to indicate the result can be null.
+        private async Task<List<string>?> ParseModListFileAsync(string filePath)
         {
             XDocument doc;
             try
@@ -221,18 +217,15 @@ namespace RimSharp.Infrastructure.Mods.IO
             }
             catch (Exception ex)
             {
-                // --- Replaced MessageBox ---
                 _dialogService.ShowError("Import Error", $"Error loading XML file: {ex.Message}");
-                // -------------------------
                 return null;
             }
-
+            
+            // FIX: Use the null-conditional operator (?.) for safe navigation.
             var activeModsElement = doc.Root?.Element("activeMods");
             if (activeModsElement is null)
             {
-                // --- Replaced MessageBox ---
                 _dialogService.ShowError("Invalid File Format", "The selected file does not contain a valid mod list format.");
-                // -------------------------
                 return null;
             }
 
@@ -242,9 +235,7 @@ namespace RimSharp.Infrastructure.Mods.IO
 
             if (!activeModIds.Any())
             {
-                // --- Replaced MessageBox ---
                 _dialogService.ShowWarning("Import Warning", "The file contains an empty mod list.");
-                // -------------------------
                 return null;
             }
 
@@ -260,7 +251,8 @@ namespace RimSharp.Infrastructure.Mods.IO
                 )
             );
 
-            var activeModsElement = doc.Root.Element("activeMods");
+            // FIX: Safely get the element and throw if it's somehow null.
+            var activeModsElement = doc.Root?.Element("activeMods") ?? throw new InvalidOperationException("Could not find activeMods element in the new XDocument.");
 
             foreach (var mod in activeMods)
             {
@@ -300,77 +292,77 @@ namespace RimSharp.Infrastructure.Mods.IO
 
             messageBuilder.AppendLine();
 
-            // Show a confirmation dialog offering to download
             var confirmResult = _dialogService.ShowConfirmation(
                 "Import Partially Successful",
                 messageBuilder.ToString(),
-                showCancel: true); // OK = Yes, Cancel = No
+                showCancel: true); 
 
             if (confirmResult == MessageDialogResult.OK || confirmResult == MessageDialogResult.Yes)
             {
                 _logger.LogInfo($"User chose to download {missingModIds.Count} missing mods from import.", nameof(ModListIOService));
-                // User wants to download, proceed to selection dialog logic
                 await HandleMissingModDownloadRequestAsync(missingModIds);
             }
             else
             {
                 _logger.LogInfo("User declined to download missing mods from import.", nameof(ModListIOService));
-                // User cancelled, maybe show the simple list again for copying if desired?
-                var finalMessage = new StringBuilder();
                 _dialogService.ShowInformation(
                     "Import Successful",
                     $"Successfully imported mod list from {fileName} with {importedCount} active mods.");
             }
         }
-        // --- Updated Method to Handle Download Request ---
+        
         private async Task HandleMissingModDownloadRequestAsync(List<string> missingModIds)
         {
             if (missingModIds == null || !missingModIds.Any()) return;
 
             List<MissingModGroupViewModel> groups = new List<MissingModGroupViewModel>();
             List<string> unknownIds = new List<string>();
-            Dictionary<string, ModDictionaryEntry> allEntries = null;
+            // FIX: Declare as nullable, as the service method might return null.
+            Dictionary<string, ModDictionaryEntry>? allEntries = null;
 
-            ProgressDialogViewModel? prepProgressDialog = null; // Renamed for clarity
-            CancellationTokenSource? prepCts = null; // Renamed for clarity
+            ProgressDialogViewModel? prepProgressDialog = null;
+            CancellationTokenSource? prepCts = null;
 
             try
             {
-                // Show initial progress (Preparation Phase)
                 await ThreadHelper.RunOnUIThreadAsync(() =>
                 {
-                    prepCts = new CancellationTokenSource(); // Create CTS for prep phase
+                    prepCts = new CancellationTokenSource(); 
                     prepProgressDialog = _dialogService.ShowProgressDialog(
                         "Preparing Download Options",
                         "Loading mod dictionary...",
                         canCancel: true,
                         isIndeterminate: true,
-                        cts: prepCts, // Use the specific CTS
+                        cts: prepCts,
                         closeable: false);
                 });
                 if (prepProgressDialog == null) throw new InvalidOperationException("Preparation progress dialog not created");
                 if (prepCts == null) throw new InvalidOperationException("Preparation CTS not created");
 
 
-                // Load *all* dictionary entries once
                 await Task.Run(() =>
                 {
                     allEntries = _modDictionaryService.GetAllEntries();
-                }, prepCts.Token); // Pass token
+                }, prepCts.Token);
 
-                prepCts.Token.ThrowIfCancellationRequested(); // Check cancellation after loading
+                prepCts.Token.ThrowIfCancellationRequested(); 
 
-                // Update progress
+                // FIX: Add a null check before trying to use allEntries.
+                if (allEntries is null)
+                {
+                    _logger.LogWarning("Mod dictionary was null, cannot match missing mods.", nameof(ModListIOService));
+                    _dialogService.ShowWarning("Dictionary Missing", "Could not load the mod dictionary to find missing mods.");
+                    return; // Exit early
+                }
+                
                 await ThreadHelper.RunOnUIThreadAsync(() => prepProgressDialog.Message = "Matching missing mods...");
 
-                // Filter and group (this should be quick)
                 await Task.Run(() =>
                 {
                     var allEntriesList = allEntries.Values.ToList();
                     foreach (var missingId in missingModIds.Distinct(StringComparer.OrdinalIgnoreCase))
                     {
                         prepCts.Token.ThrowIfCancellationRequested();
-                        // ... (rest of the matching and grouping logic remains the same) ...
                         var normalizedMissingId = missingId.ToLowerInvariant();
                         var matchingEntries = allEntriesList
                            .Where(entry => !string.IsNullOrEmpty(entry.PackageId) &&
@@ -379,13 +371,12 @@ namespace RimSharp.Infrastructure.Mods.IO
 
                         if (matchingEntries.Any())
                         {
-                            var group = new MissingModGroupViewModel(missingId); // Use original casing for display
-                            foreach (var entry in matchingEntries.OrderBy(e => e.Name)) // Sort variants by name
+                            var group = new MissingModGroupViewModel(missingId); 
+                            foreach (var entry in matchingEntries.OrderBy(e => e.Name)) 
                             {
                                 group.Variants.Add(new MissingModVariantViewModel(entry));
                             }
-                            group.SelectedVariant = group.Variants
-                                                        .FirstOrDefault(v => v.IsPublished);
+                            group.SelectedVariant = group.Variants.FirstOrDefault(v => v.IsPublished);
                             groups.Add(group);
                         }
                         else
@@ -394,14 +385,12 @@ namespace RimSharp.Infrastructure.Mods.IO
                             _logger.LogDebug($"Missing mod ID '{missingId}' not found in dictionary.", nameof(ModListIOService));
                         }
                     }
-                }, prepCts.Token); // Pass token
+                }, prepCts.Token);
 
-                prepCts.Token.ThrowIfCancellationRequested(); // Check after grouping
+                prepCts.Token.ThrowIfCancellationRequested();
 
-                // Close the preparation progress dialog
                 await ThreadHelper.RunOnUIThreadAsync(() => prepProgressDialog?.CompleteOperation("Ready."));
 
-                // Show the selection dialog
                 MissingModSelectionDialogOutput? selectionResult = null;
                 await ThreadHelper.RunOnUIThreadAsync(() =>
                 {
@@ -409,19 +398,18 @@ namespace RimSharp.Infrastructure.Mods.IO
                     selectionResult = _dialogService.ShowMissingModSelectionDialog(selectionViewModel);
                 });
 
-                if (selectionResult?.Result == MissingModSelectionResult.Download && selectionResult.SelectedSteamIds.Any())
+                // FIX: Add a null check on selectionResult before accessing its properties.
+                if (selectionResult != null && selectionResult.Result == MissingModSelectionResult.Download && selectionResult.SelectedSteamIds.Any())
                 {
                     _logger.LogInfo($"User selected {selectionResult.SelectedSteamIds.Count} published mod variants to download.", nameof(ModListIOService));
-
-                    // --- Trigger the actual download process using the new service ---
-                    await ProcessAndQueueSelectedModsAsync(selectionResult.SelectedSteamIds, CancellationToken.None); // Use CancellationToken.None or a relevant token
+                    await ProcessAndQueueSelectedModsAsync(selectionResult.SelectedSteamIds, CancellationToken.None);
                 }
                 else
                 {
                     _logger.LogInfo("User cancelled or did not select any (published) mods in the missing mod selection dialog.", nameof(ModListIOService));
                 }
             }
-            catch (OperationCanceledException) // Catches cancellation from prepCts
+            catch (OperationCanceledException)
             {
                 _logger.LogInfo("Preparation for missing mod download was cancelled.", nameof(ModListIOService));
                 await ThreadHelper.RunOnUIThreadAsync(() =>
@@ -441,7 +429,7 @@ namespace RimSharp.Infrastructure.Mods.IO
             }
             finally
             {
-                await ThreadHelper.RunOnUIThreadAsync(() => prepProgressDialog?.ForceClose()); // Ensure closed
+                await ThreadHelper.RunOnUIThreadAsync(() => prepProgressDialog?.ForceClose());
                 prepCts?.Dispose();
             }
         }
@@ -460,7 +448,6 @@ namespace RimSharp.Infrastructure.Mods.IO
 
             try
             {
-                // Setup progress dialog and cancellation
                 await ThreadHelper.RunOnUIThreadAsync(() =>
                 {
                     progressDialog = _dialogService.ShowProgressDialog(
@@ -476,24 +463,20 @@ namespace RimSharp.Infrastructure.Mods.IO
                 linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, progressDialog.CancellationToken);
                 var combinedToken = linkedCts.Token;
 
-                // Setup Progress Reporter
                 var progressReporter = new Progress<QueueProcessProgress>(update =>
                 {
-                    ThreadHelper.EnsureUiThread(() => // Use EnsureUiThread or BeginInvokeOnUiThread
-                                    {
-                                        if (progressDialog != null && !progressDialog.CancellationToken.IsCancellationRequested)
-                                        {
-                                            progressDialog.Message = $"{update.Message} ({update.CurrentItem}/{update.TotalItems})";
-                                            progressDialog.Progress = (int)((double)update.CurrentItem / update.TotalItems * 100);
-                                        }
-                                    });
-
+                    ThreadHelper.EnsureUiThread(() => 
+                    {
+                        if (progressDialog != null && !progressDialog.CancellationToken.IsCancellationRequested)
+                        {
+                            progressDialog.Message = $"{update.Message} ({update.CurrentItem}/{update.TotalItems})";
+                            progressDialog.Progress = (int)((double)update.CurrentItem / update.TotalItems * 100);
+                        }
+                    });
                 });
 
-                // Call the central service
                 queueResult = await _steamWorkshopQueueProcessor.ProcessAndEnqueueModsAsync(steamIds, progressReporter, combinedToken);
 
-                // --- Show Summary ---
                 await ThreadHelper.RunOnUIThreadAsync(() =>
                 {
                     if (queueResult.WasCancelled)
@@ -518,7 +501,6 @@ namespace RimSharp.Infrastructure.Mods.IO
                         if (queueResult.ErrorMessages.Count > 5) sb.AppendLine("    (Check logs for more details...)");
                     }
 
-                    // Show appropriate dialog
                     if (queueResult.FailedProcessing > 0 && queueResult.SuccessfullyAdded > 0) _dialogService.ShowWarning("Download Partially Queued", sb.ToString().Trim());
                     else if (queueResult.FailedProcessing > 0 && queueResult.SuccessfullyAdded == 0) _dialogService.ShowError("Download Queue Failed", sb.ToString().Trim());
                     else _dialogService.ShowInformation("Download Queued", sb.ToString().Trim());
