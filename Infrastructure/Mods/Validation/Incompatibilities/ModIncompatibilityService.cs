@@ -81,10 +81,10 @@ namespace RimSharp.Infrastructure.Mods.Validation.Incompatibilities
             
             foreach (var mod in activeModsWithIds)
             {
-                // Check all incompatible mods
+                // Check all incompatible mods (from the new Dictionary property)
                 ProcessIncompatibleModsList(mod, mod.IncompatibleWith, activeModsLookup, dependencyGraph, reverseDependencyGraph, incompatibilityRelations);
                 
-                // Also check version-specific incompatibilities if available
+                // Also check version-specific incompatibilities (from the old List<string> property)
                 ProcessIncompatibleModsList(mod, mod.IncompatibleWithByVersion, activeModsLookup, dependencyGraph, reverseDependencyGraph, incompatibilityRelations);
             }
             
@@ -142,92 +142,134 @@ namespace RimSharp.Infrastructure.Mods.Validation.Incompatibilities
             }
         }
         
-private void ProcessIncompatibleModsList(
-    ModItem sourceMod, 
-    IEnumerable<string> incompatibleModIds, 
-    Dictionary<string, ModItem> activeModsLookup,
-    Dictionary<string, HashSet<string>> dependencyGraph,
-    Dictionary<string, HashSet<string>> reverseDependencyGraph,
-    List<ModIncompatibilityRelation> results)
-{
-    if (incompatibleModIds == null)
-        return;
-        
-    foreach (var incompatibleId in incompatibleModIds)
-    {
-        if (string.IsNullOrEmpty(incompatibleId))
-            continue;
-            
-        var id = incompatibleId.ToLowerInvariant();
-        
-        // Check if the incompatible mod is in the active list
-        if (activeModsLookup.TryGetValue(id, out var incompatibleMod))
+        private void ProcessIncompatibleModsList( // Overload for IEnumerable<string> (for IncompatibleWithByVersion)
+            ModItem sourceMod, 
+            IEnumerable<string> incompatibleModIds, 
+            Dictionary<string, ModItem> activeModsLookup,
+            Dictionary<string, HashSet<string>> dependencyGraph,
+            Dictionary<string, HashSet<string>> reverseDependencyGraph,
+            List<ModIncompatibilityRelation> results)
         {
-            // Add direct incompatibility relations (bidirectional)
-            results.Add(new ModIncompatibilityRelation(
-                sourceMod, 
-                incompatibleMod, 
-                $"Direct incompatibility with {incompatibleMod.Name}"));
+            if (incompatibleModIds == null)
+                return;
                 
-            results.Add(new ModIncompatibilityRelation(
-                incompatibleMod, 
-                sourceMod, 
-                $"Direct incompatibility with {sourceMod.Name}"));
-            
-            // Find all mods that depend on the incompatible mod (children/dependents)
-            var dependentMods = FindDependentMods(incompatibleMod.PackageId, activeModsLookup, reverseDependencyGraph);
-            
-            // Add dependency incompatibility relations for mods that depend on the incompatible mod
-            foreach (var dependentMod in dependentMods)
+            foreach (var incompatibleId in incompatibleModIds)
             {
-                // Dependent mod is incompatible with source mod
-                results.Add(new ModIncompatibilityRelation(
-                    dependentMod,
-                    sourceMod,
-                    $"Depends on {incompatibleMod.Name}, which is incompatible with {sourceMod.Name}"));
+                if (string.IsNullOrEmpty(incompatibleId))
+                    continue;
                     
-                // Source mod is incompatible with dependent mod
-                results.Add(new ModIncompatibilityRelation(
-                    sourceMod,
-                    dependentMod,
-                    $"Incompatible with {incompatibleMod.Name}, which {dependentMod.Name} depends on"));
-            }
-            
-            // Find all mods that depend on the source mod (children/dependents of source)
-            var sourceModDependents = FindDependentMods(sourceMod.PackageId, activeModsLookup, reverseDependencyGraph);
-            
-            // Add source dependent incompatibility relations
-            foreach (var sourceDependent in sourceModDependents)
-            {
-                // Source dependent is incompatible with incompatible mod
-                results.Add(new ModIncompatibilityRelation(
-                    sourceDependent,
-                    incompatibleMod,
-                    $"Depends on {sourceMod.Name}, which is incompatible with {incompatibleMod.Name}"));
-                    
-                // Incompatible mod is incompatible with source dependent
-                results.Add(new ModIncompatibilityRelation(
-                    incompatibleMod,
-                    sourceDependent,
-                    $"Incompatible with {sourceMod.Name}, which {sourceDependent.Name} depends on"));
-                    
-                // Cross-relate dependents
-                foreach (var dependentMod in dependentMods)
+                var id = incompatibleId.ToLowerInvariant();
+                
+                // Check if the incompatible mod is in the active list
+                if (activeModsLookup.TryGetValue(id, out var incompatibleMod))
                 {
+                    // Add direct incompatibility relations (bidirectional)
                     results.Add(new ModIncompatibilityRelation(
-                        sourceDependent,
-                        dependentMod,
-                        $"Depends on {sourceMod.Name}, which is incompatible with {incompatibleMod.Name} that {dependentMod.Name} depends on"));
+                        sourceMod, 
+                        incompatibleMod, 
+                        $"Direct incompatibility with {incompatibleMod.Name}"));
                         
                     results.Add(new ModIncompatibilityRelation(
-                        dependentMod,
-                        sourceDependent,
-                        $"Depends on {incompatibleMod.Name}, which is incompatible with {sourceMod.Name} that {sourceDependent.Name} depends on"));
+                        incompatibleMod, 
+                        sourceMod, 
+                        $"Direct incompatibility with {sourceMod.Name}"));
+                    
+                    // Find all mods that depend on the incompatible mod (children/dependents)
+                    var dependentMods = FindDependentMods(incompatibleMod.PackageId, activeModsLookup, reverseDependencyGraph);
+                    
+                    // Add dependency incompatibility relations for mods that depend on the incompatible mod
+                    foreach (var dependentMod in dependentMods)
+                    {
+                        // Dependent mod is incompatible with source mod
+                        results.Add(new ModIncompatibilityRelation(
+                            dependentMod,
+                            sourceMod,
+                            $"Depends on {incompatibleMod.Name}, which is incompatible with {sourceMod.Name}"));
+                            
+                        // Source mod is incompatible with dependent mod
+                        results.Add(new ModIncompatibilityRelation(
+                            sourceMod,
+                            dependentMod,
+                            $"Incompatible with {incompatibleMod.Name}, which {dependentMod.Name} depends on"));
+                    }
+                    
+                    // Find all mods that depend on the source mod (children/dependents of source)
+                    var sourceModDependents = FindDependentMods(sourceMod.PackageId, activeModsLookup, reverseDependencyGraph);
+                    
+                    // Add source dependent incompatibility relations
+                    foreach (var sourceDependent in sourceModDependents)
+                    {
+                        // Source dependent is incompatible with incompatible mod
+                        results.Add(new ModIncompatibilityRelation(
+                            sourceDependent,
+                            incompatibleMod,
+                            $"Depends on {sourceMod.Name}, which is incompatible with {incompatibleMod.Name}"));
+                            
+                        // Incompatible mod is incompatible with source dependent
+                        results.Add(new ModIncompatibilityRelation(
+                            incompatibleMod,
+                            sourceDependent,
+                            $"Incompatible with {sourceMod.Name}, which {sourceDependent.Name} depends on"));
+                            
+                        // Cross-relate dependents
+                        foreach (var dependentMod in dependentMods)
+                        {
+                            results.Add(new ModIncompatibilityRelation(
+                                sourceDependent,
+                                dependentMod,
+                                $"Depends on {sourceMod.Name}, which is incompatible with {incompatibleMod.Name} that {dependentMod.Name} depends on"));
+                                
+                            results.Add(new ModIncompatibilityRelation(
+                                dependentMod,
+                                sourceDependent,
+                                $"Depends on {incompatibleMod.Name}, which is incompatible with {sourceMod.Name} that {sourceDependent.Name} depends on"));
+                        }
+                    }
+                }
+            }
+        }        
+
+        private void ProcessIncompatibleModsList( // Overload for Dictionary<string, ModIncompatibilityRule>
+            ModItem sourceMod,
+            Dictionary<string, ModIncompatibilityRule> incompatibleMods,
+            Dictionary<string, ModItem> activeModsLookup,
+            Dictionary<string, HashSet<string>> dependencyGraph,
+            Dictionary<string, HashSet<string>> reverseDependencyGraph,
+            List<ModIncompatibilityRelation> results)
+        {
+            if (incompatibleMods == null)
+                return;
+        
+            foreach (var incompatibility in incompatibleMods)
+            {
+                string incompatibleId = incompatibility.Key;
+                var rule = incompatibility.Value;
+        
+                if (string.IsNullOrEmpty(incompatibleId))
+                    continue;
+        
+                var id = incompatibleId.ToLowerInvariant();
+        
+                // Check if the incompatible mod is in the active list
+                if (activeModsLookup.TryGetValue(id, out var incompatibleMod))
+                {
+                    // Create a detailed reason from the rule
+                    string reason = rule?.Comment?.FirstOrDefault() ?? $"Direct incompatibility with {incompatibleMod.Name}";
+                    if (rule?.HardIncompatibility == true && !reason.ToLower().Contains("hard"))
+                    {
+                        reason = $"[Hard] {reason}";
+                    }
+        
+                    // Add direct incompatibility relation
+                    results.Add(new ModIncompatibilityRelation(sourceMod, incompatibleMod, reason));
+
+                    // Note: Bidirectional and transitive relations are not added here to avoid duplicates,
+                    // as the loop will eventually process the other mod and its own incompatibility list.
+                    // This relies on each mod's defined incompatibilities being processed individually.
                 }
             }
         }
-    }
-}        
+
         private Dictionary<string, HashSet<string>> BuildDependencyGraph(IEnumerable<ModItem> mods)
         {
             var graph = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);

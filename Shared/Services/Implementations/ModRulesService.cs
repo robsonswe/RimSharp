@@ -48,10 +48,10 @@ namespace RimSharp.Shared.Services.Implementations
         // ApplyRulesToMod is less efficient, ApplyRulesToMods is preferred
         public void ApplyRulesToMod(ModItem mod)
         {
-             if (mod == null || string.IsNullOrEmpty(mod.PackageId))
+            if (mod == null || string.IsNullOrEmpty(mod.PackageId))
                 return;
 
-             ApplyRulesToMods(new List<ModItem> { mod }); // Just call the batch version
+            ApplyRulesToMods(new List<ModItem> { mod }); // Just call the batch version
         }
 
         // Modified batch processing method
@@ -101,7 +101,8 @@ namespace RimSharp.Shared.Services.Implementations
                     }
 
                     // Apply loadBefore rules
-                    if (rule.LoadBefore != null) {
+                    if (rule.LoadBefore != null)
+                    {
                         foreach (var target in rule.LoadBefore.Keys)
                         {
                             if (!string.IsNullOrWhiteSpace(target) && !mod.LoadBefore.Contains(target, StringComparer.OrdinalIgnoreCase))
@@ -112,10 +113,11 @@ namespace RimSharp.Shared.Services.Implementations
                     }
 
                     // Apply loadAfter rules
-                     if (rule.LoadAfter != null) {
+                    if (rule.LoadAfter != null)
+                    {
                         foreach (var target in rule.LoadAfter.Keys)
                         {
-                             if (!string.IsNullOrWhiteSpace(target) && !mod.LoadAfter.Contains(target, StringComparer.OrdinalIgnoreCase))
+                            if (!string.IsNullOrWhiteSpace(target) && !mod.LoadAfter.Contains(target, StringComparer.OrdinalIgnoreCase))
                             {
                                 mod.LoadAfter.Add(target);
                             }
@@ -130,12 +132,14 @@ namespace RimSharp.Shared.Services.Implementations
                     }
 
                     // Apply incompatibilities
-                    if (rule.Incompatibilities != null) {
-                        foreach (var target in rule.Incompatibilities.Keys)
+                    if (rule.Incompatibilities != null)
+                    {
+                        foreach (var incompatibility in rule.Incompatibilities)
                         {
-                             if (!string.IsNullOrWhiteSpace(target) && !mod.IncompatibleWith.Contains(target, StringComparer.OrdinalIgnoreCase))
+                            if (!string.IsNullOrWhiteSpace(incompatibility.Key) && !mod.IncompatibleWith.ContainsKey(incompatibility.Key))
                             {
-                                mod.IncompatibleWith.Add(target);
+                                mod.IncompatibleWith.Add(incompatibility.Key, incompatibility.Value);
+
                                 // Debug.WriteLine($"[DEBUG] Added DB Incompatibility: {mod.PackageId} -> {target}");
                             }
                         }

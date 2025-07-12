@@ -206,9 +206,9 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                 .Where(id => !_customInfo.LoadAfter?.ContainsKey(id) ?? true)
                 .ToList() ?? new List<string>();
 
-            _originalIncompatibilities = mod.IncompatibleWith?
-                .Where(id => !_customInfo.IncompatibleWith?.ContainsKey(id) ?? true)
-                .ToList() ?? new List<string>();
+            _originalIncompatibilities = mod.IncompatibleWith?.Keys
+                .Where(id => !(_customInfo.IncompatibleWith?.ContainsKey(id) ?? false))
+                 .ToList() ?? new List<string>();
 
             // For simple properties, we consider them original if they match the mod's value
             // and aren't explicitly set in custom info

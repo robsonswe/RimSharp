@@ -737,7 +737,17 @@ namespace RimSharp.Shared.Services.Implementations
             mod.LoadAfter = root.Element("loadAfter")?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>();
             mod.ForceLoadBefore = root.Element("forceLoadBefore")?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>();
             mod.ForceLoadAfter = root.Element("forceLoadAfter")?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>();
-            mod.IncompatibleWith = root.Element("incompatibleWith")?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>();
+            var incompatibleIds = root.Element("incompatibleWith")?.Elements("li")
+                .Select(x => x.Value)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct(StringComparer.OrdinalIgnoreCase);
+
+            if (incompatibleIds == null) return;
+
+            foreach (var packageId in incompatibleIds)
+            {
+                mod.IncompatibleWith.Add(packageId, new ModIncompatibilityRule { HardIncompatibility = true, Comment = new List<string> { "Incompatible according to the mod author" } });
+            }
         }
 
         private static bool IsVersionSupported(string currentVersion, List<VersionSupport> supportedVersions)

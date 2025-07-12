@@ -36,7 +36,7 @@ namespace RimSharp.Shared.Models
         public List<string> LoadAfter { get; set; } = new List<string>();
         public List<string> LoadAfterByVersion { get; set; } = new List<string>();
         public List<string> ForceLoadAfter { get; set; } = new List<string>();
-        public List<string> IncompatibleWith { get; set; } = new List<string>();
+        public Dictionary<string, ModIncompatibilityRule> IncompatibleWith { get; set; } = new Dictionary<string, ModIncompatibilityRule>(StringComparer.OrdinalIgnoreCase);
         public List<string> IncompatibleWithByVersion { get; set; } = new List<string>();
 
         // Additional fields
