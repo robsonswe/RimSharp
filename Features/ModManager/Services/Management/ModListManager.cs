@@ -130,10 +130,10 @@ namespace RimSharp.Features.ModManager.Services.Management
                     {
                         // The CycleInfo object contains a pre-formatted, human-readable description.
                         Debug.WriteLine(cycle.Description);
-                        
+
                         // You could now, for example, flag all mods in the cycle as having issues.
-                        foreach (var modInCycle in cycle.CyclePath) 
-                        { 
+                        foreach (var modInCycle in cycle.CyclePath)
+                        {
                             // modInCycle.HasIssues = true; 
                             // modInCycle.IssueTooltipText = "Part of a dependency cycle.";
                         }
@@ -502,16 +502,23 @@ namespace RimSharp.Features.ModManager.Services.Management
                 // 3. Check Incompatibilities
                 if (currentMod.IncompatibleWith != null)
                 {
-                    foreach (var incompatibleId in currentMod.IncompatibleWith)
+                    // Iterate over the keys (package IDs) of the incompatibility dictionary
+                    foreach (var incompatibleId in currentMod.IncompatibleWith.Keys)
                     {
-                        if (string.IsNullOrEmpty(incompatibleId)) continue;
+                        if (string.IsNullOrWhiteSpace(incompatibleId)) continue;
+
                         var incIdLower = incompatibleId.ToLowerInvariant();
                         if (activePackageIds.Contains(incIdLower))
                         {
+                            // Try to get more info from the rule
+                            currentMod.IncompatibleWith.TryGetValue(incompatibleId, out var rule);
+
                             string incompatibleName = activeModLookup.TryGetValue(incIdLower, out var incEntry)
                                                     ? incEntry.Mod?.Name ?? incIdLower
                                                     : incIdLower;
-                            issues.Add($"Incompatible with active mod: '{incompatibleName}'");
+
+                            var comment = rule?.Comment?.FirstOrDefault();
+                            issues.Add($"Incompatible with active mod: '{incompatibleName}'" + (string.IsNullOrWhiteSpace(comment) ? "" : $" (Reason: {comment})"));
                         }
                     }
                 }

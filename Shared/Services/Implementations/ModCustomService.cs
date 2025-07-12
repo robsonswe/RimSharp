@@ -359,11 +359,11 @@ namespace RimSharp.Shared.Services.Implementations
             // Apply IncompatibleWith
             if (customInfo.IncompatibleWith != null && customInfo.IncompatibleWith.Count > 0)
             {
-                foreach (var target in customInfo.IncompatibleWith.Keys)
+                foreach (var entry in customInfo.IncompatibleWith)
                 {
-                    if (!string.IsNullOrWhiteSpace(target) && !mod.IncompatibleWith.Contains(target, StringComparer.OrdinalIgnoreCase))
+                    if (!string.IsNullOrWhiteSpace(entry.Key) && !mod.IncompatibleWith.ContainsKey(entry.Key))
                     {
-                        mod.IncompatibleWith.Add(target);
+                        mod.IncompatibleWith.Add(entry.Key, entry.Value);
                     }
                 }
             }
