@@ -450,7 +450,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                         IsCollectionUrl = true;
                         IsValidModUrl = false; // Explicitly set false
                         IsModInfoAvailable = false; // Not applicable for collections
-                        StatusChanged?.Invoke(this, $"Collection detected ({collectionItems.Count} items).");
+                         StatusChanged?.Invoke(this, $"Collection detected ({collectionItems!.Count} items).");
                         Debug.WriteLine($"[BrowserVM] Content analysis determined: IsCollectionUrl=True for {url}");
                      });
                 }

@@ -88,7 +88,7 @@ namespace RimSharp.Infrastructure.Workshop.Download
                 result.OverallSuccess = false;
                 return result;
             }
-            if (!await EnsurePathValidityAsync(userModsPath, result)) return result;
+            if (!EnsurePathValidity(userModsPath, result)) return result;
 
             // Filter out invalid items
             var validItems = itemsToDownload
@@ -471,7 +471,7 @@ namespace RimSharp.Infrastructure.Workshop.Download
 
         // --- Helper Methods ---
 
-        private async Task<bool> EnsurePathValidityAsync(string userModsPath, SteamCmdDownloadResult result)
+        private bool EnsurePathValidity(string userModsPath, SteamCmdDownloadResult result)
         {
             string? modsParentDir = Path.GetDirectoryName(userModsPath ?? ".");
             if (string.IsNullOrEmpty(userModsPath) || string.IsNullOrEmpty(modsParentDir) || !Directory.Exists(modsParentDir))
@@ -700,33 +700,36 @@ namespace RimSharp.Infrastructure.Workshop.Download
                 return;
             }
 
-            _logger.LogInfo($"Attempting cleanup of '{description}' directory contents: {directoryPath}", "SteamCmdDownloader");
-            result.LogMessages.Add($"Cleaning {description} directory...");
-            int errors = 0;
-            try
+            await Task.Run(() =>
             {
-                var dirInfo = new DirectoryInfo(directoryPath);
-                foreach (FileInfo file in dirInfo.GetFiles())
+                _logger.LogInfo($"Attempting cleanup of '{description}' directory contents: {directoryPath}", "SteamCmdDownloader");
+                result.LogMessages.Add($"Cleaning {description} directory...");
+                int errors = 0;
+                try
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    try { file.Delete(); }
-                    catch (Exception ex) { _logger.LogWarning($"Failed to delete file during cleanup: {file.FullName} - {ex.Message}", "SteamCmdDownloader"); errors++; }
+                    var dirInfo = new DirectoryInfo(directoryPath);
+                    foreach (FileInfo file in dirInfo.GetFiles())
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        try { file.Delete(); }
+                        catch (Exception ex) { _logger.LogWarning($"Failed to delete file during cleanup: {file.FullName} - {ex.Message}", "SteamCmdDownloader"); errors++; }
+                    }
+                    foreach (DirectoryInfo subDir in dirInfo.GetDirectories())
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        try { subDir.Delete(true); } // Recursive delete for subdirs
+                        catch (Exception ex) { _logger.LogWarning($"Failed to delete directory during cleanup: {subDir.FullName} - {ex.Message}", "SteamCmdDownloader"); errors++; }
+                    }
+                    _logger.LogInfo($"Cleanup of '{description}' contents finished with {errors} errors.", "SteamCmdDownloader");
+                    result.LogMessages.Add($"Cleanup of {description} finished ({errors} errors).");
                 }
-                foreach (DirectoryInfo subDir in dirInfo.GetDirectories())
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    try { subDir.Delete(true); } // Recursive delete for subdirs
-                    catch (Exception ex) { _logger.LogWarning($"Failed to delete directory during cleanup: {subDir.FullName} - {ex.Message}", "SteamCmdDownloader"); errors++; }
+                    _logger.LogError($"Error during cleanup of '{description}' directory '{directoryPath}': {ex.Message}", "SteamCmdDownloader");
+                    result.LogMessages.Add($"Error cleaning up {description}: {ex.Message}");
                 }
-                _logger.LogInfo($"Cleanup of '{description}' contents finished with {errors} errors.", "SteamCmdDownloader");
-                result.LogMessages.Add($"Cleanup of {description} finished ({errors} errors).");
-            }
-            catch (OperationCanceledException) { throw; }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error during cleanup of '{description}' directory '{directoryPath}': {ex.Message}", "SteamCmdDownloader");
-                result.LogMessages.Add($"Error cleaning up {description}: {ex.Message}");
-            }
+            }, cancellationToken);
         }
 
 

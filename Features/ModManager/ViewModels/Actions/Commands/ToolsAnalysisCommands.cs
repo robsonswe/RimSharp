@@ -300,11 +300,10 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private void ExecuteCheckDuplicates()
         {
             IsLoadingRequest?.Invoke(this, true);
-            List<IGrouping<string, ModItem>> actualDuplicateGroups = null;
             try
             {
                 var allMods = _modListManager.GetAllMods().ToList();
-                actualDuplicateGroups = allMods
+                var actualDuplicateGroups = allMods
                     .Where(m => !string.IsNullOrEmpty(m.PackageId))
                     .GroupBy(m => m.PackageId.ToLowerInvariant())
                     .Where(g => g.Count() > 1)

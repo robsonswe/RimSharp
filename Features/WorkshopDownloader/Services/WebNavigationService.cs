@@ -27,9 +27,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         event EventHandler<string> NavigationStarted; // Passes the intended URL
         event EventHandler NavigationEnded; // Signals completion or failure
         event EventHandler<string> PotentialWorkshopPageLoaded; // Raised when a potential workshop page finishes loading successfully
-
-        // --- New Window Handling Event ---
-        event EventHandler<string> NewWindowNavigationRequested;
     }
 
     public class WebNavigationService : IWebNavigationService, IDisposable
@@ -104,7 +101,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         public event EventHandler<string>? NavigationStarted; // Passes intended URL
         public event EventHandler? NavigationEnded;
         public event EventHandler<string>? PotentialWorkshopPageLoaded;
-        public event EventHandler<string>? NewWindowNavigationRequested; // For handling new windows
 
         public void SetWebView(WebView2 webView)
         {
