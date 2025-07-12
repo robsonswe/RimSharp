@@ -13,18 +13,37 @@ namespace RimSharp.Features.ModManager.Dialogs.Incompatibilities
             = new ObservableCollection<IncompatibilityResolutionOption>();
             
         public IncompatibilityGroup Group { get; }
-            public string GroupName { get; } = Guid.NewGuid().ToString();
+        public string GroupName { get; } = Guid.NewGuid().ToString();
 
+        // New property to determine the group type
+        public bool ContainsHardIncompatibility { get; private set; }
         
         public IncompatibilityGroupViewModel(IncompatibilityGroup group)
         {
             Group = group;
             GroupName = $"IncompatibilityGroup_{group.GetHashCode()}"; // Create a unique name
+            
+            // Determine if the group has any hard incompatibilities
+            ContainsHardIncompatibility = group.IncompatibilityRelations.Any(r => 
+                r.Reason.Trim().StartsWith("[Hard]", StringComparison.OrdinalIgnoreCase));
+
             GenerateResolutionOptions();
         }
         
         private void GenerateResolutionOptions()
         {
+            // If there are NO hard incompatibilities, add the "Keep All" option first.
+            if (!ContainsHardIncompatibility)
+            {
+                var keepAllOption = new IncompatibilityResolutionOption
+                {
+                    ModToKeep = null, // Using null to signify "Keep All"
+                    ParentGroup = this,
+                    IsSelected = true // This is the new default for soft groups
+                };
+                ResolutionOptions.Add(keepAllOption);
+            }
+
             var allInvolvedMods = Group.InvolvedMods.ToList();
             
             // Create resolution options for each mod
@@ -53,7 +72,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Incompatibilities
                 }
             }
             
-            if (ResolutionOptions.Count > 0)
+            // If it's a hard group (so we didn't add "Keep All"), select the first option as the default.
+            if (ContainsHardIncompatibility && ResolutionOptions.Count > 0)
             {
                 ResolutionOptions[0].IsSelected = true;
             }
