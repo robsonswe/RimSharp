@@ -61,7 +61,9 @@ namespace RimSharp.Infrastructure.Mods.Sorting
 
         private static readonly HashSet<string> KnownTierThreePackageIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "krkr.rocketman"
+            "krkr.rocketman",
+            "Dubwise.DubsPerformanceAnalyzer.steam",
+            "taranchuk.performanceoptimizer"
         };
 
         public ModDependencySorter(ILogger logger = null)
@@ -80,7 +82,8 @@ namespace RimSharp.Infrastructure.Mods.Sorting
 
             try
             {
-                var (fullGraph, initialWarnings) = BuildGraph(allMods);
+                var modLookup = allMods.ToDictionary(m => m.PackageId.ToLowerInvariant(), m => m, StringComparer.OrdinalIgnoreCase);
+                var (fullGraph, initialWarnings) = BuildGraph(allMods, modLookup);
 
                 _logger.LogDebug("Partitioning mods into tiers.");
                 var tierOneMods = GetTierMods(allMods, fullGraph, TierOnePackageIds, findDependencies: true);
@@ -97,9 +100,10 @@ namespace RimSharp.Infrastructure.Mods.Sorting
 
                 _logger.LogDebug($"Partition complete. Tier 1: {tierOneMods.Count}, Tier 2: {tierTwoMods.Count}, Tier 3: {tierThreeMods.Count}");
 
-                var sortResultTier1 = SortTier(tierOneMods.ToList(), "Tier 1");
-                var sortResultTier2 = SortTier(tierTwoMods, "Tier 2");
-                var sortResultTier3 = SortTier(tierThreeMods.ToList(), "Tier 3");
+                // OPTIMIZATION 1: Pass the master lookup to avoid regenerating it.
+                var sortResultTier1 = SortTier(tierOneMods.ToList(), "Tier 1", modLookup);
+                var sortResultTier2 = SortTier(tierTwoMods, "Tier 2", modLookup);
+                var sortResultTier3 = SortTier(tierThreeMods.ToList(), "Tier 3", modLookup);
 
                 var combinedResult = new SortResult { IsSuccess = true };
                 var allSortedMods = new List<ModItem>();
@@ -168,19 +172,21 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             return tierMods;
         }
 
-        private SortResult SortTier(List<ModItem> tierMods, string tierName)
+        private SortResult SortTier(List<ModItem> tierMods, string tierName, IReadOnlyDictionary<string, ModItem> fullModLookup)
         {
             if (tierMods.Count == 0) return new SortResult { IsSuccess = true };
 
             _logger.LogDebug($"Sorting {tierName} with {tierMods.Count} mods...");
 
-            var (graph, warnings) = BuildGraph(tierMods);
+            // Build a graph for this tier, but use the master lookup to resolve dependencies.
+            // This prevents generating redundant "missing from tier" warnings.
+            var (graph, _) = BuildGraph(tierMods, fullModLookup, generateWarnings: false);
 
             var cycles = DetectCycles(graph);
             if (cycles.Any())
             {
                 _logger.LogError($"Cycles detected in {tierName}.");
-                return new SortResult { IsSuccess = false, CyclicDependencies = cycles, Warnings = warnings };
+                return new SortResult { IsSuccess = false, CyclicDependencies = cycles };
             }
 
             var sorted = PerformKahnSort(graph, tierMods);
@@ -191,7 +197,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             }
 
             _logger.LogDebug($"{tierName} sorting complete.");
-            return new SortResult { IsSuccess = true, SortedMods = sorted, Warnings = warnings };
+            return new SortResult { IsSuccess = true, SortedMods = sorted };
         }
 
         private void CombineTierResults(SortResult finalResult, SortResult tierResult, List<ModItem> allSortedMods)
@@ -201,42 +207,70 @@ namespace RimSharp.Infrastructure.Mods.Sorting
                 finalResult.IsSuccess = false;
             }
             finalResult.CyclicDependencies.AddRange(tierResult.CyclicDependencies);
-            finalResult.Warnings.AddRange(tierResult.Warnings);
+            finalResult.Warnings.AddRange(tierResult.Warnings); // Warnings from tiers are no longer generated.
             allSortedMods.AddRange(tierResult.SortedMods);
         }
-
-        private (BidirectionalGraph<ModItem, Edge<ModItem>> graph, List<string> warnings) BuildGraph(List<ModItem> mods)
+        
+        private (BidirectionalGraph<ModItem, Edge<ModItem>> graph, List<string> warnings) BuildGraph(
+            List<ModItem> mods, 
+            IReadOnlyDictionary<string, ModItem> modLookup, 
+            bool generateWarnings = true)
         {
             var graph = new BidirectionalGraph<ModItem, Edge<ModItem>>();
             var warnings = new List<string>();
-            var modLookup = mods.ToDictionary(m => m.PackageId.ToLowerInvariant(), m => m, StringComparer.OrdinalIgnoreCase);
+            var tierModSet = mods.ToHashSet(); // Fast lookups for mods within this build scope.
 
             graph.AddVertexRange(mods);
 
             foreach (var mod in mods)
             {
                 if (string.IsNullOrEmpty(mod.PackageId)) continue;
-
-                var beforeDeps = mod.LoadBefore.Concat(mod.ForceLoadBefore);
-                foreach (var depId in beforeDeps.Where(id => !string.IsNullOrEmpty(id)))
+                
+                // OPTIMIZATION 3: Iterate directly instead of using Concat to reduce allocations.
+                void ProcessBeforeDeps(IEnumerable<string> depIds)
                 {
-                    if (modLookup.TryGetValue(depId, out var otherMod) && otherMod != mod)
-                        graph.AddEdge(new Edge<ModItem>(mod, otherMod));
-                    else if (!modLookup.ContainsKey(depId))
-                        warnings.Add($"Mod '{mod.Name}' has a LoadBefore rule for '{depId}', which is not in the active mod list for this tier.");
+                    foreach (var depId in depIds)
+                    {
+                        if (string.IsNullOrEmpty(depId)) continue;
+                        if (modLookup.TryGetValue(depId, out var otherMod) && otherMod != mod)
+                        {
+                            // Only add edge if the target is also in the current set of mods being processed.
+                            if(tierModSet.Contains(otherMod))
+                                graph.AddEdge(new Edge<ModItem>(mod, otherMod));
+                        }
+                        else if (generateWarnings && !modLookup.ContainsKey(depId))
+                            warnings.Add($"Mod '{mod.Name}' has a LoadBefore rule for '{depId}', which is not in the active mod list.");
+                    }
                 }
 
-                var afterDeps = mod.LoadAfter.Concat(mod.ForceLoadAfter).Concat(mod.ModDependencies.Select(d => d.PackageId));
-                foreach (var depId in afterDeps.Where(id => !string.IsNullOrEmpty(id)))
+                void ProcessAfterDeps(IEnumerable<string> depIds)
                 {
-                    if (modLookup.TryGetValue(depId, out var otherMod) && otherMod != mod)
-                        graph.AddEdge(new Edge<ModItem>(otherMod, mod));
-                    else if (!modLookup.ContainsKey(depId))
-                        warnings.Add($"Mod '{mod.Name}' has a LoadAfter rule for '{depId}', which is not in the active mod list for this tier.");
+                    foreach (var depId in depIds)
+                    {
+                        if (string.IsNullOrEmpty(depId)) continue;
+                        if (modLookup.TryGetValue(depId, out var otherMod) && otherMod != mod)
+                        {
+                            if(tierModSet.Contains(otherMod))
+                                graph.AddEdge(new Edge<ModItem>(otherMod, mod));
+                        }
+                        else if (generateWarnings && !modLookup.ContainsKey(depId))
+                            warnings.Add($"Mod '{mod.Name}' has a LoadAfter rule for '{depId}', which is not in the active mod list.");
+                    }
                 }
+                
+                ProcessBeforeDeps(mod.LoadBefore);
+                ProcessBeforeDeps(mod.ForceLoadBefore);
+
+                ProcessAfterDeps(mod.LoadAfter);
+                ProcessAfterDeps(mod.ForceLoadAfter);
+                ProcessAfterDeps(mod.ModDependencies.Select(d => d.PackageId));
             }
 
-            AddImplicitDependencies(mods, graph);
+            // Implicit dependencies are only added on the initial full graph build.
+            if (generateWarnings)
+            {
+                AddImplicitDependencies(mods, graph);
+            }
 
             return (graph, warnings);
         }
@@ -251,7 +285,8 @@ namespace RimSharp.Infrastructure.Mods.Sorting
                 foreach (var mod in mods)
                 {
                     if (mod == coreMod) continue;
-                    if (!HasPath(graph, mod, coreMod) && !HasPath(graph, coreMod, mod))
+                    // OPTIMIZATION 2: Remove the expensive redundant path check. Keep the essential cycle prevention check.
+                    if (!HasPath(graph, mod, coreMod))
                     {
                         graph.AddEdge(new Edge<ModItem>(coreMod, mod));
                     }
@@ -260,15 +295,20 @@ namespace RimSharp.Infrastructure.Mods.Sorting
 
             foreach (var expansion in expansionMods)
             {
-                if (coreMod != null && coreMod != expansion && !HasPath(graph, coreMod, expansion))
+                if (coreMod != null && coreMod != expansion)
                 {
-                    graph.AddEdge(new Edge<ModItem>(coreMod, expansion));
+                    // OPTIMIZATION 2: Streamlined check.
+                    if (!HasPath(graph, expansion, coreMod))
+                    {
+                        graph.AddEdge(new Edge<ModItem>(coreMod, expansion));
+                    }
                 }
 
                 foreach (var mod in mods)
                 {
                     if (mod.ModType != ModType.Core && mod.ModType != ModType.Expansion)
                     {
+                        // OPTIMIZATION 2: Streamlined check.
                         if (!HasPath(graph, mod, expansion) && !HasPath(graph, expansion, mod))
                         {
                             graph.AddEdge(new Edge<ModItem>(expansion, mod));
@@ -290,7 +330,6 @@ namespace RimSharp.Infrastructure.Mods.Sorting
         private List<CycleInfo> DetectCycles(BidirectionalGraph<ModItem, Edge<ModItem>> graph)
         {
             var cycles = new List<CycleInfo>();
-            // FIX: Use the overload that takes a pre-initialized dictionary.
             var sccDict = new Dictionary<ModItem, int>();
             graph.StronglyConnectedComponents(sccDict);
 
@@ -366,9 +405,9 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             if (mod.ForceLoadBefore.Any()) return 0;
             if (mod.ModType == ModType.Core) return 1;
             if (mod.ModType == ModType.Expansion) return 2;
-            if (mod.LoadBefore.Any()) return 3;
-            if (mod.LoadAfter.Any() || mod.ForceLoadAfter.Any() || mod.ModDependencies.Any()) return 4;
-            return 5; // Regular mods
+            if (mod.LoadAfter.Any() || mod.ForceLoadAfter.Any() || mod.ModDependencies.Any()) return 3;
+            if (mod.LoadBefore.Any()) return 5;
+            return 4; 
         }
     }
 }

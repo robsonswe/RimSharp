@@ -11342,6 +11342,12 @@
             }
         },
         "taranchuk.performanceoptimizer": {
+            "loadAfter": {
+                "Dubwise.DubsPerformanceAnalyzer.steam": {
+                    "comment": "DPA should load before other major performance mods.",
+                    "name": "Dubs Performance Analyzer"
+                }
+            },
             "loadBefore": {
                 "krkr.rocketman": {
                     "comment": "Rocketman always last!",
