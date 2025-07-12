@@ -5,8 +5,16 @@
                   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                   xmlns:local="clr-namespace:RimSharp.Infrastructure.Dialog"
                   mc:Ignorable="d"
-                  Title="Resolve Mod Incompatibilities">
+                  Title="Resolve Mod Incompatibilities"
+                  xmlns:convViewVisibility="clr-namespace:RimSharp.Core.Converters.ViewVisibility">
 
+    <local:BaseDialog.Resources>
+        <ResourceDictionary>
+            <!-- Ensure this converter is available. It likely is from your Converters.xaml -->
+            <convViewVisibility:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
+        </ResourceDictionary>
+    </local:BaseDialog.Resources>
+    
     <!-- Header Content -->
     <local:BaseDialog.HeaderContent>
         <StackPanel Margin="0,0,0,10">
@@ -15,7 +23,7 @@
                        FontWeight="Bold"
                        Foreground="{StaticResource RimworldDarkBrownBrush}"/>
 
-            <TextBlock Text="Select which mod to keep in each incompatibility group. Related mods will be automatically removed."
+            <TextBlock Text="Select which mod to keep in each incompatibility group. Related mods will be automatically removed. For groups with only soft incompatibilities, you may choose to keep all mods."
                        FontSize="13"
                        TextWrapping="Wrap"
                        Margin="0,5,0,0"/>
@@ -60,14 +68,29 @@
                                                                  GroupName="{Binding ParentGroup.GroupName}"
                                                                  Style="{StaticResource {x:Type RadioButton}}">
                                                         <StackPanel>
-                                                            <TextBlock FontWeight="SemiBold"
-                                                                    FontSize="13">
-                                                                        <Run Text="Keep: "
-                                                                        Foreground="{StaticResource RimworldDarkBrownBrush}"/>
-                                                                        <Run Text="{Binding ModToKeep.Name}"
-                                                                        Foreground="{StaticResource RimworldDarkGreenBrush}"/>
-                                                            </TextBlock>
-                                                            <StackPanel Margin="20,8,0,0">
+                                                            <!-- This container will hold the conditional text -->
+                                                            <Grid>
+                                                                <Grid.Style>
+                                                                    <Style TargetType="Grid">
+                                                                        <Setter Property="TextElement.FontWeight" Value="SemiBold"/>
+                                                                        <Setter Property="TextElement.FontSize" Value="13"/>
+                                                                    </Style>
+                                                                </Grid.Style>
+                                                                
+                                                                <!-- Default view for "Keep Mod X" -->
+                                                                <TextBlock x:Name="KeepModText">
+                                                                    <Run Text="Keep: " Foreground="{StaticResource RimworldDarkBrownBrush}"/>
+                                                                    <Run Text="{Binding ModToKeep.Name}" Foreground="{StaticResource RimworldDarkGreenBrush}"/>
+                                                                </TextBlock>
+                                                                
+                                                                <!-- View for "Keep All" -->
+                                                                <TextBlock x:Name="KeepAllText" Visibility="Collapsed"
+                                                                           Foreground="{StaticResource RimworldDarkGreenBrush}"
+                                                                           Text="Keep all mods (soft incompatibility)"/>
+                                                            </Grid>
+                                                            
+                                                            <StackPanel Margin="20,8,0,0"
+                                                                        Visibility="{Binding ModsToRemove.Count, Converter={StaticResource CountToVisibilityConverter}}">
                                                                 <TextBlock Text="Will remove the following mods:"
                                                                            FontSize="12"
                                                                            Margin="0,0,0,5"/>
@@ -112,6 +135,15 @@
                                                     </RadioButton>
                                                 </StackPanel>
                                             </Border>
+
+                                            <DataTemplate.Triggers>
+                                                <!-- When ModToKeep is null, switch the visible text -->
+                                                <DataTrigger Binding="{Binding ModToKeep}" Value="{x:Null}">
+                                                    <Setter TargetName="KeepModText" Property="Visibility" Value="Collapsed"/>
+                                                    <Setter TargetName="KeepAllText" Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </DataTemplate.Triggers>
+                                            
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
