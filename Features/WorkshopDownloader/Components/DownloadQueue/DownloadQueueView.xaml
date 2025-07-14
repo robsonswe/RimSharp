@@ -4,13 +4,12 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:vm="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.DownloadQueue"
-             xmlns:converters="clr-namespace:RimSharp.Core.Converters"
+             xmlns:logic="clr-namespace:RimSharp.Core.Converters.Logic"
              xmlns:models="clr-namespace:RimSharp.Features.WorkshopDownloader.Models"
              xmlns:helpers="clr-namespace:RimSharp.Core.Helpers"
              d:DataContext="{d:DesignInstance Type=vm:DownloadQueueViewModel}"
              mc:Ignorable="d"
              x:Name="DownloadQueueUserControl">
-
 
     <DockPanel>
         <Border DockPanel.Dock="Top"
@@ -174,9 +173,14 @@
 
                         <!-- Row 3: Latest Versions -->
                         <StackPanel Grid.Row="3"
-                                    Orientation="Horizontal"
-                                    Visibility="{Binding LatestVersions.Count, Converter={StaticResource CountToVisibilityConverter}}">
-                            <TextBlock Text="Versions: "
+                                    Orientation="Horizontal">
+                            <StackPanel.Visibility>
+                                <MultiBinding Converter="{StaticResource BooleanAndToVisibilityConverter}">
+                                    <Binding Path="ShouldShowVersionInfo"/>
+                                    <Binding Path="LatestVersions.Count" Converter="{StaticResource CountToBooleanConverter}"/>
+                                </MultiBinding>
+                            </StackPanel.Visibility>
+                            <TextBlock Text="Updated Versions: "
                                        FontSize="11"
                                        FontWeight="SemiBold"
                                        Foreground="{StaticResource RimworldLightBrownBrush}"/>
@@ -201,9 +205,14 @@
 
                         <!-- Row 5: Installed Versions -->
                         <StackPanel Grid.Row="5"
-                                    Orientation="Horizontal"
-                                    Visibility="{Binding IsInstalled, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <TextBlock Text="Versions: "
+                                    Orientation="Horizontal">
+                            <StackPanel.Visibility>
+                                <MultiBinding Converter="{StaticResource BooleanAndToVisibilityConverter}">
+                                    <Binding Path="ShouldShowVersionInfo"/>
+                                    <Binding Path="IsInstalled"/>
+                                </MultiBinding>
+                            </StackPanel.Visibility>
+                            <TextBlock Text="Installed Versions: "
                                        FontSize="11"
                                        FontWeight="SemiBold"
                                        Foreground="{StaticResource RimworldLightBrownBrush}"/>

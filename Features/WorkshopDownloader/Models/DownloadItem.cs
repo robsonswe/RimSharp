@@ -2,6 +2,7 @@
 using RimSharp.AppDir.AppFiles;
 using RimSharp.Shared.Models;
 using System.Collections.Generic;
+using System.Linq; // Required for LINQ methods
 
 namespace RimSharp.Features.WorkshopDownloader.Models
 {
@@ -60,18 +61,36 @@ namespace RimSharp.Features.WorkshopDownloader.Models
         public List<string>? LatestVersions
         {
             get => _latestVersions;
-            set => SetProperty(ref _latestVersions, value);
+            set
+            {
+                if (SetProperty(ref _latestVersions, value))
+                {
+                    OnPropertyChanged(nameof(ShouldShowVersionInfo));
+                }
+            }
         }
 
         public List<VersionSupport>? InstalledVersions
         {
             get => _installedVersions;
-            set => SetProperty(ref _installedVersions, value);
+            set
+            {
+                if (SetProperty(ref _installedVersions, value))
+                {
+                    OnPropertyChanged(nameof(ShouldShowVersionInfo));
+                }
+            }
         }
         public bool IsInstalled
         {
             get => _isInstalled;
-            set => SetProperty(ref _isInstalled, value);
+            set
+            {
+                if (SetProperty(ref _isInstalled, value))
+                {
+                    OnPropertyChanged(nameof(ShouldShowVersionInfo));
+                }
+            }
         }
 
         public string? LocalDateStamp // Local Timestamp Date
@@ -96,6 +115,40 @@ namespace RimSharp.Features.WorkshopDownloader.Models
         {
             get => _isFavorite;
             set => SetProperty(ref _isFavorite, value);
+        }
+
+        /// <summary>
+        /// Calculated property to determine if the version information should be displayed.
+        /// </summary>
+        public bool ShouldShowVersionInfo
+        {
+            get
+            {
+                // Condition 1: Always show if not installed.
+                if (!IsInstalled)
+                {
+                    return true;
+                }
+
+                // Condition 2: If installed, show only if versions are different.
+                var latest = LatestVersions;
+                // Extract string versions from the more complex InstalledVersions list
+                var installed = InstalledVersions?.Select(v => v.Version).ToList();
+
+                // Handle cases where one or both lists are null/empty
+                bool latestHasItems = latest?.Any() ?? false;
+                bool installedHasItems = installed?.Any() ?? false;
+
+                if (!latestHasItems && !installedHasItems) return false; // Both empty, no info to show
+                if (latestHasItems != installedHasItems) return true; // One has items and the other doesn't, they are different
+
+                // Both lists have items, compare their contents ignoring order.
+                // HashSet.SetEquals is perfect for this as it's order-insensitive.
+                var latestSet = new HashSet<string>(latest!, System.StringComparer.OrdinalIgnoreCase);
+                var installedSet = new HashSet<string>(installed!, System.StringComparer.OrdinalIgnoreCase);
+
+                return !latestSet.SetEquals(installedSet);
+            }
         }
 
         // --- Helper to reset local info ---
