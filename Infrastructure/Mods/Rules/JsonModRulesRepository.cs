@@ -17,16 +17,16 @@ namespace RimSharp.Infrastructure.Mods.Rules
         private readonly object _loadLock = new object(); // Lock for thread safety during load
 
         // Constructor now takes the application base path
-        public JsonModRulesRepository(string appBasePath)
+        public JsonModRulesRepository(IDataUpdateService dataUpdateService)
         {
-            if (string.IsNullOrEmpty(appBasePath))
-                throw new ArgumentNullException(nameof(appBasePath));
+            if (dataUpdateService == null)
+                throw new ArgumentNullException(nameof(dataUpdateService));
 
-            // Updated path calculation
-            _rulesDirectoryPath = Path.Combine(appBasePath, "Rules", "db");
-            _rulesFilePath = Path.Combine(_rulesDirectoryPath, RulesFileName);
+            // Get the path from the service
+            _rulesFilePath = dataUpdateService.GetDataFilePath(RulesFileName);
+
             Console.WriteLine($"[DEBUG] JsonModRulesRepository initialized. Rules file path: '{_rulesFilePath}'");
-            _cachedRules = new Dictionary<string, ModRule>(StringComparer.OrdinalIgnoreCase); // Initialize with comparer
+            _cachedRules = new Dictionary<string, ModRule>(StringComparer.OrdinalIgnoreCase);
         }
 
         public Dictionary<string, ModRule> GetAllRules()
@@ -60,12 +60,9 @@ namespace RimSharp.Infrastructure.Mods.Rules
                     // 2. Check if the file exists, create with default if not
                     if (!File.Exists(_rulesFilePath))
                     {
-                        Console.WriteLine($"[DEBUG] Rules file not found at '{_rulesFilePath}'. Creating with default content.");
-                        File.WriteAllText(_rulesFilePath, "{\"rules\":{}}"); // Default content
-                        Console.WriteLine($"[DEBUG] Default rules file created.");
-                        _rulesLoaded = true;
-                        _cachedRules = new Dictionary<string, ModRule>(StringComparer.OrdinalIgnoreCase); // Ensure it's empty and case-insensitive
-                        return _cachedRules; // Return the empty dictionary
+                        Console.WriteLine($"[WARNING] Rules file not found in cache at '{_rulesFilePath}'. Returning empty rules. App may need to restart or run update check.");
+                        _cachedRules = new Dictionary<string, ModRule>(StringComparer.OrdinalIgnoreCase);
+                        return _cachedRules;
                     }
 
                     // 3. File exists, proceed with loading
@@ -85,8 +82,8 @@ namespace RimSharp.Infrastructure.Mods.Rules
                     }
                     else
                     {
-                         Console.WriteLine("[DEBUG] Deserializing 'rules' object into Dictionary<string, ModRule>...");
-                         // Convert to a case-insensitive dictionary during assignment
+                        Console.WriteLine("[DEBUG] Deserializing 'rules' object into Dictionary<string, ModRule>...");
+                        // Convert to a case-insensitive dictionary during assignment
                         _cachedRules = new Dictionary<string, ModRule>(root.Rules, StringComparer.OrdinalIgnoreCase);
                         Console.WriteLine($"[DEBUG] Successfully deserialized rules. Found {_cachedRules.Count} rule entries.");
 
@@ -108,7 +105,7 @@ namespace RimSharp.Infrastructure.Mods.Rules
                 catch (IOException ioEx)
                 {
                     Console.WriteLine($"[ERROR] IO error accessing rules file '{_rulesFilePath}': {ioEx.Message}. Using empty rules.");
-                     _cachedRules = new Dictionary<string, ModRule>(StringComparer.OrdinalIgnoreCase);
+                    _cachedRules = new Dictionary<string, ModRule>(StringComparer.OrdinalIgnoreCase);
                 }
                 catch (Exception ex)
                 {
@@ -117,7 +114,7 @@ namespace RimSharp.Infrastructure.Mods.Rules
                 }
                 finally
                 {
-                     _rulesLoaded = true; // Mark as loaded even if an error occurred (to avoid retrying constantly)
+                    _rulesLoaded = true; // Mark as loaded even if an error occurred (to avoid retrying constantly)
                 }
 
                 return _cachedRules;
@@ -131,8 +128,8 @@ namespace RimSharp.Infrastructure.Mods.Rules
 
             if (string.IsNullOrEmpty(packageId))
             {
-                 // Console.WriteLine($"[DEBUG] packageId is null or empty. Returning default ModRule.");
-                 return new ModRule();
+                // Console.WriteLine($"[DEBUG] packageId is null or empty. Returning default ModRule.");
+                return new ModRule();
             }
 
             // Use case-insensitive lookup thanks to the dictionary's comparer

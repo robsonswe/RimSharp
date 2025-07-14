@@ -18,15 +18,16 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
         private readonly IPathService _pathService; // Now needed for GetEntryByPackageId logic
         private readonly string _appBasePath;
         private readonly ILoggerService _logger;
+        private readonly IDataUpdateService _dataUpdateService; 
         private Dictionary<string, ModDictionaryEntry> _dictionaryCache = null; // Cache keyed by lowercase SteamId
         private bool _isInitialized = false;
         private readonly object _lock = new object();
 
         // Constructor remains the same - IPathService is already injected
-        public ModDictionaryService(IPathService pathService, string appBasePath, ILoggerService logger)
+        public ModDictionaryService(IPathService pathService, IDataUpdateService dataUpdateService, ILoggerService logger)
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
-            _appBasePath = appBasePath ?? throw new ArgumentNullException(nameof(appBasePath));
+            _dataUpdateService = dataUpdateService ?? throw new ArgumentNullException(nameof(dataUpdateService)); 
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 

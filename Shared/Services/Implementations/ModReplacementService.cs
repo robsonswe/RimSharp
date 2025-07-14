@@ -18,6 +18,8 @@ namespace RimSharp.Shared.Services.Implementations
         // Updated: Relative path for the DB rules/replacements folder
         private readonly string _databaseRulesDbRelativePath = Path.Combine("Rules", "db");
 
+        private readonly IDataUpdateService _dataUpdateService; // Add this field
+
         private readonly IPathService _pathService;
         private readonly string _appBasePath; // Need the application base path for the JSON file
         private readonly ILoggerService _logger;
@@ -26,10 +28,10 @@ namespace RimSharp.Shared.Services.Implementations
         private readonly object _lock = new object();
 
         // Constructor needs application base path in addition to others
-        public ModReplacementService(IPathService pathService, string appBasePath, ILoggerService logger)
+        public ModReplacementService(IPathService pathService, IDataUpdateService dataUpdateService, ILoggerService logger)
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
-            _appBasePath = appBasePath ?? throw new ArgumentNullException(nameof(appBasePath)); // Store base path
+            _dataUpdateService = dataUpdateService ?? throw new ArgumentNullException(nameof(dataUpdateService)); 
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -156,12 +158,12 @@ namespace RimSharp.Shared.Services.Implementations
                         string key = info.SteamId?.Trim().ToLowerInvariant();
                         if (string.IsNullOrEmpty(key))
                         {
-                             // This is a rule for a non-steam mod, so it can't be a primary key in our SteamId-keyed dictionary.
-                             // It will still be added to the dictionary values and can be found by GetReplacementByPackageId.
-                             // We'll use a unique key for it to store it.
-                             key = $"packageid_{info.ModId?.Trim().ToLowerInvariant() ?? Guid.NewGuid().ToString()}";
+                            // This is a rule for a non-steam mod, so it can't be a primary key in our SteamId-keyed dictionary.
+                            // It will still be added to the dictionary values and can be found by GetReplacementByPackageId.
+                            // We'll use a unique key for it to store it.
+                            key = $"packageid_{info.ModId?.Trim().ToLowerInvariant() ?? Guid.NewGuid().ToString()}";
                         }
-                        
+
                         if (targetDictionary.ContainsKey(key))
                         {
                             _logger.LogWarning($"Duplicate key '{key}' detected in '{jsonFilePath}'. Overwriting previous entry.", nameof(ModReplacementService));
@@ -186,7 +188,7 @@ namespace RimSharp.Shared.Services.Implementations
             }
             catch (UnauthorizedAccessException uaEx)
             {
-                 _logger.LogException(uaEx, $"Permission error accessing directory '{dbDirectoryPath}' or file '{jsonFilePath}'.", nameof(ModReplacementService));
+                _logger.LogException(uaEx, $"Permission error accessing directory '{dbDirectoryPath}' or file '{jsonFilePath}'.", nameof(ModReplacementService));
             }
             catch (Exception ex)
             {
@@ -211,7 +213,7 @@ namespace RimSharp.Shared.Services.Implementations
                 _logger.LogWarning($"Mods path not found or not set ('{modsPath}'). Cannot load 'Use This Instead' replacement data.", nameof(ModReplacementService));
                 return 0;
             }
-             var utiModPath = Path.Combine(modsPath, UseThisInsteadModFolderId);
+            var utiModPath = Path.Combine(modsPath, UseThisInsteadModFolderId);
             if (!Directory.Exists(utiModPath))
             {
                 _logger.LogInfo($"'Use This Instead' mod ({UseThisInsteadModFolderId}) not found at '{utiModPath}'. Skipping its replacement data.", nameof(ModReplacementService));
@@ -303,7 +305,7 @@ namespace RimSharp.Shared.Services.Implementations
         // Using original name from service file, assuming it matches replacements.json structure
         private class ReplacementJsonRoot
         {
-             public Dictionary<string, ModReplacementInfo> Mods { get; set; }
+            public Dictionary<string, ModReplacementInfo> Mods { get; set; }
         }
     }
 }

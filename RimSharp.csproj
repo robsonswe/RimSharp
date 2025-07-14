@@ -33,22 +33,9 @@
     <PackageReference Include="QuikGraph" Version="2.5.0" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Include all files under Rules\db -->
-    <None Include="Rules\db\**\*">
+    <Content Include="Rules\db\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-
-    <!-- Create default rules.json if it doesn't exist -->
-    <None Include="Rules\db\rules.json" Condition="!Exists('Rules\db\rules.json')">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Content>{"rules":{}}</Content>
-    </None>
-
-    <!-- Create default replacements.json if it doesn't exist -->
-    <None Include="Rules\db\replacements.json" Condition="!Exists('Rules\db\replacements.json')">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Content>{"mods":{}}</Content>
-    </None>
+    </Content>
 
     <!-- Existing items -->
     <None Include="Lists\**\*" Condition="Exists('Lists\**\*')">
@@ -57,23 +44,38 @@
 
   </ItemGroup>
 
-  <Target Name="EnsureRulesDirectoryExists" BeforeTargets="PrepareForBuild">
-    <!-- Create Rules\db directory if it doesn't exist -->
+  <PropertyGroup>
+    <DefaultManifestJsonContent>{}</DefaultManifestJsonContent>
+    <DefaultRulesJsonContent>{"rules":{}}</DefaultRulesJsonContent>
+    <DefaultDbJsonContent>{"mods":{}}</DefaultDbJsonContent>
+    <DefaultReplacementsJsonContent>{"mods":{}}</DefaultReplacementsJsonContent>
+  </PropertyGroup>
+
+  <Target Name="EnsureLocalDataFilesExist" BeforeTargets="PrepareForBuild">
+    <!-- Create the Rules\db directory in your source project if it's missing. -->
     <MakeDir Directories="$(ProjectDir)Rules\db" Condition="!Exists('$(ProjectDir)Rules\db')" />
 
-    <!-- Create default rules.json if it doesn't exist -->
-    <WriteLinesToFile File="$(ProjectDir)Rules\db\rules.json" Lines="{&quot;rules&quot;:{}}" Overwrite="false" Condition="!Exists('$(ProjectDir)Rules\db\rules.json')" />
-
-    <!-- Create default replacements.json if it doesn't exist -->
-    <WriteLinesToFile File="$(ProjectDir)Rules\db\replacements.json" Lines="{&quot;mods&quot;:{}}" Overwrite="false" Condition="!Exists('$(ProjectDir)Rules\db\replacements.json')" />
+    <!--
+      Create default, empty JSON files if they don't exist. This prevents
+      FileNotFoundExceptions in the application. The Overwrite="false" attribute
+      ensures we don't accidentally erase existing files.
+    -->
+    <WriteLinesToFile File="$(ProjectDir)Rules\db\manifest.json"
+      Lines="$(DefaultManifestJsonContent)" Overwrite="false"
+      Condition="!Exists('$(ProjectDir)Rules\db\manifest.json')" />
+    <WriteLinesToFile File="$(ProjectDir)Rules\db\rules.json" Lines="$(DefaultRulesJsonContent)"
+      Overwrite="false" Condition="!Exists('$(ProjectDir)Rules\db\rules.json')" />
+    <WriteLinesToFile File="$(ProjectDir)Rules\db\db.json" Lines="$(DefaultDbJsonContent)"
+      Overwrite="false" Condition="!Exists('$(ProjectDir)Rules\db\db.json')" />
+    <WriteLinesToFile File="$(ProjectDir)Rules\db\replacements.json"
+      Lines="$(DefaultReplacementsJsonContent)" Overwrite="false"
+      Condition="!Exists('$(ProjectDir)Rules\db\replacements.json')" />
   </Target>
+
 
   <Target Name="PostBuild" AfterTargets="PostBuild">
     <!-- Create output folders -->
     <MakeDir Directories="$(OutputPath)Rules\db" />
     <MakeDir Directories="$(OutputPath)Lists" />
-
-    <!-- Copy Rules\db contents -->
-    <Copy SourceFiles="@(None)" DestinationFiles="@(None->'$(OutputPath)%(RelativeDir)%(Filename)%(Extension)')" Condition="'%(None.RelativeDir)' != '' AND '%(None.RelativeDir)'.StartsWith('Rules\db\')" />
   </Target>
 </Project>

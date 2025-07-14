@@ -159,11 +159,13 @@ namespace RimSharp.Features.ModManager.ViewModels
             ModActionsViewModel.HasUnsavedChangesRequest += OnChildRequestHasUnsavedChanges;
 
 
-            // --- Initial Load ---
-            // Ensure UI thread for async void pattern or use proper async initialization pattern
-            RunOnUIThread(async () => await LoadDataAsync());
         }
-
+        public async Task InitializeAsync()
+        {
+            // This is the new entry point for the initial data load.
+            // It will be called by MainViewModel after the main window is visible.
+            await LoadDataAsync();
+        }
         // --- Event Handlers from Children ---
 
         private bool CanExecuteRequestRefresh()

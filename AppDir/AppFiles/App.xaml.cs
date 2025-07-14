@@ -44,6 +44,8 @@ using RimSharp.Infrastructure.Workshop.Download.Execution;
 using RimSharp.Infrastructure.Workshop.Download.Parsing;
 using RimSharp.Infrastructure.Workshop.Download.Processing;
 using RimSharp.Infrastructure.Workshop.Download.Models;
+using System.Threading;
+using RimSharp.AppDir.Dialogs;
 
 
 namespace RimSharp.AppDir.AppFiles
@@ -73,11 +75,27 @@ namespace RimSharp.AppDir.AppFiles
         {
             _logger?.LogInfo("Starting service configuration.", "App.ConfigureServices"); // Added log
 
+
+            services.AddSingleton<string>(provider =>
+            {
+                var basePath = AppDomain.CurrentDomain.BaseDirectory;
+                provider.GetRequiredService<ILoggerService>()?.LogDebug($"Application base path registered: {basePath}", "App.ConfigureServices");
+                return basePath;
+            });
+
+
+            services.AddSingleton<IDataUpdateService>(provider =>
+                   new DataUpdateService(
+                       provider.GetRequiredService<ILoggerService>(),
+                       provider.GetRequiredService<string>() // This injects the appBasePath
+                   )
+               );
             // --- Base Infrastructure & Configuration ---
             services.AddSingleton<ILoggerService, LoggerService>();
             services.AddSingleton<IConfigService, ConfigService>();
             services.AddSingleton<IDialogService, DialogService>();
             services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
+
 
             services.AddSingleton<IPathService, PathService>(provider =>
                 new PathService(provider.GetRequiredService<IConfigService>()));
@@ -98,16 +116,11 @@ namespace RimSharp.AppDir.AppFiles
                 return pathSettings;
             });
 
-            services.AddSingleton<string>(provider =>
-            {
-                var basePath = AppDomain.CurrentDomain.BaseDirectory;
-                provider.GetRequiredService<ILoggerService>()?.LogDebug($"Application base path registered: {basePath}", "App.ConfigureServices");
-                return basePath;
-            });
 
             // --- Mod Rules ---
             services.AddSingleton<IModRulesRepository>(provider =>
-                new JsonModRulesRepository(provider.GetRequiredService<string>())); // appBasePath
+                new JsonModRulesRepository(provider.GetRequiredService<IDataUpdateService>()));
+
             services.AddSingleton<IModRulesService, ModRulesService>();
             services.AddSingleton<IModCustomService>(provider =>
                 new ModCustomService(
@@ -118,7 +131,8 @@ namespace RimSharp.AppDir.AppFiles
             services.AddSingleton<IModReplacementService>(provider =>
                 new ModReplacementService(
                     provider.GetRequiredService<IPathService>(),
-                    provider.GetRequiredService<string>(), // appBasePath
+                    // Now depends on the new service, remove appBasePath
+                    provider.GetRequiredService<IDataUpdateService>(),
                     provider.GetRequiredService<ILoggerService>()
                 ));
 
@@ -126,7 +140,8 @@ namespace RimSharp.AppDir.AppFiles
             services.AddSingleton<IModDictionaryService>(provider =>
                 new ModDictionaryService(
                     provider.GetRequiredService<IPathService>(),
-                    provider.GetRequiredService<string>(), // appBasePath
+                    // Now depends on the new service, remove appBasePath
+                    provider.GetRequiredService<IDataUpdateService>(),
                     provider.GetRequiredService<ILoggerService>()
                 ));
 
@@ -288,61 +303,55 @@ namespace RimSharp.AppDir.AppFiles
             _logger?.LogInfo("Service configuration finished.", "App.ConfigureServices");
         }
 
-        protected override void OnStartup(StartupEventArgs e)
+        protected override async void OnStartup(StartupEventArgs e)
         {
-            base.OnStartup(e); // Call base startup first
-
-            // --- Initialize ThreadHelper ---
-            try
-            {
-                ThreadHelper.Initialize();
-                _logger?.LogInfo("ThreadHelper initialized.", "App.OnStartup");
-            }
-            catch (Exception initEx)
-            {
-                _logger?.LogException(initEx, "Failed to initialize ThreadHelper.", "App.OnStartup");
-                MessageBox.Show($"Critical error initializing threading: {initEx.Message}", "Initialization Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                Shutdown(-3);
-                return;
-            }
-            // --- End ThreadHelper Initialization ---
-
-            _logger!.LogInfo("Application starting up (OnStartup entered).", "App.OnStartup");
+            base.OnStartup(e);
+            ThreadHelper.Initialize();
+            _logger!.LogInfo("Application starting up...", "App.OnStartup");
 
             try
             {
-                _logger.LogDebug("Attempting to retrieve MainWindow instance.", "App.OnStartup");
+                // --- Step 1: Get all the necessary instances from the DI container ---
                 var mainWindow = ServiceProvider.GetRequiredService<MainWindow>();
+                var mainViewModel = ServiceProvider.GetRequiredService<MainViewModel>();
+                var dataUpdater = ServiceProvider.GetRequiredService<IDataUpdateService>();
 
-                if (mainWindow != null)
+                // --- Step 2: Wire everything up BEFORE showing anything ---
+
+                // Assign the ViewModel to the Window's DataContext
+                mainWindow.DataContext = mainViewModel;
+
+                // Set the application's main window reference
+                Application.Current.MainWindow = mainWindow;
+                _logger.LogInfo("Main window and ViewModel created and wired up.", "App.OnStartup");
+
+                // --- Step 3: Perform the silent data update check ---
+                try
                 {
-                    _logger.LogDebug("MainWindow instance retrieved successfully. Assigning DataContext.", "App.OnStartup");
-                    var mainViewModel = ServiceProvider.GetRequiredService<MainViewModel>();
-                    mainWindow.DataContext = mainViewModel;
-                    _logger.LogDebug("DataContext (MainViewModel) assigned to MainWindow.", "App.OnStartup");
-
-                    // Set the static MainWindow reference if needed elsewhere (use cautiously)
-                    // Application.Current.MainWindow = mainWindow;
-                    // _logger?.LogDebug("Set Application.Current.MainWindow.", "App.OnStartup");
-
-                    _logger.LogDebug("Showing MainWindow.", "App.OnStartup");
-                    mainWindow.Show();
-                    _logger.LogInfo("MainWindow shown.", "App.OnStartup");
+                    await dataUpdater.CheckForAndApplyUpdatesAsync(new Progress<DataUpdateProgress>(), CancellationToken.None);
                 }
-                else
+                catch (Exception updateEx)
                 {
-                    _logger.LogCritical("Failed to retrieve MainWindow instance from Service Provider. Application cannot start.", "App.OnStartup");
-                    MessageBox.Show("Critical error: Could not create the main application window. Check logs for details.", "Application Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    Shutdown(-1);
-                    return;
+                    _logger.LogWarning($"Failed to update data files on startup (this is okay if offline): {updateEx.Message}", "App.OnStartup");
                 }
 
-                _logger.LogInfo("Application startup complete (OnStartup finished).", "App.OnStartup");
+                // --- Step 4: Hook into the Loaded event to trigger the ViewModel's data load ---
+                // We do this here, where we have access to both the window and the viewmodel.
+                // This is a one-time event subscription.
+                mainWindow.Loaded += async (sender, args) =>
+                {
+                    // The MainViewModel is already available via closure.
+                    await mainViewModel.OnMainWindowLoadedAsync();
+                };
+
+                // --- Step 5: Show the window. The Loaded event will fire after this. ---
+                mainWindow.Show();
+                _logger.LogInfo("MainWindow shown. Waiting for Loaded event to trigger data load.", "App.OnStartup");
             }
             catch (Exception ex)
             {
                 _logger?.LogException(ex, "Unhandled exception during application startup.", "App.OnStartup");
-                MessageBox.Show($"An critical error occurred during startup: {ex.Message}\n\nPlease check the application logs for more details.", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"A critical error occurred during startup: {ex.Message}", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown(-2);
             }
         }
