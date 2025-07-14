@@ -53,7 +53,7 @@ namespace RimSharp.AppDir.MainPage
             get => _statusMessage;
             set => SetProperty(ref _statusMessage, value);
         }
-        
+
         // Helper property to centralize the "Is anything busy?" logic
         private bool IsIdle => !(ModsVM?.IsLoading ?? false) && !(DownloaderVM?.IsOperationInProgress ?? false);
 
@@ -140,10 +140,27 @@ namespace RimSharp.AppDir.MainPage
             _navigationService.TabSwitchRequested += OnTabSwitchRequested;
 
             // Initial drive check on startup if GamePath is already set
-             CheckAndWarnDifferentDrives(PathSettings.GamePath);
+            CheckAndWarnDifferentDrives(PathSettings.GamePath);
         }
         // --- END Constructor ---
 
+        public async Task OnMainWindowLoadedAsync()
+        {
+            // This method will be called from the UI layer after the window is visible.
+            Debug.WriteLine("[MainViewModel] Main window has loaded. Starting initial data load for ModsVM.", "OnMainWindowLoadedAsync");
+
+            // Tell the ModsViewModel to start loading its data.
+            // It can now safely show dialogs because the MainWindow is visible and has been shown.
+            if (ModsVM != null)
+            {
+                await ModsVM.InitializeAsync();
+            }
+
+            // If other ViewModels also need delayed initialization, call them here.
+            // For example:
+            // if (DownloaderVM != null) { await DownloaderVM.InitializeAsync(); }
+        }
+        
         #region CanExecute Predicates
 
         /// <summary>
@@ -166,7 +183,7 @@ namespace RimSharp.AppDir.MainPage
         {
             // First, check if the app is busy
             if (!IsIdle) return false;
-            
+
             if (string.IsNullOrEmpty(pathType)) return false;
 
             string? path = pathType switch
@@ -175,7 +192,7 @@ namespace RimSharp.AppDir.MainPage
                 "ConfigPath" => PathSettings.ConfigPath,
                 _ => null
             };
-            
+
             return !string.IsNullOrEmpty(path) && Directory.Exists(path);
         }
 
@@ -318,8 +335,8 @@ namespace RimSharp.AppDir.MainPage
             }
             catch (Exception ex) // Catch other potential exceptions
             {
-                 Debug.WriteLine($"[MainViewModel] Unexpected error during drive check: {ex}");
-                 // Avoid crashing the app, just log the error.
+                Debug.WriteLine($"[MainViewModel] Unexpected error during drive check: {ex}");
+                // Avoid crashing the app, just log the error.
             }
         }
 
@@ -413,7 +430,7 @@ namespace RimSharp.AppDir.MainPage
                 _dialogService.ShowWarning("Path Not Found", $"The path for '{pathType}' ('{path ?? "N/A"}') does not exist or is not set.");
             }
         }
-        
+
         public ViewModelBase? CurrentViewModel
         {
             get => _currentViewModel;
@@ -495,12 +512,12 @@ namespace RimSharp.AppDir.MainPage
                 }
             }
         }
-        
+
         private void OpenSettings()
         {
             _dialogService.ShowInformation("Settings", "Settings dialog functionality is not yet implemented.");
         }
-        
+
         // Centralized refresh logic
         private void RefreshData()
         {
