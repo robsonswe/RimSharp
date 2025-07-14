@@ -44,6 +44,12 @@ namespace RimSharp.Shared.Models
         /// User-defined tags for the mod.
         /// </summary>
         public string Tags { get; set; }
+
+        /// <summary>
+        /// User-defined favorite status for the mod.
+        /// Null means not set, true means it's a favorite.
+        /// </summary>
+        public bool? Favorite { get; set; }
     }
 
     /// <summary>

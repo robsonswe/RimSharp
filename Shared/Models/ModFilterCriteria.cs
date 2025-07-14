@@ -19,12 +19,9 @@ namespace RimSharp.Shared.Models
         public List<string> SelectedTags { get; set; } = new List<string>(); // New: Filter by Tags
 
         // Tristate filters: null = Any, true = Yes, false = No
-        public bool? HasUrlFilter { get; set; } = null;
-        public bool? HasSteamUrlFilter { get; set; } = null;
-        public bool? HasExternalUrlFilter { get; set; } = null;
         public bool? IsOutdatedFilter { get; set; } = null;
         public bool? HasAssembliesFilter { get; set; } = null; // <<< NEW FILTER PROPERTY >>>
-        // Add other filters here if needed
+        public bool? IsFavoriteFilter { get; set; } = null;
 
         public bool IsActive()
         {
@@ -33,10 +30,8 @@ namespace RimSharp.Shared.Models
                 || (SelectedModTypes != null && SelectedModTypes.Any())
                 || (SelectedSupportedVersions != null && SelectedSupportedVersions.Any())
                 || (SelectedTags != null && SelectedTags.Any()) // Check Tags
-                || HasUrlFilter.HasValue
-                || HasSteamUrlFilter.HasValue
-                || HasExternalUrlFilter.HasValue
                 || IsOutdatedFilter.HasValue
+                || IsFavoriteFilter.HasValue
                 || HasAssembliesFilter.HasValue; // <<< ADDED CHECK >>>
         }
 
@@ -47,11 +42,9 @@ namespace RimSharp.Shared.Models
             SelectedModTypes?.Clear();
             SelectedSupportedVersions?.Clear();
             SelectedTags?.Clear(); // Clear Tags
-            HasUrlFilter = null;
-            HasSteamUrlFilter = null;
-            HasExternalUrlFilter = null;
             IsOutdatedFilter = null;
-            HasAssembliesFilter = null; // <<< CLEAR NEW FILTER >>>
+            IsFavoriteFilter = null;
+            HasAssembliesFilter = null;
         }
 
         // Optional: Clone method for passing state without modifying original
@@ -64,11 +57,9 @@ namespace RimSharp.Shared.Models
                 SelectedModTypes = new List<ModType>(this.SelectedModTypes ?? Enumerable.Empty<ModType>()),
                 SelectedSupportedVersions = new List<string>(this.SelectedSupportedVersions ?? Enumerable.Empty<string>()),
                 SelectedTags = new List<string>(this.SelectedTags ?? Enumerable.Empty<string>()), // Clone Tags
-                HasUrlFilter = this.HasUrlFilter,
-                HasSteamUrlFilter = this.HasSteamUrlFilter,
-                HasExternalUrlFilter = this.HasExternalUrlFilter,
                 IsOutdatedFilter = this.IsOutdatedFilter,
-                HasAssembliesFilter = this.HasAssembliesFilter // <<< CLONE NEW FILTER >>>
+                IsFavoriteFilter = this.IsFavoriteFilter,
+                HasAssembliesFilter = this.HasAssembliesFilter 
             };
         }
     }

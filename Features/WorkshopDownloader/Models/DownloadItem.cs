@@ -20,6 +20,7 @@ namespace RimSharp.Features.WorkshopDownloader.Models
         private string? _localDateStamp; // Date from local timestamp file
         private bool _isActive;
         private bool _isLocallyOutdatedRW; // Based on ModItem.IsOutdatedRW
+        private bool _isFavorite;
 
         public string? Name
         {
@@ -91,6 +92,12 @@ namespace RimSharp.Features.WorkshopDownloader.Models
             set => SetProperty(ref _isLocallyOutdatedRW, value);
         }
 
+        public bool IsFavorite
+        {
+            get => _isFavorite;
+            set => SetProperty(ref _isFavorite, value);
+        }
+
         // --- Helper to reset local info ---
         public void ClearLocalInfo()
         {
@@ -98,6 +105,7 @@ namespace RimSharp.Features.WorkshopDownloader.Models
             LocalDateStamp = null;
             IsActive = false;
             IsLocallyOutdatedRW = false;
+            IsFavorite = false;
             InstalledVersions = null;
         }
     }

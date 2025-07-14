@@ -15,6 +15,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
         private string _authorFilterText; // New
         private bool? _isOutdatedFilter;
         private bool? _hasAssembliesFilter; // <<< NEW FIELD >>>
+        private bool? _isFavoriteFilter;
 
         private readonly ModFilterCriteria _initialCriteria;
 
@@ -41,6 +42,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
 
         public bool? IsOutdatedFilter { get => _isOutdatedFilter; set => SetProperty(ref _isOutdatedFilter, value); }
         public bool? HasAssembliesFilter { get => _hasAssembliesFilter; set => SetProperty(ref _hasAssembliesFilter, value); } // <<< NEW PROPERTY >>>
+        public bool? IsFavoriteFilter { get => _isFavoriteFilter; set => SetProperty(ref _isFavoriteFilter, value); }
 
         // Commands
         public ICommand ApplyCommand { get; }
@@ -60,6 +62,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
             _searchText = _initialCriteria.SearchText;
             _authorFilterText = _initialCriteria.AuthorFilterText; // New
             _isOutdatedFilter = _initialCriteria.IsOutdatedFilter;
+            _isFavoriteFilter = _initialCriteria.IsFavoriteFilter;
             _hasAssembliesFilter = _initialCriteria.HasAssembliesFilter; // <<< INITIALIZE NEW FILTER >>>
 
             // Populate Mod Types
@@ -111,6 +114,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
                 SelectedSupportedVersions = AvailableVersions.Where(vm => vm.IsSelected).Select(vm => vm.Item).ToList(),
                 SelectedTags = AvailableTags.Where(vm => vm.IsSelected).Select(vm => vm.Item).ToList(), // New
                 IsOutdatedFilter = this.IsOutdatedFilter,
+                IsFavoriteFilter = this.IsFavoriteFilter,
                 HasAssembliesFilter = this.HasAssembliesFilter // <<< APPLY NEW FILTER >>>
             };
             CloseDialog(ModFilterDialogResult.Apply);
@@ -124,6 +128,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
             foreach (var item in AvailableVersions) item.IsSelected = false;
             foreach (var item in AvailableTags) item.IsSelected = false; // New
             IsOutdatedFilter = null;
+            IsFavoriteFilter = null;
             HasAssembliesFilter = null; // <<< CLEAR NEW FILTER >>>
 
             CurrentCriteria = new ModFilterCriteria(); // Cleared criteria

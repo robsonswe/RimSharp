@@ -111,69 +111,109 @@
 
                 <ListBox.ItemTemplate>
                      <DataTemplate DataType="{x:Type models:ModItem}">
-                        <Border Background="Transparent" Padding="2,1" Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType={x:Type views:ModsView}}}">
-                            <Border.ContextMenu>
-                                <!-- Context Menu -->
-                                <ContextMenu>
-                                    <ContextMenu.Resources>
-                                        <Style TargetType="MenuItem">
-                                            <Setter Property="Padding" Value="6,2,6,2"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="MenuItem"><Border x:Name="Bd" Padding="{TemplateBinding Padding}" Background="Transparent"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" MinWidth="24"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><ContentPresenter Grid.Column="0" Content="{TemplateBinding Icon}" Margin="0,0,6,0" VerticalAlignment="Center"/><ContentPresenter Grid.Column="1" Content="{TemplateBinding Header}" VerticalAlignment="Center"/></Grid></Border><ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Bd" Property="Background" Value="{StaticResource RimworldHighlightBrush}"/><Setter Property="Foreground" Value="{StaticResource RimworldBlackBrush}"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="Gray"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
-                                        </Style>
-                                    </ContextMenu.Resources>
-                                    <MenuItem Header="Open Mod Folder" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.OpenModFoldersCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}"><MenuItem.Icon><TextBlock Text="📁" FontSize="14"/></MenuItem.Icon></MenuItem>
-                                    <MenuItem Header="Open URL" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.OpenUrlsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" Visibility="{Binding HasUrl, Converter={StaticResource BooleanToVisibilityConverter}}"><MenuItem.Icon><TextBlock Text="🔗" FontSize="14"/></MenuItem.Icon></MenuItem>
-                                    <MenuItem Header="Open Workshop Page" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.OpenWorkshopPagesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" Visibility="{Binding HasSteamUrl, Converter={StaticResource BooleanToVisibilityConverter}}"><MenuItem.Icon><TextBlock Text="☁️" FontSize="14"/></MenuItem.Icon></MenuItem>
-                                    <MenuItem Header="Open Other URL" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.OpenOtherUrlsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" Visibility="{Binding HasExternalUrl, Converter={StaticResource BooleanToVisibilityConverter}}"><MenuItem.Icon><TextBlock Text="🌐" FontSize="14"/></MenuItem.Icon></MenuItem>
-                                    <MenuItem Header="Redownload Mod" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.RedownloadModsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}">
-                                        <MenuItem.Icon><TextBlock Text="🔄" FontSize="14"/></MenuItem.Icon>
-                                        <MenuItem.Style><Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="0"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/><Condition Binding="{Binding ModType}" Value="Core"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed"/></MultiDataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/><Condition Binding="{Binding ModType}" Value="Expansion"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed"/></MultiDataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/><Condition Binding="{Binding ModType}" Value="Workshop"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed"/></MultiDataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/><Condition Binding="{Binding ModType}" Value="Git"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed"/></MultiDataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/><Condition Binding="{Binding ModType}" Value="Zipped"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed"/></MultiDataTrigger></Style.Triggers></Style></MenuItem.Style>
-                                    </MenuItem>
-                                    <Separator Margin="2"><Separator.Style><Style TargetType="Separator" BasedOn="{StaticResource {x:Static MenuItem.SeparatorStyleKey}}"><Style.Triggers><DataTrigger Binding="{Binding ModType}" Value="Core"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Expansion"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Separator.Style></Separator>
-                                    <MenuItem Header="Customize Mod" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.CustomizeModCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding}"><MenuItem.Icon><TextBlock Text="⚙️" FontSize="14"/></MenuItem.Icon><MenuItem.Style><Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding ModType}" Value="Core"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Expansion"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="0"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"><Setter Property="Visibility" Value="Visible"/></DataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/><Condition Binding="{Binding ModType}" Value="Core"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed"/></MultiDataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/><Condition Binding="{Binding ModType}" Value="Expansion"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed"/></MultiDataTrigger><DataTrigger Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="2"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></MenuItem.Style></MenuItem>
-                                    <MenuItem Header="Delete Mod" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.DeleteModsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}"><MenuItem.Icon><TextBlock Text="🗑️" FontSize="14"/></MenuItem.Icon><MenuItem.Style><Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}"><Setter Property="Foreground" Value="{StaticResource RimworldErrorRedBrush}"/><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding ModType}" Value="Core"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Expansion"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></MenuItem.Style></MenuItem>
-                                </ContextMenu>
-                            </Border.ContextMenu>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Favorite Indicator Border -->
+                            <Border x:Name="FavoriteIndicator" Grid.Column="0" Width="0" Background="{StaticResource RimworldDarkGreenBrush}"/>
                             
-                            <!-- ITEM CONTENT -->
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
+                            <!-- Original Content in a Border, named for targeting -->
+                            <Border x:Name="ContentBorder" Grid.Column="1" Background="Transparent" Padding="2,1" Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType={x:Type views:ModsView}}}">
+                                <Border.ContextMenu>
+                                    <!-- Context Menu -->
+                                    <ContextMenu>
+                                        <ContextMenu.Resources>
+                                            <Style TargetType="MenuItem">
+                                                <Setter Property="Padding" Value="6,2,6,2"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="MenuItem"><Border x:Name="Bd" Padding="{TemplateBinding Padding}" Background="Transparent"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" MinWidth="24"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><ContentPresenter Grid.Column="0" Content="{TemplateBinding Icon}" Margin="0,0,6,0" VerticalAlignment="Center"/><ContentPresenter Grid.Column="1" Content="{TemplateBinding Header}" VerticalAlignment="Center"/></Grid></Border><ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Bd" Property="Background" Value="{StaticResource RimworldHighlightBrush}"/><Setter Property="Foreground" Value="{StaticResource RimworldBlackBrush}"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="Gray"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+                                            </Style>
+                                        </ContextMenu.Resources>
+                                        <MenuItem Header="Open Mod Folder" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.OpenModFoldersCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}"><MenuItem.Icon><TextBlock Text="📁" FontSize="14"/></MenuItem.Icon></MenuItem>
+                                        <MenuItem Header="Open URL" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.OpenUrlsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" Visibility="{Binding HasUrl, Converter={StaticResource BooleanToVisibilityConverter}}"><MenuItem.Icon><TextBlock Text="🔗" FontSize="14"/></MenuItem.Icon></MenuItem>
+                                        <MenuItem Header="Open Workshop Page" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.OpenWorkshopPagesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" Visibility="{Binding HasSteamUrl, Converter={StaticResource BooleanToVisibilityConverter}}"><MenuItem.Icon><TextBlock Text="☁️" FontSize="14"/></MenuItem.Icon></MenuItem>
+                                        <MenuItem Header="Open Other URL" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.OpenOtherUrlsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" Visibility="{Binding HasExternalUrl, Converter={StaticResource BooleanToVisibilityConverter}}"><MenuItem.Icon><TextBlock Text="🌐" FontSize="14"/></MenuItem.Icon></MenuItem>
+                                        <MenuItem Header="Redownload Mod" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.RedownloadModsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}">
+                                            <MenuItem.Icon><TextBlock Text="🔄" FontSize="14"/></MenuItem.Icon>
+                                            <MenuItem.Style><Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="0"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/><Condition Binding="{Binding ModType}" Value="Core"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed"/></MultiDataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/><Condition Binding="{Binding ModType}" Value="Expansion"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed"/></MultiDataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/><Condition Binding="{Binding ModType}" Value="Workshop"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed"/></MultiDataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/><Condition Binding="{Binding ModType}" Value="Git"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed"/></MultiDataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/><Condition Binding="{Binding ModType}" Value="Zipped"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed"/></MultiDataTrigger></Style.Triggers></Style></MenuItem.Style>
+                                        </MenuItem>
+                                        <Separator Margin="2"><Separator.Style><Style TargetType="Separator" BasedOn="{StaticResource {x:Static MenuItem.SeparatorStyleKey}}"><Style.Triggers><DataTrigger Binding="{Binding ModType}" Value="Core"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Expansion"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Separator.Style></Separator>
+                                        <MenuItem Header="Customize Mod" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.CustomizeModCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding}"><MenuItem.Icon><TextBlock Text="⚙️" FontSize="14"/></MenuItem.Icon><MenuItem.Style><Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding ModType}" Value="Core"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Expansion"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="0"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"><Setter Property="Visibility" Value="Visible"/></DataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/><Condition Binding="{Binding ModType}" Value="Core"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed"/></MultiDataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="1"/><Condition Binding="{Binding ModType}" Value="Expansion"/></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Collapsed"/></MultiDataTrigger><DataTrigger Binding="{Binding SelectedItems.Count, Source={StaticResource selectedItemsHolder}}" Value="2"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></MenuItem.Style></MenuItem>
+                                        <MenuItem Header="Delete Mod" Command="{Binding PlacementTarget.Tag.ModActionsViewModel.DeleteModsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}"><MenuItem.Icon><TextBlock Text="🗑️" FontSize="14"/></MenuItem.Icon><MenuItem.Style><Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}"><Setter Property="Foreground" Value="{StaticResource RimworldErrorRedBrush}"/><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding ModType}" Value="Core"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Expansion"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></MenuItem.Style></MenuItem>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                
+                                <!-- ITEM CONTENT -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
 
-                                <!-- Simplified Badge -->
-                                <Border Grid.Column="0">
-                                    <Border.Style><Style TargetType="Border" BasedOn="{StaticResource UnifiedBadgeBorderStyle}"><Style.Triggers><DataTrigger Binding="{Binding ModType}" Value="Core"><Setter Property="Background" Value="{StaticResource RimworldRedBrush}"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Expansion"><Setter Property="Background" Value="{StaticResource RimworldDarkGreenBrush}"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Workshop"><Setter Property="Background" Value="{StaticResource RimworldBrownBrush}"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="WorkshopL"><Setter Property="Background" Value="{StaticResource RimworldHighlightBrush}"/><Setter Property="BorderThickness" Value="1.5"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Git"><Setter Property="Background" Value="{StaticResource RimworldDarkBeigeBrush}"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Zipped"><Setter Property="Background" Value="{StaticResource RimworldGrayBrush}"/></DataTrigger></Style.Triggers></Style></Border.Style>
-                                    <TextBlock Text="{Binding ModType, Converter={StaticResource ModTypeToInitialConverter}}">
-                                        <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource BadgePartTextStyle}"><Style.Triggers><DataTrigger Binding="{Binding ModType}" Value="WorkshopL"><Setter Property="Foreground" Value="{StaticResource RimworldBlackBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                    <!-- Simplified Badge -->
+                                    <Border Grid.Column="0">
+                                        <Border.Style><Style TargetType="Border" BasedOn="{StaticResource UnifiedBadgeBorderStyle}"><Style.Triggers><DataTrigger Binding="{Binding ModType}" Value="Core"><Setter Property="Background" Value="{StaticResource RimworldRedBrush}"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Expansion"><Setter Property="Background" Value="{StaticResource RimworldDarkGreenBrush}"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Workshop"><Setter Property="Background" Value="{StaticResource RimworldBrownBrush}"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="WorkshopL"><Setter Property="Background" Value="{StaticResource RimworldHighlightBrush}"/><Setter Property="BorderThickness" Value="1.5"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Git"><Setter Property="Background" Value="{StaticResource RimworldDarkBeigeBrush}"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Zipped"><Setter Property="Background" Value="{StaticResource RimworldGrayBrush}"/></DataTrigger></Style.Triggers></Style></Border.Style>
+                                        <TextBlock Text="{Binding ModType, Converter={StaticResource ModTypeToInitialConverter}}">
+                                            <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource BadgePartTextStyle}"><Style.Triggers><DataTrigger Binding="{Binding ModType}" Value="WorkshopL"><Setter Property="Foreground" Value="{StaticResource RimworldBlackBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                        </TextBlock>
+                                        <Border.ToolTip><ToolTip><StackPanel><TextBlock Text="{Binding ModType, Converter={StaticResource ModTypeToDescriptionConverter}}" FontWeight="Bold"/><TextBlock><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding Assemblies}" Value="True"><Setter Property="Text" Value="Contains custom code (.dll files)"/></DataTrigger><DataTrigger Binding="{Binding Assemblies}" Value="False"><Setter Property="Text" Value="XML-only (no custom code)"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Core"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Expansion"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></StackPanel></ToolTip></Border.ToolTip>
+                                    </Border>
+
+                                    <!-- Mod Name with Ellipsis and CONDITIONAL Tooltip -->
+                                    <TextBlock Grid.Column="1" Text="{Binding Name}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                                <Setter Property="FontWeight" Value="Normal"/>
+                                                <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
+                                                <Style.Triggers>
+                                                    <!-- Trigger for outdated color -->
+                                                    <DataTrigger Binding="{Binding IsOutdatedRW}" Value="True">
+                                                        <Setter Property="Foreground" Value="{StaticResource RimworldErrorRedBrush}"/>
+                                                    </DataTrigger>
+                                                    <!-- Triggers for bold text -->
+                                                    <DataTrigger Binding="{Binding IsFavorite}" Value="True">
+                                                        <Setter Property="FontWeight" Value="Bold"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ModType}" Value="Core">
+                                                        <Setter Property="FontWeight" Value="Bold"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ModType}" Value="Expansion">
+                                                        <Setter Property="FontWeight" Value="Bold"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                        <TextBlock.ToolTip>
+                                            <MultiBinding Converter="{StaticResource TrimmedTextTooltipConverter}">
+                                                <Binding RelativeSource="{RelativeSource Self}" />
+                                                <Binding Path="ActualWidth" RelativeSource="{RelativeSource Self}" />
+                                            </MultiBinding>
+                                        </TextBlock.ToolTip>
                                     </TextBlock>
-                                    <Border.ToolTip><ToolTip><StackPanel><TextBlock Text="{Binding ModType, Converter={StaticResource ModTypeToDescriptionConverter}}" FontWeight="Bold"/><TextBlock><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding Assemblies}" Value="True"><Setter Property="Text" Value="Contains custom code (.dll files)"/></DataTrigger><DataTrigger Binding="{Binding Assemblies}" Value="False"><Setter Property="Text" Value="XML-only (no custom code)"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Core"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Expansion"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></StackPanel></ToolTip></Border.ToolTip>
-                                </Border>
 
-                                <!-- Mod Name with Ellipsis and CONDITIONAL Tooltip -->
-                                <TextBlock Grid.Column="1" 
-                                           Text="{Binding Name}"
-                                           VerticalAlignment="Center"
-                                           TextTrimming="CharacterEllipsis"
-                                           Foreground="{Binding IsOutdatedRW, Converter={StaticResource BooleanToColorConverter}, ConverterParameter=RimworldErrorRed|RimworldBrown}">
-                                    <TextBlock.ToolTip>
-                                        <MultiBinding Converter="{StaticResource TrimmedTextTooltipConverter}">
-                                            <Binding RelativeSource="{RelativeSource Self}" />
-                                            <Binding Path="ActualWidth" RelativeSource="{RelativeSource Self}" />
-                                        </MultiBinding>
-                                    </TextBlock.ToolTip>
-                                </TextBlock>
-
-                                <TextBlock Grid.Column="2" Text="⚠️" FontWeight="Bold" FontSize="14" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="5,0,2,0" ToolTipService.InitialShowDelay="300" ToolTipService.ShowDuration="10000" ToolTip="{Binding IssueTooltipText}" Foreground="{StaticResource RimworldErrorRedBrush}">
-                                    <TextBlock.Visibility>
-                                        <MultiBinding Converter="{StaticResource IsActiveAndHasIssuesToVisibilityConverter}">
-                                            <Binding Path="HasIssues"/><Binding Path="IsActive"/>
-                                        </MultiBinding>
-                                    </TextBlock.Visibility>
-                                </TextBlock>
-                            </Grid>
-                        </Border>
+                                    <TextBlock Grid.Column="2" Text="⚠️" FontWeight="Bold" FontSize="14" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="5,0,2,0" ToolTipService.InitialShowDelay="300" ToolTipService.ShowDuration="10000" ToolTip="{Binding IssueTooltipText}" Foreground="{StaticResource RimworldErrorRedBrush}">
+                                        <TextBlock.Visibility>
+                                            <MultiBinding Converter="{StaticResource IsActiveAndHasIssuesToVisibilityConverter}">
+                                                <Binding Path="HasIssues"/><Binding Path="IsActive"/>
+                                            </MultiBinding>
+                                        </TextBlock.Visibility>
+                                    </TextBlock>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                        <DataTemplate.Triggers>
+                            <DataTrigger Binding="{Binding IsFavorite}" Value="True">
+                                <Setter TargetName="FavoriteIndicator" Property="Width" Value="3" />
+                                <Setter TargetName="ContentBorder" Property="Margin" Value="2,0,0,0" />
+                            </DataTrigger>
+                             <DataTrigger Binding="{Binding IsFavorite}" Value="False">
+                                <Setter TargetName="ContentBorder" Property="Margin" Value="5,0,0,0" />
+                            </DataTrigger>
+                        </DataTemplate.Triggers>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
 
