@@ -70,6 +70,12 @@ namespace RimSharp.Shared.Models
         /// </summary>
         public bool Assemblies { get; set; } = false;
 
+        /// <summary>
+        /// Gets or sets a value indicating whether this mod is marked as a favorite by the user.
+        /// This is driven by custom settings.
+        /// </summary>
+        public bool IsFavorite { get; set; } = false;
+
         public IEnumerable<string> SupportedVersionStrings => SupportedVersions.Select(v => v.Version);
 
         // New: Efficiently parsed Author list

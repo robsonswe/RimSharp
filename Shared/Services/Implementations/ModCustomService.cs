@@ -292,6 +292,9 @@ namespace RimSharp.Shared.Services.Implementations
         /// </summary>
         private void ApplyCustomInfoToMod(ModItem mod, ModCustomInfo customInfo, ref int versionsAdded)
         {
+            // Apply Favorite status
+            mod.IsFavorite = customInfo.Favorite ?? false;
+
             // Apply ExternalUrl
             if (!string.IsNullOrEmpty(customInfo.ExternalUrl))
             {
@@ -382,6 +385,7 @@ namespace RimSharp.Shared.Services.Implementations
             if (customInfo.IncompatibleWith?.Count == 0) customInfo.IncompatibleWith = null;
             if (customInfo.SupportedVersions?.Count == 0) customInfo.SupportedVersions = null;
             if (customInfo.LoadBottom != null && !customInfo.LoadBottom.Value) customInfo.LoadBottom = null;
+            if (customInfo.Favorite.HasValue && !customInfo.Favorite.Value) customInfo.Favorite = null;
 
             customInfo.SupportedVersions?.RemoveAll(string.IsNullOrWhiteSpace);
             if (customInfo.SupportedVersions?.Count == 0) customInfo.SupportedVersions = null;

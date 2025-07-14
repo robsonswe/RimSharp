@@ -108,6 +108,13 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         public bool HasOriginalIncompatibilities => OriginalIncompatibilityItems?.Any() ?? false;
 
         // Basic properties for binding
+        private bool _isFavorite;
+        public bool IsFavorite
+        {
+            get => _isFavorite;
+            set => SetProperty(ref _isFavorite, value);
+        }
+
         private string _externalUrl;
         public string ExternalUrl
         {
@@ -226,6 +233,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                 mod.Tags : null;
 
             // Initialize basic properties
+            IsFavorite = _customInfo.Favorite ?? false;
             ExternalUrl = _customInfo.ExternalUrl ?? mod.ExternalUrl ?? "";
             Tags = _customInfo.Tags ?? mod.Tags ?? "";
             SupportedVersions = string.Join(", ", _customInfo.SupportedVersions ?? new List<string>());
@@ -329,6 +337,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         {
             var customInfo = new ModCustomInfo
             {
+                Favorite = this.IsFavorite ? (bool?)true : null,
                 ExternalUrl = ExternalUrl,
                 Tags = Tags,
                 SupportedVersions = ParseCommaSeparatedList(SupportedVersions),

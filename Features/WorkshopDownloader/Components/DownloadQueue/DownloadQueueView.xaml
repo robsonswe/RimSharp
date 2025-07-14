@@ -152,6 +152,12 @@
                                        Foreground="DodgerBlue"
                                        Margin="5,0,0,0"
                                        Visibility="{Binding IsActive, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                            <TextBlock Text="(Favorite)"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="Goldenrod"
+                                       Margin="5,0,0,0"
+                                       Visibility="{Binding IsFavorite, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         </StackPanel>
 
                         <!-- Row 2: Latest Version (Date) -->
