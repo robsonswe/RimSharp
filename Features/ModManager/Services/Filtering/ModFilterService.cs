@@ -193,23 +193,10 @@ namespace RimSharp.Features.ModManager.Services.Filtering
             }
 
             // 6. Boolean Filters (Tristate)
-            if (criteria.HasUrlFilter.HasValue)
-            {
-                filtered = filtered.Where(m => m.HasUrl == criteria.HasUrlFilter.Value);
-            }
-            if (criteria.HasSteamUrlFilter.HasValue)
-            {
-                filtered = filtered.Where(m => m.HasSteamUrl == criteria.HasSteamUrlFilter.Value);
-            }
-            if (criteria.HasExternalUrlFilter.HasValue)
-            {
-                filtered = filtered.Where(m => m.HasExternalUrl == criteria.HasExternalUrlFilter.Value);
-            }
             if (criteria.IsOutdatedFilter.HasValue)
             {
                 filtered = filtered.Where(m => m.IsOutdatedRW == criteria.IsOutdatedFilter.Value);
             }
-            // <<< APPLY NEW FILTER >>>
             if (criteria.HasAssembliesFilter.HasValue)
             {
                 filtered = filtered.Where(m => m.Assemblies == criteria.HasAssembliesFilter.Value);

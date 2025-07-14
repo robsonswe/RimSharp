@@ -13,9 +13,6 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
     {
         private string _searchText;
         private string _authorFilterText; // New
-        private bool? _hasUrlFilter;
-        private bool? _hasSteamUrlFilter;
-        private bool? _hasExternalUrlFilter;
         private bool? _isOutdatedFilter;
         private bool? _hasAssembliesFilter; // <<< NEW FIELD >>>
 
@@ -42,9 +39,6 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
         public ReadOnlyCollection<string> AllAvailableAuthors { get; } // New
 
 
-        public bool? HasUrlFilter { get => _hasUrlFilter; set => SetProperty(ref _hasUrlFilter, value); }
-        public bool? HasSteamUrlFilter { get => _hasSteamUrlFilter; set => SetProperty(ref _hasSteamUrlFilter, value); }
-        public bool? HasExternalUrlFilter { get => _hasExternalUrlFilter; set => SetProperty(ref _hasExternalUrlFilter, value); }
         public bool? IsOutdatedFilter { get => _isOutdatedFilter; set => SetProperty(ref _isOutdatedFilter, value); }
         public bool? HasAssembliesFilter { get => _hasAssembliesFilter; set => SetProperty(ref _hasAssembliesFilter, value); } // <<< NEW PROPERTY >>>
 
@@ -65,9 +59,6 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
             // Initialize properties from current criteria
             _searchText = _initialCriteria.SearchText;
             _authorFilterText = _initialCriteria.AuthorFilterText; // New
-            _hasUrlFilter = _initialCriteria.HasUrlFilter;
-            _hasSteamUrlFilter = _initialCriteria.HasSteamUrlFilter;
-            _hasExternalUrlFilter = _initialCriteria.HasExternalUrlFilter;
             _isOutdatedFilter = _initialCriteria.IsOutdatedFilter;
             _hasAssembliesFilter = _initialCriteria.HasAssembliesFilter; // <<< INITIALIZE NEW FILTER >>>
 
@@ -119,9 +110,6 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
                 SelectedModTypes = AvailableModTypes.Where(vm => vm.IsSelected).Select(vm => vm.Item).ToList(),
                 SelectedSupportedVersions = AvailableVersions.Where(vm => vm.IsSelected).Select(vm => vm.Item).ToList(),
                 SelectedTags = AvailableTags.Where(vm => vm.IsSelected).Select(vm => vm.Item).ToList(), // New
-                HasUrlFilter = this.HasUrlFilter,
-                HasSteamUrlFilter = this.HasSteamUrlFilter,
-                HasExternalUrlFilter = this.HasExternalUrlFilter,
                 IsOutdatedFilter = this.IsOutdatedFilter,
                 HasAssembliesFilter = this.HasAssembliesFilter // <<< APPLY NEW FILTER >>>
             };
@@ -135,9 +123,6 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
             foreach (var item in AvailableModTypes) item.IsSelected = false;
             foreach (var item in AvailableVersions) item.IsSelected = false;
             foreach (var item in AvailableTags) item.IsSelected = false; // New
-            HasUrlFilter = null;
-            HasSteamUrlFilter = null;
-            HasExternalUrlFilter = null;
             IsOutdatedFilter = null;
             HasAssembliesFilter = null; // <<< CLEAR NEW FILTER >>>
 

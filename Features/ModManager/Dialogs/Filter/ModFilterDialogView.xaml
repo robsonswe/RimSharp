@@ -187,41 +187,11 @@
                     </Expander>
 
                     <!-- Properties Expander -->
-                    <Expander Header="Properties" IsExpanded="False">
+                    <Expander Header="Properties" IsExpanded="True">
                         <UniformGrid Columns="2" HorizontalAlignment="Left" Margin="5,5,0,5">
-                            <!-- Has URL -->
-                            <StackPanel Margin="0,5">
-                                <TextBlock Text="Has URL:" Style="{StaticResource FilterLabelStyle}"/>
-                                <StackPanel Orientation="Horizontal" Margin="5,0">
-                                    <RadioButton Content="Any" GroupName="HasUrl" IsChecked="{Binding HasUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                    <RadioButton Content="Yes" GroupName="HasUrl" IsChecked="{Binding HasUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                    <RadioButton Content="No" GroupName="HasUrl" IsChecked="{Binding HasUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                </StackPanel>
-                            </StackPanel>
-
-                            <!-- Has Steam URL -->
-                            <StackPanel Margin="0,5">
-                                <TextBlock Text="Has Steam URL:" Style="{StaticResource FilterLabelStyle}"/>
-                                <StackPanel Orientation="Horizontal" Margin="5,0">
-                                    <RadioButton Content="Any" GroupName="HasSteamUrl" IsChecked="{Binding HasSteamUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                    <RadioButton Content="Yes" GroupName="HasSteamUrl" IsChecked="{Binding HasSteamUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                    <RadioButton Content="No" GroupName="HasSteamUrl" IsChecked="{Binding HasSteamUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                </StackPanel>
-                            </StackPanel>
-
-                            <!-- Has External URL -->
-                            <StackPanel Margin="0,5">
-                                <TextBlock Text="Has External URL:" Style="{StaticResource FilterLabelStyle}"/>
-                                <StackPanel Orientation="Horizontal" Margin="5,0">
-                                    <RadioButton Content="Any" GroupName="HasExternalUrl" IsChecked="{Binding HasExternalUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                    <RadioButton Content="Yes" GroupName="HasExternalUrl" IsChecked="{Binding HasExternalUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                    <RadioButton Content="No" GroupName="HasExternalUrl" IsChecked="{Binding HasExternalUrlFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                </StackPanel>
-                            </StackPanel>
-
                             <!-- Is Outdated RW -->
                             <StackPanel Margin="0,5">
-                                <TextBlock Text="Is Outdated RW:" Style="{StaticResource FilterLabelStyle}"/>
+                                <TextBlock Text="Supports Current Version:" Style="{StaticResource FilterLabelStyle}"/>
                                 <StackPanel Orientation="Horizontal" Margin="5,0">
                                     <RadioButton Content="Any" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Style="{StaticResource FilterRadioButtonStyle}"/>
                                     <RadioButton Content="Yes" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Style="{StaticResource FilterRadioButtonStyle}"/>
@@ -229,16 +199,15 @@
                                 </StackPanel>
                             </StackPanel>
 
-                            <!-- <<< START: NEW HAS ASSEMBLIES FILTER >>> -->
+                            <!-- <<< Mod Content >>> -->
                             <StackPanel Margin="0,5">
-                                <TextBlock Text="Has Assemblies:" Style="{StaticResource FilterLabelStyle}"/>
+                                <TextBlock Text="Mod Content:" Style="{StaticResource FilterLabelStyle}"/>
                                 <StackPanel Orientation="Horizontal" Margin="5,0">
                                     <RadioButton Content="Any" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                    <RadioButton Content="Yes" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                    <RadioButton Content="No" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="C#" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="XML-Only" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
                                 </StackPanel>
                             </StackPanel>
-                            <!-- <<< END: NEW HAS ASSEMBLIES FILTER >>> -->
 
                         </UniformGrid>
                     </Expander>
