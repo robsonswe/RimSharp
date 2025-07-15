@@ -21,6 +21,7 @@ using System.Windows;
 using System.Windows.Input;
 using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Shared.Services.Contracts;
+using System.Collections.Concurrent;
 
 namespace RimSharp.Features.ModManager.ViewModels.Actions
 {
@@ -36,21 +37,25 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             CheckIncompatibilitiesCommand = CreateCancellableAsyncCommand(
                 ExecuteCheckIncompatibilities,
                 CanExecuteCheckIncompatibilities,
-                observedProperties: new[] { nameof(IsParentLoading) }); // Primarily loading state + list content
+                observedProperties: new[] { nameof(IsParentLoading) });
 
             CheckDuplicatesCommand = CreateCommand(
                 ExecuteCheckDuplicates,
                 CanExecuteSimpleCommands,
                 observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
 
+            CheckReplacementsCommand = CreateCancellableAsyncCommand(
+                ExecuteCheckReplacements,
+                CanExecuteSimpleCommands,
+                observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
 
             RunGameCommand = CreateCommand(
                 ExecuteRunGame,
-                CanExecuteRunGame, // Uses HasValidPaths
-                observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) }); // Already correctly observes both
+                CanExecuteRunGame,
+                observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
         }
 
-
+        // This method was accidentally removed in the previous response. It is now restored.
         private void InitializePlaceholderCommands()
         {
             StripModsCommand = CreateCommand(
@@ -63,33 +68,33 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 () => true,
                 nameof(IsParentLoading));
 
+            // Note: RunGameCommand is also initialized in InitializeToolsAnalysisCommands.
+            // This re-assignment is harmless but might be unintentional.
             RunGameCommand = CreateCommand(
                 ExecuteRunGame,
                 CanExecuteRunGame,
                 nameof(IsParentLoading), nameof(HasValidPaths));
         }
+
         private bool CanExecuteCheckIncompatibilities() => !IsParentLoading && _modListManager.VirtualActiveMods.Any();
 
         private async Task ExecuteResolveDependencies(CancellationToken ct)
         {
             IsLoadingRequest?.Invoke(this, true);
-            ProgressDialogViewModel? progressDialog = null; // Now used for queueing phase
+            ProgressDialogViewModel? progressDialog = null;
             CancellationTokenSource? linkedCts = null;
 
             try
             {
-                // 1. Perform the core dependency resolution (finds missing, activates existing)
                 var result = await Task.Run(() => _modListManager.ResolveDependencies(), ct);
                 ct.ThrowIfCancellationRequested();
 
                 var (addedMods, missingDependencies) = result;
 
-                // 2. Handle Results - Decide which dialog to show (if any)
                 if (missingDependencies.Count > 0)
                 {
-                    // --- Show the NEW Interactive Dialog ---
                     DependencyResolutionDialogResult dialogResult = DependencyResolutionDialogResult.Cancel;
-                    List<string>? selectedSteamIds = null; // Make nullable
+                    List<string>? selectedSteamIds = null;
 
                     await RunOnUIThreadAsync(() =>
                     {
@@ -101,56 +106,45 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                         }
                     });
 
-                    ct.ThrowIfCancellationRequested(); // Check after dialog interaction
+                    ct.ThrowIfCancellationRequested();
 
-                    // --- Process Download Request using the new service ---
                     if (dialogResult == DependencyResolutionDialogResult.Download && selectedSteamIds != null && selectedSteamIds.Any())
                     {
                         QueueProcessResult queueResult = new QueueProcessResult();
                         try
                         {
-                            // Show progress dialog for the download/API check phase
                             await RunOnUIThreadAsync(() =>
                             {
                                 progressDialog = _dialogService.ShowProgressDialog(
-                               "Verifying & Queueing Dependencies",
-                               "Starting...",
-                               canCancel: true,
-                               isIndeterminate: false,
-                               cts: null, // Linked CTS created below
-                               closeable: true);
+                               "Verifying & Queueing Dependencies", "Starting...", canCancel: true, 
+                               isIndeterminate: false, cts: null, closeable: true);
                             });
                             if (progressDialog == null) throw new InvalidOperationException("Progress dialog view model was not created.");
 
-                            // Link cancellation tokens
                             linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, progressDialog.CancellationToken);
                             var combinedToken = linkedCts.Token;
 
-                            // Setup Progress Reporter
                             var progressReporter = new Progress<QueueProcessProgress>(update =>
                             {
-                                RunOnUIThread(() => // Ensure UI thread for updates
-                            {
-                                if (progressDialog != null && !progressDialog.CancellationToken.IsCancellationRequested)
+                                RunOnUIThread(() =>
                                 {
-                                    progressDialog.Message = $"{update.Message} ({update.CurrentItem}/{update.TotalItems})";
-                                    progressDialog.Progress = (int)((double)update.CurrentItem / update.TotalItems * 100);
-                                }
-                            });
+                                    if (progressDialog != null && !progressDialog.CancellationToken.IsCancellationRequested)
+                                    {
+                                        progressDialog.Message = $"{update.Message} ({update.CurrentItem}/{update.TotalItems})";
+                                        progressDialog.Progress = (int)((double)update.CurrentItem / update.TotalItems * 100);
+                                    }
+                                });
                             });
 
-                            // Call the central service
                             queueResult = await _steamWorkshopQueueProcessor.ProcessAndEnqueueModsAsync(selectedSteamIds, progressReporter, combinedToken);
 
-                            // --- Show Summary ---
                             await RunOnUIThreadAsync(() =>
                             {
                                 if (queueResult.WasCancelled)
                                 {
-                                    Debug.WriteLine("Queueing dependencies was cancelled.", nameof(ModActionsViewModel));
                                     progressDialog?.ForceClose();
                                     _dialogService.ShowWarning("Operation Cancelled", "Queueing missing dependencies was cancelled.");
-                                    return; // Exit early on cancellation
+                                    return;
                                 }
 
                                 progressDialog?.CompleteOperation("Dependency queueing complete.");
@@ -158,7 +152,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                                 var sb = new StringBuilder();
                                 if (queueResult.SuccessfullyAdded > 0) sb.AppendLine($"{queueResult.SuccessfullyAdded} missing dependency mod(s) added to the download queue.");
                                 else sb.AppendLine("No new dependency mods were added to the download queue.");
-
                                 if (queueResult.AlreadyQueued > 0) sb.AppendLine($"{queueResult.AlreadyQueued} selected dependency mod(s) were already in the queue.");
                                 if (queueResult.FailedProcessing > 0)
                                 {
@@ -166,8 +159,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                                     foreach (var errMsg in queueResult.ErrorMessages.Take(5)) sb.AppendLine($"  - {errMsg}");
                                     if (queueResult.ErrorMessages.Count > 5) sb.AppendLine("    (Check logs for more details...)");
                                 }
-
-                                // Include locally activated mods in the summary
                                 if (addedMods.Count > 0)
                                 {
                                     sb.AppendLine();
@@ -175,22 +166,18 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                                     foreach (var mod in addedMods.Take(5)) sb.AppendLine($"- {mod.Name}");
                                     if (addedMods.Count > 5) sb.AppendLine("  ...");
                                 }
-
                                 _dialogService.ShowInformation("Dependencies Processed", sb.ToString().Trim());
-
                                 if (queueResult.SuccessfullyAdded > 0)
                                 {
                                     _navigationService.RequestTabSwitch("Downloader");
                                 }
                             });
                         }
-                        catch (OperationCanceledException) // Catch cancellation during queue processing
+                        catch (OperationCanceledException)
                         {
-                            // Handled by the WasCancelled check in the UI thread block
-                            Debug.WriteLine("[ExecuteResolveDependencies] Dependency queueing cancelled (caught inner).", nameof(ModActionsViewModel));
                             await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
                         }
-                        finally // Ensure dialog closure and CTS disposal for queue phase
+                        finally
                         {
                             await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
                             linkedCts?.Dispose();
@@ -198,9 +185,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                             progressDialog = null;
                         }
                     }
-                    else if (addedMods.Count > 0) // Missing deps exist, but user cancelled download OR no downloadable ones selected
+                    else if (addedMods.Count > 0)
                     {
-                        // Still inform about locally activated mods if any (same as before)
                         await RunOnUIThreadAsync(() =>
                         {
                             var sb = new StringBuilder();
@@ -212,12 +198,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                             _dialogService.ShowInformation("Dependencies Resolved (Partial)", sb.ToString().Trim());
                         });
                     }
-                    // else: Missing dependencies exist, but none were selected and none were activated locally. No extra message needed.
-
                 }
-                else if (addedMods.Count > 0) // Only local activations occurred
+                else if (addedMods.Count > 0)
                 {
-                    // (Same logic as before)
                     await RunOnUIThreadAsync(() =>
                     {
                         var message = new StringBuilder();
@@ -227,32 +210,28 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                         _dialogService.ShowInformation("Dependencies Activated", message.ToString().TrimEnd());
                     });
                 }
-                else // No missing dependencies and no local activations
+                else
                 {
-                    // (Same logic as before)
                     await RunOnUIThreadAsync(() =>
                     {
                         _dialogService.ShowInformation("Dependencies Check", "No missing dependencies found and no new dependencies were activated.");
                     });
                 }
             }
-            catch (OperationCanceledException) // Catch cancellation during initial ModListManager.ResolveDependencies or dialog interaction
+            catch (OperationCanceledException)
             {
-                Debug.WriteLine("[ExecuteResolveDependencies] Operation cancelled (outer).");
-                await RunOnUIThreadAsync(() => progressDialog?.ForceClose()); // Close progress if open
+                await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
                 RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Dependency resolution was cancelled."));
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error resolving dependencies: {ex}");
-                await RunOnUIThreadAsync(() => progressDialog?.ForceClose()); // Close progress on error too
+                await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
                 RunOnUIThread(() => _dialogService.ShowError("Resolution Error", $"Error resolving dependencies: {ex.Message}"));
             }
             finally
             {
-                // Final cleanup (ensure progress dialog is closed, CTS disposed if created, loading state reset)
                 await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
-                linkedCts?.Dispose(); // Dispose if created
+                linkedCts?.Dispose();
                 IsLoadingRequest?.Invoke(this, false);
             }
         }
@@ -286,12 +265,10 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             }
             catch (OperationCanceledException)
             {
-                Debug.WriteLine("[ExecuteCheckIncompatibilities] Operation cancelled.");
                 RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Incompatibility check was cancelled."));
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error checking mod incompatibilities: {ex}");
                 RunOnUIThread(() => _dialogService.ShowError("Compatibility Error", $"Error checking mod incompatibilities: {ex.Message}"));
             }
             finally { IsLoadingRequest?.Invoke(this, false); }
@@ -320,7 +297,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error checking duplicates: {ex}");
                 RunOnUIThread(() => _dialogService.ShowError("Duplicates Error", $"Error checking for duplicate mods: {ex.Message}"));
             }
             finally { IsLoadingRequest?.Invoke(this, false); }
@@ -328,14 +304,12 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
         private void ShowIncompatibilityDialog(List<IncompatibilityGroup> groups)
         {
-            var dialogViewModel = new ModIncompatibilityDialogViewModel(
-                groups,
-                ApplyIncompatibilityResolutions,
-                () => { }
-            );
-            var dialog = new ModIncompatibilityDialogView(dialogViewModel);
-            dialog.Owner = Application.Current?.MainWindow;
-            dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            var dialogViewModel = new ModIncompatibilityDialogViewModel(groups, ApplyIncompatibilityResolutions, () => { });
+            var dialog = new ModIncompatibilityDialogView(dialogViewModel)
+            {
+                Owner = Application.Current?.MainWindow,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
             dialog.ShowDialog();
         }
 
@@ -349,36 +323,37 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error applying incompatibility resolutions: {ex}");
                 _dialogService.ShowError("Resolution Error", $"Error applying incompatibility resolutions: {ex.Message}");
             }
         }
 
         private void ShowDuplicateModsDialog(List<IGrouping<string, ModItem>> duplicateGroups)
         {
-            var dialogViewModel = new DuplicateModDialogViewModel(
-                duplicateGroups,
-                pathsToDelete => DeleteDuplicateModsAsyncInternal(pathsToDelete),
-                () => { });
-            var view = new DuplicateModDialogView(dialogViewModel);
-            view.Owner = Application.Current?.MainWindow;
-            view.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            var dialogViewModel = new DuplicateModDialogViewModel(duplicateGroups, pathsToDelete => DeleteDuplicateModsAsyncInternal(pathsToDelete), () => { });
+            var view = new DuplicateModDialogView(dialogViewModel)
+            {
+                Owner = Application.Current?.MainWindow,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
             view.ShowDialog();
         }
 
         private async Task ExecuteCheckReplacements(CancellationToken ct)
         {
-            if (!HasValidPaths) return;
+            if (!HasValidPaths || _steamApiClient is null)
+            {
+                if (_steamApiClient is null) Debug.WriteLine("[ExecuteCheckReplacements] Steam API client is not available.");
+                return;
+            }
 
             IsLoadingRequest?.Invoke(this, true);
 
-            ProgressDialogViewModel? progressViewModel = null; // Used for both phases now
+            ProgressDialogViewModel? progressViewModel = null;
             CancellationTokenSource? linkedCts = null;
-            List<(ModItem Original, ModReplacementInfo Replacement)> modsWithValidReplacements = new List<(ModItem, ModReplacementInfo)>();
+            var modsWithValidReplacements = new ConcurrentBag<(ModItem Original, ModReplacementInfo Replacement, long OriginalUpdate, long ReplacementUpdate)>();
 
             try
             {
-                // --- Phase 1: Find potential replacements (remains mostly the same) ---
                 await Task.Run(() => _modService.LoadMods(), ct);
                 ct.ThrowIfCancellationRequested();
                 var loadedMods = _modService.GetLoadedMods().ToList();
@@ -390,147 +365,179 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     return;
                 }
 
-                // Show Indeterminate Progress Dialog for search phase
                 await RunOnUIThreadAsync(() =>
                 {
-                    // Create CTS for this phase, linked to the command's token
                     linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                     progressViewModel = _dialogService.ShowProgressDialog(
-                    "Checking Replacements",
-                    "Searching for mod replacements...",
-                    canCancel: true,
-                    isIndeterminate: true,
-                    cts: linkedCts, // Use the new CTS
-                    closeable: true);
+                        "Checking Replacements", "Searching for mod replacements...", canCancel: true,
+                        isIndeterminate: false, cts: linkedCts, closeable: true);
                 });
-                if (progressViewModel == null) throw new InvalidOperationException("Progress dialog view model was not created.");
-                if (linkedCts == null) throw new InvalidOperationException("Linked CTS not created.");
-
+                if (progressViewModel == null || linkedCts == null) throw new InvalidOperationException("Progress dialog or CTS was not created.");
                 var combinedTokenPhase1 = linkedCts.Token;
 
-                // Perform the search and validation operation
-                await Task.Run(() =>
+                using var semaphore = new SemaphoreSlim(10);
+                var tasks = new List<Task>();
+                int processedCount = 0;
+
+                var modsToProcess = loadedMods
+                    .Select(mod => new { Mod = mod, Replacement = _replacementService.GetReplacementBySteamId(mod.SteamId ?? "") })
+                    .Where(x => x.Replacement != null && !string.IsNullOrEmpty(x.Mod.SteamId) && !string.IsNullOrEmpty(x.Replacement.ReplacementSteamId))
+                    .ToList();
+
+                if (!modsToProcess.Any())
                 {
-                    foreach (var mod in loadedMods)
+                    await RunOnUIThreadAsync(() => _dialogService.ShowInformation("Mod Replacements", "No known replacement rules apply to your loaded mods."));
+                    return;
+                }
+
+                foreach (var item in modsToProcess)
+                {
+                    await semaphore.WaitAsync(combinedTokenPhase1);
+                    combinedTokenPhase1.ThrowIfCancellationRequested();
+
+                    tasks.Add(Task.Run(async () =>
                     {
-                        combinedTokenPhase1.ThrowIfCancellationRequested();
-                        // ... (rest of the replacement finding and version check logic remains the same) ...
-                        ModReplacementInfo? replacement = null;
-                        if (!string.IsNullOrEmpty(mod.SteamId))
+                        try
                         {
-                            replacement = _replacementService.GetReplacementBySteamId(mod.SteamId);
-                        }
+                            var originalModDetailsTask = _steamApiClient.GetFileDetailsAsync(item.Mod.SteamId!, combinedTokenPhase1);
+                            var replacementModDetailsTask = _steamApiClient.GetFileDetailsAsync(item.Replacement!.ReplacementSteamId, combinedTokenPhase1);
+                            await Task.WhenAll(originalModDetailsTask, replacementModDetailsTask);
+                            combinedTokenPhase1.ThrowIfCancellationRequested();
 
-                        if (replacement != null)
+                            var originalApiResponse = await originalModDetailsTask;
+                            var replacementApiResponse = await replacementModDetailsTask;
+
+                            var replacementDetails = replacementApiResponse?.Response?.PublishedFileDetails?.FirstOrDefault();
+                            if (replacementDetails == null || replacementDetails.Result != (int)SteamApiResultCode.OK)
+                            {
+                                string reason = SteamApiResultHelper.GetDescription(replacementDetails?.Result ?? (int)SteamApiResultCode.FileNotFound);
+                                Debug.WriteLine($"[CheckReplacements] Discarding replacement for '{item.Mod.Name}' because replacement mod ({item.Replacement.ReplacementSteamId}) is not available: {reason}");
+                                return;
+                            }
+
+                            var originalDetails = originalApiResponse?.Response?.PublishedFileDetails?.FirstOrDefault();
+                            if (originalDetails == null || originalDetails.Result != (int)SteamApiResultCode.OK)
+                            {
+                                Debug.WriteLine($"[CheckReplacements] Discarding replacement for '{item.Mod.Name}' because its own Steam details could not be fetched.");
+                                return;
+                            }
+
+                            var originalVersions = SteamApiResultHelper.ExtractAndSortVersionTags(originalDetails.Tags);
+                            var replacementVersions = SteamApiResultHelper.ExtractAndSortVersionTags(replacementDetails.Tags);
+
+                            if (originalVersions.Any() && replacementVersions.Any())
+                            {
+                                var latestOriginalVersion = new Version(originalVersions.Last());
+                                var latestReplacementVersion = new Version(replacementVersions.Last());
+
+                                if (latestReplacementVersion < latestOriginalVersion)
+                                {
+                                    Debug.WriteLine($"[CheckReplacements] Discarding replacement for '{item.Mod.Name}' due to lower version ({latestReplacementVersion} < {latestOriginalVersion}).");
+                                    return;
+                                }
+
+                                if (latestReplacementVersion == latestOriginalVersion && replacementDetails.TimeUpdated < originalDetails.TimeUpdated)
+                                {
+                                    Debug.WriteLine($"[CheckReplacements] Discarding replacement for '{item.Mod.Name}' due to older update date on same max version.");
+                                    return;
+                                }
+                            }
+                            else if (originalVersions.Any() && !replacementVersions.Any())
+                            {
+                                Debug.WriteLine($"[CheckReplacements] Discarding replacement for '{item.Mod.Name}' because it has no version tags while original does.");
+                                return;
+                            }
+
+                            modsWithValidReplacements.Add((item.Mod, item.Replacement, originalDetails.TimeUpdated, replacementDetails.TimeUpdated));
+                        }
+                        catch (OperationCanceledException) { /* Task cancelled */ }
+                        catch (Exception ex)
                         {
-                            var originalSupportedVersions = mod.SupportedVersionStrings?
-                           .Select(v => v.Trim())
-                           .Where(v => !string.IsNullOrEmpty(v))
-                           .ToList() ?? new List<string>();
-                            var replacementSupportedVersions = replacement.ReplacementVersionList ?? new List<string>();
-
-                            bool versionsAreValid;
-                            if (!originalSupportedVersions.Any()) versionsAreValid = true;
-                            else if (!replacementSupportedVersions.Any()) versionsAreValid = false;
-                            else
-                            {
-                                var replacementVersionSet = new HashSet<string>(replacementSupportedVersions, StringComparer.OrdinalIgnoreCase);
-                                versionsAreValid = originalSupportedVersions.All(ov => replacementVersionSet.Contains(ov));
-                            }
-
-                            if (versionsAreValid)
-                            {
-                                modsWithValidReplacements.Add((mod, replacement));
-                            }
-                            else
-                            {
-                                Debug.WriteLine($"[ExecuteCheckReplacements] Discarding replacement rule for '{mod.Name}' ({mod.SteamId}) due to version mismatch...");
-                            }
+                            Debug.WriteLine($"[CheckReplacements] Error processing replacement for {item.Mod.Name}: {ex.Message}");
                         }
-                    }
-                }, combinedTokenPhase1);
+                        finally
+                        {
+                            var current = Interlocked.Increment(ref processedCount);
+                            RunOnUIThread(() =>
+                            {
+                                if (progressViewModel != null && !progressViewModel.CancellationToken.IsCancellationRequested)
+                                {
+                                    progressViewModel.Message = $"Validating {current}/{modsToProcess.Count}: {item.Mod.Name}";
+                                    progressViewModel.Progress = (int)((double)current / modsToProcess.Count * 100);
+                                }
+                            });
+                            semaphore.Release();
+                        }
+                    }, combinedTokenPhase1));
+                }
+                await Task.WhenAll(tasks);
 
-                // Close progress dialog for search phase cleanly
-                await RunOnUIThreadAsync(() => progressViewModel?.CompleteOperation("Check complete."));
-                progressViewModel = null; // Reset
-                linkedCts?.Dispose(); // Dispose CTS for phase 1
+                await RunOnUIThreadAsync(() => progressViewModel?.CompleteOperation("Validation complete."));
+                progressViewModel = null;
+                linkedCts?.Dispose();
                 linkedCts = null;
 
-                ct.ThrowIfCancellationRequested(); // Check cancellation between phases
+                ct.ThrowIfCancellationRequested();
 
-                // --- Phase 2: User Selection and Queueing ---
-                if (modsWithValidReplacements.Count == 0)
+                var validReplacementsList = modsWithValidReplacements.ToList();
+                if (validReplacementsList.Count == 0)
                 {
-                    await RunOnUIThreadAsync(() => _dialogService.ShowInformation("Mod Replacements", "No suitable replacement mods found for your current mod list (considering version compatibility)."));
+                    await RunOnUIThreadAsync(() => _dialogService.ShowInformation("Mod Replacements", "No suitable replacement mods found after validation."));
                     return;
                 }
 
                 ModReplacementDialogResult dialogResult = ModReplacementDialogResult.Cancel;
-                List<string>? selectedReplacementSteamIds = null; // Store only IDs
+                List<string>? selectedReplacementSteamIds = null;
 
                 await RunOnUIThreadAsync(() =>
                 {
-                    var viewModel = new ModReplacementDialogViewModel(modsWithValidReplacements, loadedMods);
+                    var viewModel = new ModReplacementDialogViewModel(validReplacementsList, loadedMods);
                     dialogResult = _dialogService.ShowModReplacementDialog(viewModel);
                     if (dialogResult == ModReplacementDialogResult.Download)
                     {
-                        // Get only the Steam IDs of the selected replacements
                         selectedReplacementSteamIds = viewModel.GetSelectedReplacements()
                             .Select(r => r.ReplacementInfo?.ReplacementSteamId)
                             .Where(id => !string.IsNullOrEmpty(id))
-                            .Select(id => id!) // Non-null assertion after Where clause
+                            .Select(id => id!)
                             .ToList();
                     }
                 });
 
-                ct.ThrowIfCancellationRequested(); // Check cancellation after dialog
+                ct.ThrowIfCancellationRequested();
 
-                // --- Queue using the new service ---
                 if (dialogResult == ModReplacementDialogResult.Download && selectedReplacementSteamIds != null && selectedReplacementSteamIds.Any())
                 {
                     QueueProcessResult queueResult = new QueueProcessResult();
                     try
                     {
-                        // Show progress dialog for queueing phase
                         await RunOnUIThreadAsync(() =>
                         {
-                            // Create new CTS for this phase, linked to command's token
                             linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                             progressViewModel = _dialogService.ShowProgressDialog(
-                              "Verifying & Queueing Replacements",
-                              "Starting...",
-                              canCancel: true,
-                              isIndeterminate: false,
-                              cts: linkedCts, // Use the new CTS
-                              closeable: true);
+                              "Verifying & Queueing Replacements", "Starting...", canCancel: true,
+                              isIndeterminate: false, cts: linkedCts, closeable: true);
                         });
-                        if (progressViewModel == null) throw new InvalidOperationException("Progress dialog view model was not created.");
-                        if (linkedCts == null) throw new InvalidOperationException("Linked CTS not created.");
-
+                        if (progressViewModel == null || linkedCts == null) throw new InvalidOperationException("Progress dialog or CTS was not created.");
                         var combinedTokenPhase2 = linkedCts.Token;
 
-                        // Setup Progress Reporter
                         var progressReporter = new Progress<QueueProcessProgress>(update =>
                         {
-                            RunOnUIThread(() => // Ensure UI thread
-                          {
+                            RunOnUIThread(() =>
+                            {
                                  if (progressViewModel != null && !progressViewModel.CancellationToken.IsCancellationRequested)
                                  {
                                      progressViewModel.Message = $"{update.Message} ({update.CurrentItem}/{update.TotalItems})";
                                      progressViewModel.Progress = (int)((double)update.CurrentItem / update.TotalItems * 100);
                                  }
-                             });
+                            });
                         });
 
-                        // Call the central service
                         queueResult = await _steamWorkshopQueueProcessor.ProcessAndEnqueueModsAsync(selectedReplacementSteamIds, progressReporter, combinedTokenPhase2);
 
-                        // Show summary message on UI Thread
                         await RunOnUIThreadAsync(() =>
                         {
                             if (queueResult.WasCancelled)
                             {
-                                Debug.WriteLine("Queueing replacements was cancelled.", nameof(ModActionsViewModel));
                                 progressViewModel?.ForceClose();
                                 _dialogService.ShowWarning("Operation Cancelled", "Queueing selected replacement mods was cancelled.");
                                 return;
@@ -556,32 +563,29 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                             }
                         });
                     }
-                    catch (OperationCanceledException) // Catch cancellation during queue processing
+                    catch (OperationCanceledException)
                     {
-                        Debug.WriteLine("[ExecuteCheckReplacements] Replacement queueing cancelled (caught inner).", nameof(ModActionsViewModel));
                         await RunOnUIThreadAsync(() => progressViewModel?.ForceClose());
                     }
-                    finally // Ensure dialog closure and CTS disposal for queue phase
+                    finally
                     {
                         await RunOnUIThreadAsync(() => progressViewModel?.ForceClose());
-                        linkedCts?.Dispose(); // Dispose phase 2 CTS
+                        linkedCts?.Dispose();
                         linkedCts = null;
                         progressViewModel = null;
                     }
-                } // end if Download selected
-            } // end outer try
-            catch (OperationCanceledException) // Catch cancellation during phase 1 or dialog interaction
+                }
+            }
+            catch (OperationCanceledException)
             {
-                Debug.WriteLine("[ExecuteCheckReplacements] Operation cancelled (outer).", nameof(ModActionsViewModel));
                 await RunOnUIThreadAsync(() =>
                 {
-                    progressViewModel?.ForceClose(); // Close whichever progress dialog might be open
+                    progressViewModel?.ForceClose();
                     _dialogService.ShowWarning("Operation Cancelled", "Checking for mod replacements was cancelled.");
                 });
             }
             catch (Exception ex)
             {
-                //_logger.LogException(ex, "Error checking replacements", nameof(ModActionsViewModel));
                 await RunOnUIThreadAsync(() =>
                 {
                     progressViewModel?.ForceClose();
@@ -590,8 +594,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             }
             finally
             {
-                await RunOnUIThreadAsync(() => progressViewModel?.ForceClose()); // Ensure final close
-                linkedCts?.Dispose(); // Dispose if phase 1 CTS was left hanging due to early exit/error
+                await RunOnUIThreadAsync(() => progressViewModel?.ForceClose());
+                linkedCts?.Dispose();
                 IsLoadingRequest?.Invoke(this, false);
             }
         }
@@ -635,6 +639,5 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 _dialogService.ShowError("Launch Error", $"Failed to launch RimWorld: {ex.Message}");
             }
         }
-
     }
 }

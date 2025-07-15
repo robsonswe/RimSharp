@@ -7,7 +7,7 @@
                    xmlns:dialog="clr-namespace:RimSharp.Infrastructure.Dialog"
                    mc:Ignorable="d"
                    Title="{Binding Title}"
-                   Width="700" MinHeight="400" MaxHeight="600">
+                   Width="750" MinHeight="450" MaxHeight="650">
 
     <dialog:BaseDialog.MainContent>
         <Grid Margin="10">
@@ -21,8 +21,7 @@
                     <Setter Property="Margin" Value="0,0,5,0"/>
                 </Style>
                 
-                <!-- ### FIX HERE ### -->
-                <!-- Target a common base class (FrameworkElement) so the style can be applied to both TextBlock and ContentControl -->
+                <!-- Style for the version text itself -->
                 <Style x:Key="VersionTextStyle" TargetType="FrameworkElement">
                     <Setter Property="Control.Foreground" Value="Gray"/>
                     <Setter Property="Control.FontSize" Value="10"/>
@@ -38,7 +37,10 @@
 
             <!-- Header -->
             <Grid Grid.Row="0" Margin="0,0,0,10">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="The following mods have newer replacement versions available:" TextWrapping="Wrap" FontWeight="Medium" />
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button Content="Select All" Command="{Binding SelectAllCommand}" Style="{StaticResource RimworldButtonStyle}" Margin="0,0,5,0" />
@@ -54,29 +56,60 @@
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Grid Margin="5">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
                                     <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" Margin="0,0,10,0" />
                                     <StackPanel Grid.Column="1">
                                         <!-- Original Mod Info -->
-                                        <TextBlock FontWeight="Medium"><Run Text="Original:"/><Run Text="{Binding OriginalMod.Name}"/><Run Text=" by "/><Run Text="{Binding OriginalMod.Authors}"/></TextBlock>
-                                        <TextBlock Foreground="Gray" FontSize="10"><Run Text="ID: "/><Run Text="{Binding OriginalMod.PackageId}"/><Run Text=" | "/><Run Text="Steam: "/><Hyperlink NavigateUri="{Binding OriginalMod.SteamUrl}" RequestNavigate="Hyperlink_RequestNavigate"><Run Text="{Binding OriginalMod.SteamId}"/></Hyperlink></TextBlock>
+                                        <TextBlock FontWeight="Medium">
+                                            <Run Text="Original:"/>
+                                            <Run Text="{Binding OriginalMod.Name}"/>
+                                            <Run Text=" by "/>
+                                            <Run Text="{Binding OriginalMod.Authors}"/>
+                                        </TextBlock>
+                                        <TextBlock Foreground="Gray" FontSize="10">
+                                            <Run Text="ID: "/>
+                                            <Run Text="{Binding OriginalMod.PackageId}"/>
+                                            <Run Text=" | "/>
+                                            <Run Text="Steam: "/>
+                                            <Hyperlink NavigateUri="{Binding OriginalMod.SteamUrl}" RequestNavigate="Hyperlink_RequestNavigate">
+                                                <Run Text="{Binding OriginalMod.SteamId}"/>
+                                            </Hyperlink>
+                                            <Run Text=" | "/>
+                                            <Run Text="Updated: "/>
+                                            <!-- FIX 1: Explicitly set Mode to OneWay -->
+                                            <Run Text="{Binding FormattedOriginalLastUpdate, Mode=OneWay}"/>
+                                        </TextBlock>
                                         <StackPanel Orientation="Horizontal" Margin="0,2,0,5">
                                             <TextBlock Style="{StaticResource VersionLabelStyle}"/>
-                                            <!-- Apply the consistent style to the ContentControl hosting the complex output -->
-                                            <ContentControl Content="{Binding OriginalMod.SupportedVersions, Converter={StaticResource VersionSupportConverter}}" 
-                                                            Style="{StaticResource VersionTextStyle}"/>
+                                            <ContentControl Content="{Binding OriginalMod.SupportedVersions, Converter={StaticResource VersionSupportConverter}}" Style="{StaticResource VersionTextStyle}"/>
                                         </StackPanel>
                                         
                                         <!-- Replacement Mod Info -->
-                                        <TextBlock FontWeight="Medium" Foreground="{StaticResource RimworldDarkGreenBrush}"><Run Text="Replace with:"/><Run Text="{Binding ReplacementInfo.ReplacementName}"/><Run Text=" by "/><Run Text="{Binding ReplacementInfo.ReplacementAuthor}"/></TextBlock>
-                                        <TextBlock Foreground="Gray" FontSize="10"><Run Text="ID: "/><Run Text="{Binding ReplacementInfo.ReplacementModId}"/><Run Text=" | "/><Run Text="Steam: "/><Hyperlink NavigateUri="{Binding ReplacementInfo.ReplacementSteamUrl}" RequestNavigate="Hyperlink_RequestNavigate"><Run Text="{Binding ReplacementInfo.ReplacementSteamId}"/></Hyperlink></TextBlock>
-                                        
-                                        <!-- Replacement Versions -->
+                                        <TextBlock FontWeight="Medium" Foreground="{StaticResource RimworldDarkGreenBrush}">
+                                            <Run Text="Replace with:"/>
+                                            <Run Text="{Binding ReplacementInfo.ReplacementName}"/>
+                                            <Run Text=" by "/>
+                                            <Run Text="{Binding ReplacementInfo.ReplacementAuthor}"/>
+                                        </TextBlock>
+                                        <TextBlock Foreground="Gray" FontSize="10">
+                                            <Run Text="ID: "/>
+                                            <Run Text="{Binding ReplacementInfo.ReplacementModId}"/>
+                                            <Run Text=" | "/>
+                                            <Run Text="Steam: "/>
+                                            <Hyperlink NavigateUri="{Binding ReplacementInfo.ReplacementSteamUrl}" RequestNavigate="Hyperlink_RequestNavigate">
+                                                <Run Text="{Binding ReplacementInfo.ReplacementSteamId}"/>
+                                            </Hyperlink>
+                                            <Run Text=" | "/>
+                                            <Run Text="Updated: "/>
+                                            <!-- FIX 2: Explicitly set Mode to OneWay -->
+                                            <Run Text="{Binding FormattedReplacementLastUpdate, Mode=OneWay}"/>
+                                        </TextBlock>
                                         <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
                                             <TextBlock Style="{StaticResource VersionLabelStyle}"/>
-                                            <!-- Apply the consistent style to the TextBlock hosting the simple output -->
-                                            <TextBlock Text="{Binding ReplacementInfo.ReplacementVersionList, Converter={StaticResource ListToStringConverter}}" 
-                                                       Style="{StaticResource VersionTextStyle}" />
+                                            <TextBlock Text="{Binding ReplacementInfo.ReplacementVersionList, Converter={StaticResource ListToStringConverter}}" Style="{StaticResource VersionTextStyle}" />
                                         </StackPanel>
                                     </StackPanel>
                                 </Grid>
@@ -92,27 +125,66 @@
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <Grid Margin="5">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
                                             <CheckBox Grid.Column="0" IsChecked="False" IsEnabled="False" VerticalAlignment="Center" Margin="0,0,10,0" />
                                             <StackPanel Grid.Column="1">
                                                 <!-- Original Mod Info -->
-                                                <TextBlock FontWeight="Medium"><Run Text="Original:"/><Run Text="{Binding OriginalMod.Name}"/><Run Text=" by "/><Run Text="{Binding OriginalMod.Authors}"/></TextBlock>
-                                                <TextBlock Foreground="Gray" FontSize="10"><Run Text="ID: "/><Run Text="{Binding OriginalMod.PackageId}"/><Run Text=" | "/><Run Text="Steam: "/><Hyperlink NavigateUri="{Binding OriginalMod.SteamUrl}" RequestNavigate="Hyperlink_RequestNavigate"><Run Text="{Binding OriginalMod.SteamId}"/></Hyperlink></TextBlock>
+                                                <TextBlock FontWeight="Medium">
+                                                    <Run Text="Original:"/>
+                                                    <Run Text="{Binding OriginalMod.Name}"/>
+                                                    <Run Text=" by "/>
+                                                    <Run Text="{Binding OriginalMod.Authors}"/>
+                                                </TextBlock>
+                                                <TextBlock Foreground="Gray" FontSize="10">
+                                                    <Run Text="ID: "/>
+                                                    <Run Text="{Binding OriginalMod.PackageId}"/>
+                                                    <Run Text=" | "/>
+                                                    <Run Text="Steam: "/>
+                                                    <Hyperlink NavigateUri="{Binding OriginalMod.SteamUrl}" RequestNavigate="Hyperlink_RequestNavigate">
+                                                        <Run Text="{Binding OriginalMod.SteamId}"/>
+                                                    </Hyperlink>
+                                                    <Run Text=" | "/>
+                                                    <Run Text="Updated: "/>
+                                                    <!-- FIX 3: Explicitly set Mode to OneWay -->
+                                                    <Run Text="{Binding FormattedOriginalLastUpdate, Mode=OneWay}"/>
+                                                </TextBlock>
                                                 <StackPanel Orientation="Horizontal" Margin="0,2,0,5">
                                                     <TextBlock Style="{StaticResource VersionLabelStyle}"/>
-                                                    <ContentControl Content="{Binding OriginalMod.SupportedVersions, Converter={StaticResource VersionSupportConverter}}"
-                                                                    Style="{StaticResource VersionTextStyle}"/>
+                                                    <ContentControl Content="{Binding OriginalMod.SupportedVersions, Converter={StaticResource VersionSupportConverter}}" Style="{StaticResource VersionTextStyle}"/>
                                                 </StackPanel>
+                                                
                                                 <!-- Replacement Mod Info -->
-                                                <TextBlock FontWeight="Medium" Foreground="{StaticResource RimworldDarkGreenBrush}"><Run Text="Replacement already installed:"/><Run Text="{Binding ReplacementInfo.ReplacementName}"/><Run Text=" by "/><Run Text="{Binding ReplacementInfo.ReplacementAuthor}"/></TextBlock>
-                                                <TextBlock Foreground="Gray" FontSize="10"><Run Text="ID: "/><Run Text="{Binding ReplacementInfo.ReplacementModId}"/><Run Text=" | "/><Run Text="Steam: "/><Hyperlink NavigateUri="{Binding ReplacementInfo.ReplacementSteamUrl}" RequestNavigate="Hyperlink_RequestNavigate"><Run Text="{Binding ReplacementInfo.ReplacementSteamId}"/></Hyperlink></TextBlock>
+                                                <TextBlock FontWeight="Medium" Foreground="{StaticResource RimworldDarkGreenBrush}">
+                                                    <Run Text="Replacement already installed:"/>
+                                                    <Run Text="{Binding ReplacementInfo.ReplacementName}"/>
+                                                    <Run Text=" by "/>
+                                                    <Run Text="{Binding ReplacementInfo.ReplacementAuthor}"/>
+                                                </TextBlock>
+                                                <TextBlock Foreground="Gray" FontSize="10">
+                                                    <Run Text="ID: "/>
+                                                    <Run Text="{Binding ReplacementInfo.ReplacementModId}"/>
+                                                    <Run Text=" | "/>
+                                                    <Run Text="Steam: "/>
+                                                    <Hyperlink NavigateUri="{Binding ReplacementInfo.ReplacementSteamUrl}" RequestNavigate="Hyperlink_RequestNavigate">
+                                                        <Run Text="{Binding ReplacementInfo.ReplacementSteamId}"/>
+                                                    </Hyperlink>
+                                                    <Run Text=" | "/>
+                                                    <Run Text="Updated: "/>
+                                                    <!-- FIX 4: Explicitly set Mode to OneWay -->
+                                                    <Run Text="{Binding FormattedReplacementLastUpdate, Mode=OneWay}"/>
+                                                </TextBlock>
                                                 <StackPanel Orientation="Horizontal" Margin="0,2,0,5">
                                                     <TextBlock Style="{StaticResource VersionLabelStyle}"/>
-                                                    <TextBlock Text="{Binding ReplacementInfo.ReplacementVersionList, Converter={StaticResource ListToStringConverter}}" 
-                                                               Style="{StaticResource VersionTextStyle}"/>
+                                                    <TextBlock Text="{Binding ReplacementInfo.ReplacementVersionList, Converter={StaticResource ListToStringConverter}}" Style="{StaticResource VersionTextStyle}"/>
                                                 </StackPanel>
+                                                
                                                 <!-- Alert -->
-                                                <TextBlock TextWrapping="Wrap" Margin="0,5,0,0" Foreground="{StaticResource RimworldOrangeBrush}"><Run Text="⚠ You should remove the original mod to avoid conflicts." FontWeight="SemiBold"/></TextBlock>
+                                                <TextBlock TextWrapping="Wrap" Margin="0,5,0,0" Foreground="{StaticResource RimworldOrangeBrush}">
+                                                    <Run Text="⚠ You should remove the original mod to avoid conflicts." FontWeight="SemiBold"/>
+                                                </TextBlock>
                                             </StackPanel>
                                         </Grid>
                                     </DataTemplate>

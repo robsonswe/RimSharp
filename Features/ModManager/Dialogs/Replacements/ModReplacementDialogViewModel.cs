@@ -100,7 +100,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
         public ICommand SelectNoneCommand => _selectNoneCommand ??= CreateCommand(SelectNone);
 
         public ModReplacementDialogViewModel(
-            IEnumerable<(ModItem Original, ModReplacementInfo Replacement)> replacements,
+            IEnumerable<(ModItem Original, ModReplacementInfo Replacement, long OriginalUpdate, long ReplacementUpdate)> replacements,
             IEnumerable<ModItem> allInstalledMods)
             : base("Mod Replacements Available")
         {
@@ -145,7 +145,9 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
                     {
                         OriginalMod = r.Original,
                         ReplacementInfo = r.Replacement,
-                        IsSelected = !alreadyInstalled, // Only select by default if not already installed
+                        OriginalLastUpdate = r.OriginalUpdate,
+                        ReplacementLastUpdate = r.ReplacementUpdate,
+                        IsSelected = !alreadyInstalled,
                         ReplacementAlreadyInstalled = alreadyInstalled
                     };
                 })
