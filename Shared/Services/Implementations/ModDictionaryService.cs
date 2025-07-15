@@ -12,11 +12,7 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
     public class ModDictionaryService : IModDictionaryService
     {
         private const string DatabaseDictionaryFileName = "db.json";
-        // Re-use the same relative path as replacements.json
-        private readonly string _databaseRulesDbRelativePath = Path.Combine("Rules", "db");
-
         private readonly IPathService _pathService; // Now needed for GetEntryByPackageId logic
-        private readonly string _appBasePath;
         private readonly ILoggerService _logger;
         private readonly IDataUpdateService _dataUpdateService; 
         private Dictionary<string, ModDictionaryEntry> _dictionaryCache = null; // Cache keyed by lowercase SteamId
@@ -153,16 +149,18 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
             return results;
         }
 
+                // --- MODIFIED METHOD ---
         private int LoadFromJson(Dictionary<string, ModDictionaryEntry> targetDictionary)
         {
-            var dbDirectoryPath = Path.Combine(_appBasePath, _databaseRulesDbRelativePath);
-            var jsonFilePath = Path.Combine(dbDirectoryPath, DatabaseDictionaryFileName);
+            // Get the full file path from the data update service
+            var jsonFilePath = _dataUpdateService.GetDataFilePath(DatabaseDictionaryFileName);
+            var dbDirectoryPath = Path.GetDirectoryName(jsonFilePath);
             int count = 0;
 
             try
             {
                 // 1. Ensure the directory exists
-                if (!Directory.Exists(dbDirectoryPath))
+                if (dbDirectoryPath != null && !Directory.Exists(dbDirectoryPath))
                 {
                     _logger.LogInfo($"Creating dictionary database directory: '{dbDirectoryPath}'", nameof(ModDictionaryService));
                     Directory.CreateDirectory(dbDirectoryPath);
@@ -172,9 +170,9 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
                 if (!File.Exists(jsonFilePath))
                 {
                     _logger.LogWarning($"Dictionary database file '{jsonFilePath}' not found. Creating with default content.", nameof(ModDictionaryService));
-                    File.WriteAllText(jsonFilePath, "{\"mods\":{}}"); // Default content (empty mods object)
+                    File.WriteAllText(jsonFilePath, "{\"mods\":{}}"); // Default content
                     _logger.LogInfo($"Default dictionary file created at '{jsonFilePath}'.", nameof(ModDictionaryService));
-                    return 0; // Return 0 as no data was loaded
+                    return 0;
                 }
 
                 // 3. File exists, proceed with loading
@@ -183,54 +181,40 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
 
                 var options = new JsonSerializerOptions
                 {
-                    PropertyNameCaseInsensitive = true // Handle "mods" or "Mods", "published" or "Published" etc.
+                    PropertyNameCaseInsensitive = true
                 };
 
-                // Deserialize into the structure matching db.json
                 var jsonData = JsonSerializer.Deserialize<ModDictionaryJsonRoot>(jsonContent, options);
 
                 if (jsonData?.Mods != null)
                 {
-                    // Iterate through Package IDs
                     foreach (var packageKvp in jsonData.Mods)
                     {
                         string packageIdRaw = packageKvp.Key;
                         var steamEntries = packageKvp.Value;
 
-                        if (string.IsNullOrWhiteSpace(packageIdRaw) || steamEntries == null)
-                        {
-                            _logger.LogWarning($"Skipping entry in '{jsonFilePath}': Invalid packageId ('{packageIdRaw}') or null steam entries.", nameof(ModDictionaryService));
-                            continue;
-                        }
+                        if (string.IsNullOrWhiteSpace(packageIdRaw) || steamEntries == null) continue;
 
                         string packageIdLower = packageIdRaw.ToLowerInvariant();
 
-                        // Iterate through Steam IDs within the Package ID
                         foreach (var steamKvp in steamEntries)
                         {
                             string steamIdRaw = steamKvp.Key;
                             var details = steamKvp.Value;
 
-                            if (string.IsNullOrWhiteSpace(steamIdRaw) || details == null)
-                            {
-                                _logger.LogWarning($"Skipping entry for package '{packageIdRaw}' in '{jsonFilePath}': Invalid steamId ('{steamIdRaw}') or null details.", nameof(ModDictionaryService));
-                                continue;
-                            }
+                            if (string.IsNullOrWhiteSpace(steamIdRaw) || details == null) continue;
 
                             string steamIdLower = steamIdRaw.ToLowerInvariant();
-
-                            // Create the flattened entry
                             var entry = new ModDictionaryEntry
                             {
                                 PackageId = packageIdLower,
                                 SteamId = steamIdLower,
                                 Name = details.Name,
-                                Versions = details.Versions ?? new List<string>(), // Ensure list exists
+                                Versions = details.Versions ?? new List<string>(),
                                 Authors = details.Authors,
-                                Published = details.Published // Ensure this property exists in ModDetails and ModDictionaryEntry
+                                Published = details.Published
                             };
 
-                            // Add to the target dictionary using lowercase SteamId as the key
                             if (targetDictionary.ContainsKey(steamIdLower))
                             {
                                 _logger.LogWarning($"Duplicate Steam ID '{steamIdLower}' found in '{jsonFilePath}'. Overwriting entry. Previous package: '{targetDictionary[steamIdLower].PackageId}', New package: '{packageIdLower}'.", nameof(ModDictionaryService));
@@ -243,8 +227,7 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
             }
             catch (JsonException jsonEx)
             {
-                // Updated error message to include potential boolean issues
-                _logger.LogException(jsonEx, $"Error parsing JSON file '{jsonFilePath}'. Check for invalid boolean values for 'published' (must be true or false, not strings like \"true\").", nameof(ModDictionaryService));
+                _logger.LogException(jsonEx, $"Error parsing JSON file '{jsonFilePath}'. Check for invalid boolean values for 'published'.", nameof(ModDictionaryService));
             }
             catch (IOException ioEx)
             {
@@ -261,6 +244,7 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
 
             return count;
         }
+
 
         // --- Helper classes for JSON deserialization ---
 

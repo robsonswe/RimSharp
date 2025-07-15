@@ -22,8 +22,10 @@ namespace RimSharp.Infrastructure.Mods.Rules
             if (dataUpdateService == null)
                 throw new ArgumentNullException(nameof(dataUpdateService));
 
-            // Get the path from the service
+            // Get the full path to the file from the service
             _rulesFilePath = dataUpdateService.GetDataFilePath(RulesFileName);
+
+            _rulesDirectoryPath = Path.GetDirectoryName(_rulesFilePath);
 
             Console.WriteLine($"[DEBUG] JsonModRulesRepository initialized. Rules file path: '{_rulesFilePath}'");
             _cachedRules = new Dictionary<string, ModRule>(StringComparer.OrdinalIgnoreCase);

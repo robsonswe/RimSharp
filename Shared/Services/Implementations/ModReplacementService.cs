@@ -16,12 +16,9 @@ namespace RimSharp.Shared.Services.Implementations
         private const string UseThisInsteadReplacementsSubFolder = "Replacements";
         private const string DatabaseReplacementsFileName = "replacements.json";
         // Updated: Relative path for the DB rules/replacements folder
-        private readonly string _databaseRulesDbRelativePath = Path.Combine("Rules", "db");
-
-        private readonly IDataUpdateService _dataUpdateService; // Add this field
+        private readonly IDataUpdateService _dataUpdateService;
 
         private readonly IPathService _pathService;
-        private readonly string _appBasePath; // Need the application base path for the JSON file
         private readonly ILoggerService _logger;
         private Dictionary<string, ModReplacementInfo> _replacementsCache = null;
         private bool _isInitialized = false;
@@ -31,7 +28,7 @@ namespace RimSharp.Shared.Services.Implementations
         public ModReplacementService(IPathService pathService, IDataUpdateService dataUpdateService, ILoggerService logger)
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
-            _dataUpdateService = dataUpdateService ?? throw new ArgumentNullException(nameof(dataUpdateService)); 
+            _dataUpdateService = dataUpdateService ?? throw new ArgumentNullException(nameof(dataUpdateService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -110,15 +107,16 @@ namespace RimSharp.Shared.Services.Implementations
         /// <returns>The number of items successfully loaded from JSON.</returns>
         private int LoadFromJson(Dictionary<string, ModReplacementInfo> targetDictionary)
         {
-            // Updated path calculation using relative path constant
-            var dbDirectoryPath = Path.Combine(_appBasePath, _databaseRulesDbRelativePath);
-            var jsonFilePath = Path.Combine(dbDirectoryPath, DatabaseReplacementsFileName);
+            // Get the full file path from the data update service
+            var jsonFilePath = _dataUpdateService.GetDataFilePath(DatabaseReplacementsFileName);
+            // Derive the directory path from the file path
+            var dbDirectoryPath = Path.GetDirectoryName(jsonFilePath);
             int count = 0;
 
             try
             {
                 // 1. Ensure the directory exists
-                if (!Directory.Exists(dbDirectoryPath))
+                if (dbDirectoryPath != null && !Directory.Exists(dbDirectoryPath))
                 {
                     _logger.LogInfo($"Creating replacement database directory: '{dbDirectoryPath}'", nameof(ModReplacementService));
                     Directory.CreateDirectory(dbDirectoryPath);
