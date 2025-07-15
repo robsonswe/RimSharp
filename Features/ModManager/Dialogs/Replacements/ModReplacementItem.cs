@@ -2,6 +2,7 @@ using RimSharp.Shared.Models;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization; // Add for CultureInfo
 using System.Linq;
 using System.Runtime.CompilerServices;
 
@@ -13,11 +14,21 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
         public ModReplacementInfo ReplacementInfo { get; set; }
         public bool ReplacementAlreadyInstalled { get; set; }
 
-        // --- NEW CALCULATED PROPERTY FOR THE VIEW ---
-        /// <summary>
-        /// Converts the replacement's simple version string into a List of VersionSupport
-        /// objects that can be used by the UI's VersionSupportConverter.
-        /// </summary>
+        // --- NEW PROPERTIES TO STORE UPDATE TIMESTAMPS ---
+        public long OriginalLastUpdate { get; set; }
+        public long ReplacementLastUpdate { get; set; }
+
+        // --- NEW FORMATTED PROPERTIES FOR THE VIEW ---
+        public string FormattedOriginalLastUpdate => 
+            OriginalLastUpdate > 0 
+            ? DateTimeOffset.FromUnixTimeSeconds(OriginalLastUpdate).ToString("dd MMM yyyy", CultureInfo.InvariantCulture)
+            : "N/A";
+            
+        public string FormattedReplacementLastUpdate => 
+            ReplacementLastUpdate > 0
+            ? DateTimeOffset.FromUnixTimeSeconds(ReplacementLastUpdate).ToString("dd MMM yyyy", CultureInfo.InvariantCulture)
+            : "N/A";
+
         public List<VersionSupport> ReplacementSupportedVersions
         {
             get
@@ -26,32 +37,22 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
                 {
                     return new List<VersionSupport>();
                 }
-
-                // Determine the source for these versions based on where the rule came from.
                 var source = GetEquivalentVersionSource(ReplacementInfo.Source);
-
-                // Since these versions are from a replacement rule and not the mod's own About.xml,
-                // they are inherently "unofficial" overrides.
                 return ReplacementInfo.ReplacementVersionList
                     .Select(v => new VersionSupport(v, source, unofficial: true))
                     .ToList();
             }
         }
 
-        /// <summary>
-        /// Maps the ReplacementSource enum to the corresponding VersionSource enum.
-        /// </summary>
         private VersionSource GetEquivalentVersionSource(ReplacementSource replacementSource)
         {
             return replacementSource switch
             {
                 ReplacementSource.Database => VersionSource.Database,
-                // 'Use This Instead' provides community data via local XML, analogous to the 'Mlie' source.
                 ReplacementSource.UseThisInstead => VersionSource.Mlie,
-                _ => VersionSource.Database // Default fallback
+                _ => VersionSource.Database
             };
         }
-        // --- END OF NEW PROPERTY AND HELPER ---
 
         private bool _isSelected = true;
         public bool IsSelected
