@@ -194,8 +194,8 @@
                                 <TextBlock Text="Supports Current Version:" Style="{StaticResource FilterLabelStyle}"/>
                                 <StackPanel Orientation="Horizontal" Margin="5,0">
                                     <RadioButton Content="Any" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                    <RadioButton Content="Yes" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                    <RadioButton Content="No" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="No" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="Yes" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
                                 </StackPanel>
                             </StackPanel>
 
