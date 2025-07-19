@@ -50,18 +50,50 @@
 
                     <!-- Card 1: Game Version -->
                     <Border Grid.Column="0" Margin="0,0,6,0" Style="{StaticResource RimworldPanelBorder}" Background="{StaticResource RimworldDarkBeigeBrush}" Padding="8" BorderThickness="1">
+                        <!-- Use a Grid to overlay the badge -->
                         <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Border Grid.Column="0" Width="32" Height="32" CornerRadius="4" Background="{StaticResource RimworldCodeBlueBrush}" VerticalAlignment="Center" Margin="0,0,8,0">
-                                <TextBlock Text="🔢" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{StaticResource RimworldWhiteBrush}" FontSize="16" ToolTip="Game Version"/>
+                            <!-- Original Content -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" Width="32" Height="32" CornerRadius="4" Background="{StaticResource RimworldCodeBlueBrush}" VerticalAlignment="Center" Margin="0,0,8,0">
+                                    <TextBlock Text="🔢" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{StaticResource RimworldWhiteBrush}" FontSize="16" ToolTip="Game Version"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Game Version" FontSize="11" Foreground="{StaticResource RimworldBrownBrush}" FontWeight="Medium"/>
+                                    <TextBlock Text="{Binding PathSettings.GameVersion}" FontWeight="Bold" Foreground="{StaticResource RimworldBrownBrush}" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Notification Badge Overlay -->
+                            <Border HorizontalAlignment="Right"
+                                    VerticalAlignment="Top"
+                                    Margin="0,-12,-12,0"
+                                    Background="{StaticResource RimworldErrorRedBrush}"
+                                    BorderBrush="{StaticResource RimworldWhiteBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Width="16"
+                                    Height="16"
+                                    Visibility="{Binding IsUpdateAvailable, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <Border.ToolTip>
+                                    <ToolTip Style="{StaticResource RimworldToolTip}">
+                                        <StackPanel>
+                                            <TextBlock Text="RimWorld Update" FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding UpdateTooltipText}"/>
+                                        </StackPanel>
+                                    </ToolTip>
+                                </Border.ToolTip>
+                                <TextBlock Text="!" 
+                                           Foreground="{StaticResource RimworldWhiteBrush}" 
+                                           FontWeight="Bold"
+                                           FontSize="11"
+                                           HorizontalAlignment="Center" 
+                                           VerticalAlignment="Center"
+                                           Margin="0,-1,0,0"/>
                             </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="Game Version" FontSize="11" Foreground="{StaticResource RimworldBrownBrush}" FontWeight="Medium"/>
-                                <TextBlock Text="{Binding PathSettings.GameVersion}" FontWeight="Bold" Foreground="{StaticResource RimworldBrownBrush}" TextTrimming="CharacterEllipsis"/>
-                            </StackPanel>
                         </Grid>
                     </Border>
 

@@ -179,6 +179,7 @@ namespace RimSharp.AppDir.AppFiles
             services.AddSingleton<IWebNavigationService, WebNavigationService>();
             services.AddSingleton<IDownloadQueueService, DownloadQueueService>();
             services.AddHttpClient(); // Registers IHttpClientFactory
+            services.AddSingleton<IUpdaterService, UpdaterService>(); // <<< ADDED
             services.AddSingleton<ISteamApiClient, SteamApiClient>();
             services.AddSingleton<IWorkshopUpdateCheckerService, WorkshopUpdateCheckerService>();
             services.AddSingleton<ISteamWorkshopQueueProcessor, SteamWorkshopQueueProcessor>(); // <<< ENSURE this uses correct dependencies if needed (ILoggerService, ISteamApiClient, IDownloadQueueService) - Constructor injection handles this if they are registered
@@ -293,6 +294,7 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IConfigService>(),
                     provider.GetRequiredService<IDialogService>(),
                     provider.GetRequiredService<IApplicationNavigationService>(),
+                    provider.GetRequiredService<IUpdaterService>(),       // <<< ADDED
                     provider.GetRequiredService<ModsViewModel>(),       // <<< Resolves Transient
                     provider.GetRequiredService<DownloaderViewModel>(), // <<< Resolves Transient
                     provider.GetRequiredService<GitModsViewModel>()     // <<< Resolves Transient

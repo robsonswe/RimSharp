@@ -16,6 +16,7 @@ using RimSharp.Core.Extensions;
 using RimSharp.Features.GitModManager.ViewModels;
 using System.Threading;
 using RimSharp.Core.Commands.Base; // For CancellationToken
+using System.Collections.Generic;
 
 namespace RimSharp.AppDir.MainPage
 {
@@ -26,6 +27,7 @@ namespace RimSharp.AppDir.MainPage
         private readonly IConfigService _configService; // Needed for saving path settings
         private readonly IDialogService _dialogService;
         private readonly IApplicationNavigationService _navigationService;
+        private readonly IUpdaterService _updaterService;
 
         private string _selectedTab = "Mods"; // Default tab
         private ViewModelBase? _currentViewModel; // Holds the currently displayed module ViewModel
@@ -54,6 +56,21 @@ namespace RimSharp.AppDir.MainPage
             set => SetProperty(ref _statusMessage, value);
         }
 
+        // --- Properties for Update Notification ---
+        private bool _isUpdateAvailable;
+        public bool IsUpdateAvailable
+        {
+            get => _isUpdateAvailable;
+            set => SetProperty(ref _isUpdateAvailable, value);
+        }
+
+        private string _updateTooltipText = string.Empty;
+        public string UpdateTooltipText
+        {
+            get => _updateTooltipText;
+            set => SetProperty(ref _updateTooltipText, value);
+        }
+
         // Helper property to centralize the "Is anything busy?" logic
         private bool IsIdle => !(ModsVM?.IsLoading ?? false) && !(DownloaderVM?.IsOperationInProgress ?? false);
 
@@ -64,6 +81,7 @@ namespace RimSharp.AppDir.MainPage
             IConfigService configService,
             IDialogService dialogService,
             IApplicationNavigationService navigationService,
+            IUpdaterService updaterService,
             ModsViewModel modsViewModel,
             DownloaderViewModel downloaderViewModel,
             GitModsViewModel gitModsViewModel)
@@ -72,6 +90,7 @@ namespace RimSharp.AppDir.MainPage
             _configService = configService;
             _dialogService = dialogService;
             _navigationService = navigationService;
+            _updaterService = updaterService;
 
             ModsVM = modsViewModel;
             DownloaderVM = downloaderViewModel;
@@ -146,19 +165,46 @@ namespace RimSharp.AppDir.MainPage
 
         public async Task OnMainWindowLoadedAsync()
         {
-            // This method will be called from the UI layer after the window is visible.
-            Debug.WriteLine("[MainViewModel] Main window has loaded. Starting initial data load for ModsVM.", "OnMainWindowLoadedAsync");
+            Debug.WriteLine("[MainViewModel] Main window has loaded. Starting initial tasks.", "OnMainWindowLoadedAsync");
 
-            // Tell the ModsViewModel to start loading its data.
-            // It can now safely show dialogs because the MainWindow is visible and has been shown.
+            // Create a list to hold all startup tasks
+            var startupTasks = new List<Task>();
+
+            // Add the mod list initialization to the tasks
             if (ModsVM != null)
             {
-                await ModsVM.InitializeAsync();
+                startupTasks.Add(ModsVM.InitializeAsync());
             }
 
-            // If other ViewModels also need delayed initialization, call them here.
+            // Add the update check to the tasks
+            startupTasks.Add(CheckForUpdateAsync());
+            
+            // If other ViewModels also need delayed initialization, add them here.
             // For example:
-            // if (DownloaderVM != null) { await DownloaderVM.InitializeAsync(); }
+            // if (DownloaderVM != null) { startupTasks.Add(DownloaderVM.InitializeAsync()); }
+
+            // Await all tasks to complete. This allows them to run concurrently.
+            await Task.WhenAll(startupTasks);
+            
+            Debug.WriteLine("[MainViewModel] All initial tasks complete.", "OnMainWindowLoadedAsync");
+        }
+        
+        private async Task CheckForUpdateAsync()
+        {
+            Debug.WriteLine("[MainViewModel] Checking for game updates...");
+            var (isUpdateAvailable, latestVersion) = await _updaterService.CheckForUpdateAsync();
+            if (isUpdateAvailable && !string.IsNullOrEmpty(latestVersion))
+            {
+                IsUpdateAvailable = true;
+                UpdateTooltipText = $"Version {latestVersion} is now available.";
+                Debug.WriteLine($"[MainViewModel] Update found: {latestVersion}");
+            }
+            else
+            {
+                IsUpdateAvailable = false;
+                UpdateTooltipText = string.Empty;
+                Debug.WriteLine("[MainViewModel] No new update found or check failed.");
+            }
         }
         
         #region CanExecute Predicates
@@ -243,6 +289,8 @@ namespace RimSharp.AppDir.MainPage
                 case nameof(PathSettings.GameVersion):
                     // GameVersion change doesn't require saving config or full refresh,
                     // but notify UI if needed. PathSettings object notification handles this.
+                    // Let's also re-check for updates if the version changes.
+                    Task.Run(CheckForUpdateAsync);
                     break;
                 case nameof(PathSettings.ModsPath):
                     // This property changed because GamePath changed. No further action needed here,
