@@ -216,48 +216,16 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             DateTimeOffset apiUpdateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(details.TimeUpdated);
             DateTime apiUpdateTimeUtc = apiUpdateTimeOffset.UtcDateTime;
             
-            // --- BEGIN CORRECTED TIMEZONE ARTIFACT DETECTION LOGIC ---
-            bool isLikelyTimezoneArtifact = false;
-            TimeSpan rawDifference = apiUpdateTimeUtc - localUpdateTimeUtc;
+            // --- Timezone Artifact Detection Logic ---
+            // Now that both local and API dates are consistently in UTC, a direct comparison is more reliable.
+            // A small tolerance (e.g., a few minutes) can account for minor sync discrepancies or rounding.
+            TimeSpan difference = apiUpdateTimeUtc - localUpdateTimeUtc;
 
-            // A timezone artifact can only reasonably occur if the total time difference is small
-            // (e.g., less than 25 hours to account for all possible timezones and DST shifts).
-            // If the difference spans multiple days, months, or years, it is a real update.
-            if (Math.Abs(rawDifference.TotalHours) < 25)
-            {
-                // The total difference is small, NOW we can check if it's a common timezone offset.
-                
-                // Extract only time parts (hours, minutes) for checking timezone related patterns
-                DateTime apiTimeOnly = new DateTime(1, 1, 1, apiUpdateTimeUtc.Hour, apiUpdateTimeUtc.Minute, 0);
-                DateTime localTimeOnly = new DateTime(1, 1, 1, localUpdateTimeUtc.Hour, localUpdateTimeUtc.Minute, 0);
+            // If the API time is newer, but by less than a small threshold (e.g., 5 minutes), treat it as a non-update.
+            // This avoids flagging trivial differences as updates.
+            bool isConsideredUpdate = apiUpdateTimeUtc > localUpdateTimeUtc && difference.TotalMinutes > 5;
 
-                // Calculate minute difference between the times (irrespective of date)
-                int minutesDifference = (int)Math.Abs((apiTimeOnly - localTimeOnly).TotalMinutes);
-                
-                // Handle wrap-around difference (e.g., 23:30 vs 00:30 = 1 hour difference, not 23 hours)
-                if (minutesDifference > 12 * 60)
-                {
-                    minutesDifference = 24 * 60 - minutesDifference;
-                }
-
-                // All common timezone offsets (full, half, quarter) are multiples of 15 minutes.
-                // This single check is sufficient.
-                if (minutesDifference % 15 == 0)
-                {
-                    isLikelyTimezoneArtifact = true;
-                }
-                
-                Debug.WriteLine($"Timezone detection for '{mod.Name}' ({mod.SteamId}): Total diff < 25h. Minutes difference: {minutesDifference}, Likely TZ artifact: {isLikelyTimezoneArtifact}");
-            }
-            else
-            {
-                // The difference is too large to be a timezone artifact. It's a genuine time difference.
-                Debug.WriteLine($"Timezone detection for '{mod.Name}' ({mod.SteamId}): Total diff >= 25h ({rawDifference.TotalHours:F1}h). This is a real update, not a timezone artifact.");
-            }
-            // --- END CORRECTED TIMEZONE ARTIFACT DETECTION LOGIC ---
-
-            // Only consider it an update if the API time is newer AND it's not just a timezone artifact
-            if (apiUpdateTimeUtc > localUpdateTimeUtc && !isLikelyTimezoneArtifact)
+            if (isConsideredUpdate)
             {
                 Debug.WriteLine($"Update found for '{details.Title}' ({mod.SteamId}). API UTC: {apiUpdateTimeUtc:O}, Local UTC: {localUpdateTimeUtc:O}");
                 result.IncrementUpdatesFound();
