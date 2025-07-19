@@ -650,7 +650,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 // Scan subdirectories
                 foreach (var subDir in currentDir.EnumerateDirectories())
                 {
-                    bool isAtRoot = Path.GetDirectoryName(subDir.FullName).Equals(modRootPath, StringComparison.OrdinalIgnoreCase);
+                    // FIX: Safely check the parent directory name to avoid a NullReferenceException.
+                    // If GetDirectoryName returns null, isAtRoot will be false.
+                    bool isAtRoot = Path.GetDirectoryName(subDir.FullName)?.Equals(modRootPath, StringComparison.OrdinalIgnoreCase) ?? false;
                     bool isVersionFolder = isAtRoot && versionFolders.ContainsKey(subDir.Name);
 
                     if (unnecessaryFolders.Contains(subDir.Name) || (isVersionFolder && !versionsToKeep.Contains(subDir.Name)))
