@@ -22,7 +22,8 @@ using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
 using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Features.WorkshopDownloader.Models; // For ModInfoDto
 using System.Globalization;
-using System.Collections.Concurrent; // For CultureInfo
+using System.Collections.Concurrent;
+using RimSharp.Features.ModManager.Dialogs.Strip; // For CultureInfo
 
 namespace RimSharp.Features.ModManager.ViewModels.Actions
 {
@@ -54,7 +55,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private IList? _selectedItems; // For multi-item actions
         protected bool CanExecuteSimpleCommands() => !IsParentLoading && HasValidPaths;
         private const int MaxParallelRedownloadOperations = 10;
-        
+
 
         public bool IsParentLoading
         {
@@ -98,7 +99,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 // Manual RaiseCanExecuteChangedForAllCommands() removed
             }
         }
-        
+
         // FIX: Property is now nullable to match its backing field.
         public IList? SelectedItems // Bound from ListBox typically
         {
@@ -255,7 +256,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 Debug.WriteLine($"[CanExecuteRedownloadMods] Result: false (Loading or No Selection)");
                 return false;
             }
-            
+
             // FIX: Safely cast after verifying the list is not null to resolve CS8604.
             if (currentSelection is null)
             {
@@ -285,139 +286,139 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             return anyValid; // Command is executable if at least one valid item exists
         }
 
-    private async Task ExecuteRedownloadModsAsync(IList selectedItems, CancellationToken ct)
-    {
-        var currentSelection = selectedItems ?? SelectedItems;
-
-        var modsToProcess = currentSelection?.Cast<ModItem>()
-            .Where(mod => mod != null && mod.ModType == ModType.WorkshopL && !string.IsNullOrEmpty(mod.SteamId) && long.TryParse(mod.SteamId, out _))
-            .Select(mod => mod.SteamId!) // Select only the valid Steam IDs
-            .ToList();
-
-        if (modsToProcess == null || !modsToProcess.Any())
+        private async Task ExecuteRedownloadModsAsync(IList selectedItems, CancellationToken ct)
         {
-            Debug.WriteLine("[ExecuteRedownloadModsAsync] No valid WorkshopL mods found in the selection after filtering.");
-            _dialogService.ShowInformation("Redownload Mod", "No selected mods are eligible for redownload (must be locally installed Workshop mods).");
-            return;
-        }
+            var currentSelection = selectedItems ?? SelectedItems;
 
-        // Confirmation Dialog (using modsToProcess.Count)
-        var originalMods = currentSelection!.Cast<ModItem>().Where(m => modsToProcess.Contains(m.SteamId!)).ToList(); // Get original items for name
-        string confirmMessage = originalMods.Count == 1
-            ? $"Are you sure you want to queue '{originalMods.First().Name}' for redownload?\n\nThis will add the mod to the download queue. It will *not* check if an update is available."
-            : $"Are you sure you want to queue {originalMods.Count} Workshop mod(s) for redownload?\n\nThis will add the selected mods to the download queue. It will *not* check if updates are available.";
+            var modsToProcess = currentSelection?.Cast<ModItem>()
+                .Where(mod => mod != null && mod.ModType == ModType.WorkshopL && !string.IsNullOrEmpty(mod.SteamId) && long.TryParse(mod.SteamId, out _))
+                .Select(mod => mod.SteamId!) // Select only the valid Steam IDs
+                .ToList();
 
-        var confirmResult = _dialogService.ShowConfirmation("Confirm Redownload", confirmMessage, showCancel: true);
-        if (confirmResult != MessageDialogResult.OK && confirmResult != MessageDialogResult.Yes)
-        {
-            Debug.WriteLine("[ExecuteRedownloadModsAsync] User cancelled redownload confirmation.");
-            return;
-        }
-
-        // ---- NEW LOGIC USING THE SERVICE ----
-        IsLoadingRequest?.Invoke(this, true);
-        ProgressDialogViewModel? progressDialog = null;
-        CancellationTokenSource? linkedCts = null;
-        QueueProcessResult queueResult = new QueueProcessResult();
-
-        try
-        {
-            // Setup progress dialog and cancellation
-             await RunOnUIThreadAsync(() =>
-             {
-                  progressDialog = _dialogService.ShowProgressDialog(
-                     "Queueing Mods for Redownload",
-                     "Starting...",
-                     canCancel: true,
-                     isIndeterminate: false,
-                     cts: null, // Will create linked CTS below
-                     closeable: true);
-             });
-             if (progressDialog == null) throw new InvalidOperationException("Progress dialog view model was not created.");
-
-             linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, progressDialog.CancellationToken);
-             var combinedToken = linkedCts.Token;
-
-             // Setup Progress Reporter
-             var progressReporter = new Progress<QueueProcessProgress>(update =>
-             {
-                 // Run progress updates on UI thread
-                 RunOnUIThread(() =>
-                 {
-                      if (progressDialog != null && !progressDialog.CancellationToken.IsCancellationRequested)
-                      {
-                          progressDialog.Message = $"{update.Message} ({update.CurrentItem}/{update.TotalItems})";
-                          progressDialog.Progress = (int)((double)update.CurrentItem / update.TotalItems * 100);
-                      }
-                 });
-             });
-
-            // Call the central service
-            queueResult = await _steamWorkshopQueueProcessor.ProcessAndEnqueueModsAsync(modsToProcess, progressReporter, combinedToken);
-
-            // --- Show Summary ---
-            await RunOnUIThreadAsync(() =>
+            if (modsToProcess == null || !modsToProcess.Any())
             {
-                if (queueResult.WasCancelled)
+                Debug.WriteLine("[ExecuteRedownloadModsAsync] No valid WorkshopL mods found in the selection after filtering.");
+                _dialogService.ShowInformation("Redownload Mod", "No selected mods are eligible for redownload (must be locally installed Workshop mods).");
+                return;
+            }
+
+            // Confirmation Dialog (using modsToProcess.Count)
+            var originalMods = currentSelection!.Cast<ModItem>().Where(m => modsToProcess.Contains(m.SteamId!)).ToList(); // Get original items for name
+            string confirmMessage = originalMods.Count == 1
+                ? $"Are you sure you want to queue '{originalMods.First().Name}' for redownload?\n\nThis will add the mod to the download queue. It will *not* check if an update is available."
+                : $"Are you sure you want to queue {originalMods.Count} Workshop mod(s) for redownload?\n\nThis will add the selected mods to the download queue. It will *not* check if updates are available.";
+
+            var confirmResult = _dialogService.ShowConfirmation("Confirm Redownload", confirmMessage, showCancel: true);
+            if (confirmResult != MessageDialogResult.OK && confirmResult != MessageDialogResult.Yes)
+            {
+                Debug.WriteLine("[ExecuteRedownloadModsAsync] User cancelled redownload confirmation.");
+                return;
+            }
+
+            // ---- NEW LOGIC USING THE SERVICE ----
+            IsLoadingRequest?.Invoke(this, true);
+            ProgressDialogViewModel? progressDialog = null;
+            CancellationTokenSource? linkedCts = null;
+            QueueProcessResult queueResult = new QueueProcessResult();
+
+            try
+            {
+                // Setup progress dialog and cancellation
+                await RunOnUIThreadAsync(() =>
                 {
-                    Debug.WriteLine("Redownload operation cancelled.", nameof(ModActionsViewModel));
-                    progressDialog?.ForceClose();
-                    _dialogService.ShowWarning("Operation Cancelled", "Queueing mods for redownload was cancelled.");
-                    return;
-                }
+                    progressDialog = _dialogService.ShowProgressDialog(
+                    "Queueing Mods for Redownload",
+                    "Starting...",
+                    canCancel: true,
+                    isIndeterminate: false,
+                    cts: null, // Will create linked CTS below
+                    closeable: true);
+                });
+                if (progressDialog == null) throw new InvalidOperationException("Progress dialog view model was not created.");
 
-                progressDialog?.CompleteOperation("Redownload queueing complete.");
+                linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, progressDialog.CancellationToken);
+                var combinedToken = linkedCts.Token;
 
-                var sb = new StringBuilder();
-                if (queueResult.SuccessfullyAdded > 0) sb.AppendLine($"{queueResult.SuccessfullyAdded} mod(s) added to the download queue.");
-                else sb.AppendLine("No new mods were added to the download queue.");
-
-                if (queueResult.AlreadyQueued > 0) sb.AppendLine($"{queueResult.AlreadyQueued} selected mod(s) were already in the queue.");
-                if (queueResult.FailedProcessing > 0)
+                // Setup Progress Reporter
+                var progressReporter = new Progress<QueueProcessProgress>(update =>
                 {
-                    sb.AppendLine($"{queueResult.FailedProcessing} selected mod(s) could not be added due to errors:");
-                    foreach (var errMsg in queueResult.ErrorMessages.Take(5)) // Show first few errors
+                    // Run progress updates on UI thread
+                    RunOnUIThread(() =>
                     {
-                        sb.AppendLine($"  - {errMsg}");
-                    }
-                    if (queueResult.ErrorMessages.Count > 5) sb.AppendLine("    (Check logs for more details...)");
-                }
+                        if (progressDialog != null && !progressDialog.CancellationToken.IsCancellationRequested)
+                        {
+                            progressDialog.Message = $"{update.Message} ({update.CurrentItem}/{update.TotalItems})";
+                            progressDialog.Progress = (int)((double)update.CurrentItem / update.TotalItems * 100);
+                        }
+                    });
+                });
 
-                // Show appropriate dialog based on result counts
-                if (queueResult.FailedProcessing > 0 && queueResult.SuccessfullyAdded > 0) // Partial success
-                    _dialogService.ShowWarning("Redownload Partially Queued", sb.ToString().Trim());
-                else if (queueResult.FailedProcessing > 0 && queueResult.SuccessfullyAdded == 0) // All failed or skipped
-                    _dialogService.ShowError("Redownload Queue Failed", sb.ToString().Trim());
-                else // All succeeded or skipped (already queued)
-                    _dialogService.ShowInformation("Redownload Queued", sb.ToString().Trim());
+                // Call the central service
+                queueResult = await _steamWorkshopQueueProcessor.ProcessAndEnqueueModsAsync(modsToProcess, progressReporter, combinedToken);
 
-                // Navigate if items were added
-                if (queueResult.SuccessfullyAdded > 0)
+                // --- Show Summary ---
+                await RunOnUIThreadAsync(() =>
                 {
-                    _navigationService.RequestTabSwitch("Downloader");
-                }
-            });
+                    if (queueResult.WasCancelled)
+                    {
+                        Debug.WriteLine("Redownload operation cancelled.", nameof(ModActionsViewModel));
+                        progressDialog?.ForceClose();
+                        _dialogService.ShowWarning("Operation Cancelled", "Queueing mods for redownload was cancelled.");
+                        return;
+                    }
+
+                    progressDialog?.CompleteOperation("Redownload queueing complete.");
+
+                    var sb = new StringBuilder();
+                    if (queueResult.SuccessfullyAdded > 0) sb.AppendLine($"{queueResult.SuccessfullyAdded} mod(s) added to the download queue.");
+                    else sb.AppendLine("No new mods were added to the download queue.");
+
+                    if (queueResult.AlreadyQueued > 0) sb.AppendLine($"{queueResult.AlreadyQueued} selected mod(s) were already in the queue.");
+                    if (queueResult.FailedProcessing > 0)
+                    {
+                        sb.AppendLine($"{queueResult.FailedProcessing} selected mod(s) could not be added due to errors:");
+                        foreach (var errMsg in queueResult.ErrorMessages.Take(5)) // Show first few errors
+                        {
+                            sb.AppendLine($"  - {errMsg}");
+                        }
+                        if (queueResult.ErrorMessages.Count > 5) sb.AppendLine("    (Check logs for more details...)");
+                    }
+
+                    // Show appropriate dialog based on result counts
+                    if (queueResult.FailedProcessing > 0 && queueResult.SuccessfullyAdded > 0) // Partial success
+                        _dialogService.ShowWarning("Redownload Partially Queued", sb.ToString().Trim());
+                    else if (queueResult.FailedProcessing > 0 && queueResult.SuccessfullyAdded == 0) // All failed or skipped
+                        _dialogService.ShowError("Redownload Queue Failed", sb.ToString().Trim());
+                    else // All succeeded or skipped (already queued)
+                        _dialogService.ShowInformation("Redownload Queued", sb.ToString().Trim());
+
+                    // Navigate if items were added
+                    if (queueResult.SuccessfullyAdded > 0)
+                    {
+                        _navigationService.RequestTabSwitch("Downloader");
+                    }
+                });
+            }
+            catch (OperationCanceledException) // Catch cancellation from WaitAsync or linked CTS propagation
+            {
+                // Logged and handled by the UI thread check above if queueResult.WasCancelled is true
+                Debug.WriteLine("[ExecuteRedownloadModsAsync] Operation cancelled (caught top level).", nameof(ModActionsViewModel));
+                await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
+            }
+            catch (Exception ex) // Catch unexpected errors
+            {
+                //_logger.LogException(ex, "[ExecuteRedownloadModsAsync] Outer error", nameof(ModActionsViewModel));
+                await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
+                RunOnUIThread(() => _dialogService.ShowError("Redownload Error", $"An unexpected error occurred: {ex.Message}"));
+            }
+            finally
+            {
+                await RunOnUIThreadAsync(() => progressDialog?.ForceClose()); // Ensure closed
+                linkedCts?.Dispose();
+                IsLoadingRequest?.Invoke(this, false);
+            }
+            // ---- END OF NEW LOGIC ----
         }
-        catch (OperationCanceledException) // Catch cancellation from WaitAsync or linked CTS propagation
-        {
-            // Logged and handled by the UI thread check above if queueResult.WasCancelled is true
-            Debug.WriteLine("[ExecuteRedownloadModsAsync] Operation cancelled (caught top level).", nameof(ModActionsViewModel));
-             await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
-        }
-        catch (Exception ex) // Catch unexpected errors
-        {
-            //_logger.LogException(ex, "[ExecuteRedownloadModsAsync] Outer error", nameof(ModActionsViewModel));
-            await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
-            RunOnUIThread(() => _dialogService.ShowError("Redownload Error", $"An unexpected error occurred: {ex.Message}"));
-        }
-        finally
-        {
-            await RunOnUIThreadAsync(() => progressDialog?.ForceClose()); // Ensure closed
-            linkedCts?.Dispose();
-            IsLoadingRequest?.Invoke(this, false);
-        }
-         // ---- END OF NEW LOGIC ----
-    }
 
 
         private bool CanExecutizeMod(ModItem? mod)
@@ -479,6 +480,197 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             finally
             {
                 // IsLoadingRequest?.Invoke(this, false); // Turn off loading indicator if used
+            }
+        }
+        private async Task ExecuteStripModsAsync(CancellationToken ct)
+        {
+            var workshopMods = _modListManager.GetAllMods().Where(m => m.ModType == ModType.WorkshopL).ToList();
+            if (!workshopMods.Any())
+            {
+                _dialogService.ShowInformation("Strip Mods", "No locally installed Workshop mods found to strip.");
+                return;
+            }
+
+            IsLoadingRequest?.Invoke(this, true);
+            ProgressDialogViewModel? progressDialog = null;
+            CancellationTokenSource? linkedCts = null;
+            var strippableModsVms = new List<StrippableModViewModel>();
+
+            try
+            {
+                // --- Scanning Phase ---
+                await RunOnUIThreadAsync(() =>
+                {
+                    progressDialog = _dialogService.ShowProgressDialog("Scanning Mods", "Starting scan...", true, false);
+                });
+                if (progressDialog == null) throw new InvalidOperationException("Progress dialog could not be created.");
+                linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, progressDialog.CancellationToken);
+                var combinedToken = linkedCts.Token;
+
+                string majorVersion = _pathService.GetMajorGameVersion();
+                var processedCount = 0;
+
+                await Task.Run(async () =>
+                {
+                    foreach (var mod in workshopMods)
+                    {
+                        combinedToken.ThrowIfCancellationRequested();
+                        processedCount++;
+                        progressDialog.UpdateProgress((int)((double)processedCount / workshopMods.Count * 100), $"Scanning: {mod.Name}");
+
+                        var strippableModVm = new StrippableModViewModel(mod);
+                        await ScanDirectoryForStrippableItems(new DirectoryInfo(mod.Path), mod.Path, strippableModVm, majorVersion, combinedToken);
+
+                        if (strippableModVm.Children.Any())
+                        {
+                            strippableModsVms.Add(strippableModVm);
+                        }
+                    }
+                }, combinedToken);
+
+                await RunOnUIThreadAsync(() => progressDialog.ForceClose());
+
+                // --- Dialog Phase ---
+                if (!strippableModsVms.Any())
+                {
+                    _dialogService.ShowInformation("Strip Mods", "Scan complete. No unnecessary files or folders found.");
+                    return;
+                }
+
+                (bool shouldStrip, IEnumerable<string>? pathsToDelete) = (false, null);
+                await RunOnUIThreadAsync(() =>
+                {
+                    // <<< UPDATED: Now instantiates the external ViewModel >>>
+                    var dialogViewModel = new StripDialogViewModel(strippableModsVms);
+                    (shouldStrip, pathsToDelete) = _dialogService.ShowStripModsDialog(dialogViewModel);
+                });
+
+                if (!shouldStrip || pathsToDelete == null || !pathsToDelete.Any())
+                {
+                    _dialogService.ShowInformation("Strip Mods", "Operation cancelled by user.");
+                    return;
+                }
+
+                // --- Deletion Phase ---
+                await RunOnUIThreadAsync(() =>
+                {
+                    progressDialog = _dialogService.ShowProgressDialog("Stripping Mods", "Deleting selected items...", false, false);
+                });
+                if (progressDialog == null) throw new InvalidOperationException("Progress dialog could not be created.");
+
+                var totalToDelete = pathsToDelete.Count();
+                var deletedCount = 0;
+                long bytesFreed = 0;
+
+                await Task.Run(() =>
+                {
+                    foreach (var path in pathsToDelete)
+                    {
+                        try
+                        {
+                            if (File.Exists(path))
+                            {
+                                var fileInfo = new FileInfo(path);
+                                bytesFreed += fileInfo.Length;
+                                File.Delete(path);
+                            }
+                            else if (Directory.Exists(path))
+                            {
+                                var dirInfo = new DirectoryInfo(path);
+                                bytesFreed += dirInfo.EnumerateFiles("*", SearchOption.AllDirectories).Sum(fi => fi.Length);
+                                Directory.Delete(path, true);
+                            }
+                            deletedCount++;
+                            progressDialog.UpdateProgress((int)((double)deletedCount / totalToDelete * 100), $"Deleting: {Path.GetFileName(path)}");
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Failed to delete {path}: {ex.Message}");
+                        }
+                    }
+                });
+
+                await RunOnUIThreadAsync(() => progressDialog.ForceClose());
+                _dialogService.ShowInformation("Strip Complete", $"Successfully stripped {deletedCount} items, freeing approximately {(bytesFreed / 1024.0 / 1024.0):F2} MB.");
+            }
+            catch (OperationCanceledException)
+            {
+                await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
+                _dialogService.ShowWarning("Operation Cancelled", "The strip mods operation was cancelled.");
+            }
+            catch (Exception ex)
+            {
+                await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
+                _dialogService.ShowError("Strip Error", $"An unexpected error occurred: {ex.Message}");
+            }
+            finally
+            {
+                linkedCts?.Dispose();
+                IsLoadingRequest?.Invoke(this, false);
+            }
+        }
+
+        private async Task ScanDirectoryForStrippableItems(DirectoryInfo directory, string modRootPath, StrippableModViewModel strippableModVm, string majorGameVersion, CancellationToken ct)
+        {
+            var unnecessaryFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".git", ".vs", ".vscode", "Source" };
+            var unnecessaryFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".gitignore", ".gitattributes" };
+
+            // Determine which version folders to keep
+            var versionFolders = new Dictionary<string, Version>();
+            foreach (var dir in new DirectoryInfo(modRootPath).EnumerateDirectories())
+            {
+                if (Version.TryParse(dir.Name, out var ver))
+                {
+                    versionFolders[dir.Name] = ver;
+                }
+            }
+            var versionsToKeep = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { majorGameVersion };
+            if (versionFolders.Any())
+            {
+                var maxVersion = versionFolders.OrderByDescending(kvp => kvp.Value).First();
+                versionsToKeep.Add(maxVersion.Key);
+            }
+
+            // Recursive scanning function
+            async Task Scan(DirectoryInfo currentDir)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                // Scan files
+                foreach (var file in currentDir.EnumerateFiles())
+                {
+                    if (unnecessaryFiles.Contains(file.Name))
+                    {
+                        var relativePath = Path.GetRelativePath(modRootPath, file.FullName);
+                        var vm = new StrippableItemViewModel(strippableModVm, file.Name, relativePath, file.FullName, file.Length, StrippableItemType.File);
+                        await RunOnUIThreadAsync(() => strippableModVm.Children.Add(vm));
+                    }
+                }
+
+                // Scan subdirectories
+                foreach (var subDir in currentDir.EnumerateDirectories())
+                {
+                    bool isAtRoot = Path.GetDirectoryName(subDir.FullName).Equals(modRootPath, StringComparison.OrdinalIgnoreCase);
+                    bool isVersionFolder = isAtRoot && versionFolders.ContainsKey(subDir.Name);
+
+                    if (unnecessaryFolders.Contains(subDir.Name) || (isVersionFolder && !versionsToKeep.Contains(subDir.Name)))
+                    {
+                        var size = await Task.Run(() => subDir.EnumerateFiles("*", SearchOption.AllDirectories).Sum(f => f.Length), ct);
+                        var relativePath = Path.GetRelativePath(modRootPath, subDir.FullName);
+                        var vm = new StrippableItemViewModel(strippableModVm, subDir.Name, relativePath, subDir.FullName, size, StrippableItemType.Folder);
+                        await RunOnUIThreadAsync(() => strippableModVm.Children.Add(vm));
+                    }
+                    else
+                    {
+                        await Scan(subDir);
+                    }
+                }
+            }
+
+            await Scan(directory);
+            if (strippableModVm.Children.Any())
+            {
+                await RunOnUIThreadAsync(() => strippableModVm.UpdateParentSelectionState());
             }
         }
 

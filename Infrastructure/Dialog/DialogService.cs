@@ -11,6 +11,7 @@ using RimSharp.Features.ModManager.Dialogs.Dependencies;
 using RimSharp.Features.ModManager.Dialogs.MissingMods;
 using RimSharp.Features.WorkshopDownloader.Dialogs.Collection;
 using System.Collections.Generic;
+using RimSharp.Features.ModManager.Dialogs.Strip;
 
 namespace RimSharp.Infrastructure.Dialog
 {
@@ -102,6 +103,17 @@ namespace RimSharp.Infrastructure.Dialog
             return (viewModel.DialogResult, viewModel.Input);
         }
 
+        public (bool, IEnumerable<string>?) ShowStripModsDialog(StripDialogViewModel viewModel)
+        {
+            var dialog = new StripModsDialogView(viewModel)
+            {
+                Owner = Application.Current?.MainWindow,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+            dialog.ShowDialog();
+            return viewModel.DialogResult;
+        }
+
         public ModCustomizationResult ShowCustomizeModDialog(CustomizeModDialogViewModel viewModel)
         {
             var dialog = new CustomizeModDialogView(viewModel)
@@ -151,7 +163,7 @@ namespace RimSharp.Infrastructure.Dialog
         public MissingModSelectionDialogOutput ShowMissingModSelectionDialog(MissingModSelectionDialogViewModel viewModel)
         {
             // FIX: Declare the result variable as nullable to align with the nullable context.
-            MissingModSelectionDialogOutput? result = null; 
+            MissingModSelectionDialogOutput? result = null;
             Application.Current.Dispatcher.Invoke(() =>
             { // Ensure UI thread
                 var dialog = new MissingModSelectionDialogView(viewModel)
@@ -166,7 +178,7 @@ namespace RimSharp.Infrastructure.Dialog
                 result = viewModel.DialogResult ?? new MissingModSelectionDialogOutput();
             });
             // Return the result, or a new instance if the dispatcher failed to run.
-            return result ?? new MissingModSelectionDialogOutput(); 
+            return result ?? new MissingModSelectionDialogOutput();
         }
 
         public List<string>? ShowCollectionDialog(CollectionDialogViewModel viewModel)

@@ -49,31 +49,24 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 CanExecuteSimpleCommands,
                 observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
 
+            StripModsCommand = CreateCancellableAsyncCommand(
+                ExecuteStripModsAsync,
+                CanExecuteSimpleCommands,
+                observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
+
             RunGameCommand = CreateCommand(
                 ExecuteRunGame,
                 CanExecuteRunGame,
                 observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
         }
 
-        // This method was accidentally removed in the previous response. It is now restored.
         private void InitializePlaceholderCommands()
         {
-            StripModsCommand = CreateCommand(
-                () => _dialogService.ShowInformation("Not Implemented", "Strip mods: Functionality not yet implemented."),
-                () => true,
-                nameof(IsParentLoading));
 
             FixIntegrityCommand = CreateCommand(
                 () => _dialogService.ShowInformation("Not Implemented", "Fix integrity: Functionality not yet implemented."),
                 () => true,
                 nameof(IsParentLoading));
-
-            // Note: RunGameCommand is also initialized in InitializeToolsAnalysisCommands.
-            // This re-assignment is harmless but might be unintentional.
-            RunGameCommand = CreateCommand(
-                ExecuteRunGame,
-                CanExecuteRunGame,
-                nameof(IsParentLoading), nameof(HasValidPaths));
         }
 
         private bool CanExecuteCheckIncompatibilities() => !IsParentLoading && _modListManager.VirtualActiveMods.Any();
@@ -116,7 +109,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                             await RunOnUIThreadAsync(() =>
                             {
                                 progressDialog = _dialogService.ShowProgressDialog(
-                               "Verifying & Queueing Dependencies", "Starting...", canCancel: true, 
+                               "Verifying & Queueing Dependencies", "Starting...", canCancel: true,
                                isIndeterminate: false, cts: null, closeable: true);
                             });
                             if (progressDialog == null) throw new InvalidOperationException("Progress dialog view model was not created.");
@@ -524,11 +517,11 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                         {
                             RunOnUIThread(() =>
                             {
-                                 if (progressViewModel != null && !progressViewModel.CancellationToken.IsCancellationRequested)
-                                 {
-                                     progressViewModel.Message = $"{update.Message} ({update.CurrentItem}/{update.TotalItems})";
-                                     progressViewModel.Progress = (int)((double)update.CurrentItem / update.TotalItems * 100);
-                                 }
+                                if (progressViewModel != null && !progressViewModel.CancellationToken.IsCancellationRequested)
+                                {
+                                    progressViewModel.Message = $"{update.Message} ({update.CurrentItem}/{update.TotalItems})";
+                                    progressViewModel.Progress = (int)((double)update.CurrentItem / update.TotalItems * 100);
+                                }
                             });
                         });
 
