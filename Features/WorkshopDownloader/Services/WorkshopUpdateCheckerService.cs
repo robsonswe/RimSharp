@@ -221,9 +221,9 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             // A small tolerance (e.g., a few minutes) can account for minor sync discrepancies or rounding.
             TimeSpan difference = apiUpdateTimeUtc - localUpdateTimeUtc;
 
-            // If the API time is newer, but by less than a small threshold (e.g., 5 minutes), treat it as a non-update.
+            // If the API time is newer, but by less than a small threshold (e.g., 2 minutes), treat it as a non-update.
             // This avoids flagging trivial differences as updates.
-            bool isConsideredUpdate = apiUpdateTimeUtc > localUpdateTimeUtc && difference.TotalMinutes > 5;
+            bool isConsideredUpdate = apiUpdateTimeUtc > localUpdateTimeUtc && difference.TotalMinutes > 2;
 
             if (isConsideredUpdate)
             {
