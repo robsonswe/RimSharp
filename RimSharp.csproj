@@ -32,8 +32,13 @@
     <PackageReference Include="PInvoke.User32" Version="0.7.124" />
     <PackageReference Include="QuikGraph" Version="2.5.0" />
   </ItemGroup>
+  
   <ItemGroup>
     <Content Include="Rules\db\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+
+    <Content Include="version.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
 
@@ -41,7 +46,6 @@
     <None Include="Lists\**\*" Condition="Exists('Lists\**\*')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-
   </ItemGroup>
 
   <PropertyGroup>
