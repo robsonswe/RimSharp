@@ -11,6 +11,7 @@ using RimSharp.Features.ModManager.Dialogs.MissingMods;
 using RimSharp.AppDir.Dialogs;
 using RimSharp.Features.WorkshopDownloader.Dialogs.Collection;
 using System.Collections.Generic;
+using RimSharp.Features.ModManager.Dialogs.Strip;
 
 namespace RimSharp.Shared.Services.Contracts
 {
@@ -24,7 +25,7 @@ namespace RimSharp.Shared.Services.Contracts
         UpdateCheckDialogResult ShowUpdateCheckDialog(UpdateCheckDialogViewModel viewModel);
 
         ProgressDialogViewModel ShowProgressDialog(string title, string message, bool canCancel = false, bool isIndeterminate = true, CancellationTokenSource? cts = null, bool closeable = true);
-        
+
         (MessageDialogResult Result, string Input) ShowInputDialog(string title, string message, string defaultInput = "");
         ModCustomizationResult ShowCustomizeModDialog(CustomizeModDialogViewModel viewModel);
         ModFilterDialogResult ShowModFilterDialog(ModFilterDialogViewModel viewModel);
@@ -32,5 +33,7 @@ namespace RimSharp.Shared.Services.Contracts
         DependencyResolutionDialogResult ShowDependencyResolutionDialog(DependencyResolutionDialogViewModel viewModel);
         MissingModSelectionDialogOutput ShowMissingModSelectionDialog(MissingModSelectionDialogViewModel viewModel);
         List<string>? ShowCollectionDialog(CollectionDialogViewModel viewModel);
+        (bool, IEnumerable<string>?) ShowStripModsDialog(StripDialogViewModel viewModel);
+
     }
 }
