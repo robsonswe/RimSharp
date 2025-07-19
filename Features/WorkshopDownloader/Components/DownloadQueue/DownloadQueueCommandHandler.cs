@@ -402,6 +402,15 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
         private async Task AddSingleModFromBrowserAsync(CancellationToken token)
         {
+            // --- Pre-check: Ensure mod info is available before proceeding ---
+            if (!_browserViewModel.IsModInfoAvailable)
+            {
+                string reason = "Mod information is not available. The mod may be deleted, unlisted, or the page hasn't loaded correctly.";
+                _dialogService.ShowError("Add Mod Failed", reason);
+                StatusChanged?.Invoke(this, reason);
+                return;
+            }
+
             ModInfoDto? modInfo = null;
             string? failedReason = null;
             string? steamId = null;

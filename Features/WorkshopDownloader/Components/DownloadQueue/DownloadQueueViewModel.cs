@@ -225,10 +225,10 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             // Use the public property now for consistency, or keep using _browserViewModel
             CanAddMod = IsSteamCmdReady
                         && !IsOperationInProgress
-                        && BrowserViewModel != null // Use public property
-                        && (BrowserViewModel.IsValidModUrl || BrowserViewModel.IsCollectionUrl); // Use public property
+                        && BrowserViewModel != null
+                        && ((BrowserViewModel.IsValidModUrl && BrowserViewModel.IsModInfoAvailable) || BrowserViewModel.IsCollectionUrl);
 
-            Debug.WriteLine($"[QueueVM] Calculated CanAddMod: {CanAddMod} (IsSteamCmdReady={IsSteamCmdReady}, !InProg={!IsOperationInProgress}, IsValidModUrl={BrowserViewModel?.IsValidModUrl}, IsCollectionUrl={BrowserViewModel?.IsCollectionUrl})");
+            Debug.WriteLine($"[QueueVM] Calculated CanAddMod: {CanAddMod} (IsSteamCmdReady={IsSteamCmdReady}, !InProg={!IsOperationInProgress}, IsValidModUrl={BrowserViewModel?.IsValidModUrl}, IsCollectionUrl={BrowserViewModel?.IsCollectionUrl}, IsModInfoAvailable={BrowserViewModel?.IsModInfoAvailable})");
         }
 
         private void QueueService_ItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
