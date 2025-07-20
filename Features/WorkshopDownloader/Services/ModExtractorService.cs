@@ -24,6 +24,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         Task<ModInfoDto?> ExtractFullModInfo();
         bool IsModInfoAvailable { get; }
         event EventHandler? IsModInfoAvailableChanged;
+        void Reset();
     }
 
     public class ModExtractorService : IModExtractorService, IDisposable
@@ -39,6 +40,13 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         public ModExtractorService(Microsoft.Web.WebView2.Wpf.WebView2 webView)
         {
             _webView = webView;
+        }
+
+        public void Reset()
+        {
+            _isModNameAvailable = false;
+            _isModDateAvailable = false;
+            CheckAndNotifyModInfoAvailability();
         }
 
         private void CheckAndNotifyModInfoAvailability()

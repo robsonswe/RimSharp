@@ -328,6 +328,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 IsValidModUrl = false;
                 IsCollectionUrl = false;
                 IsModInfoAvailable = false;
+                _extractorService?.Reset();
                 _isAnalyzingContent = false; // Also reset analysis flag if navigation interrupts it
                 Debug.WriteLine($"[BrowserVM] Reset validity flags for new navigation to {intendedUrl}.");
                 // --- End FIX ---
