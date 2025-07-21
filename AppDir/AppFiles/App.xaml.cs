@@ -31,6 +31,11 @@ using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
 // --- Git Mod Manager Feature ---
 using RimSharp.Features.GitModManager.ViewModels;
 
+// --- VRAM Usage Feature ---
+
+using RimSharp.Features.VramAnalysis.ViewModels;
+
+
 // --- Workshop Downloader Feature ---
 using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Features.WorkshopDownloader.ViewModels;
@@ -287,6 +292,15 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IDialogService>()
                 ));
 
+
+                services.AddTransient<VramAnalysisViewModel>(provider =>
+    new VramAnalysisViewModel(
+        provider.GetRequiredService<IModListManager>(),
+        provider.GetRequiredService<IDialogService>(),
+        provider.GetRequiredService<ILoggerService>()
+    ));
+
+
             // MainViewModel holds top-level state - Singleton
             services.AddSingleton<MainViewModel>(provider =>
                 new MainViewModel(
@@ -297,7 +311,8 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IUpdaterService>(),       // <<< ADDED
                     provider.GetRequiredService<ModsViewModel>(),       // <<< Resolves Transient
                     provider.GetRequiredService<DownloaderViewModel>(), // <<< Resolves Transient
-                    provider.GetRequiredService<GitModsViewModel>()     // <<< Resolves Transient
+                    provider.GetRequiredService<GitModsViewModel>(),     // <<< Resolves Transient
+                    provider.GetRequiredService<VramAnalysisViewModel>()
                 ));
 
             // --- Application Shell ---
