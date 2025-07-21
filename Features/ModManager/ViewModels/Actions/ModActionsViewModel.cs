@@ -24,6 +24,7 @@ using RimSharp.Features.WorkshopDownloader.Models; // For ModInfoDto
 using System.Globalization;
 using System.Collections.Concurrent;
 using RimSharp.Features.ModManager.Dialogs.Strip; // For CultureInfo
+using System.Xml.Linq;
 
 namespace RimSharp.Features.ModManager.ViewModels.Actions
 {
@@ -612,70 +613,110 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
         private async Task ScanDirectoryForStrippableItems(DirectoryInfo directory, string modRootPath, StrippableModViewModel strippableModVm, string majorGameVersion, CancellationToken ct)
         {
-            var unnecessaryFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".git", ".vs", ".vscode", "Source" };
-            var unnecessaryFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".gitignore", ".gitattributes" };
+            var strippableNameComponents = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Source", ".github", ".vs", ".vscode" };
+            char[] nameDelimiters = { '-', '_', ' ' };
 
-            // Determine which version folders to keep
-            var versionFolders = new Dictionary<string, Version>();
-            foreach (var dir in new DirectoryInfo(modRootPath).EnumerateDirectories())
+            // This dictionary will hold all items we *think* should be deleted.
+            var potentialDeletions = new Dictionary<string, (string Name, string RelativePath, string FullPath, long Size, StrippableItemType Type)>(StringComparer.OrdinalIgnoreCase);
+
+            // --- Phase 1: Identify and flag old version folders ---
+            var versionLikeFolders = new List<(DirectoryInfo Dir, Version Ver)>();
+            foreach (var dir in directory.EnumerateDirectories())
             {
-                if (Version.TryParse(dir.Name, out var ver))
+                var versionString = new string(dir.Name.TakeWhile(c => char.IsDigit(c) || c == '.').ToArray()).TrimEnd('.');
+                if (!string.IsNullOrEmpty(versionString) && Version.TryParse(versionString, out var ver))
                 {
-                    versionFolders[dir.Name] = ver;
+                    versionLikeFolders.Add((dir, ver));
                 }
             }
-            var versionsToKeep = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { majorGameVersion };
-            if (versionFolders.Any())
+
+            if (versionLikeFolders.Any())
             {
-                var maxVersion = versionFolders.OrderByDescending(kvp => kvp.Value).First();
-                versionsToKeep.Add(maxVersion.Key);
+                var latestVersion = versionLikeFolders.Max(v => v.Ver);
+                foreach (var (dir, ver) in versionLikeFolders)
+                {
+                    bool keep = dir.Name.Contains(majorGameVersion) || ver.Equals(latestVersion);
+                    if (!keep)
+                    {
+                        long size = await Task.Run(() => dir.EnumerateFiles("*", SearchOption.AllDirectories).Sum(f => f.Length), ct);
+                        potentialDeletions[dir.FullName] = (dir.Name, Path.GetRelativePath(modRootPath, dir.FullName), dir.FullName, size, StrippableItemType.Folder);
+                    }
+                }
             }
 
-            // Recursive scanning function
-            async Task Scan(DirectoryInfo currentDir)
+            // --- Phase 2: Recursively find junk files/folders everywhere ---
+            async Task FindJunkRecursively(DirectoryInfo currentDir)
             {
                 ct.ThrowIfCancellationRequested();
 
-                // Scan files
-                foreach (var file in currentDir.EnumerateFiles())
+                // If this directory is already marked for deletion, no need to scan inside it.
+                if (potentialDeletions.ContainsKey(currentDir.FullName)) return;
+
+                // Scan files for junk
+                foreach (var file in currentDir.EnumerateFiles().Where(f => f.Name.StartsWith(".git", StringComparison.OrdinalIgnoreCase)))
                 {
-                    if (unnecessaryFiles.Contains(file.Name))
-                    {
-                        var relativePath = Path.GetRelativePath(modRootPath, file.FullName);
-                        var vm = new StrippableItemViewModel(strippableModVm, file.Name, relativePath, file.FullName, file.Length, StrippableItemType.File);
-                        await RunOnUIThreadAsync(() => strippableModVm.Children.Add(vm));
-                    }
+                    potentialDeletions[file.FullName] = (file.Name, Path.GetRelativePath(modRootPath, file.FullName), file.FullName, file.Length, StrippableItemType.File);
                 }
 
-                // Scan subdirectories
+                // Scan subdirectories for junk
                 foreach (var subDir in currentDir.EnumerateDirectories())
                 {
-                    // FIX: Safely check the parent directory name to avoid a NullReferenceException.
-                    // If GetDirectoryName returns null, isAtRoot will be false.
-                    bool isAtRoot = Path.GetDirectoryName(subDir.FullName)?.Equals(modRootPath, StringComparison.OrdinalIgnoreCase) ?? false;
-                    bool isVersionFolder = isAtRoot && versionFolders.ContainsKey(subDir.Name);
+                    bool isJunkByName = subDir.Name.StartsWith(".git", StringComparison.OrdinalIgnoreCase) ||
+                                        subDir.Name.Split(nameDelimiters).Any(part => strippableNameComponents.Contains(part));
 
-                    if (unnecessaryFolders.Contains(subDir.Name) || (isVersionFolder && !versionsToKeep.Contains(subDir.Name)))
+                    if (isJunkByName)
                     {
-                        var size = await Task.Run(() => subDir.EnumerateFiles("*", SearchOption.AllDirectories).Sum(f => f.Length), ct);
-                        var relativePath = Path.GetRelativePath(modRootPath, subDir.FullName);
-                        var vm = new StrippableItemViewModel(strippableModVm, subDir.Name, relativePath, subDir.FullName, size, StrippableItemType.Folder);
-                        await RunOnUIThreadAsync(() => strippableModVm.Children.Add(vm));
+                        long size = await Task.Run(() => subDir.EnumerateFiles("*", SearchOption.AllDirectories).Sum(f => f.Length), ct);
+                        potentialDeletions[subDir.FullName] = (subDir.Name, Path.GetRelativePath(modRootPath, subDir.FullName), subDir.FullName, size, StrippableItemType.Folder);
                     }
                     else
                     {
-                        await Scan(subDir);
+                        // Not junk by name, so scan inside it.
+                        await FindJunkRecursively(subDir);
                     }
                 }
             }
+            await FindJunkRecursively(directory);
 
-            await Scan(directory);
+            // --- Phase 3: Use loadFolders.xml to "rescue" any items that were incorrectly flagged ---
+            var loadFoldersFile = directory.GetFiles("loadFolders.xml", SearchOption.TopDirectoryOnly).FirstOrDefault();
+            if (loadFoldersFile != null && potentialDeletions.Any())
+            {
+                try
+                {
+                    var doc = XDocument.Load(loadFoldersFile.FullName);
+                    var versionNode = doc.Root?.Elements().FirstOrDefault(e => e.Name.LocalName.Equals("v" + majorGameVersion, StringComparison.OrdinalIgnoreCase));
+                    if (versionNode != null)
+                    {
+                        var essentialPaths = versionNode.Elements("li")
+                            .Select(li => Path.GetFullPath(Path.Combine(modRootPath, li.Value.Trim().Replace('/', Path.DirectorySeparatorChar))))
+                            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                        var pathsToRescue = potentialDeletions.Keys
+                            .Where(path => essentialPaths.Any(essential => path.Equals(essential) || path.StartsWith(essential + Path.DirectorySeparatorChar)))
+                            .ToList();
+
+                        foreach (var path in pathsToRescue)
+                        {
+                            potentialDeletions.Remove(path);
+                        }
+                    }
+                }
+                catch (Exception ex) { Debug.WriteLine($"Error parsing loadFolders.xml for mod {strippableModVm.Mod.Name}: {ex.Message}"); }
+            }
+
+            // --- Phase 4: Populate the final ViewModel with what's left ---
+            foreach (var item in potentialDeletions.Values)
+            {
+                var vm = new StrippableItemViewModel(strippableModVm, item.Name, item.RelativePath, item.FullPath, item.Size, item.Type);
+                await RunOnUIThreadAsync(() => strippableModVm.Children.Add(vm));
+            }
+
             if (strippableModVm.Children.Any())
             {
                 await RunOnUIThreadAsync(() => strippableModVm.UpdateParentSelectionState());
             }
         }
-
 
         public void RefreshPathValidity()
         {
