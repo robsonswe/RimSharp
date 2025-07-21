@@ -623,7 +623,14 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             var versionLikeFolders = new List<(DirectoryInfo Dir, Version Ver)>();
             foreach (var dir in directory.EnumerateDirectories())
             {
-                var versionString = new string(dir.Name.TakeWhile(c => char.IsDigit(c) || c == '.').ToArray()).TrimEnd('.');
+                // FIX: Handle version strings that may start with 'v', e.g., "v1.5".
+                var potentialVersionString = dir.Name;
+                if (potentialVersionString.StartsWith("v", StringComparison.OrdinalIgnoreCase))
+                {
+                    potentialVersionString = potentialVersionString.Substring(1);
+                }
+
+                var versionString = new string(potentialVersionString.TakeWhile(c => char.IsDigit(c) || c == '.').ToArray()).TrimEnd('.');
                 if (!string.IsNullOrEmpty(versionString) && Version.TryParse(versionString, out var ver))
                 {
                     versionLikeFolders.Add((dir, ver));
@@ -635,6 +642,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 var latestVersion = versionLikeFolders.Max(v => v.Ver);
                 foreach (var (dir, ver) in versionLikeFolders)
                 {
+                    // A folder is kept if its name contains the current major game version (e.g., "1.5") OR if it is the latest version available in the mod folder.
                     bool keep = dir.Name.Contains(majorGameVersion) || ver.Equals(latestVersion);
                     if (!keep)
                     {
@@ -661,6 +669,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 // Scan subdirectories for junk
                 foreach (var subDir in currentDir.EnumerateDirectories())
                 {
+                    // This correctly handles cases like "1.5_source" or "Source-1.5"
                     bool isJunkByName = subDir.Name.StartsWith(".git", StringComparison.OrdinalIgnoreCase) ||
                                         subDir.Name.Split(nameDelimiters).Any(part => strippableNameComponents.Contains(part));
 
