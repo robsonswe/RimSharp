@@ -158,7 +158,42 @@
                                         <TextBlock Text="{Binding ModType, Converter={StaticResource ModTypeToInitialConverter}}">
                                             <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource BadgePartTextStyle}"><Style.Triggers><DataTrigger Binding="{Binding ModType}" Value="WorkshopL"><Setter Property="Foreground" Value="{StaticResource RimworldBlackBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
                                         </TextBlock>
-                                        <Border.ToolTip><ToolTip><StackPanel><TextBlock Text="{Binding ModType, Converter={StaticResource ModTypeToDescriptionConverter}}" FontWeight="Bold"/><TextBlock><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding Assemblies}" Value="True"><Setter Property="Text" Value="Contains custom code (.dll files)"/></DataTrigger><DataTrigger Binding="{Binding Assemblies}" Value="False"><Setter Property="Text" Value="XML-only (no custom code)"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Core"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding ModType}" Value="Expansion"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></StackPanel></ToolTip></Border.ToolTip>
+                                        <Border.ToolTip>
+                                            <ToolTip>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding ModType, Converter={StaticResource ModTypeToDescriptionConverter}}" FontWeight="Bold"/>
+                                                    <!-- Assemblies Info -->
+                                                    <TextBlock>
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Assemblies}" Value="True"><Setter Property="Text" Value="Contains custom code (.dll files)"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Assemblies}" Value="False"><Setter Property="Text" Value="XML-only (no custom code)"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding ModType}" Value="Core"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                                                                    <DataTrigger Binding="{Binding ModType}" Value="Expansion"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <!-- Textures Info -->
+                                                    <TextBlock>
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Textures}" Value="True">
+                                                                        <Setter Property="Text" Value="Contains texture files"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Textures}" Value="False">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </ToolTip>
+                                        </Border.ToolTip>
                                     </Border>
 
                                     <!-- Mod Name with Ellipsis and CONDITIONAL Tooltip -->

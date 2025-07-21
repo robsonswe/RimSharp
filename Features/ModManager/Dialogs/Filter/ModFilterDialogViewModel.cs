@@ -14,7 +14,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
         private string _searchText;
         private string _authorFilterText; // New
         private bool? _isOutdatedFilter;
-        private bool? _hasAssembliesFilter; // <<< NEW FIELD >>>
+        private bool? _hasAssembliesFilter;
+        private bool? _hasTexturesFilter; // <<< NEW FIELD >>>
         private bool? _isFavoriteFilter;
 
         private readonly ModFilterCriteria _initialCriteria;
@@ -41,7 +42,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
 
 
         public bool? IsOutdatedFilter { get => _isOutdatedFilter; set => SetProperty(ref _isOutdatedFilter, value); }
-        public bool? HasAssembliesFilter { get => _hasAssembliesFilter; set => SetProperty(ref _hasAssembliesFilter, value); } // <<< NEW PROPERTY >>>
+        public bool? HasAssembliesFilter { get => _hasAssembliesFilter; set => SetProperty(ref _hasAssembliesFilter, value); }
+        public bool? HasTexturesFilter { get => _hasTexturesFilter; set => SetProperty(ref _hasTexturesFilter, value); } // <<< NEW PROPERTY >>>
         public bool? IsFavoriteFilter { get => _isFavoriteFilter; set => SetProperty(ref _isFavoriteFilter, value); }
 
         // Commands
@@ -63,7 +65,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
             _authorFilterText = _initialCriteria.AuthorFilterText; // New
             _isOutdatedFilter = _initialCriteria.IsOutdatedFilter;
             _isFavoriteFilter = _initialCriteria.IsFavoriteFilter;
-            _hasAssembliesFilter = _initialCriteria.HasAssembliesFilter; // <<< INITIALIZE NEW FILTER >>>
+            _hasAssembliesFilter = _initialCriteria.HasAssembliesFilter;
+            _hasTexturesFilter = _initialCriteria.HasTexturesFilter; // <<< INITIALIZE NEW FILTER >>>
 
             // Populate Mod Types
             var modTypeConverter = new ModTypeToDescriptionConverter();
@@ -115,7 +118,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
                 SelectedTags = AvailableTags.Where(vm => vm.IsSelected).Select(vm => vm.Item).ToList(), // New
                 IsOutdatedFilter = this.IsOutdatedFilter,
                 IsFavoriteFilter = this.IsFavoriteFilter,
-                HasAssembliesFilter = this.HasAssembliesFilter // <<< APPLY NEW FILTER >>>
+                HasAssembliesFilter = this.HasAssembliesFilter,
+                HasTexturesFilter = this.HasTexturesFilter // <<< APPLY NEW FILTER >>>
             };
             CloseDialog(ModFilterDialogResult.Apply);
         }
@@ -129,7 +133,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
             foreach (var item in AvailableTags) item.IsSelected = false; // New
             IsOutdatedFilter = null;
             IsFavoriteFilter = null;
-            HasAssembliesFilter = null; // <<< CLEAR NEW FILTER >>>
+            HasAssembliesFilter = null;
+            HasTexturesFilter = null; // <<< CLEAR NEW FILTER >>>
 
             CurrentCriteria = new ModFilterCriteria(); // Cleared criteria
             CloseDialog(ModFilterDialogResult.Clear);

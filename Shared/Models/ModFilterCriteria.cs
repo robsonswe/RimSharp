@@ -20,7 +20,8 @@ namespace RimSharp.Shared.Models
 
         // Tristate filters: null = Any, true = Yes, false = No
         public bool? IsOutdatedFilter { get; set; } = null;
-        public bool? HasAssembliesFilter { get; set; } = null; // <<< NEW FILTER PROPERTY >>>
+        public bool? HasAssembliesFilter { get; set; } = null;
+        public bool? HasTexturesFilter { get; set; } = null; // <<< NEW FILTER PROPERTY >>>
         public bool? IsFavoriteFilter { get; set; } = null;
 
         public bool IsActive()
@@ -29,10 +30,12 @@ namespace RimSharp.Shared.Models
                 || !string.IsNullOrWhiteSpace(AuthorFilterText) // Check Author
                 || (SelectedModTypes != null && SelectedModTypes.Any())
                 || (SelectedSupportedVersions != null && SelectedSupportedVersions.Any())
-                || (SelectedTags != null && SelectedTags.Any()) // Check Tags
+                // Check Tags
+                || (SelectedTags != null && SelectedTags.Any())
                 || IsOutdatedFilter.HasValue
                 || IsFavoriteFilter.HasValue
-                || HasAssembliesFilter.HasValue; // <<< ADDED CHECK >>>
+                || HasAssembliesFilter.HasValue
+                || HasTexturesFilter.HasValue; // <<< ADDED CHECK >>>
         }
 
         public void Clear()
@@ -45,6 +48,7 @@ namespace RimSharp.Shared.Models
             IsOutdatedFilter = null;
             IsFavoriteFilter = null;
             HasAssembliesFilter = null;
+            HasTexturesFilter = null;
         }
 
         // Optional: Clone method for passing state without modifying original
@@ -59,7 +63,8 @@ namespace RimSharp.Shared.Models
                 SelectedTags = new List<string>(this.SelectedTags ?? Enumerable.Empty<string>()), // Clone Tags
                 IsOutdatedFilter = this.IsOutdatedFilter,
                 IsFavoriteFilter = this.IsFavoriteFilter,
-                HasAssembliesFilter = this.HasAssembliesFilter 
+                HasAssembliesFilter = this.HasAssembliesFilter,
+                HasTexturesFilter = this.HasTexturesFilter
             };
         }
     }

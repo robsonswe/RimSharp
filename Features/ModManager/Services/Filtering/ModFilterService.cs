@@ -205,6 +205,10 @@ namespace RimSharp.Features.ModManager.Services.Filtering
             {
                 filtered = filtered.Where(m => m.Assemblies == criteria.HasAssembliesFilter.Value);
             }
+            if (criteria.HasTexturesFilter.HasValue)
+            {
+                filtered = filtered.Where(m => m.Textures == criteria.HasTexturesFilter.Value);
+            }
 
             return filtered;
         }
