@@ -188,7 +188,7 @@
 
                     <!-- Properties Expander -->
                     <Expander Header="Properties" IsExpanded="True">
-                        <UniformGrid Columns="3" HorizontalAlignment="Left" Margin="5,5,0,5">
+                        <UniformGrid Columns="2" Margin="5,5,0,5">
                             <!-- Is Outdated RW -->
                             <StackPanel Margin="0,5">
                                 <TextBlock Text="Supports Current Version:" Style="{StaticResource FilterLabelStyle}"/>
@@ -199,16 +199,6 @@
                                 </StackPanel>
                             </StackPanel>
 
-                            <!-- Mod Content -->
-                            <StackPanel Margin="0,5">
-                                <TextBlock Text="Mod Content:" Style="{StaticResource FilterLabelStyle}"/>
-                                <StackPanel Orientation="Horizontal" Margin="5,0">
-                                    <RadioButton Content="Any" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                    <RadioButton Content="C#" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                    <RadioButton Content="XML-Only" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
-                                </StackPanel>
-                            </StackPanel>
-                            
                             <!-- Is Favorite -->
                             <StackPanel Margin="0,5">
                                 <TextBlock Text="Is Favorite:" Style="{StaticResource FilterLabelStyle}"/>
@@ -216,6 +206,26 @@
                                     <RadioButton Content="Any" GroupName="IsFavorite" IsChecked="{Binding IsFavoriteFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Style="{StaticResource FilterRadioButtonStyle}"/>
                                     <RadioButton Content="Yes" GroupName="IsFavorite" IsChecked="{Binding IsFavoriteFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Style="{StaticResource FilterRadioButtonStyle}"/>
                                     <RadioButton Content="No" GroupName="IsFavorite" IsChecked="{Binding IsFavoriteFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                </StackPanel>
+                            </StackPanel>
+                            
+                            <!-- Mod Content (C#) -->
+                            <StackPanel Margin="0,5">
+                                <TextBlock Text="Code Content:" Style="{StaticResource FilterLabelStyle}"/>
+                                <StackPanel Orientation="Horizontal" Margin="5,0">
+                                    <RadioButton Content="Any" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="C#" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="XML-Only" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Textures -->
+                            <StackPanel Margin="0,5">
+                                <TextBlock Text="Texture Content:" Style="{StaticResource FilterLabelStyle}"/>
+                                <StackPanel Orientation="Horizontal" Margin="5,0">
+                                    <RadioButton Content="Any" GroupName="HasTextures" IsChecked="{Binding HasTexturesFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="Yes" GroupName="HasTextures" IsChecked="{Binding HasTexturesFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}" Style="{StaticResource FilterRadioButtonStyle}"/>
+                                    <RadioButton Content="No" GroupName="HasTextures" IsChecked="{Binding HasTexturesFilter, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}" Style="{StaticResource FilterRadioButtonStyle}"/>
                                 </StackPanel>
                             </StackPanel>
 
