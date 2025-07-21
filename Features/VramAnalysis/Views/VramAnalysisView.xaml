@@ -1,0 +1,156 @@
+<!-- Features/VramAnalysis/Views/VramAnalysisView.xaml -->
+<UserControl x:Class="RimSharp.Features.VramAnalysis.Views.VramAnalysisView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:RimSharp.Features.VramAnalysis.Views"
+             mc:Ignorable="d" 
+             d:DesignHeight="600" d:DesignWidth="800">
+    <DockPanel>
+        <!-- Top Control Bar -->
+        <Border DockPanel.Dock="Top" Padding="5" Background="{StaticResource RimworldLightBackgroundBrush}" Margin="0,0,0,5">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Calculate VRAM" 
+                        Command="{Binding CalculateVramCommand}"
+                        Style="{StaticResource RimworldButtonStyle}" 
+                        ToolTip="Starts the process of analyzing texture files to estimate VRAM usage. This can take some time."/>
+                <TextBlock Text="{Binding StatusMessage}" 
+                           VerticalAlignment="Center" 
+                           Margin="15,0,0,0"
+                           Foreground="{StaticResource RimworldBrownBrush}"
+                           FontWeight="Medium"/>
+            </StackPanel>
+        </Border>
+        
+        <!-- Main Content Grid -->
+        <Grid>
+            <!-- Loading/Busy Indicator -->
+            <Border Background="#44000000" CornerRadius="3"
+                    Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <TextBlock Text="Calculating..." 
+                           HorizontalAlignment="Center" 
+                           VerticalAlignment="Center" 
+                           FontSize="20" FontWeight="Bold" 
+                           Foreground="{StaticResource RimworldWhiteBrush}"/>
+            </Border>
+            
+            <!-- Outer Border for the ListView to give it the RimworldPanelBorder look -->
+            <Border BorderBrush="{StaticResource RimworldBrownBrush}" BorderThickness="1">
+                <!-- ListView for Mods -->
+                <ListView ItemsSource="{Binding VramMods}"
+                          SelectionMode="Single"
+                          ScrollViewer.VerticalScrollBarVisibility="Auto"
+                          Margin="0,5,0,0">
+                    
+                    <!-- ItemContainerStyle directly applied to ListViewItem (NO ControlTemplate override) -->
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="Padding" Value="5"/>
+                            <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="{StaticResource RimworldDarkBeigeBrush}"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="{StaticResource RimworldLightBrownBrush}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource RimworldWhiteBrush}"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ListView.ItemContainerStyle>
+
+                    <ListView.View>
+                        <GridView>
+                            <!-- GridViewColumnHeader style, to match GitModsView headers -->
+                            <GridView.ColumnHeaderContainerStyle>
+                                <Style TargetType="GridViewColumnHeader">
+                                    <Setter Property="Background" Value="{StaticResource RimworldLightBrownBrush}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource RimworldWhiteBrush}"/>
+                                    <Setter Property="Padding" Value="7,5"/>
+                                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                    <Setter Property="BorderBrush" Value="{StaticResource RimworldBrownBrush}"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                    <EventSetter Event="ButtonBase.Click" Handler="GridViewColumnHeader_Click"/>
+                                </Style>
+                            </GridView.ColumnHeaderContainerStyle>
+
+                            <!-- MODIFIED: Header Text changed -->
+                            <GridViewColumn Width="300">
+                                <GridViewColumn.Header>
+                                    <TextBlock Text="Mod Name" Tag="Mod.Name"/>
+                                </GridViewColumn.Header>
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Mod.Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Mod.Name}"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+
+                            <!-- MODIFIED: Header Text changed -->
+                            <GridViewColumn Width="100">
+                                <GridViewColumn.Header>
+                                    <TextBlock Text="Total Size" Tag="Mod.SizeInfo.TotalSize"/>
+                                </GridViewColumn.Header>
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Mod.SizeInfo.TotalSize, Converter={StaticResource FileSizeConverter}}" HorizontalAlignment="Right"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+
+                            <!-- MODIFIED: Header Text changed -->
+                            <GridViewColumn Width="120">
+                                <GridViewColumn.Header>
+                                    <TextBlock Text="Disk Size (DDS)" Tag="Mod.SizeInfo.MinTextureSize"/>
+                                </GridViewColumn.Header>
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Mod.SizeInfo.MinTextureSize, Converter={StaticResource FileSizeConverter}}" HorizontalAlignment="Right" ToolTip="Size on disk if DDS is used. Often smaller."/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+
+                            <!-- MODIFIED: Header Text changed -->
+                            <GridViewColumn Width="120">
+                                <GridViewColumn.Header>
+                                    <TextBlock Text="Disk Size (PNG)" Tag="Mod.SizeInfo.MaxTextureSize"/>
+                                </GridViewColumn.Header>
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Mod.SizeInfo.MaxTextureSize, Converter={StaticResource FileSizeConverter}}" HorizontalAlignment="Right" ToolTip="Size on disk if PNG is used. Often larger."/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            
+                            <GridViewColumn Width="150">
+                                <GridViewColumn.Header>
+                                    <TextBlock Text="VRAM (Uncompressed)" Tag="EstimatedVramUncompressed"/>
+                                </GridViewColumn.Header>
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding EstimatedVramUncompressed, Converter={StaticResource FileSizeConverter}}" HorizontalAlignment="Right" ToolTip="Estimated VRAM with 'Texture Compression' OFF in-game."/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            
+                            <GridViewColumn Width="150">
+                                <GridViewColumn.Header>
+                                    <TextBlock Text="VRAM (Compressed)" Tag="EstimatedVramCompressed"/>
+                                </GridViewColumn.Header>
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding EstimatedVramCompressed, Converter={StaticResource FileSizeConverter}}" HorizontalAlignment="Right" ToolTip="Estimated VRAM with 'Texture Compression' ON in-game."/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </Border>
+        </Grid>
+    </DockPanel>
+</UserControl>
