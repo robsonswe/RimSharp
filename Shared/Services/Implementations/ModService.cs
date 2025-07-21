@@ -25,6 +25,11 @@ namespace RimSharp.Shared.Services.Implementations
         private readonly IMlieVersionService _mlieVersionService; // <<< ADDED
         private readonly ILoggerService _logger; // <<< ADDED
 
+        private static readonly HashSet<string> TextureExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".png", ".jpg", ".jpeg", ".psd", ".tga", ".dds", ".bmp", ".gif", ".psb"
+        };
+
         public ModService(IPathService pathService, IModRulesService rulesService, IModCustomService customService, IMlieVersionService mlieVersionService, ILoggerService logger)
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
@@ -308,6 +313,8 @@ namespace RimSharp.Shared.Services.Implementations
                 if (mod == null) continue;
 
                 mod.Path = dir;
+                mod.Assemblies = CheckForAssemblies(mod.Path);
+                mod.Textures = CheckForTextures(mod.Path);
 
                 // Set core/expansion flags
                 bool isCoreMod = mod.PackageId == "Ludeon.RimWorld";
@@ -352,6 +359,8 @@ namespace RimSharp.Shared.Services.Implementations
                 if (mod == null) return;
 
                 mod.Path = dir;
+                mod.Assemblies = CheckForAssemblies(mod.Path);
+                mod.Textures = CheckForTextures(mod.Path);
 
                 // Set core/expansion flags
                 bool isCoreMod = mod.PackageId == "Ludeon.RimWorld";
@@ -389,6 +398,7 @@ namespace RimSharp.Shared.Services.Implementations
 
                 mod.Path = dir;
                 mod.Assemblies = CheckForAssemblies(mod.Path);
+                mod.Textures = CheckForTextures(mod.Path);
 
                 if (long.TryParse(folderName, out _))
                 {
@@ -476,7 +486,8 @@ namespace RimSharp.Shared.Services.Implementations
                 if (mod == null) return;
 
                 mod.Path = dir;
-                mod.Assemblies = CheckForAssemblies(mod.Path); // <<< ADDED ASSEMBLY CHECK
+                mod.Assemblies = CheckForAssemblies(mod.Path);
+                mod.Textures = CheckForTextures(mod.Path);
 
                 if (long.TryParse(folderName, out _))
                 {
@@ -547,11 +558,10 @@ namespace RimSharp.Shared.Services.Implementations
         }
 
         /// <summary>
-        /// Checks if a mod directory contains C# assemblies (.dll files)
-        /// either directly in an /Assemblies folder or within versioned subfolders like /1.4/Assemblies.
+        /// Checks if a mod directory contains C# assemblies (.dll files) anywhere inside it.
         /// </summary>
         /// <param name="modDirectoryPath">The root path of the mod directory.</param>
-        /// <returns>True if .dll files are found in expected locations, false otherwise.</returns>
+        /// <returns>True if any .dll files are found, false otherwise.</returns>
         private bool CheckForAssemblies(string modDirectoryPath)
         {
             if (string.IsNullOrEmpty(modDirectoryPath) || !Directory.Exists(modDirectoryPath))
@@ -561,32 +571,9 @@ namespace RimSharp.Shared.Services.Implementations
 
             try
             {
-                // 1. Check direct <modDir>/Assemblies folder
-                string directAssembliesPath = Path.Combine(modDirectoryPath, "Assemblies");
-                if (Directory.Exists(directAssembliesPath))
-                {
-                    // Using EnumerateFiles and Any() is efficient as it stops on the first match
-                    if (Directory.EnumerateFiles(directAssembliesPath, "*.dll", SearchOption.TopDirectoryOnly).Any())
-                    {
-                        return true;
-                    }
-                }
-
-                // 2. Check for versioned subfolders (e.g., <modDir>/1.4/Assemblies, <modDir>/1.5/Assemblies)
-                //    Iterate through immediate subdirectories of the mod path.
-                foreach (var subDir in Directory.EnumerateDirectories(modDirectoryPath, "*", SearchOption.TopDirectoryOnly))
-                {
-                    // We don't strictly need to check if the subDir name is a version (like "1.4")
-                    // as mods sometimes use other folder names. Just check for an Assemblies folder inside.
-                    string subAssembliesPath = Path.Combine(subDir, "Assemblies");
-                    if (Directory.Exists(subAssembliesPath))
-                    {
-                        if (Directory.EnumerateFiles(subAssembliesPath, "*.dll", SearchOption.TopDirectoryOnly).Any())
-                        {
-                            return true; // Found DLLs in a subfolder/Assemblies
-                        }
-                    }
-                }
+                // Search the entire mod directory recursively for any .dll file.
+                // Using EnumerateFiles and Any() is efficient as it stops on the first match.
+                return Directory.EnumerateFiles(modDirectoryPath, "*.dll", SearchOption.AllDirectories).Any();
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is System.Security.SecurityException)
             {
@@ -595,9 +582,44 @@ namespace RimSharp.Shared.Services.Implementations
                 Debug.WriteLine($"Could not check for assemblies in '{modDirectoryPath}' due to an error: {ex.Message}");
                 return false;
             }
+        }
 
-            // No DLLs found in expected locations
-            return false;
+        /// <summary>
+        /// Checks if a mod directory contains texture files, ignoring the 'About' folder.
+        /// </summary>
+        /// <param name="modDirectoryPath">The root path of the mod directory.</param>
+        /// <returns>True if texture files are found, false otherwise.</returns>
+        private bool CheckForTextures(string modDirectoryPath)
+        {
+            if (string.IsNullOrEmpty(modDirectoryPath) || !Directory.Exists(modDirectoryPath))
+            {
+                return false;
+            }
+
+            try
+            {
+                // We need to exclude the 'About' folder, which contains non-game preview images.
+                string aboutFolderPathWithSeparator = Path.Combine(modDirectoryPath, "About") + Path.DirectorySeparatorChar;
+
+                // Enumerate all files recursively
+                return Directory.EnumerateFiles(modDirectoryPath, "*.*", SearchOption.AllDirectories)
+                                .Any(filePath =>
+                                {
+                                    // Check if the file is NOT inside the 'About' folder.
+                                    if (filePath.StartsWith(aboutFolderPathWithSeparator, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        return false; // It's in the About folder, so ignore it.
+                                    }
+                                    // Check if the file has a valid texture extension.
+                                    return TextureExtensions.Contains(Path.GetExtension(filePath));
+                                });
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is System.Security.SecurityException)
+            {
+                _logger.LogWarning($"Could not check for textures in '{modDirectoryPath}' due to an error: {ex.Message}", nameof(ModService));
+                Debug.WriteLine($"Could not check for textures in '{modDirectoryPath}' due to an error: {ex.Message}");
+                return false;
+            }
         }
 
         private ModItem ParseAboutXml(string aboutPath, string folderName = null)
