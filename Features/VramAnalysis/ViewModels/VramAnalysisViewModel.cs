@@ -80,7 +80,7 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
         {
             _logger.LogInfo("Loading mods for VRAM analysis view.", nameof(VramAnalysisViewModel));
             var allMods = _modListManager.GetAllMods()
-                .Where(m => m.Textures) // Only include mods that actually have textures
+                .Where(m => m.ModType != ModType.Core && m.ModType != ModType.Expansion && m.Textures) // Exclude Core/DLC, only include mods with textures
                 .OrderBy(m => m.Name) // Default sort by Name ascending
                 .Select(m => new VramModItemWrapper(m));
 
