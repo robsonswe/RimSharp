@@ -63,12 +63,17 @@ namespace RimSharp.Shared.Models
 
         public string Tags { get; set; }
 
-        // <<< NEW PROPERTY >>>
         /// <summary>
         /// Gets or sets a value indicating whether this mod contains C# assembly (.dll) files.
         /// Checked in `Assemblies` folders (root or versioned). Defaults to false.
         /// </summary>
         public bool Assemblies { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether this mod contains texture files (e.g., png, jpg, dds).
+        /// This check ignores the 'About' folder. Defaults to false.
+        /// </summary>
+        public bool Textures { get; set; } = false;
 
         /// <summary>
         /// Gets or sets a value indicating whether this mod is marked as a favorite by the user.
