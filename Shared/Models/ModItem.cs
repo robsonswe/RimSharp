@@ -15,6 +15,38 @@ namespace RimSharp.Shared.Models
         Zipped = 5
     }
 
+    // --- ADDED NEW CLASS ---
+    public class ModSizeInfo
+    {
+        /// <summary>
+        /// The total size in bytes of the mod after excluding non-essential files (like source code, git folders, etc.).
+        /// </summary>
+        public long TotalSize { get; set; }
+
+        /// <summary>
+        /// The size in bytes of all texture files, prioritizing DDS over PNG where both exist.
+        /// This represents the smallest possible texture footprint on disk if PNGs with DDS counterparts are removed.
+        /// </summary>
+        public long MinTextureSize { get; set; }
+
+        /// <summary>
+        /// The size in bytes of all texture files, prioritizing PNG over DDS where both exist.
+        /// This represents the largest texture footprint on disk if both formats are kept.
+        /// </summary>
+        public long MaxTextureSize { get; set; }
+
+        /// <summary>
+        /// A negligible difference in bytes to consider Min and Max texture sizes effectively equal.
+        /// </summary>
+        private const long SizeDifferenceThreshold = 1024; // 1 KB
+
+        /// <summary>
+        /// Returns true if the difference between Min and Max texture size is significant enough to display both.
+        /// </summary>
+        public bool HasSignificantTextureSizeDifference => (MaxTextureSize - MinTextureSize) > SizeDifferenceThreshold;
+    }
+
+
     public class ModItem
     {
         // Required fields from About.xml
@@ -80,6 +112,12 @@ namespace RimSharp.Shared.Models
         /// This is driven by custom settings.
         /// </summary>
         public bool IsFavorite { get; set; } = false;
+
+        // --- ADDED PROPERTY ---
+        /// <summary>
+        /// Gets or sets the calculated size information for the mod.
+        /// </summary>
+        public ModSizeInfo SizeInfo { get; set; } = new ModSizeInfo();
 
         public IEnumerable<string> SupportedVersionStrings => SupportedVersions.Select(v => v.Version);
 
