@@ -84,7 +84,21 @@
                                 </GridViewColumn.Header>
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Mod.Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Mod.Name}"/>
+                                        <TextBlock Text="{Binding Mod.Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Mod.Name}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListViewItem}}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Mod.IsActive}" Value="True">
+                                                            <Setter Property="FontWeight" Value="Bold"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Mod.IsFavorite}" Value="True">
+                                                            <Setter Property="Foreground" Value="{StaticResource RimworldCodeBlueBrush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
