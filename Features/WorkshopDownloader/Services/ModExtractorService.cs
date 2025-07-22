@@ -104,12 +104,20 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 string script = @"(function() {
                     const labels = document.querySelectorAll('.detailsStatsContainerLeft .detailsStatLeft');
                     const values = document.querySelectorAll('.detailsStatsContainerRight .detailsStatRight');
+                    let updatedDate = '';
+                    let postedDate = '';
+
                     for (let i = 0; i < labels.length; i++) {
-                        if (labels[i].textContent.trim() === 'Updated') {
-                            return values[i].textContent.trim();
+                        const labelText = labels[i].textContent.trim();
+                        if (labelText === 'Updated') {
+                            updatedDate = values[i].textContent.trim();
+                        } else if (labelText === 'Posted') {
+                            postedDate = values[i].textContent.trim();
                         }
                     }
-                    return '';
+
+                    // Prioritize 'Updated' date. If not found, use 'Posted' date.
+                    return updatedDate || postedDate;
                 })();";
 
                 string result = await _webView.CoreWebView2.ExecuteScriptAsync(script);
