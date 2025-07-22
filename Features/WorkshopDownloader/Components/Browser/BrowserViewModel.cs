@@ -262,24 +262,45 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             }
         }
 
-        public Task<ModInfoDto?> GetCurrentModInfoAsync(CancellationToken token = default)
+        public async Task<ModInfoDto?> GetCurrentModInfoAsync(CancellationToken token = default)
         {
             if (_disposed || _extractorService == null)
             {
                 Debug.WriteLine($"[BrowserVM] GetCurrentModInfoAsync called but disposed({_disposed}) or extractor is null.");
-                return Task.FromResult<ModInfoDto?>(null);
+                return null;
             }
 
             try
             {
                 Debug.WriteLine("[BrowserVM] Calling _extractorService.ExtractFullModInfo().");
-                return _extractorService.ExtractFullModInfo();
+                ModInfoDto? extractedInfo = await _extractorService.ExtractFullModInfo();
+                token.ThrowIfCancellationRequested(); // Check cancellation after extraction
+
+                // The critical check: If _extractorService.IsModInfoAvailable is false,
+                // it means essential data (like mod name AND date) was not successfully extracted from the page.
+                // In this case, we return null to signal the command handler to use API fallback.
+                if (extractedInfo != null && _extractorService.IsModInfoAvailable)
+                {
+                    Debug.WriteLine($"[BrowserVM] Extracted mod info via browser successfully (IsModInfoAvailable: True).");
+                    return extractedInfo;
+                }
+                else
+                {
+                    // This path is taken if extractedInfo is null OR if _extractorService.IsModInfoAvailable is false
+                    Debug.WriteLine($"[BrowserVM] Extracted mod info is incomplete or unavailable (extractedInfo is null: {extractedInfo == null}, IsModInfoAvailable: {_extractorService.IsModInfoAvailable}). Returning null to trigger API fallback.");
+                    return null;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine($"[BrowserVM] GetCurrentModInfoAsync cancelled during extraction.");
+                throw; // Re-throw cancellation
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[BrowserVM] Error calling ExtractFullModInfo: {ex.Message}");
-                StatusChanged?.Invoke(this, $"Error extracting mod info: {ex.Message}");
-                return Task.FromResult<ModInfoDto?>(null);
+                Debug.WriteLine($"[BrowserVM] Error during browser extraction (GetCurrentModInfoAsync): {ex.Message}");
+                StatusChanged?.Invoke(this, $"Error extracting mod info from browser: {ex.Message}");
+                return null; // Return null on any error to trigger API fallback.
             }
         }
 
@@ -348,7 +369,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 if (_isAnalyzingContent)
                 {
                     _isAnalyzingContent = false;
-                     Debug.WriteLine("[BrowserVM] Analysis flag cleared due to NavigationEnded.");
+                    Debug.WriteLine("[BrowserVM] Analysis flag cleared due to NavigationEnded.");
                 }
                 IsLoading = false; // Main loading flag off
                 Debug.WriteLine($"[BrowserVM] IsLoading set to: {IsLoading}");
@@ -399,7 +420,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             });
         }
 
-       private async void NavigationService_PotentialWorkshopPageLoaded(object? sender, string url)
+        private async void NavigationService_PotentialWorkshopPageLoaded(object? sender, string url)
         // --- FIX: Change Task back to void ---
         {
             if (_disposed || _extractorService == null || _isAnalyzingContent)
@@ -413,7 +434,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
             // Reset state before analysis
             // Use RunOnUIThread for UI updates like StatusChanged, direct property sets are usually fine if INPC handles marshalling
-             RunOnUIThread(() => StatusChanged?.Invoke(this, "Analyzing page content..."));
+            RunOnUIThread(() => StatusChanged?.Invoke(this, "Analyzing page content..."));
             // Setting properties directly here is okay, PropertyChanged will fire.
             IsValidModUrl = false;
             IsCollectionUrl = false;
@@ -426,8 +447,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 {
                     if (_webView?.CoreWebView2 == null)
                     {
-                         Debug.WriteLine($"[BrowserVM] PotentialWorkshopPageLoaded: CoreWebView2 is null, skipping collection extraction for {url}.");
-                         throw new InvalidOperationException("WebView2 Core is not available for script execution.");
+                        Debug.WriteLine($"[BrowserVM] PotentialWorkshopPageLoaded: CoreWebView2 is null, skipping collection extraction for {url}.");
+                        throw new InvalidOperationException("WebView2 Core is not available for script execution.");
                     }
                     // Await the collection check
                     collectionItems = await _extractorService.ExtractCollectionItemsAsync();
@@ -437,23 +458,23 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 {
                     Debug.WriteLine($"[BrowserVM] Error during ExtractCollectionItemsAsync for {url}: {ex.Message}");
                     collectionItems = null; // Treat error as "not a collection"
-                     // Log the exception
-                    // _parentViewModel?.LogService.Error($"[BrowserVM] Failed to extract collection items from {url}: {ex}", ex);
+                                            // Log the exception
+                                            // _parentViewModel?.LogService.Error($"[BrowserVM] Failed to extract collection items from {url}: {ex}", ex);
                 }
 
                 bool isCollection = collectionItems != null && collectionItems.Any();
 
                 if (isCollection)
                 {
-                     // It's a collection - update state on UI thread
-                     RunOnUIThread(() =>
-                     {
+                    // It's a collection - update state on UI thread
+                    RunOnUIThread(() =>
+                    {
                         IsCollectionUrl = true;
                         IsValidModUrl = false; // Explicitly set false
                         IsModInfoAvailable = false; // Not applicable for collections
-                         StatusChanged?.Invoke(this, $"Collection detected ({collectionItems!.Count} items).");
+                        StatusChanged?.Invoke(this, $"Collection detected ({collectionItems!.Count} items).");
                         Debug.WriteLine($"[BrowserVM] Content analysis determined: IsCollectionUrl=True for {url}");
-                     });
+                    });
                 }
                 else // Not a collection, treat as potential single mod
                 {
@@ -461,8 +482,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
                     if (_webView?.CoreWebView2 == null)
                     {
-                         Debug.WriteLine($"[BrowserVM] PotentialWorkshopPageLoaded: CoreWebView2 is null, skipping single mod info extraction for {url}.");
-                         throw new InvalidOperationException("WebView2 Core is not available for script execution.");
+                        Debug.WriteLine($"[BrowserVM] PotentialWorkshopPageLoaded: CoreWebView2 is null, skipping single mod info extraction for {url}.");
+                        throw new InvalidOperationException("WebView2 Core is not available for script execution.");
                     }
 
                     ModInfoDto? modInfo = null;
@@ -502,7 +523,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 Debug.WriteLine($"[BrowserVM] Unexpected error during PotentialWorkshopPageLoaded handler for {url}: {ex.Message}");
                 // Log the exception
                 // _parentViewModel?.LogService.Error($"[BrowserVM] Unexpected error analyzing {url}: {ex}", ex);
-                RunOnUIThread(() => {
+                RunOnUIThread(() =>
+                {
                     StatusChanged?.Invoke(this, $"Error analyzing page: {ex.Message}");
                     IsValidModUrl = false; // Reset on error
                     IsCollectionUrl = false;
@@ -511,7 +533,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             }
             finally // Ensure analysis flag is reset
             {
-                RunOnUIThread(() => {
+                RunOnUIThread(() =>
+                {
                     _isAnalyzingContent = false;
                     Debug.WriteLine($"[BrowserVM] Content analysis finished for {url}. Analysis flag reset.");
                     // Explicitly trigger CanExecuteChanged for AddModCommand in QueueViewModel if needed,
