@@ -31,6 +31,11 @@ using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
 // --- Git Mod Manager Feature ---
 using RimSharp.Features.GitModManager.ViewModels;
 
+// --- VRAM Usage Feature ---
+
+using RimSharp.Features.VramAnalysis.ViewModels;
+
+
 // --- Workshop Downloader Feature ---
 using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Features.WorkshopDownloader.ViewModels;
@@ -46,6 +51,7 @@ using RimSharp.Infrastructure.Workshop.Download.Processing;
 using RimSharp.Infrastructure.Workshop.Download.Models;
 using System.Threading;
 using RimSharp.AppDir.Dialogs;
+using RimSharp.Core.Services;
 
 
 namespace RimSharp.AppDir.AppFiles
@@ -95,6 +101,7 @@ namespace RimSharp.AppDir.AppFiles
             services.AddSingleton<IConfigService, ConfigService>();
             services.AddSingleton<IDialogService, DialogService>();
             services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
+            services.AddSingleton<ISystemInfoService, SystemInfoService>();
 
 
             services.AddSingleton<IPathService, PathService>(provider =>
@@ -287,6 +294,17 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IDialogService>()
                 ));
 
+
+            services.AddTransient<VramAnalysisViewModel>(provider =>
+                         new VramAnalysisViewModel(
+                             provider.GetRequiredService<IModListManager>(),
+                             provider.GetRequiredService<IDialogService>(),
+                             provider.GetRequiredService<ILoggerService>(),
+                             provider.GetRequiredService<IPathService>(),
+                             provider.GetRequiredService<ISystemInfoService>()
+                         ));
+
+
             // MainViewModel holds top-level state - Singleton
             services.AddSingleton<MainViewModel>(provider =>
                 new MainViewModel(
@@ -297,7 +315,8 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IUpdaterService>(),       // <<< ADDED
                     provider.GetRequiredService<ModsViewModel>(),       // <<< Resolves Transient
                     provider.GetRequiredService<DownloaderViewModel>(), // <<< Resolves Transient
-                    provider.GetRequiredService<GitModsViewModel>()     // <<< Resolves Transient
+                    provider.GetRequiredService<GitModsViewModel>(),     // <<< Resolves Transient
+                    provider.GetRequiredService<VramAnalysisViewModel>()
                 ));
 
             // --- Application Shell ---

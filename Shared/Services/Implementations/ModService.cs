@@ -315,6 +315,7 @@ namespace RimSharp.Shared.Services.Implementations
                 mod.Path = dir;
                 mod.Assemblies = CheckForAssemblies(mod.Path);
                 mod.Textures = CheckForTextures(mod.Path);
+                mod.SizeInfo = CalculateModSize(mod); // <-- ADDED
 
                 // Set core/expansion flags
                 bool isCoreMod = mod.PackageId == "Ludeon.RimWorld";
@@ -361,6 +362,7 @@ namespace RimSharp.Shared.Services.Implementations
                 mod.Path = dir;
                 mod.Assemblies = CheckForAssemblies(mod.Path);
                 mod.Textures = CheckForTextures(mod.Path);
+                mod.SizeInfo = await Task.Run(() => CalculateModSize(mod)); // <-- ADDED
 
                 // Set core/expansion flags
                 bool isCoreMod = mod.PackageId == "Ludeon.RimWorld";
@@ -399,6 +401,7 @@ namespace RimSharp.Shared.Services.Implementations
                 mod.Path = dir;
                 mod.Assemblies = CheckForAssemblies(mod.Path);
                 mod.Textures = CheckForTextures(mod.Path);
+                mod.SizeInfo = CalculateModSize(mod); // <-- ADDED
 
                 if (long.TryParse(folderName, out _))
                 {
@@ -488,6 +491,7 @@ namespace RimSharp.Shared.Services.Implementations
                 mod.Path = dir;
                 mod.Assemblies = CheckForAssemblies(mod.Path);
                 mod.Textures = CheckForTextures(mod.Path);
+                mod.SizeInfo = await Task.Run(() => CalculateModSize(mod)); // <-- ADDED
 
                 if (long.TryParse(folderName, out _))
                 {
@@ -556,6 +560,244 @@ namespace RimSharp.Shared.Services.Implementations
                 mods.Add(mod);
             }));
         }
+
+        #region Mod Size Calculation
+
+        private ModSizeInfo CalculateModSize(ModItem mod)
+        {
+            if (string.IsNullOrEmpty(mod.Path) || !Directory.Exists(mod.Path))
+            {
+                return new ModSizeInfo();
+            }
+
+            try
+            {
+                var strippablePaths = GetStrippablePaths(mod);
+                var allFiles = new DirectoryInfo(mod.Path).EnumerateFiles("*", SearchOption.AllDirectories);
+                var validFiles = allFiles
+                    .Where(f => !strippablePaths.Any(junk => f.FullName.StartsWith(junk, StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+
+                long totalSize = validFiles.Sum(f => f.Length);
+
+                string aboutFolderPathWithSeparator = Path.Combine(mod.Path, "About") + Path.DirectorySeparatorChar;
+                var textureFiles = validFiles
+                    .Where(f => TextureExtensions.Contains(f.Extension) &&
+                                !f.FullName.StartsWith(aboutFolderPathWithSeparator, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                var textureGroups = textureFiles
+                    .GroupBy(f => Path.Combine(f.DirectoryName ?? "", Path.GetFileNameWithoutExtension(f.Name)), StringComparer.OrdinalIgnoreCase);
+
+                long minTextureSize = 0;
+                long maxTextureSize = 0;
+
+                foreach (var group in textureGroups)
+                {
+                    var pngFile = group.FirstOrDefault(f => f.Extension.Equals(".png", StringComparison.OrdinalIgnoreCase));
+                    var ddsFile = group.FirstOrDefault(f => f.Extension.Equals(".dds", StringComparison.OrdinalIgnoreCase));
+
+                    if (ddsFile != null && pngFile != null)
+                    {
+                        minTextureSize += ddsFile.Length;
+                        maxTextureSize += pngFile.Length;
+                    }
+                    else if (ddsFile != null)
+                    {
+                        minTextureSize += ddsFile.Length;
+                        maxTextureSize += ddsFile.Length;
+                    }
+                    else if (pngFile != null)
+                    {
+                        minTextureSize += pngFile.Length;
+                        maxTextureSize += pngFile.Length;
+                    }
+                }
+
+                return new ModSizeInfo
+                {
+                    TotalSize = totalSize,
+                    MinTextureSize = minTextureSize,
+                    MaxTextureSize = maxTextureSize,
+                    // VRAM properties are no longer set here
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"CRITICAL ERROR during disk size calculation for '{mod.Name}': {ex.Message}\n{ex.StackTrace}", nameof(ModService));
+                return new ModSizeInfo();
+            }
+        }
+
+        private HashSet<string> GetStrippablePaths(ModItem mod)
+        {
+            var potentialDeletions = new Dictionary<string, (long Size, bool isDir)>(StringComparer.OrdinalIgnoreCase);
+            ScanForStrippablePathsRecursively(
+                new DirectoryInfo(mod.Path),
+                mod.Path,
+                mod,
+                _pathService.GetMajorGameVersion(),
+                isModRoot: true,
+                potentialDeletions
+            );
+            return new HashSet<string>(potentialDeletions.Keys, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private void ScanForStrippablePathsRecursively(
+            DirectoryInfo currentDir,
+            string modRootPath,
+            ModItem mod,
+            string majorGameVersion,
+            bool isModRoot,
+            IDictionary<string, (long Size, bool isDir)> potentialDeletions)
+        {
+            if (potentialDeletions.ContainsKey(currentDir.FullName)) return;
+
+            var junkNameComponents = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Source", ".git", ".github", ".vs", ".vscode" };
+            var exactJunkFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "bin", "obj", "Properties" };
+            var junkFileExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".csproj", ".csproj.user", ".sln" };
+            char[] nameDelimiters = { '-', '_', ' ' };
+
+            var versionFolders = new List<(string VersionString, DirectoryInfo Dir)>();
+            var otherFolders = new List<DirectoryInfo>();
+
+            try
+            {
+                foreach (var dir in currentDir.EnumerateDirectories())
+                {
+                    var potentialVersionString = dir.Name.StartsWith("v", StringComparison.OrdinalIgnoreCase) ? dir.Name.Substring(1) : dir.Name;
+                    var versionString = new string(potentialVersionString.TakeWhile(c => char.IsDigit(c) || c == '.').ToArray()).TrimEnd('.');
+
+                    if (Version.TryParse(versionString, out _))
+                    {
+                        versionFolders.Add((versionString, dir));
+                    }
+                    else
+                    {
+                        otherFolders.Add(dir);
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                _logger.LogWarning($"Could not enumerate directories in '{currentDir.FullName}' for size calculation: {ex.Message}", nameof(ModService));
+                return;
+            }
+
+
+            if (versionFolders.Any())
+            {
+                var essentialVersions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                if (isModRoot)
+                {
+                    var supportedVersions = mod.SupportedVersionStrings.ToHashSet();
+                    var latestAvailableSupported = versionFolders
+                        .Where(vf => supportedVersions.Contains(vf.VersionString))
+                        .Select(vf => Version.TryParse(vf.VersionString, out var v) ? v : null)
+                        .Where(v => v != null).OrderByDescending(v => v).FirstOrDefault();
+
+                    if (latestAvailableSupported != null) essentialVersions.Add($"{latestAvailableSupported.Major}.{latestAvailableSupported.Minor}");
+
+                    if (supportedVersions.Contains(majorGameVersion) && versionFolders.Any(vf => vf.VersionString.Equals(majorGameVersion)))
+                    {
+                        essentialVersions.Add(majorGameVersion);
+                    }
+                }
+                else
+                {
+                    var latestAvailable = versionFolders
+                        .Select(vf => Version.TryParse(vf.VersionString, out var v) ? v : null)
+                        .Where(v => v != null).OrderByDescending(v => v).FirstOrDefault();
+                    if (latestAvailable != null) essentialVersions.Add($"{latestAvailable.Major}.{latestAvailable.Minor}");
+                }
+
+                foreach (var (versionString, dir) in versionFolders)
+                {
+                    if (!essentialVersions.Contains(versionString))
+                    {
+                        potentialDeletions[dir.FullName] = (0, true);
+                    }
+                }
+            }
+
+            foreach (var otherDir in otherFolders)
+            {
+                bool isJunkByNameComponent = otherDir.Name.StartsWith(".git", StringComparison.OrdinalIgnoreCase) ||
+                                             otherDir.Name.Split(nameDelimiters).Any(part => junkNameComponents.Contains(part));
+                bool isExactJunkFolder = exactJunkFolders.Contains(otherDir.Name);
+
+                if (isJunkByNameComponent || isExactJunkFolder)
+                {
+                    potentialDeletions[otherDir.FullName] = (0, true);
+                }
+                else
+                {
+                    ScanForStrippablePathsRecursively(otherDir, modRootPath, mod, majorGameVersion, false, potentialDeletions);
+                }
+            }
+
+            try
+            {
+                foreach (var file in currentDir.EnumerateFiles())
+                {
+                    if (file.Name.StartsWith(".git", StringComparison.OrdinalIgnoreCase) || junkFileExtensions.Contains(file.Extension))
+                    {
+                        potentialDeletions[file.FullName] = (file.Length, false);
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                _logger.LogWarning($"Could not enumerate files in '{currentDir.FullName}' for size calculation: {ex.Message}", nameof(ModService));
+            }
+
+            if (isModRoot)
+            {
+                var loadFoldersFile = new DirectoryInfo(modRootPath).GetFiles("loadFolders.xml", SearchOption.TopDirectoryOnly).FirstOrDefault();
+                if (loadFoldersFile != null && potentialDeletions.Any())
+                {
+                    try
+                    {
+                        var doc = XDocument.Load(loadFoldersFile.FullName);
+                        var pathsToKeep = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        var rootEssentialVersions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        var supported = mod.SupportedVersionStrings.ToHashSet();
+                        if (supported.Contains(majorGameVersion)) rootEssentialVersions.Add(majorGameVersion);
+
+                        var latestSupported = mod.SupportedVersionStrings
+                            .Select(vStr => Version.TryParse(vStr, out var v) ? v : null)
+                            .Where(v => v != null).OrderByDescending(v => v).FirstOrDefault();
+                        if (latestSupported != null) rootEssentialVersions.Add($"{latestSupported.Major}.{latestSupported.Minor}");
+
+                        foreach (var version in rootEssentialVersions)
+                        {
+                            var versionNode = doc.Root?.Elements().FirstOrDefault(e => e.Name.LocalName.Equals("v" + version, StringComparison.OrdinalIgnoreCase));
+                            if (versionNode != null)
+                            {
+                                foreach (var path in versionNode.Elements("li").Select(li => Path.GetFullPath(Path.Combine(modRootPath, li.Value.Trim().Replace('/', Path.DirectorySeparatorChar)))))
+                                {
+                                    pathsToKeep.Add(path);
+                                }
+                            }
+                        }
+
+                        var pathsToRescue = potentialDeletions.Keys
+                            .Where(path => pathsToKeep.Any(keepPath => path.Equals(keepPath, StringComparison.OrdinalIgnoreCase) || path.StartsWith(keepPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)))
+                            .ToList();
+
+                        foreach (var path in pathsToRescue)
+                        {
+                            potentialDeletions.Remove(path);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning($"Error parsing loadFolders.xml for mod size calc '{mod.Name}': {ex.Message}", nameof(ModService));
+                    }
+                }
+            }
+        }
+        #endregion
 
         /// <summary>
         /// Checks if a mod directory contains C# assemblies (.dll files) anywhere inside it.
@@ -845,6 +1087,7 @@ namespace RimSharp.Shared.Services.Implementations
             // Reload mods to reflect the removal
             await LoadModsAsync();
         }
+
 
         // Add method to get custom mod info
         public ModCustomInfo GetCustomModInfo(string packageId)
