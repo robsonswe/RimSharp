@@ -5,42 +5,54 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:RimSharp.Features.VramAnalysis.Views"
+             xmlns:system="clr-namespace:System.ComponentModel;assembly=WindowsBase"
              mc:Ignorable="d" 
-             d:DesignHeight="600" d:DesignWidth="800"> <!-- FIXED: Changed d. to d: -->
+             d:DesignHeight="600" d:DesignWidth="800">
     <DockPanel>
-        <!-- Top Control Bar -->
+        <!-- MODIFIED: Top Control Bar now includes VRAM totals -->
         <Border DockPanel.Dock="Top" Padding="5" Background="{StaticResource RimworldLightBackgroundBrush}" Margin="0,0,0,5">
-            <StackPanel Orientation="Horizontal">
-                <Button Content="Calculate VRAM" 
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                
+                <Button Grid.Column="0" Content="Calculate VRAM" 
                         Command="{Binding CalculateVramCommand}"
                         Style="{StaticResource RimworldButtonStyle}" 
                         ToolTip="Starts the process of analyzing texture files to estimate VRAM usage. This can take some time."/>
-                <TextBlock Text="{Binding StatusMessage}" 
-                           VerticalAlignment="Center" 
-                           Margin="15,0,0,0"
-                           Foreground="{StaticResource RimworldBrownBrush}"
-                           FontWeight="Medium"/>
-            </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <TextBlock Text="Total VRAM (Active): " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
+                    <TextBlock Text="{Binding TotalVramCompressedActiveMods, Converter={StaticResource FileSizeConverter}}" 
+                               VerticalAlignment="Center" 
+                               Foreground="{StaticResource RimworldBrownBrush}"
+                               Margin="0,0,20,0"/>
+
+                    <TextBlock Text="Total VRAM (Favorites): " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
+                    <TextBlock Text="{Binding TotalVramCompressedFavoriteMods, Converter={StaticResource FileSizeConverter}}" 
+                               VerticalAlignment="Center" 
+                               Foreground="{StaticResource RimworldBrownBrush}"/>
+                </StackPanel>
+            </Grid>
         </Border>
         
-        <!-- NEW: VRAM Summary Bar -->
+        <!-- MODIFIED: This bar is now for filters -->
         <Border DockPanel.Dock="Top" Padding="5" Background="{StaticResource RimworldLightBackgroundBrush}" Margin="0,0,0,5">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                <TextBlock Text="Total VRAM (Active Mods): " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
-                <TextBlock Text="{Binding TotalVramCompressedActiveMods, Converter={StaticResource FileSizeConverter}}" 
-                           VerticalAlignment="Center" 
-                           Foreground="{StaticResource RimworldBrownBrush}"
-                           Margin="0,0,20,0"/>
-
-                <TextBlock Text="Total VRAM (Favorite Mods): " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
-                <TextBlock Text="{Binding TotalVramCompressedFavoriteMods, Converter={StaticResource FileSizeConverter}}" 
-                           VerticalAlignment="Center" 
-                           Foreground="{StaticResource RimworldBrownBrush}"/>
+                <CheckBox Content="Show only active mods"
+                          IsChecked="{Binding ShowOnlyActive, Mode=TwoWay}"
+                          Foreground="{StaticResource RimworldBrownBrush}"
+                          VerticalAlignment="Center"
+                          Margin="0,0,20,0"/>
+                <CheckBox Content="Show only favorite mods"
+                          IsChecked="{Binding ShowOnlyFavorites, Mode=TwoWay}"
+                          Foreground="{StaticResource RimworldBrownBrush}"
+                          VerticalAlignment="Center"/>
             </StackPanel>
         </Border>
-        <!-- END NEW -->
 
-        <!-- Main Content Grid -->
+        <!-- Main Content Grid (Unchanged) -->
         <Grid>
             <!-- Loading/Busy Indicator -->
             <Border Background="#44000000" CornerRadius="3"
@@ -54,26 +66,20 @@
             
             <!-- Outer Border for the ListView to give it the RimworldPanelBorder look -->
             <Border BorderBrush="{StaticResource RimworldBrownBrush}" BorderThickness="1">
-                <!-- ListView for Mods -->
                 <ListView ItemsSource="{Binding VramMods}"
-                          SelectionMode="Single"
                           ScrollViewer.VerticalScrollBarVisibility="Auto"
                           Margin="0,5,0,0">
                     
-                    <!-- ItemContainerStyle directly applied to ListViewItem (NO ControlTemplate override) -->
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
                             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                             <Setter Property="Padding" Value="5"/>
                             <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
                             <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="Focusable" Value="False"/>
                             <Style.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter Property="Background" Value="{StaticResource RimworldDarkBeigeBrush}"/>
-                                </Trigger>
-                                <Trigger Property="IsSelected" Value="True">
-                                    <Setter Property="Background" Value="{StaticResource RimworldLightBrownBrush}"/>
-                                    <Setter Property="Foreground" Value="{StaticResource RimworldWhiteBrush}"/>
                                 </Trigger>
                             </Style.Triggers>
                         </Style>
@@ -81,7 +87,7 @@
 
                     <ListView.View>
                         <GridView>
-                            <!-- GridViewColumnHeader style, to match GitModsView headers -->
+                            <!-- GridViewColumnHeader style -->
                             <GridView.ColumnHeaderContainerStyle>
                                 <Style TargetType="GridViewColumnHeader">
                                     <Setter Property="Background" Value="{StaticResource RimworldLightBrownBrush}"/>
@@ -94,17 +100,41 @@
                                 </Style>
                             </GridView.ColumnHeaderContainerStyle>
 
-                            <!-- MODIFIED: Header Text changed -->
+                            <!-- Columns with sort indicators -->
                             <GridViewColumn Width="300">
                                 <GridViewColumn.Header>
-                                    <TextBlock Text="Mod Name" Tag="Mod.Name"/>
+                                    <DockPanel>
+                                        <TextBlock Text="Mod Name" Tag="Mod.Name"/>
+                                        <TextBlock Margin="5,0,0,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=GridViewColumnHeader}}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value=""/>
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Mod.Name"/>
+                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Ascending"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Text" Value="▲"/>
+                                                        </MultiDataTrigger>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Mod.Name"/>
+                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Descending"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Text" Value="▼"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DockPanel>
                                 </GridViewColumn.Header>
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding Mod.Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Mod.Name}">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
-                                                    <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListViewItem}}"/>
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding Mod.IsActive}" Value="True">
                                                             <Setter Property="FontWeight" Value="Bold"/>
@@ -120,10 +150,34 @@
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
 
-                            <!-- MODIFIED: Header Text changed -->
                             <GridViewColumn Width="100">
                                 <GridViewColumn.Header>
-                                    <TextBlock Text="Total Size" Tag="Mod.SizeInfo.TotalSize"/>
+                                    <DockPanel>
+                                        <TextBlock Text="Total Size" Tag="Mod.SizeInfo.TotalSize"/>
+                                        <TextBlock Margin="5,0,0,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=GridViewColumnHeader}}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value=""/>
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Mod.SizeInfo.TotalSize"/>
+                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Ascending"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Text" Value="▲"/>
+                                                        </MultiDataTrigger>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Mod.SizeInfo.TotalSize"/>
+                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Descending"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Text" Value="▼"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DockPanel>
                                 </GridViewColumn.Header>
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
@@ -132,10 +186,34 @@
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
 
-                            <!-- MODIFIED: Header Text changed -->
                             <GridViewColumn Width="120">
                                 <GridViewColumn.Header>
-                                    <TextBlock Text="Disk Size (DDS)" Tag="Mod.SizeInfo.MinTextureSize"/>
+                                    <DockPanel>
+                                        <TextBlock Text="Disk Size (DDS)" Tag="Mod.SizeInfo.MinTextureSize"/>
+                                        <TextBlock Margin="5,0,0,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=GridViewColumnHeader}}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value=""/>
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Mod.SizeInfo.MinTextureSize"/>
+                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Ascending"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Text" Value="▲"/>
+                                                        </MultiDataTrigger>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Mod.SizeInfo.MinTextureSize"/>
+                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Descending"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Text" Value="▼"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DockPanel>
                                 </GridViewColumn.Header>
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
@@ -144,10 +222,34 @@
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
 
-                            <!-- MODIFIED: Header Text changed -->
                             <GridViewColumn Width="120">
                                 <GridViewColumn.Header>
-                                    <TextBlock Text="Disk Size (PNG)" Tag="Mod.SizeInfo.MaxTextureSize"/>
+                                    <DockPanel>
+                                        <TextBlock Text="Disk Size (PNG)" Tag="Mod.SizeInfo.MaxTextureSize"/>
+                                        <TextBlock Margin="5,0,0,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=GridViewColumnHeader}}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value=""/>
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Mod.SizeInfo.MaxTextureSize"/>
+                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Ascending"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Text" Value="▲"/>
+                                                        </MultiDataTrigger>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Mod.SizeInfo.MaxTextureSize"/>
+                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Descending"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Text" Value="▼"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DockPanel>
                                 </GridViewColumn.Header>
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
@@ -158,7 +260,32 @@
                             
                             <GridViewColumn Width="150">
                                 <GridViewColumn.Header>
-                                    <TextBlock Text="VRAM (Uncompressed)" Tag="EstimatedVramUncompressed"/>
+                                    <DockPanel>
+                                        <TextBlock Text="VRAM (Uncompressed)" Tag="EstimatedVramUncompressed"/>
+                                        <TextBlock Margin="5,0,0,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=GridViewColumnHeader}}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value=""/>
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="EstimatedVramUncompressed"/>
+                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Ascending"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Text" Value="▲"/>
+                                                        </MultiDataTrigger>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="EstimatedVramUncompressed"/>
+                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Descending"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Text" Value="▼"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DockPanel>
                                 </GridViewColumn.Header>
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
@@ -169,7 +296,32 @@
                             
                             <GridViewColumn Width="150">
                                 <GridViewColumn.Header>
-                                    <TextBlock Text="VRAM (Compressed)" Tag="EstimatedVramCompressed"/>
+                                    <DockPanel>
+                                        <TextBlock Text="VRAM (Compressed)" Tag="EstimatedVramCompressed"/>
+                                        <TextBlock Margin="5,0,0,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=GridViewColumnHeader}}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value=""/>
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="EstimatedVramCompressed"/>
+                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Ascending"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Text" Value="▲"/>
+                                                        </MultiDataTrigger>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="EstimatedVramCompressed"/>
+                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Descending"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Text" Value="▼"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DockPanel>
                                 </GridViewColumn.Header>
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
