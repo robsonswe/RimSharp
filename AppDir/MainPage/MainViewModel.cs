@@ -17,6 +17,7 @@ using RimSharp.Features.GitModManager.ViewModels;
 using System.Threading;
 using RimSharp.Core.Commands.Base; // For CancellationToken
 using System.Collections.Generic;
+using RimSharp.Features.VramAnalysis.ViewModels;
 
 namespace RimSharp.AppDir.MainPage
 {
@@ -37,6 +38,7 @@ namespace RimSharp.AppDir.MainPage
         public DownloaderViewModel? DownloaderVM { get; }
         public GitModsViewModel GitModsVM { get; }
 
+        public VramAnalysisViewModel VramAnalysisVM { get; }
 
         // Application-wide settings or state
         public PathSettings PathSettings { get; }
@@ -72,7 +74,9 @@ namespace RimSharp.AppDir.MainPage
         }
 
         // Helper property to centralize the "Is anything busy?" logic
-        private bool IsIdle => !(ModsVM?.IsLoading ?? false) && !(DownloaderVM?.IsOperationInProgress ?? false);
+        private bool IsIdle => !(ModsVM?.IsLoading ?? false) &&
+                               !(DownloaderVM?.IsOperationInProgress ?? false) &&
+                               !(VramAnalysisVM?.IsBusy ?? false);
 
 
         // --- Constructor ---
@@ -84,7 +88,8 @@ namespace RimSharp.AppDir.MainPage
             IUpdaterService updaterService,
             ModsViewModel modsViewModel,
             DownloaderViewModel downloaderViewModel,
-            GitModsViewModel gitModsViewModel)
+            GitModsViewModel gitModsViewModel,
+            VramAnalysisViewModel vramAnalysisViewModel)
         {
             _pathService = pathService;
             _configService = configService;
@@ -95,6 +100,7 @@ namespace RimSharp.AppDir.MainPage
             ModsVM = modsViewModel;
             DownloaderVM = downloaderViewModel;
             GitModsVM = gitModsViewModel;
+            VramAnalysisVM = vramAnalysisViewModel;
 
             if (DownloaderVM != null)
             {
@@ -146,7 +152,16 @@ namespace RimSharp.AppDir.MainPage
                 refreshCmd.ObservesProperty(DownloaderVM, nameof(DownloaderViewModel.IsOperationInProgress));
                 openFolderCmd.ObservesProperty(DownloaderVM, nameof(DownloaderViewModel.IsOperationInProgress));
             }
-            // --- END of Correction ---
+
+            if (VramAnalysisVM != null)
+            {
+                switchTabCmd.ObservesProperty(VramAnalysisVM, nameof(VramAnalysisViewModel.IsBusy));
+                browsePathCmd.ObservesProperty(VramAnalysisVM, nameof(VramAnalysisViewModel.IsBusy));
+                settingsCmd.ObservesProperty(VramAnalysisVM, nameof(VramAnalysisViewModel.IsBusy));
+                refreshCmd.ObservesProperty(VramAnalysisVM, nameof(VramAnalysisViewModel.IsBusy));
+                openFolderCmd.ObservesProperty(VramAnalysisVM, nameof(VramAnalysisViewModel.IsBusy));
+            }
+
 
             // Initial CanExecute update for commands dependent on PathSettings properties
             RunOnUIThread(() =>
@@ -178,17 +193,17 @@ namespace RimSharp.AppDir.MainPage
 
             // Add the update check to the tasks
             startupTasks.Add(CheckForUpdateAsync());
-            
+
             // If other ViewModels also need delayed initialization, add them here.
             // For example:
             // if (DownloaderVM != null) { startupTasks.Add(DownloaderVM.InitializeAsync()); }
 
             // Await all tasks to complete. This allows them to run concurrently.
             await Task.WhenAll(startupTasks);
-            
+
             Debug.WriteLine("[MainViewModel] All initial tasks complete.", "OnMainWindowLoadedAsync");
         }
-        
+
         private async Task CheckForUpdateAsync()
         {
             Debug.WriteLine("[MainViewModel] Checking for game updates...");
@@ -206,7 +221,7 @@ namespace RimSharp.AppDir.MainPage
                 Debug.WriteLine("[MainViewModel] No new update found or check failed.");
             }
         }
-        
+
         #region CanExecute Predicates
 
         /// <summary>
@@ -501,6 +516,7 @@ namespace RimSharp.AppDir.MainPage
                 "Mods" => ModsVM,
                 "Downloader" => DownloaderVM,
                 "GitMods" => GitModsVM,
+                "VRAM" => VramAnalysisVM,
                 _ => null
             };
 
@@ -664,7 +680,7 @@ namespace RimSharp.AppDir.MainPage
                  (ModsVM as IDisposable)?.Dispose();
                 (DownloaderVM as IDisposable)?.Dispose();
                 (GitModsVM as IDisposable)?.Dispose();
-
+                (VramAnalysisVM as IDisposable)?.Dispose();
                 // Dispose other managed resources if any
             }
 

@@ -116,6 +116,37 @@
                 <StackPanel Grid.Column="1" Margin="10,0,0,0">
                     <StackPanel Style="{StaticResource InfoItemContainerStyle}"><TextBlock Text="" Style="{StaticResource InfoIconStyle}"/><TextBlock Text="Content:" Style="{StaticResource InfoLabelStyle}"/><TextBox Style="{StaticResource SelectableLabelStyle}" Text="{Binding Assemblies, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='XML-Only|C# Code'}"/></StackPanel>
                     <StackPanel Style="{StaticResource InfoItemContainerStyle}"><TextBlock Text="" Style="{StaticResource InfoIconStyle}"/><TextBlock Text="Textures:" Style="{StaticResource InfoLabelStyle}"/><TextBox Style="{StaticResource SelectableLabelStyle}" Text="{Binding Textures, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='None|Contains Textures'}"/></StackPanel>
+                    <!-- vvv CORRECTED vvv -->
+                    <StackPanel Style="{StaticResource InfoItemContainerStyle}" Visibility="{Binding SizeInfo.TotalSize, Converter={StaticResource CountToVisibilityConverter}}">
+                        <TextBlock Text="" Style="{StaticResource InfoIconStyle}"/>
+                        <TextBlock Text="Size:" Style="{StaticResource InfoLabelStyle}"/>
+                        <TextBox Style="{StaticResource SelectableLabelStyle}" Text="{Binding SizeInfo.TotalSize, Converter={StaticResource FileSizeConverter}}">
+                            <TextBox.ToolTip>
+                                <ToolTip>
+                                    <StackPanel Margin="2">
+                                        <TextBlock Margin="0,0,0,3">
+                                            <Run Text="Disk Size:" FontWeight="SemiBold"/><Run Text=" "/><Run Text="{Binding SizeInfo.TotalSize, Converter={StaticResource FileSizeConverter}}"/>
+                                        </TextBlock>
+                                        
+                                        <!-- TEXTURE DISK SIZE SECTION -->
+                                        <StackPanel Visibility="{Binding SizeInfo.MaxTextureSize, Converter={StaticResource CountToVisibilityConverter}}">
+                                            <Separator />
+                                            <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                                <TextBlock><Run Text="Texture Size (Disk):" FontWeight="SemiBold"/></TextBlock>
+                                                <TextBlock Margin="5,0,0,0" Visibility="{Binding SizeInfo.HasSignificantTextureSizeDifference, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <Run Text="{Binding SizeInfo.MinTextureSize, Converter={StaticResource FileSizeConverter}}"/><Run Text=" - "/><Run Text="{Binding SizeInfo.MaxTextureSize, Converter={StaticResource FileSizeConverter}}"/>
+                                                </TextBlock>
+                                                <TextBlock Margin="5,0,0,0" Visibility="{Binding SizeInfo.HasSignificantTextureSizeDifference, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                                    <Run Text="{Binding SizeInfo.MaxTextureSize, Converter={StaticResource FileSizeConverter}}"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </ToolTip>
+                            </TextBox.ToolTip>
+                        </TextBox>
+                    </StackPanel>
+                    <!-- ^^^ CORRECTED ^^^ -->
                     <StackPanel Style="{StaticResource InfoItemContainerStyle}"><TextBlock Text="" Style="{StaticResource InfoIconStyle}"/><TextBlock Text="Game Versions:" Style="{StaticResource InfoLabelStyle}"/><ContentControl Content="{Binding SupportedVersions, Converter={StaticResource VersionSupportConverter}}" VerticalAlignment="Center"/></StackPanel>
                     <StackPanel Style="{StaticResource InfoItemContainerStyle}" Visibility="{Binding ModVersion, Converter={StaticResource IsNotNullOrEmptyToVisibilityConverter}}"><TextBlock Text="" Style="{StaticResource InfoIconStyle}"/><TextBlock Text="Mod Version:" Style="{StaticResource InfoLabelStyle}"/><TextBox Text="{Binding ModVersion}" Style="{StaticResource SelectableLabelStyle}"/></StackPanel>
                 </StackPanel>

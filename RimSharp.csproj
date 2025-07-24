@@ -31,8 +31,9 @@
     <PackageReference Include="PInvoke.Shell32" Version="0.7.124" />
     <PackageReference Include="PInvoke.User32" Version="0.7.124" />
     <PackageReference Include="QuikGraph" Version="2.5.0" />
+    <PackageReference Include="System.Management" Version="8.0.0" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <Content Include="Rules\db\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

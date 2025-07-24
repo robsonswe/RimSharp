@@ -165,6 +165,9 @@
                 <Button Content="Git Mods"
                         Command="{Binding SwitchTabCommand}" CommandParameter="GitMods"
                         Style="{StaticResource RimworldTabButtonStyle}"/>
+                <Button Content="VRAM Analysis"
+                        Command="{Binding SwitchTabCommand}" CommandParameter="VRAM"
+                        Style="{StaticResource RimworldTabButtonStyle}"/>
             </StackPanel>
         </Border>
 
