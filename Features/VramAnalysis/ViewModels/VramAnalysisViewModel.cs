@@ -30,6 +30,8 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
         private bool _isBusy;
         public string StatusMessage { get => _statusMessage; set => SetProperty(ref _statusMessage, value); }
         private string _statusMessage = "Ready. Click 'Calculate VRAM' to begin analysis.";
+        
+        // VRAM Totals
         public long TotalVramCompressedActiveMods { get => _totalVramCompressedActiveMods; set => SetProperty(ref _totalVramCompressedActiveMods, value); }
         private long _totalVramCompressedActiveMods;
         public long TotalVramCompressedFavoriteMods { get => _totalVramCompressedFavoriteMods; set => SetProperty(ref _totalVramCompressedFavoriteMods, value); }
@@ -38,6 +40,20 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
         private long _maxTotalVramCompressedActiveMods;
         public long MaxTotalVramCompressedFavoriteMods { get => _maxTotalVramCompressedFavoriteMods; set => SetProperty(ref _maxTotalVramCompressedFavoriteMods, value); }
         private long _maxTotalVramCompressedFavoriteMods;
+
+        // Texture Count Totals
+        public int TotalTextureCountActiveMods { get => _totalTextureCountActiveMods; set => SetProperty(ref _totalTextureCountActiveMods, value); }
+        private int _totalTextureCountActiveMods;
+        public int MaxTotalTextureCountActiveMods { get => _maxTotalTextureCountActiveMods; set => SetProperty(ref _maxTotalTextureCountActiveMods, value); }
+        private int _maxTotalTextureCountActiveMods;
+        
+        // --- NEW/RESTORED: Texture Count Totals for Favorites ---
+        public int TotalTextureCountFavoriteMods { get => _totalTextureCountFavoriteMods; set => SetProperty(ref _totalTextureCountFavoriteMods, value); }
+        private int _totalTextureCountFavoriteMods;
+        public int MaxTotalTextureCountFavoriteMods { get => _maxTotalTextureCountFavoriteMods; set => SetProperty(ref _maxTotalTextureCountFavoriteMods, value); }
+        private int _maxTotalTextureCountFavoriteMods;
+
+
         public bool ShowOnlyActive { get => _showOnlyActive; set { if (SetProperty(ref _showOnlyActive, value)) ApplyFiltersAndSort(); } }
         private bool _showOnlyActive;
         public bool ShowOnlyFavorites { get => _showOnlyFavorites; set { if (SetProperty(ref _showOnlyFavorites, value)) ApplyFiltersAndSort(); } }
@@ -53,37 +69,27 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
 
         public VramAnalysisViewModel(IModListManager modListManager, IDialogService dialogService, ILoggerService logger, IPathService pathService)
         {
-            _modListManager = modListManager;
-            _dialogService = dialogService;
-            _logger = logger;
-            _pathService = pathService;
+            _modListManager = modListManager; _dialogService = dialogService; _logger = logger; _pathService = pathService;
             CalculateVramCommand = CreateCancellableAsyncCommand(ExecuteVramCalculationAsync, () => !IsBusy, nameof(IsBusy));
             SortCommand = CreateCommand<string>(ExecuteSortCommand);
-            _modListManager.ListChanged += OnModListChanged;
-            LoadMods();
+            _modListManager.ListChanged += OnModListChanged; LoadMods();
         }
 
         private void LoadMods()
         {
-            _allVramMods = _modListManager.GetAllMods()
-                .Where(m => m.ModType != ModType.Core && m.ModType != ModType.Expansion && m.Textures)
-                .Select(m => new VramModItemWrapper(m)).ToList();
+            _allVramMods = _modListManager.GetAllMods().Where(m => m.ModType != ModType.Core && m.ModType != ModType.Expansion && m.Textures).Select(m => new VramModItemWrapper(m)).ToList();
             ShowOnlyActive = false; ShowOnlyFavorites = false; ShowMaxVram = false;
             ApplyFiltersAndSort(); UpdateTotalVramEstimates();
         }
         
-        // --- FIX: Parameter is now nullable to match delegate signature ---
         private void OnModListChanged(object? sender, EventArgs e) => RunOnUIThread(LoadMods);
 
         private async Task ExecuteVramCalculationAsync(CancellationToken ct)
         {
-            IsBusy = true;
-            StatusMessage = "Starting VRAM calculation...";
-            ProgressDialogViewModel? progressVm = null;
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            IsBusy = true; StatusMessage = "Starting VRAM calculation...";
+            ProgressDialogViewModel? progressVm = null; using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             try {
-                var modsToCalculate = _allVramMods.ToList();
-                if (!modsToCalculate.Any()) { StatusMessage = "No mods with textures found to analyze."; return; }
+                var modsToCalculate = _allVramMods.ToList(); if (!modsToCalculate.Any()) { StatusMessage = "No mods with textures found to analyze."; return; }
                 RunOnUIThread(() => { progressVm = _dialogService.ShowProgressDialog("Calculating VRAM", "Preparing...", true, false, linkedCts); });
                 await Task.Delay(50, ct);
                 var activeModIds = _modListManager.VirtualActiveMods.Select(m => m.Mod.PackageId).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -92,22 +98,19 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
                 await Task.Run(async () => {
                     foreach (var modWrapper in modsToCalculate)
                     {
-                        ct.ThrowIfCancellationRequested();
-                        processedCount++;
+                        ct.ThrowIfCancellationRequested(); processedCount++;
                         RunOnUIThread(() => { progressVm?.UpdateProgress((int)((double)processedCount / modsToCalculate.Count * 100), $"Analyzing: {modWrapper.Mod.Name}"); });
                         var result = VramEstimator.Calculate(modWrapper.Mod.Path, majorVersion, activeModIds);
                         RunOnUIThread(() => {
-                            modWrapper.EstimatedVramUncompressed = result.EstimatedVramUncompressed;
-                            modWrapper.EstimatedVramCompressed = result.EstimatedVramCompressed;
-                            modWrapper.MaxEstimatedVramUncompressed = result.MaxEstimatedVramUncompressed;
-                            modWrapper.MaxEstimatedVramCompressed = result.MaxEstimatedVramCompressed;
-                            modWrapper.ConditionalDependencies = result.ConditionalDependencies; // Map dependencies
+                            modWrapper.EstimatedVramUncompressed = result.EstimatedVramUncompressed; modWrapper.EstimatedVramCompressed = result.EstimatedVramCompressed;
+                            modWrapper.MaxEstimatedVramUncompressed = result.MaxEstimatedVramUncompressed; modWrapper.MaxEstimatedVramCompressed = result.MaxEstimatedVramCompressed;
+                            modWrapper.ConditionalDependencies = result.ConditionalDependencies;
+                            modWrapper.TextureCount = result.TextureCount; modWrapper.MaxTextureCount = result.MaxTextureCount;
                         });
                         await Task.Delay(10, ct);
                     }
                 }, ct);
-                StatusMessage = "VRAM calculation complete.";
-                progressVm?.CompleteOperation("Calculation complete.");
+                StatusMessage = "VRAM calculation complete."; progressVm?.CompleteOperation("Calculation complete.");
             }
             catch (OperationCanceledException) { StatusMessage = "VRAM calculation cancelled."; progressVm?.ForceClose(); }
             catch (Exception ex) { StatusMessage = "An error occurred."; _logger.LogException(ex, StatusMessage, nameof(VramAnalysisViewModel)); progressVm?.ForceClose(); _dialogService.ShowError("Calculation Error", $"An error occurred: {ex.Message}"); }
@@ -122,16 +125,26 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
             ApplyFiltersAndSort();
         }
 
+        // --- MODIFIED: Added calculation for favorite texture counts ---
         private void UpdateTotalVramEstimates()
         {
             long activeTotal = 0, favoriteTotal = 0, maxActiveTotal = 0, maxFavoriteTotal = 0;
+            int activeTextureTotal = 0, maxActiveTextureTotal = 0, favoriteTextureTotal = 0, maxFavoriteTextureTotal = 0;
             foreach (var mod in _allVramMods)
             {
-                if (mod.Mod.IsActive) { activeTotal += mod.EstimatedVramCompressed; maxActiveTotal += mod.MaxEstimatedVramCompressed; }
-                if (mod.Mod.IsFavorite) { favoriteTotal += mod.EstimatedVramCompressed; maxFavoriteTotal += mod.MaxEstimatedVramCompressed; }
+                if (mod.Mod.IsActive) {
+                    activeTotal += mod.EstimatedVramCompressed; maxActiveTotal += mod.MaxEstimatedVramCompressed;
+                    activeTextureTotal += mod.TextureCount; maxActiveTextureTotal += mod.MaxTextureCount;
+                }
+                if (mod.Mod.IsFavorite) {
+                    favoriteTotal += mod.EstimatedVramCompressed; maxFavoriteTotal += mod.MaxEstimatedVramCompressed;
+                    favoriteTextureTotal += mod.TextureCount; maxFavoriteTextureTotal += mod.MaxTextureCount;
+                }
             }
             TotalVramCompressedActiveMods = activeTotal; TotalVramCompressedFavoriteMods = favoriteTotal;
             MaxTotalVramCompressedActiveMods = maxActiveTotal; MaxTotalVramCompressedFavoriteMods = maxFavoriteTotal;
+            TotalTextureCountActiveMods = activeTextureTotal; MaxTotalTextureCountActiveMods = maxActiveTextureTotal;
+            TotalTextureCountFavoriteMods = favoriteTextureTotal; MaxTotalTextureCountFavoriteMods = maxFavoriteTextureTotal;
         }
 
         private void ApplyFiltersAndSort()
@@ -141,9 +154,10 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
             if (ShowOnlyFavorites) view = view.Where(m => m.Mod.IsFavorite);
             
             var sortProperty = CurrentSortColumn ?? "Mod.Name";
-            if (ShowMaxVram && sortProperty.Contains("EstimatedVram"))
+            if (ShowMaxVram)
             {
-                sortProperty = sortProperty.Replace("EstimatedVram", "MaxEstimatedVram");
+                if (sortProperty.Contains("EstimatedVram")) sortProperty = sortProperty.Replace("EstimatedVram", "MaxEstimatedVram");
+                if (sortProperty.Contains("TextureCount")) sortProperty = sortProperty.Replace("TextureCount", "MaxTextureCount");
             }
             var sortedView = SortDirection == ListSortDirection.Ascending ? view.OrderBy(mod => GetPropertyValue(mod, sortProperty)) : view.OrderByDescending(mod => GetPropertyValue(mod, sortProperty));
             RunOnUIThread(() => { VramMods = new ObservableCollection<VramModItemWrapper>(sortedView); });
@@ -152,13 +166,7 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
         private object? GetPropertyValue(VramModItemWrapper modWrapper, string propertyPath)
         {
             object? currentObject = modWrapper;
-            foreach (var part in propertyPath.Split('.'))
-            {
-                if (currentObject == null) return null;
-                var prop = currentObject.GetType().GetProperty(part);
-                if (prop == null) return null;
-                currentObject = prop.GetValue(currentObject);
-            }
+            foreach (var part in propertyPath.Split('.')) { if (currentObject == null) return null; var prop = currentObject.GetType().GetProperty(part); if (prop == null) return null; currentObject = prop.GetValue(currentObject); }
             return currentObject;
         }
         

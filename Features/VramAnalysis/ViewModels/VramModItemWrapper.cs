@@ -2,7 +2,7 @@
 #nullable enable
 using System.Collections.Generic;
 using RimSharp.AppDir.AppFiles;
-using RimSharp.Features.VramAnalysis.Tools; // Required for ConditionalDependency
+using RimSharp.Features.VramAnalysis.Tools;
 using RimSharp.Shared.Models;
 
 namespace RimSharp.Features.VramAnalysis.ViewModels
@@ -10,69 +10,38 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
     public class VramModItemWrapper : ViewModelBase
     {
         public ModItem Mod { get; }
-
+        
+        // VRAM Properties
+        public long EstimatedVramCompressed { get => _estimatedVramCompressed; set { if (SetProperty(ref _estimatedVramCompressed, value)) { OnPropertyChanged(nameof(HasConditionalContent)); OnPropertyChanged(nameof(VramDisplayText)); } } }
         private long _estimatedVramCompressed;
-        public long EstimatedVramCompressed
-        {
-            get => _estimatedVramCompressed;
-            set
-            {
-                if (SetProperty(ref _estimatedVramCompressed, value))
-                {
-                    OnPropertyChanged(nameof(HasConditionalContent));
-                    OnPropertyChanged(nameof(VramDisplayText));
-                }
-            }
-        }
-
+        public long MaxEstimatedVramCompressed { get => _maxEstimatedVramCompressed; set { if (SetProperty(ref _maxEstimatedVramCompressed, value)) { OnPropertyChanged(nameof(HasConditionalContent)); OnPropertyChanged(nameof(VramDisplayText)); } } }
         private long _maxEstimatedVramCompressed;
-        public long MaxEstimatedVramCompressed
-        {
-            get => _maxEstimatedVramCompressed;
-            set
-            {
-                if (SetProperty(ref _maxEstimatedVramCompressed, value))
-                {
-                    OnPropertyChanged(nameof(HasConditionalContent));
-                    OnPropertyChanged(nameof(VramDisplayText));
-                }
-            }
-        }
-
+        public long EstimatedVramUncompressed { get => _estimatedVramUncompressed; set => SetProperty(ref _estimatedVramUncompressed, value); }
         private long _estimatedVramUncompressed;
-        public long EstimatedVramUncompressed
-        {
-            get => _estimatedVramUncompressed;
-            set => SetProperty(ref _estimatedVramUncompressed, value);
-        }
-
+        public long MaxEstimatedVramUncompressed { get => _maxEstimatedVramUncompressed; set => SetProperty(ref _maxEstimatedVramUncompressed, value); }
         private long _maxEstimatedVramUncompressed;
-        public long MaxEstimatedVramUncompressed
-        {
-            get => _maxEstimatedVramUncompressed;
-            set => SetProperty(ref _maxEstimatedVramUncompressed, value);
-        }
-        // --- END MODIFICATION ---
 
+        // Texture Count Properties
+        public int TextureCount { get => _textureCount; set => SetProperty(ref _textureCount, value); }
+        private int _textureCount;
+        public int MaxTextureCount { get => _maxTextureCount; set => SetProperty(ref _maxTextureCount, value); }
+        private int _maxTextureCount;
+        
         public bool HasConditionalContent => EstimatedVramCompressed != MaxEstimatedVramCompressed;
         public List<ConditionalDependency> ConditionalDependencies { get; set; } = new();
 
         public string VramDisplayText => FormatBytes(EstimatedVramCompressed);
+        
 
         public VramModItemWrapper(ModItem mod) { Mod = mod; }
 
         private static string FormatBytes(long bytes)
         {
             if (bytes == 0) return "Not Calculated"; 
-
             string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
             int i = 0;
             double dblSByte = bytes;
-            while (dblSByte >= 1024 && i < suffixes.Length - 1)
-            {
-                dblSByte /= 1024.0;
-                i++;
-            }
+            while (dblSByte >= 1024 && i < suffixes.Length - 1) { dblSByte /= 1024.0; i++; }
             return $"{dblSByte:F1} {suffixes[i]}";
         }
     }
