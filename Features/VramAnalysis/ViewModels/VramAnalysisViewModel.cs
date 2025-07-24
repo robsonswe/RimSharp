@@ -24,6 +24,9 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
         private readonly IDialogService _dialogService;
         private readonly ILoggerService _logger;
 
+        // MODIFIED: This will now hold ALL mods, acting as the master list.
+        private List<VramModItemWrapper> _allVramMods = new();
+
         private ObservableCollection<VramModItemWrapper> _vramMods = new();
         public ObservableCollection<VramModItemWrapper> VramMods
         {
@@ -38,6 +41,7 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
             private set => SetProperty(ref _isBusy, value);
         }
         
+        // MODIFIED: This message is no longer used in the UI, but kept for other potential status updates.
         private string _statusMessage = "Ready. Click 'Calculate VRAM' to begin analysis.";
         public string StatusMessage
         {
@@ -45,7 +49,6 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
             set => SetProperty(ref _statusMessage, value);
         }
 
-        // --- NEW: Total VRAM properties for summary bar ---
         private long _totalVramCompressedActiveMods;
         public long TotalVramCompressedActiveMods
         {
@@ -59,25 +62,51 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
             get => _totalVramCompressedFavoriteMods;
             set => SetProperty(ref _totalVramCompressedFavoriteMods, value);
         }
+
+        // --- NEW: Filter properties ---
+        private bool _showOnlyActive;
+        public bool ShowOnlyActive
+        {
+            get => _showOnlyActive;
+            set
+            {
+                if (SetProperty(ref _showOnlyActive, value))
+                {
+                    ApplyFiltersAndSort();
+                }
+            }
+        }
+
+        private bool _showOnlyFavorites;
+        public bool ShowOnlyFavorites
+        {
+            get => _showOnlyFavorites;
+            set
+            {
+                if (SetProperty(ref _showOnlyFavorites, value))
+                {
+                    ApplyFiltersAndSort();
+                }
+            }
+        }
         // --- END NEW ---
 
-        // --- Sorting Properties and Command ---
-        private string? _currentSortColumn; // Stores the name of the column currently sorted by
-        private ListSortDirection _sortDirection = ListSortDirection.Ascending; // Stores the current sort direction
+        private string? _currentSortColumn = "Mod.Name";
+        public string? CurrentSortColumn 
+        {
+            get => _currentSortColumn;
+            private set => SetProperty(ref _currentSortColumn, value);
+        }
+        
+        private ListSortDirection _sortDirection = ListSortDirection.Ascending;
+        public ListSortDirection SortDirection
+        {
+            get => _sortDirection;
+            private set => SetProperty(ref _sortDirection, value);
+        }
 
         public AsyncRelayCommand CalculateVramCommand { get; }
-        public DelegateCommand<string> SortCommand { get; } // Command for column header clicks
-
-        // MODIFIED: Map property paths to friendly header names
-        private static readonly Dictionary<string, string> _sortPropertyToHeaderMap = new(StringComparer.OrdinalIgnoreCase)
-        {
-            { "Mod.Name", "Mod Name" },
-            { "Mod.SizeInfo.TotalSize", "Total Size" },
-            { "Mod.SizeInfo.MinTextureSize", "Disk Size (DDS)" },      // MODIFIED
-            { "Mod.SizeInfo.MaxTextureSize", "Disk Size (PNG)" },      // MODIFIED
-            { "EstimatedVramUncompressed", "VRAM (Uncompressed)" },
-            { "EstimatedVramCompressed", "VRAM (Compressed)" }
-        };
+        public DelegateCommand<string> SortCommand { get; }
 
         public VramAnalysisViewModel(IModListManager modListManager, IDialogService dialogService, ILoggerService logger)
         {
@@ -90,29 +119,35 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
 
             _modListManager.ListChanged += OnModListChanged;
             LoadMods();
-            UpdateTotalVramEstimates(); // Initial call to populate summary bar
         }
-
+        
+        // MODIFIED: Now populates the master list and then calls ApplyFiltersAndSort.
         private void LoadMods()
         {
             _logger.LogInfo("Loading mods for VRAM analysis view.", nameof(VramAnalysisViewModel));
             var allMods = _modListManager.GetAllMods()
-                .Where(m => m.ModType != ModType.Core && m.ModType != ModType.Expansion && m.Textures) // Exclude Core/DLC, only include mods with textures
-                .OrderBy(m => m.Name) // Default sort by Name ascending
+                .Where(m => m.ModType != ModType.Core && m.ModType != ModType.Expansion && m.Textures)
                 .Select(m => new VramModItemWrapper(m));
 
-            VramMods = new ObservableCollection<VramModItemWrapper>(allMods);
-            _currentSortColumn = "Mod.Name"; // Initialize current sort column
-            _sortDirection = ListSortDirection.Ascending; // Initialize sort direction
-            StatusMessage = $"Ready. Found {VramMods.Count} mods with textures to analyze.";
-            UpdateTotalVramEstimates(); // Call after VramMods is populated
-        }
+            _allVramMods = new List<VramModItemWrapper>(allMods);
+            
+            // Reset filters to default state
+            _showOnlyActive = false;
+            _showOnlyFavorites = false;
+            OnPropertyChanged(nameof(ShowOnlyActive));
+            OnPropertyChanged(nameof(ShowOnlyFavorites));
 
+            ApplyFiltersAndSort();
+            UpdateTotalVramEstimates(); // Calculate totals from the full list
+            StatusMessage = "Ready. Click 'Calculate VRAM' to begin analysis.";
+        }
+        
         private void OnModListChanged(object? sender, EventArgs e)
         {
             RunOnUIThread(LoadMods);
         }
 
+        // MODIFIED: Now operates on _allVramMods, not the public collection.
         private async Task ExecuteVramCalculationAsync(CancellationToken ct)
         {
             IsBusy = true;
@@ -122,7 +157,7 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
 
             try
             {
-                var modsToCalculate = VramMods.ToList(); // Work on a copy
+                var modsToCalculate = _allVramMods.ToList(); // Work on a copy of the master list
                 if (!modsToCalculate.Any())
                 {
                     StatusMessage = "No mods with textures found to analyze.";
@@ -144,7 +179,6 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
                     {
                         linkedCts.Token.ThrowIfCancellationRequested();
                         processedCount++;
-                        // Ensure progress updates are on UI thread
                         RunOnUIThread(() =>
                         {
                             progressVm?.UpdateProgress((int)((double)processedCount / totalCount * 100), $"Analyzing: {modWrapper.Mod.Name}");
@@ -155,21 +189,18 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
                             var texturePaths = VramEstimator.GetTexturePathsForMod(modWrapper.Mod.Path);
                             var result = VramEstimator.Calculate(texturePaths);
 
-                            // Ensure property updates are on UI thread
-                            RunOnUIThread(() =>
-                            {
-                                modWrapper.EstimatedVramUncompressed = result.EstimatedVramUncompressed;
-                                modWrapper.EstimatedVramCompressed = result.EstimatedVramCompressed;
-                            });
+                            // No UI thread switch needed here as we are just updating data on the object.
+                            // The object itself will raise PropertyChanged on the UI thread when its properties are set.
+                            modWrapper.EstimatedVramUncompressed = result.EstimatedVramUncompressed;
+                            modWrapper.EstimatedVramCompressed = result.EstimatedVramCompressed;
                         }
                         catch (Exception ex)
                         {
                             _logger.LogError($"Failed to calculate VRAM for '{modWrapper.Mod.Name}': {ex.Message}", nameof(VramAnalysisViewModel));
                         }
-                         // A small delay to keep the UI responsive
                         await Task.Delay(10, linkedCts.Token);
                     }
-                }, linkedCts.Token); // Pass linked token to Task.Run
+                }, linkedCts.Token);
 
                 StatusMessage = "VRAM calculation complete.";
                 progressVm?.CompleteOperation("Calculation complete.");
@@ -189,63 +220,36 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
             finally
             {
                 IsBusy = false;
-                RunOnUIThread(UpdateTotalVramEstimates); // Recalculate totals after all individual updates are done
-                // Dispose of the progress dialog ViewModel
+                RunOnUIThread(UpdateTotalVramEstimates);
                 progressVm?.Dispose();
             }
         }
-
-        // --- ExecuteSortCommand for column sorting ---
+        
+        // MODIFIED: Now just updates sort properties and calls the central update method.
         private void ExecuteSortCommand(string? propertyPath)
         {
             if (string.IsNullOrEmpty(propertyPath)) return;
 
-            // Toggle sort direction if clicking the same column
-            if (_currentSortColumn == propertyPath)
+            if (CurrentSortColumn == propertyPath)
             {
-                _sortDirection = (_sortDirection == ListSortDirection.Ascending) ? ListSortDirection.Descending : ListSortDirection.Ascending;
+                SortDirection = (SortDirection == ListSortDirection.Ascending) ? ListSortDirection.Descending : ListSortDirection.Ascending;
             }
             else
             {
-                // New column clicked, reset to ascending
-                _currentSortColumn = propertyPath;
-                _sortDirection = ListSortDirection.Ascending;
+                CurrentSortColumn = propertyPath;
+                SortDirection = ListSortDirection.Ascending;
             }
 
-            // Perform sorting using reflection to get the property value dynamically
-            IOrderedEnumerable<VramModItemWrapper> sortedMods;
-
-            if (_sortDirection == ListSortDirection.Ascending)
-            {
-                sortedMods = VramMods.OrderBy(mod => GetPropertyValue(mod, propertyPath));
-            }
-            else
-            {
-                sortedMods = VramMods.OrderByDescending(mod => GetPropertyValue(mod, propertyPath));
-            }
-
-            // Re-populate ObservableCollection on UI thread
-            RunOnUIThread(() =>
-            {
-                VramMods = new ObservableCollection<VramModItemWrapper>(sortedMods);
-                
-                // NEW: Get the friendly header name for the status message
-                string displayName = _sortPropertyToHeaderMap.TryGetValue(propertyPath, out string? headerText)
-                    ? headerText
-                    : propertyPath; // Fallback to propertyPath if not found
-
-                StatusMessage = $"Sorted by '{displayName}' {(_sortDirection == ListSortDirection.Ascending ? "Ascending" : "Descending")}.";
-                UpdateTotalVramEstimates(); // Recalculate totals after sorting
-            });
+            ApplyFiltersAndSort();
         }
 
-        // NEW: Method to calculate and update the total VRAM estimates
+        // MODIFIED: Now calculates from the master list _allVramMods.
         private void UpdateTotalVramEstimates()
         {
             long activeTotal = 0;
             long favoriteTotal = 0;
 
-            foreach (var modWrapper in VramMods)
+            foreach (var modWrapper in _allVramMods) // Iterate over the full list
             {
                 if (modWrapper.Mod.IsActive)
                 {
@@ -261,11 +265,39 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
             TotalVramCompressedFavoriteMods = favoriteTotal;
         }
 
-
-        // Helper method to get property value using reflection for dynamic sorting
-        private object? GetPropertyValue(VramModItemWrapper modWrapper, string propertyPath)
+        // --- NEW: Central method to apply filters and sorting ---
+        private void ApplyFiltersAndSort()
         {
-            // This handles nested properties like "Mod.Name" or "Mod.SizeInfo.TotalSize"
+            IEnumerable<VramModItemWrapper> view = _allVramMods;
+
+            if (ShowOnlyActive)
+            {
+                view = view.Where(m => m.Mod.IsActive);
+            }
+            if (ShowOnlyFavorites)
+            {
+                view = view.Where(m => m.Mod.IsFavorite);
+            }
+
+            IOrderedEnumerable<VramModItemWrapper> sortedView;
+            if (SortDirection == ListSortDirection.Ascending)
+            {
+                sortedView = view.OrderBy(mod => GetPropertyValue(mod, CurrentSortColumn));
+            }
+            else
+            {
+                sortedView = view.OrderByDescending(mod => GetPropertyValue(mod, CurrentSortColumn));
+            }
+
+            RunOnUIThread(() =>
+            {
+                VramMods = new ObservableCollection<VramModItemWrapper>(sortedView);
+            });
+        }
+
+        private object? GetPropertyValue(VramModItemWrapper modWrapper, string? propertyPath)
+        {
+            if (string.IsNullOrEmpty(propertyPath)) return null;
             object? currentObject = modWrapper;
             foreach (var part in propertyPath.Split('.'))
             {
@@ -274,13 +306,13 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
                 if (prop == null)
                 {
                     _logger.LogWarning($"Property '{part}' not found in path '{propertyPath}' for type '{currentObject.GetType().Name}'.", nameof(VramAnalysisViewModel));
-                    return null; // Or throw exception if this indicates a critical error
+                    return null;
                 }
                 currentObject = prop.GetValue(currentObject);
             }
             return currentObject;
         }
-
+        
         protected override void Dispose(bool disposing)
         {
             if (_disposed) return;

@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives; // For ButtonBase
 using System.Diagnostics; // For Debug.WriteLine
 using RimSharp.Features.VramAnalysis.ViewModels; // To access VramAnalysisViewModel
+using System.Linq; // MODIFIED: Added for LINQ extension methods
 
 namespace RimSharp.Features.VramAnalysis.Views
 {
@@ -17,25 +18,31 @@ namespace RimSharp.Features.VramAnalysis.Views
         {
             if (sender is GridViewColumnHeader header)
             {
-                // The Header property of the GridViewColumn itself contains the TextBlock.
-                // We need to access that TextBlock to get its Tag.
-                if (header.Column?.Header is TextBlock headerContent && headerContent.Tag is string sortPropertyName)
+                if (header.Column?.Header is Panel headerContent)
                 {
-                    // Ensure the DataContext is the VramAnalysisViewModel
-                    if (DataContext is VramAnalysisViewModel viewModel)
+                    var taggedElement = headerContent.Children.OfType<TextBlock>().FirstOrDefault(tb => tb.Tag != null);
+                    if (taggedElement?.Tag is string sortPropertyName)
                     {
-                        Debug.WriteLine($"[VRAM View] Column header clicked: {sortPropertyName}");
-                        // Execute the SortCommand in the ViewModel
-                        viewModel.SortCommand.Execute(sortPropertyName);
+                        // Ensure the DataContext is the VramAnalysisViewModel
+                        if (DataContext is VramAnalysisViewModel viewModel)
+                        {
+                            Debug.WriteLine($"[VRAM View] Column header clicked: {sortPropertyName}");
+                            // Execute the SortCommand in the ViewModel
+                            viewModel.SortCommand.Execute(sortPropertyName);
+                        }
+                        else
+                        {
+                            Debug.WriteLine("[VRAM View] DataContext is not VramAnalysisViewModel.");
+                        }
                     }
                     else
                     {
-                        Debug.WriteLine("[VRAM View] DataContext is not VramAnalysisViewModel.");
+                        Debug.WriteLine("[VRAM View] Could not find a TextBlock with a Tag in the header content Panel.");
                     }
                 }
                 else
                 {
-                    Debug.WriteLine("[VRAM View] Header content is not a TextBlock or Tag is missing/invalid.");
+                    Debug.WriteLine("[VRAM View] Header content is not a Panel or is null.");
                 }
             }
             else
