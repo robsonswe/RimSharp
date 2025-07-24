@@ -17,6 +17,11 @@ namespace RimSharp.Features.VramAnalysis.Tools
         public long EstimatedVramCompressed { get; set; }
         public long MaxEstimatedVramUncompressed { get; set; }
         public long MaxEstimatedVramCompressed { get; set; }
+        
+        // --- NEW PROPERTIES ---
+        public int TextureCount { get; set; }
+        public int MaxTextureCount { get; set; }
+
         public bool HasConditionalContent => EstimatedVramCompressed != MaxEstimatedVramCompressed;
         public List<ConditionalDependency> ConditionalDependencies { get; set; } = new();
     }
@@ -32,8 +37,10 @@ namespace RimSharp.Features.VramAnalysis.Tools
                 return new VramEstimationResult();
 
             var (currentPaths, dependencies) = GetTexturePathsForMod(modPath, majorGameVersion, activeModPackageIds);
+            var maxPaths = GetAllTexturePathsForMod(modPath).ToList(); // ToList() to avoid multiple enumerations
+
             var currentResult = CalculateFromPaths(currentPaths);
-            var maxResult = CalculateFromPaths(GetAllTexturePathsForMod(modPath));
+            var maxResult = CalculateFromPaths(maxPaths);
 
             return new VramEstimationResult
             {
@@ -41,10 +48,14 @@ namespace RimSharp.Features.VramAnalysis.Tools
                 EstimatedVramCompressed = currentResult.EstimatedVramCompressed,
                 MaxEstimatedVramUncompressed = maxResult.EstimatedVramUncompressed,
                 MaxEstimatedVramCompressed = maxResult.EstimatedVramCompressed,
-                ConditionalDependencies = dependencies
+                ConditionalDependencies = dependencies,
+                // --- SET NEW PROPERTIES ---
+                TextureCount = currentPaths.Count(), // Count items in the final enumerable
+                MaxTextureCount = maxPaths.Count
             };
         }
 
+        // The rest of this file remains the same as the previous correct version...
         private static (IEnumerable<string> Paths, List<ConditionalDependency> Dependencies) GetTexturePathsForMod(string modPath, string majorGameVersion, IReadOnlySet<string> activeModPackageIds)
         {
             var loadFoldersXmlPath = Path.Combine(modPath, "loadFolders.xml");
@@ -126,20 +137,20 @@ namespace RimSharp.Features.VramAnalysis.Tools
             if (isCompressed) return format switch { SimpleTextureFormat.DXT1 => 0.5, _ => 1.0 };
             return format switch { SimpleTextureFormat.RGBA32 => 4.0, SimpleTextureFormat.RGB24 => 3.0, SimpleTextureFormat.DXT1 => 0.5, SimpleTextureFormat.DXT5 => 1.0, SimpleTextureFormat.BC7 => 1.0, _ => 0 };
         }
-
+        
         private static (int Width, int Height, SimpleTextureFormat Format, bool HasMips) GetTextureInfo(string filePath)
         {
             try { return Path.GetExtension(filePath).ToLowerInvariant() switch { ".png" => GetPngInfo(filePath), ".dds" => GetDdsInfo(filePath), _ => (0, 0, SimpleTextureFormat.Unknown, false) }; }
             catch { return (0, 0, SimpleTextureFormat.Unknown, false); }
         }
-
+        
         private static (int, int, SimpleTextureFormat, bool) GetPngInfo(string filePath)
         {
             using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.IgnoreColorProfile, BitmapCacheOption.None);
             return (decoder.Frames[0].PixelWidth, decoder.Frames[0].PixelHeight, SimpleTextureFormat.RGBA32, (decoder.Frames[0].PixelWidth % 4 == 0) && (decoder.Frames[0].PixelHeight % 4 == 0));
         }
-
+        
         private static (int, int, SimpleTextureFormat, bool) GetDdsInfo(string filePath)
         {
             using var reader = new BinaryReader(File.OpenRead(filePath));
