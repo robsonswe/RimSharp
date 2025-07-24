@@ -4,328 +4,160 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:RimSharp.Features.VramAnalysis.Views"
-             xmlns:system="clr-namespace:System.ComponentModel;assembly=WindowsBase"
+             xmlns:vm="clr-namespace:RimSharp.Features.VramAnalysis.ViewModels"
+             xmlns:tools="clr-namespace:RimSharp.Features.VramAnalysis.Tools"
              mc:Ignorable="d" 
+             d:DataContext="{d:DesignInstance Type=vm:VramAnalysisViewModel}"
              d:DesignHeight="600" d:DesignWidth="800">
     <DockPanel>
-        <!-- MODIFIED: Top Control Bar now includes VRAM totals -->
+        <!-- Top Control Bar with VRAM Totals -->
         <Border DockPanel.Dock="Top" Padding="5" Background="{StaticResource RimworldLightBackgroundBrush}" Margin="0,0,0,5">
             <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Content="Calculate VRAM" Command="{Binding CalculateVramCommand}" Style="{StaticResource RimworldButtonStyle}" ToolTip="Starts the process of analyzing texture files to estimate VRAM usage."/>
                 
-                <Button Grid.Column="0" Content="Calculate VRAM" 
-                        Command="{Binding CalculateVramCommand}"
-                        Style="{StaticResource RimworldButtonStyle}" 
-                        ToolTip="Starts the process of analyzing texture files to estimate VRAM usage. This can take some time."/>
-
+                <!-- Default Totals View (Current / Max) -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <TextBlock Text="Total VRAM (Active): " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
-                    <TextBlock Text="{Binding TotalVramCompressedActiveMods, Converter={StaticResource FileSizeConverter}}" 
-                               VerticalAlignment="Center" 
-                               Foreground="{StaticResource RimworldBrownBrush}"
-                               Margin="0,0,20,0"/>
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ShowMaxVram}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Text="Active VRAM (Current / Max): " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
+                    <TextBlock Text="{Binding TotalVramCompressedActiveMods, Converter={StaticResource FileSizeConverter}}" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
+                    <TextBlock Text=" / " VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
+                    <TextBlock Text="{Binding MaxTotalVramCompressedActiveMods, Converter={StaticResource FileSizeConverter}}" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}" Margin="0,0,20,0"/>
+                    <TextBlock Text="Favorites VRAM (Current / Max): " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
+                    <TextBlock Text="{Binding TotalVramCompressedFavoriteMods, Converter={StaticResource FileSizeConverter}}" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
+                    <TextBlock Text=" / " VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
+                    <TextBlock Text="{Binding MaxTotalVramCompressedFavoriteMods, Converter={StaticResource FileSizeConverter}}" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
+                </StackPanel>
 
-                    <TextBlock Text="Total VRAM (Favorites): " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
-                    <TextBlock Text="{Binding TotalVramCompressedFavoriteMods, Converter={StaticResource FileSizeConverter}}" 
-                               VerticalAlignment="Center" 
-                               Foreground="{StaticResource RimworldBrownBrush}"/>
+                <!-- Max VRAM Only View -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="{Binding ShowMaxVram, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock Text="Active VRAM (Max): " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
+                    <TextBlock Text="{Binding MaxTotalVramCompressedActiveMods, Converter={StaticResource FileSizeConverter}}" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}" Margin="0,0,20,0"/>
+                    <TextBlock Text="Favorites VRAM (Max): " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
+                    <TextBlock Text="{Binding MaxTotalVramCompressedFavoriteMods, Converter={StaticResource FileSizeConverter}}" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
                 </StackPanel>
             </Grid>
         </Border>
         
-        <!-- MODIFIED: This bar is now for filters -->
+        <!-- Filter Bar -->
         <Border DockPanel.Dock="Top" Padding="5" Background="{StaticResource RimworldLightBackgroundBrush}" Margin="0,0,0,5">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                <CheckBox Content="Show only active mods"
-                          IsChecked="{Binding ShowOnlyActive, Mode=TwoWay}"
-                          Foreground="{StaticResource RimworldBrownBrush}"
-                          VerticalAlignment="Center"
-                          Margin="0,0,20,0"/>
-                <CheckBox Content="Show only favorite mods"
-                          IsChecked="{Binding ShowOnlyFavorites, Mode=TwoWay}"
-                          Foreground="{StaticResource RimworldBrownBrush}"
-                          VerticalAlignment="Center"/>
+                <CheckBox Content="Show only active mods" IsChecked="{Binding ShowOnlyActive, Mode=TwoWay}" Foreground="{StaticResource RimworldBrownBrush}" VerticalAlignment="Center" Margin="0,0,20,0"/>
+                <CheckBox Content="Show only favorite mods" IsChecked="{Binding ShowOnlyFavorites, Mode=TwoWay}" Foreground="{StaticResource RimworldBrownBrush}" VerticalAlignment="Center" Margin="0,0,20,0"/>
+                <CheckBox Content="Show Max VRAM" IsChecked="{Binding ShowMaxVram, Mode=TwoWay}" Foreground="{StaticResource RimworldBrownBrush}" VerticalAlignment="Center" ToolTip="When checked, shows the maximum possible VRAM usage for all mods, ignoring conditional loading."/>
             </StackPanel>
         </Border>
 
-        <!-- Main Content Grid (Unchanged) -->
+        <!-- Main Content Grid -->
         <Grid>
-            <!-- Loading/Busy Indicator -->
-            <Border Background="#44000000" CornerRadius="3"
-                    Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <TextBlock Text="Calculating..." 
-                           HorizontalAlignment="Center" 
-                           VerticalAlignment="Center" 
-                           FontSize="20" FontWeight="Bold" 
-                           Foreground="{StaticResource RimworldWhiteBrush}"/>
+            <Border Background="#44000000" CornerRadius="3" Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <TextBlock Text="Calculating..." HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="20" FontWeight="Bold" Foreground="{StaticResource RimworldWhiteBrush}"/>
             </Border>
-            
-            <!-- Outer Border for the ListView to give it the RimworldPanelBorder look -->
             <Border BorderBrush="{StaticResource RimworldBrownBrush}" BorderThickness="1">
-                <ListView ItemsSource="{Binding VramMods}"
-                          ScrollViewer.VerticalScrollBarVisibility="Auto"
-                          Margin="0,5,0,0">
-                    
-                    <ListView.ItemContainerStyle>
-                        <Style TargetType="ListViewItem">
-                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                            <Setter Property="Padding" Value="5"/>
-                            <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
-                            <Setter Property="Background" Value="Transparent"/>
-                            <Setter Property="Focusable" Value="False"/>
-                            <Style.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="{StaticResource RimworldDarkBeigeBrush}"/>
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ListView.ItemContainerStyle>
-
+                <ListView ItemsSource="{Binding VramMods}" ScrollViewer.VerticalScrollBarVisibility="Auto" Margin="0,5,0,0">
+                    <ListView.ItemContainerStyle><Style TargetType="ListViewItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="5"/><Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/><Setter Property="Background" Value="Transparent"/><Setter Property="Focusable" Value="False"/><Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource RimworldDarkBeigeBrush}"/></Trigger></Style.Triggers></Style></ListView.ItemContainerStyle>
                     <ListView.View>
                         <GridView>
-                            <!-- GridViewColumnHeader style -->
-                            <GridView.ColumnHeaderContainerStyle>
-                                <Style TargetType="GridViewColumnHeader">
-                                    <Setter Property="Background" Value="{StaticResource RimworldLightBrownBrush}"/>
-                                    <Setter Property="Foreground" Value="{StaticResource RimworldWhiteBrush}"/>
-                                    <Setter Property="Padding" Value="7,5"/>
-                                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                                    <Setter Property="BorderBrush" Value="{StaticResource RimworldBrownBrush}"/>
-                                    <Setter Property="FontWeight" Value="SemiBold"/>
-                                    <EventSetter Event="ButtonBase.Click" Handler="GridViewColumnHeader_Click"/>
-                                </Style>
-                            </GridView.ColumnHeaderContainerStyle>
-
-                            <!-- Columns with sort indicators -->
+                            <GridView.ColumnHeaderContainerStyle><Style TargetType="GridViewColumnHeader"><Setter Property="Background" Value="{StaticResource RimworldLightBrownBrush}"/><Setter Property="Foreground" Value="{StaticResource RimworldWhiteBrush}"/><Setter Property="Padding" Value="7,5"/><Setter Property="BorderThickness" Value="0,0,0,1"/><Setter Property="BorderBrush" Value="{StaticResource RimworldBrownBrush}"/><Setter Property="FontWeight" Value="SemiBold"/><EventSetter Event="ButtonBase.Click" Handler="GridViewColumnHeader_Click"/></Style></GridView.ColumnHeaderContainerStyle>
                             <GridViewColumn Width="300">
                                 <GridViewColumn.Header>
-                                    <DockPanel>
-                                        <TextBlock Text="Mod Name" Tag="Mod.Name"/>
-                                        <TextBlock Margin="5,0,0,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=GridViewColumnHeader}}">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Text" Value=""/>
-                                                    <Style.Triggers>
-                                                        <MultiDataTrigger>
-                                                            <MultiDataTrigger.Conditions>
-                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Mod.Name"/>
-                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Ascending"/>
-                                                            </MultiDataTrigger.Conditions>
-                                                            <Setter Property="Text" Value="▲"/>
-                                                        </MultiDataTrigger>
-                                                        <MultiDataTrigger>
-                                                            <MultiDataTrigger.Conditions>
-                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Mod.Name"/>
-                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Descending"/>
-                                                            </MultiDataTrigger.Conditions>
-                                                            <Setter Property="Text" Value="▼"/>
-                                                        </MultiDataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </DockPanel>
+                                    <DockPanel><TextBlock Text="Mod Name" Tag="Mod.Name"/><TextBlock Margin="5,0,0,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=GridViewColumnHeader}}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value=""/><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Mod.Name"/><Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Ascending"/></MultiDataTrigger.Conditions><Setter Property="Text" Value="▲"/></MultiDataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Mod.Name"/><Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Descending"/></MultiDataTrigger.Conditions><Setter Property="Text" Value="▼"/></MultiDataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></DockPanel>
+                                </GridViewColumn.Header>
+                                <GridViewColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Mod.Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Mod.Name}"><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding Mod.IsActive}" Value="True"><Setter Property="FontWeight" Value="Bold"/></DataTrigger><DataTrigger Binding="{Binding Mod.IsFavorite}" Value="True"><Setter Property="Foreground" Value="{StaticResource RimworldCodeBlueBrush}"/></DataTrigger><DataTrigger Binding="{Binding HasConditionalContent}" Value="True"><Setter Property="FontStyle" Value="Italic"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></DataTemplate></GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Width="150">
+                                <GridViewColumn.Header>
+                                    <DockPanel><TextBlock Text="VRAM (Compressed)" Tag="EstimatedVramCompressed" ToolTip="Sorting by the size while compressed."/><TextBlock Margin="5,0,0,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=GridViewColumnHeader}}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value=""/><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="EstimatedVramCompressed"/><Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Ascending"/></MultiDataTrigger.Conditions><Setter Property="Text" Value="▲"/></MultiDataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="EstimatedVramCompressed"/><Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Descending"/></MultiDataTrigger.Conditions><Setter Property="Text" Value="▼"/></MultiDataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></DockPanel>
                                 </GridViewColumn.Header>
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Mod.Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Mod.Name}">
+                                        <TextBlock HorizontalAlignment="Right">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="{Binding VramDisplayText}"/>
                                                     <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Mod.IsActive}" Value="True">
-                                                            <Setter Property="FontWeight" Value="Bold"/>
+                                                        <DataTrigger Binding="{Binding HasConditionalContent}" Value="True">
+                                                            <Setter Property="ToolTip">
+                                                                <Setter.Value>
+                                                                    <ToolTip Style="{StaticResource RimworldToolTip}">
+                                                                        <StackPanel>
+                                                                            <TextBlock Text="Conditional Content:" FontWeight="Bold" Margin="0,0,0,4"/>
+                                                                            <ItemsControl ItemsSource="{Binding ConditionalDependencies}">
+                                                                                <ItemsControl.ItemTemplate>
+                                                                                    <DataTemplate DataType="{x:Type tools:ConditionalDependency}">
+                                                                                        <StackPanel Orientation="Horizontal">
+                                                                                            <TextBlock Text="{Binding IsActive, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='❌|✅'}" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                                                                            <TextBlock Text="{Binding PackageId}" VerticalAlignment="Center"/>
+                                                                                        </StackPanel>
+                                                                                    </DataTemplate>
+                                                                                </ItemsControl.ItemTemplate>
+                                                                            </ItemsControl>
+                                                                        </StackPanel>
+                                                                    </ToolTip>
+                                                                </Setter.Value>
+                                                            </Setter>
                                                         </DataTrigger>
-                                                        <DataTrigger Binding="{Binding Mod.IsFavorite}" Value="True">
-                                                            <Setter Property="Foreground" Value="{StaticResource RimworldCodeBlueBrush}"/>
+                                                        <DataTrigger Binding="{Binding DataContext.ShowMaxVram, RelativeSource={RelativeSource AncestorType=ListView}}" Value="True">
+                                                            <Setter Property="Text" Value="{Binding MaxEstimatedVramCompressed, Converter={StaticResource FileSizeConverter}}"/>
+                                                            <Setter Property="ToolTip" Value="Showing maximum possible usage."/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-
-                            <GridViewColumn Width="100">
-                                <GridViewColumn.Header>
-                                    <DockPanel>
-                                        <TextBlock Text="Total Size" Tag="Mod.SizeInfo.TotalSize"/>
-                                        <TextBlock Margin="5,0,0,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=GridViewColumnHeader}}">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Text" Value=""/>
-                                                    <Style.Triggers>
-                                                        <MultiDataTrigger>
-                                                            <MultiDataTrigger.Conditions>
-                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Mod.SizeInfo.TotalSize"/>
-                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Ascending"/>
-                                                            </MultiDataTrigger.Conditions>
-                                                            <Setter Property="Text" Value="▲"/>
-                                                        </MultiDataTrigger>
-                                                        <MultiDataTrigger>
-                                                            <MultiDataTrigger.Conditions>
-                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Mod.SizeInfo.TotalSize"/>
-                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Descending"/>
-                                                            </MultiDataTrigger.Conditions>
-                                                            <Setter Property="Text" Value="▼"/>
-                                                        </MultiDataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </DockPanel>
-                                </GridViewColumn.Header>
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Mod.SizeInfo.TotalSize, Converter={StaticResource FileSizeConverter}}" HorizontalAlignment="Right"/>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-
-                            <GridViewColumn Width="120">
-                                <GridViewColumn.Header>
-                                    <DockPanel>
-                                        <TextBlock Text="Disk Size (DDS)" Tag="Mod.SizeInfo.MinTextureSize"/>
-                                        <TextBlock Margin="5,0,0,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=GridViewColumnHeader}}">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Text" Value=""/>
-                                                    <Style.Triggers>
-                                                        <MultiDataTrigger>
-                                                            <MultiDataTrigger.Conditions>
-                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Mod.SizeInfo.MinTextureSize"/>
-                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Ascending"/>
-                                                            </MultiDataTrigger.Conditions>
-                                                            <Setter Property="Text" Value="▲"/>
-                                                        </MultiDataTrigger>
-                                                        <MultiDataTrigger>
-                                                            <MultiDataTrigger.Conditions>
-                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Mod.SizeInfo.MinTextureSize"/>
-                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Descending"/>
-                                                            </MultiDataTrigger.Conditions>
-                                                            <Setter Property="Text" Value="▼"/>
-                                                        </MultiDataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </DockPanel>
-                                </GridViewColumn.Header>
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Mod.SizeInfo.MinTextureSize, Converter={StaticResource FileSizeConverter}}" HorizontalAlignment="Right" ToolTip="Size on disk if DDS is used. Often smaller."/>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-
-                            <GridViewColumn Width="120">
-                                <GridViewColumn.Header>
-                                    <DockPanel>
-                                        <TextBlock Text="Disk Size (PNG)" Tag="Mod.SizeInfo.MaxTextureSize"/>
-                                        <TextBlock Margin="5,0,0,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=GridViewColumnHeader}}">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Text" Value=""/>
-                                                    <Style.Triggers>
-                                                        <MultiDataTrigger>
-                                                            <MultiDataTrigger.Conditions>
-                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Mod.SizeInfo.MaxTextureSize"/>
-                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Ascending"/>
-                                                            </MultiDataTrigger.Conditions>
-                                                            <Setter Property="Text" Value="▲"/>
-                                                        </MultiDataTrigger>
-                                                        <MultiDataTrigger>
-                                                            <MultiDataTrigger.Conditions>
-                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Mod.SizeInfo.MaxTextureSize"/>
-                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Descending"/>
-                                                            </MultiDataTrigger.Conditions>
-                                                            <Setter Property="Text" Value="▼"/>
-                                                        </MultiDataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </DockPanel>
-                                </GridViewColumn.Header>
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Mod.SizeInfo.MaxTextureSize, Converter={StaticResource FileSizeConverter}}" HorizontalAlignment="Right" ToolTip="Size on disk if PNG is used. Often larger."/>
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
                             
-                            <GridViewColumn Width="150">
+                            <!-- MODIFIED: Width increased and Tooltip logic added -->
+                            <GridViewColumn Width="165">
                                 <GridViewColumn.Header>
-                                    <DockPanel>
-                                        <TextBlock Text="VRAM (Uncompressed)" Tag="EstimatedVramUncompressed"/>
-                                        <TextBlock Margin="5,0,0,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=GridViewColumnHeader}}">
+                                    <DockPanel><TextBlock Text="VRAM (Uncompressed)" Tag="EstimatedVramUncompressed" ToolTip="Sorting by the size when unompressed."/><TextBlock Margin="5,0,0,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=GridViewColumnHeader}}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value=""/><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="EstimatedVramUncompressed"/><Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Ascending"/></MultiDataTrigger.Conditions><Setter Property="Text" Value="▲"/></MultiDataTrigger><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="EstimatedVramUncompressed"/><Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Descending"/></MultiDataTrigger.Conditions><Setter Property="Text" Value="▼"/></MultiDataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></DockPanel>
+                                </GridViewColumn.Header>
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock HorizontalAlignment="Right">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
-                                                    <Setter Property="Text" Value=""/>
+                                                    <Setter Property="Text" Value="{Binding EstimatedVramUncompressed, Converter={StaticResource FileSizeConverter}}"/>
                                                     <Style.Triggers>
-                                                        <MultiDataTrigger>
-                                                            <MultiDataTrigger.Conditions>
-                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="EstimatedVramUncompressed"/>
-                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Ascending"/>
-                                                            </MultiDataTrigger.Conditions>
-                                                            <Setter Property="Text" Value="▲"/>
-                                                        </MultiDataTrigger>
-                                                        <MultiDataTrigger>
-                                                            <MultiDataTrigger.Conditions>
-                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="EstimatedVramUncompressed"/>
-                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Descending"/>
-                                                            </MultiDataTrigger.Conditions>
-                                                            <Setter Property="Text" Value="▼"/>
-                                                        </MultiDataTrigger>
+                                                        <!-- MODIFIED: Tooltip logic copied here -->
+                                                        <DataTrigger Binding="{Binding HasConditionalContent}" Value="True">
+                                                            <Setter Property="ToolTip">
+                                                                <Setter.Value>
+                                                                    <ToolTip Style="{StaticResource RimworldToolTip}">
+                                                                        <StackPanel>
+                                                                            <TextBlock Text="Conditional Content:" FontWeight="Bold" Margin="0,0,0,4"/>
+                                                                            <ItemsControl ItemsSource="{Binding ConditionalDependencies}">
+                                                                                <ItemsControl.ItemTemplate>
+                                                                                    <DataTemplate DataType="{x:Type tools:ConditionalDependency}">
+                                                                                        <StackPanel Orientation="Horizontal">
+                                                                                            <TextBlock Text="{Binding IsActive, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='❌|✅'}" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                                                                            <TextBlock Text="{Binding PackageId}" VerticalAlignment="Center"/>
+                                                                                        </StackPanel>
+                                                                                    </DataTemplate>
+                                                                                </ItemsControl.ItemTemplate>
+                                                                            </ItemsControl>
+                                                                        </StackPanel>
+                                                                    </ToolTip>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding DataContext.ShowMaxVram, RelativeSource={RelativeSource AncestorType=ListView}}" Value="True">
+                                                            <Setter Property="Text" Value="{Binding MaxEstimatedVramUncompressed, Converter={StaticResource FileSizeConverter}}"/>
+                                                            <Setter Property="ToolTip" Value="Showing maximum possible usage."/>
+                                                        </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
-                                    </DockPanel>
-                                </GridViewColumn.Header>
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding EstimatedVramUncompressed, Converter={StaticResource FileSizeConverter}}" HorizontalAlignment="Right" ToolTip="Estimated VRAM with 'Texture Compression' OFF in-game."/>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                            
-                            <GridViewColumn Width="150">
-                                <GridViewColumn.Header>
-                                    <DockPanel>
-                                        <TextBlock Text="VRAM (Compressed)" Tag="EstimatedVramCompressed"/>
-                                        <TextBlock Margin="5,0,0,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=GridViewColumnHeader}}">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Text" Value=""/>
-                                                    <Style.Triggers>
-                                                        <MultiDataTrigger>
-                                                            <MultiDataTrigger.Conditions>
-                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="EstimatedVramCompressed"/>
-                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Ascending"/>
-                                                            </MultiDataTrigger.Conditions>
-                                                            <Setter Property="Text" Value="▲"/>
-                                                        </MultiDataTrigger>
-                                                        <MultiDataTrigger>
-                                                            <MultiDataTrigger.Conditions>
-                                                                <Condition Binding="{Binding DataContext.CurrentSortColumn, RelativeSource={RelativeSource AncestorType=ListView}}" Value="EstimatedVramCompressed"/>
-                                                                <Condition Binding="{Binding DataContext.SortDirection, RelativeSource={RelativeSource AncestorType=ListView}}" Value="Descending"/>
-                                                            </MultiDataTrigger.Conditions>
-                                                            <Setter Property="Text" Value="▼"/>
-                                                        </MultiDataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </DockPanel>
-                                </GridViewColumn.Header>
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding EstimatedVramCompressed, Converter={StaticResource FileSizeConverter}}" HorizontalAlignment="Right" ToolTip="Estimated VRAM with 'Texture Compression' ON in-game."/>
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>

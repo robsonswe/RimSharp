@@ -293,12 +293,13 @@ namespace RimSharp.AppDir.AppFiles
                 ));
 
 
-                services.AddTransient<VramAnalysisViewModel>(provider =>
-    new VramAnalysisViewModel(
-        provider.GetRequiredService<IModListManager>(),
-        provider.GetRequiredService<IDialogService>(),
-        provider.GetRequiredService<ILoggerService>()
-    ));
+            services.AddTransient<VramAnalysisViewModel>(provider =>
+                         new VramAnalysisViewModel(
+                             provider.GetRequiredService<IModListManager>(),
+                             provider.GetRequiredService<IDialogService>(),
+                             provider.GetRequiredService<ILoggerService>(),
+                             provider.GetRequiredService<IPathService>()
+                         ));
 
 
             // MainViewModel holds top-level state - Singleton

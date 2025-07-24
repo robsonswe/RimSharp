@@ -1,3 +1,5 @@
+// Core/Converters/Utility/FileSizeConverter.cs
+
 using System;
 using System.Globalization;
 using System.Windows.Data;
@@ -15,7 +17,8 @@ namespace RimSharp.Core.Converters.Utility
             if (value is long bytes)
             {
                 if (bytes < 0) return "N/A"; // Handle potentially invalid negative size
-                if (bytes == 0) return "0 Bytes";
+                
+                if (bytes == 0) return "Not Calculated";
 
                 if (bytes >= OneGB)
                     return $"{(double)bytes / OneGB:F2} GB"; // Two decimal places for GB
