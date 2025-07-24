@@ -16,34 +16,28 @@
                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                 <Button Grid.Column="0" Content="Calculate VRAM" Command="{Binding CalculateVramCommand}" Style="{StaticResource RimworldButtonStyle}" ToolTip="Starts the process of analyzing texture files to estimate VRAM usage."/>
                 
-                <!-- Default Totals View (Current Values Only) -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="{Binding ShowMaxVram, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                <!-- Totals Bar -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <!-- Active Textures -->
                     <TextBlock Text="Active Textures: " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
-                    <TextBlock Text="{Binding TotalTextureCountActiveMods, StringFormat=N0}" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}" Margin="0,0,15,0"/>
-                    
+                    <TextBlock VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}" Margin="0,0,15,0">
+                        <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="{Binding TotalTextureCountActiveMods, StringFormat=N0}"/><Style.Triggers><DataTrigger Binding="{Binding ShowMaxVram}" Value="True"><Setter Property="Text" Value="{Binding MaxTotalTextureCountActiveMods, StringFormat=N0}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                    </TextBlock>
+                    <!-- Active VRAM -->
                     <TextBlock Text="Active VRAM: " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
-                    <TextBlock Text="{Binding TotalVramCompressedActiveMods, Converter={StaticResource FileSizeConverter}}" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}" Margin="0,0,20,0"/>
-
-                    <TextBlock Text="Favorites Textures: " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
-                    <TextBlock Text="{Binding TotalTextureCountFavoriteMods, StringFormat=N0}" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}" Margin="0,0,15,0"/>
-
+                    <TextBlock VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}" Margin="0,0,20,0">
+                        <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="{Binding TotalVramCompressedActiveMods, Converter={StaticResource FileSizeConverter}}"/><Style.Triggers><DataTrigger Binding="{Binding ShowMaxVram}" Value="True"><Setter Property="Text" Value="{Binding MaxTotalVramCompressedActiveMods, Converter={StaticResource FileSizeConverter}}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                    </TextBlock>
+                    <!-- Favorites VRAM -->
                     <TextBlock Text="Favorites VRAM: " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
-                    <TextBlock Text="{Binding TotalVramCompressedFavoriteMods, Converter={StaticResource FileSizeConverter}}" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
-                </StackPanel>
-
-                <!-- Max Totals View -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="{Binding ShowMaxVram, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <TextBlock Text="Active Textures (Max): " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
-                    <TextBlock Text="{Binding MaxTotalTextureCountActiveMods, StringFormat=N0}" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}" Margin="0,0,15,0"/>
-                    
-                    <TextBlock Text="Active VRAM (Max): " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
-                    <TextBlock Text="{Binding MaxTotalVramCompressedActiveMods, Converter={StaticResource FileSizeConverter}}" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}" Margin="0,0,20,0"/>
-                    
-                    <TextBlock Text="Favorites Textures (Max): " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
-                    <TextBlock Text="{Binding MaxTotalTextureCountFavoriteMods, StringFormat=N0}" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}" Margin="0,0,15,0"/>
-
-                    <TextBlock Text="Favorites VRAM (Max): " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
-                    <TextBlock Text="{Binding MaxTotalVramCompressedFavoriteMods, Converter={StaticResource FileSizeConverter}}" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
+                    <TextBlock VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}" Margin="0,0,20,0">
+                        <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="{Binding TotalVramCompressedFavoriteMods, Converter={StaticResource FileSizeConverter}}"/><Style.Triggers><DataTrigger Binding="{Binding ShowMaxVram}" Value="True"><Setter Property="Text" Value="{Binding MaxTotalVramCompressedFavoriteMods, Converter={StaticResource FileSizeConverter}}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                    </TextBlock>
+                    <!-- User VRAM -->
+                    <StackPanel Orientation="Horizontal" Visibility="{Binding IsUserVramAvailable, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Text="Available VRAM: " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
+                        <TextBlock Text="{Binding UserVram, Converter={StaticResource FileSizeConverter}}" VerticalAlignment="Center" Foreground="{StaticResource RimworldBrownBrush}"/>
+                    </StackPanel>
                 </StackPanel>
             </Grid>
         </Border>

@@ -51,6 +51,7 @@ using RimSharp.Infrastructure.Workshop.Download.Processing;
 using RimSharp.Infrastructure.Workshop.Download.Models;
 using System.Threading;
 using RimSharp.AppDir.Dialogs;
+using RimSharp.Core.Services;
 
 
 namespace RimSharp.AppDir.AppFiles
@@ -100,6 +101,7 @@ namespace RimSharp.AppDir.AppFiles
             services.AddSingleton<IConfigService, ConfigService>();
             services.AddSingleton<IDialogService, DialogService>();
             services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
+            services.AddSingleton<ISystemInfoService, SystemInfoService>();
 
 
             services.AddSingleton<IPathService, PathService>(provider =>
@@ -298,7 +300,8 @@ namespace RimSharp.AppDir.AppFiles
                              provider.GetRequiredService<IModListManager>(),
                              provider.GetRequiredService<IDialogService>(),
                              provider.GetRequiredService<ILoggerService>(),
-                             provider.GetRequiredService<IPathService>()
+                             provider.GetRequiredService<IPathService>(),
+                             provider.GetRequiredService<ISystemInfoService>()
                          ));
 
 
