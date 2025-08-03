@@ -18,7 +18,7 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
         /// <param name="backupSuffix">The suffix to use for backup directories.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>True if the item was processed successfully, false otherwise.</returns>
-        Task<bool> ProcessItemAsync(
+        Task<(bool Success, string Reason)> ProcessItemAsync(
             DownloadItem item,
             string sourcePath,
             string targetPath,

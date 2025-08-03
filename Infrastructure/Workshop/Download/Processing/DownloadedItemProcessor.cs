@@ -25,7 +25,7 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
         public List<string> GetLogMessages() => new List<string>(_logMessages);
         public void AddLogMessage(string message) => _logMessages.Add(message);
 
-        public async Task<bool> ProcessItemAsync(
+        public async Task<(bool Success, string Reason)> ProcessItemAsync(
             DownloadItem item,
             string sourcePath,
             string targetPath,
@@ -52,7 +52,7 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
                 {
                     _logger.LogError($"Item {itemId}: Source directory '{sourcePath}' not found. Cannot process.", "DownloadedItemProcessor");
                     AddLogMessage($"Error: Item {itemId} source files not found. Download may have failed.");
-                    return false;
+                    return (false, "Downloaded files were not found in the temporary folder.");
                 }
 
                 await _modService.CreateTimestampFilesAsync(sourcePath, itemId, item.PublishDate ?? "", item.StandardDate ?? "");
@@ -103,12 +103,9 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
                 // --- Step 4: Success! Preserve DDS files and then clean up the backup ---
                 if (backupCreated && !string.IsNullOrEmpty(backupPath))
                 {
-                    // ---vvv--- NEW DDS PRESERVATION LOGIC ---vvv---
                     _logger.LogInfo($"Item {itemId}: Scanning for custom DDS files to preserve from backup '{backupPath}'.", "DownloadedItemProcessor");
                     AddLogMessage($"Item {itemId}: Checking for custom DDS files to preserve...");
                     await PreserveDdsFilesAsync(backupPath, targetPath, itemId, cancellationToken);
-                    // ---^^^--- END OF NEW LOGIC ---^^^---
-
                     _logger.LogInfo($"Item {itemId}: Update complete. Deleting temporary backup '{backupPath}'.", "DownloadedItemProcessor");
                     AddLogMessage($"Item {itemId}: Removing temporary backup...");
                     Directory.Delete(backupPath, true);
@@ -116,12 +113,13 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
 
                 _logger.LogInfo($"Item {itemId} ('{itemName}') processing SUCCEEDED.", "DownloadedItemProcessor");
                 AddLogMessage($"Item {itemId} ({itemName}) successfully updated/installed.");
-                return true;
+                return (true, "Processed successfully.");
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogError($"Item {itemId}: FAILED during update process. Error: {ex.Message}", "DownloadedItemProcessor");
-                AddLogMessage($"Error processing item {itemId}: {ex.Message}. Attempting to rollback...");
+                string failureReason = $"Error processing item: {ex.Message}";
+                _logger.LogError($"Item {itemId}: FAILED during update process. {failureReason}", "DownloadedItemProcessor");
+                AddLogMessage($"{failureReason}. Attempting to rollback...");
 
                 if (backupCreated && !string.IsNullOrEmpty(backupPath))
                 {
@@ -130,7 +128,7 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
                         ? $"Item {itemId}: Successfully rolled back to the previous version."
                         : $"CRITICAL: Item {itemId} FAILED TO ROLLBACK. The mod may be broken. Manual intervention required.");
                 }
-                return false;
+                return (false, ex.Message);
             }
             finally
             {
