@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text; // Required for StringBuilder
 using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Features.WorkshopDownloader.Components.Browser;
@@ -17,7 +18,7 @@ using RimSharp.Shared.Services.Contracts;
 using System.Collections;
 using RimSharp.Infrastructure.Workshop.Download.Models;
 using RimSharp.Features.WorkshopDownloader.Dialogs.Collection;
-using System.Globalization; // Required for ExecuteRemoveItems parameter
+using System.Globalization;
 
 namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 {
@@ -275,54 +276,88 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
 
                 // --- Determine Final Summary Message ---
-                string summary;
+                string summaryTitle = "Download Process Finished";
+                var summaryMessageBuilder = new StringBuilder();
+
                 if (token.IsCancellationRequested)
                 {
-                    summary = $"Download cancelled by user. {downloadResult.SucceededItems.Count} items successfully processed before cancellation.";
-                    // Items processed before cancel are already removed from queue. Others remain.
+                    summaryTitle = "Download Cancelled";
+                    summaryMessageBuilder.AppendLine($"Download cancelled by user. {downloadResult.SucceededItems.Count} items were successfully processed before cancellation.");
                 }
                 else if (downloadResult.OverallSuccess)
                 {
-                    if (downloadResult.SucceededItems.Any())
-                        summary = $"Successfully downloaded and processed {downloadResult.SucceededItems.Count} mod(s).";
-                    else
-                        summary = "Download process completed, and no items failed, but no items were successfully processed (queue might have been empty initially or items were invalid).";
+                    summaryTitle = "Download Complete";
+                    summaryMessageBuilder.AppendLine($"Successfully downloaded and processed {downloadResult.SucceededItems.Count} mod(s).");
                 }
                 else // OverallSuccess is false
                 {
-                    if (downloadResult.FailedItems.Any() && downloadResult.SucceededItems.Any())
-                        summary = $"Download finished with issues. {downloadResult.SucceededItems.Count} succeeded, {downloadResult.FailedItems.Count} failed (failed items remain in queue). Check messages/logs for details.";
-                    else if (downloadResult.FailedItems.Any())
-                        summary = $"Download failed. {downloadResult.FailedItems.Count} item(s) could not be downloaded or processed. Check SteamCMD log and status messages for errors.";
+                    if (downloadResult.FailedItems.Any())
+                    {
+                        summaryTitle = downloadResult.SucceededItems.Any() ? "Download Partially Complete" : "Download Failed";
+                        summaryMessageBuilder.AppendLine($"Succeeded: {downloadResult.SucceededItems.Count}, Failed: {downloadResult.FailedItems.Count}.");
+                        summaryMessageBuilder.AppendLine("\nThe following items failed:");
+
+                        foreach (var failedInfo in downloadResult.FailedItems)
+                        {
+                            summaryMessageBuilder.AppendLine($"- {failedInfo.Item.Name} ({failedInfo.Item.SteamId}): {failedInfo.Reason}");
+                        }
+                    }
                     else if (downloadResult.ExitCode != 0)
-                        summary = $"SteamCMD process failed (Exit Code {downloadResult.ExitCode}). No items successfully processed. Check log.";
+                    {
+                        summaryTitle = "Download Failed";
+                        summaryMessageBuilder.AppendLine($"SteamCMD process failed with Exit Code {downloadResult.ExitCode}. No items were processed.");
+                        summaryMessageBuilder.AppendLine("Check the SteamCMD log files for more details.");
+                    }
                     else
-                        summary = "Download process finished with errors, but details unclear. Check SteamCMD log and queue.";
+                    {
+                        summaryTitle = "Download Finished with Errors";
+                        summaryMessageBuilder.AppendLine("The download process finished with an unknown error. Check logs for details.");
+                    }
                 }
 
-                // --- Show Final Dialog ---
-                progressDialog.CompleteOperation(summary); // Update dialog one last time
-                StatusChanged?.Invoke(this, summary);
-                Debug.WriteLine($"[CommandHandler] Download Summary: {summary}");
+                string finalDialogSummary = summaryMessageBuilder.ToString();
 
-                // Choose dialog type based on outcome
+                string statusBarMessage;
                 if (token.IsCancellationRequested)
-                    _dialogService.ShowInformation("Download Cancelled", summary);
-                else if (downloadResult.OverallSuccess && downloadResult.SucceededItems.Any())
-                    _dialogService.ShowInformation("Download Complete", summary);
-                else if (!downloadResult.OverallSuccess && downloadResult.SucceededItems.Any()) // Partial success
-                    _dialogService.ShowWarning("Download Partially Complete", summary);
-                else if (!downloadResult.OverallSuccess && downloadResult.FailedItems.Any()) // All failed or process error
-                    _dialogService.ShowError("Download Failed", summary);
-                else // Other cases (e.g., no items succeeded but no explicit failures reported / exit code 0)
-                    _dialogService.ShowInformation("Download Finished", summary);
+                {
+                    statusBarMessage = "Download operation cancelled.";
+                }
+                else if (downloadResult.OverallSuccess)
+                {
+                    statusBarMessage = "Download complete.";
+                }
+                else
+                {
+                    statusBarMessage = $"Download finished with {downloadResult.FailedItems.Count} failure(s). See report for details.";
+                }
 
+                // 3. Use the correct message for each target
+                progressDialog.CompleteOperation(finalDialogSummary.Split('\n').FirstOrDefault() ?? "Finished.");
+
+                // INVOKE STATUS CHANGED WITH THE SHORT MESSAGE
+                StatusChanged?.Invoke(this, statusBarMessage);
+
+                Debug.WriteLine($"[CommandHandler] Download Dialog Summary:\n{finalDialogSummary}");
+                Debug.WriteLine($"[CommandHandler] Download Status Bar Message: {statusBarMessage}");
+
+                // SHOW THE DIALOG WITH THE DETAILED MESSAGE
+                if (downloadResult.FailedItems.Any())
+                {
+                    _dialogService.ShowMessageWithCopy(summaryTitle, finalDialogSummary, MessageDialogType.Error);
+                }
+                else if (token.IsCancellationRequested || !downloadResult.OverallSuccess)
+                {
+                    _dialogService.ShowWarning(summaryTitle, finalDialogSummary);
+                }
+                else
+                {
+                    _dialogService.ShowInformation(summaryTitle, finalDialogSummary);
+                }
+                // --- MODIFICATION END ---
 
                 Debug.WriteLine("[CommandHandler] Download attempt finished, re-enriching remaining queue items.");
-                _modInfoEnricher.EnrichAllDownloadItems(_queueService.Items); // Refresh info for failed/remaining items
+                _modInfoEnricher.EnrichAllDownloadItems(_queueService.Items);
 
-                // --- Signal for UI Refresh AFTER operation is fully completed ---
-                // This ensures IsOperationInProgress is false before the refresh is requested.
                 if (refreshIsNeeded && !token.IsCancellationRequested)
                 {
                     Debug.WriteLine("[CommandHandler] Download operation completed. Now signaling for UI refresh.");
@@ -348,8 +383,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             }
             finally
             {
-                progressDialog?.ForceClose(); // Ensure dialog closes
-                OperationCompleted?.Invoke(this, EventArgs.Empty); // Signal operation end
+                progressDialog?.ForceClose();
+                OperationCompleted?.Invoke(this, EventArgs.Empty);
             }
         }
 
