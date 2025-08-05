@@ -11,8 +11,6 @@
         SizeToContent="Height"
         Width="450" MinWidth="350" MaxWidth="600"
         MinHeight="150" MaxHeight="400"
-        WindowStartupLocation="CenterOwner"
-        ShowInTaskbar="False"
         ResizeMode="NoResize">
     
     <!-- Define Main Content -->

@@ -17,13 +17,40 @@ namespace RimSharp.Infrastructure.Dialog
 {
     public class DialogService : IDialogService
     {
+        /// <summary>
+        /// Manually centers a window on the application's main window.
+        /// If no valid main window is found, it relies on the window's default startup location.
+        /// </summary>
+        private void CenterWindowOnMainWindow(Window window)
+        {
+            var mainWindow = Application.Current.MainWindow;
+            // Proceed only if there is a main window that is visible and not minimized.
+            if (mainWindow != null && mainWindow.IsVisible && mainWindow.WindowState == WindowState.Normal)
+            {
+                window.WindowStartupLocation = WindowStartupLocation.Manual;
+
+                // We must use the 'Loaded' event to ensure ActualWidth and ActualHeight have been calculated.
+                RoutedEventHandler loadedHandler = null;
+                loadedHandler = (s, e) =>
+                {
+                    // Unsubscribe immediately to prevent this from running again.
+                    window.Loaded -= loadedHandler;
+
+                    // Calculate the center position.
+                    window.Left = mainWindow.Left + (mainWindow.ActualWidth - window.ActualWidth) / 2;
+                    window.Top = mainWindow.Top + (mainWindow.ActualHeight - window.ActualHeight) / 2;
+                };
+
+                window.Loaded += loadedHandler;
+            }
+            // If there's no valid main window, the window will use the default location
+            // set in its constructor (which we previously set to CenterScreen).
+        }
+
         private MessageDialogResult ShowDialogInternal(MessageDialogViewModel viewModel)
         {
-            var dialog = new MessageDialogView(viewModel)
-            {
-                Owner = Application.Current.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
+            var dialog = new MessageDialogView(viewModel);
+            CenterWindowOnMainWindow(dialog); // Center the dialog
             dialog.ShowDialog();
             return viewModel.DialogResult;
         }
@@ -58,11 +85,8 @@ namespace RimSharp.Infrastructure.Dialog
 
         public UpdateCheckDialogResult ShowUpdateCheckDialog(UpdateCheckDialogViewModel viewModel)
         {
-            var dialog = new UpdateCheckDialogView(viewModel)
-            {
-                Owner = Application.Current?.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
+            var dialog = new UpdateCheckDialogView(viewModel);
+            CenterWindowOnMainWindow(dialog); // Center the dialog
             dialog.ShowDialog();
             return viewModel.DialogResult;
         }
@@ -76,17 +100,14 @@ namespace RimSharp.Infrastructure.Dialog
             ShowDialogInternal(viewModel);
         }
 
-        // FIX: The `cts` parameter is now explicitly marked as nullable (`CancellationTokenSource?`).
-        // This informs the compiler that `null` is a valid value for this optional parameter.
         public ProgressDialogViewModel ShowProgressDialog(string title, string message, bool canCancel = false, bool isIndeterminate = true, CancellationTokenSource? cts = null, bool closeable = true)
         {
             var viewModel = new ProgressDialogViewModel(title, message, canCancel, isIndeterminate, cts);
             var dialog = new ProgressDialogView(viewModel)
             {
-                Owner = Application.Current?.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Closeable = closeable
             };
+            CenterWindowOnMainWindow(dialog); // Center the dialog
             dialog.Show();
             return viewModel;
         }
@@ -94,53 +115,38 @@ namespace RimSharp.Infrastructure.Dialog
         public (MessageDialogResult Result, string Input) ShowInputDialog(string title, string message, string defaultInput = "")
         {
             var viewModel = new InputDialogViewModel(title, message, defaultInput);
-            var dialog = new InputDialogView(viewModel)
-            {
-                Owner = Application.Current?.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
+            var dialog = new InputDialogView(viewModel);
+            CenterWindowOnMainWindow(dialog); // Center the dialog
             dialog.ShowDialog();
             return (viewModel.DialogResult, viewModel.Input);
         }
 
         public (bool, IEnumerable<string>?) ShowStripModsDialog(StripDialogViewModel viewModel)
         {
-            var dialog = new StripModsDialogView(viewModel)
-            {
-                Owner = Application.Current?.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
+            var dialog = new StripModsDialogView(viewModel);
+            CenterWindowOnMainWindow(dialog); // Center the dialog
             dialog.ShowDialog();
             return viewModel.DialogResult;
         }
 
         public ModCustomizationResult ShowCustomizeModDialog(CustomizeModDialogViewModel viewModel)
         {
-            var dialog = new CustomizeModDialogView(viewModel)
-            {
-                Owner = Application.Current?.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
+            var dialog = new CustomizeModDialogView(viewModel);
+            CenterWindowOnMainWindow(dialog); // Center the dialog
             dialog.ShowDialog();
             return viewModel.DialogResult;
         }
         public ModFilterDialogResult ShowModFilterDialog(ModFilterDialogViewModel viewModel)
         {
-            var dialog = new ModFilterDialogView(viewModel)
-            {
-                Owner = Application.Current?.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
+            var dialog = new ModFilterDialogView(viewModel);
+            CenterWindowOnMainWindow(dialog); // Center the dialog
             dialog.ShowDialog();
-            return viewModel.DialogResult; // ViewModel handles setting this before closing
+            return viewModel.DialogResult;
         }
         public ModReplacementDialogResult ShowModReplacementDialog(ModReplacementDialogViewModel viewModel)
         {
-            var dialog = new ModReplacementDialogView(viewModel)
-            {
-                Owner = Application.Current?.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
+            var dialog = new ModReplacementDialogView(viewModel);
+            CenterWindowOnMainWindow(dialog); // Center the dialog
             dialog.ShowDialog();
             return viewModel.DialogResult;
         }
@@ -149,12 +155,9 @@ namespace RimSharp.Infrastructure.Dialog
             DependencyResolutionDialogResult result = DependencyResolutionDialogResult.Cancel;
             Application.Current.Dispatcher.Invoke(() =>
             {
-                var dialog = new DependencyResolutionDialogView(viewModel)
-                {
-                    Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
-                };
-                dialog.ShowDialog(); // Blocks until closed
+                var dialog = new DependencyResolutionDialogView(viewModel);
+                CenterWindowOnMainWindow(dialog); // Center the dialog
+                dialog.ShowDialog();
                 result = viewModel.DialogResult;
             });
             return result;
@@ -162,22 +165,14 @@ namespace RimSharp.Infrastructure.Dialog
 
         public MissingModSelectionDialogOutput ShowMissingModSelectionDialog(MissingModSelectionDialogViewModel viewModel)
         {
-            // FIX: Declare the result variable as nullable to align with the nullable context.
             MissingModSelectionDialogOutput? result = null;
             Application.Current.Dispatcher.Invoke(() =>
-            { // Ensure UI thread
-                var dialog = new MissingModSelectionDialogView(viewModel)
-                {
-                    Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
-                };
-                // ShowDialog blocks until closed and DialogResult is set (or window is closed manually)
+            {
+                var dialog = new MissingModSelectionDialogView(viewModel);
+                CenterWindowOnMainWindow(dialog); // Center the dialog
                 dialog.ShowDialog();
-                // Retrieve the strongly-typed result from the ViewModel AFTER the dialog is closed
-                // The null-coalescing operator ensures we never assign a null value back to result.
                 result = viewModel.DialogResult ?? new MissingModSelectionDialogOutput();
             });
-            // Return the result, or a new instance if the dispatcher failed to run.
             return result ?? new MissingModSelectionDialogOutput();
         }
 
@@ -186,21 +181,11 @@ namespace RimSharp.Infrastructure.Dialog
             List<string>? result = null;
             Application.Current.Dispatcher.Invoke(() =>
             {
-                var dialog = new CollectionDialogView(viewModel)
-                {
-                    Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
-                };
-                // ShowDialog blocks execution until the dialog is closed.
-                // The DialogResult (bool?) on the window will be set by the View's code-behind
-                // based on the ViewModel's RequestCloseDialog event.
+                var dialog = new CollectionDialogView(viewModel);
+                CenterWindowOnMainWindow(dialog); // Center the dialog
                 dialog.ShowDialog();
-
-                // We retrieve the actual List<string> result directly from the ViewModel
-                // after the dialog closes.
                 result = viewModel.DialogResult;
             });
-            // Return the list of IDs (which could be null if cancelled)
             return result;
         }
     }

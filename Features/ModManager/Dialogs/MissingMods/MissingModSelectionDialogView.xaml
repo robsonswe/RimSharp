@@ -11,7 +11,6 @@
         Width="750" MinWidth="650" MaxWidth="1000"
         Height="600" MinHeight="450" MaxHeight="800"
         WindowStartupLocation="CenterOwner"
-        ShowInTaskbar="False"
         ResizeMode="CanResizeWithGrip">
 
     <dialogs:BaseDialog.Resources>
