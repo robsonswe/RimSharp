@@ -12,8 +12,6 @@
         SizeToContent="Height"
         Width="450" MinWidth="350" MaxWidth="600"
         MinHeight="180" MaxHeight="400"
-        WindowStartupLocation="CenterOwner"
-        ShowInTaskbar="False"
         ResizeMode="NoResize">
     
     <dialogs:BaseDialog.Resources>
