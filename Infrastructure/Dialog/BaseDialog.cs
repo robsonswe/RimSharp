@@ -18,22 +18,10 @@ namespace RimSharp.Infrastructure.Dialog
         public BaseDialog()
         {
             Style = (Style)Application.Current.Resources["RimworldDialogStyle"];
-            this.WindowStartupLocation = WindowStartupLocation.CenterOwner;
-
-            // *** REMOVE THIS ENTIRE Loaded EVENT HANDLER ***
-            // Loaded += (s, e) =>
-            // {
-            //     if (Owner == null && Application.Current != null && Application.Current.MainWindow != this)
-            //     {
-            //         Owner = Application.Current.MainWindow;
-            //         Debug.WriteLine($"[BaseDialog] Owner automatically set to MainWindow ({Owner?.Title}) on Loaded.");
-            //     }
-            // };
-            // *** END REMOVAL ***
+            this.WindowStartupLocation = WindowStartupLocation.CenterScreen;
         }
 
         #region Dependency Properties
-        // ... (Dependency Properties remain the same) ...
         public static readonly DependencyProperty CloseableProperty =
                 DependencyProperty.Register("Closeable", typeof(bool), typeof(BaseDialog), new PropertyMetadata(true));
 
@@ -96,8 +84,8 @@ namespace RimSharp.Infrastructure.Dialog
             }
             else
             {
-                 // This might now log for nested dialogs if implicit owner isn't immediately visible/normal, which is okay.
-                 Debug.WriteLine($"[BaseDialog OnClosing] Skipping owner activation for {this.Title}. Owner ({this.Owner?.Title ?? "null"}) is null, not visible, or not normal state.");
+                 // This will now be the standard path for all dialogs.
+                 Debug.WriteLine($"[BaseDialog OnClosing] Skipping owner activation for {this.Title}. Owner is null.");
             }
         }
 
