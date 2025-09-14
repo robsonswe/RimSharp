@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Web.WebView2.Wpf;
 using RimSharp.Features.WorkshopDownloader.Models;
 using System.Linq;
+using System.Web;
 
 namespace RimSharp.Features.WorkshopDownloader.Services
 {
@@ -264,7 +265,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 // STEP 1: Normalize the string to handle scraping inconsistencies.
                 string cleanedDateString = dateString.Trim();
                 cleanedDateString = Regex.Replace(cleanedDateString, @"\s+", " "); // Collapse multiple spaces
-                cleanedDateString = cleanedDateString.Replace(" ,", ",");         // Fix space before comma
+                cleanedDateString = cleanedDateString.Replace(" ,", ",");
 
                 // STEP 2: Handle missing year by intelligently injecting the current year.
                 if (!Regex.IsMatch(cleanedDateString, @"\b\d{4}\b"))
@@ -347,8 +348,14 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 return null;
             }
 
-            var queryParams = System.Web.HttpUtility.ParseQueryString(uri.Query);
+            var queryParams = HttpUtility.ParseQueryString(uri.Query);
             var id = queryParams["id"];
+
+            if (!string.IsNullOrEmpty(id))
+            {
+                id = new string(id.Trim().Where(char.IsDigit).ToArray());
+            }
+
             if (string.IsNullOrEmpty(id))
             {
                 Debug.WriteLine($"Could not extract 'id' from URL: {url}");
