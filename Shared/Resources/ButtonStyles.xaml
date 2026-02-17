@@ -165,10 +165,10 @@
     <Style x:Key="RimworldTabButtonStyle" TargetType="Button">
         <Setter Property="Foreground" Value="{StaticResource RimworldBrownBrush}"/>
         <Setter Property="Padding" Value="12,6"/>
-        <Setter Property="BorderThickness" Value="1,1,1,0"/>
+        <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="MinWidth" Value="80"/>
         <Setter Property="FontWeight" Value="Medium"/>
-        <Setter Property="Margin" Value="0,0,5,0"/>
+        <Setter Property="Margin" Value="0,0,8,0"/>
         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
         <!-- IsEnabled Binding remains the same, using the global converter now -->
         <Setter Property="IsEnabled">
@@ -187,7 +187,7 @@
                                 Background="{StaticResource RimworldLightBrownBrush}"
                                 BorderBrush="{StaticResource RimworldBrownBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="3,3,0,0">
+                                CornerRadius="3">
                         </Border>
                         <ContentPresenter HorizontalAlignment="Center"
                                           VerticalAlignment="Center"

@@ -12,175 +12,148 @@
 
     <Grid>
         <DockPanel Visibility="{Binding IsInitialLoading, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
-            <!-- Top Settings Bar -->
-        <Border DockPanel.Dock="Top" Margin="8" Style="{StaticResource RimworldPanelBorder}" Background="{StaticResource RimworldBeigeBrush}">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/> <!-- Title/Subtitle + Refresh Button -->
-                    <RowDefinition Height="Auto"/> <!-- Info Cards -->
-                </Grid.RowDefinitions>
-
-                <!-- Row 0: Title and Refresh Button -->
-                <Grid Grid.Row="0" Margin="4,0,4,12">
+            <!-- Compact Header Bar (Merged Settings and Tabs) -->
+            <Border DockPanel.Dock="Top" Margin="8,8,8,0" Style="{StaticResource RimworldPanelBorder}" Background="{StaticResource RimworldDarkBeigeBrush}" Padding="12,4">
+                <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Title and Subtitle -->
-                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                        <TextBlock Text="RimSharp" FontSize="24" FontWeight="Bold" Foreground="{StaticResource RimworldBrownBrush}"/>
+                    <!-- Left Side: App Title + Tabs -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="RimSharp" FontSize="22" FontWeight="Bold" Foreground="{StaticResource RimworldBrownBrush}" VerticalAlignment="Center" Margin="0,0,24,0"/>
+
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Content="Mods"
+                                    Command="{Binding SwitchTabCommand}" CommandParameter="Mods"
+                                    Style="{StaticResource RimworldTabButtonStyle}"/>
+                            <Button Content="Downloader"
+                                    Command="{Binding SwitchTabCommand}" CommandParameter="Downloader"
+                                    Style="{StaticResource RimworldTabButtonStyle}"/>
+                            <Button Content="Git Mods"
+                                    Command="{Binding SwitchTabCommand}" CommandParameter="GitMods"
+                                    Style="{StaticResource RimworldTabButtonStyle}"/>
+                            <Button Content="VRAM Analysis"
+                                    Command="{Binding SwitchTabCommand}" CommandParameter="VRAM"
+                                    Style="{StaticResource RimworldTabButtonStyle}"/>
+                        </StackPanel>
                     </StackPanel>
 
-                    <!-- Refresh Button -->
-                    <Button Grid.Column="1" Command="{Binding RefreshCommand}" Style="{StaticResource RimworldButtonStyle}" VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="↻" FontFamily="Segoe UI Symbol" Margin="0,0,6,0" VerticalAlignment="Center" FontSize="14"/>
-                            <TextBlock Text="Refresh" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
+                    <!-- Right Side: Info + Global Actions -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Game Version Badge -->
+                        <Border Background="{StaticResource RimworldLightBrownBrush}" 
+                                BorderBrush="{StaticResource RimworldBrownBrush}" 
+                                BorderThickness="1" 
+                                CornerRadius="3" 
+                                Padding="12,4" 
+                                Margin="0,0,12,0"
+                                VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <!-- Status Ball Indicator -->
+                                <Ellipse x:Name="StatusBall" 
+                                         Width="8" Height="8" 
+                                         Margin="0,0,8,0" 
+                                         VerticalAlignment="Center">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="Fill" Value="{StaticResource RimworldDarkGreenBrush}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsUpdateAvailable}" Value="True">
+                                                    <Setter Property="Fill" Value="{StaticResource RimworldRedBrush}"/>
+                                                    <DataTrigger.EnterActions>
+                                                        <BeginStoryboard x:Name="BlinkStoryboard">
+                                                            <Storyboard>
+                                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                 From="1" To="0.3" Duration="0:0:0.8"
+                                                                                 AutoReverse="True" RepeatBehavior="Forever"/>
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </DataTrigger.EnterActions>
+                                                    <DataTrigger.ExitActions>
+                                                        <StopStoryboard BeginStoryboardName="BlinkStoryboard"/>
+                                                    </DataTrigger.ExitActions>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Ellipse.Style>
+                                    <Ellipse.ToolTip>
+                                        <ToolTip Style="{StaticResource RimworldToolTip}">
+                                            <StackPanel>
+                                                <TextBlock Text="RimWorld Status" FontWeight="Bold"/>
+                                                <TextBlock x:Name="TooltipMessage" Text="Game is up to date">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsUpdateAvailable}" Value="True">
+                                                                    <Setter Property="Text" Value="{Binding UpdateTooltipText}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </ToolTip>
+                                    </Ellipse.ToolTip>
+                                </Ellipse>
+
+                                <TextBlock Text="{Binding PathSettings.GameVersion, StringFormat='v\{0\}'}" 
+                                           FontSize="12" 
+                                           FontWeight="Bold" 
+                                           Foreground="{StaticResource RimworldBrownBrush}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Paths Dropdown -->
+                        <Menu Background="Transparent" VerticalAlignment="Center" Margin="0,0,12,0">
+                            <MenuItem Header="Paths" Style="{StaticResource RimworldDropDownButtonStyle}" Padding="12,4">
+                                <MenuItem Header="Game Directory" IsEnabled="False" Foreground="{StaticResource RimworldLightBrownBrush}" FontWeight="Bold" Style="{StaticResource RimworldMenuItemStyle}"/>
+                                <MenuItem Header="{Binding PathSettings.GamePath}" 
+                                          ToolTip="Click to open folder"
+                                          Command="{Binding OpenFolderCommand}" 
+                                          CommandParameter="GamePath"
+                                          Style="{StaticResource RimworldMenuItemStyle}"/>
+                                <MenuItem Header="Change Game Path..." 
+                                          Command="{Binding BrowsePathCommand}" 
+                                          CommandParameter="GamePath"
+                                          Style="{StaticResource RimworldMenuItemStyle}"/>
+
+                                <Separator Style="{StaticResource RimworldSeparatorStyle}"/>
+
+                                <MenuItem Header="Config Directory" IsEnabled="False" Foreground="{StaticResource RimworldLightBrownBrush}" FontWeight="Bold" Style="{StaticResource RimworldMenuItemStyle}"/>
+                                <MenuItem Header="{Binding PathSettings.ConfigPath}" 
+                                          ToolTip="Click to open folder"
+                                          Command="{Binding OpenFolderCommand}" 
+                                          CommandParameter="ConfigPath"
+                                          Style="{StaticResource RimworldMenuItemStyle}"/>
+                                <MenuItem Header="Change Config Path..." 
+                                          Command="{Binding BrowsePathCommand}" 
+                                          CommandParameter="ConfigPath"
+                                          Style="{StaticResource RimworldMenuItemStyle}"/>
+                            </MenuItem>
+                        </Menu>
+
+                        <!-- Refresh Action -->
+                        <Button Command="{Binding RefreshCommand}" 
+                                Style="{StaticResource RimworldButtonStyle}" 
+                                Padding="12,4" 
+                                MinWidth="0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="↻" FontFamily="Segoe UI Symbol" Margin="0,0,8,0" VerticalAlignment="Center" FontSize="14"/>
+                                <TextBlock Text="Refresh" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
                 </Grid>
+            </Border>
 
-                <!-- Row 1: Info Cards -->
-                <Grid Grid.Row="1">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Card 1: Game Version -->
-                    <Border Grid.Column="0" Margin="0,0,6,0" Style="{StaticResource RimworldPanelBorder}" Background="{StaticResource RimworldDarkBeigeBrush}" Padding="8" BorderThickness="1">
-                        <!-- Use a Grid to overlay the badge -->
-                        <Grid>
-                            <!-- Original Content -->
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Border Grid.Column="0" Width="32" Height="32" CornerRadius="4" Background="{StaticResource RimworldCodeBlueBrush}" VerticalAlignment="Center" Margin="0,0,8,0">
-                                    <TextBlock Text="🔢" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{StaticResource RimworldWhiteBrush}" FontSize="16" ToolTip="Game Version"/>
-                                </Border>
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="Game Version" FontSize="11" Foreground="{StaticResource RimworldBrownBrush}" FontWeight="Medium"/>
-                                    <TextBlock Text="{Binding PathSettings.GameVersion}" FontWeight="Bold" Foreground="{StaticResource RimworldBrownBrush}" TextTrimming="CharacterEllipsis"/>
-                                </StackPanel>
-                            </Grid>
-
-                            <!-- Notification Badge Overlay -->
-                            <Border HorizontalAlignment="Right"
-                                    VerticalAlignment="Top"
-                                    Margin="0,-12,-12,0"
-                                    Background="{StaticResource RimworldErrorRedBrush}"
-                                    BorderBrush="{StaticResource RimworldWhiteBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="10"
-                                    Width="16"
-                                    Height="16"
-                                    Visibility="{Binding IsUpdateAvailable, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                <Border.ToolTip>
-                                    <ToolTip Style="{StaticResource RimworldToolTip}">
-                                        <StackPanel>
-                                            <TextBlock Text="RimWorld Update" FontWeight="Bold"/>
-                                            <TextBlock Text="{Binding UpdateTooltipText}"/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <TextBlock Text="!" 
-                                           Foreground="{StaticResource RimworldWhiteBrush}" 
-                                           FontWeight="Bold"
-                                           FontSize="11"
-                                           HorizontalAlignment="Center" 
-                                           VerticalAlignment="Center"
-                                           Margin="0,-1,0,0"/>
-                            </Border>
-                        </Grid>
-                    </Border>
-
-                    <!-- Card 2: Game Directory -->
-                    <Border Grid.Column="1" Margin="3,0,3,0" Style="{StaticResource RimworldPanelBorder}" Background="{StaticResource RimworldDarkBeigeBrush}" Padding="8" BorderThickness="1">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <Border Grid.Column="0" Width="32" Height="32" CornerRadius="4" Background="{StaticResource RimworldOrangeBrush}" VerticalAlignment="Center" Margin="0,0,8,0">
-                                <TextBlock Text="🎮" FontFamily="Segoe UI Symbol" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{StaticResource RimworldWhiteBrush}" FontSize="16" ToolTip="Game Directory"/>
-                            </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
-                                <TextBlock Text="Game Directory" FontSize="11" Foreground="{StaticResource RimworldBrownBrush}" FontWeight="Medium"/>
-                                <TextBlock Text="{Binding PathSettings.GamePath}" Foreground="{StaticResource RimworldBrownBrush}" FontWeight="Bold" TextTrimming="CharacterEllipsis" ToolTip="{Binding PathSettings.GamePath}"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                <Button Command="{Binding OpenFolderCommand}" CommandParameter="GamePath" Style="{StaticResource RimworldInfoCardButtonStyle}" ToolTip="Open game folder in Explorer">
-                                    <TextBlock Text="📁" FontFamily="Segoe UI Symbol" VerticalAlignment="Center" FontSize="12"/>
-                                </Button>
-                                <Button Command="{Binding BrowsePathCommand}" CommandParameter="GamePath" Style="{StaticResource RimworldInfoCardButtonOutlineStyle}" ToolTip="Change game folder" Margin="4,0,0,0">
-                                    <TextBlock Text="…" FontWeight="Bold" VerticalAlignment="Center"/>
-                                </Button>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-
-                    <!-- Card 3: Config Directory -->
-                    <Border Grid.Column="2" Margin="6,0,0,0" Style="{StaticResource RimworldPanelBorder}" Background="{StaticResource RimworldDarkBeigeBrush}" Padding="8" BorderThickness="1">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <Border Grid.Column="0" Width="32" Height="32" CornerRadius="4" Background="{StaticResource RimworldConfigOrangeBrush}" VerticalAlignment="Center" Margin="0,0,8,0">
-                                <TextBlock Text="⚙️" FontFamily="Segoe UI Symbol" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{StaticResource RimworldWhiteBrush}" FontSize="16" ToolTip="Config Directory"/>
-                            </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
-                                <TextBlock Text="Config Directory" FontSize="11" Foreground="{StaticResource RimworldBrownBrush}" FontWeight="Medium"/>
-                                <TextBlock Text="{Binding PathSettings.ConfigPath}" Foreground="{StaticResource RimworldBrownBrush}" FontWeight="Bold" TextTrimming="CharacterEllipsis" ToolTip="{Binding PathSettings.ConfigPath}"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                <Button Command="{Binding OpenFolderCommand}" CommandParameter="ConfigPath" Style="{StaticResource RimworldInfoCardButtonStyle}" ToolTip="Open config folder in Explorer">
-                                    <TextBlock Text="📁" FontFamily="Segoe UI Symbol" VerticalAlignment="Center" FontSize="12"/>
-                                </Button>
-                                <Button Command="{Binding BrowsePathCommand}" CommandParameter="ConfigPath" Style="{StaticResource RimworldInfoCardButtonOutlineStyle}" ToolTip="Change config folder" Margin="4,0,0,0">
-                                    <TextBlock Text="…" FontWeight="Bold" VerticalAlignment="Center"/>
-                                </Button>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-                </Grid>
-            </Grid>
-        </Border>
-
-        <!-- Mode Tabs -->
-        <Border DockPanel.Dock="Top" Margin="8,0,8,0" BorderBrush="{StaticResource RimworldBrownBrush}"
-                BorderThickness="0" Padding="0,0,0,0">
-            <StackPanel Orientation="Horizontal">
-                <Button Content="Mods"
-                        Command="{Binding SwitchTabCommand}" CommandParameter="Mods"
-                        Style="{StaticResource RimworldTabButtonStyle}"/>
-                <Button Content="Downloader"
-                        Command="{Binding SwitchTabCommand}" CommandParameter="Downloader"
-                        Style="{StaticResource RimworldTabButtonStyle}"/>
-                <Button Content="Git Mods"
-                        Command="{Binding SwitchTabCommand}" CommandParameter="GitMods"
-                        Style="{StaticResource RimworldTabButtonStyle}"/>
-                <Button Content="VRAM Analysis"
-                        Command="{Binding SwitchTabCommand}" CommandParameter="VRAM"
-                        Style="{StaticResource RimworldTabButtonStyle}"/>
-            </StackPanel>
-        </Border>
-
-                <!-- Main Content Area -->
-
-                <Border Margin="8,0,8,8" Style="{StaticResource RimworldPanelBorder}" Background="{StaticResource RimworldBeigeBrush}" CornerRadius="0,3,3,3">
-
-                    <ContentControl Content="{Binding CurrentViewModel}" />
-
-                </Border>
-
-            </DockPanel>
+            <!-- Main Content Area -->
+            <Border Margin="8" Style="{StaticResource RimworldPanelBorder}" Background="{StaticResource RimworldBeigeBrush}">
+                <ContentControl Content="{Binding CurrentViewModel}" />
+            </Border>
+        </DockPanel>
 
         
 
