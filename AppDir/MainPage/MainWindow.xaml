@@ -10,8 +10,9 @@
         MinHeight="900" MinWidth="1200"
         Style="{StaticResource RimworldWindowStyle}">
 
-    <DockPanel>
-        <!-- Top Settings Bar -->
+    <Grid>
+        <DockPanel Visibility="{Binding IsInitialLoading, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+            <!-- Top Settings Bar -->
         <Border DockPanel.Dock="Top" Margin="8" Style="{StaticResource RimworldPanelBorder}" Background="{StaticResource RimworldBeigeBrush}">
             <Grid>
                 <Grid.RowDefinitions>
@@ -171,9 +172,224 @@
             </StackPanel>
         </Border>
 
-        <!-- Main Content Area -->
-        <Border Margin="8,0,8,8" Style="{StaticResource RimworldPanelBorder}" Background="{StaticResource RimworldBeigeBrush}" CornerRadius="0,3,3,3">
-            <ContentControl Content="{Binding CurrentViewModel}" />
-        </Border>
-    </DockPanel>
-</Window>
+                <!-- Main Content Area -->
+
+                <Border Margin="8,0,8,8" Style="{StaticResource RimworldPanelBorder}" Background="{StaticResource RimworldBeigeBrush}" CornerRadius="0,3,3,3">
+
+                    <ContentControl Content="{Binding CurrentViewModel}" />
+
+                </Border>
+
+            </DockPanel>
+
+        
+
+                <!-- Initial Loading Overlay -->
+
+        
+
+                <Grid Visibility="{Binding IsInitialLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+
+        
+
+                    <!-- Dimmed Background -->
+
+        
+
+                    <Border Background="#99000000"/>
+
+        
+
+            
+
+        
+
+                    <!-- Loading Card -->
+
+        
+
+                    <Border Style="{StaticResource RimworldPanelBorder}" 
+
+        
+
+                            Width="450" 
+
+        
+
+                            VerticalAlignment="Center" 
+
+        
+
+                            HorizontalAlignment="Center"
+
+        
+
+                            Padding="30"
+
+        
+
+                            BorderThickness="2"
+
+        
+
+                            CornerRadius="5">
+
+        
+
+                        <StackPanel>
+
+        
+
+                            <!-- App Icon -->
+
+        
+
+                            <Image Source="/icon.ico" Width="64" Height="64" RenderOptions.BitmapScalingMode="HighQuality" Margin="0,0,0,15"/>
+
+        
+
+                            
+
+        
+
+                            <!-- Title -->
+
+        
+
+                            <TextBlock Text="RimSharp" 
+
+        
+
+                                       FontSize="36" 
+
+        
+
+                                       FontWeight="Bold" 
+
+        
+
+                                       Foreground="{StaticResource RimworldBrownBrush}" 
+
+        
+
+                                       HorizontalAlignment="Center" 
+
+        
+
+                                       Margin="0,0,0,2"/>
+
+        
+
+                            
+
+        
+
+                            <!-- Subtitle -->
+
+        
+
+                            <TextBlock Text="RimWorld Mod Manager" 
+
+        
+
+                                       FontSize="16" 
+
+        
+
+                                       Foreground="{StaticResource RimworldLightBrownBrush}" 
+
+        
+
+                                       HorizontalAlignment="Center" 
+
+        
+
+                                       Margin="0,0,0,25"
+
+        
+
+                                       FontStyle="Italic"/>
+
+        
+
+            
+
+        
+
+                            <!-- Custom Progress Bar -->
+
+        
+
+                            <ProgressBar IsIndeterminate="{Binding IsAppLoading}" 
+
+        
+
+                                         Style="{StaticResource RimworldProgressBarStyle}"
+
+        
+
+                                         Height="10" 
+
+        
+
+                                         Margin="0,0,0,15"/>
+
+        
+
+            
+
+        
+
+                            <!-- Status Text -->
+
+        
+
+                            <TextBlock Text="{Binding ModsVM.LoadingMessage}" 
+
+        
+
+                                       FontSize="14" 
+
+        
+
+                                       Foreground="{StaticResource RimworldDarkBrownBrush}" 
+
+        
+
+                                       HorizontalAlignment="Center"
+
+        
+
+                                       TextAlignment="Center"
+
+        
+
+                                       TextTrimming="CharacterEllipsis"
+
+        
+
+                                       MaxWidth="380"/>
+
+        
+
+                        </StackPanel>
+
+        
+
+                    </Border>
+
+        
+
+                </Grid>
+
+        
+
+            </Grid>
+
+        
+
+            
+
+        </Window>
+
+        

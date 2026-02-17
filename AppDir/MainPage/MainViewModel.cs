@@ -73,6 +73,15 @@ namespace RimSharp.AppDir.MainPage
             set => SetProperty(ref _updateTooltipText, value);
         }
 
+        private bool _isInitialLoading = true;
+        public bool IsInitialLoading
+        {
+            get => _isInitialLoading;
+            private set => SetProperty(ref _isInitialLoading, value);
+        }
+
+        public bool IsAppLoading => ModsVM?.IsLoading ?? false;
+
         // Helper property to centralize the "Is anything busy?" logic
         private bool IsIdle => !(ModsVM?.IsLoading ?? false) &&
                                !(DownloaderVM?.IsOperationInProgress ?? false) &&
@@ -117,6 +126,17 @@ namespace RimSharp.AppDir.MainPage
             };
 
             PathSettings.PropertyChanged += PathSettings_PropertyChanged;
+
+            if (ModsVM != null)
+            {
+                ModsVM.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(ModsViewModel.IsLoading))
+                    {
+                        OnPropertyChanged(nameof(IsAppLoading));
+                    }
+                };
+            }
 
             CurrentViewModel = ModsVM;
             _selectedTab = "Mods";
@@ -200,6 +220,8 @@ namespace RimSharp.AppDir.MainPage
 
             // Await all tasks to complete. This allows them to run concurrently.
             await Task.WhenAll(startupTasks);
+
+            IsInitialLoading = false;
 
             Debug.WriteLine("[MainViewModel] All initial tasks complete.", "OnMainWindowLoadedAsync");
         }

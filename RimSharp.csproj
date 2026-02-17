@@ -47,6 +47,7 @@
     <None Include="Lists\**\*" Condition="Exists('Lists\**\*')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <Resource Include="icon.ico" />
   </ItemGroup>
 
   <PropertyGroup>
