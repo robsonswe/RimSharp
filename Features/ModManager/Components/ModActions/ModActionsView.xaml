@@ -8,43 +8,48 @@
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:ModActionsViewModel, IsDesignTimeCreatable=False}"
              d:DesignHeight="450" d:DesignWidth="150">
-    <!-- DataContext is now ModActionsViewModel -->
-    <StackPanel Width="130">
-        <TextBlock Text="Mods" FontWeight="Bold" Margin="0,0,0,5" Foreground="{StaticResource RimworldBrownBrush}"/>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
 
-        <!-- Command bindings now point to ModActionsViewModel properties -->
-        <Button Content="Clear" Command="{Binding ClearActiveListCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
-        <Button Content="Sort" Command="{Binding SortActiveListCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
-        <Button Content="Dependencies" Command="{Binding ResolveDependenciesCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
-        <Button Command="{Binding CheckIncompatibilitiesCommand}"
-                Content="Incompatibilities"
-                Margin="0,0,0,5"
-                Style="{StaticResource RimworldButtonStyle}"
-                />
-        <Button Content="Duplicates"
-                Command="{Binding CheckDuplicatesCommand}"
-                Margin="0,0,0,5"
-                Style="{StaticResource RimworldButtonStyle}"/>
-        <Button Content="Replacements"
-                Command="{Binding CheckReplacementsCommand}"
-                Margin="0,0,0,5"
-                Style="{StaticResource RimworldButtonStyle}"/>
+        <!-- Left: Management Actions -->
+        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+            <Button Content="Clear" Command="{Binding ClearActiveListCommand}" Style="{StaticResource RimworldButtonStyle}" Margin="0,0,8,0" MinWidth="60"/>
+            <Button Content="Sort" Command="{Binding SortActiveListCommand}" Style="{StaticResource RimworldButtonStyle}" Margin="0,0,8,0" MinWidth="60"/>
 
+            <Border Width="1" Height="16" Background="{StaticResource RimworldBrownBrush}" Margin="8,0" VerticalAlignment="Center" Opacity="0.3"/>
 
-        <TextBlock Text="Misc" FontWeight="Bold" Margin="0,0,0,5" Foreground="{StaticResource RimworldBrownBrush}"/>
-        <Button Content="Strip mods" Command="{Binding StripModsCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
-        <Button Content="Fix integrity" Command="{Binding FixIntegrityCommand}" Margin="0,0,0,20" Style="{StaticResource RimworldButtonStyle}"/>
+            <Menu Background="Transparent" VerticalAlignment="Center" Margin="0,0,8,0">
+                <MenuItem Header="Analyze" Style="{StaticResource RimworldDropDownButtonStyle}">
+                    <MenuItem Header="Dependencies" Command="{Binding ResolveDependenciesCommand}" Style="{StaticResource RimworldMenuItemStyle}"/>
+                    <MenuItem Header="Incompatibilities" Command="{Binding CheckIncompatibilitiesCommand}" Style="{StaticResource RimworldMenuItemStyle}"/>
+                    <MenuItem Header="Duplicates" Command="{Binding CheckDuplicatesCommand}" Style="{StaticResource RimworldMenuItemStyle}"/>
+                    <MenuItem Header="Replacements" Command="{Binding CheckReplacementsCommand}" Style="{StaticResource RimworldMenuItemStyle}"/>
+                </MenuItem>
+            </Menu>
 
-        <TextBlock Text="Install Mods" FontWeight="Bold" Margin="0,0,0,5" Foreground="{StaticResource RimworldBrownBrush}"/>
-        <Button Content="Zip File" Command="{Binding InstallFromZipCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
-        <Button Content="Github" Command="{Binding InstallFromGithubCommand}" Margin="0,0,0,20" Style="{StaticResource RimworldButtonStyle}"/>
+            <Menu Background="Transparent" VerticalAlignment="Center" Margin="0,0,8,0">
+                <MenuItem Header="Utilities" Style="{StaticResource RimworldDropDownButtonStyle}">
+                    <MenuItem Header="Strip mods" Command="{Binding StripModsCommand}" Style="{StaticResource RimworldMenuItemStyle}"/>
+                    <MenuItem Header="Fix integrity" Command="{Binding FixIntegrityCommand}" Style="{StaticResource RimworldMenuItemStyle}"/>
+                    <Separator Style="{StaticResource RimworldSeparatorStyle}"/>
+                    <MenuItem Header="Install From Zip" Command="{Binding InstallFromZipCommand}" Style="{StaticResource RimworldMenuItemStyle}"/>
+                    <MenuItem Header="Install From Github" Command="{Binding InstallFromGithubCommand}" Style="{StaticResource RimworldMenuItemStyle}"/>
+                </MenuItem>
+            </Menu>
+        </StackPanel>
 
-        <TextBlock Text="Mod lists" FontWeight="Bold" Margin="0,0,0,5" Foreground="{StaticResource RimworldBrownBrush}"/>
-        <Button Content="Import list" Command="{Binding ImportListCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldButtonStyle}"/>
-        <Button Content="Export list" Command="{Binding ExportListCommand}" Margin="0,0,0,20" Style="{StaticResource RimworldButtonStyle}"/>
+        <!-- Right: IO Actions -->
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+            <Button Content="Import list" Command="{Binding ImportListCommand}" Style="{StaticResource RimworldButtonStyle}" Margin="0,0,8,0" MinWidth="90"/>
+            <Button Content="Export list" Command="{Binding ExportListCommand}" Style="{StaticResource RimworldButtonStyle}" Margin="0,0,8,0" MinWidth="90"/>
 
-        <!-- IsEnabled binding also points to ModActionsViewModel.HasUnsavedChanges -->
-        <Button Content="Save" Command="{Binding SaveCommand}" Margin="0,0,0,5" Style="{StaticResource RimworldSaveButtonStyle}"/>
-        <Button Content="Run" Command="{Binding RunGameCommand}" Style="{StaticResource RimworldRunButtonStyle}"/>
-    </StackPanel>
+            <Border Width="1" Height="16" Background="{StaticResource RimworldBrownBrush}" Margin="8,0" VerticalAlignment="Center" Opacity="0.3"/>
+
+            <Button Content="Save" Command="{Binding SaveCommand}" Style="{StaticResource RimworldSaveButtonStyle}" Margin="0,0,8,0" MinWidth="80"/>
+            <Button Content="Run" Command="{Binding RunGameCommand}" Style="{StaticResource RimworldRunButtonStyle}" MinWidth="80"/>
+        </StackPanel>
+    </Grid>
 </UserControl>

@@ -19,69 +19,72 @@
                      Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"
                      Foreground="{StaticResource RimworldHighlightBrush}" Background="Transparent" BorderThickness="0"/>
 
-        <!-- Main 3-Column Layout -->
-        <Grid Margin="0,5,0,0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2.25*"/> <!-- Details Panel -->
-                <ColumnDefinition Width="2*"/>   <!-- Lists Panel -->
-                <ColumnDefinition Width="Auto"/>  <!-- Buttons Panel -->
-            </Grid.ColumnDefinitions>
+        <!-- New 2-Row Layout -->
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/> <!-- Quick Actions Bar -->
+                <RowDefinition Height="*"/>    <!-- Main Content (Details + Lists) -->
+            </Grid.RowDefinitions>
 
-            <!-- Mod Details Panel -->
-            <Border Grid.Column="0" Margin="0,0,8,0" Style="{StaticResource RimworldPanelBorder}">
-                <!-- Bind DataContext to the ModDetailsViewModel -->
-                <modDetails:ModDetailsView DataContext="{Binding ModDetailsViewModel}"/>
+            <!-- Quick Actions Bar Row -->
+            <Border Grid.Row="0" Margin="0,0,0,8" Style="{StaticResource RimworldPanelBorder}" Padding="6,4">
+                <modActions:ModActionsView DataContext="{Binding ModActionsViewModel}"/>
             </Border>
 
-            <!-- Mod Lists Panel -->
-            <Grid Grid.Column="1" Margin="0,0,8,0">
+            <!-- Main Content Row -->
+            <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/> <!-- Inactive List -->
-                    <ColumnDefinition Width="Auto"/> <!-- Separator (Optional) -->
-                    <ColumnDefinition Width="*"/> <!-- Active List -->
+                    <ColumnDefinition Width="450"/> <!-- Details Panel -->
+                    <ColumnDefinition Width="*"/>   <!-- Lists Panel -->
                 </Grid.ColumnDefinitions>
 
-                <!-- Inactive Mods List -->
-                <!-- Bind Dependency Properties to the appropriate ViewModel properties -->
-                <modList:ModListView Grid.Column="0"
-                                      x:Name="InactiveModList"
-                                      HeaderText="Inactive"
-                                      ItemsSource="{Binding ModListViewModel.InactiveMods}"
-                                      SelectedItem="{Binding SelectedMod, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      util:ListBoxSelectionHelper.SelectedItems="{Binding SelectedItems, Mode=OneWayToSource}"
-                                      ItemCount="{Binding ModListViewModel.TotalInactiveMods, Mode=OneWay}"
-                                      SearchText="{Binding ModListViewModel.InactiveSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      FilterCommand="{Binding ModListViewModel.FilterInactiveCommand}"
-                                      DoubleClickCommand="{Binding ModListViewModel.ActivateModCommand}"
-                                      GroupName="Inactive"
-                                    SelectedItems="{Binding SelectedItems, Mode=TwoWay}"
-                                      DropCommand="{Binding ModListViewModel.DropModCommand}"
-                                      DragItemType="{x:Type models:ModItem}"
-                                      Margin="0,0,4,0"/>
+                <!-- Mod Details Panel -->
+                <Border Grid.Column="0" Margin="0,0,8,0" Style="{StaticResource RimworldPanelBorder}">
+                    <modDetails:ModDetailsView DataContext="{Binding ModDetailsViewModel}"/>
+                </Border>
 
-                 <!-- Active Mods List -->
-                 <modList:ModListView Grid.Column="2"
-                                      x:Name="ActiveModList"
-                                      HeaderText="Active"
-                                      ItemsSource="{Binding ModListViewModel.ActiveMods}"
-                                      SelectedItem="{Binding SelectedMod, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      util:ListBoxSelectionHelper.SelectedItems="{Binding SelectedItems, Mode=OneWayToSource}"
-                                      ItemCount="{Binding ModListViewModel.TotalActiveMods, Mode=OneWay}"
-                                      SearchText="{Binding ModListViewModel.ActiveSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      FilterCommand="{Binding ModListViewModel.FilterActiveCommand}"
-                                      DoubleClickCommand="{Binding ModListViewModel.DeactivateModCommand}"
-                                      GroupName="Active"
-                                                         SelectedItems="{Binding SelectedItems, Mode=TwoWay}"
-                                      DropCommand="{Binding ModListViewModel.DropModCommand}"
-                                      DragItemType="{x:Type models:ModItem}"
-                                      Margin="4,0,0,0"/>
+                <!-- Mod Lists Panel -->
+                <Grid Grid.Column="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/> <!-- Inactive List -->
+                        <ColumnDefinition Width="*"/> <!-- Active List -->
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Inactive Mods List -->
+                    <modList:ModListView Grid.Column="0"
+                                          x:Name="InactiveModList"
+                                          HeaderText="Inactive"
+                                          ItemsSource="{Binding ModListViewModel.InactiveMods}"
+                                          SelectedItem="{Binding SelectedMod, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          util:ListBoxSelectionHelper.SelectedItems="{Binding SelectedItems, Mode=OneWayToSource}"
+                                          ItemCount="{Binding ModListViewModel.TotalInactiveMods, Mode=OneWay}"
+                                          SearchText="{Binding ModListViewModel.InactiveSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          FilterCommand="{Binding ModListViewModel.FilterInactiveCommand}"
+                                          DoubleClickCommand="{Binding ModListViewModel.ActivateModCommand}"
+                                          GroupName="Inactive"
+                                          SelectedItems="{Binding SelectedItems, Mode=TwoWay}"
+                                          DropCommand="{Binding ModListViewModel.DropModCommand}"
+                                          DragItemType="{x:Type models:ModItem}"
+                                          Margin="0,0,4,0"/>
+
+                     <!-- Active Mods List -->
+                     <modList:ModListView Grid.Column="1"
+                                          x:Name="ActiveModList"
+                                          HeaderText="Active"
+                                          ItemsSource="{Binding ModListViewModel.ActiveMods}"
+                                          SelectedItem="{Binding SelectedMod, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          util:ListBoxSelectionHelper.SelectedItems="{Binding SelectedItems, Mode=OneWayToSource}"
+                                          ItemCount="{Binding ModListViewModel.TotalActiveMods, Mode=OneWay}"
+                                          SearchText="{Binding ModListViewModel.ActiveSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          FilterCommand="{Binding ModListViewModel.FilterActiveCommand}"
+                                          DoubleClickCommand="{Binding ModListViewModel.DeactivateModCommand}"
+                                          GroupName="Active"
+                                          SelectedItems="{Binding SelectedItems, Mode=TwoWay}"
+                                          DropCommand="{Binding ModListViewModel.DropModCommand}"
+                                          DragItemType="{x:Type models:ModItem}"
+                                          Margin="4,0,0,0"/>
+                </Grid>
             </Grid>
-
-            <!-- Right Sidebar Buttons -->
-            <!-- Bind DataContext to the ModActionsViewModel -->
-            <modActions:ModActionsView Grid.Column="2" Margin="8,0,0,0"
-                                       DataContext="{Binding ModActionsViewModel}"/>
-
         </Grid>
     </Grid>
 </UserControl>
