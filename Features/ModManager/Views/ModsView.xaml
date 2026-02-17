@@ -34,8 +34,8 @@
             <!-- Main Content Row -->
             <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="450"/> <!-- Details Panel -->
-                    <ColumnDefinition Width="*"/>   <!-- Lists Panel -->
+                    <ColumnDefinition Width="1*" MinWidth="450" MaxWidth="600"/> <!-- Details Panel -->
+                    <ColumnDefinition Width="2*"/>   <!-- Lists Panel -->
                 </Grid.ColumnDefinitions>
 
                 <!-- Mod Details Panel -->
