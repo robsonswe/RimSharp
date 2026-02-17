@@ -153,7 +153,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             ProgressDialogViewModel? progressDialog = null;
             try
             {
-                progressDialog = _dialogService.ShowProgressDialog("SteamCMD Setup", "Starting setup...", true, true, CancellationTokenSource.CreateLinkedTokenSource(token));
+                progressDialog = _dialogService.ShowProgressDialog("SteamCMD Setup", "Starting setup...", true, true, CancellationTokenSource.CreateLinkedTokenSource(token), false);
                 progressDialog.Cancelled += (s, e) => StatusChanged?.Invoke(this, "Setup cancelled via dialog.");
 
                 var progressReporter = new Progress<string>(message =>
@@ -823,7 +823,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             try
             {
                 StatusChanged?.Invoke(this, $"Checking {selectedMods.Count} mod(s) for updates...");
-                progressDialog = _dialogService.ShowProgressDialog("Checking for Updates", "Preparing...", true, true, cts); // Use combined CTS
+                progressDialog = _dialogService.ShowProgressDialog("Checking for Updates", "Preparing...", true, true, cts, false); // Use combined CTS, closeable: false
                 progressDialog.Cancelled += (s, e) => StatusChanged?.Invoke(this, "Update check cancelled via dialog.");
 
                 var progress = new Progress<(int current, int total, string modName)>(update =>

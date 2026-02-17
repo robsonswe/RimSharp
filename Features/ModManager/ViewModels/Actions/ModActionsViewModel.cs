@@ -333,7 +333,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     canCancel: true,
                     isIndeterminate: false,
                     cts: null, // Will create linked CTS below
-                    closeable: true);
+                    closeable: false);
                 });
                 if (progressDialog == null) throw new InvalidOperationException("Progress dialog view model was not created.");
 

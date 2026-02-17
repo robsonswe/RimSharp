@@ -24,7 +24,7 @@ namespace RimSharp.Shared.Services.Contracts
         void ShowMessageWithCopy(string title, string message, MessageDialogType dialogType = MessageDialogType.Information);
         UpdateCheckDialogResult ShowUpdateCheckDialog(UpdateCheckDialogViewModel viewModel);
 
-        ProgressDialogViewModel ShowProgressDialog(string title, string message, bool canCancel = false, bool isIndeterminate = true, CancellationTokenSource? cts = null, bool closeable = true);
+        ProgressDialogViewModel ShowProgressDialog(string title, string message, bool canCancel = false, bool isIndeterminate = true, CancellationTokenSource? cts = null, bool closeable = false, bool showInTaskbar = true);
 
         (MessageDialogResult Result, string Input) ShowInputDialog(string title, string message, string defaultInput = "");
         ModCustomizationResult ShowCustomizeModDialog(CustomizeModDialogViewModel viewModel);

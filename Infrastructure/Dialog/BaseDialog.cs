@@ -18,7 +18,16 @@ namespace RimSharp.Infrastructure.Dialog
         public BaseDialog()
         {
             Style = (Style)Application.Current.Resources["RimworldDialogStyle"];
-            this.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            this.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+
+            Loaded += (s, e) =>
+            {
+                if (Owner == null && Application.Current != null && Application.Current.MainWindow != this)
+                {
+                    Owner = Application.Current.MainWindow;
+                    Debug.WriteLine($"[BaseDialog] Owner automatically set to MainWindow ({Owner?.Title}) on Loaded.");
+                }
+            };
         }
 
         #region Dependency Properties

@@ -456,7 +456,7 @@ namespace RimSharp.Infrastructure.Mods.IO
                        canCancel: true,
                        isIndeterminate: false,
                        cts: null,
-                       closeable: true);
+                       closeable: false);
                 });
                 if (progressDialog == null) throw new InvalidOperationException("Progress dialog view model was not created.");
 

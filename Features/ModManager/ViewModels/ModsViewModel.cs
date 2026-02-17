@@ -1,4 +1,5 @@
 
+#nullable enable
 using RimSharp.Features.ModManager.ViewModels.Actions;
 using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.AppDir.AppFiles;
@@ -41,6 +42,13 @@ namespace RimSharp.Features.ModManager.ViewModels
         private ModItem _selectedMod;
         private IList _selectedItems; // Property to bind ListBox.SelectedItems
         public bool HasAnyActiveModIssues => _modListManager?.HasAnyActiveModIssues ?? false;
+
+        private string _loadingMessage = string.Empty;
+        public string LoadingMessage
+        {
+            get => _loadingMessage;
+            private set => SetProperty(ref _loadingMessage, value);
+        }
 
         public bool IsLoading
         {
@@ -164,7 +172,7 @@ namespace RimSharp.Features.ModManager.ViewModels
         {
             // This is the new entry point for the initial data load.
             // It will be called by MainViewModel after the main window is visible.
-            await LoadDataAsync();
+            await LoadDataAsync(CancellationToken.None, true);
         }
         // --- Event Handlers from Children ---
 
@@ -271,7 +279,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             Debug.WriteLine("[ModsViewModel - RefreshDataAsync] Refresh complete.");
         }
 
-        private async Task LoadDataAsync(CancellationToken ct = default)
+        private async Task LoadDataAsync(CancellationToken ct = default, bool isInitialLoad = false)
         {
             if (IsLoading) return; // Prevent re-entrancy
 
@@ -283,27 +291,33 @@ namespace RimSharp.Features.ModManager.ViewModels
             });
 
             IsLoading = true; // Setter updates children and commands
-            ProgressDialogViewModel progressDialog = null;
+            ProgressDialogViewModel? progressDialog = null;
 
             try
             {
                 // Check for cancellation before showing dialog
                 ct.ThrowIfCancellationRequested();
 
-                await RunOnUIThreadAsync(() =>
+                if (!isInitialLoad)
                 {
-                    // Pass a new CTS linked to the incoming token for the dialog
-                    var dialogCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                    progressDialog = _dialogService.ShowProgressDialog("Loading Mods", "Initializing...", false, true, dialogCts, false);
-                    // Handle cancellation from dialog if needed: progressDialog.Cancelled += (s,e) => { /* maybe log */ };
-                });
+                    await RunOnUIThreadAsync(() =>
+                    {
+                        // Pass a new CTS linked to the incoming token for the dialog
+                        var dialogCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                        progressDialog = _dialogService.ShowProgressDialog("Loading Mods", "Initializing...", false, true, dialogCts, false);
+                        // Handle cancellation from dialog if needed: progressDialog.Cancelled += (s,e) => { /* maybe log */ };
+                    });
+                }
 
                 // Check for cancellation after showing dialog
                 ct.ThrowIfCancellationRequested();
 
 
                 // Load data (as before), passing token if service methods support it
-                progressDialog.Message = "Loading mod data...";
+                string msg = "Loading game and mods data...";
+                LoadingMessage = msg;
+                if (progressDialog != null) progressDialog.Message = msg;
+
                 // Assuming services support cancellation or Task.Run respects it
                 var allMods = await Task.Run(async () => await _dataService.LoadAllModsAsync(), ct);
                 ct.ThrowIfCancellationRequested();
@@ -311,7 +325,10 @@ namespace RimSharp.Features.ModManager.ViewModels
                 ct.ThrowIfCancellationRequested();
 
 
-                progressDialog.Message = "Initializing mod list...";
+                msg = "Initializing mod list...";
+                LoadingMessage = msg;
+                if (progressDialog != null) progressDialog.Message = msg;
+
                 // ModListManager initialization MUST happen before FilterService is updated.
                 // Assuming Initialize is synchronous or handles cancellation internally if async
                 _modListManager.Initialize(allMods, activeIdsFromConfig);
@@ -327,7 +344,10 @@ namespace RimSharp.Features.ModManager.ViewModels
                 // Force UI update for counts in ModListViewModel
                 ModListViewModel.RefreshCounts();
 
-                progressDialog.Message = "Finalizing...";
+                msg = "Finalizing...";
+                LoadingMessage = msg;
+                if (progressDialog != null) progressDialog.Message = msg;
+
                 ModItem selectedModCandidate = _modListManager.VirtualActiveMods.FirstOrDefault(vm => vm.Mod.ModType == ModType.Core).Mod ??
                                 _modListManager.VirtualActiveMods.FirstOrDefault().Mod ??
                                 _modListManager.AllInactiveMods.FirstOrDefault();
@@ -338,14 +358,14 @@ namespace RimSharp.Features.ModManager.ViewModels
                 // Reset unsaved changes flag AFTER successful load
                 HasUnsavedChanges = false; // Setter updates ModActionsViewModel and commands
 
-                progressDialog.CompleteOperation("Mods loaded successfully");
+                if (progressDialog != null) progressDialog.CompleteOperation("Mods loaded successfully");
                 // CommandManager.InvalidateRequerySuggested might still be useful for global commands
                 RunOnUIThread(CommandManager.InvalidateRequerySuggested);
 
             }
             catch (OperationCanceledException)
             {
-                progressDialog?.ForceClose(); // Close dialog on cancellation
+                if (progressDialog != null) progressDialog.ForceClose(); // Close dialog on cancellation
                 Debug.WriteLine("[ModsViewModel] LoadDataAsync cancelled.");
                 // Optionally show a cancelled message, or just reset state
                 await RunOnUIThreadAsync(() => _dialogService.ShowWarning("Load Cancelled", "Mod loading was cancelled."));
@@ -353,7 +373,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             }
             catch (Exception ex)
             {
-                progressDialog?.ForceClose(); // Ensure dialog closes on error
+                if (progressDialog != null) progressDialog.ForceClose(); // Ensure dialog closes on error
                 Debug.WriteLine($"Error loading mods: {ex}");
                 await RunOnUIThreadAsync(() => _dialogService.ShowError("Loading Error", $"Error loading mods: {ex.Message}"));
                 HasUnsavedChanges = false; // Reset flag on error too
@@ -362,6 +382,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             {
                 Debug.WriteLine($"[ModsViewModel] LoadDataAsync FINALLY block entered. Setting IsLoading = false.");
                 IsLoading = false; // Reset loading state, setter handles updates
+                LoadingMessage = string.Empty;
                 Debug.WriteLine($"[ModsViewModel] LoadDataAsync FINALLY block finished. IsLoading should be false.");
             }
         }
