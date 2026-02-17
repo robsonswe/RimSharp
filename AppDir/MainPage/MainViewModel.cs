@@ -34,14 +34,14 @@ namespace RimSharp.AppDir.MainPage
         private ViewModelBase? _currentViewModel; // Holds the currently displayed module ViewModel
 
         // Properties for Module ViewModels (Injected)
-        public ModsViewModel ModsVM { get; }
+        public ModsViewModel ModsVM { get; } = null!;
         public DownloaderViewModel? DownloaderVM { get; }
-        public GitModsViewModel GitModsVM { get; }
+        public GitModsViewModel GitModsVM { get; } = null!;
 
-        public VramAnalysisViewModel VramAnalysisVM { get; }
+        public VramAnalysisViewModel VramAnalysisVM { get; } = null!;
 
         // Application-wide settings or state
-        public PathSettings PathSettings { get; }
+        public PathSettings PathSettings { get; } = null!;
 
         // Commands managed by MainViewModel
         public ICommand SwitchTabCommand { get; }
