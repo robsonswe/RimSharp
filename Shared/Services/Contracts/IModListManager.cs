@@ -21,7 +21,7 @@ namespace RimSharp.Shared.Services.Contracts
         void DeactivateMod(ModItem mod);
         void ReorderMod(ModItem mod, int newIndex);
         void ClearActiveList();
-        bool SortActiveList();
+        bool SortActiveList(System.Threading.CancellationToken ct = default);
         bool IsModActive(ModItem mod);
         IEnumerable<ModItem> GetAllMods();
 

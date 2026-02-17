@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using RimSharp.Shared.Models;
 using QuikGraph;
 using QuikGraph.Algorithms;
@@ -71,7 +72,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             _logger = logger ?? new ConsoleLogger();
         }
 
-        public SortResult TopologicalSort(List<ModItem> allMods)
+        public SortResult TopologicalSort(List<ModItem> allMods, CancellationToken ct = default)
         {
             if (allMods == null || allMods.Count == 0)
             {
@@ -82,17 +83,22 @@ namespace RimSharp.Infrastructure.Mods.Sorting
 
             try
             {
+                ct.ThrowIfCancellationRequested();
+
                 var modLookup = allMods.ToDictionary(m => m.PackageId.ToLowerInvariant(), m => m, StringComparer.OrdinalIgnoreCase);
-                var (fullGraph, initialWarnings) = BuildGraph(allMods, modLookup);
+                var (fullGraph, initialWarnings) = BuildGraph(allMods, modLookup, true, ct);
 
                 _logger.LogDebug("Partitioning mods into tiers.");
-                var tierOneMods = GetTierMods(allMods, fullGraph, TierOnePackageIds, findDependencies: true);
+                ct.ThrowIfCancellationRequested();
+                var tierOneMods = GetTierMods(allMods, fullGraph, TierOnePackageIds, findDependencies: true, ct);
 
+                ct.ThrowIfCancellationRequested();
                 var tierThreeStartingSet = allMods
                     .Where(m => m.LoadBottom || KnownTierThreePackageIds.Contains(m.PackageId))
                     .ToHashSet();
-                var tierThreeMods = GetTierMods(allMods, fullGraph, tierThreeStartingSet, findDependencies: false);
+                var tierThreeMods = GetTierMods(allMods, fullGraph, tierThreeStartingSet, findDependencies: false, ct);
 
+                ct.ThrowIfCancellationRequested();
                 var tierTwoMods = allMods
                     .Except(tierOneMods)
                     .Except(tierThreeMods)
@@ -101,9 +107,14 @@ namespace RimSharp.Infrastructure.Mods.Sorting
                 _logger.LogDebug($"Partition complete. Tier 1: {tierOneMods.Count}, Tier 2: {tierTwoMods.Count}, Tier 3: {tierThreeMods.Count}");
 
                 // OPTIMIZATION 1: Pass the master lookup to avoid regenerating it.
-                var sortResultTier1 = SortTier(tierOneMods.ToList(), "Tier 1", modLookup);
-                var sortResultTier2 = SortTier(tierTwoMods, "Tier 2", modLookup);
-                var sortResultTier3 = SortTier(tierThreeMods.ToList(), "Tier 3", modLookup);
+                ct.ThrowIfCancellationRequested();
+                var sortResultTier1 = SortTier(tierOneMods.ToList(), "Tier 1", modLookup, ct);
+                
+                ct.ThrowIfCancellationRequested();
+                var sortResultTier2 = SortTier(tierTwoMods, "Tier 2", modLookup, ct);
+                
+                ct.ThrowIfCancellationRequested();
+                var sortResultTier3 = SortTier(tierThreeMods.ToList(), "Tier 3", modLookup, ct);
 
                 var combinedResult = new SortResult { IsSuccess = true };
                 var allSortedMods = new List<ModItem>();
@@ -122,6 +133,10 @@ namespace RimSharp.Infrastructure.Mods.Sorting
 
                 return combinedResult;
             }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError($"An unexpected error occurred during tiered sorting: {ex}");
@@ -129,13 +144,13 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             }
         }
 
-        private HashSet<ModItem> GetTierMods(List<ModItem> allMods, BidirectionalGraph<ModItem, Edge<ModItem>> fullGraph, HashSet<string> startingPackageIds, bool findDependencies)
+        private HashSet<ModItem> GetTierMods(List<ModItem> allMods, BidirectionalGraph<ModItem, Edge<ModItem>> fullGraph, HashSet<string> startingPackageIds, bool findDependencies, CancellationToken ct)
         {
             var startingMods = allMods.Where(m => startingPackageIds.Contains(m.PackageId)).ToHashSet();
-            return GetTierMods(allMods, fullGraph, startingMods, findDependencies);
+            return GetTierMods(allMods, fullGraph, startingMods, findDependencies, ct);
         }
 
-        private HashSet<ModItem> GetTierMods(List<ModItem> allMods, BidirectionalGraph<ModItem, Edge<ModItem>> fullGraph, HashSet<ModItem> startingSet, bool findDependencies)
+        private HashSet<ModItem> GetTierMods(List<ModItem> allMods, BidirectionalGraph<ModItem, Edge<ModItem>> fullGraph, HashSet<ModItem> startingSet, bool findDependencies, CancellationToken ct)
         {
             var tierMods = new HashSet<ModItem>();
             if (startingSet.Count == 0) return tierMods;
@@ -144,6 +159,9 @@ namespace RimSharp.Infrastructure.Mods.Sorting
 
             while (queue.Count > 0)
             {
+                // Check cancellation in the loop
+                ct.ThrowIfCancellationRequested();
+
                 var current = queue.Dequeue();
                 if (tierMods.Add(current))
                 {
@@ -172,7 +190,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             return tierMods;
         }
 
-        private SortResult SortTier(List<ModItem> tierMods, string tierName, IReadOnlyDictionary<string, ModItem> fullModLookup)
+        private SortResult SortTier(List<ModItem> tierMods, string tierName, IReadOnlyDictionary<string, ModItem> fullModLookup, CancellationToken ct)
         {
             if (tierMods.Count == 0) return new SortResult { IsSuccess = true };
 
@@ -180,7 +198,9 @@ namespace RimSharp.Infrastructure.Mods.Sorting
 
             // Build a graph for this tier, but use the master lookup to resolve dependencies.
             // This prevents generating redundant "missing from tier" warnings.
-            var (graph, _) = BuildGraph(tierMods, fullModLookup, generateWarnings: false);
+            var (graph, _) = BuildGraph(tierMods, fullModLookup, false, ct);
+
+            ct.ThrowIfCancellationRequested();
 
             var cycles = DetectCycles(graph);
             if (cycles.Any())
@@ -189,7 +209,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
                 return new SortResult { IsSuccess = false, CyclicDependencies = cycles };
             }
 
-            var sorted = PerformKahnSort(graph, tierMods);
+            var sorted = PerformKahnSort(graph, tierMods, ct);
             if (sorted.Count != tierMods.Count)
             {
                 _logger.LogError($"Incomplete sort for {tierName}. Graph may be inconsistent.");
@@ -214,7 +234,8 @@ namespace RimSharp.Infrastructure.Mods.Sorting
         private (BidirectionalGraph<ModItem, Edge<ModItem>> graph, List<string> warnings) BuildGraph(
             List<ModItem> mods, 
             IReadOnlyDictionary<string, ModItem> modLookup, 
-            bool generateWarnings = true)
+            bool generateWarnings,
+            CancellationToken ct)
         {
             var graph = new BidirectionalGraph<ModItem, Edge<ModItem>>();
             var warnings = new List<string>();
@@ -224,6 +245,8 @@ namespace RimSharp.Infrastructure.Mods.Sorting
 
             foreach (var mod in mods)
             {
+                ct.ThrowIfCancellationRequested();
+
                 if (string.IsNullOrEmpty(mod.PackageId)) continue;
                 
                 // OPTIMIZATION 3: Iterate directly instead of using Concat to reduce allocations.
@@ -269,13 +292,13 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             // Implicit dependencies are only added on the initial full graph build.
             if (generateWarnings)
             {
-                AddImplicitDependencies(mods, graph);
+                AddImplicitDependencies(mods, graph, ct);
             }
 
             return (graph, warnings);
         }
 
-        private void AddImplicitDependencies(List<ModItem> mods, BidirectionalGraph<ModItem, Edge<ModItem>> graph)
+        private void AddImplicitDependencies(List<ModItem> mods, BidirectionalGraph<ModItem, Edge<ModItem>> graph, CancellationToken ct)
         {
             var coreMod = mods.FirstOrDefault(m => m.ModType == ModType.Core);
             var expansionMods = mods.Where(m => m.ModType == ModType.Expansion).ToList();
@@ -284,6 +307,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             {
                 foreach (var mod in mods)
                 {
+                    ct.ThrowIfCancellationRequested();
                     if (mod == coreMod) continue;
                     // OPTIMIZATION 2: Remove the expensive redundant path check. Keep the essential cycle prevention check.
                     if (!HasPath(graph, mod, coreMod))
@@ -306,6 +330,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
 
                 foreach (var mod in mods)
                 {
+                    ct.ThrowIfCancellationRequested();
                     if (mod.ModType != ModType.Core && mod.ModType != ModType.Expansion)
                     {
                         // OPTIMIZATION 2: Streamlined check.
@@ -364,7 +389,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             return sb.ToString();
         }
 
-        private List<ModItem> PerformKahnSort(BidirectionalGraph<ModItem, Edge<ModItem>> graph, IEnumerable<ModItem> mods)
+        private List<ModItem> PerformKahnSort(BidirectionalGraph<ModItem, Edge<ModItem>> graph, IEnumerable<ModItem> mods, CancellationToken ct)
         {
             var sortedList = new List<ModItem>();
             var inDegrees = mods.ToDictionary(mod => mod, mod => graph.InDegree(mod));
@@ -381,6 +406,9 @@ namespace RimSharp.Infrastructure.Mods.Sorting
 
             while (queue.TryDequeue(out var currentMod, out _))
             {
+                // Check cancellation in the loop
+                ct.ThrowIfCancellationRequested();
+
                 sortedList.Add(currentMod);
 
                 if (graph.TryGetOutEdges(currentMod, out var outEdges))

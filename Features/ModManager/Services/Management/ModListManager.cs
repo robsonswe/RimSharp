@@ -92,7 +92,7 @@ namespace RimSharp.Features.ModManager.Services.Management
         }
 
 
-        public bool SortActiveList()
+        public bool SortActiveList(System.Threading.CancellationToken ct = default)
         {
             var currentActiveMods = _orderService.VirtualActiveMods.Select(x => x.Mod).ToList();
             if (currentActiveMods.Count <= 1)
@@ -104,17 +104,15 @@ namespace RimSharp.Features.ModManager.Services.Management
             var originalOrderIds = currentActiveMods.Select(mod => mod.PackageId.ToLowerInvariant()).ToList();
 
             // --- 1. Call the new, more powerful sorter ---
-            var sortResult = _dependencySorter.TopologicalSort(currentActiveMods);
+            var sortResult = _dependencySorter.TopologicalSort(currentActiveMods, ct);
 
             // --- 2. Handle warnings (non-fatal issues) ---
             if (sortResult.Warnings.Any())
             {
+                ct.ThrowIfCancellationRequested();
                 Debug.WriteLine("Sorting generated warnings:");
-                foreach (var warning in sortResult.Warnings)
-                {
-                    Debug.WriteLine($"- {warning}");
-                    // TODO: You could display these warnings in the UI.
-                }
+                var warningMsg = string.Join(Environment.NewLine, sortResult.Warnings.Select(w => $"- {w}"));
+                Debug.WriteLine(warningMsg);
             }
 
             // --- 3. Handle catastrophic failure (e.g., cycles) ---
