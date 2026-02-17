@@ -1,4 +1,3 @@
-
 #nullable enable
 using RimSharp.Features.ModManager.ViewModels.Actions;
 using RimSharp.Features.WorkshopDownloader.Services;
@@ -39,8 +38,8 @@ namespace RimSharp.Features.ModManager.ViewModels
         // --- State Properties (Managed by Parent) ---
         private bool _isLoading;
         private bool _hasUnsavedChanges;
-        private ModItem _selectedMod;
-        private IList _selectedItems; // Property to bind ListBox.SelectedItems
+        private ModItem _selectedMod = null!;
+        private IList _selectedItems = null!; // Property to bind ListBox.SelectedItems
         public bool HasAnyActiveModIssues => _modListManager?.HasAnyActiveModIssues ?? false;
 
         private string _loadingMessage = string.Empty;
@@ -222,7 +221,7 @@ namespace RimSharp.Features.ModManager.ViewModels
 
 
 
-        private void OnChildRequestSelectionChange(object sender, PropertyChangedEventArgs e)
+        private void OnChildRequestSelectionChange(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ModListViewModel.SelectedMod) && sender is ModListViewModel listVM)
             {
@@ -236,13 +235,13 @@ namespace RimSharp.Features.ModManager.ViewModels
             // else if (e.PropertyName == nameof(ModListViewModel.SelectedItems) && sender is ModListViewModel listVM) { ... }
         }
 
-        private void OnChildRequestLoading(object sender, bool isLoading)
+        private void OnChildRequestLoading(object? sender, bool isLoading)
         {
             // A child VM (likely ModActionsViewModel) is performing a long operation
             IsLoading = isLoading; // Setter handles notifications and command updates via observation
         }
 
-        private void OnChildRequestDataRefresh(object sender, EventArgs e)
+        private void OnChildRequestDataRefresh(object? sender, EventArgs e)
         {
             Debug.WriteLine("[ModsViewModel] Received request for data refresh from child. Executing RequestRefreshCommand.");
             if (RequestRefreshCommand.CanExecute(null))
@@ -256,7 +255,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                 Debug.WriteLine("[ModsViewModel] Cannot execute refresh command now (likely loading).");
             }
         }
-        private void OnChildRequestHasUnsavedChanges(object sender, bool hasChanges)
+        private void OnChildRequestHasUnsavedChanges(object? sender, bool hasChanges)
         {
             // A child VM (ModActionsViewModel) has completed a save action
             // Only expecting 'false' here now.
@@ -348,12 +347,24 @@ namespace RimSharp.Features.ModManager.ViewModels
                 LoadingMessage = msg;
                 if (progressDialog != null) progressDialog.Message = msg;
 
-                ModItem selectedModCandidate = _modListManager.VirtualActiveMods.FirstOrDefault(vm => vm.Mod.ModType == ModType.Core).Mod ??
-                                _modListManager.VirtualActiveMods.FirstOrDefault().Mod ??
-                                _modListManager.AllInactiveMods.FirstOrDefault();
+                ModItem? selectedModCandidate = null;
+                
+                if (_modListManager.VirtualActiveMods.Any())
+                {
+                    selectedModCandidate = _modListManager.VirtualActiveMods.FirstOrDefault(vm => vm.Mod.ModType == ModType.Core).Mod ??
+                                           _modListManager.VirtualActiveMods.FirstOrDefault().Mod;
+                }
+                
+                if (selectedModCandidate == null)
+                {
+                    selectedModCandidate = _modListManager.AllInactiveMods.FirstOrDefault();
+                }
 
                 // Set the parent's selected mod, which will propagate to children
-                SelectedMod = selectedModCandidate;
+                if (selectedModCandidate != null)
+                {
+                    SelectedMod = selectedModCandidate;
+                }
 
                 // Reset unsaved changes flag AFTER successful load
                 HasUnsavedChanges = false; // Setter updates ModActionsViewModel and commands
@@ -389,7 +400,7 @@ namespace RimSharp.Features.ModManager.ViewModels
 
 
         // Handles changes triggered by ModListManager (Activate, Deactivate, Sort, Clear, etc.)
-        private void OnModListManagerChanged(object sender, EventArgs e)
+        private void OnModListManagerChanged(object? sender, EventArgs e)
         {
             Debug.WriteLine("[ModsViewModel] Handling ModListManager ListChanged event.");
 
@@ -449,9 +460,9 @@ namespace RimSharp.Features.ModManager.ViewModels
                 (ModListViewModel as IDisposable)?.Dispose();
                 (ModDetailsViewModel as IDisposable)?.Dispose();
                 (ModActionsViewModel as IDisposable)?.Dispose();
-                ModListViewModel = null; // Optional: Clear references
-                ModDetailsViewModel = null;
-                ModActionsViewModel = null;
+                ModListViewModel = null!; // Optional: Clear references
+                ModDetailsViewModel = null!;
+                ModActionsViewModel = null!;
 
                 Debug.WriteLine("[ModsViewModel] Disposed managed resources.");
                 // --- End Derived Class Specific Cleanup ---
