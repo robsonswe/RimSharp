@@ -8,6 +8,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
+#nullable enable
+
 namespace RimSharp.Features.ModManager.ViewModels.Actions
 {
     // Mark the class as partial
@@ -95,13 +97,33 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private async Task ExecuteSortActiveList(CancellationToken ct)
         {
             IsLoadingRequest?.Invoke(this, true);
+            ProgressDialogViewModel? progressDialog = null;
             bool orderChanged = false;
             try
             {
                 ct.ThrowIfCancellationRequested();
-                orderChanged = await Task.Run(() => _modListManager.SortActiveList(), ct); // Assume Sort respects token if possible
 
-                ct.ThrowIfCancellationRequested(); // Check after sort completes
+                await RunOnUIThreadAsync(() =>
+                {
+                    progressDialog = _dialogService.ShowProgressDialog(
+                        "Sorting Mods",
+                        "Analyzing dependencies and determining optimal order...",
+                        canCancel: true,
+                        isIndeterminate: true,
+                        cts: null); // We'll link it below
+                });
+
+                if (progressDialog == null) throw new InvalidOperationException("Could not create progress dialog.");
+
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, progressDialog.CancellationToken);
+                var combinedToken = linkedCts.Token;
+
+                combinedToken.ThrowIfCancellationRequested();
+                orderChanged = await Task.Run(() => _modListManager.SortActiveList(), combinedToken); // Assume Sort respects token if possible
+
+                combinedToken.ThrowIfCancellationRequested(); // Check after sort completes
+
+                progressDialog.CompleteOperation("Sorting complete.");
 
                 // Show result dialog on UI thread
                 await RunOnUIThreadAsync(() =>
@@ -115,11 +137,13 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             catch (OperationCanceledException)
             {
                 Debug.WriteLine("[ExecuteSortActiveList] Sorting cancelled.");
+                progressDialog?.ForceClose();
                 RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Sorting was cancelled."));
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error sorting mods: {ex}");
+                progressDialog?.ForceClose();
                 RunOnUIThread(() => _dialogService.ShowError("Sort Error", $"Error sorting mods: {ex.Message}"));
             }
             finally { IsLoadingRequest?.Invoke(this, false); }
