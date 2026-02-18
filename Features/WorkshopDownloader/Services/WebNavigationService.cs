@@ -167,6 +167,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             _webView.CoreWebView2.NavigationCompleted += WebView_NavigationCompleted;
             _webView.CoreWebView2.SourceChanged += WebView_SourceChanged; // Renamed from WebView_SourceChanged
             _webView.CoreWebView2.NewWindowRequested += CoreWebView2_NewWindowRequested; // Add NewWindowRequested
+            _webView.CoreWebView2.DOMContentLoaded += CoreWebView2_DOMContentLoaded;
 
             Debug.WriteLine("[WebNavService] CoreWebView2 events hooked.");
         }
@@ -180,6 +181,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 _webView.CoreWebView2.NavigationCompleted -= WebView_NavigationCompleted;
                 _webView.CoreWebView2.SourceChanged -= WebView_SourceChanged;
                 _webView.CoreWebView2.NewWindowRequested -= CoreWebView2_NewWindowRequested;
+                _webView.CoreWebView2.DOMContentLoaded -= CoreWebView2_DOMContentLoaded;
                 _webView.CoreWebView2InitializationCompleted -= WebView_CoreWebView2InitializationCompleted; // Also unsubscribe this
                 Debug.WriteLine("[WebNavService] Unhooked CoreWebView2 events.");
             }
@@ -243,6 +245,21 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             }
             StatusChanged?.Invoke(this, status);
             NavigationEnded?.Invoke(this, EventArgs.Empty); // Signal navigation attempt has finished
+        }
+
+        private void CoreWebView2_DOMContentLoaded(object? sender, CoreWebView2DOMContentLoadedEventArgs e)
+        {
+            string url = _webView?.CoreWebView2?.Source ?? string.Empty;
+            Debug.WriteLine($"[WebNavService] DOMContentLoaded: {url}");
+
+            // Signal that navigation has reached a usable state early
+            NavigationEnded?.Invoke(this, EventArgs.Empty);
+
+            if (IsPotentiallyWorkshopPage(url))
+            {
+                Debug.WriteLine($"[WebNavService] Potential workshop page DOM ready: {url}. Raising PotentialWorkshopPageLoaded early.");
+                PotentialWorkshopPageLoaded?.Invoke(this, url);
+            }
         }
 
         private void WebView_SourceChanged(object? sender, CoreWebView2SourceChangedEventArgs e)
