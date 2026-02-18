@@ -774,18 +774,37 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             token = cts.Token; // Use combined token
 
             List<ModItem> workshopMods;
+            ProgressDialogViewModel? gatherProgressDialog = null;
+            
+            // Trigger operation started to set global busy state
+            OperationStarted?.Invoke(this, EventArgs.Empty);
+            
             try
             {
                 StatusChanged?.Invoke(this, "Gathering installed workshop mods...");
+                
+                // Show a non-cancelable progress dialog while gathering mods to avoid an "empty" wait time
+                gatherProgressDialog = _dialogService.ShowProgressDialog(
+                    "Gathering Mods",
+                    "Scanning installed workshop mods...",
+                    canCancel: false, 
+                    isIndeterminate: true,
+                    closeable: false
+                );
+
                 // Ensure mods are loaded before checking
                 await _modService.LoadModsAsync(); // Ensure latest mod list is loaded
                 workshopMods = _modService.GetLoadedMods()
                     .Where(m => !string.IsNullOrEmpty(m.SteamId) && long.TryParse(m.SteamId, out _) && m.ModType == ModType.WorkshopL)
                     .OrderBy(m => m.Name)
                     .ToList();
+                
+                gatherProgressDialog.ForceClose(); // Close the gathering progress dialog
             }
             catch (Exception ex)
             {
+                gatherProgressDialog?.ForceClose();
+                OperationCompleted?.Invoke(this, EventArgs.Empty); // Reset busy state on failure
                 StatusChanged?.Invoke(this, $"Error loading mod list: {ex.Message}");
                 Debug.WriteLine($"[CommandHandler] Error getting mods for update check: {ex}");
                 _dialogService.ShowError("Mod Load Error", $"Failed to load installed mods: {ex.Message}");
@@ -794,6 +813,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
             if (!workshopMods.Any())
             {
+                OperationCompleted?.Invoke(this, EventArgs.Empty); // Reset busy state
                 StatusChanged?.Invoke(this, "No installed Steam Workshop mods found to check.");
                 _dialogService.ShowInformation("Check Updates", "No installed Steam Workshop mods were found in your mods folder.");
                 return;
@@ -804,19 +824,26 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
             if (dialogResult != RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck.UpdateCheckDialogResult.CheckUpdates)
             {
+                OperationCompleted?.Invoke(this, EventArgs.Empty); // Reset busy state
                 StatusChanged?.Invoke(this, "Update check cancelled via dialog.");
                 return;
             }
-            if (token.IsCancellationRequested) { StatusChanged?.Invoke(this, "Update check cancelled."); return; }
+            
+            if (token.IsCancellationRequested) 
+            { 
+                OperationCompleted?.Invoke(this, EventArgs.Empty); // Reset busy state
+                StatusChanged?.Invoke(this, "Update check cancelled."); 
+                return; 
+            }
 
             var selectedMods = dialogViewModel.GetSelectedMods().ToList();
             if (!selectedMods.Any())
             {
+                OperationCompleted?.Invoke(this, EventArgs.Empty); // Reset busy state
                 StatusChanged?.Invoke(this, "No mods were selected for update check.");
                 return;
             }
 
-            OperationStarted?.Invoke(this, EventArgs.Empty);
             ProgressDialogViewModel? progressDialog = null;
             UpdateCheckResult updateResult = new();
 
