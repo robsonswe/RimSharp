@@ -8,6 +8,7 @@
     <RootNamespace>RimSharp</RootNamespace>
     <ApplicationIcon>icon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <DefaultItemExcludes>$(DefaultItemExcludes);RimSharp.Tests\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

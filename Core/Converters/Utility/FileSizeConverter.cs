@@ -21,11 +21,11 @@ namespace RimSharp.Core.Converters.Utility
                 if (bytes == 0) return "Not Calculated";
 
                 if (bytes >= OneGB)
-                    return $"{(double)bytes / OneGB:F2} GB"; // Two decimal places for GB
+                    return ((double)bytes / OneGB).ToString("F2", culture) + " GB"; // Two decimal places for GB
                 if (bytes >= OneMB)
-                    return $"{(double)bytes / OneMB:F1} MB"; // One decimal place for MB
+                    return ((double)bytes / OneMB).ToString("F1", culture) + " MB"; // One decimal place for MB
                 if (bytes >= OneKB)
-                    return $"{(double)bytes / OneKB:F1} KB"; // One decimal place for KB
+                    return ((double)bytes / OneKB).ToString("F1", culture) + " KB"; // One decimal place for KB
 
                 return $"{bytes} Bytes";
             }
