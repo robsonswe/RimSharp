@@ -139,10 +139,22 @@
                         <Button Command="{Binding RefreshCommand}" 
                                 Style="{StaticResource RimworldButtonStyle}" 
                                 Padding="12,4" 
+                                Margin="0,0,8,0"
                                 MinWidth="0">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="↻" FontFamily="Segoe UI Symbol" Margin="0,0,8,0" VerticalAlignment="Center" FontSize="14"/>
                                 <TextBlock Text="Refresh" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- About Action -->
+                        <Button Command="{Binding AboutCommand}" 
+                                Style="{StaticResource RimworldButtonStyle}" 
+                                Padding="12,4" 
+                                MinWidth="0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="ℹ" FontFamily="Segoe UI Symbol" Margin="0,0,8,0" VerticalAlignment="Center" FontSize="14"/>
+                                <TextBlock Text="About" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>

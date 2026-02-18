@@ -50,6 +50,7 @@ namespace RimSharp.AppDir.MainPage
         public ICommand SettingsCommand { get; }
         public ICommand RefreshCommand { get; }
         public ICommand OpenFolderCommand { get; }
+        public ICommand AboutCommand { get; }
 
         // Optional: Add a StatusMessage property if MainViewModel controls a status bar
         private string _statusMessage = "Ready";
@@ -152,6 +153,7 @@ namespace RimSharp.AppDir.MainPage
             SettingsCommand = CreateCommand(OpenSettings, CanExecuteGlobalActions);
             RefreshCommand = CreateCommand(RefreshData, CanExecuteGlobalActions);
             OpenFolderCommand = CreateCommand<string>(OpenFolder, CanOpenFolder);
+            AboutCommand = CreateCommand(() => _dialogService.ShowAboutDialog(), CanExecuteGlobalActions);
 
             // --- CORRECTED Command Observation Setup ---
             // Cast each command to its concrete type to access the 'ObservesProperty' method.
@@ -160,6 +162,7 @@ namespace RimSharp.AppDir.MainPage
             var settingsCmd = (DelegateCommand)SettingsCommand;
             var refreshCmd = (DelegateCommand)RefreshCommand;
             var openFolderCmd = (DelegateCommand<string>)OpenFolderCommand;
+            var aboutCmd = (DelegateCommand)AboutCommand;
 
             // Observe the IsLoading property on the ModsViewModel for all commands
             switchTabCmd.ObservesProperty(ModsVM, nameof(ModsViewModel.IsLoading));
@@ -167,6 +170,7 @@ namespace RimSharp.AppDir.MainPage
             settingsCmd.ObservesProperty(ModsVM, nameof(ModsViewModel.IsLoading));
             refreshCmd.ObservesProperty(ModsVM, nameof(ModsViewModel.IsLoading));
             openFolderCmd.ObservesProperty(ModsVM, nameof(ModsViewModel.IsLoading));
+            aboutCmd.ObservesProperty(ModsVM, nameof(ModsViewModel.IsLoading));
 
             // Also observe the IsOperationInProgress property on the DownloaderViewModel for all commands
             if (DownloaderVM != null)
@@ -176,6 +180,7 @@ namespace RimSharp.AppDir.MainPage
                 settingsCmd.ObservesProperty(DownloaderVM, nameof(DownloaderViewModel.IsOperationInProgress));
                 refreshCmd.ObservesProperty(DownloaderVM, nameof(DownloaderViewModel.IsOperationInProgress));
                 openFolderCmd.ObservesProperty(DownloaderVM, nameof(DownloaderViewModel.IsOperationInProgress));
+                aboutCmd.ObservesProperty(DownloaderVM, nameof(DownloaderViewModel.IsOperationInProgress));
             }
 
             if (VramAnalysisVM != null)
@@ -185,6 +190,7 @@ namespace RimSharp.AppDir.MainPage
                 settingsCmd.ObservesProperty(VramAnalysisVM, nameof(VramAnalysisViewModel.IsBusy));
                 refreshCmd.ObservesProperty(VramAnalysisVM, nameof(VramAnalysisViewModel.IsBusy));
                 openFolderCmd.ObservesProperty(VramAnalysisVM, nameof(VramAnalysisViewModel.IsBusy));
+                aboutCmd.ObservesProperty(VramAnalysisVM, nameof(VramAnalysisViewModel.IsBusy));
             }
 
             // Also observe the IsAnyDialogOpen property on the DialogService for all global commands
@@ -195,6 +201,7 @@ namespace RimSharp.AppDir.MainPage
                 settingsCmd.ObservesProperty(notifyDialogService, nameof(IDialogService.IsAnyDialogOpen));
                 refreshCmd.ObservesProperty(notifyDialogService, nameof(IDialogService.IsAnyDialogOpen));
                 openFolderCmd.ObservesProperty(notifyDialogService, nameof(IDialogService.IsAnyDialogOpen));
+                aboutCmd.ObservesProperty(notifyDialogService, nameof(IDialogService.IsAnyDialogOpen));
             }
 
 
