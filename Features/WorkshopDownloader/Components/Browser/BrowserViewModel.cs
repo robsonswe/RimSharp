@@ -429,6 +429,13 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 return; // Avoid concurrent analysis or if disposed/no extractor
             }
 
+            // Skip if already successfully analyzed for this navigation cycle
+            if ((IsValidModUrl && IsModInfoAvailable) || IsCollectionUrl)
+            {
+                Debug.WriteLine($"[BrowserVM] Page already successfully analyzed for {url}. Skipping redundant analysis.");
+                return;
+            }
+
             Debug.WriteLine($"[BrowserVM] Handling PotentialWorkshopPageLoaded for URL: {url}. Starting content analysis.");
             _isAnalyzingContent = true;
 
