@@ -27,6 +27,7 @@ namespace RimSharp.Features.ModManager.ViewModels
         private readonly IPathService _pathService;
         private readonly IModService _modService;
         private readonly ISteamWorkshopQueueProcessor _steamWorkshopQueueProcessor;
+        private readonly IGitService _gitService;
 
         // --- Child ViewModels ---
         public ModListViewModel ModListViewModel { get; private set; }
@@ -150,7 +151,8 @@ namespace RimSharp.Features.ModManager.ViewModels
             IDownloadQueueService downloadQueueService,
             ISteamApiClient steamApiClient,
             IApplicationNavigationService navigationService,
-            ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor)
+            ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor,
+            IGitService gitService)
         {
             _dataService = dataService;
             _filterService = filterService;
@@ -159,6 +161,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             _pathService = pathService;
             _modService = modService;
             _steamWorkshopQueueProcessor = steamWorkshopQueueProcessor;
+            _gitService = gitService;
 
             // Initialize command using base helper, observing IsLoading
             // Use CreateCancellableAsyncCommand as ExecuteRequestRefreshAsync accepts a CancellationToken
@@ -169,7 +172,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             ModDetailsViewModel = new ModDetailsViewModel(_dialogService);
             ModActionsViewModel = new ModActionsViewModel(
                 _dataService, commandService, ioService, _modListManager, incompatibilityService, duplicateService, _dialogService, _pathService, _modService,
-                        replacementService, downloadQueueService, steamApiClient, navigationService, steamWorkshopQueueProcessor
+                        replacementService, downloadQueueService, steamApiClient, navigationService, steamWorkshopQueueProcessor, _gitService
                         );
 
             // --- Event Wiring ---

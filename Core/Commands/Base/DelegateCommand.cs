@@ -82,7 +82,7 @@ namespace RimSharp.Core.Commands.Base
             // Don't raise if disposed
             if (_disposed) return;
 
-            Application.Current?.Dispatcher?.Invoke(() =>
+            RimSharp.Core.Extensions.ThreadHelper.EnsureUiThread(() =>
             {
                 // Double check disposal on UI thread in case of race condition
                 if (!_disposed)
@@ -310,7 +310,7 @@ namespace RimSharp.Core.Commands.Base
         {
              if (_disposed) return;
 
-             Application.Current?.Dispatcher?.Invoke(() =>
+             RimSharp.Core.Extensions.ThreadHelper.EnsureUiThread(() =>
              {
                  if(!_disposed)
                  {

@@ -65,7 +65,7 @@ namespace RimSharp.Core.Commands.Base
         {
             if (_disposed) return;
 
-            Application.Current?.Dispatcher?.Invoke(() =>
+            RimSharp.Core.Extensions.ThreadHelper.EnsureUiThread(() =>
             {
                 if(!_disposed)
                 {
@@ -311,7 +311,7 @@ namespace RimSharp.Core.Commands.Base
         {
              if (_disposed) return;
 
-             Application.Current?.Dispatcher?.Invoke(() =>
+             RimSharp.Core.Extensions.ThreadHelper.EnsureUiThread(() =>
              {
                   if(!_disposed)
                   {
