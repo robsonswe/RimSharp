@@ -54,10 +54,20 @@ using RimSharp.AppDir.Dialogs;
 using RimSharp.Core.Services;
 
 
+using System.Runtime.InteropServices;
+using System.Diagnostics;
+using System.Linq;
+using PInvoke;
+
 namespace RimSharp.AppDir.AppFiles
 {
     public partial class App : Application
     {
+        private const string AppUniqueId = "RimSharp_SingleInstance_Mutex_9921_1234";
+        private static Mutex? _instanceMutex;
+
+        private static bool _ownsMutex = false;
+
         public IServiceProvider ServiceProvider { get; private set; }
         private ILoggerService _logger;
 
@@ -326,6 +336,31 @@ namespace RimSharp.AppDir.AppFiles
 
         protected override async void OnStartup(StartupEventArgs e)
         {
+            // --- Single Instance Check ---
+            bool isNewInstance;
+            _instanceMutex = new Mutex(true, AppUniqueId, out isNewInstance);
+            _ownsMutex = isNewInstance;
+
+            if (!isNewInstance)
+            {
+                // App is already running. Bring existing window to foreground and exit.
+                Process current = Process.GetCurrentProcess();
+                foreach (Process process in Process.GetProcessesByName(current.ProcessName))
+                {
+                    if (process.Id != current.Id && process.MainWindowHandle != IntPtr.Zero)
+                    {
+                        User32.ShowWindow(process.MainWindowHandle, User32.WindowShowStyle.SW_RESTORE);
+                        User32.SetForegroundWindow(process.MainWindowHandle);
+                        break;
+                    }
+                }
+
+                // If not found by MainWindowHandle, try to find by title? Or just shutdown.
+                // Usually the above works.
+                Application.Current.Shutdown();
+                return;
+            }
+
             base.OnStartup(e);
             ThreadHelper.Initialize();
             _logger!.LogInfo("Application starting up...", "App.OnStartup");
@@ -405,6 +440,14 @@ namespace RimSharp.AppDir.AppFiles
         {
             _logger?.LogInfo($"Application exiting with code {e.ApplicationExitCode}.", "App.OnExit");
             (ServiceProvider as IDisposable)?.Dispose();
+
+            if (_ownsMutex)
+            {
+                _instanceMutex?.ReleaseMutex();
+            }
+            _instanceMutex?.Dispose();
+            _instanceMutex = null;
+
             base.OnExit(e);
         }
     }
