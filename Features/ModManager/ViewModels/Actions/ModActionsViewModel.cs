@@ -120,6 +120,22 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             private set => SetProperty(ref _hasValidPaths, value);
         }
 
+        private bool _isGameRunning;
+        public bool IsGameRunning
+        {
+            get => _isGameRunning;
+            private set => SetProperty(ref _isGameRunning, value);
+        }
+
+        private bool _isLaunchingGame;
+        public bool IsLaunchingGame
+        {
+            get => _isLaunchingGame;
+            private set => SetProperty(ref _isLaunchingGame, value);
+        }
+
+        private readonly System.Windows.Threading.DispatcherTimer _gameCheckTimer;
+
 
         // Command Properties (Declarations remain here)
         // FIX: Initialized with null-forgiving operator (!) because the compiler can't verify
@@ -197,7 +213,44 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             _navigationService = navigationService;
             _steamWorkshopQueueProcessor = steamWorkshopQueueProcessor;
             RefreshPathValidity();
+
+            // Initialize game check timer (every 2 seconds)
+            _gameCheckTimer = new System.Windows.Threading.DispatcherTimer();
+            _gameCheckTimer.Interval = TimeSpan.FromSeconds(2);
+            _gameCheckTimer.Tick += (s, e) => CheckIfGameIsRunning();
+            _gameCheckTimer.Start();
+
             InitializeCommands(); // Calls partial initialization methods
+        }
+
+        private void CheckIfGameIsRunning()
+        {
+            try
+            {
+                // RimWorld usually runs as "RimWorldWin64" or "RimWorld"
+                var processes = Process.GetProcesses();
+                bool isRunning = processes.Any(p =>
+                    p.ProcessName.Equals("RimWorldWin64", StringComparison.OrdinalIgnoreCase) ||
+                    p.ProcessName.Equals("RimWorld", StringComparison.OrdinalIgnoreCase));
+
+                IsGameRunning = isRunning;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ModActionsViewModel] Error checking game status: {ex.Message}");
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    _gameCheckTimer?.Stop();
+                }
+            }
+            base.Dispose(disposing);
         }
 
         // Combined initializer calling partial initializers
