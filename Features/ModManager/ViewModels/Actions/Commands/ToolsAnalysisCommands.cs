@@ -57,7 +57,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             RunGameCommand = CreateCommand(
                 ExecuteRunGame,
                 CanExecuteRunGame,
-                observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
+                observedProperties: new[] { nameof(IsParentLoading), nameof(IsLaunchingGame) });
         }
 
         private void InitializePlaceholderCommands()
@@ -595,11 +595,27 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
         private bool CanExecuteRunGame()
         {
-            return !IsParentLoading && HasValidPaths;
+            return !IsParentLoading && !IsLaunchingGame;
         }
 
-        private void ExecuteRunGame()
+        private async void ExecuteRunGame()
         {
+            if (IsLaunchingGame) return;
+
+            if (!HasValidPaths)
+            {
+                _dialogService.ShowError("Invalid Paths", "Game paths are not correctly configured. Please check your settings.");
+                return;
+            }
+
+            if (IsGameRunning)
+            {
+                _dialogService.ShowWarning("Game Already Running", "RimWorld is already running. Please close the existing instance before launching again.");
+                return;
+            }
+
+            IsLaunchingGame = true;
+            
             try
             {
                 var gamePath = _pathService.GetGamePath();
@@ -626,10 +642,17 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     WorkingDirectory = gamePath,
                     UseShellExecute = true
                 });
+
+                // Wait a bit to allow process to start and be detected by timer
+                await Task.Delay(2000);
             }
             catch (Exception ex)
             {
                 _dialogService.ShowError("Launch Error", $"Failed to launch RimWorld: {ex.Message}");
+            }
+            finally
+            {
+                IsLaunchingGame = false;
             }
         }
     }
