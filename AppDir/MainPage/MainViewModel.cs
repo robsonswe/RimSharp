@@ -4,6 +4,7 @@ using System.Windows.Forms; // Add reference to System.Windows.Forms assembly fo
 using System.IO; // For Directory.Exists, Path.Combine, Path.GetPathRoot
 using System.Diagnostics;
 using System;
+using System.ComponentModel;
 using RimSharp.AppDir.AppFiles;
 using RimSharp.Core.Commands;
 using RimSharp.Shared.Services.Contracts;
@@ -85,7 +86,8 @@ namespace RimSharp.AppDir.MainPage
         // Helper property to centralize the "Is anything busy?" logic
         private bool IsIdle => !(ModsVM?.IsLoading ?? false) &&
                                !(DownloaderVM?.IsOperationInProgress ?? false) &&
-                               !(VramAnalysisVM?.IsBusy ?? false);
+                               !(VramAnalysisVM?.IsBusy ?? false) &&
+                               !_dialogService.IsAnyDialogOpen;
 
 
         // --- Constructor ---
@@ -181,6 +183,16 @@ namespace RimSharp.AppDir.MainPage
                 settingsCmd.ObservesProperty(VramAnalysisVM, nameof(VramAnalysisViewModel.IsBusy));
                 refreshCmd.ObservesProperty(VramAnalysisVM, nameof(VramAnalysisViewModel.IsBusy));
                 openFolderCmd.ObservesProperty(VramAnalysisVM, nameof(VramAnalysisViewModel.IsBusy));
+            }
+
+            // Also observe the IsAnyDialogOpen property on the DialogService for all global commands
+            if (_dialogService is INotifyPropertyChanged notifyDialogService)
+            {
+                switchTabCmd.ObservesProperty(notifyDialogService, nameof(IDialogService.IsAnyDialogOpen));
+                browsePathCmd.ObservesProperty(notifyDialogService, nameof(IDialogService.IsAnyDialogOpen));
+                settingsCmd.ObservesProperty(notifyDialogService, nameof(IDialogService.IsAnyDialogOpen));
+                refreshCmd.ObservesProperty(notifyDialogService, nameof(IDialogService.IsAnyDialogOpen));
+                openFolderCmd.ObservesProperty(notifyDialogService, nameof(IDialogService.IsAnyDialogOpen));
             }
 
 

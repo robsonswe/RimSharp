@@ -12,20 +12,52 @@ using RimSharp.Features.ModManager.Dialogs.MissingMods;
 using RimSharp.Features.WorkshopDownloader.Dialogs.Collection;
 using System.Collections.Generic;
 using RimSharp.Features.ModManager.Dialogs.Strip;
+using System.ComponentModel;
+using System;
 
 namespace RimSharp.Infrastructure.Dialog
 {
-    public class DialogService : IDialogService
+    public class DialogService : IDialogService, INotifyPropertyChanged
     {
+        private int _openDialogCount;
+        public bool IsAnyDialogOpen => _openDialogCount > 0;
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        private void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private void IncrementDialogCount()
+        {
+            _openDialogCount++;
+            if (_openDialogCount == 1) OnPropertyChanged(nameof(IsAnyDialogOpen));
+        }
+
+        private void DecrementDialogCount()
+        {
+            _openDialogCount--;
+            if (_openDialogCount == 0) OnPropertyChanged(nameof(IsAnyDialogOpen));
+        }
+
         private MessageDialogResult ShowDialogInternal(MessageDialogViewModel viewModel)
         {
-            var dialog = new MessageDialogView(viewModel)
+            IncrementDialogCount();
+            try
             {
-                Owner = Application.Current.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
-            dialog.ShowDialog();
-            return viewModel.DialogResult;
+                var dialog = new MessageDialogView(viewModel)
+                {
+                    Owner = Application.Current.MainWindow,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+                dialog.ShowDialog();
+                return viewModel.DialogResult;
+            }
+            finally
+            {
+                DecrementDialogCount();
+            }
         }
 
         public void ShowInformation(string title, string message)
@@ -58,13 +90,21 @@ namespace RimSharp.Infrastructure.Dialog
 
         public UpdateCheckDialogResult ShowUpdateCheckDialog(UpdateCheckDialogViewModel viewModel)
         {
-            var dialog = new UpdateCheckDialogView(viewModel)
+            IncrementDialogCount();
+            try
             {
-                Owner = Application.Current?.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
-            dialog.ShowDialog();
-            return viewModel.DialogResult;
+                var dialog = new UpdateCheckDialogView(viewModel)
+                {
+                    Owner = Application.Current?.MainWindow,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+                dialog.ShowDialog();
+                return viewModel.DialogResult;
+            }
+            finally
+            {
+                DecrementDialogCount();
+            }
         }
 
         public void ShowMessageWithCopy(string title, string message, MessageDialogType dialogType = MessageDialogType.Information)
@@ -86,6 +126,10 @@ namespace RimSharp.Infrastructure.Dialog
                 Closeable = closeable,
                 ShowInTaskbar = showInTaskbar
             };
+
+            IncrementDialogCount();
+            dialog.Closed += (s, e) => DecrementDialogCount();
+
             dialog.Show();
             return viewModel;
         }
@@ -93,68 +137,116 @@ namespace RimSharp.Infrastructure.Dialog
         public (MessageDialogResult Result, string Input) ShowInputDialog(string title, string message, string defaultInput = "")
         {
             var viewModel = new InputDialogViewModel(title, message, defaultInput);
-            var dialog = new InputDialogView(viewModel)
+            IncrementDialogCount();
+            try
             {
-                Owner = Application.Current?.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
-            dialog.ShowDialog();
-            return (viewModel.DialogResult, viewModel.Input);
+                var dialog = new InputDialogView(viewModel)
+                {
+                    Owner = Application.Current?.MainWindow,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+                dialog.ShowDialog();
+                return (viewModel.DialogResult, viewModel.Input);
+            }
+            finally
+            {
+                DecrementDialogCount();
+            }
         }
 
         public (bool, IEnumerable<string>?) ShowStripModsDialog(StripDialogViewModel viewModel)
         {
-            var dialog = new StripModsDialogView(viewModel)
+            IncrementDialogCount();
+            try
             {
-                Owner = Application.Current?.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
-            dialog.ShowDialog();
-            return viewModel.DialogResult;
+                var dialog = new StripModsDialogView(viewModel)
+                {
+                    Owner = Application.Current?.MainWindow,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+                dialog.ShowDialog();
+                return viewModel.DialogResult;
+            }
+            finally
+            {
+                DecrementDialogCount();
+            }
         }
 
         public ModCustomizationResult ShowCustomizeModDialog(CustomizeModDialogViewModel viewModel)
         {
-            var dialog = new CustomizeModDialogView(viewModel)
+            IncrementDialogCount();
+            try
             {
-                Owner = Application.Current?.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
-            dialog.ShowDialog();
-            return viewModel.DialogResult;
+                var dialog = new CustomizeModDialogView(viewModel)
+                {
+                    Owner = Application.Current?.MainWindow,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+                dialog.ShowDialog();
+                return viewModel.DialogResult;
+            }
+            finally
+            {
+                DecrementDialogCount();
+            }
         }
         public ModFilterDialogResult ShowModFilterDialog(ModFilterDialogViewModel viewModel)
         {
-            var dialog = new ModFilterDialogView(viewModel)
+            IncrementDialogCount();
+            try
             {
-                Owner = Application.Current?.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
-            dialog.ShowDialog();
-            return viewModel.DialogResult;
+                var dialog = new ModFilterDialogView(viewModel)
+                {
+                    Owner = Application.Current?.MainWindow,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+                dialog.ShowDialog();
+                return viewModel.DialogResult;
+            }
+            finally
+            {
+                DecrementDialogCount();
+            }
         }
         public ModReplacementDialogResult ShowModReplacementDialog(ModReplacementDialogViewModel viewModel)
         {
-            var dialog = new ModReplacementDialogView(viewModel)
+            IncrementDialogCount();
+            try
             {
-                Owner = Application.Current?.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
-            dialog.ShowDialog();
-            return viewModel.DialogResult;
+                var dialog = new ModReplacementDialogView(viewModel)
+                {
+                    Owner = Application.Current?.MainWindow,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+                dialog.ShowDialog();
+                return viewModel.DialogResult;
+            }
+            finally
+            {
+                DecrementDialogCount();
+            }
         }
         public DependencyResolutionDialogResult ShowDependencyResolutionDialog(DependencyResolutionDialogViewModel viewModel)
         {
             DependencyResolutionDialogResult result = DependencyResolutionDialogResult.Cancel;
             Application.Current.Dispatcher.Invoke(() =>
             {
-                var dialog = new DependencyResolutionDialogView(viewModel)
+                IncrementDialogCount();
+                try
                 {
-                    Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
-                };
-                dialog.ShowDialog();
-                result = viewModel.DialogResult;
+                    var dialog = new DependencyResolutionDialogView(viewModel)
+                    {
+                        Owner = Application.Current?.MainWindow,
+                        WindowStartupLocation = WindowStartupLocation.CenterOwner
+                    };
+                    dialog.ShowDialog();
+                    result = viewModel.DialogResult;
+                }
+                finally
+                {
+                    DecrementDialogCount();
+                }
             });
             return result;
         }
@@ -164,13 +256,21 @@ namespace RimSharp.Infrastructure.Dialog
             MissingModSelectionDialogOutput? result = null;
             Application.Current.Dispatcher.Invoke(() =>
             {
-                var dialog = new MissingModSelectionDialogView(viewModel)
+                IncrementDialogCount();
+                try
                 {
-                    Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
-                };
-                dialog.ShowDialog();
-                result = viewModel.DialogResult ?? new MissingModSelectionDialogOutput();
+                    var dialog = new MissingModSelectionDialogView(viewModel)
+                    {
+                        Owner = Application.Current?.MainWindow,
+                        WindowStartupLocation = WindowStartupLocation.CenterOwner
+                    };
+                    dialog.ShowDialog();
+                    result = viewModel.DialogResult ?? new MissingModSelectionDialogOutput();
+                }
+                finally
+                {
+                    DecrementDialogCount();
+                }
             });
             return result ?? new MissingModSelectionDialogOutput();
         }
@@ -180,13 +280,21 @@ namespace RimSharp.Infrastructure.Dialog
             List<string>? result = null;
             Application.Current.Dispatcher.Invoke(() =>
             {
-                var dialog = new CollectionDialogView(viewModel)
+                IncrementDialogCount();
+                try
                 {
-                    Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
-                };
-                dialog.ShowDialog();
-                result = viewModel.DialogResult;
+                    var dialog = new CollectionDialogView(viewModel)
+                    {
+                        Owner = Application.Current?.MainWindow,
+                        WindowStartupLocation = WindowStartupLocation.CenterOwner
+                    };
+                    dialog.ShowDialog();
+                    result = viewModel.DialogResult;
+                }
+                finally
+                {
+                    DecrementDialogCount();
+                }
             });
             return result;
         }

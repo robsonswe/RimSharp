@@ -17,6 +17,7 @@ namespace RimSharp.Shared.Services.Contracts
 {
     public interface IDialogService
     {
+        bool IsAnyDialogOpen { get; }
         void ShowInformation(string title, string message);
         void ShowWarning(string title, string message);
         void ShowError(string title, string message);
