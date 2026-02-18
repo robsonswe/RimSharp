@@ -59,6 +59,8 @@ namespace RimSharp.AppDir.MainPage
             set => SetProperty(ref _statusMessage, value);
         }
 
+        public string AppVersion => $"v{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0"}";
+
         // --- Properties for Update Notification ---
         private bool _isUpdateAvailable;
         public bool IsUpdateAvailable

@@ -257,31 +257,21 @@
 
         
 
-                            <!-- Subtitle -->
-
-        
-
-                            <TextBlock Text="RimWorld Mod Manager" 
-
-        
-
-                                       FontSize="16" 
-
-        
-
-                                       Foreground="{StaticResource RimworldLightBrownBrush}" 
-
-        
-
-                                       HorizontalAlignment="Center" 
-
-        
-
-                                       Margin="0,0,0,25"
-
-        
-
-                                       FontStyle="Italic"/>
+                                                        <!-- Subtitle -->
+                                                        <TextBlock Text="RimWorld Mod Manager" 
+                                                                   FontSize="16" 
+                                                                   Foreground="{StaticResource RimworldLightBrownBrush}" 
+                                                                   HorizontalAlignment="Center" 
+                                                                   Margin="0,0,0,2"
+                                                                   FontStyle="Italic"/>
+                            
+                                                        <!-- App Version -->
+                                                        <TextBlock Text="{Binding AppVersion}" 
+                                                                   FontSize="12" 
+                                                                   Foreground="{StaticResource RimworldLightBrownBrush}" 
+                                                                   HorizontalAlignment="Center" 
+                                                                   Margin="0,0,0,25"
+                                                                   FontStyle="Italic"/>
 
         
 

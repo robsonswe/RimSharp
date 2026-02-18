@@ -78,6 +78,20 @@
       Condition="!Exists('$(ProjectDir)Rules\db\replacements.json')" />
   </Target>
 
+  <!-- Automatically set Assembly Version from version.txt -->
+  <Target Name="SetVersionFromTextFile" BeforeTargets="BeforeBuild">
+    <ReadLinesFromFile File="version.txt">
+      <Output TaskParameter="Lines" ItemName="VersionLines" />
+    </ReadLinesFromFile>
+    <PropertyGroup>
+      <RawVersion>@(VersionLines->'%(Identity)')</RawVersion>
+      <!-- Remove 'v' prefix for the assembly version -->
+      <Version Condition="$(RawVersion.StartsWith('v'))">$(RawVersion.Substring(1))</Version>
+      <Version Condition="!$(RawVersion.StartsWith('v'))">$(RawVersion)</Version>
+    </PropertyGroup>
+    <Message Importance="high" Text="Setting Assembly Version to: $(Version)" />
+  </Target>
+
 
   <Target Name="PostBuild" AfterTargets="PostBuild">
     <!-- Create output folders -->
