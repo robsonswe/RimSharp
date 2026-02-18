@@ -273,11 +273,10 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             utcDateTime = default;
             try
             {
-                // Parse the local date string using the specific format
-                if (DateTime.TryParseExact(dateString, LocalDateFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out DateTime localTime))
+                // Parse the local date string using the specific format.
+                // Using AssumeUniversal and AdjustToUniversal makes it robust for tests and real usage if dates are UTC.
+                if (DateTime.TryParseExact(dateString, LocalDateFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out utcDateTime))
                 {
-                    // Convert the parsed local time to UTC for comparison
-                    utcDateTime = localTime.ToUniversalTime();
                     return true;
                 }
                 else
