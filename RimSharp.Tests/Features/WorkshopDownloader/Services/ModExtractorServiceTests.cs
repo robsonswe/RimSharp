@@ -26,10 +26,10 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
         [InlineData("1,234 KB", 1234 * 1024)]
         [InlineData("", 0)]
         [InlineData(null, 0)]
-        public async Task ParseFileSizeAsync_ShouldReturnCorrectBytes(string input, double expectedBytes)
+        public async Task ParseFileSizeAsync_ShouldReturnCorrectBytes(string? input, double expectedBytes)
         {
             // Act
-            var result = await _service.ParseFileSizeAsync(input);
+            var result = await _service.ParseFileSizeAsync(input!);
 
             // Assert
             result.Should().Be((long)expectedBytes);

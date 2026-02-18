@@ -32,14 +32,14 @@ namespace RimSharp.Tests.Core.Converters.Logic
         [InlineData(5, true)]
         [InlineData(0, false)]
         [InlineData(null, false)]
-        public void CountToBooleanConverter_ShouldReturnCorrectValue(object value, bool expected)
+        public void CountToBooleanConverter_ShouldReturnCorrectValue(object? value, bool expected)
         {
             var converter = new CountToBooleanConverter();
             if (value == null)
             {
                 // Theory can't easily pass null for ICollection, so we test it manually or via theory
             }
-            var result = converter.Convert(value, typeof(bool), null, CultureInfo.InvariantCulture);
+            var result = converter.Convert(value!, typeof(bool), null, CultureInfo.InvariantCulture);
             result.Should().Be(expected);
         }
 
@@ -56,10 +56,10 @@ namespace RimSharp.Tests.Core.Converters.Logic
         [InlineData("", false)]
         [InlineData(null, false)]
         [InlineData(123, true)]
-        public void IsNotNullOrEmptyConverter_ShouldReturnCorrectValue(object value, bool expected)
+        public void IsNotNullOrEmptyConverter_ShouldReturnCorrectValue(object? value, bool expected)
         {
             var converter = new IsNotNullOrEmptyConverter();
-            var result = converter.Convert(value, typeof(bool), null, CultureInfo.InvariantCulture);
+            var result = converter.Convert(value!, typeof(bool), null, CultureInfo.InvariantCulture);
             result.Should().Be(expected);
         }
 
@@ -67,10 +67,10 @@ namespace RimSharp.Tests.Core.Converters.Logic
         [InlineData("Tab1", "Tab2", true)]
         [InlineData("Tab1", "Tab1", false)]
         [InlineData(null, "Tab1", true)]
-        public void TabActiveConverter_ShouldReturnTrue_WhenNotEqual(object val, object param, bool expected)
+        public void TabActiveConverter_ShouldReturnTrue_WhenNotEqual(object? val, object param, bool expected)
         {
             var converter = new TabActiveConverter();
-            var result = converter.Convert(val, typeof(bool), param, CultureInfo.InvariantCulture);
+            var result = converter.Convert(val!, typeof(bool), param, CultureInfo.InvariantCulture);
             result.Should().Be(expected);
         }
     }
