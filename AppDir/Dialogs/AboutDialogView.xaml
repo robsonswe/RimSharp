@@ -27,7 +27,7 @@
 
                 <Separator Style="{StaticResource RimworldSeparatorStyle}" Margin="0,0,0,15"/>
 
-                <!-- Update Status Section (Chromium-like) -->
+                <!-- Update Status Section -->
                 <Border Background="{StaticResource RimworldLightBackgroundBrush}" 
                         BorderBrush="{StaticResource RimworldBorderBrush}" 
                         BorderThickness="1" 
@@ -48,9 +48,8 @@
                                    FontSize="14" VerticalAlignment="Center" 
                                    Foreground="{StaticResource RimworldBrownBrush}"/>
 
-                        <Button Grid.Column="2" Content="Download Update" 
-                                CommandParameter="{Binding ReleaseUrl, Mode=OneWay}"
-                                Click="DownloadUpdate_Click"
+                        <Button Grid.Column="2" Content="Update RimSharp" 
+                                Command="{Binding UpdateCommand}"
                                 Style="{StaticResource RimworldSaveButtonStyle}"
                                 Visibility="{Binding IsNewVersionAvailable, Converter={StaticResource BooleanToVisibilityConverter}}"
                                 Padding="10,2" Height="26" VerticalAlignment="Center"/>
