@@ -19,10 +19,16 @@ namespace RimSharp.Infrastructure.Dialog
 {
     public class DialogService : IDialogService, INotifyPropertyChanged
     {
+        private readonly IAppUpdaterService? _appUpdaterService;
         private int _openDialogCount;
         public bool IsAnyDialogOpen => _openDialogCount > 0;
 
         public event PropertyChangedEventHandler? PropertyChanged;
+
+        public DialogService(IAppUpdaterService appUpdaterService)
+        {
+            _appUpdaterService = appUpdaterService;
+        }
 
         private void OnPropertyChanged(string propertyName)
         {
@@ -297,6 +303,26 @@ namespace RimSharp.Infrastructure.Dialog
                 }
             });
             return result;
+        }
+
+        public void ShowAboutDialog()
+        {
+            if (_appUpdaterService == null) return;
+            var viewModel = new AboutDialogViewModel(_appUpdaterService);
+            IncrementDialogCount();
+            try
+            {
+                var dialog = new AboutDialogView(viewModel)
+                {
+                    Owner = Application.Current?.MainWindow,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+                dialog.ShowDialog();
+            }
+            finally
+            {
+                DecrementDialogCount();
+            }
         }
     }
 }

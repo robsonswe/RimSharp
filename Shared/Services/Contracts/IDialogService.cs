@@ -35,6 +35,6 @@ namespace RimSharp.Shared.Services.Contracts
         MissingModSelectionDialogOutput ShowMissingModSelectionDialog(MissingModSelectionDialogViewModel viewModel);
         List<string>? ShowCollectionDialog(CollectionDialogViewModel viewModel);
         (bool, IEnumerable<string>?) ShowStripModsDialog(StripDialogViewModel viewModel);
-
+        void ShowAboutDialog();
     }
 }

@@ -1,0 +1,102 @@
+<dialogs:BaseDialog x:Class="RimSharp.AppDir.Dialogs.AboutDialogView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+        xmlns:local="clr-namespace:RimSharp.AppDir.Dialogs"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=local:AboutDialogViewModel, IsDesignTimeCreatable=True}"
+        Title="{Binding Title}"
+        SizeToContent="Height"
+        Width="450"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner">
+    
+    <dialogs:BaseDialog.MainContent>
+        <Border Style="{StaticResource RimworldPanelBorder}">
+            <StackPanel Margin="15,10">
+                <!-- App Header -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                    <Image Source="/icon.ico" Width="64" Height="64" Margin="0,0,20,0" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding AppName}" FontSize="28" FontWeight="Bold" Foreground="{StaticResource RimworldBrownBrush}"/>
+                        <TextBlock Text="{Binding AppVersion}" FontSize="14" Foreground="{StaticResource RimworldLightBrownBrush}" FontStyle="Italic"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <Separator Style="{StaticResource RimworldSeparatorStyle}" Margin="0,0,0,15"/>
+
+                <!-- Update Status Section (Chromium-like) -->
+                <Border Background="{StaticResource RimworldLightBackgroundBrush}" 
+                        BorderBrush="{StaticResource RimworldBorderBrush}" 
+                        BorderThickness="1" 
+                        CornerRadius="4" 
+                        Padding="12,10" 
+                        Margin="0,0,0,15">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" Text="{Binding UpdateStatusIcon, Mode=OneWay}" 
+                                   FontSize="18" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                        
+                        <TextBlock Grid.Column="1" Text="{Binding UpdateStatus, Mode=OneWay}" 
+                                   FontSize="14" VerticalAlignment="Center" 
+                                   Foreground="{StaticResource RimworldBrownBrush}"/>
+
+                        <Button Grid.Column="2" Content="Download Update" 
+                                CommandParameter="{Binding ReleaseUrl, Mode=OneWay}"
+                                Click="DownloadUpdate_Click"
+                                Style="{StaticResource RimworldSaveButtonStyle}"
+                                Visibility="{Binding IsNewVersionAvailable, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                Padding="10,2" Height="26" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+
+                <!-- Info Grid -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Description:" FontWeight="Bold" Margin="0,0,10,8" Foreground="{StaticResource RimworldBrownBrush}"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Description}" TextWrapping="Wrap" Margin="0,0,0,8" Foreground="{StaticResource RimworldDarkBrownBrush}"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Developer:" FontWeight="Bold" Margin="0,0,10,8" Foreground="{StaticResource RimworldBrownBrush}"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Developer}" Margin="0,0,0,8" Foreground="{StaticResource RimworldDarkBrownBrush}"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="License:" FontWeight="Bold" Margin="0,0,10,8" Foreground="{StaticResource RimworldBrownBrush}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding License}" Margin="0,0,0,8" Foreground="{StaticResource RimworldDarkBrownBrush}"/>
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="GitHub:" FontWeight="Bold" Margin="0,0,10,0" Foreground="{StaticResource RimworldBrownBrush}"/>
+                    <TextBlock Grid.Row="3" Grid.Column="1">
+                        <Hyperlink NavigateUri="{Binding GitHubUrl, Mode=OneWay}" RequestNavigate="Hyperlink_RequestNavigate" Style="{StaticResource RimworldHyperlinkStyle}">
+                            <Run Text="{Binding GitHubUrl, Mode=OneWay}"/>
+                        </Hyperlink>
+                    </TextBlock>
+                </Grid>
+            </StackPanel>
+        </Border>
+    </dialogs:BaseDialog.MainContent>
+
+    <dialogs:BaseDialog.ButtonContent>
+        <Grid Margin="0,10,0,0">
+            <Button Content="Close" 
+                    Click="CloseButton_Click"
+                    Style="{StaticResource RimworldButtonStyle}" 
+                    HorizontalAlignment="Right"
+                    MinWidth="100" Height="32"/>
+        </Grid>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>
