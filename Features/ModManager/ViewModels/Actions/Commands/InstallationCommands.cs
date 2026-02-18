@@ -149,7 +149,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     return;
                 }
 
-                var repoInfo = ParseGitHubUrl(gitUrl);
+                var repoInfo = _gitService.ParseGitHubUrl(gitUrl);
                 if (repoInfo == null) { return; }
                 var modName = repoInfo.Value.repo;
                 var targetDir = Path.Combine(modsPath, modName);

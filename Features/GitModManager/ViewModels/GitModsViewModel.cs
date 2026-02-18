@@ -70,13 +70,14 @@ namespace RimSharp.Features.GitModManager.ViewModels
         // --- Services ---
         private readonly IModService _modService;
         private readonly IModListManager _modListManager;
-        private readonly IDialogService _dialogService; // Added for progress dialogs
+        private readonly IDialogService _dialogService;
+        private readonly IGitService _gitService;
 
         // --- Private Fields ---
         private List<GitModItemWrapper> _gitMods;
         private string _statusMessage;
         private bool _isBusy;
-        private List<GitModItemWrapper> _oldGitMods; // Keep track of old items for proper event handling
+        private List<GitModItemWrapper> _oldGitMods;
 
         // --- Properties ---
         public List<GitModItemWrapper> GitMods
@@ -86,10 +87,8 @@ namespace RimSharp.Features.GitModManager.ViewModels
             {
                 if (SetProperty(ref _gitMods, value))
                 {
-                    Debug.WriteLine($"[DEBUG] GitModsViewModel: GitMods property SET. New Count: {(_gitMods?.Count ?? 0)}. PropertyChanged raised for GitMods.");
-                    OnPropertyChanged(nameof(GitMods.Count)); // Notify count change if needed
+                    OnPropertyChanged(nameof(GitMods.Count));
 
-                    // Unsubscribe from old items
                     if (_oldGitMods != null)
                     {
                         foreach (var mod in _oldGitMods)
@@ -98,7 +97,6 @@ namespace RimSharp.Features.GitModManager.ViewModels
                         }
                     }
 
-                    // Subscribe to new items
                     if (_gitMods != null)
                     {
                         foreach (var mod in _gitMods)
@@ -107,7 +105,7 @@ namespace RimSharp.Features.GitModManager.ViewModels
                         }
                     }
 
-                    _oldGitMods = _gitMods; // Update the old list reference
+                    _oldGitMods = _gitMods;
                 }
             }
         }
@@ -121,7 +119,7 @@ namespace RimSharp.Features.GitModManager.ViewModels
         public bool IsBusy
         {
             get => _isBusy;
-            private set => SetProperty(ref _isBusy, value); // Command CanExecute updated via observation
+            private set => SetProperty(ref _isBusy, value);
         }
 
         // --- Commands ---
@@ -133,157 +131,104 @@ namespace RimSharp.Features.GitModManager.ViewModels
         public GitModsViewModel(
             IModService modService,
             IModListManager modListManager,
-            IDialogService dialogService) // Inject IDialogService
+            IDialogService dialogService,
+            IGitService gitService)
         {
             _modService = modService ?? throw new ArgumentNullException(nameof(modService));
             _modListManager = modListManager ?? throw new ArgumentNullException(nameof(modListManager));
-            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService)); // Store injected service
-
-            Debug.WriteLine("[DEBUG] GitModsViewModel: Constructor entered.");
+            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
+            _gitService = gitService ?? throw new ArgumentNullException(nameof(gitService));
 
             CheckUpdatesCommand = CreateCancellableAsyncCommand(ExecuteCheckUpdatesAsync, CanExecuteCommands, nameof(IsBusy));
             PullUpdatesCommand = CreateCancellableAsyncCommand(ExecutePullUpdatesAsync, CanPullUpdates, nameof(IsBusy));
-            OpenGitHubRepoCommand = CreateCommand<string>(OpenGitHubRepo, CanOpenGitHubRepo); // Sync, typed
+            OpenGitHubRepoCommand = CreateCommand<string>(OpenGitHubRepo, CanOpenGitHubRepo);
 
             _modListManager.ListChanged += HandleModListChanged;
-            LoadGitMods(); // Load initial mods
-            Debug.WriteLine($"[DEBUG] GitModsViewModel: Constructor finished. Initial GitMods Count: {(_gitMods?.Count ?? 0)}");
+            LoadGitMods();
         }
 
         // --- CanExecute Predicates ---
         private bool CanExecuteCommands() => !IsBusy;
         private bool CanPullUpdates() => !IsBusy && GitMods != null && GitMods.Any(m => m.IsSelected);
-        private bool CanOpenGitHubRepo(string gitRepo) // Typed parameter
+        private bool CanOpenGitHubRepo(string gitRepo)
         {
             return !string.IsNullOrWhiteSpace(gitRepo) &&
                    (gitRepo.Contains("/") || Uri.IsWellFormedUriString(gitRepo, UriKind.Absolute));
         }
 
-        // --- Execution Methods (Async Wrappers with Progress Dialog) ---
+        // --- Execution Methods ---
 
         private async Task ExecuteCheckUpdatesAsync(CancellationToken ct)
         {
             IsBusy = true;
             StatusMessage = "Checking for updates...";
             ProgressDialogViewModel progressViewModel = null;
-            // Create a linked CTS so the dialog's cancel button cancels the command's token
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
             try
             {
-                // Show Progress Dialog on UI Thread before starting background work
                 RunOnUIThread(() =>
                 {
                     progressViewModel = _dialogService.ShowProgressDialog(
                         "Checking Mod Updates",
                         "Initializing update check...",
                         canCancel: true,
-                        isIndeterminate: true, // Start as indeterminate
-                        cts: linkedCts, // Pass the LINKED CTS
-                        closeable: false // Don't allow user to close via 'X' until done/cancelled
+                        isIndeterminate: true,
+                        cts: linkedCts,
+                        closeable: false
                     );
                 });
 
-                // Wait a tiny moment to ensure the dialog appears before heavy work starts
-                await Task.Delay(50, CancellationToken.None); // Use CancellationToken.None here
+                await Task.Delay(50, CancellationToken.None);
 
                 int totalMods = GitMods?.Count ?? 0;
                 int processedCount = 0;
 
-                // Run synchronous LibGit2Sharp code on background thread
-                await Task.Run(async () => // Make inner lambda async to allow delays
+                if (GitMods != null && totalMods > 0)
                 {
-                    if (GitMods == null || totalMods == 0)
-                    {
-                        // Update dialog if no mods found
-                        progressViewModel?.UpdateProgress(100, "No Git mods found to check.");
-                        await Task.Delay(500, linkedCts.Token); // Short delay to see the message
-                        return;
-                    }
-
                     foreach (var modWrapper in GitMods)
                     {
-                        // Use the linked token for cancellation checks within the background task
                         linkedCts.Token.ThrowIfCancellationRequested();
                         processedCount++;
                         var mod = modWrapper.ModItem;
 
-                        // Update Progress Dialog (ensure UI thread)
                         progressViewModel?.UpdateProgress(
-                            (int)(((double)processedCount / totalMods) * 100), // Calculate percentage
+                            (int)(((double)processedCount / totalMods) * 100),
                             $"Checking {mod.Name} ({processedCount}/{totalMods})..."
                         );
-                        // Optionally add a small delay if updates are too fast
-                        // await Task.Delay(10, linkedCts.Token);
+
+                        if (!_gitService.IsRepository(mod.Path))
+                        {
+                            modWrapper.UpdateStatus = "Not a git repository";
+                            modWrapper.IsSelected = false;
+                            continue;
+                        }
 
                         try
                         {
-                            using var repo = new Repository(mod.Path);
-                            var remote = repo.Network.Remotes["origin"];
-                            if (remote == null)
+                            await _gitService.FetchAsync(mod.Path, "origin", linkedCts.Token);
+                            var div = await _gitService.GetDivergenceAsync(mod.Path, "origin", linkedCts.Token);
+
+                            if (!div.IsValid)
                             {
-                                modWrapper.UpdateStatus = "Remote 'origin' not found";
+                                modWrapper.UpdateStatus = div.ErrorMessage ?? "Error";
                                 modWrapper.IsSelected = false;
-                                Debug.WriteLine($"[WARN] Mod '{mod.Name}' has no remote 'origin'.");
-                                continue;
                             }
-
-                            var fetchOptions = new FetchOptions(); // Add credentials if needed
-                            string logMessage = $"Fetching {remote.Name} for {mod.Name}...";
-                            Debug.WriteLine(logMessage);
-                            // Fetch can take time, check cancellation before/after if possible (not directly supported by LibGit2Sharp Fetch)
-                            Commands.Fetch(repo, remote.Name, remote.FetchRefSpecs.Select(x => x.Specification), fetchOptions, logMessage);
-                            linkedCts.Token.ThrowIfCancellationRequested(); // Check after fetch
-
-                            var branch = repo.Head;
-                            if (branch?.TrackedBranch == null)
+                            else if (div.BehindBy > 0)
                             {
-                                modWrapper.UpdateStatus = "No tracking branch";
-                                modWrapper.IsSelected = false;
-                                Debug.WriteLine($"[WARN] Mod '{mod.Name}' ({branch?.FriendlyName}) has no tracking branch.");
-                                continue;
-                            }
-
-                            var tracking = branch.TrackedBranch;
-                            // Calculation can be quick, but check token anyway
-                            linkedCts.Token.ThrowIfCancellationRequested();
-                            var divergence = repo.ObjectDatabase.CalculateHistoryDivergence(branch.Tip, tracking.Tip);
-
-                            if (divergence.BehindBy.GetValueOrDefault() > 0)
-                            {
-                                modWrapper.UpdateStatus = $"{divergence.BehindBy} update(s)";
+                                modWrapper.UpdateStatus = $"{div.BehindBy} update(s)";
                                 modWrapper.IsSelected = true;
-                                Debug.WriteLine($"[INFO] Mod '{mod.Name}' has {divergence.BehindBy} update(s).");
                             }
-                            else if (divergence.AheadBy.GetValueOrDefault() > 0)
+                            else if (div.AheadBy > 0)
                             {
-                                modWrapper.UpdateStatus = $"Up to date ({divergence.AheadBy} local commits)";
+                                modWrapper.UpdateStatus = $"Up to date ({div.AheadBy} local commits)";
                                 modWrapper.IsSelected = false;
-                                Debug.WriteLine($"[INFO] Mod '{mod.Name}' is up to date ({divergence.AheadBy} local commits).");
                             }
                             else
                             {
                                 modWrapper.UpdateStatus = "Up to date";
                                 modWrapper.IsSelected = false;
-                                Debug.WriteLine($"[INFO] Mod '{mod.Name}' is up to date.");
                             }
-                        }
-                        catch (RepositoryNotFoundException)
-                        {
-                            modWrapper.UpdateStatus = "Error: Repository not found";
-                            modWrapper.IsSelected = false;
-                            Debug.WriteLine($"[ERROR] CheckUpdates repo not found for mod '{mod.Name}' at path {mod.Path}");
-                        }
-                        catch (LibGit2SharpException gitEx)
-                        {
-                            modWrapper.UpdateStatus = $"Error: {gitEx.Message}";
-                            modWrapper.IsSelected = false;
-                            Debug.WriteLine($"[ERROR] CheckUpdates Git error for mod '{mod.Name}': {gitEx.Message}");
-                        }
-                        catch (OperationCanceledException) // Catch cancellation within the loop
-                        {
-                            Debug.WriteLine($"[ExecuteCheckUpdatesAsync] Cancellation requested while processing {mod?.Name}.");
-                            throw; // Re-throw to be caught by the outer handler
                         }
                         catch (Exception ex)
                         {
@@ -292,39 +237,30 @@ namespace RimSharp.Features.GitModManager.ViewModels
                             Debug.WriteLine($"[ERROR] CheckUpdates failed for mod '{mod.Name}': {ex.Message}");
                         }
                     }
-                }, linkedCts.Token); // Pass the linked token to Task.Run
+                }
+                else
+                {
+                    progressViewModel?.UpdateProgress(100, "No Git mods found to check.");
+                    await Task.Delay(500, CancellationToken.None);
+                }
 
-                // If completed without cancellation:
                 StatusMessage = "Update check complete.";
-                progressViewModel?.CompleteOperation(StatusMessage); // Close dialog successfully
-                // Manually trigger CanExecuteChanged for PullUpdatesCommand as its CanExecute depends on IsSelected state changes during check
+                progressViewModel?.CompleteOperation(StatusMessage);
                 RunOnUIThread(() => ((AsyncRelayCommand)PullUpdatesCommand).RaiseCanExecuteChanged());
             }
             catch (OperationCanceledException)
             {
                 StatusMessage = "Update check cancelled.";
-                Debug.WriteLine("[ExecuteCheckUpdatesAsync] Operation cancelled by user.");
-                // Dialog should close itself via its CancelCommand/CTS link, but ForceClose ensures it if something went wrong.
                 progressViewModel?.ForceClose();
             }
             catch (Exception ex)
             {
                 StatusMessage = $"Error checking updates: {ex.Message}";
-                Debug.WriteLine($"[ERROR] Overall error during CheckUpdates: {ex.Message}");
-                // Show error in dialog before closing (optional)
-                if (progressViewModel != null)
-                {
-                    progressViewModel.Message = $"Error: {ex.Message.Split('\n')[0]}"; // Update message directly
-                    // Note: CanCancel setter is private in ProgressDialogViewModel,
-                    // so we cannot set it directly here. ForceClose will handle closure state.
-                }
-                await Task.Delay(2000); // Give user time to see error in dialog
-                progressViewModel?.ForceClose(); // Close dialog on failure
+                progressViewModel?.ForceClose();
             }
             finally
             {
                 IsBusy = false;
-                // Ensure the view model is disposed EVEN IF ShowProgressDialog failed or dialog was closed
                 progressViewModel?.Dispose();
             }
         }
@@ -335,7 +271,6 @@ namespace RimSharp.Features.GitModManager.ViewModels
             if (selectedMods == null || !selectedMods.Any())
             {
                 StatusMessage = "No mods selected for update.";
-                // Optionally show a quick info dialog:
                 _dialogService.ShowInformation("Pull Updates", "No mods selected for update.");
                 return;
             }
@@ -351,168 +286,90 @@ namespace RimSharp.Features.GitModManager.ViewModels
 
             try
             {
-                // Show Progress Dialog on UI Thread
                 RunOnUIThread(() =>
                 {
                     progressViewModel = _dialogService.ShowProgressDialog(
                          "Pulling Mod Updates",
                          $"Preparing to pull {totalToUpdate} mod(s)...",
                          canCancel: true,
-                         isIndeterminate: false, // We can show progress per mod
+                         isIndeterminate: false,
                          cts: linkedCts,
                          closeable: false
                      );
                 });
-                await Task.Delay(50, CancellationToken.None); // Allow dialog to render
+                await Task.Delay(50, CancellationToken.None);
 
-                // Run synchronous LibGit2Sharp code on background thread
-                await Task.Run(() =>
+                foreach (var modWrapper in selectedMods)
                 {
-                    foreach (var modWrapper in selectedMods)
+                    linkedCts.Token.ThrowIfCancellationRequested();
+                    processedCount++;
+                    var mod = modWrapper.ModItem;
+
+                    progressViewModel?.UpdateProgress(
+                         (int)(((double)processedCount / totalToUpdate) * 100),
+                         $"Pulling {mod.Name} ({processedCount}/{totalToUpdate})..."
+                    );
+
+                    try
                     {
-                        linkedCts.Token.ThrowIfCancellationRequested();
-                        processedCount++;
-                        var mod = modWrapper.ModItem;
-
-                        // Update Progress Dialog
-                        progressViewModel?.UpdateProgress(
-                             (int)(((double)processedCount / totalToUpdate) * 100),
-                             $"Pulling {mod.Name} ({processedCount}/{totalToUpdate})..."
-                        );
-                        // Optionally add a small delay
-                        // await Task.Delay(10, linkedCts.Token);
-
-                        try
+                        var result = await _gitService.PullAsync(mod.Path, "origin", linkedCts.Token);
+                        
+                        modWrapper.UpdateStatus = result.Status switch
                         {
-                            using var repo = new Repository(mod.Path);
-                            // Consider making signature configurable in settings
-                            var signature = new Signature("RimSharp Mod Manager", "rimsharp@example.com", DateTimeOffset.Now);
-                            var pullOptions = new PullOptions
-                            {
-                                FetchOptions = new FetchOptions(), // Add credentials if needed
-                                MergeOptions = new MergeOptions
-                                {
-                                    FastForwardStrategy = FastForwardStrategy.FastForwardOnly, // Safest default
-                                    // Consider adding conflict handling strategy if needed (e.g., FailOnConflict)
-                                    // FileConflictStrategy = CheckoutFileConflictStrategy.Fail
-                                }
-                            };
+                            GitPullStatus.UpToDate => "Already up to date",
+                            GitPullStatus.FastForward => "Updated successfully",
+                            GitPullStatus.NonFastForward => "Updated (Non-FF)",
+                            GitPullStatus.Conflict => "Error: Conflicts",
+                            _ => result.Message ?? "Error pulling"
+                        };
 
-                            Debug.WriteLine($"Pulling updates for mod '{mod.Name}'...");
-                            // Pull can take time
-                            MergeResult result = Commands.Pull(repo, signature, pullOptions);
-                            linkedCts.Token.ThrowIfCancellationRequested(); // Check after pull
-
-                            if (result.Status == MergeStatus.UpToDate)
-                            {
-                                modWrapper.UpdateStatus = "Already up to date";
-                                Debug.WriteLine($"[INFO] Mod '{mod.Name}' was already up to date.");
-                                // Don't increment successCount here, as nothing changed.
-                            }
-                            else if (result.Status == MergeStatus.FastForward || result.Status == MergeStatus.NonFastForward) // Consider NonFastForward success? Usually yes.
-                            {
-                                modWrapper.UpdateStatus = "Updated successfully";
-                                successCount++;
-                                Debug.WriteLine($"[INFO] Pulled updates for mod '{mod.Name}'. Status: {result.Status}");
-                            }
-                            else // Conflicts or other errors
-                            {
-                                modWrapper.UpdateStatus = $"Pull failed ({result.Status})";
-                                failCount++;
-                                Debug.WriteLine($"[ERROR] Pull failed for mod '{mod.Name}'. Status: {result.Status}. Commit: {result.Commit?.Id.Sha ?? "N/A"}");
-                                // Optionally add more details if result.Commit exists
-                            }
+                        if (result.Status == GitPullStatus.FastForward || result.Status == GitPullStatus.NonFastForward)
+                        {
+                            successCount++;
                         }
-                        catch (RepositoryNotFoundException)
+                        else if (result.Status != GitPullStatus.UpToDate)
                         {
-                            modWrapper.UpdateStatus = "Error: Repository not found";
                             failCount++;
-                            Debug.WriteLine($"[ERROR] PullUpdates repo not found for mod '{mod.Name}' at path {mod.Path}");
-                        }
-                        catch (LibGit2SharpException gitEx) // Catch specific Git errors first
-                        {
-                            // Provide more specific feedback if possible
-                            if (gitEx is NonFastForwardException)
-                            {
-                                modWrapper.UpdateStatus = "Pull failed: Non-fast-forward";
-                                Debug.WriteLine($"[ERROR] Pull failed for '{mod.Name}': Non-fast-forward merge required. {gitEx.Message}");
-                            }
-                            else if (gitEx is CheckoutConflictException conflictEx)
-                            {
-                                modWrapper.UpdateStatus = "Pull failed: Conflicts";
-                                Debug.WriteLine($"[ERROR] Pull failed for '{mod.Name}': Conflicts detected. {conflictEx.Message}");
-                            }
-                            else
-                            {
-                                modWrapper.UpdateStatus = $"Pull error: {gitEx.Message.Split('\n')[0]}"; // First line often most useful
-                                Debug.WriteLine($"[ERROR] PullUpdates Git error for mod '{mod.Name}': {gitEx}"); // Log full exception
-                            }
-                            failCount++;
-                        }
-                        catch (OperationCanceledException) // Catch cancellation within the loop
-                        {
-                            Debug.WriteLine($"[ExecutePullUpdatesAsync] Cancellation requested while pulling {mod?.Name}.");
-                            modWrapper.UpdateStatus = "Pull cancelled";
-                            failCount++; // Count cancelled item as failure
-                            throw; // Re-throw to stop processing further items
-                        }
-                        catch (Exception ex) // Catch any other unexpected errors
-                        {
-                            modWrapper.UpdateStatus = "Pull error (unexpected)";
-                            failCount++;
-                            Debug.WriteLine($"[ERROR] PullUpdates unexpected error for mod '{mod.Name}': {ex}");
-                        }
-                        finally
-                        {
-                            // Reset selection state immediately after attempt (on UI thread)
-                            // This ensures the checkbox unchecks even if an error occurred
-                            RunOnUIThread(() => modWrapper.IsSelected = false);
                         }
                     }
-                }, linkedCts.Token); // Pass linked token to Task.Run
+                    catch (Exception ex)
+                    {
+                        modWrapper.UpdateStatus = "Pull error";
+                        failCount++;
+                        Debug.WriteLine($"[ERROR] PullUpdates failed for mod '{mod.Name}': {ex}");
+                    }
+                    finally
+                    {
+                        RunOnUIThread(() => modWrapper.IsSelected = false);
+                    }
+                }
 
-                // Update final status message after loop completes naturally
                 if (failCount > 0)
                     StatusMessage = $"Update pull finished. {successCount} succeeded, {failCount} failed.";
                 else if (successCount > 0)
                     StatusMessage = $"Update pull finished. {successCount} updated successfully.";
                 else
-                    StatusMessage = "Update pull finished. No mods required updating."; // If successCount == 0 and failCount == 0
+                    StatusMessage = "Update pull finished. No mods required updating.";
 
-                progressViewModel?.CompleteOperation(StatusMessage); // Close dialog successfully
-                // CanExecute state depends on IsSelected, which was modified in the loop, trigger update.
+                progressViewModel?.CompleteOperation(StatusMessage);
                 RunOnUIThread(() => ((AsyncRelayCommand)PullUpdatesCommand).RaiseCanExecuteChanged());
-
             }
             catch (OperationCanceledException)
             {
-                // Update status for partial completion
-                int remaining = totalToUpdate - processedCount; // Items not even attempted
+                int remaining = totalToUpdate - processedCount;
                 StatusMessage = $"Update pull cancelled by user. {successCount} succeeded, {failCount} failed, {remaining} skipped.";
-                Debug.WriteLine("[ExecutePullUpdatesAsync] Operation cancelled by user.");
-                progressViewModel?.ForceClose(); // Ensure dialog closes
+                progressViewModel?.ForceClose();
             }
             catch (Exception ex)
             {
                 StatusMessage = $"Error pulling updates: {ex.Message}";
-                Debug.WriteLine($"[ERROR] Overall error during PullUpdates: {ex.Message}");
-                // Show error message in dialog before closing
-                if (progressViewModel != null)
-                {
-                    progressViewModel.Message = $"Error: {ex.Message.Split('\n')[0]}"; // Update message directly
-                                                                                       // Note: CanCancel setter is private.
-                }
-                await Task.Delay(2000); // Allow user to see error
                 progressViewModel?.ForceClose();
             }
             finally
             {
                 IsBusy = false;
-                // This 'finally' block runs *after* the catch blocks.
-                // The IsSelected state should already be false due to the inner finally.
-                // We still need to trigger CanExecuteChanged in case cancellation happened *before* the loop started.
                 RunOnUIThread(() => ((AsyncRelayCommand)PullUpdatesCommand).RaiseCanExecuteChanged());
-                progressViewModel?.Dispose(); // Dispose the dialog VM
+                progressViewModel?.Dispose();
             }
         }
 

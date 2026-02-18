@@ -113,6 +113,7 @@ namespace RimSharp.AppDir.AppFiles
             services.AddSingleton<IDialogService, DialogService>();
             services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
             services.AddSingleton<ISystemInfoService, SystemInfoService>();
+            services.AddSingleton<IGitService, GitService>();
 
 
             services.AddSingleton<IPathService, PathService>(provider =>
@@ -286,7 +287,8 @@ namespace RimSharp.AppDir.AppFiles
                    provider.GetRequiredService<IDownloadQueueService>(),
                    provider.GetRequiredService<ISteamApiClient>(),
                    provider.GetRequiredService<IApplicationNavigationService>(),
-                   provider.GetRequiredService<ISteamWorkshopQueueProcessor>()
+                   provider.GetRequiredService<ISteamWorkshopQueueProcessor>(),
+                   provider.GetRequiredService<IGitService>()
                ));
 
             services.AddTransient<DownloaderViewModel>(provider =>
@@ -308,7 +310,8 @@ namespace RimSharp.AppDir.AppFiles
                 new GitModsViewModel(
                     provider.GetRequiredService<IModService>(),
                     provider.GetRequiredService<IModListManager>(),
-                    provider.GetRequiredService<IDialogService>()
+                    provider.GetRequiredService<IDialogService>(),
+                    provider.GetRequiredService<IGitService>()
                 ));
 
 

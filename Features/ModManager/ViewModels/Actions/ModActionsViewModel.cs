@@ -48,6 +48,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private readonly ISteamApiClient _steamApiClient;
         private readonly IApplicationNavigationService _navigationService;
         private readonly ISteamWorkshopQueueProcessor _steamWorkshopQueueProcessor;
+        private readonly IGitService _gitService;
         // State properties (Remain here)
         private bool _isParentLoading;
         private bool _hasUnsavedChanges;
@@ -212,7 +213,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             IDownloadQueueService downloadQueueService,
             ISteamApiClient steamApiClient,
             IApplicationNavigationService navigationService,
-            ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor)
+            ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor,
+            IGitService gitService)
         {
             _dataService = dataService;
             _commandService = commandService;
@@ -229,6 +231,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             _steamApiClient = steamApiClient;
             _navigationService = navigationService;
             _steamWorkshopQueueProcessor = steamWorkshopQueueProcessor;
+            _gitService = gitService;
             RefreshPathValidity();
 
             // Initialize game check timer (every 2 seconds)
