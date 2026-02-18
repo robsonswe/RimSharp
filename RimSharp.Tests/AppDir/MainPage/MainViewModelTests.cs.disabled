@@ -1,0 +1,144 @@
+using System;
+using FluentAssertions;
+using NSubstitute;
+using RimSharp.AppDir.MainPage;
+using RimSharp.Features.GitModManager.ViewModels;
+using RimSharp.Features.ModManager.ViewModels;
+using RimSharp.Features.VramAnalysis.ViewModels;
+using RimSharp.Features.WorkshopDownloader.ViewModels;
+using RimSharp.Shared.Services.Contracts;
+using Xunit;
+
+namespace RimSharp.Tests.AppDir.MainPage
+{
+    public class MainViewModelTests
+    {
+        private readonly IPathService _mockPathService;
+        private readonly IConfigService _mockConfigService;
+        private readonly IDialogService _mockDialogService;
+        private readonly IApplicationNavigationService _mockNavigationService;
+        private readonly IUpdaterService _mockUpdaterService;
+
+        // Simple subclasses to avoid NSubstitute constructor issues with concrete classes
+        private class TestModsViewModel : ModsViewModel 
+        { 
+            public TestModsViewModel() : base(
+                Substitute.For<IModDataService>(),
+                Substitute.For<IModFilterService>(),
+                Substitute.For<IModCommandService>(),
+                Substitute.For<IModListIOService>(),
+                Substitute.For<IModListManager>(),
+                Substitute.For<IModIncompatibilityService>(),
+                Substitute.For<IDialogService>(),
+                Substitute.For<IModService>(),
+                Substitute.For<IPathService>(),
+                Substitute.For<IModReplacementService>(),
+                Substitute.For<IDownloadQueueService>(),
+                Substitute.For<ISteamApiClient>(),
+                Substitute.For<IApplicationNavigationService>(),
+                Substitute.For<ISteamWorkshopQueueProcessor>()) { }
+        }
+
+        private class TestDownloaderViewModel : DownloaderViewModel
+        {
+            public TestDownloaderViewModel() : base(
+                Substitute.For<ISteamCmdService>(),
+                Substitute.For<IDialogService>(),
+                Substitute.For<ILoggerService>()) { }
+        }
+
+        private class TestGitModsViewModel : GitModsViewModel
+        {
+            public TestGitModsViewModel() : base(
+                Substitute.For<IPathService>(),
+                Substitute.For<ILoggerService>(),
+                Substitute.For<IDialogService>()) { }
+        }
+
+        private class TestVramAnalysisViewModel : VramAnalysisViewModel
+        {
+            public TestVramAnalysisViewModel() : base(
+                Substitute.For<IVramAnalysisService>(),
+                Substitute.For<IDialogService>(),
+                Substitute.For<ILoggerService>()) { }
+        }
+
+        private readonly TestModsViewModel _modsVM;
+        private readonly TestDownloaderViewModel _downloaderVM;
+        private readonly TestGitModsViewModel _gitModsVM;
+        private readonly TestVramAnalysisViewModel _vramAnalysisVM;
+
+        public MainViewModelTests()
+        {
+            _mockPathService = Substitute.For<IPathService>();
+            _mockConfigService = Substitute.For<IConfigService>();
+            _mockDialogService = Substitute.For<IDialogService>();
+            _mockNavigationService = Substitute.For<IApplicationNavigationService>();
+            _mockUpdaterService = Substitute.For<IUpdaterService>();
+
+            _modsVM = new TestModsViewModel();
+            _downloaderVM = new TestDownloaderViewModel();
+            _gitModsVM = new TestGitModsViewModel();
+            _vramAnalysisVM = new TestVramAnalysisViewModel();
+        }
+
+        private MainViewModel CreateViewModel()
+        {
+            return new MainViewModel(
+                _mockPathService,
+                _mockConfigService,
+                _mockDialogService,
+                _mockNavigationService,
+                _mockUpdaterService,
+                _modsVM,
+                _downloaderVM,
+                _gitModsVM,
+                _vramAnalysisVM
+            );
+        }
+
+        [Fact]
+        public void Constructor_ShouldInitializeProperties()
+        {
+            // Act
+            var vm = CreateViewModel();
+
+            // Assert
+            vm.SelectedTab.Should().Be("Mods");
+            vm.CurrentViewModel.Should().Be(_modsVM);
+            vm.PathSettings.Should().NotBeNull();
+        }
+
+        [Theory]
+        [InlineData("Downloader", "Downloader")]
+        [InlineData("GitMods", "GitMods")]
+        [InlineData("VRAM", "VRAM")]
+        public void SwitchTabCommand_ShouldChangeSelectedTab(string tabName, string expectedTab)
+        {
+            // Arrange
+            var vm = CreateViewModel();
+
+            // Act
+            vm.SwitchTabCommand.Execute(tabName);
+
+            // Assert
+            vm.SelectedTab.Should().Be(expectedTab);
+            if (tabName == "Downloader") vm.CurrentViewModel.Should().Be(_downloaderVM);
+        }
+
+        [Fact]
+        public void PathSettings_GamePathChanged_ShouldSaveToConfig()
+        {
+            // Arrange
+            var vm = CreateViewModel();
+            var newPath = @"C:\Games\RimWorld";
+
+            // Act
+            vm.PathSettings.GamePath = newPath;
+
+            // Assert
+            _mockConfigService.Received().SetConfigValue("game_folder", newPath);
+            _mockConfigService.Received().SaveConfig();
+        }
+    }
+}

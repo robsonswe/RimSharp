@@ -38,6 +38,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private readonly IModListManager _modListManager;
         private readonly IDialogService _dialogService;
         private readonly IModIncompatibilityService _incompatibilityService;
+        private readonly IModDuplicateService _duplicateService;
         private readonly IPathService _pathService;
 
         private readonly IModService _modService;
@@ -203,6 +204,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             IModListIOService ioService,
             IModListManager modListManager,
             IModIncompatibilityService incompatibilityService,
+            IModDuplicateService duplicateService,
             IDialogService dialogService,
             IPathService pathService,
             IModService modService,
@@ -217,6 +219,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             _ioService = ioService;
             _modListManager = modListManager;
             _incompatibilityService = incompatibilityService;
+            _duplicateService = duplicateService;
             _dialogService = dialogService;
             _pathService = pathService;
             _modService = modService;

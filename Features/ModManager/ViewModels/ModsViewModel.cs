@@ -144,6 +144,8 @@ namespace RimSharp.Features.ModManager.ViewModels
             IDialogService dialogService,
             IModService modService,
             IPathService pathService,
+            IModRulesService rulesService,
+            IModDuplicateService duplicateService,
             IModReplacementService replacementService,
             IDownloadQueueService downloadQueueService,
             ISteamApiClient steamApiClient,
@@ -166,7 +168,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             ModListViewModel = new ModListViewModel(_filterService, _modListManager, commandService, _dialogService);
             ModDetailsViewModel = new ModDetailsViewModel(_dialogService);
             ModActionsViewModel = new ModActionsViewModel(
-                _dataService, commandService, ioService, _modListManager, incompatibilityService, _dialogService, _pathService, _modService,
+                _dataService, commandService, ioService, _modListManager, incompatibilityService, duplicateService, _dialogService, _pathService, _modService,
                         replacementService, downloadQueueService, steamApiClient, navigationService, steamWorkshopQueueProcessor
                         );
 

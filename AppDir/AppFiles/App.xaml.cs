@@ -27,6 +27,7 @@ using RimSharp.Features.ModManager.ViewModels;
 using RimSharp.Infrastructure.Mods.IO;
 using RimSharp.Infrastructure.Mods.Rules;
 using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
+using RimSharp.Infrastructure.Mods.Validation.Duplicates;
 
 // --- Git Mod Manager Feature ---
 using RimSharp.Features.GitModManager.ViewModels;
@@ -222,6 +223,7 @@ namespace RimSharp.AppDir.AppFiles
             // --- End ModListIOService Update ---
 
             services.AddSingleton<IModIncompatibilityService, ModIncompatibilityService>();
+            services.AddSingleton<IModDuplicateService, ModDuplicateService>();
 
 
             // --- SteamCMD Infrastructure (Refactored) ---
@@ -276,6 +278,8 @@ namespace RimSharp.AppDir.AppFiles
                    provider.GetRequiredService<IDialogService>(),
                    provider.GetRequiredService<IModService>(),
                    provider.GetRequiredService<IPathService>(),
+                   provider.GetRequiredService<IModRulesService>(),
+                   provider.GetRequiredService<IModDuplicateService>(),
                    provider.GetRequiredService<IModReplacementService>(),
                    provider.GetRequiredService<IDownloadQueueService>(),
                    provider.GetRequiredService<ISteamApiClient>(),

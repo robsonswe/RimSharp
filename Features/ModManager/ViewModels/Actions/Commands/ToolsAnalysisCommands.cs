@@ -273,11 +273,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             try
             {
                 var allMods = _modListManager.GetAllMods().ToList();
-                var actualDuplicateGroups = allMods
-                    .Where(m => !string.IsNullOrEmpty(m.PackageId))
-                    .GroupBy(m => m.PackageId.ToLowerInvariant())
-                    .Where(g => g.Count() > 1)
-                    .ToList();
+                var actualDuplicateGroups = _duplicateService.FindDuplicateGroups(allMods);
 
                 if (actualDuplicateGroups.Any())
                 {
