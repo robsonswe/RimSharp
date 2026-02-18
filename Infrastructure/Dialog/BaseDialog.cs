@@ -79,23 +79,27 @@ namespace RimSharp.Infrastructure.Dialog
                 return;
             }
 
-            if (this.Owner != null && this.Owner.IsVisible && this.Owner.WindowState == WindowState.Normal)
+            // WORKAROUND for WPF focus/minimization bug:
+            // For modeless windows, we can detach the owner to prevent it from minimizing the main window.
+            // For modal windows (ShowDialog), we cannot set Owner to null here (InvalidOperationException),
+            // but we can ensure the owner doesn't lose its 'Normal' state.
+            if (this.Owner != null)
             {
-                try
+                // ComponentDispatcher.IsThreadModal is a way to check if we are in a ShowDialog() call
+                bool isModal = System.Windows.Interop.ComponentDispatcher.IsThreadModal;
+                
+                if (!isModal)
                 {
-                    Debug.WriteLine($"[BaseDialog OnClosing] Activating Owner ({this.Owner.Title}) before closing {this.Title}.");
-                    this.Owner.Activate();
+                    Debug.WriteLine($"[BaseDialog OnClosing] Modeless dialog {this.Title} detaching from Owner to prevent minimization bug.");
+                    this.Owner = null;
                 }
-                catch (Exception ex)
+                else
                 {
-                    Debug.WriteLine($"[BaseDialog OnClosing] Error activating owner for {this.Title}: {ex.Message}");
+                    Debug.WriteLine($"[BaseDialog OnClosing] Modal dialog {this.Title} closing. WPF will handle focus.");
                 }
             }
-            else
-            {
-                 // This will now be the standard path for all dialogs.
-                 Debug.WriteLine($"[BaseDialog OnClosing] Skipping owner activation for {this.Title}. Owner is null.");
-            }
+
+            Debug.WriteLine($"[BaseDialog OnClosing] Closing dialog {this.Title}.");
         }
 
         // CloseButton_Click and IsMouseInHeader remain the same
