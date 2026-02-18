@@ -211,6 +211,7 @@ namespace RimSharp.AppDir.AppFiles
                    provider.GetRequiredService<IPathService>(),
                    provider.GetRequiredService<IModListManager>(),
                    provider.GetRequiredService<IDialogService>(),
+                   provider.GetRequiredService<IModListFileParser>(),          // <<< INJECTED
                    // --- Inject the new dependencies ---
                    provider.GetRequiredService<IModDictionaryService>(),       // <<< INJECTED
                    provider.GetRequiredService<ISteamApiClient>(),           // <<< INJECTED
@@ -224,6 +225,7 @@ namespace RimSharp.AppDir.AppFiles
 
             services.AddSingleton<IModIncompatibilityService, ModIncompatibilityService>();
             services.AddSingleton<IModDuplicateService, ModDuplicateService>();
+            services.AddSingleton<IModListFileParser, ModListFileParser>();
 
 
             // --- SteamCMD Infrastructure (Refactored) ---
