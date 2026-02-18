@@ -134,6 +134,20 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             private set => SetProperty(ref _isLaunchingGame, value);
         }
 
+        private bool _isViewActive;
+        public bool IsViewActive
+        {
+            get => _isViewActive;
+            set
+            {
+                if (SetProperty(ref _isViewActive, value))
+                {
+                    if (value) _gameCheckTimer?.Start();
+                    else _gameCheckTimer?.Stop();
+                }
+            }
+        }
+
         private readonly System.Windows.Threading.DispatcherTimer _gameCheckTimer;
 
 
@@ -218,7 +232,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             _gameCheckTimer = new System.Windows.Threading.DispatcherTimer();
             _gameCheckTimer.Interval = TimeSpan.FromSeconds(2);
             _gameCheckTimer.Tick += (s, e) => CheckIfGameIsRunning();
-            _gameCheckTimer.Start();
+            // Start will be managed by IsViewActive property
 
             InitializeCommands(); // Calls partial initialization methods
         }
@@ -227,11 +241,15 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         {
             try
             {
-                // RimWorld usually runs as "RimWorldWin64" or "RimWorld"
-                var processes = Process.GetProcesses();
-                bool isRunning = processes.Any(p =>
-                    p.ProcessName.Equals("RimWorldWin64", StringComparison.OrdinalIgnoreCase) ||
-                    p.ProcessName.Equals("RimWorld", StringComparison.OrdinalIgnoreCase));
+                // Targeted search is much faster than fetching the whole process list
+                var p64 = Process.GetProcessesByName("RimWorldWin64");
+                var p32 = Process.GetProcessesByName("RimWorld");
+
+                bool isRunning = p64.Length > 0 || p32.Length > 0;
+
+                // Cleanup: Dispose all process objects immediately to save memory/handles
+                foreach (var p in p64) p.Dispose();
+                foreach (var p in p32) p.Dispose();
 
                 IsGameRunning = isRunning;
             }

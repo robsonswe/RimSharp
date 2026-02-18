@@ -140,6 +140,7 @@ namespace RimSharp.AppDir.MainPage
 
             CurrentViewModel = ModsVM;
             _selectedTab = "Mods";
+            if (ModsVM != null) ModsVM.IsViewActive = true;
 
             // --- Command Initialization using corrected CanExecute logic ---
             SwitchTabCommand = CreateCommand<string>(SwitchTab, CanExecuteGlobalActions);
@@ -546,6 +547,7 @@ namespace RimSharp.AppDir.MainPage
             {
                 CurrentViewModel = nextViewModel;
                 SelectedTab = tabName;
+                if (ModsVM != null) ModsVM.IsViewActive = tabName == "Mods";
                 Debug.WriteLine($"[MainViewModel] Switched tab to: {tabName}");
             }
             else if (nextViewModel == null)
