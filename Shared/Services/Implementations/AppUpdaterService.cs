@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
@@ -50,6 +51,14 @@ namespace RimSharp.Shared.Services.Implementations
                     return (false, null, null);
                 }
 
+                // Find the first zip asset
+                string? zipUrl = releaseInfo.Assets?
+                    .FirstOrDefault(a => a.BrowserDownloadUrl != null && a.BrowserDownloadUrl.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))?
+                    .BrowserDownloadUrl;
+
+                // Fallback to HtmlUrl if no zip found (though updater needs zip)
+                string? releaseUrl = zipUrl ?? releaseInfo.HtmlUrl;
+
                 string latestTagName = releaseInfo.TagName;
                 Version? latestVersion = ParseVersion(latestTagName);
                 Version? currentVersion = Assembly.GetExecutingAssembly().GetName().Version;
@@ -57,18 +66,18 @@ namespace RimSharp.Shared.Services.Implementations
                 if (latestVersion == null || currentVersion == null)
                 {
                     _logger.LogWarning($"Could not parse versions for comparison. Latest: {latestTagName}, Current: {currentVersion}", "AppUpdaterService");
-                    return (false, latestTagName, releaseInfo.HtmlUrl);
+                    return (false, latestTagName, releaseUrl);
                 }
 
                 // Standard Version comparison: 1.11.0 > 1.9.0
                 if (latestVersion > currentVersion)
                 {
                     _logger.LogInfo($"App update available. Current: {currentVersion}, Latest: {latestVersion}", "AppUpdaterService");
-                    return (true, latestTagName, releaseInfo.HtmlUrl);
+                    return (true, latestTagName, releaseUrl);
                 }
 
                 _logger.LogInfo($"App is up to date. Current: {currentVersion}, Latest: {latestVersion}", "AppUpdaterService");
-                return (false, latestTagName, releaseInfo.HtmlUrl);
+                return (false, latestTagName, releaseUrl);
             }
             catch (Exception ex)
             {
@@ -105,6 +114,15 @@ namespace RimSharp.Shared.Services.Implementations
 
             [JsonPropertyName("html_url")]
             public string? HtmlUrl { get; set; }
+
+            [JsonPropertyName("assets")]
+            public List<GitHubAsset>? Assets { get; set; }
+        }
+
+        private class GitHubAsset
+        {
+            [JsonPropertyName("browser_download_url")]
+            public string? BrowserDownloadUrl { get; set; }
         }
     }
 }

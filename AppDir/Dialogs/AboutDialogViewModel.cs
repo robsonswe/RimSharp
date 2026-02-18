@@ -1,7 +1,9 @@
 #nullable enable
 using System;
+using System.Diagnostics;
 using System.Reflection;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using RimSharp.AppDir.AppFiles;
 using RimSharp.Shared.Services.Contracts;
 
@@ -30,10 +32,28 @@ namespace RimSharp.AppDir.Dialogs
         private string? _releaseUrl;
         public string? ReleaseUrl { get => _releaseUrl; set => SetProperty(ref _releaseUrl, value); }
 
+        public ICommand UpdateCommand { get; }
+
         public AboutDialogViewModel(IAppUpdaterService appUpdaterService) : base("About RimSharp")
         {
             _appUpdaterService = appUpdaterService;
+            UpdateCommand = CreateCommand(ExecuteUpdate, () => IsNewVersionAvailable, nameof(IsNewVersionAvailable));
             _ = CheckForUpdatesAsync();
+        }
+
+        private void ExecuteUpdate()
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(ReleaseUrl))
+                {
+                    Process.Start(new ProcessStartInfo(ReleaseUrl) { UseShellExecute = true });
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error opening download link: {ex.Message}");
+            }
         }
 
         private async Task CheckForUpdatesAsync()

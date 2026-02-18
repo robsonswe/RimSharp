@@ -22,21 +22,6 @@ namespace RimSharp.AppDir.Dialogs
             this.Close();
         }
 
-        private void DownloadUpdate_Click(object sender, RoutedEventArgs e)
-        {
-            if (DataContext is AboutDialogViewModel vm && !string.IsNullOrEmpty(vm.ReleaseUrl))
-            {
-                try
-                {
-                    Process.Start(new ProcessStartInfo(vm.ReleaseUrl) { UseShellExecute = true });
-                }
-                catch
-                {
-                    // Ignore errors opening browser
-                }
-            }
-        }
-
         private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e)
         {
             try
