@@ -24,10 +24,10 @@ namespace RimSharp.Tests.Core.Converters.Logic
         [InlineData(null, "Not null", true)]
         [InlineData("Not null", null, true)]
         [InlineData(null, null, false)]
-        public void Convert_ShouldReturnCorrectInequality(object val1, object val2, bool expected)
+        public void Convert_ShouldReturnCorrectInequality(object? val1, object? val2, bool expected)
         {
             // Act
-            var result = _converter.Convert(new[] { val1, val2 }, typeof(bool), null, CultureInfo.InvariantCulture);
+            var result = _converter.Convert(new[] { val1!, val2! }, typeof(bool), null, CultureInfo.InvariantCulture);
 
             // Assert
             result.Should().Be(expected);

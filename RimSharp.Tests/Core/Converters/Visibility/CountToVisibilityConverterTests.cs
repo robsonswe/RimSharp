@@ -24,10 +24,10 @@ namespace RimSharp.Tests.Core.Converters.Visibility
         [InlineData(5L, WinVisibility.Visible)]
         [InlineData(null, WinVisibility.Collapsed)]
         [InlineData("not a number", WinVisibility.Collapsed)]
-        public void Convert_WithNumericValues_ShouldReturnCorrectVisibility(object value, WinVisibility expected)
+        public void Convert_WithNumericValues_ShouldReturnCorrectVisibility(object? value, WinVisibility expected)
         {
             // Act
-            var result = _converter.Convert(value, typeof(WinVisibility), null, CultureInfo.InvariantCulture);
+            var result = _converter.Convert(value!, typeof(WinVisibility), null, CultureInfo.InvariantCulture);
 
             // Assert
             result.Should().Be(expected);

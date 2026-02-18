@@ -22,10 +22,10 @@ namespace RimSharp.Tests.Core.Converters.Utility
         [InlineData("Inactive", false, false, "Unfiltered")]
         [InlineData("Other", true, true, "Unfiltered")]
         [InlineData(null, true, true, "Unfiltered")]
-        public void Convert_ShouldReturnCorrectTag(string header, bool active, bool inactive, string expected)
+        public void Convert_ShouldReturnCorrectTag(string? header, bool active, bool inactive, string expected)
         {
             // Act
-            var result = _converter.Convert(new object[] { header, active, inactive }, typeof(string), null, CultureInfo.InvariantCulture);
+            var result = _converter.Convert(new object[] { header!, active, inactive }, typeof(string), null, CultureInfo.InvariantCulture);
 
             // Assert
             result.Should().Be(expected);

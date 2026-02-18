@@ -96,6 +96,7 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing.Models
         public bool HasLoginFailed => HasFlag(SteamCmdSessionStatusFlags.LoginFailure);
         public bool HasConnectionError => HasFlag(SteamCmdSessionStatusFlags.ConnectionError) || HasFlag(SteamCmdSessionStatusFlags.WorkshopConnectionError);
         public bool HasDiskError => HasFlag(SteamCmdSessionStatusFlags.DiskWriteError) || HasFlag(SteamCmdSessionStatusFlags.DiskSpaceIssue);
+        public bool HasDiskSpaceIssue => HasFlag(SteamCmdSessionStatusFlags.DiskSpaceIssue);
         public bool HasScriptError => HasFlag(SteamCmdSessionStatusFlags.ScriptError);
         public bool HasTimeout => HasFlag(SteamCmdSessionStatusFlags.TimeoutDetected);
         public bool HasAnyError => HasFlag(SteamCmdSessionStatusFlags.LoginFailure)

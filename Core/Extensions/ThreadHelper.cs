@@ -1,4 +1,5 @@
 // Core/Extensions/ThreadHelper.cs
+#nullable enable
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,7 +13,7 @@ namespace RimSharp.Core.Extensions
     /// </summary>
     public static class ThreadHelper
     {
-        private static Dispatcher _uiDispatcher;
+        private static Dispatcher? _uiDispatcher;
 
         /// <summary>
         /// Initializes the ThreadHelper with the UI thread's dispatcher.
@@ -42,14 +43,13 @@ namespace RimSharp.Core.Extensions
         /// <summary>
         /// Gets the Dispatcher associated with the UI thread.
         /// </summary>
-        public static Dispatcher UiDispatcher => _uiDispatcher ??
-            throw new InvalidOperationException("ThreadHelper has not been initialized. Call ThreadHelper.Initialize() on startup.");
+        public static Dispatcher? UiDispatcher => _uiDispatcher;
 
 
         /// <summary>
         /// Determines if the current thread is the UI thread by comparing dispatchers.
         /// </summary>
-        public static bool IsUiThread => UiDispatcher.CheckAccess();
+        public static bool IsUiThread => _uiDispatcher == null || _uiDispatcher.CheckAccess();
 
 
         /// <summary>
@@ -68,7 +68,7 @@ namespace RimSharp.Core.Extensions
             else
             {
                 // Use Invoke for synchronous execution
-                UiDispatcher.Invoke(action);
+                _uiDispatcher?.Invoke(action);
             }
         }
 
@@ -89,7 +89,7 @@ namespace RimSharp.Core.Extensions
             else
             {
                 // Use BeginInvoke for asynchronous execution (fire and forget)
-                UiDispatcher.BeginInvoke(priority, action);
+                _uiDispatcher?.BeginInvoke(priority, action);
             }
         }
 
@@ -121,7 +121,7 @@ namespace RimSharp.Core.Extensions
             else
             {
                 // Use InvokeAsync for awaitable asynchronous execution on the UI thread
-                return UiDispatcher.InvokeAsync(action, priority).Task;
+                return _uiDispatcher?.InvokeAsync(action, priority).Task ?? Task.CompletedTask;
             }
         }
 
@@ -135,7 +135,7 @@ namespace RimSharp.Core.Extensions
         /// <returns>A Task<T> representing the asynchronous operation on the UI thread.</returns>
         public static Task<T> RunOnUIThreadAsync<T>(Func<T> func, DispatcherPriority priority = DispatcherPriority.Normal)
         {
-             if (func == null) return Task.FromResult<T>(default);
+             if (func == null) return Task.FromResult<T>(default!);
 
              if (IsUiThread)
              {
@@ -152,7 +152,7 @@ namespace RimSharp.Core.Extensions
              else
              {
                  // Use InvokeAsync for awaitable asynchronous execution on the UI thread
-                 return UiDispatcher.InvokeAsync(func, priority).Task;
+                 return _uiDispatcher?.InvokeAsync(func, priority).Task ?? Task.FromResult<T>(default!);
              }
         }
 
@@ -193,7 +193,7 @@ namespace RimSharp.Core.Extensions
         public static Task<T> RunOnBackgroundThreadAsync<T>(Func<T> func)
         {
             if (func == null)
-                return Task.FromResult<T>(default);
+                return Task.FromResult<T>(default!);
 
              // Always use Task.Run to ensure execution on the thread pool
              // and return an awaitable Task<T>.
@@ -226,7 +226,7 @@ namespace RimSharp.Core.Extensions
         public static Task<T> RunOnBackgroundThreadAsync<T>(Func<Task<T>> asyncFunc)
         {
              if (asyncFunc == null)
-                 return Task.FromResult<T>(default);
+                 return Task.FromResult<T>(default!);
 
              // Task.Run can directly execute Func<Task<T>>
              return Task.Run(asyncFunc);

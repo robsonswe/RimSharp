@@ -45,10 +45,10 @@ namespace RimSharp.Tests.Core.Converters.Text
         [Theory]
         [InlineData(null)]
         [InlineData(123)]
-        public void Convert_WithInvalidOrEmptyValue_ShouldReturnNone(object value)
+        public void Convert_WithInvalidOrEmptyValue_ShouldReturnNone(object? value)
         {
             // Act
-            var result = _converter.Convert(value, typeof(string), null, CultureInfo.InvariantCulture);
+            var result = _converter.Convert(value!, typeof(string), null, CultureInfo.InvariantCulture);
 
             // Assert
             result.Should().Be("None");

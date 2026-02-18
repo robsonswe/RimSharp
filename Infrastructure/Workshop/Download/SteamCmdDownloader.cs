@@ -700,6 +700,12 @@ namespace RimSharp.Infrastructure.Workshop.Download
 
             await Task.Run(() =>
             {
+                if (!Directory.Exists(directoryPath))
+                {
+                    _logger.LogDebug($"Cleanup skipped: '{description}' directory not found at '{directoryPath}'", "SteamCmdDownloader");
+                    return;
+                }
+
                 _logger.LogInfo($"Attempting cleanup of '{description}' directory contents: {directoryPath}", "SteamCmdDownloader");
                 result.LogMessages.Add($"Cleaning {description} directory...");
                 int errors = 0;
@@ -766,7 +772,10 @@ namespace RimSharp.Infrastructure.Workshop.Download
 
                     // Retrieve and add detailed log messages from the processor for this item
                     var processorLogs = _itemProcessor.GetLogMessages();
-                    result.LogMessages.AddRange(processorLogs);
+                    if (processorLogs != null)
+                    {
+                        result.LogMessages.AddRange(processorLogs);
+                    }
                     result.LogMessages.Add($"--- Finished Processing Item {successId} ---");
                 }
                 catch (OperationCanceledException) { throw; }
@@ -776,7 +785,11 @@ namespace RimSharp.Infrastructure.Workshop.Download
                     result.LogMessages.Add($"CRITICAL ERROR processing item {successId} ({currentItem.Name}): {procEx.Message}");
                     processedResult = (false, procEx.Message); // Ensure marked as failed with reason
                                          // Add any logs collected by the processor before the exception occurred
-                    result.LogMessages.AddRange(_itemProcessor.GetLogMessages());
+                    var logs = _itemProcessor.GetLogMessages();
+                    if (logs != null)
+                    {
+                        result.LogMessages.AddRange(logs);
+                    }
                     result.LogMessages.Add($"--- Finished Processing Item {successId} (with error) ---");
                 }
 
