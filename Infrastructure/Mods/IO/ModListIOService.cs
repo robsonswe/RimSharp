@@ -26,7 +26,8 @@ namespace RimSharp.Infrastructure.Mods.IO
     {
         private readonly IPathService _pathService;
         private readonly IModListManager _modListManager;
-        private readonly IDialogService _dialogService; // Added
+        private readonly IDialogService _dialogService;
+        private readonly IModListFileParser _fileParser;
         private readonly IModDictionaryService _modDictionaryService;
         private readonly ISteamApiClient _steamApiClient;
         private readonly IDownloadQueueService _downloadQueueService;
@@ -40,6 +41,7 @@ namespace RimSharp.Infrastructure.Mods.IO
             IPathService pathService,
             IModListManager modListManager,
             IDialogService dialogService,
+            IModListFileParser fileParser,
             IModDictionaryService modDictionaryService,
             ISteamApiClient steamApiClient,
             IDownloadQueueService downloadQueueService,
@@ -49,7 +51,8 @@ namespace RimSharp.Infrastructure.Mods.IO
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
             _modListManager = modListManager ?? throw new ArgumentNullException(nameof(modListManager));
-            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService)); // Added
+            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
+            _fileParser = fileParser ?? throw new ArgumentNullException(nameof(fileParser));
             _modDictionaryService = modDictionaryService ?? throw new ArgumentNullException(nameof(modDictionaryService));
             _steamApiClient = steamApiClient ?? throw new ArgumentNullException(nameof(steamApiClient));
             _downloadQueueService = downloadQueueService ?? throw new ArgumentNullException(nameof(downloadQueueService));
@@ -221,21 +224,11 @@ namespace RimSharp.Infrastructure.Mods.IO
                 return null;
             }
             
-            // FIX: Use the null-conditional operator (?.) for safe navigation.
-            var activeModsElement = doc.Root?.Element("activeMods");
-            if (activeModsElement is null)
-            {
-                _dialogService.ShowError("Invalid File Format", "The selected file does not contain a valid mod list format.");
-                return null;
-            }
-
-            var activeModIds = activeModsElement.Elements("li")
-                .Select(e => e.Value.ToLowerInvariant())
-                .ToList();
+            var activeModIds = _fileParser.Parse(doc);
 
             if (!activeModIds.Any())
             {
-                _dialogService.ShowWarning("Import Warning", "The file contains an empty mod list.");
+                _dialogService.ShowWarning("Import Warning", "The file contains an empty mod list or invalid format.");
                 return null;
             }
 
@@ -244,27 +237,11 @@ namespace RimSharp.Infrastructure.Mods.IO
 
         private async Task SaveModListFileAsync(string filePath, IEnumerable<ModItem> activeMods)
         {
-            var doc = new XDocument(
-                new XElement("ModsConfigData",
-                    new XElement("version", "1.0"),
-                    new XElement("activeMods")
-                )
-            );
+            var packageIds = activeMods
+                .Where(m => !string.IsNullOrEmpty(m.PackageId))
+                .Select(m => m.PackageId!);
 
-            // FIX: Safely get the element and throw if it's somehow null.
-            var activeModsElement = doc.Root?.Element("activeMods") ?? throw new InvalidOperationException("Could not find activeMods element in the new XDocument.");
-
-            foreach (var mod in activeMods)
-            {
-                if (!string.IsNullOrEmpty(mod.PackageId))
-                {
-                    activeModsElement.Add(new XElement("li", mod.PackageId.ToLowerInvariant()));
-                }
-                else
-                {
-                    Debug.WriteLine($"Warning: Mod '{mod.Name}' has no PackageId and was not exported.");
-                }
-            }
+            var doc = _fileParser.Generate(packageIds);
 
             await Task.Run(() => doc.Save(filePath));
         }

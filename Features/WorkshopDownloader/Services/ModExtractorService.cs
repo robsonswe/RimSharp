@@ -225,15 +225,23 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                         switch (unitPart)
                         {
                             case "GB":
+                            case "GIGABYTE":
+                            case "GIGABYTES":
                                 fileSizeInBytes = (long)(sizeValue * 1024 * 1024 * 1024);
                                 break;
                             case "MB":
+                            case "MEGABYTE":
+                            case "MEGABYTES":
                                 fileSizeInBytes = (long)(sizeValue * 1024 * 1024);
                                 break;
                             case "KB":
+                            case "KILOBYTE":
+                            case "KILOBYTES":
                                 fileSizeInBytes = (long)(sizeValue * 1024);
                                 break;
                             case "B":
+                            case "BYTE":
+                            case "BYTES":
                             case "":
                                 fileSizeInBytes = (long)sizeValue;
                                 break;
