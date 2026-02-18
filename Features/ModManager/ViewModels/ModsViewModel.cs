@@ -69,6 +69,20 @@ namespace RimSharp.Features.ModManager.ViewModels
             }
         }
 
+        private bool _isViewActive;
+        public bool IsViewActive
+        {
+            get => _isViewActive;
+            set
+            {
+                if (SetProperty(ref _isViewActive, value))
+                {
+                    if (ModActionsViewModel != null)
+                        ModActionsViewModel.IsViewActive = value;
+                }
+            }
+        }
+
         public bool HasUnsavedChanges
         {
             get => _hasUnsavedChanges;
