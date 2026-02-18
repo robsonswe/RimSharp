@@ -38,6 +38,15 @@ namespace RimSharp.Features.ModManager.Services.Management
                 }
             }
 
+            // Track IDs that were supposed to be active but were not found in modLookup
+            foreach (var activeId in activeIdList)
+            {
+                if (!modLookup.ContainsKey(activeId))
+                {
+                    _missingModIds.Add(activeId);
+                }
+            }
+
             _allInactiveMods.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
         }
 
