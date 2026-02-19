@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using RimSharp.Infrastructure.Logging; // Assuming ILoggerService is here
+using RimSharp.Infrastructure.Data;
 using RimSharp.Shared.Models;        // For ModDictionaryEntry
 using RimSharp.Shared.Services.Contracts; // For IPathService, ILoggerService, IModDictionaryService
 
