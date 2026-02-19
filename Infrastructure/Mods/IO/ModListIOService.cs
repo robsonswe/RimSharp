@@ -70,8 +70,12 @@ namespace RimSharp.Infrastructure.Mods.IO
                 var listsDirectory = await EnsureListsDirectoryAsync();
 
                 // Show file dialog
-                var filePath = await ShowFileDialogAsync(listsDirectory, FileDialogType.Open);
-                if (string.IsNullOrEmpty(filePath))
+                var (result, filePath) = _dialogService.ShowOpenFileDialog(
+                    "Import Mod List",
+                    "XML Files (*.xml)|*.xml|All Files (*.*)|*.*",
+                    listsDirectory);
+
+                if (!result || string.IsNullOrEmpty(filePath))
                     return;
 
                 Debug.WriteLine($"Importing mod list from: {filePath}");
@@ -121,8 +125,14 @@ namespace RimSharp.Infrastructure.Mods.IO
                 var listsDirectory = await EnsureListsDirectoryAsync();
 
                 // Show file dialog
-                var filePath = await ShowFileDialogAsync(listsDirectory, FileDialogType.Save);
-                if (string.IsNullOrEmpty(filePath))
+                var (result, filePath) = _dialogService.ShowSaveFileDialog(
+                    "Export Mod List",
+                    "XML Files (*.xml)|*.xml|All Files (*.*)|*.*",
+                    listsDirectory,
+                    ".xml",
+                    $"ModList_{DateTime.Now:yyyyMMdd}.xml");
+
+                if (!result || string.IsNullOrEmpty(filePath))
                     return;
 
                 Debug.WriteLine($"Exporting mod list to: {filePath}");
@@ -159,55 +169,6 @@ namespace RimSharp.Infrastructure.Mods.IO
             }
 
             return listsDirectory;
-        }
-
-        private enum FileDialogType { Open, Save }
-        
-        // FIX: Changed return type to Task<string?> to indicate the result can be null.
-        private Task<string?> ShowFileDialogAsync(string initialDirectory, FileDialogType dialogType)
-        {
-            return Task.Run(() =>
-            {
-                // FIX: Declared result as string? to match the return type.
-                string? result = null;
-
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    if (dialogType == FileDialogType.Open)
-                    {
-                        var openFileDialog = new OpenFileDialog
-                        {
-                            Title = "Import Mod List",
-                            Filter = "XML Files (*.xml)|*.xml|All Files (*.*)|*.*",
-                            InitialDirectory = initialDirectory,
-                            CheckFileExists = true
-                        };
-
-                        if (openFileDialog.ShowDialog() == true)
-                        {
-                            result = openFileDialog.FileName;
-                        }
-                    }
-                    else // Save dialog
-                    {
-                        var saveFileDialog = new SaveFileDialog
-                        {
-                            Title = "Export Mod List",
-                            Filter = "XML Files (*.xml)|*.xml|All Files (*.*)|*.*",
-                            InitialDirectory = initialDirectory,
-                            DefaultExt = ".xml",
-                            FileName = $"ModList_{DateTime.Now:yyyyMMdd}.xml"
-                        };
-
-                        if (saveFileDialog.ShowDialog() == true)
-                        {
-                            result = saveFileDialog.FileName;
-                        }
-                    }
-                });
-
-                return result;
-            });
         }
 
         // FIX: Changed return type to Task<List<string>?> to indicate the result can be null.
