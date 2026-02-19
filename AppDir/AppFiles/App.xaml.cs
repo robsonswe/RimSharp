@@ -329,7 +329,7 @@ namespace RimSharp.AppDir.AppFiles
             services.AddSingleton<MainWindow>();
         }
 
-        protected override async void OnStartup(StartupEventArgs e)
+        protected override void OnStartup(StartupEventArgs e)
         {
             // --- Single Instance Check ---
             bool isNewInstance;
