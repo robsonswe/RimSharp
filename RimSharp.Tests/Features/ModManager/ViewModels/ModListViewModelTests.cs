@@ -33,6 +33,8 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
             _mockFilterService.InactiveMods.Returns(new ObservableCollection<ModItem>());
             _mockFilterService.ActiveFilterCriteria.Returns(new ModFilterCriteria());
             _mockFilterService.InactiveFilterCriteria.Returns(new ModFilterCriteria());
+            _mockFilterService.ActiveSearchText.Returns(string.Empty);
+            _mockFilterService.InactiveSearchText.Returns(string.Empty);
         }
 
         private ModListViewModel CreateViewModel()
