@@ -32,14 +32,14 @@ namespace RimSharp.AppDir.MainPage
         private readonly IUpdaterService _updaterService;
 
         private string _selectedTab = "Mods"; // Default tab
-        private ViewModelBase? _currentViewModel; // Holds the currently displayed module ViewModel
+        private INotifyPropertyChanged? _currentViewModel; // Holds the currently displayed module ViewModel
 
         // Properties for Module ViewModels (Injected)
-        public ModsViewModel ModsVM { get; } = null!;
-        public DownloaderViewModel? DownloaderVM { get; }
-        public GitModsViewModel GitModsVM { get; } = null!;
+        public IModsViewModel ModsVM { get; } = null!;
+        public IDownloaderViewModel? DownloaderVM { get; }
+        public IGitModsViewModel GitModsVM { get; } = null!;
 
-        public VramAnalysisViewModel VramAnalysisVM { get; } = null!;
+        public IVramAnalysisViewModel VramAnalysisVM { get; } = null!;
 
         // Application-wide settings or state
         public PathSettings PathSettings { get; } = null!;
@@ -110,10 +110,10 @@ namespace RimSharp.AppDir.MainPage
             IDialogService dialogService,
             IApplicationNavigationService navigationService,
             IUpdaterService updaterService,
-            ModsViewModel modsViewModel,
-            DownloaderViewModel downloaderViewModel,
-            GitModsViewModel gitModsViewModel,
-            VramAnalysisViewModel vramAnalysisViewModel)
+            IModsViewModel modsViewModel,
+            IDownloaderViewModel downloaderViewModel,
+            IGitModsViewModel gitModsViewModel,
+            IVramAnalysisViewModel vramAnalysisViewModel)
         {
             _pathService = pathService;
             _configService = configService;
@@ -178,7 +178,7 @@ namespace RimSharp.AppDir.MainPage
             {
                 ModsVM.PropertyChanged += (s, e) =>
                 {
-                    if (e.PropertyName == nameof(ModsViewModel.IsLoading))
+                    if (e.PropertyName == nameof(IModsViewModel.IsLoading))
                     {
                         OnPropertyChanged(nameof(IsAppLoading));
                     }
@@ -207,32 +207,32 @@ namespace RimSharp.AppDir.MainPage
             var aboutCmd = (DelegateCommand)AboutCommand;
 
             // Observe the IsLoading property on the ModsViewModel for all commands
-            switchTabCmd.ObservesProperty(ModsVM, nameof(ModsViewModel.IsLoading));
-            browsePathCmd.ObservesProperty(ModsVM, nameof(ModsViewModel.IsLoading));
-            settingsCmd.ObservesProperty(ModsVM, nameof(ModsViewModel.IsLoading));
-            refreshCmd.ObservesProperty(ModsVM, nameof(ModsViewModel.IsLoading));
-            openFolderCmd.ObservesProperty(ModsVM, nameof(ModsViewModel.IsLoading));
-            aboutCmd.ObservesProperty(ModsVM, nameof(ModsViewModel.IsLoading));
+            switchTabCmd.ObservesProperty(ModsVM, nameof(IModsViewModel.IsLoading));
+            browsePathCmd.ObservesProperty(ModsVM, nameof(IModsViewModel.IsLoading));
+            settingsCmd.ObservesProperty(ModsVM, nameof(IModsViewModel.IsLoading));
+            refreshCmd.ObservesProperty(ModsVM, nameof(IModsViewModel.IsLoading));
+            openFolderCmd.ObservesProperty(ModsVM, nameof(IModsViewModel.IsLoading));
+            aboutCmd.ObservesProperty(ModsVM, nameof(IModsViewModel.IsLoading));
 
             // Also observe the IsOperationInProgress property on the DownloaderViewModel for all commands
             if (DownloaderVM != null)
             {
-                switchTabCmd.ObservesProperty(DownloaderVM, nameof(DownloaderViewModel.IsOperationInProgress));
-                browsePathCmd.ObservesProperty(DownloaderVM, nameof(DownloaderViewModel.IsOperationInProgress));
-                settingsCmd.ObservesProperty(DownloaderVM, nameof(DownloaderViewModel.IsOperationInProgress));
-                refreshCmd.ObservesProperty(DownloaderVM, nameof(DownloaderViewModel.IsOperationInProgress));
-                openFolderCmd.ObservesProperty(DownloaderVM, nameof(DownloaderViewModel.IsOperationInProgress));
-                aboutCmd.ObservesProperty(DownloaderVM, nameof(DownloaderViewModel.IsOperationInProgress));
+                switchTabCmd.ObservesProperty(DownloaderVM, nameof(IDownloaderViewModel.IsOperationInProgress));
+                browsePathCmd.ObservesProperty(DownloaderVM, nameof(IDownloaderViewModel.IsOperationInProgress));
+                settingsCmd.ObservesProperty(DownloaderVM, nameof(IDownloaderViewModel.IsOperationInProgress));
+                refreshCmd.ObservesProperty(DownloaderVM, nameof(IDownloaderViewModel.IsOperationInProgress));
+                openFolderCmd.ObservesProperty(DownloaderVM, nameof(IDownloaderViewModel.IsOperationInProgress));
+                aboutCmd.ObservesProperty(DownloaderVM, nameof(IDownloaderViewModel.IsOperationInProgress));
             }
 
             if (VramAnalysisVM != null)
             {
-                switchTabCmd.ObservesProperty(VramAnalysisVM, nameof(VramAnalysisViewModel.IsBusy));
-                browsePathCmd.ObservesProperty(VramAnalysisVM, nameof(VramAnalysisViewModel.IsBusy));
-                settingsCmd.ObservesProperty(VramAnalysisVM, nameof(VramAnalysisViewModel.IsBusy));
-                refreshCmd.ObservesProperty(VramAnalysisVM, nameof(VramAnalysisViewModel.IsBusy));
-                openFolderCmd.ObservesProperty(VramAnalysisVM, nameof(VramAnalysisViewModel.IsBusy));
-                aboutCmd.ObservesProperty(VramAnalysisVM, nameof(VramAnalysisViewModel.IsBusy));
+                switchTabCmd.ObservesProperty(VramAnalysisVM, nameof(IVramAnalysisViewModel.IsBusy));
+                browsePathCmd.ObservesProperty(VramAnalysisVM, nameof(IVramAnalysisViewModel.IsBusy));
+                settingsCmd.ObservesProperty(VramAnalysisVM, nameof(IVramAnalysisViewModel.IsBusy));
+                refreshCmd.ObservesProperty(VramAnalysisVM, nameof(IVramAnalysisViewModel.IsBusy));
+                openFolderCmd.ObservesProperty(VramAnalysisVM, nameof(IVramAnalysisViewModel.IsBusy));
+                aboutCmd.ObservesProperty(VramAnalysisVM, nameof(IVramAnalysisViewModel.IsBusy));
             }
 
             // Also observe the IsAnyDialogOpen property on the DialogService for all global commands
@@ -607,7 +607,7 @@ namespace RimSharp.AppDir.MainPage
             }
         }
 
-        public ViewModelBase? CurrentViewModel
+        public INotifyPropertyChanged? CurrentViewModel
         {
             get => _currentViewModel;
             set => SetProperty(ref _currentViewModel, value);
@@ -624,7 +624,7 @@ namespace RimSharp.AppDir.MainPage
             if (string.IsNullOrEmpty(tabName)) return;
 
             Debug.WriteLine($"[MainViewModel] Attempting to switch tab to: {tabName}");
-            ViewModelBase? nextViewModel = tabName switch
+            INotifyPropertyChanged? nextViewModel = tabName switch
             {
                 "Mods" => ModsVM,
                 "Downloader" => DownloaderVM,

@@ -65,7 +65,7 @@ namespace RimSharp.Features.GitModManager.ViewModels
         }
     }
 
-    public class GitModsViewModel : ViewModelBase, IDisposable
+    public class GitModsViewModel : ViewModelBase, IGitModsViewModel, IDisposable
     {
         // --- Services ---
         private readonly IModService _modService;
