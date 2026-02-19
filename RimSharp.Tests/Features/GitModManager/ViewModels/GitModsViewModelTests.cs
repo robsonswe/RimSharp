@@ -66,7 +66,10 @@ namespace RimSharp.Tests.Features.GitModManager.ViewModels
 
             // Act
             vm.CheckUpdatesCommand.Execute(null!);
-            await Task.Delay(200); // Wait for async void
+            
+            // Wait for command to finish (it sets IsBusy = true then false)
+            for (int i = 0; i < 100 && !vm.IsBusy; i++) await Task.Delay(10);
+            for (int i = 0; i < 500 && vm.IsBusy; i++) await Task.Delay(10);
 
             // Assert
             vm.GitMods.First().UpdateStatus.Should().Be("2 update(s)");
@@ -87,7 +90,10 @@ namespace RimSharp.Tests.Features.GitModManager.ViewModels
 
             // Act
             vm.PullUpdatesCommand.Execute(null!);
-            await Task.Delay(200); // Wait for async void
+            
+            // Wait for command to finish
+            for (int i = 0; i < 100 && !vm.IsBusy; i++) await Task.Delay(10);
+            for (int i = 0; i < 500 && vm.IsBusy; i++) await Task.Delay(10);
 
             // Assert
             vm.GitMods.First().UpdateStatus.Should().Be("Updated successfully");

@@ -1,7 +1,9 @@
+#nullable enable
 using Microsoft.Win32;
 using RimSharp.Core.Commands;
 using RimSharp.AppDir.AppFiles;
 using RimSharp.AppDir.Dialogs;
+using RimSharp.Shared.Models;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -133,7 +135,41 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 if (result != MessageDialogResult.OK || string.IsNullOrWhiteSpace(gitUrl)) return;
                 ct.ThrowIfCancellationRequested();
 
-                var modInfo = await ValidateGitHubModRepo(gitUrl, ct);
+                ProgressDialogViewModel? progressDialog = null;
+                ModItem? modInfo = null;
+
+                try
+                {
+                    await RunOnUIThreadAsync(() =>
+                    {
+                        progressDialog = _dialogService.ShowProgressDialog(
+                            "Validating Repository",
+                            "Checking GitHub repository and fetching mod info...",
+                            canCancel: true,
+                            isIndeterminate: true,
+                            cts: null,
+                            closeable: false);
+                    });
+
+                    if (progressDialog == null) throw new InvalidOperationException("Failed to create progress dialog.");
+
+                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, progressDialog.CancellationToken);
+                    
+                    modInfo = await ValidateGitHubModRepo(gitUrl, linkedCts.Token);
+                    
+                    await RunOnUIThreadAsync(() => progressDialog.ForceClose());
+                }
+                catch (OperationCanceledException)
+                {
+                    await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
+                    throw;
+                }
+                catch (Exception)
+                {
+                    await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
+                    throw;
+                }
+
                 if (modInfo == null) return;
                 ct.ThrowIfCancellationRequested();
 
@@ -160,8 +196,37 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     return;
                 }
 
-                await Task.Run(() => CloneGitMod(gitUrl, targetDir), ct);
-                ct.ThrowIfCancellationRequested();
+                try
+                {
+                    await RunOnUIThreadAsync(() =>
+                    {
+                        progressDialog = _dialogService.ShowProgressDialog(
+                            "Cloning Repository",
+                            $"Cloning '{modInfo.Name}' to local folder...",
+                            canCancel: true,
+                            isIndeterminate: true,
+                            cts: null,
+                            closeable: false);
+                    });
+
+                    if (progressDialog == null) throw new InvalidOperationException("Failed to create progress dialog.");
+
+                    using var cloneCts = CancellationTokenSource.CreateLinkedTokenSource(ct, progressDialog.CancellationToken);
+                    
+                    await CloneGitMod(gitUrl, targetDir, cloneCts.Token);
+                    
+                    await RunOnUIThreadAsync(() => progressDialog.ForceClose());
+                }
+                catch (OperationCanceledException)
+                {
+                    await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
+                    throw;
+                }
+                catch (Exception)
+                {
+                    await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
+                    throw;
+                }
 
                 _dialogService.ShowInformation("Install Complete", $"Mod '{modInfo.Name}' was successfully installed from GitHub.");
                 _installSuccess = true;
