@@ -306,6 +306,42 @@ namespace RimSharp.Infrastructure.Dialog
             return result;
         }
 
+        public bool ShowDependencyRuleEditor(DependencyRuleEditorDialogViewModel viewModel)
+        {
+            IncrementDialogCount();
+            try
+            {
+                var dialog = new DependencyRuleEditorDialogView(viewModel)
+                {
+                    Owner = Application.Current?.MainWindow,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+                return dialog.ShowDialog() == true;
+            }
+            finally
+            {
+                DecrementDialogCount();
+            }
+        }
+
+        public bool ShowIncompatibilityRuleEditor(IncompatibilityRuleEditorDialogViewModel viewModel)
+        {
+            IncrementDialogCount();
+            try
+            {
+                var dialog = new IncompatibilityRuleEditorDialogView(viewModel)
+                {
+                    Owner = Application.Current?.MainWindow,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+                return dialog.ShowDialog() == true;
+            }
+            finally
+            {
+                DecrementDialogCount();
+            }
+        }
+
         public (bool Result, string? FilePath) ShowOpenFileDialog(string title, string filter, string initialDirectory = "")
         {
             var dialog = new OpenFileDialog

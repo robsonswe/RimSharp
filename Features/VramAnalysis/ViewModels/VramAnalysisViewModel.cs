@@ -72,10 +72,20 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
 
         public VramAnalysisViewModel(IModListManager modListManager, IDialogService dialogService, ILoggerService logger, IPathService pathService, ISystemInfoService systemInfoService)
         {
-            _modListManager = modListManager; _dialogService = dialogService; _logger = logger; _pathService = pathService; _systemInfoService = systemInfoService;
+            _modListManager = modListManager; 
+            _dialogService = dialogService; 
+            _logger = logger; 
+            _pathService = pathService; 
+            _systemInfoService = systemInfoService;
+            
             CalculateVramCommand = CreateCancellableAsyncCommand(ExecuteVramCalculationAsync, () => !IsBusy, nameof(IsBusy));
             SortCommand = CreateCommand<string>(ExecuteSortCommand);
-            _modListManager.ListChanged += OnModListChanged; LoadSystemInfo(); LoadMods();
+            
+            _modListManager.ListChanged += OnModListChanged; 
+            
+            // Background tasks
+            LoadSystemInfo(); 
+            _ = Task.Run(LoadMods);
         }
 
         private void LoadSystemInfo() { Task.Run(() => { UserVram = _systemInfoService.GetPrimaryGpuVram(); OnPropertyChanged(nameof(UserVram)); OnPropertyChanged(nameof(IsUserVramAvailable)); }); }

@@ -44,6 +44,9 @@ namespace RimSharp.AppDir.MainPage
         // Application-wide settings or state
         public PathSettings PathSettings { get; } = null!;
 
+        // Task to track path initialization
+        private Task? _pathInitializationTask;
+
         // Commands managed by MainViewModel
         public ICommand SwitchTabCommand { get; }
         public ICommand BrowsePathCommand { get; }
@@ -128,16 +131,48 @@ namespace RimSharp.AppDir.MainPage
                 DownloaderVM.DownloadCompletedAndRefreshNeeded += DownloaderVM_DownloadCompletedAndRefreshNeeded;
             }
 
-            // Initialize Path Settings
+            // Initialize Path Settings with empty values initially
             PathSettings = new PathSettings
             {
-                GamePath = _pathService.GetGamePath(),
-                ConfigPath = _pathService.GetConfigPath(),
-                ModsPath = _pathService.GetModsPath(), // Still get derived path initially
-                GameVersion = _pathService.GetGameVersion() // Get version based on initial GamePath
+                GamePath = string.Empty,
+                ConfigPath = string.Empty,
+                ModsPath = string.Empty,
+                GameVersion = "Loading..."
             };
 
             PathSettings.PropertyChanged += PathSettings_PropertyChanged;
+
+            // Load actual path settings in background to avoid blocking constructor
+            _pathInitializationTask = Task.Run(() =>
+            {
+                var gamePath = _pathService.GetGamePath();
+                var configPath = _pathService.GetConfigPath();
+                var modsPath = _pathService.GetModsPath();
+                var gameVersion = _pathService.GetGameVersion();
+
+                RunOnUIThread(() =>
+                {
+                    // Disable property changed handling while initializing to avoid multiple refreshes
+                    PathSettings.PropertyChanged -= PathSettings_PropertyChanged;
+
+                    PathSettings.GamePath = gamePath;
+                    PathSettings.ConfigPath = configPath;
+                    PathSettings.ModsPath = modsPath;
+                    PathSettings.GameVersion = gameVersion;
+
+                    PathSettings.PropertyChanged += PathSettings_PropertyChanged;
+
+                    // Manually notify that the whole PathSettings object is ready
+                    OnPropertyChanged(nameof(PathSettings));
+
+                    // Trigger drive check after initialization
+                    _ = Task.Run(() => CheckAndWarnDifferentDrives(PathSettings.GamePath));
+
+                    // Update initial CanExecute states
+                    ((DelegateCommand<string>)OpenFolderCommand).RaiseCanExecuteChanged();
+                    ((DelegateCommand<string>)BrowsePathCommand).RaiseCanExecuteChanged();
+                });
+            });
 
             if (ModsVM != null)
             {
@@ -213,7 +248,7 @@ namespace RimSharp.AppDir.MainPage
 
 
             // Initial CanExecute update for commands dependent on PathSettings properties
-            RunOnUIThread(() =>
+            ThreadHelper.EnsureUiThread(() =>
                 {
                     ((DelegateCommand<string>)OpenFolderCommand).RaiseCanExecuteChanged();
                     ((DelegateCommand<string>)BrowsePathCommand).RaiseCanExecuteChanged();
@@ -221,15 +256,28 @@ namespace RimSharp.AppDir.MainPage
 
             // Subscribe to navigation requests
             _navigationService.TabSwitchRequested += OnTabSwitchRequested;
-
-            // Initial drive check on startup if GamePath is already set
-            CheckAndWarnDifferentDrives(PathSettings.GamePath);
         }
         // --- END Constructor ---
 
         public async Task OnMainWindowLoadedAsync()
         {
             Debug.WriteLine("[MainViewModel] Main window has loaded. Starting initial tasks.", "OnMainWindowLoadedAsync");
+
+            // Wait for path initialization to complete first
+            if (_pathInitializationTask != null)
+            {
+                await _pathInitializationTask;
+                Debug.WriteLine("[MainViewModel] Path initialization complete.", "OnMainWindowLoadedAsync");
+            }
+
+            // Check if paths are configured - if not, prompt user on first run
+            if (string.IsNullOrEmpty(PathSettings.GamePath) || string.IsNullOrEmpty(PathSettings.ConfigPath))
+            {
+                Debug.WriteLine("[MainViewModel] Paths not configured. Showing first-run dialog.", "OnMainWindowLoadedAsync");
+                _dialogService.ShowInformation("Welcome to RimSharp",
+                    "It looks like this is your first time using RimSharp, or your configuration paths are missing.\n\n" +
+                    "Please configure the game path and config path in the Settings dialog to get started.");
+            }
 
             // Create a progress reporter for the splash screen
             var initialProgress = new Progress<(int current, int total, string message)>(update =>
@@ -240,23 +288,32 @@ namespace RimSharp.AppDir.MainPage
             // Create a list to hold all startup tasks
             var startupTasks = new List<Task>();
 
-            // Add the mod list initialization to the tasks
-            if (ModsVM != null)
+            // Add the mod list initialization to the tasks - only if paths are configured
+            if (ModsVM != null && !string.IsNullOrEmpty(PathSettings.GamePath))
             {
                 startupTasks.Add(ModsVM.InitializeAsync(initialProgress));
             }
+            else
+            {
+                IsInitialLoading = false;
+            }
 
-            // Add the update check to the tasks
-            startupTasks.Add(CheckForUpdateAsync());
+            // Add the update check to the tasks - only if paths are configured
+            if (!string.IsNullOrEmpty(PathSettings.GamePath))
+            {
+                startupTasks.Add(CheckForUpdateAsync());
+            }
 
             // If other ViewModels also need delayed initialization, add them here.
             // For example:
             // if (DownloaderVM != null) { startupTasks.Add(DownloaderVM.InitializeAsync()); }
 
             // Await all tasks to complete. This allows them to run concurrently.
-            await Task.WhenAll(startupTasks);
-
-            IsInitialLoading = false;
+            if (startupTasks.Count > 0)
+            {
+                await Task.WhenAll(startupTasks);
+                IsInitialLoading = false;
+            }
 
             Debug.WriteLine("[MainViewModel] All initial tasks complete.", "OnMainWindowLoadedAsync");
         }
@@ -343,13 +400,12 @@ namespace RimSharp.AppDir.MainPage
                 case nameof(PathSettings.GamePath):
                     key = "game_folder";
                     value = PathSettings.GamePath;
-                    potentiallyChangedGamePath = value; // Capture the new game path
+                    potentiallyChangedGamePath = value;
 
-                    // Update related properties
+                    // Update related properties without re-triggering path refresh
                     PathSettings.GameVersion = _pathService.GetGameVersion(value ?? string.Empty);
-                    // *** Derive and update ModsPath ***
                     PathSettings.ModsPath = string.IsNullOrEmpty(value) ? string.Empty : Path.Combine(value, "Mods");
-                    refreshNeeded = true; // Game path change requires full refresh
+                    refreshNeeded = !string.IsNullOrEmpty(value); 
                     pathSettingsChanged = true;
                     break;
                 case nameof(PathSettings.ConfigPath):

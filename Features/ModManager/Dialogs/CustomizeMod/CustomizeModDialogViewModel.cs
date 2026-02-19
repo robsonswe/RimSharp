@@ -84,6 +84,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
     public class CustomizeModDialogViewModel : DialogViewModelBase<ModCustomizationResult>
     {
         private readonly IModService _modService;
+        private readonly IDialogService _dialogService;
         private readonly ModItem _mod;
         private ModCustomInfo _customInfo;
 
@@ -197,11 +198,12 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         public ICommand EditIncompatibilityCommand { get; }
         public ICommand RemoveIncompatibilityCommand { get; }
 
-        public CustomizeModDialogViewModel(ModItem mod, ModCustomInfo customInfo, IModService modService)
+        public CustomizeModDialogViewModel(ModItem mod, ModCustomInfo customInfo, IModService modService, IDialogService dialogService)
             : base($"Customize Mod: {mod.Name}")
         {
             _mod = mod ?? throw new ArgumentNullException(nameof(mod));
             _modService = modService ?? throw new ArgumentNullException(nameof(modService));
+            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
             _customInfo = customInfo ?? new ModCustomInfo();
 
             // Determine original data by subtracting custom rules from the merged mod data
@@ -454,17 +456,15 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             // Check if already in LoadBefore
             if (_originalLoadBefore.Contains(packageId) || CustomLoadBefore.Any(x => x.PackageId == packageId))
             {
-                MessageBox.Show($"Package ID '{packageId}' already exists in the Load Before list.",
-                    "Duplicate Entry", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _dialogService.ShowWarning("Duplicate Entry", $"Package ID '{packageId}' already exists in the Load Before list.");
                 return false;
             }
 
             // Check if in other lists
             if (IsPackageIdInOtherLists(packageId, "LoadBefore"))
             {
-                MessageBox.Show($"Package ID '{packageId}' already exists in another list. " +
-                    "A package ID cannot be in multiple lists.",
-                    "Rule Conflict", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list. " +
+                    "A package ID cannot be in multiple lists.");
                 return false;
             }
 
@@ -479,17 +479,15 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             // Check if already in LoadAfter
             if (_originalLoadAfter.Contains(packageId) || CustomLoadAfter.Any(x => x.PackageId == packageId))
             {
-                MessageBox.Show($"Package ID '{packageId}' already exists in the Load After list.",
-                    "Duplicate Entry", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _dialogService.ShowWarning("Duplicate Entry", $"Package ID '{packageId}' already exists in the Load After list.");
                 return false;
             }
 
             // Check if in other lists
             if (IsPackageIdInOtherLists(packageId, "LoadAfter"))
             {
-                MessageBox.Show($"Package ID '{packageId}' already exists in another list. " +
-                    "A package ID cannot be in multiple lists.",
-                    "Rule Conflict", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list. " +
+                    "A package ID cannot be in multiple lists.");
                 return false;
             }
 
@@ -504,17 +502,15 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             // Check if already in IncompatibleWith
             if (_originalIncompatibilities.Contains(packageId) || CustomIncompatibilities.Any(x => x.PackageId == packageId))
             {
-                MessageBox.Show($"Package ID '{packageId}' already exists in the Incompatible With list.",
-                    "Duplicate Entry", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _dialogService.ShowWarning("Duplicate Entry", $"Package ID '{packageId}' already exists in the Incompatible With list.");
                 return false;
             }
 
             // Check if in other lists
             if (IsPackageIdInOtherLists(packageId, "IncompatibleWith"))
             {
-                MessageBox.Show($"Package ID '{packageId}' already exists in another list. " +
-                    "A package ID cannot be in multiple lists.",
-                    "Rule Conflict", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list. " +
+                    "A package ID cannot be in multiple lists.");
                 return false;
             }
 
@@ -528,8 +524,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         private void AddLoadBefore()
         {
             var dialogViewModel = new DependencyRuleEditorDialogViewModel("Add Load Before Rule");
-            var dialog = new DependencyRuleEditorDialogView(dialogViewModel);
-            if (dialog.ShowDialog() == true)
+            if (_dialogService.ShowDependencyRuleEditor(dialogViewModel))
             {
                 // Validate the package ID before adding
                 if (!ValidateLoadBefore(dialogViewModel.PackageId))
@@ -558,8 +553,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                 DisplayName = SelectedLoadBeforeRule.DisplayName,
                 Comment = SelectedLoadBeforeRule.Comment
             };
-            var dialog = new DependencyRuleEditorDialogView(dialogViewModel);
-            if (dialog.ShowDialog() == true)
+            if (_dialogService.ShowDependencyRuleEditor(dialogViewModel))
             {
                 // If the package ID changed, validate it
                 if (dialogViewModel.PackageId != SelectedLoadBeforeRule.PackageId)
@@ -586,8 +580,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         private void AddLoadAfter()
         {
             var dialogViewModel = new DependencyRuleEditorDialogViewModel("Add Load After Rule");
-            var dialog = new DependencyRuleEditorDialogView(dialogViewModel);
-            if (dialog.ShowDialog() == true)
+            if (_dialogService.ShowDependencyRuleEditor(dialogViewModel))
             {
                 // Validate the package ID before adding
                 if (!ValidateLoadAfter(dialogViewModel.PackageId))
@@ -616,8 +609,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                 DisplayName = SelectedLoadAfterRule.DisplayName,
                 Comment = SelectedLoadAfterRule.Comment
             };
-            var dialog = new DependencyRuleEditorDialogView(dialogViewModel);
-            if (dialog.ShowDialog() == true)
+            if (_dialogService.ShowDependencyRuleEditor(dialogViewModel))
             {
                 // If the package ID changed, validate it
                 if (dialogViewModel.PackageId != SelectedLoadAfterRule.PackageId)
@@ -644,8 +636,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         private void AddIncompatibility()
         {
             var dialogViewModel = new IncompatibilityRuleEditorDialogViewModel("Add Incompatibility Rule");
-            var dialog = new IncompatibilityRuleEditorDialogView(dialogViewModel);
-            if (dialog.ShowDialog() == true)
+            if (_dialogService.ShowIncompatibilityRuleEditor(dialogViewModel))
             {
                 // Validate the package ID before adding
                 if (!ValidateIncompatibility(dialogViewModel.PackageId))
@@ -676,8 +667,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                 Comment = SelectedIncompatibilityRule.Comment,
                 HardIncompatibility = SelectedIncompatibilityRule.HardIncompatibility
             };
-            var dialog = new IncompatibilityRuleEditorDialogView(dialogViewModel);
-            if (dialog.ShowDialog() == true)
+            if (_dialogService.ShowIncompatibilityRuleEditor(dialogViewModel))
             {
                 // If the package ID changed, validate it
                 if (dialogViewModel.PackageId != SelectedIncompatibilityRule.PackageId)

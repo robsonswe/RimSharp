@@ -52,14 +52,14 @@ using RimSharp.Infrastructure.Workshop.Download.Parsing;
 using RimSharp.Infrastructure.Workshop.Download.Processing;
 using RimSharp.Infrastructure.Workshop.Download.Models;
 using System.Threading;
+using System.Threading.Tasks;
 using RimSharp.AppDir.Dialogs;
-using RimSharp.Core.Services;
-
-
-using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Linq;
 using PInvoke;
+
+// --- Core Services ---
+using RimSharp.Core.Services;
 
 namespace RimSharp.AppDir.AppFiles
 {
@@ -70,20 +70,11 @@ namespace RimSharp.AppDir.AppFiles
 
         private static bool _ownsMutex = false;
 
-        public IServiceProvider ServiceProvider { get; private set; }
-        private ILoggerService _logger;
+        public IServiceProvider? ServiceProvider { get; private set; }
+        private ILoggerService? _logger;
 
         public App()
         {
-            // Initialize services FIRST, including the logger
-            var services = new ServiceCollection();
-            ConfigureServices(services);
-            ServiceProvider = services.BuildServiceProvider();
-
-            // Get the logger service AFTER the provider is built
-            _logger = ServiceProvider.GetRequiredService<ILoggerService>();
-            _logger.LogInfo("Application object created. Service Provider built.", "App");
-
             // Optional: Setup global exception handler
             this.DispatcherUnhandledException += App_DispatcherUnhandledException;
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
@@ -91,16 +82,21 @@ namespace RimSharp.AppDir.AppFiles
 
         private void ConfigureServices(IServiceCollection services)
         {
-            _logger?.LogInfo("Starting service configuration.", "App.ConfigureServices"); // Added log
-
+            // --- Base Infrastructure & Configuration ---
+            services.AddSingleton<ILoggerService, LoggerService>();
+            services.AddSingleton<IConfigService, ConfigService>(provider => new ConfigService());
+            services.AddSingleton<IDialogService, DialogService>();
+            services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
+            services.AddSingleton<ISystemInfoService, SystemInfoService>();
+            services.AddSingleton<IGitService, GitService>();
 
             services.AddSingleton<string>(provider =>
             {
                 var basePath = AppDomain.CurrentDomain.BaseDirectory;
-                provider.GetRequiredService<ILoggerService>()?.LogDebug($"Application base path registered: {basePath}", "App.ConfigureServices");
                 return basePath;
             });
 
+            services.AddHttpClient(); // Registers IHttpClientFactory
 
             services.AddSingleton<IDataUpdateService>(provider =>
                    new DataUpdateService(
@@ -109,13 +105,6 @@ namespace RimSharp.AppDir.AppFiles
                        provider.GetRequiredService<System.Net.Http.IHttpClientFactory>().CreateClient()
                    )
                );
-            // --- Base Infrastructure & Configuration ---
-            services.AddSingleton<ILoggerService, LoggerService>();
-            services.AddSingleton<IConfigService, ConfigService>();
-            services.AddSingleton<IDialogService, DialogService>();
-            services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
-            services.AddSingleton<ISystemInfoService, SystemInfoService>();
-            services.AddSingleton<IGitService, GitService>();
 
 
             services.AddSingleton<IPathService, PathService>(provider =>
@@ -124,8 +113,6 @@ namespace RimSharp.AppDir.AppFiles
             services.AddSingleton(provider =>
             {
                 var configService = provider.GetRequiredService<IConfigService>();
-                var logger = provider.GetService<ILoggerService>();
-                logger?.LogDebug("Retrieving path settings from config.", "App.ConfigureServices");
                 var pathSettings = new PathSettings
                 {
                     GamePath = configService.GetConfigValue("game_folder"),
@@ -133,7 +120,6 @@ namespace RimSharp.AppDir.AppFiles
                     ConfigPath = configService.GetConfigValue("config_folder"),
                     GameVersion = "1.5" // Consider making this configurable too
                 };
-                logger?.LogDebug($"Path Settings retrieved: Game='{pathSettings.GamePath}', Mods='{pathSettings.ModsPath}', Config='{pathSettings.ConfigPath}'", "App.ConfigureServices");
                 return pathSettings;
             });
 
@@ -178,7 +164,6 @@ namespace RimSharp.AppDir.AppFiles
                 ));
             services.AddSingleton<IModListManager>(provider => // Ensure Singleton if needed
             {
-                _logger?.LogDebug("Creating IModListManager instance.", "App.ConfigureServices");
                 return new ModListManager(
                     // Pass the required service instance
                     provider.GetRequiredService<IModDictionaryService>()
@@ -199,7 +184,6 @@ namespace RimSharp.AppDir.AppFiles
             // --- Workshop Downloader Feature Services ---
             services.AddSingleton<IWebNavigationService, WebNavigationService>();
             services.AddSingleton<IDownloadQueueService, DownloadQueueService>();
-            services.AddHttpClient(); // Registers IHttpClientFactory
             services.AddSingleton<IUpdaterService, UpdaterService>(); // <<< ADDED
             services.AddSingleton<IAppUpdaterService, AppUpdaterService>();
             services.AddSingleton<ISteamApiClient, SteamApiClient>();
@@ -209,7 +193,6 @@ namespace RimSharp.AppDir.AppFiles
             // --- ModListIOService Registration UPDATED ---
             services.AddSingleton<IModListIOService>(provider =>
             {
-                _logger?.LogDebug("Creating IModListIOService instance.", "App.ConfigureServices");
                 return new ModListIOService(
                    provider.GetRequiredService<IPathService>(),
                    provider.GetRequiredService<IModListManager>(),
@@ -343,9 +326,7 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<VramAnalysisViewModel>()
                 ));
 
-            // --- Application Shell ---
             services.AddSingleton<MainWindow>();
-            _logger?.LogInfo("Service configuration finished.", "App.ConfigureServices");
         }
 
         protected override async void OnStartup(StartupEventArgs e)
@@ -376,14 +357,26 @@ namespace RimSharp.AppDir.AppFiles
             }
 
             base.OnStartup(e);
-            ThreadHelper.Initialize();
-            _logger!.LogInfo("Application starting up...", "App.OnStartup");
-
+            
             try
             {
+                // Initialize services
+                var services = new ServiceCollection();
+                ConfigureServices(services);
+                ServiceProvider = services.BuildServiceProvider();
+                _logger = ServiceProvider.GetRequiredService<ILoggerService>();
+                
+                ThreadHelper.Initialize();
+                _logger.LogInfo("Application starting up - Initializing UI Components", "App.OnStartup");
+
                 // --- Step 1: Get all the necessary instances from the DI container ---
+                _logger.LogDebug("Resolving MainWindow", "App.OnStartup");
                 var mainWindow = ServiceProvider.GetRequiredService<MainWindow>();
+                
+                _logger.LogDebug("Resolving MainViewModel", "App.OnStartup");
                 var mainViewModel = ServiceProvider.GetRequiredService<MainViewModel>();
+                
+                _logger.LogDebug("Resolving IDataUpdateService", "App.OnStartup");
                 var dataUpdater = ServiceProvider.GetRequiredService<IDataUpdateService>();
 
                 // --- Step 2: Wire everything up BEFORE showing anything ---
@@ -395,28 +388,31 @@ namespace RimSharp.AppDir.AppFiles
                 Application.Current.MainWindow = mainWindow;
                 _logger.LogInfo("Main window and ViewModel created and wired up.", "App.OnStartup");
 
-                // --- Step 3: Perform the silent data update check ---
-                try
-                {
-                    await dataUpdater.CheckForAndApplyUpdatesAsync(new Progress<DataUpdateProgress>(), CancellationToken.None);
-                }
-                catch (Exception updateEx)
-                {
-                    _logger.LogWarning($"Failed to update data files on startup (this is okay if offline): {updateEx.Message}", "App.OnStartup");
-                }
-
-                // --- Step 4: Hook into the Loaded event to trigger the ViewModel's data load ---
-                // We do this here, where we have access to both the window and the viewmodel.
-                // This is a one-time event subscription.
+                // --- Step 3: Trigger the ViewModel's data load ---
+                // Wait for the window to be loaded before starting the heavy mod loading logic.
+                // Subscribe BEFORE showing to avoid missing the event if it fires immediately.
                 mainWindow.Loaded += async (sender, args) =>
                 {
-                    // The MainViewModel is already available via closure.
+                    _logger.LogInfo("MainWindow.Loaded event fired. Triggering data load.", "App.OnStartup");
                     await mainViewModel.OnMainWindowLoadedAsync();
                 };
 
-                // --- Step 5: Show the window. The Loaded event will fire after this. ---
+                // --- Step 4: Show the window IMMEDIATELY ---
                 mainWindow.Show();
-                _logger.LogInfo("MainWindow shown. Waiting for Loaded event to trigger data load.", "App.OnStartup");
+                _logger.LogInfo("MainWindow shown. Proceeding with background updates.", "App.OnStartup");
+
+                // --- Step 5: Perform the silent data update check in background ---
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await dataUpdater.CheckForAndApplyUpdatesAsync(new Progress<DataUpdateProgress>(), CancellationToken.None);
+                    }
+                    catch (Exception updateEx)
+                    {
+                        _logger.LogWarning($"Failed to update data files on startup (this is okay if offline): {updateEx.Message}", "App.OnStartup");
+                    }
+                });
             }
             catch (Exception ex)
             {
