@@ -15,6 +15,7 @@ using RimSharp.AppDir.AppFiles;
 using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
+using RimSharp.Core.Extensions;
 using System.Collections;
 using RimSharp.Infrastructure.Workshop.Download.Models;
 using RimSharp.Features.WorkshopDownloader.Dialogs.Collection;
@@ -101,12 +102,10 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             });
         }
 
-        // Helper to run actions on the UI thread if necessary (implement using Dispatcher or SynchronizationContext)
+        // Helper to run actions on the UI thread if necessary
         private void RunOnUIThread(Action action)
         {
-            // Example using Application.Current.Dispatcher for WPF:
-            System.Windows.Application.Current?.Dispatcher?.Invoke(action);
-            // Or use appropriate mechanism for your UI framework (e.g., SynchronizationContext.Post/Send)
+            ThreadHelper.EnsureUiThread(action);
         }
 
 

@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,9 +12,9 @@ namespace RimSharp.Infrastructure.Configuration
         private readonly string _configPath;
         private readonly Dictionary<string, string> _configValues = new();
 
-        public ConfigService()
+        public ConfigService(string? configPath = null)
         {
-            _configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.cfg");
+            _configPath = configPath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.cfg");
             LoadConfig();
         }
 
