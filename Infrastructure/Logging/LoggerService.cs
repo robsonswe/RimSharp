@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Diagnostics;
 using System.Globalization;
@@ -12,12 +13,14 @@ namespace RimSharp.Infrastructure.Logging
     public class LoggerService : ILoggerService
     {
         private readonly IConfigService _configService;
+        private readonly string _appBasePath;
         private readonly ReaderWriterLockSlim _lock = new ReaderWriterLockSlim();
         private DateTime _currentLogDate = DateTime.MinValue;
 
-        public LoggerService(IConfigService configService)
+        public LoggerService(IConfigService configService, string? appBasePath = null)
         {
             _configService = configService;
+            _appBasePath = appBasePath ?? AppDomain.CurrentDomain.BaseDirectory;
         }
 
         public void Log(LogLevel level, string message, string module = "General")
@@ -38,7 +41,7 @@ namespace RimSharp.Infrastructure.Logging
         public void LogError(string message, string module = "General") => Log(LogLevel.Error, message, module);
         public void LogCritical(string message, string module = "General") => Log(LogLevel.Critical, message, module);
 
-        public void LogException(Exception ex, string message = null, string module = "General")
+        public void LogException(Exception ex, string? message = null, string module = "General")
         {
             var fullMessage = message != null
                 ? $"{message}\nException: {ex}\nStackTrace: {ex.StackTrace}"
@@ -97,8 +100,7 @@ namespace RimSharp.Infrastructure.Logging
             }
 
             // Default to application base directory + Logs
-            var appBaseDir = AppDomain.CurrentDomain.BaseDirectory;
-            return Path.Combine(appBaseDir, "Logs");
+            return Path.Combine(_appBasePath, "Logs");
         }
 
         private void ClearOldLogs(string logsDirectory, string module)
