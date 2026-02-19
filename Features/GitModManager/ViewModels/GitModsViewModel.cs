@@ -144,7 +144,7 @@ namespace RimSharp.Features.GitModManager.ViewModels
             OpenGitHubRepoCommand = CreateCommand<string>(OpenGitHubRepo, CanOpenGitHubRepo);
 
             _modListManager.ListChanged += HandleModListChanged;
-            LoadGitMods();
+            _ = Task.Run(LoadGitMods);
         }
 
         // --- CanExecute Predicates ---

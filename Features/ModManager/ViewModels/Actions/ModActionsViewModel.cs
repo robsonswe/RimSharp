@@ -535,7 +535,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 {
                     // Create ViewModel (safe on UI thread)
                     // The customInfo variable is correctly passed as a nullable type.
-                    viewModel = new CustomizeModDialogViewModel(mod, customInfo, _modService);
+                    viewModel = new CustomizeModDialogViewModel(mod, customInfo, _modService, _dialogService);
 
                     Debug.WriteLine("Showing customize dialog on UI thread...");
 

@@ -35,6 +35,8 @@ namespace RimSharp.Shared.Services.Contracts
         MissingModSelectionDialogOutput ShowMissingModSelectionDialog(MissingModSelectionDialogViewModel viewModel);
         List<string>? ShowCollectionDialog(CollectionDialogViewModel viewModel);
         (bool, IEnumerable<string>?) ShowStripModsDialog(StripDialogViewModel viewModel);
+        bool ShowDependencyRuleEditor(DependencyRuleEditorDialogViewModel viewModel);
+        bool ShowIncompatibilityRuleEditor(IncompatibilityRuleEditorDialogViewModel viewModel);
         (bool Result, string? FilePath) ShowOpenFileDialog(string title, string filter, string initialDirectory = "");
         (bool Result, string? FilePath) ShowSaveFileDialog(string title, string filter, string initialDirectory = "", string defaultExt = "", string defaultFileName = "");
 
