@@ -18,7 +18,7 @@ using RimSharp.Shared.Services.Contracts;
 
 namespace RimSharp.Features.VramAnalysis.ViewModels
 {
-    public class VramAnalysisViewModel : ViewModelBase
+    public class VramAnalysisViewModel : ViewModelBase, IVramAnalysisViewModel
     {
         private readonly IModListManager _modListManager;
         private readonly IDialogService _dialogService;

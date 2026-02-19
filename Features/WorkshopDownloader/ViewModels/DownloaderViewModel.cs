@@ -16,7 +16,7 @@ using RimSharp.Features.WorkshopDownloader.ViewModels;
 
 namespace RimSharp.Features.WorkshopDownloader.ViewModels
 {
-    public class DownloaderViewModel : ViewModelBase, IDisposable
+    public class DownloaderViewModel : ViewModelBase, IDownloaderViewModel, IDisposable
     {
         public BrowserViewModel BrowserViewModel { get; }
         public DownloadQueueViewModel QueueViewModel { get; }

@@ -17,7 +17,7 @@ using System.Windows.Input; // For CommandManager
 
 namespace RimSharp.Features.ModManager.ViewModels
 {
-    public class ModsViewModel : ViewModelBase, IDisposable
+    public class ModsViewModel : ViewModelBase, IDisposable, IModsViewModel
     {
         // --- Services ---
         private readonly IModDataService _dataService;
