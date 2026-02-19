@@ -7,6 +7,8 @@ namespace RimSharp.Shared.JsonConverters
 {
     public class StringOrStringListConverter : JsonConverter<List<string>>
     {
+        public override bool HandleNull => true;
+
         public override List<string> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             if (reader.TokenType == JsonTokenType.String)
