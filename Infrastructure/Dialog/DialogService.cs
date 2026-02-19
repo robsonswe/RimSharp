@@ -1,5 +1,6 @@
 #nullable enable
 using System.Windows;
+using Microsoft.Win32;
 using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
@@ -303,6 +304,35 @@ namespace RimSharp.Infrastructure.Dialog
                 }
             });
             return result;
+        }
+
+        public (bool Result, string? FilePath) ShowOpenFileDialog(string title, string filter, string initialDirectory = "")
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = title,
+                Filter = filter,
+                InitialDirectory = initialDirectory,
+                CheckFileExists = true
+            };
+
+            bool? result = dialog.ShowDialog(Application.Current?.MainWindow);
+            return (result == true, dialog.FileName);
+        }
+
+        public (bool Result, string? FilePath) ShowSaveFileDialog(string title, string filter, string initialDirectory = "", string defaultExt = "", string defaultFileName = "")
+        {
+            var dialog = new SaveFileDialog
+            {
+                Title = title,
+                Filter = filter,
+                InitialDirectory = initialDirectory,
+                DefaultExt = defaultExt,
+                FileName = defaultFileName
+            };
+
+            bool? result = dialog.ShowDialog(Application.Current?.MainWindow);
+            return (result == true, dialog.FileName);
         }
 
         public void ShowAboutDialog()

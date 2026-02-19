@@ -233,8 +233,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 // Assuming ExportModListAsync now accepts and respects CancellationToken
                 await _ioService.ExportModListAsync(activeModsToExport); // TODO: Update IModListIOService if cancellation needed
                 ct.ThrowIfCancellationRequested();
-                // Show success message on UI thread
-                RunOnUIThread(() => _dialogService.ShowInformation("Export Complete", "Active mod list exported successfully."));
             }
             catch (OperationCanceledException)
             {
