@@ -11,6 +11,7 @@ using RimSharp.AppDir.AppFiles;
 using RimSharp.Infrastructure.Configuration;
 using RimSharp.Infrastructure.Dialog;
 using RimSharp.Infrastructure.Logging;
+using RimSharp.Infrastructure.Data;
 using RimSharp.Core.Extensions; // For ThreadHelper
 
 // --- Shared Contracts & Models ---
@@ -104,7 +105,8 @@ namespace RimSharp.AppDir.AppFiles
             services.AddSingleton<IDataUpdateService>(provider =>
                    new DataUpdateService(
                        provider.GetRequiredService<ILoggerService>(),
-                       provider.GetRequiredService<string>() // This injects the appBasePath
+                       provider.GetRequiredService<string>(), // This injects the appBasePath
+                       provider.GetRequiredService<System.Net.Http.IHttpClientFactory>().CreateClient()
                    )
                );
             // --- Base Infrastructure & Configuration ---

@@ -78,7 +78,7 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
             // Assert
             result.SuccessfullyAdded.Should().Be(0);
             result.AlreadyQueued.Should().Be(1);
-            _mockSteamApiClient.DidNotReceive().GetFileDetailsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+            _ = _mockSteamApiClient.DidNotReceive().GetFileDetailsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         }
 
         [Fact]

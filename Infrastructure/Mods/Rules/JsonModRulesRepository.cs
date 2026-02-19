@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using RimSharp.Infrastructure.Data;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 

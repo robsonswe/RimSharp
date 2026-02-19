@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Xml.Linq;
 using RimSharp.Infrastructure.Logging; // Assuming ILoggerService is here
+using RimSharp.Infrastructure.Data;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 
