@@ -169,8 +169,6 @@ namespace RimSharp.AppDir.MainPage
                     _ = Task.Run(() => CheckAndWarnDifferentDrives(PathSettings.GamePath));
 
                     // Update initial CanExecute states
-                    ((DelegateCommand<string>)OpenFolderCommand).RaiseCanExecuteChanged();
-                    ((DelegateCommand<string>)BrowsePathCommand).RaiseCanExecuteChanged();
                 });
             });
 
