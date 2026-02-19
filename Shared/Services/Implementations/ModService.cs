@@ -919,7 +919,7 @@ namespace RimSharp.Shared.Services.Implementations
             }
         }
 
-        private ModItem ParseAboutXml(string aboutPath, string folderName = null)
+        private ModItem? ParseAboutXml(string aboutPath, string? folderName = null)
         {
             try
             {
@@ -943,13 +943,13 @@ namespace RimSharp.Shared.Services.Implementations
                     .ToList() ?? new List<VersionSupport>();
 
 
-                string urlFromXml = root.Element("url")?.Value?.Trim(); // Trim whitespace from the input.
-                string validatedUrl = null;
+                string? urlFromXml = root.Element("url")?.Value?.Trim(); // Trim whitespace from the input.
+                string? validatedUrl = null;
 
                 if (!string.IsNullOrWhiteSpace(urlFromXml))
                 {
                     // First, check if the string is already a well-formed absolute URI with a web scheme.
-                    if (Uri.TryCreate(urlFromXml, UriKind.Absolute, out Uri uriResult) &&
+                    if (Uri.TryCreate(urlFromXml, UriKind.Absolute, out Uri? uriResult) &&
                         (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps))
                     {
                         validatedUrl = urlFromXml; // The URL is valid as-is.
@@ -959,7 +959,7 @@ namespace RimSharp.Shared.Services.Implementations
                     // This correctly rejects single-word strings like "none".
                     else if (!urlFromXml.Contains("://") && urlFromXml.Contains("."))
                     {
-                        if (Uri.TryCreate("http://" + urlFromXml, UriKind.Absolute, out Uri tempUri) && tempUri.Host.Equals(urlFromXml, StringComparison.OrdinalIgnoreCase))
+                        if (Uri.TryCreate("http://" + urlFromXml, UriKind.Absolute, out Uri? tempUri) && tempUri.Host.Equals(urlFromXml, StringComparison.OrdinalIgnoreCase))
                         {
                             validatedUrl = "http://" + urlFromXml; // Prepend scheme to make it navigable.
                         }
@@ -968,16 +968,16 @@ namespace RimSharp.Shared.Services.Implementations
 
                 var mod = new ModItem
                 {
-                    Name = name,
-                    PackageId = root.Element("packageId")?.Value,
+                    Name = name ?? "Unknown Mod",
+                    PackageId = root.Element("packageId")?.Value ?? string.Empty,
                     Authors = root.Element("author")?.Value ??
-                              string.Join(", ", root.Element("authors")?.Elements("li").Select(x => x.Value) ?? Array.Empty<string>()),
-                    Description = root.Element("description")?.Value,
+                              string.Join(", ", root.Element("authors")?.Elements("li").Select(x => x.Value?.Trim()).Where(v => v != null) ?? Array.Empty<string>()),
+                    Description = root.Element("description")?.Value ?? string.Empty,
                     ModVersion = root.Element("modVersion")?.Value,
                     ModIconPath = root.Element("modIconPath")?.Value,
                     Url = validatedUrl,
                     SupportedVersions = supportedVersions,
-                    PreviewImagePath = File.Exists(previewImagePath) ? previewImagePath : null,
+                    PreviewImagePath = (previewImagePath != null && File.Exists(previewImagePath)) ? previewImagePath : null,
                 };
 
                 mod.ModDependencies = root.Element("modDependencies")?.Elements("li")
