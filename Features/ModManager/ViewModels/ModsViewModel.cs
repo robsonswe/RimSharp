@@ -189,11 +189,11 @@ namespace RimSharp.Features.ModManager.ViewModels
 
 
         }
-        public async Task InitializeAsync()
+        public async Task InitializeAsync(IProgress<(int current, int total, string message)>? progress = null)
         {
             // This is the new entry point for the initial data load.
             // It will be called by MainViewModel after the main window is visible.
-            await LoadDataAsync(CancellationToken.None, true);
+            await LoadDataAsync(CancellationToken.None, true, progress);
         }
         // --- Event Handlers from Children ---
 
@@ -300,7 +300,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             Debug.WriteLine("[ModsViewModel - RefreshDataAsync] Refresh complete.");
         }
 
-        private async Task LoadDataAsync(CancellationToken ct = default, bool isInitialLoad = false)
+        private async Task LoadDataAsync(CancellationToken ct = default, bool isInitialLoad = false, IProgress<(int current, int total, string message)>? externalProgress = null)
         {
             if (IsLoading) return; // Prevent re-entrancy
 
@@ -325,30 +325,58 @@ namespace RimSharp.Features.ModManager.ViewModels
                     {
                         // Pass a new CTS linked to the incoming token for the dialog
                         var dialogCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                        progressDialog = _dialogService.ShowProgressDialog("Loading Mods", "Initializing...", false, true, dialogCts, false);
-                        // Handle cancellation from dialog if needed: progressDialog.Cancelled += (s,e) => { /* maybe log */ };
+                        // Use determinate progress (isIndeterminate: false) for better feedback
+                        progressDialog = _dialogService.ShowProgressDialog("Loading Mods", "Initializing...", false, false, dialogCts, false);
                     });
                 }
 
                 // Check for cancellation after showing dialog
                 ct.ThrowIfCancellationRequested();
 
+                // Setup Progress Reporter
+                var progressReporter = new Progress<(int current, int total, string message)>(update =>
+                {
+                    RunOnUIThread(() =>
+                    {
+                        if (progressDialog != null)
+                        {
+                            progressDialog.Message = update.message;
+                            progressDialog.Progress = (int)((double)update.current / update.total * 100);
+                        }
+                        
+                        // Also report to external progress (splash screen) if available
+                        externalProgress?.Report(update);
+                        
+                        LoadingMessage = update.message;
+                    });
+                });
 
-                // Load data (as before), passing token if service methods support it
-                string msg = "Loading game and mods data...";
-                LoadingMessage = msg;
-                if (progressDialog != null) progressDialog.Message = msg;
-
+                // Load data (as before), passing token and progress
                 // Assuming services support cancellation or Task.Run respects it
-                var allMods = await Task.Run(async () => await _dataService.LoadAllModsAsync(), ct);
+                var allMods = await _dataService.LoadAllModsAsync(progressReporter);
                 ct.ThrowIfCancellationRequested();
+                
+                string msg = "Syncing active mods...";
+                RunOnUIThread(() =>
+                {
+                    if (progressDialog != null) progressDialog.Message = msg;
+                    // For splash screen during final phase
+                    if (isInitialLoad) externalProgress?.Report((98, 100, msg));
+                });
+                
                 var activeIdsFromConfig = await Task.Run(() => _dataService.LoadActiveModIdsFromConfig(), ct);
                 ct.ThrowIfCancellationRequested();
 
 
-                msg = "Initializing mod list...";
-                LoadingMessage = msg;
-                if (progressDialog != null) progressDialog.Message = msg;
+                RunOnUIThread(() =>
+                {
+                    if (progressDialog != null)
+                    {
+                        progressDialog.Message = "Initializing UI...";
+                        progressDialog.Progress = 99;
+                    }
+                    if (isInitialLoad) externalProgress?.Report((99, 100, "Initializing UI..."));
+                });
 
                 // ModListManager initialization MUST happen before FilterService is updated.
                 // Assuming Initialize is synchronous or handles cancellation internally if async

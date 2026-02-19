@@ -1,4 +1,6 @@
+#nullable enable
 using RimSharp.Shared.Models;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -31,7 +33,7 @@ namespace RimSharp.Shared.Services.Contracts
         /// This operation allows the calling thread to continue while loading occurs.
         /// </summary>
         /// <returns>A <see cref="Task"/> representing the asynchronous loading operation.</returns>
-        Task LoadModsAsync();
+        Task LoadModsAsync(IProgress<(int current, int total, string message)>? progress = null);
         
         /// <summary>
         /// Creates the DateStamp and timestamp.txt files for a successfully downloaded mod

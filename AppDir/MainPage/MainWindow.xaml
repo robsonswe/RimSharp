@@ -291,23 +291,18 @@
 
         
 
-                            <!-- Custom Progress Bar -->
-
-        
-
-                            <ProgressBar IsIndeterminate="{Binding IsAppLoading}" 
-
-        
-
-                                         Style="{StaticResource RimworldProgressBarStyle}"
-
-        
-
-                                         Height="10" 
-
-        
-
-                                         Margin="0,0,0,15"/>
+                                                        <!-- Custom Progress Bar -->
+                            
+                                                        <ProgressBar IsIndeterminate="False" 
+                            
+                                                                     Value="{Binding InitialLoadingProgress}"
+                            
+                                                                     Style="{StaticResource RimworldProgressBarStyle}"
+                            
+                                                                     Height="10" 
+                            
+                                                                     Margin="0,0,0,15"/>
+                            
 
         
 

@@ -1,8 +1,10 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using RimSharp.Shared.Services.Contracts;
@@ -228,7 +230,7 @@ namespace RimSharp.Shared.Services.Implementations
 
         #endregion
 
-        public async Task LoadModsAsync()
+        public async Task LoadModsAsync(IProgress<(int current, int total, string message)>? progress = null)
         {
             _logger.LogInfo("Starting asynchronous mod loading...", nameof(ModService));
             var gamePath = _pathService.GetGamePath();
@@ -242,6 +244,7 @@ namespace RimSharp.Shared.Services.Implementations
             {
                 _logger.LogWarning("One or more required paths (Game, Config, Mods) are not set. Mod loading aborted.", nameof(ModService));
                 _allMods.Clear();
+                progress?.Report((100, 100, "Required paths not set."));
                 return;
             }
 
@@ -249,9 +252,18 @@ namespace RimSharp.Shared.Services.Implementations
 
             // 1. Load Base Mod Info (About.xml) - Includes Official Versions
             _logger.LogDebug("Loading core and workshop/local mods concurrently...", nameof(ModService));
+            
+            progress?.Report((0, 100, "Scanning directories..."));
+
             await Task.WhenAll(
-                Task.Run(() => LoadCoreModsAsync(gamePath, mods)),
-                Task.Run(() => LoadWorkshopModsAsync(modsPath, mods))
+                Task.Run(async () => {
+                    await LoadCoreModsAsync(gamePath, mods, progress, 0, 10);
+                    progress?.Report((10, 100, "Core mods scanned."));
+                }),
+                Task.Run(async () => {
+                    await LoadWorkshopModsAsync(modsPath, mods, progress, 10, 70);
+                    progress?.Report((70, 100, "Workshop mods scanned."));
+                })
             );
 
             // Update the main collection - do this before applying other sources
@@ -263,19 +275,23 @@ namespace RimSharp.Shared.Services.Implementations
 
             // 2. Get Mlie Data (Do this early before applying rules/custom)
             _logger.LogDebug("Retrieving Mlie version data...", nameof(ModService));
+            progress?.Report((75, 100, "Retrieving compatibility data (Mlie)..."));
             var mlieVersions = _mlieVersionService.GetMlieVersions(); // Sync call ok, as it caches
 
             // 3. Apply Mlie Versions (Priority: Official -> Mlie)
             _logger.LogDebug("Applying Mlie version data...", nameof(ModService));
+            progress?.Report((80, 100, "Applying compatibility data (Mlie)..."));
             ApplyMlieVersions(_allMods, mlieVersions); // Apply to the list directly
 
             // 4. Apply Rules Service Info (Versions + Other Rules)
             _logger.LogDebug("Applying ModRulesService data...", nameof(ModService));
+            progress?.Report((85, 100, "Applying community rules..."));
             // ModRulesService.ApplyRulesToMods needs modification (see Step 7)
             await Task.Run(() => _rulesService.ApplyRulesToMods(_allMods));
 
             // 5. Apply Custom Service Info (Versions + Other Customizations)
             _logger.LogDebug("Applying ModCustomService data...", nameof(ModService));
+            progress?.Report((90, 100, "Applying local customizations..."));
             // ModCustomService.ApplyCustomInfoToMods needs modification (see Step 8)
             // Note: ApplyCustomInfoToMods uses EnsureInitializedAsync().Wait() internally, which isn't ideal.
             // If ModCustomService becomes truly async, await it here. For now, Task.Run is fine.
@@ -284,6 +300,7 @@ namespace RimSharp.Shared.Services.Implementations
 
             // 6. Final Checks (Outdated Status)
             _logger.LogDebug("Calculating outdated status...", nameof(ModService));
+            progress?.Report((95, 100, "Finalizing metadata..."));
             foreach (var mod in _allMods)
             {
                 // Use the comprehensive SupportedVersions list now
@@ -292,8 +309,10 @@ namespace RimSharp.Shared.Services.Implementations
 
             // 7. Set Active Status
             _logger.LogDebug("Setting active mod status from ModsConfig.xml...", nameof(ModService));
+            progress?.Report((98, 100, "Syncing active status..."));
             await Task.Run(() => SetActiveMods(configPath));
 
+            progress?.Report((100, 100, "Mod loading complete."));
             _logger.LogInfo($"Asynchronous mod loading complete. Loaded {_allMods.Count} mods.", nameof(ModService));
         }
 
@@ -340,48 +359,64 @@ namespace RimSharp.Shared.Services.Implementations
             }
         }
 
-        private async Task LoadCoreModsAsync(string gamePath, ConcurrentBag<ModItem> mods)
+        private async Task LoadCoreModsAsync(string gamePath, ConcurrentBag<ModItem> mods, IProgress<(int current, int total, string message)>? progress, int startPercent, int endPercent)
         {
             var coreModsPath = Path.Combine(gamePath, "Data");
             if (!Directory.Exists(coreModsPath)) return;
 
-            // Get all directories first to avoid file system bottlenecks
             var directories = Directory.GetDirectories(coreModsPath);
+            int total = directories.Length;
+            int current = 0;
+            double range = endPercent - startPercent;
 
             await Task.WhenAll(directories.Select(async dir =>
             {
-                var aboutPath = Path.Combine(dir, "About", "About.xml");
-                if (!File.Exists(aboutPath)) return;
-
-                var folderName = Path.GetFileName(dir);
-
-                // Parse on a separate thread to avoid XML parsing bottlenecks
-                var mod = await Task.Run(() => ParseAboutXml(aboutPath, folderName));
-                if (mod == null) return;
-
-                mod.Path = dir;
-                mod.Assemblies = CheckForAssemblies(mod.Path);
-                mod.Textures = CheckForTextures(mod.Path);
-                mod.SizeInfo = await Task.Run(() => CalculateModSize(mod)); // <-- ADDED
-
-                // Set core/expansion flags
-                bool isCoreMod = mod.PackageId == "Ludeon.RimWorld";
-                mod.ModType = isCoreMod ? ModType.Core : ModType.Expansion;
-                if (mod.ModType == ModType.Expansion && !string.IsNullOrEmpty(mod.Name))
+                string modNameForProgress = Path.GetFileName(dir) ?? "Unknown";
+                try
                 {
-                    mod.Name = $"{mod.Name} [DLC]";
-                }
-                // If it's a Core or Expansion mod, its supported version is the current game version.
-                // Only add as a fallback if the About.xml list was empty.
-                if ((mod.ModType == ModType.Core || mod.ModType == ModType.Expansion) && !mod.SupportedVersions.Any())
-                {
-                    if (!string.IsNullOrEmpty(_currentMajorVersion) && !_currentMajorVersion.StartsWith("N/A"))
+                    var aboutPath = Path.Combine(dir, "About", "About.xml");
+                    if (!File.Exists(aboutPath)) return;
+
+                    var folderName = Path.GetFileName(dir);
+                    var mod = await Task.Run(() => ParseAboutXml(aboutPath, folderName));
+                    if (mod == null) return;
+
+                    if (!string.IsNullOrEmpty(mod.Name))
                     {
-                        mod.SupportedVersions.Add(new VersionSupport(_currentMajorVersion, VersionSource.Official, unofficial: false));
+                        modNameForProgress = mod.Name;
+                    }
+
+                    mod.Path = dir;
+                    mod.Assemblies = CheckForAssemblies(mod.Path);
+                    mod.Textures = CheckForTextures(mod.Path);
+                    mod.SizeInfo = await Task.Run(() => CalculateModSize(mod));
+
+                    bool isCoreMod = mod.PackageId == "Ludeon.RimWorld";
+                    mod.ModType = isCoreMod ? ModType.Core : ModType.Expansion;
+                    if (mod.ModType == ModType.Expansion && !string.IsNullOrEmpty(mod.Name))
+                    {
+                        mod.Name = $"{mod.Name} [DLC]";
+                    }
+                    
+                    if ((mod.ModType == ModType.Core || mod.ModType == ModType.Expansion) && !mod.SupportedVersions.Any())
+                    {
+                        if (!string.IsNullOrEmpty(_currentMajorVersion) && !_currentMajorVersion.StartsWith("N/A"))
+                        {
+                            mod.SupportedVersions.Add(new VersionSupport(_currentMajorVersion, VersionSource.Official, unofficial: false));
+                        }
+                    }
+
+                    mods.Add(mod);
+                }
+                finally
+                {
+                    int c = Interlocked.Increment(ref current);
+                    if (total > 0)
+                    {
+                        int p = startPercent + (int)(range * ((double)c / total));
+                        progress?.Report((p, 100, $"Scanning core mods: {modNameForProgress}"));
                     }
                 }
-
-                mods.Add(mod);
             }));
         }
 
@@ -401,97 +436,7 @@ namespace RimSharp.Shared.Services.Implementations
                 mod.Path = dir;
                 mod.Assemblies = CheckForAssemblies(mod.Path);
                 mod.Textures = CheckForTextures(mod.Path);
-                mod.SizeInfo = CalculateModSize(mod); // <-- ADDED
-
-                if (long.TryParse(folderName, out _))
-                {
-                    mod.SteamId = folderName;
-                    mod.SteamUrl = $"https://steamcommunity.com/workshop/filedetails/?id={folderName}";
-                    mod.ModType = ModType.WorkshopL;
-                }
-                else
-                {
-                    var gitDir = Path.Combine(dir, ".git");
-                    if (Directory.Exists(gitDir))
-                    {
-                        mod.ModType = ModType.Git;
-                        // Parse Git repository URL
-                        var gitConfigPath = Path.Combine(gitDir, "config");
-                        if (File.Exists(gitConfigPath))
-                        {
-                            try
-                            {
-                                var lines = File.ReadAllLines(gitConfigPath);
-                                bool inOriginSection = false;
-                                foreach (var line in lines)
-                                {
-                                    var trimmed = line.Trim();
-                                    if (trimmed.StartsWith("[remote \"origin\"]"))
-                                    {
-                                        inOriginSection = true;
-                                    }
-                                    else if (trimmed.StartsWith("[") && inOriginSection)
-                                    {
-                                        inOriginSection = false; // Exit origin section
-                                    }
-                                    else if (inOriginSection && trimmed.StartsWith("url = "))
-                                    {
-                                        mod.GitRepo = trimmed.Substring("url = ".Length).Trim();
-                                        break;
-                                    }
-                                }
-                                // Standardize the URL to match desired format
-                                if (!string.IsNullOrEmpty(mod.GitRepo))
-                                {
-                                    if (mod.GitRepo.StartsWith("git@"))
-                                    {
-                                        var parts = mod.GitRepo.Split(':');
-                                        if (parts.Length == 2)
-                                        {
-                                            mod.GitRepo = parts[1].Replace(".git", "");
-                                        }
-                                    }
-                                    else if (mod.GitRepo.StartsWith("https://"))
-                                    {
-                                        mod.GitRepo = mod.GitRepo.Replace("https://", "").Replace(".git", "");
-                                    }
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Debug.WriteLine($"Failed to read Git config for mod {mod.PackageId}: {ex.Message}");
-                            }
-                        }
-                    }
-                    else
-                    {
-                        mod.ModType = ModType.Zipped;
-                    }
-                }
-
-                _allMods.Add(mod);
-            }
-        }
-
-        private async Task LoadWorkshopModsAsync(string modsPath, ConcurrentBag<ModItem> mods)
-        {
-            if (!Directory.Exists(modsPath)) return;
-
-            var directories = Directory.GetDirectories(modsPath);
-
-            await Task.WhenAll(directories.Select(async dir =>
-            {
-                var aboutPath = Path.Combine(dir, "About", "About.xml");
-                if (!File.Exists(aboutPath)) return;
-
-                var folderName = Path.GetFileName(dir);
-                var mod = await Task.Run(() => ParseAboutXml(aboutPath, folderName));
-                if (mod == null) return;
-
-                mod.Path = dir;
-                mod.Assemblies = CheckForAssemblies(mod.Path);
-                mod.Textures = CheckForTextures(mod.Path);
-                mod.SizeInfo = await Task.Run(() => CalculateModSize(mod)); // <-- ADDED
+                mod.SizeInfo = CalculateModSize(mod);
 
                 if (long.TryParse(folderName, out _))
                 {
@@ -557,7 +502,117 @@ namespace RimSharp.Shared.Services.Implementations
                     }
                 }
 
-                mods.Add(mod);
+                _allMods.Add(mod);
+            }
+        }
+
+        private async Task LoadWorkshopModsAsync(string modsPath, ConcurrentBag<ModItem> mods, IProgress<(int current, int total, string message)>? progress, int startPercent, int endPercent)
+        {
+            if (!Directory.Exists(modsPath)) return;
+
+            var directories = Directory.GetDirectories(modsPath);
+            int total = directories.Length;
+            int current = 0;
+            double range = endPercent - startPercent;
+
+            await Task.WhenAll(directories.Select(async dir =>
+            {
+                string modNameForProgress = Path.GetFileName(dir) ?? "Unknown";
+                try
+                {
+                    var aboutPath = Path.Combine(dir, "About", "About.xml");
+                    if (!File.Exists(aboutPath)) return;
+
+                    var folderName = Path.GetFileName(dir);
+                    var mod = await Task.Run(() => ParseAboutXml(aboutPath, folderName));
+                    if (mod == null) return;
+
+                    if (!string.IsNullOrEmpty(mod.Name))
+                    {
+                        modNameForProgress = mod.Name;
+                    }
+
+                    mod.Path = dir;
+                    mod.Assemblies = CheckForAssemblies(mod.Path);
+                    mod.Textures = CheckForTextures(mod.Path);
+                    mod.SizeInfo = await Task.Run(() => CalculateModSize(mod));
+
+                    if (long.TryParse(folderName, out _))
+                    {
+                        mod.SteamId = folderName;
+                        mod.SteamUrl = $"https://steamcommunity.com/workshop/filedetails/?id={folderName}";
+                        mod.ModType = ModType.WorkshopL;
+                    }
+                    else
+                    {
+                        var gitDir = Path.Combine(dir, ".git");
+                        if (Directory.Exists(gitDir))
+                        {
+                            mod.ModType = ModType.Git;
+                            var gitConfigPath = Path.Combine(gitDir, "config");
+                            if (File.Exists(gitConfigPath))
+                            {
+                                try
+                                {
+                                    var lines = await File.ReadAllLinesAsync(gitConfigPath);
+                                    bool inOriginSection = false;
+                                    foreach (var line in lines)
+                                    {
+                                        var trimmed = line.Trim();
+                                        if (trimmed.StartsWith("[remote \"origin\"]"))
+                                        {
+                                            inOriginSection = true;
+                                        }
+                                        else if (trimmed.StartsWith("[") && inOriginSection)
+                                        {
+                                            inOriginSection = false;
+                                        }
+                                        else if (inOriginSection && trimmed.StartsWith("url = "))
+                                        {
+                                            mod.GitRepo = trimmed.Substring("url = ".Length).Trim();
+                                            break;
+                                        }
+                                    }
+                                    if (!string.IsNullOrEmpty(mod.GitRepo))
+                                    {
+                                        if (mod.GitRepo.StartsWith("git@"))
+                                        {
+                                            var parts = mod.GitRepo.Split(':');
+                                            if (parts.Length == 2)
+                                            {
+                                                mod.GitRepo = parts[1].Replace(".git", "");
+                                            }
+                                        }
+                                        else if (mod.GitRepo.StartsWith("https://"))
+                                        {
+                                            mod.GitRepo = mod.GitRepo.Replace("https://", "").Replace(".git", "");
+                                        }
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Debug.WriteLine($"Failed to read Git config for mod {mod.PackageId}: {ex.Message}");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            mod.ModType = ModType.Zipped;
+                        }
+                    }
+
+                    mods.Add(mod);
+                }
+                finally
+                {
+                    int c = Interlocked.Increment(ref current);
+                    // Reduce spam by reporting every N items if total is large
+                    if (total > 0 && (total < 100 || c % 5 == 0 || c == total)) 
+                    {
+                        int p = startPercent + (int)(range * ((double)c / total));
+                        progress?.Report((p, 100, $"Scanning: {modNameForProgress}"));
+                    }
+                }
             }));
         }
 
@@ -871,8 +926,8 @@ namespace RimSharp.Shared.Services.Implementations
                 var doc = XDocument.Load(aboutPath);
                 var aboutFolder = new DirectoryInfo(aboutPath).FullName;
                 var aboutFolderPath = Path.GetDirectoryName(aboutFolder);
-                var modRootFolder = Directory.GetParent(aboutFolderPath)?.FullName;
-                var previewImagePath = Path.Combine(aboutFolderPath, "Preview.png");
+                var modRootFolder = aboutFolderPath != null ? Directory.GetParent(aboutFolderPath)?.FullName : null;
+                var previewImagePath = aboutFolderPath != null ? Path.Combine(aboutFolderPath, "Preview.png") : null;
 
                 var root = doc.Element("ModMetaData");
                 if (root == null) return null;

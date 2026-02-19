@@ -1,3 +1,4 @@
+#nullable enable
 using RimSharp.Core.Extensions;
 using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
@@ -28,9 +29,9 @@ namespace RimSharp.Features.ModManager.Services.Data
             _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService)); // Added
         }
 
-        public async Task<List<ModItem>> LoadAllModsAsync()
+        public async Task<List<ModItem>> LoadAllModsAsync(System.IProgress<(int current, int total, string message)>? progress = null)
         {
-            await _modService.LoadModsAsync(); // This call now ensures rules are applied
+            await _modService.LoadModsAsync(progress); // This call now ensures rules are applied
             return _modService.GetLoadedMods().ToList();
         }
         public List<string> LoadActiveModIdsFromConfig()
@@ -148,7 +149,7 @@ namespace RimSharp.Features.ModManager.Services.Data
 
         #region Helper Methods
 
-        private string GetModsConfigPath()
+        private string? GetModsConfigPath()
         {
             var configPathDir = _pathService.GetConfigPath();
             return string.IsNullOrEmpty(configPathDir)
@@ -176,7 +177,7 @@ namespace RimSharp.Features.ModManager.Services.Data
                 .ToList() ?? new List<string>();
         }
 
-        private XDocument PrepareModsConfigDocument(string configPath, out bool fileExisted)
+        private XDocument? PrepareModsConfigDocument(string configPath, out bool fileExisted)
         {
             fileExisted = File.Exists(configPath);
 
