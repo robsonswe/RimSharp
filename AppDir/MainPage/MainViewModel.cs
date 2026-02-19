@@ -84,6 +84,13 @@ namespace RimSharp.AppDir.MainPage
             private set => SetProperty(ref _isInitialLoading, value);
         }
 
+        private int _initialLoadingProgress;
+        public int InitialLoadingProgress
+        {
+            get => _initialLoadingProgress;
+            set => SetProperty(ref _initialLoadingProgress, value);
+        }
+
         public bool IsAppLoading => ModsVM?.IsLoading ?? false;
 
         // Helper property to centralize the "Is anything busy?" logic
@@ -224,13 +231,19 @@ namespace RimSharp.AppDir.MainPage
         {
             Debug.WriteLine("[MainViewModel] Main window has loaded. Starting initial tasks.", "OnMainWindowLoadedAsync");
 
+            // Create a progress reporter for the splash screen
+            var initialProgress = new Progress<(int current, int total, string message)>(update =>
+            {
+                InitialLoadingProgress = (int)((double)update.current / update.total * 100);
+            });
+
             // Create a list to hold all startup tasks
             var startupTasks = new List<Task>();
 
             // Add the mod list initialization to the tasks
             if (ModsVM != null)
             {
-                startupTasks.Add(ModsVM.InitializeAsync());
+                startupTasks.Add(ModsVM.InitializeAsync(initialProgress));
             }
 
             // Add the update check to the tasks

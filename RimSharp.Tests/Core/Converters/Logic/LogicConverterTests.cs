@@ -29,17 +29,15 @@ namespace RimSharp.Tests.Core.Converters.Logic
         }
 
         [Theory]
-        [InlineData(5, true)]
-        [InlineData(0, false)]
-        [InlineData(null, false)]
-        public void CountToBooleanConverter_ShouldReturnCorrectValue(object? value, bool expected)
+        [InlineData(5, null, true)]
+        [InlineData(0, null, false)]
+        [InlineData(null, null, false)]
+        [InlineData(0, 0, false)]
+        [InlineData(1, 0, true)]
+        public void CountToBooleanConverter_ShouldReturnCorrectValue(object? value, object? parameter, bool expected)
         {
             var converter = new CountToBooleanConverter();
-            if (value == null)
-            {
-                // Theory can't easily pass null for ICollection, so we test it manually or via theory
-            }
-            var result = converter.Convert(value!, typeof(bool), null, CultureInfo.InvariantCulture);
+            var result = converter.Convert(value!, typeof(bool), parameter!, CultureInfo.InvariantCulture);
             result.Should().Be(expected);
         }
 
