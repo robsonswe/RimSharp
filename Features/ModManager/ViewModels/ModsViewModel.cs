@@ -26,6 +26,7 @@ namespace RimSharp.Features.ModManager.ViewModels
         private readonly IDialogService _dialogService;
         private readonly IPathService _pathService;
         private readonly IModService _modService;
+        private readonly IModDeletionService _deletionService;
         private readonly ISteamWorkshopQueueProcessor _steamWorkshopQueueProcessor;
         private readonly IGitService _gitService;
 
@@ -142,11 +143,12 @@ namespace RimSharp.Features.ModManager.ViewModels
             IModListIOService ioService,
             IModListManager modListManager,
             IModIncompatibilityService incompatibilityService,
+            IModDuplicateService duplicateService,
+            IModDeletionService deletionService,
             IDialogService dialogService,
             IModService modService,
             IPathService pathService,
             IModRulesService rulesService,
-            IModDuplicateService duplicateService,
             IModReplacementService replacementService,
             IDownloadQueueService downloadQueueService,
             ISteamApiClient steamApiClient,
@@ -160,6 +162,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             _dialogService = dialogService;
             _pathService = pathService;
             _modService = modService;
+            _deletionService = deletionService;
             _steamWorkshopQueueProcessor = steamWorkshopQueueProcessor;
             _gitService = gitService;
 
@@ -171,7 +174,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             ModListViewModel = new ModListViewModel(_filterService, _modListManager, commandService, _dialogService);
             ModDetailsViewModel = new ModDetailsViewModel(_dialogService);
             ModActionsViewModel = new ModActionsViewModel(
-                _dataService, commandService, ioService, _modListManager, incompatibilityService, duplicateService, _dialogService, _pathService, _modService,
+                _dataService, commandService, ioService, _modListManager, incompatibilityService, duplicateService, _deletionService, _dialogService, _pathService, _modService,
                         replacementService, downloadQueueService, steamApiClient, navigationService, steamWorkshopQueueProcessor, _gitService
                         );
 

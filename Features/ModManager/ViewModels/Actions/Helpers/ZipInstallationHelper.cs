@@ -98,30 +98,36 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         
                     foreach (var entry in archive.Entries)
                     {
-                        ct.ThrowIfCancellationRequested();
-                        if (string.IsNullOrEmpty(entry.Name)) continue; // Skip directory entries
-        
-                        string relativePath;
-                        if (rootFolderEntry == null || rootFolderName == null)
-                        {
-                            relativePath = entry.FullName;
-                        }
-                        else
-                        {
-                            if (!entry.FullName.StartsWith(rootFolderName, StringComparison.OrdinalIgnoreCase)) continue;
-                            relativePath = entry.FullName.Substring(rootFolderName.Length);
-                        }
-                                relativePath = relativePath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
-                        if (string.IsNullOrWhiteSpace(relativePath)) continue; // Skip empty paths (e.g., the root folder entry itself if processed)
-        
-                        string destinationPath = Path.Combine(targetDir, relativePath);
-                        var dirPath = Path.GetDirectoryName(destinationPath);
-                        if (!string.IsNullOrEmpty(dirPath) && !Directory.Exists(dirPath))
-                        {
-                            Directory.CreateDirectory(dirPath);
-                        }
-        
-                        entry.ExtractToFile(destinationPath, overwrite: true); // Consider adding overwrite confirmation/logic
+                                        ct.ThrowIfCancellationRequested();
+                                        if (string.IsNullOrEmpty(entry.Name) || entry.FullName == null) continue; // Skip directory entries
+                        
+                                        string relativePath;
+                        
+                                            if (rootFolderEntry == null || rootFolderName == null)
+                                            {
+                                                relativePath = entry.FullName;
+                                            }
+                                            else
+                                            {
+                                                if (entry.FullName == null || !entry.FullName.StartsWith(rootFolderName, StringComparison.OrdinalIgnoreCase)) continue;
+                                                relativePath = entry.FullName.Substring(rootFolderName.Length);
+                                            }
+                        
+                                                relativePath = relativePath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+                                                if (string.IsNullOrWhiteSpace(relativePath)) continue; // Skip empty paths
+                                
+                                                string destinationPath = Path.Combine(targetDir, relativePath);
+                                                var dirPath = Path.GetDirectoryName(destinationPath);
+                                                if (!string.IsNullOrEmpty(dirPath) && !Directory.Exists(dirPath))
+                                                {
+                                                    Directory.CreateDirectory(dirPath);
+                                                }
+                                
+                                                if (entry != null)
+                                                {
+                                                    entry.ExtractToFile(destinationPath, overwrite: true);
+                                                }
+                                
                     }
                 }
         

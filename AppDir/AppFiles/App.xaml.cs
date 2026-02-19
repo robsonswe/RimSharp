@@ -227,6 +227,7 @@ namespace RimSharp.AppDir.AppFiles
             services.AddSingleton<IModIncompatibilityService, ModIncompatibilityService>();
             services.AddSingleton<IModDuplicateService, ModDuplicateService>();
             services.AddSingleton<IModListFileParser, ModListFileParser>();
+            services.AddSingleton<IModDeletionService, ModDeletionService>();
 
 
             // --- SteamCMD Infrastructure (Refactored) ---
@@ -275,14 +276,15 @@ namespace RimSharp.AppDir.AppFiles
                    provider.GetRequiredService<IModDataService>(),
                    provider.GetRequiredService<IModFilterService>(),
                    provider.GetRequiredService<IModCommandService>(),
-                   provider.GetRequiredService<IModListIOService>(), // <<< This now gets the updated one
+                   provider.GetRequiredService<IModListIOService>(),
                    provider.GetRequiredService<IModListManager>(),
                    provider.GetRequiredService<IModIncompatibilityService>(),
+                   provider.GetRequiredService<IModDuplicateService>(),
+                   provider.GetRequiredService<IModDeletionService>(),
                    provider.GetRequiredService<IDialogService>(),
                    provider.GetRequiredService<IModService>(),
                    provider.GetRequiredService<IPathService>(),
                    provider.GetRequiredService<IModRulesService>(),
-                   provider.GetRequiredService<IModDuplicateService>(),
                    provider.GetRequiredService<IModReplacementService>(),
                    provider.GetRequiredService<IDownloadQueueService>(),
                    provider.GetRequiredService<ISteamApiClient>(),

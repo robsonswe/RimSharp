@@ -58,8 +58,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             try
             {
                 Debug.WriteLine($"[DeleteSingleModAsyncInternal] Attempting to delete directory: {mod.Path}");
-                // Run synchronous Directory.Delete on background thread with cancellation support
-                await Task.Run(() => Directory.Delete(mod.Path, recursive: true), ct);
+                await _deletionService.DeleteDirectoryRobustAsync(mod.Path, ct);
                 deletionSuccess = true;
                 Debug.WriteLine($"[DeleteSingleModAsyncInternal] Successfully deleted: {mod.Path}");
                 RunOnUIThread(() => _dialogService.ShowInformation("Deletion Successful", $"Mod '{mod.Name}' was deleted."));
@@ -169,8 +168,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                         if (Directory.Exists(mod.Path))
                         {
                             Debug.WriteLine($"[DeleteMultipleModsAsyncInternal] Attempting to delete: {mod.Path}");
-                            // Use Task.Run with the operation's cancellation token
-                            await Task.Run(() => Directory.Delete(mod.Path, recursive: true), operationToken);
+                            await _deletionService.DeleteDirectoryRobustAsync(mod.Path, operationToken);
                             deletionResults.Add($"Successfully deleted {modIdentifier}");
                             anySuccess = true;
                             Debug.WriteLine($"[DeleteMultipleModsAsyncInternal] Successfully deleted: {mod.Path}");
@@ -286,7 +284,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                         if (Directory.Exists(path))
                         {
                             Debug.WriteLine($"[DeleteDuplicateModsAsyncInternal] Deleting: {path}");
-                            await Task.Run(() => Directory.Delete(path, true), ct);
+                            await _deletionService.DeleteDirectoryRobustAsync(path, ct);
                             successfullyDeletedCount++;
                             refreshNeeded = true;
                             Debug.WriteLine($"[DeleteDuplicateModsAsyncInternal] Deleted: {path}");
