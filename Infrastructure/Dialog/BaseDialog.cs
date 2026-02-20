@@ -82,7 +82,7 @@ namespace RimSharp.Infrastructure.Dialog
             // WORKAROUND for WPF focus/minimization bug:
             // For modeless windows, we can detach the owner to prevent it from minimizing the main window.
             // For modal windows (ShowDialog), we cannot set Owner to null here (InvalidOperationException),
-            // but we can ensure the owner doesn't lose its 'Normal' state.
+            // but we can ensure the owner is activated before we close to keep focus in the right place.
             if (this.Owner != null)
             {
                 // ComponentDispatcher.IsThreadModal is a way to check if we are in a ShowDialog() call
@@ -95,7 +95,18 @@ namespace RimSharp.Infrastructure.Dialog
                 }
                 else
                 {
-                    Debug.WriteLine($"[BaseDialog OnClosing] Modal dialog {this.Title} closing. WPF will handle focus.");
+                    Debug.WriteLine($"[BaseDialog OnClosing] Modal dialog {this.Title} closing. Activating owner to prevent minimization bug.");
+                    try
+                    {
+                        if (this.Owner.Visibility == Visibility.Visible && this.Owner.WindowState != WindowState.Minimized)
+                        {
+                            this.Owner.Activate();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[BaseDialog OnClosing] Failed to activate owner: {ex.Message}");
+                    }
                 }
             }
 

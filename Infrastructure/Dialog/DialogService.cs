@@ -56,7 +56,8 @@ namespace RimSharp.Infrastructure.Dialog
                 var dialog = new MessageDialogView(viewModel)
                 {
                     Owner = Application.Current.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    ShowInTaskbar = false
                 };
                 dialog.ShowDialog();
                 return viewModel.DialogResult;
@@ -103,7 +104,8 @@ namespace RimSharp.Infrastructure.Dialog
                 var dialog = new UpdateCheckDialogView(viewModel)
                 {
                     Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    ShowInTaskbar = false
                 };
                 dialog.ShowDialog();
                 return viewModel.DialogResult;
@@ -150,7 +152,8 @@ namespace RimSharp.Infrastructure.Dialog
                 var dialog = new InputDialogView(viewModel)
                 {
                     Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    ShowInTaskbar = false
                 };
                 dialog.ShowDialog();
                 return (viewModel.DialogResult, viewModel.Input);
@@ -169,7 +172,8 @@ namespace RimSharp.Infrastructure.Dialog
                 var dialog = new StripModsDialogView(viewModel)
                 {
                     Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    ShowInTaskbar = false
                 };
                 dialog.ShowDialog();
                 return viewModel.DialogResult;
@@ -188,7 +192,8 @@ namespace RimSharp.Infrastructure.Dialog
                 var dialog = new CustomizeModDialogView(viewModel)
                 {
                     Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    ShowInTaskbar = false
                 };
                 dialog.ShowDialog();
                 return viewModel.DialogResult;
@@ -206,7 +211,8 @@ namespace RimSharp.Infrastructure.Dialog
                 var dialog = new ModFilterDialogView(viewModel)
                 {
                     Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    ShowInTaskbar = false
                 };
                 dialog.ShowDialog();
                 return viewModel.DialogResult;
@@ -224,7 +230,8 @@ namespace RimSharp.Infrastructure.Dialog
                 var dialog = new ModReplacementDialogView(viewModel)
                 {
                     Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    ShowInTaskbar = false
                 };
                 dialog.ShowDialog();
                 return viewModel.DialogResult;
@@ -245,7 +252,8 @@ namespace RimSharp.Infrastructure.Dialog
                     var dialog = new DependencyResolutionDialogView(viewModel)
                     {
                         Owner = Application.Current?.MainWindow,
-                        WindowStartupLocation = WindowStartupLocation.CenterOwner
+                        WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                        ShowInTaskbar = false
                     };
                     dialog.ShowDialog();
                     result = viewModel.DialogResult;
@@ -269,7 +277,8 @@ namespace RimSharp.Infrastructure.Dialog
                     var dialog = new MissingModSelectionDialogView(viewModel)
                     {
                         Owner = Application.Current?.MainWindow,
-                        WindowStartupLocation = WindowStartupLocation.CenterOwner
+                        WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                        ShowInTaskbar = false
                     };
                     dialog.ShowDialog();
                     result = viewModel.DialogResult ?? new MissingModSelectionDialogOutput();
@@ -293,7 +302,8 @@ namespace RimSharp.Infrastructure.Dialog
                     var dialog = new CollectionDialogView(viewModel)
                     {
                         Owner = Application.Current?.MainWindow,
-                        WindowStartupLocation = WindowStartupLocation.CenterOwner
+                        WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                        ShowInTaskbar = false
                     };
                     dialog.ShowDialog();
                     result = viewModel.DialogResult;
@@ -314,7 +324,8 @@ namespace RimSharp.Infrastructure.Dialog
                 var dialog = new DependencyRuleEditorDialogView(viewModel)
                 {
                     Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    ShowInTaskbar = false
                 };
                 return dialog.ShowDialog() == true;
             }
@@ -332,7 +343,8 @@ namespace RimSharp.Infrastructure.Dialog
                 var dialog = new IncompatibilityRuleEditorDialogView(viewModel)
                 {
                     Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    ShowInTaskbar = false
                 };
                 return dialog.ShowDialog() == true;
             }
@@ -381,7 +393,8 @@ namespace RimSharp.Infrastructure.Dialog
                 var dialog = new AboutDialogView(viewModel)
                 {
                     Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    ShowInTaskbar = false
                 };
                 dialog.ShowDialog();
             }
