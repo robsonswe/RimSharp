@@ -11,12 +11,21 @@
              x:Name="DownloadQueueUserControl"
              Background="{DynamicResource RimworldBeigeBrush}">
 
+    <UserControl.Styles>
+        <Style Selector="StackPanel.ButtonArea > Button">
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        </Style>
+        <Style Selector="Grid.ButtonArea > Button">
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        </Style>
+    </UserControl.Styles>
+
     <DockPanel>
         <Border DockPanel.Dock="Top" Classes="RimworldInfoHeaderBorder">
             <TextBlock Text="Mod Downloader" Foreground="{DynamicResource RimworldWhiteBrush}" FontWeight="Bold" FontSize="16"/>
         </Border>
 
-        <StackPanel DockPanel.Dock="Top" Margin="10">
+        <StackPanel DockPanel.Dock="Top" Margin="10" Classes="ButtonArea">
             <Button Content="Setup SteamCMD"
                     Command="{Binding SetupSteamCmdCommand}"
                     Classes="RimworldButtonStyle"
@@ -27,7 +36,7 @@
                     Margin="0,5"/>
 
             <!-- Add Mod and Download buttons -->
-            <Grid Margin="0,5">
+            <Grid Margin="0,5" Classes="ButtonArea">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="*"/>
