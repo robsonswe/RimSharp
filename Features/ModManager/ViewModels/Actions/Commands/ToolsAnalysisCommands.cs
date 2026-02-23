@@ -231,48 +231,91 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private async Task ExecuteCheckIncompatibilities(CancellationToken ct)
         {
             IsLoadingRequest?.Invoke(this, true);
+            ProgressDialogViewModel? progressViewModel = null;
+            CancellationTokenSource? linkedCts = null;
+
             try
             {
-                ct.ThrowIfCancellationRequested();
+                await RunOnUIThreadAsync(() =>
+                {
+                    linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    progressViewModel = _dialogService.ShowProgressDialog(
+                        "Checking Incompatibilities", "Scanning active mods for issues...", canCancel: true,
+                        isIndeterminate: true, cts: linkedCts, closeable: true);
+                });
+                if (progressViewModel == null || linkedCts == null) throw new InvalidOperationException("Progress dialog or CTS was not created.");
+                var combinedToken = linkedCts.Token;
+
+                combinedToken.ThrowIfCancellationRequested();
                 var activeMods = _modListManager.VirtualActiveMods.Select(entry => entry.Mod).ToList();
-                var incompatibilities = await Task.Run(() => _incompatibilityService.FindIncompatibilities(activeMods), ct);
-                ct.ThrowIfCancellationRequested();
+                var incompatibilities = await Task.Run(() => _incompatibilityService.FindIncompatibilities(activeMods), combinedToken);
+                combinedToken.ThrowIfCancellationRequested();
 
                 if (incompatibilities.Count == 0)
                 {
+                    await RunOnUIThreadAsync(() => progressViewModel?.CompleteOperation("No incompatibilities found."));
                     await RunOnUIThreadAsync(async () => await _dialogService.ShowInformation("Compatibility Check", "No incompatibilities found."));
                     return;
                 }
 
-                var groups = await Task.Run(() => _incompatibilityService.GroupIncompatibilities(incompatibilities), ct);
-                ct.ThrowIfCancellationRequested();
+                RunOnUIThread(() =>
+                {
+                    if (progressViewModel != null) progressViewModel.Message = "Grouping incompatibilities...";
+                });
+
+                var groups = await Task.Run(() => _incompatibilityService.GroupIncompatibilities(incompatibilities), combinedToken);
+                combinedToken.ThrowIfCancellationRequested();
 
                 if (groups.Count == 0)
                 {
+                    await RunOnUIThreadAsync(() => progressViewModel?.CompleteOperation("Analysis complete."));
                     await RunOnUIThreadAsync(async () => await _dialogService.ShowInformation("Compatibility Check", "Incompatibilities found but could not be grouped for resolution."));
                     return;
                 }
 
+                await RunOnUIThreadAsync(() => progressViewModel?.CompleteOperation("Scan complete."));
                 await ShowIncompatibilityDialog(groups);
             }
             catch (OperationCanceledException)
             {
+                await RunOnUIThreadAsync(() => progressViewModel?.ForceClose());
                 await RunOnUIThreadAsync(async () => await _dialogService.ShowWarning("Operation Cancelled", "Incompatibility check was cancelled."));
             }
             catch (Exception ex)
             {
+                await RunOnUIThreadAsync(() => progressViewModel?.ForceClose());
                 await RunOnUIThreadAsync(async () => await _dialogService.ShowError("Compatibility Error", $"Error checking mod incompatibilities: {ex.Message}"));
             }
-            finally { IsLoadingRequest?.Invoke(this, false); }
+            finally 
+            { 
+                await RunOnUIThreadAsync(() => progressViewModel?.ForceClose());
+                linkedCts?.Dispose();
+                IsLoadingRequest?.Invoke(this, false); 
+            }
         }
 
         private async Task ExecuteCheckDuplicates(CancellationToken ct)
         {
             IsLoadingRequest?.Invoke(this, true);
+            ProgressDialogViewModel? progressViewModel = null;
+            CancellationTokenSource? linkedCts = null;
+
             try
             {
+                await RunOnUIThreadAsync(() =>
+                {
+                    linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    progressViewModel = _dialogService.ShowProgressDialog(
+                        "Checking Duplicates", "Scanning all mods for duplicates...", canCancel: true,
+                        isIndeterminate: true, cts: linkedCts, closeable: true);
+                });
+                if (progressViewModel == null || linkedCts == null) throw new InvalidOperationException("Progress dialog or CTS was not created.");
+                var combinedToken = linkedCts.Token;
+
+                combinedToken.ThrowIfCancellationRequested();
                 var allMods = _modListManager.GetAllMods().ToList();
-                var actualDuplicateGroups = _duplicateService.FindDuplicateGroups(allMods);
+                var actualDuplicateGroups = await Task.Run(() => _duplicateService.FindDuplicateGroups(allMods), combinedToken);
+                combinedToken.ThrowIfCancellationRequested();
 
                 if (actualDuplicateGroups.Any())
                 {
@@ -281,23 +324,37 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     // Only show if we actually have populated groups
                     if (dialogViewModel.DuplicateGroups.Any())
                     {
+                        await RunOnUIThreadAsync(() => progressViewModel?.CompleteOperation("Scan complete."));
                         await _dialogService.ShowDuplicateModsDialogAsync(dialogViewModel);
                     }
                     else
                     {
+                        await RunOnUIThreadAsync(() => progressViewModel?.CompleteOperation("No duplicates found."));
                         await RunOnUIThreadAsync(async () => await _dialogService.ShowInformation("Duplicates Check", "No duplicate mods found based on Package ID."));
                     }
                 }
                 else
                 {
+                    await RunOnUIThreadAsync(() => progressViewModel?.CompleteOperation("No duplicates found."));
                     await RunOnUIThreadAsync(async () => await _dialogService.ShowInformation("Duplicates Check", "No duplicate mods found based on Package ID."));
                 }
             }
+            catch (OperationCanceledException)
+            {
+                await RunOnUIThreadAsync(() => progressViewModel?.ForceClose());
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowWarning("Operation Cancelled", "Duplicate check was cancelled."));
+            }
             catch (Exception ex)
             {
+                await RunOnUIThreadAsync(() => progressViewModel?.ForceClose());
                 await RunOnUIThreadAsync(async () => await _dialogService.ShowError("Duplicates Error", $"Error checking for duplicate mods: {ex.Message}"));
             }
-            finally { IsLoadingRequest?.Invoke(this, false); }
+            finally 
+            { 
+                await RunOnUIThreadAsync(() => progressViewModel?.ForceClose());
+                linkedCts?.Dispose();
+                IsLoadingRequest?.Invoke(this, false); 
+            }
         }
 
         private async Task ShowIncompatibilityDialog(List<IncompatibilityGroup> groups)
@@ -336,26 +393,52 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
             try
             {
-                await Task.Run(() => _modService.LoadMods(), ct);
-                ct.ThrowIfCancellationRequested();
-                var loadedMods = _modService.GetLoadedMods().ToList();
-                ct.ThrowIfCancellationRequested();
-
-                if (loadedMods == null || !loadedMods.Any())
-                {
-                    await RunOnUIThreadAsync(async () => await _dialogService.ShowInformation("Mod Replacements", "No mods loaded to check for replacements."));
-                    return;
-                }
-
+                // 1. Show Progress Dialog EARLY
                 await RunOnUIThreadAsync(() =>
                 {
                     linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                     progressViewModel = _dialogService.ShowProgressDialog(
-                        "Checking Replacements", "Searching for mod replacements...", canCancel: true,
+                        "Checking Replacements", "Loading mods and checking rules...", canCancel: true,
                         isIndeterminate: false, cts: linkedCts, closeable: true);
                 });
                 if (progressViewModel == null || linkedCts == null) throw new InvalidOperationException("Progress dialog or CTS was not created.");
                 var combinedTokenPhase1 = linkedCts.Token;
+
+                // 2. Setup Progress Reporter for LoadModsAsync
+                var loadProgressReporter = new Progress<(int current, int total, string message)>(update =>
+                {
+                    RunOnUIThread(() =>
+                    {
+                        if (progressViewModel != null && !progressViewModel.CancellationToken.IsCancellationRequested)
+                        {
+                            progressViewModel.Message = update.message;
+                            progressViewModel.Progress = (int)((double)update.current / update.total * 95); // 0-95% for loading
+                        }
+                    });
+                });
+
+                // 3. Load Mods ASYNC with progress
+                await _modService.LoadModsAsync(loadProgressReporter);
+                combinedTokenPhase1.ThrowIfCancellationRequested();
+                var loadedMods = _modService.GetLoadedMods().ToList();
+                combinedTokenPhase1.ThrowIfCancellationRequested();
+
+                if (loadedMods == null || !loadedMods.Any())
+                {
+                    await RunOnUIThreadAsync(() => progressViewModel?.ForceClose());
+                    await RunOnUIThreadAsync(async () => await _dialogService.ShowInformation("Mod Replacements", "No mods loaded to check for replacements."));
+                    return;
+                }
+
+                // 4. Searching phase
+                RunOnUIThread(() =>
+                {
+                    if (progressViewModel != null)
+                    {
+                        progressViewModel.Message = "Searching for mod replacements...";
+                        progressViewModel.Progress = 95;
+                    }
+                });
 
                 using var semaphore = new SemaphoreSlim(10);
                 var tasks = new List<Task>();
@@ -461,7 +544,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                                 if (progressViewModel != null && !progressViewModel.CancellationToken.IsCancellationRequested)
                                 {
                                     progressViewModel.Message = $"Validating {current}/{modsToProcess.Count}: {item.Mod.Name}";
-                                    progressViewModel.Progress = (int)((double)current / modsToProcess.Count * 100);
+                                    progressViewModel.Progress = 95 + (int)((double)current / modsToProcess.Count * 5);
                                 }
                             });
                             semaphore.Release();
