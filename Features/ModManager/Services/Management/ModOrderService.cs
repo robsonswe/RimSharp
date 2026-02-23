@@ -27,7 +27,7 @@ namespace RimSharp.Features.ModManager.Services.Management
         {
             if (mod == null || _orderedActiveMods.Contains(mod)) // Prevent duplicates
             {
-                Debug.WriteLineIf(mod != null && _orderedActiveMods.Contains(mod), $"ModOrderService: Mod '{mod.Name}' already in the active list. AddMod skipped.");
+                Debug.WriteLineIf(mod != null && _orderedActiveMods.Contains(mod), $"ModOrderService: Mod '{mod?.Name}' already in the active list. AddMod skipped.");
                 return;
             }
             index = Math.Clamp(index, 0, _orderedActiveMods.Count);
@@ -180,7 +180,7 @@ namespace RimSharp.Features.ModManager.Services.Management
         {
             // Now reads from the internal list
             return _orderedActiveMods
-                .Select(m => m?.PackageId?.ToLowerInvariant())
+                .Select(m => m.PackageId.ToLowerInvariant())
                 .Where(id => !string.IsNullOrEmpty(id));
         }
     }

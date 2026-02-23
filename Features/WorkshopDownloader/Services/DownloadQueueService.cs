@@ -1,8 +1,10 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Windows.Threading;
+using Avalonia.Threading;
 using RimSharp.Features.WorkshopDownloader.Models;
+using RimSharp.Core.Extensions;
+using System.Diagnostics;
 
 namespace RimSharp.Features.WorkshopDownloader.Services
 {
@@ -19,16 +21,15 @@ namespace RimSharp.Features.WorkshopDownloader.Services
     public class DownloadQueueService : IDownloadQueueService
     {
         private readonly ObservableCollection<DownloadItem> _items;
-        private readonly Dispatcher _dispatcher;
+        private readonly object _collectionLock = new object();
 
         public ObservableCollection<DownloadItem> Items => _items;
 
-        public event EventHandler<string> StatusChanged;
+        public event EventHandler<string>? StatusChanged;
 
         public DownloadQueueService()
         {
             _items = new ObservableCollection<DownloadItem>();
-            _dispatcher = Dispatcher.CurrentDispatcher;
         }
 
         public bool AddToQueue(ModInfoDto modInfo)
@@ -38,10 +39,11 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
             if (IsInQueue(modInfo.SteamId))
             {
-                NotifyStatusChanged("This mod is already in the download queue");
+                NotifyStatusChanged($"Mod '{modInfo.Name}' is already in the download queue");
                 return false;
             }
 
+            // Create the item
             var downloadItem = new DownloadItem
             {
                 Name = modInfo.Name,
@@ -50,65 +52,70 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 PublishDate = modInfo.PublishDate,
                 StandardDate = modInfo.StandardDate,
                 FileSize = modInfo.FileSize,
-                LatestVersions = modInfo.LatestVersions // <-- THIS LINE WAS MISSING
+                LatestVersions = modInfo.LatestVersions
             };
 
-            if (_dispatcher.CheckAccess())
+            ThreadHelper.EnsureUiThread(() =>
             {
                 _items.Add(downloadItem);
                 NotifyStatusChanged($"Added mod {modInfo.Name} to download queue");
-            }
-            else
-            {
-                _dispatcher.Invoke(() =>
-                {
-                    _items.Add(downloadItem);
-                    NotifyStatusChanged($"Added mod {modInfo.Name} to download queue");
-                });
-            }
+            });
 
             return true;
         }
 
         public bool RemoveFromQueue(DownloadItem item)
         {
-            if (item == null || !_items.Contains(item))
+            if (item == null)
                 return false;
 
-            if (_dispatcher.CheckAccess())
+            bool removed = false;
+            if (ThreadHelper.IsUiThread)
             {
-                _items.Remove(item);
-                NotifyStatusChanged($"Removed {item.Name} from download queue");
+                removed = _items.Remove(item);
+                if (removed)
+                {
+                    NotifyStatusChanged($"Removed {item.Name} from download queue");
+                }
+                else
+                {
+                    Debug.WriteLine($"[DownloadQueueService] Failed to remove item {item.SteamId} - not found in collection.");
+                }
+                return removed;
             }
             else
             {
-                _dispatcher.Invoke(() =>
+                // If not on UI thread, we can only check Contains unsafely or just Post
+                // We'll Post the removal and return true to indicate it's being handled
+                ThreadHelper.BeginInvokeOnUiThread(() =>
                 {
-                    _items.Remove(item);
-                    NotifyStatusChanged($"Removed {item.Name} from download queue");
+                    if (_items.Remove(item))
+                    {
+                        NotifyStatusChanged($"Removed {item.Name} from download queue");
+                    }
                 });
+                return true; 
             }
-            return true;
         }
-
 
         public bool IsInQueue(string steamId)
         {
-            return !string.IsNullOrEmpty(steamId) &&
-                   _items.Any(item => item.SteamId == steamId);
+            if (string.IsNullOrEmpty(steamId)) return false;
+
+            // Note: Any() on ObservableCollection from a background thread can throw 
+            // if the collection is being modified on the UI thread.
+            // Ideally we'd use a thread-safe lookup, but for now we'll try to be safe.
+            bool exists = false;
+            ThreadHelper.EnsureUiThread(() =>
+            {
+                exists = _items.Any(item => item.SteamId == steamId);
+            });
+            return exists;
         }
 
         private void NotifyStatusChanged(string message)
         {
-            if (_dispatcher.CheckAccess())
-            {
-                StatusChanged?.Invoke(this, message);
-            }
-            else
-            {
-                _dispatcher.Invoke(() => StatusChanged?.Invoke(this, message));
-            }
+            ThreadHelper.EnsureUiThread(() => StatusChanged?.Invoke(this, message));
         }
     }
-
 }

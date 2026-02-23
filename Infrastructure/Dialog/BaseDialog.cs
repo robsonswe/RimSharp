@@ -1,126 +1,69 @@
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.ComponentModel;
-using System.Diagnostics;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Markup.Xaml;
 using System;
+using RimSharp.AppDir.AppFiles;
+using RimSharp.AppDir.Dialogs;
 
 namespace RimSharp.Infrastructure.Dialog
 {
     public class BaseDialog : Window
     {
-        static BaseDialog()
-        {
-            DefaultStyleKeyProperty.OverrideMetadata(typeof(BaseDialog),
-                new FrameworkPropertyMetadata(typeof(BaseDialog)));
-        }
-
         public BaseDialog()
         {
-            Style = (Style)Application.Current.Resources["RimworldDialogStyle"];
-            this.WindowStartupLocation = WindowStartupLocation.CenterOwner;
-
-            Loaded += (s, e) =>
-            {
-                if (Owner == null && Application.Current != null && Application.Current.MainWindow != this)
-                {
-                    Owner = Application.Current.MainWindow;
-                    Debug.WriteLine($"[BaseDialog] Owner automatically set to MainWindow ({Owner?.Title}) on Loaded.");
-                }
-            };
+            WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            Classes.Add("base-dialog");
         }
 
-        #region Dependency Properties
-        public static readonly DependencyProperty CloseableProperty =
-                DependencyProperty.Register("Closeable", typeof(bool), typeof(BaseDialog), new PropertyMetadata(true));
+        public static readonly StyledProperty<bool> CloseableProperty =
+            AvaloniaProperty.Register<BaseDialog, bool>(nameof(Closeable), true);
 
         public bool Closeable
         {
-            get => (bool)GetValue(CloseableProperty);
+            get => GetValue(CloseableProperty);
             set => SetValue(CloseableProperty, value);
         }
 
-        public static readonly DependencyProperty HeaderContentProperty =
-            DependencyProperty.Register("HeaderContent", typeof(object), typeof(BaseDialog));
+        public static readonly StyledProperty<object?> MainContentProperty =
+            AvaloniaProperty.Register<BaseDialog, object?>(nameof(MainContent));
 
-        public object HeaderContent
-        {
-            get => GetValue(HeaderContentProperty);
-            set => SetValue(HeaderContentProperty, value);
-        }
-
-        public static readonly DependencyProperty MainContentProperty =
-            DependencyProperty.Register("MainContent", typeof(object), typeof(BaseDialog));
-
-        public object MainContent
+        public object? MainContent
         {
             get => GetValue(MainContentProperty);
             set => SetValue(MainContentProperty, value);
         }
 
-        public static readonly DependencyProperty ButtonContentProperty =
-            DependencyProperty.Register("ButtonContent", typeof(object), typeof(BaseDialog));
+        public static readonly StyledProperty<object?> ButtonContentProperty =
+            AvaloniaProperty.Register<BaseDialog, object?>(nameof(ButtonContent));
 
-        public object ButtonContent
+        public object? ButtonContent
         {
             get => GetValue(ButtonContentProperty);
             set => SetValue(ButtonContentProperty, value);
         }
-        #endregion
 
-        // OnClosing override remains the same - this is correct
-        protected override void OnClosing(CancelEventArgs e)
+        protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
         {
-            base.OnClosing(e);
+            base.OnApplyTemplate(e);
 
-            if (e.Cancel)
+            var titleBar = e.NameScope.Find<Border>("PART_TitleBar");
+            if (titleBar != null)
             {
-                Debug.WriteLine($"[BaseDialog OnClosing] Close cancelled by another handler for {this.Title}.");
-                return;
-            }
-
-            // WORKAROUND for WPF focus/minimization bug:
-            // For modeless windows, we can detach the owner to prevent it from minimizing the main window.
-            // For modal windows (ShowDialog), we cannot set Owner to null here (InvalidOperationException),
-            // but we can ensure the owner is activated before we close to keep focus in the right place.
-            if (this.Owner != null)
-            {
-                // ComponentDispatcher.IsThreadModal is a way to check if we are in a ShowDialog() call
-                bool isModal = System.Windows.Interop.ComponentDispatcher.IsThreadModal;
-                
-                if (!isModal)
+                titleBar.PointerPressed += (sender, args) =>
                 {
-                    Debug.WriteLine($"[BaseDialog OnClosing] Modeless dialog {this.Title} detaching from Owner to prevent minimization bug.");
-                    this.Owner = null;
-                }
-                else
-                {
-                    Debug.WriteLine($"[BaseDialog OnClosing] Modal dialog {this.Title} closing. Activating owner to prevent minimization bug.");
-                    try
-                    {
-                        if (this.Owner.Visibility == Visibility.Visible && this.Owner.WindowState != WindowState.Minimized)
-                        {
-                            this.Owner.Activate();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"[BaseDialog OnClosing] Failed to activate owner: {ex.Message}");
-                    }
-                }
+                    BeginMoveDrag(args);
+                };
             }
-
-            Debug.WriteLine($"[BaseDialog OnClosing] Closing dialog {this.Title}.");
         }
 
-        // CloseButton_Click and IsMouseInHeader remain the same
-         private void CloseButton_Click(object sender, RoutedEventArgs e)
+        protected void SetupViewModel(DialogViewModelBase viewModel)
         {
-            this.Close();
-        }
-        private bool IsMouseInHeader(MouseEventArgs e)
-        {
-             return true;
+            DataContext = viewModel;
+            viewModel.RequestCloseDialog += (s, e) =>
+            {
+                Close(viewModel.DialogResultForWindow);
+            };
         }
     }
 }

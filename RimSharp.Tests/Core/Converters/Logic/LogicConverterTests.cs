@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using WinVisibility = System.Windows.Visibility;
 using FluentAssertions;
 using RimSharp.Core.Converters.Logic;
 using Xunit;
@@ -11,21 +10,21 @@ namespace RimSharp.Tests.Core.Converters.Logic
     public class LogicConverterTests
     {
         [Fact]
-        public void BooleanAndToVisibilityConverter_ShouldReturnVisible_WhenAllTrue()
+        public void BooleanAndToVisibilityConverter_ShouldReturnTrue_WhenAllTrue()
         {
             var converter = new BooleanAndToVisibilityConverter();
             var values = new object[] { true, true, true };
-            var result = converter.Convert(values, typeof(WinVisibility), null, CultureInfo.InvariantCulture);
-            result.Should().Be(WinVisibility.Visible);
+            var result = converter.Convert(values, typeof(bool), null, CultureInfo.InvariantCulture);
+            result.Should().Be(true);
         }
 
         [Fact]
-        public void BooleanAndToVisibilityConverter_ShouldReturnCollapsed_WhenAnyFalse()
+        public void BooleanAndToVisibilityConverter_ShouldReturnFalse_WhenAnyFalse()
         {
             var converter = new BooleanAndToVisibilityConverter();
             var values = new object[] { true, false, true };
-            var result = converter.Convert(values, typeof(WinVisibility), null, CultureInfo.InvariantCulture);
-            result.Should().Be(WinVisibility.Collapsed);
+            var result = converter.Convert(values, typeof(bool), null, CultureInfo.InvariantCulture);
+            result.Should().Be(false);
         }
 
         [Theory]

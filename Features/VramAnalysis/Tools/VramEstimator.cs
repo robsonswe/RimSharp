@@ -4,9 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading; // Required for Interlocked
-using System.Threading.Tasks; // Required for Parallel
-using System.Windows.Media.Imaging;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Xml.Linq;
 
 namespace RimSharp.Features.VramAnalysis.Tools
@@ -62,14 +61,12 @@ namespace RimSharp.Features.VramAnalysis.Tools
                 var (width, height, format, hasMips) = GetTextureInfo(file);
                 if (width <= 0 || height <= 0 || format == SimpleTextureFormat.Unknown) return;
 
-                // --- FIX: Explicitly cast the result of the double multiplication to long ---
                 long baseSizeUncompressed = (long)(width * height * GetBytesPerPixel(format, isCompressed: false));
                 
                 long vramUncompressed = (hasMips && (format == SimpleTextureFormat.RGBA32 || format == SimpleTextureFormat.RGB24))
                     ? (long)(baseSizeUncompressed * mipmapFactor)
                     : baseSizeUncompressed;
                 
-                // --- FIX: Explicitly cast the result of the double multiplication to long ---
                 long vramCompressed = (long)(width * height * GetBytesPerPixel(format, isCompressed: true));
                 
                 bool isInAtlas = width < 512 && height < 512;
@@ -133,7 +130,7 @@ namespace RimSharp.Features.VramAnalysis.Tools
                         }
                     }
                 }
-                catch (Exception) { /* If parsing fails, don't exclude anything */ }
+                catch (Exception) { }
             }
             return (foldersToExclude, dependencies);
         }
@@ -141,7 +138,33 @@ namespace RimSharp.Features.VramAnalysis.Tools
         private static XElement? FindBestVersionNode(XDocument doc, string majorGameVersion) { var specificVersionNode = doc.Root?.Elements("v" + majorGameVersion).FirstOrDefault(); if (specificVersionNode != null) return specificVersionNode; return doc.Root?.Elements().Where(e => e.Name.LocalName.StartsWith("v", StringComparison.OrdinalIgnoreCase)).Select(e => new { Element = e, Version = Version.TryParse(e.Name.LocalName.Substring(1), out var v) ? v : null }).Where(x => x.Version != null).OrderByDescending(x => x.Version).FirstOrDefault()?.Element; }
         private static double GetBytesPerPixel(SimpleTextureFormat format, bool isCompressed) { if (isCompressed) return format switch { SimpleTextureFormat.DXT1 => 0.5, _ => 1.0 }; return format switch { SimpleTextureFormat.RGBA32 => 4.0, SimpleTextureFormat.RGB24 => 3.0, SimpleTextureFormat.DXT1 => 0.5, SimpleTextureFormat.DXT5 => 1.0, SimpleTextureFormat.BC7 => 1.0, _ => 0 }; }
         private static (int Width, int Height, SimpleTextureFormat Format, bool HasMips) GetTextureInfo(string filePath) { try { return Path.GetExtension(filePath).ToLowerInvariant() switch { ".png" => GetPngInfo(filePath), ".dds" => GetDdsInfo(filePath), _ => (0, 0, SimpleTextureFormat.Unknown, false) }; } catch { return (0, 0, SimpleTextureFormat.Unknown, false); } }
-        private static (int, int, SimpleTextureFormat, bool) GetPngInfo(string filePath) { using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read); var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.IgnoreColorProfile, BitmapCacheOption.None); return (decoder.Frames[0].PixelWidth, decoder.Frames[0].PixelHeight, SimpleTextureFormat.RGBA32, (decoder.Frames[0].PixelWidth % 4 == 0) && (decoder.Frames[0].PixelHeight % 4 == 0)); }
+        
+        private static (int, int, SimpleTextureFormat, bool) GetPngInfo(string filePath) 
+        { 
+            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using var reader = new BinaryReader(stream);
+            
+            // Skip PNG signature
+            reader.ReadBytes(8);
+            // Read IHDR chunk
+            reader.ReadBytes(4); // Length
+            reader.ReadBytes(4); // "IHDR"
+            
+            byte[] widthBytes = reader.ReadBytes(4);
+            byte[] heightBytes = reader.ReadBytes(4);
+            
+            if (BitConverter.IsLittleEndian)
+            {
+                Array.Reverse(widthBytes);
+                Array.Reverse(heightBytes);
+            }
+            
+            int width = BitConverter.ToInt32(widthBytes, 0);
+            int height = BitConverter.ToInt32(heightBytes, 0);
+            
+            return (width, height, SimpleTextureFormat.RGBA32, (width % 4 == 0) && (height % 4 == 0)); 
+        }
+
         private static (int, int, SimpleTextureFormat, bool) GetDdsInfo(string filePath) { using var reader = new BinaryReader(File.OpenRead(filePath)); if (reader.BaseStream.Length < 128) return (0, 0, SimpleTextureFormat.Unknown, false); reader.BaseStream.Seek(8, SeekOrigin.Begin); uint headerFlags = reader.ReadUInt32(); int height = reader.ReadInt32(); int width = reader.ReadInt32(); reader.BaseStream.Seek(20, SeekOrigin.Current); int mipMapCount = reader.ReadInt32(); bool hasMips = (headerFlags & 0x20000) != 0 || mipMapCount > 1; reader.BaseStream.Seek(44, SeekOrigin.Current); if ((reader.ReadUInt32() & 0x4) != 0) { var fourCC = new string(reader.ReadChars(4)); if (fourCC.StartsWith("DXT1")) return (width, height, SimpleTextureFormat.DXT1, hasMips); if (fourCC.StartsWith("DXT5")) return (width, height, SimpleTextureFormat.DXT5, hasMips); if (fourCC.StartsWith("DX10")) return (width, height, SimpleTextureFormat.BC7, hasMips); } return (width, height, SimpleTextureFormat.Unknown, false); }
     }
 }

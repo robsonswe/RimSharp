@@ -5,10 +5,10 @@ namespace RimSharp.Shared.Models
     // Inherit from ViewModelBase to get INotifyPropertyChanged implementation easily
     public class PathSettings : ViewModelBase
     {
-        private string _gamePath;
-        private string _modsPath;
-        private string _configPath;
-        private string _gameVersion;
+        private string _gamePath = string.Empty;
+        private string _modsPath = string.Empty;
+        private string _configPath = string.Empty;
+        private string _gameVersion = string.Empty;
 
         public string GamePath
         {

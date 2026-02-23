@@ -1,0 +1,81 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                  xmlns:local="clr-namespace:RimSharp.Features.ModManager.Dialogs.DuplicateMods"
+                  xmlns:infra="clr-namespace:RimSharp.Infrastructure.Mods.Validation.Duplicates"
+                  xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+                  x:Class="RimSharp.Features.ModManager.Dialogs.DuplicateMods.DuplicateModDialogView"
+                  x:DataType="local:DuplicateModDialogViewModel"
+                  mc:Ignorable="d"
+                  Title="Resolve Duplicate Mods">
+
+    <dialogs:BaseDialog.MainContent>
+        <StackPanel Spacing="10">
+            <TextBlock Text="Duplicate Mods Detected" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+            <TextBlock Text="Select which version to keep for each duplicate mod, or choose 'Ignore' to keep all versions. The other versions will be deleted unless ignored." FontSize="13" TextWrapping="Wrap"/>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="600">
+                <ItemsControl ItemsSource="{Binding DuplicateGroups}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="local:DuplicateModGroupViewModel">
+                            <Border Classes="RimworldPanelBorder" Margin="0,0,0,15" Padding="0">
+                                <StackPanel>
+                                    <Border Background="{DynamicResource RimworldLightBrownBrush}" Padding="10,8">
+                                        <TextBlock Text="{Binding PackageId}" FontWeight="Bold" FontSize="14"/>
+                                    </Border>
+                                    
+                                    <Border Margin="10,10,10,0" Padding="10" Background="{DynamicResource RimworldBeigeBrush}" CornerRadius="3" BorderThickness="1" BorderBrush="{DynamicResource RimworldBrownBrush}">
+                                        <RadioButton IsChecked="{Binding IsIgnored}" GroupName="{Binding GroupName}">
+                                            <StackPanel>
+                                                <TextBlock FontWeight="SemiBold" FontSize="13">
+                                                    <Run Text="Ignore: " Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                                    <Run Text="Keep all versions of this mod" Foreground="{DynamicResource RimworldDarkGreenBrush}"/>
+                                                </TextBlock>
+                                                <TextBlock Margin="20,4,0,0" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource RimworldDarkBrownBrush}">
+                                                    No mods in this group will be deleted.
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </RadioButton>
+                                    </Border>
+                                    
+                                    <ItemsControl ItemsSource="{Binding Mods}" Margin="10">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="infra:ModItemWrapper">
+                                                <Border Margin="0,0,0,10" Padding="10" Background="{DynamicResource RimworldBeigeBrush}" CornerRadius="3" BorderThickness="1" BorderBrush="{DynamicResource RimworldBrownBrush}">
+                                                    <RadioButton IsChecked="{Binding IsActive}" GroupName="{Binding ParentGroup.GroupName}">
+                                                        <StackPanel>
+                                                            <TextBlock FontWeight="SemiBold" FontSize="13">
+                                                                <Run Text="Keep: " Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                                                <Run Text="{Binding Name}" Foreground="{DynamicResource RimworldDarkGreenBrush}"/>
+                                                                <Run FontStyle="Italic" Text="{Binding IsOriginal, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='| (Original)'}"/>
+                                                            </TextBlock>
+                                                            <StackPanel Margin="20,8,0,0" Spacing="2">
+                                                                <TextBlock Text="{Binding Authors}" FontSize="12"/>
+                                                                <ContentControl Content="{Binding Original.SupportedVersions, Converter={StaticResource VersionSupportConverter}}" FontSize="12"/>
+                                                                <TextBlock Text="{Binding Path}" FontSize="12" TextWrapping="Wrap"/>
+                                                                <TextBlock Text="{Binding SteamId}" FontSize="12" IsVisible="{Binding SteamId, Converter={StaticResource IsNotNullOrEmptyConverter}}"/>
+                                                                <TextBlock Text="{Binding Original.ModType, Converter={StaticResource ModTypeToDescriptionConverter}}" FontSize="12"/>
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                    </RadioButton>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </StackPanel>
+    </dialogs:BaseDialog.MainContent>
+
+    <dialogs:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Content="Cancel" Command="{Binding CancelCommand}" Width="100" Classes="RimworldButtonStyle"/>
+            <Button Content="Apply Changes" Command="{Binding ApplyResolutionsCommand}" Width="120" Classes="RimworldSaveButtonStyle"/>
+        </StackPanel>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

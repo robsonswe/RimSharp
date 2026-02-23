@@ -1,0 +1,28 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                  xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+                  xmlns:vm="clr-namespace:RimSharp.Features.ModManager.Dialogs.CustomizeMod"
+                  x:Class="RimSharp.Features.ModManager.Dialogs.CustomizeMod.IncompatibilityRuleEditorDialogView"
+                  x:DataType="vm:IncompatibilityRuleEditorDialogViewModel"
+                  Width="400" Height="350" Title="{Binding Title}">
+    <dialogs:BaseDialog.MainContent>
+        <StackPanel Margin="10" Spacing="5">
+            <TextBlock Text="Package ID:"/>
+            <TextBox Text="{Binding PackageId}" Margin="0,0,0,5"/>
+
+            <TextBlock Text="Display Name:"/>
+            <TextBox Text="{Binding DisplayName}" Margin="0,0,0,5"/>
+
+            <TextBlock Text="Comment:"/>
+            <TextBox Text="{Binding Comment}" Margin="0,0,0,5"/>
+
+            <CheckBox Content="Hard Incompatibility" IsChecked="{Binding HardIncompatibility}" Margin="0,0,0,10"/>
+        </StackPanel>
+    </dialogs:BaseDialog.MainContent>
+    <dialogs:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Content="Save" Command="{Binding SaveCommand}" Width="80" Classes="RimworldButtonStyle"/>
+            <Button Content="Cancel" Command="{Binding CancelCommand}" Width="80" Classes="RimworldButtonStyle"/>
+        </StackPanel>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

@@ -1,21 +1,23 @@
 using System;
 using System.Globalization;
-using System.Windows.Data;
+using Avalonia.Data.Converters;
 
 namespace RimSharp.Core.Converters.Logic
 {
     public class IsNotNullOrEmptyConverter : IValueConverter
     {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public bool Inverse { get; set; }
+
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            // Returns true if the value is not null AND not an empty/whitespace string
-            // Use string.IsNullOrWhiteSpace for robustness if desired
-            return value != null && !string.IsNullOrEmpty(value.ToString());
+            bool result = !string.IsNullOrWhiteSpace(value?.ToString());
+            return Inverse ? !result : result;
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            throw new NotImplementedException(); // Not needed for one-way check
+            return null;
         }
     }
 }
+

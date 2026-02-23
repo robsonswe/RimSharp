@@ -1,0 +1,101 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+        xmlns:vm="clr-namespace:RimSharp.Features.ModManager.Dialogs.Strip"
+        xmlns:helpers="clr-namespace:RimSharp.Core.Helpers"
+        x:Class="RimSharp.Features.ModManager.Dialogs.Strip.StripModsDialogView"
+        x:DataType="vm:StripDialogViewModel"
+        mc:Ignorable="d"
+        Title="{Binding Title}"
+        Width="950" Height="600">
+
+    <dialogs:BaseDialog.Resources>
+        <helpers:BindingProxy x:Key="Proxy" Data="{Binding}" />
+    </dialogs:BaseDialog.Resources>
+
+    <dialogs:BaseDialog.MainContent>
+        <Grid Margin="5" RowDefinitions="Auto,Auto,*,Auto">
+            <TextBlock Grid.Row="0" Margin="5,0,5,10" TextWrapping="Wrap"
+                       Text="In this dialog, you may choose which modes you want to strip. Mod stripping means that mods folder size will be reduced. Next approaches will be used:&#x0a;1. Folders not needed for your current game version will be removed (based on your game version)&#x0a;2. Some common files and folders will be removed (source, .git, .vs, etc)"/>
+
+            <Border Grid.Row="1" BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="0,0,0,1" Margin="0,0,0,2">
+                <Grid ColumnDefinitions="420,60,90,*">
+                    <TextBlock Grid.Column="0" Text="Mod / File" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="5,2"/>
+                    <TextBlock Grid.Column="1" Text="Type" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="5,2"/>
+                    <TextBlock Grid.Column="2" Text="Size" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="5,2" HorizontalAlignment="Right"/>
+                    <TextBlock Grid.Column="3" Text="Path" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="5,2"/>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="2" BorderThickness="1" BorderBrush="{DynamicResource RimworldBrownBrush}" Margin="0,2,0,0">
+                <TreeView ItemsSource="{Binding StrippableMods}" BorderThickness="0">
+                    <TreeView.DataTemplates>
+                        <!-- Template for Mods (Top Level) -->
+                        <TreeDataTemplate DataType="vm:StrippableModViewModel" ItemsSource="{Binding Children}">
+                            <Grid ColumnDefinitions="420,60,90,*" Margin="0,2">
+                                <Grid.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Open in Explorer"
+                                                  Command="{Binding Data.OpenInExplorerCommand, Source={StaticResource Proxy}}"
+                                                  CommandParameter="{Binding Mod.Path}">
+                                            <MenuItem.Icon><TextBlock Text="📁" FontSize="14"/></MenuItem.Icon>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Grid.ContextMenu>
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                    <CheckBox IsChecked="{Binding IsSelected}" IsThreeState="True" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Mod.Name}" FontWeight="Bold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip.Tip="{Binding Mod.Name}"/>
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="Mod" Foreground="Gray" VerticalAlignment="Center" Margin="5,0"/>
+                                <TextBlock Grid.Column="2" Text="{Binding TotalStrippableSize, Converter={StaticResource FileSizeConverter}, Mode=OneWay}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,0"/>
+                                <TextBlock Grid.Column="3" Text="{Binding Mod.Path}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="5,0" Opacity="0.6" FontSize="11" ToolTip.Tip="{Binding Mod.Path}"/>
+                            </Grid>
+                        </TreeDataTemplate>
+
+                        <!-- Template for Files/Folders (Children) -->
+                        <DataTemplate DataType="vm:StrippableItemViewModel">
+                            <Grid ColumnDefinitions="420,60,90,*" Margin="0,1">
+                                <Grid.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Open in Explorer"
+                                                  Command="{Binding Data.OpenInExplorerCommand, Source={StaticResource Proxy}}"
+                                                  CommandParameter="{Binding FullPath}">
+                                            <MenuItem.Icon><TextBlock Text="📁" FontSize="14"/></MenuItem.Icon>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Grid.ContextMenu>
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="5" Margin="20,0,0,0" VerticalAlignment="Center">
+                                    <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip.Tip="{Binding FullPath}"/>
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="{Binding ItemType}" Foreground="Gray" VerticalAlignment="Center" Margin="5,0" FontSize="11"/>
+                                <TextBlock Grid.Column="2" Text="{Binding Size, Converter={StaticResource FileSizeConverter}, Mode=OneWay}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,0"/>
+                                <TextBlock Grid.Column="3" Text="{Binding RelativePath}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="5,0" Opacity="0.6" FontSize="11" ToolTip.Tip="{Binding FullPath}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </TreeView.DataTemplates>
+                </TreeView>
+            </Border>
+
+            <Grid Grid.Row="3" Margin="5,8,5,0">
+                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Left">
+                    <Button Content="Select All" Command="{Binding SelectAllCommand}" Classes="RimworldButtonStyle" Padding="12,4"/>
+                    <Button Content="Select None" Command="{Binding SelectNoneCommand}" Classes="RimworldButtonStyle" Padding="12,4"/>
+                </StackPanel>
+                <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Run Text="Total Selected Size: " FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                    <Run Text="{Binding TotalSelectedSize, Converter={StaticResource FileSizeConverter}, Mode=OneWay}" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                </TextBlock>
+            </Grid>
+        </Grid>
+    </dialogs:BaseDialog.MainContent>
+    
+    <dialogs:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="10">
+            <Button Content="Strip" Command="{Binding StripCommand}" Classes="RimworldRunButtonStyle" MinWidth="100"/>
+            <Button Content="Cancel" Command="{Binding CancelCommand}" Classes="RimworldButtonStyle" MinWidth="80"/>
+        </StackPanel>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

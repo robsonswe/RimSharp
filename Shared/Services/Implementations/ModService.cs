@@ -973,19 +973,19 @@ namespace RimSharp.Shared.Services.Implementations
                     Authors = root.Element("author")?.Value ??
                               string.Join(", ", root.Element("authors")?.Elements("li").Select(x => x.Value?.Trim()).Where(v => v != null) ?? Array.Empty<string>()),
                     Description = root.Element("description")?.Value ?? string.Empty,
-                    ModVersion = root.Element("modVersion")?.Value,
-                    ModIconPath = root.Element("modIconPath")?.Value,
-                    Url = validatedUrl,
+                    ModVersion = root.Element("modVersion")?.Value ?? string.Empty,
+                    ModIconPath = root.Element("modIconPath")?.Value ?? string.Empty,
+                    Url = validatedUrl ?? string.Empty,
                     SupportedVersions = supportedVersions,
-                    PreviewImagePath = (previewImagePath != null && File.Exists(previewImagePath)) ? previewImagePath : null,
+                    PreviewImagePath = (previewImagePath != null && File.Exists(previewImagePath)) ? previewImagePath : string.Empty,
                 };
 
                 mod.ModDependencies = root.Element("modDependencies")?.Elements("li")
                     .Select(x => new ModDependency
                     {
-                        PackageId = x.Element("packageId")?.Value,
-                        DisplayName = x.Element("displayName")?.Value,
-                        SteamWorkshopUrl = x.Element("steamWorkshopUrl")?.Value
+                        PackageId = x.Element("packageId")?.Value ?? string.Empty,
+                        DisplayName = x.Element("displayName")?.Value ?? string.Empty,
+                        SteamWorkshopUrl = x.Element("steamWorkshopUrl")?.Value ?? string.Empty
                     }).ToList() ?? new List<ModDependency>();
 
                 if (!string.IsNullOrEmpty(modRootFolder))
@@ -1145,7 +1145,7 @@ namespace RimSharp.Shared.Services.Implementations
 
 
         // Add method to get custom mod info
-        public ModCustomInfo GetCustomModInfo(string packageId)
+        public ModCustomInfo? GetCustomModInfo(string packageId)
         {
             if (string.IsNullOrEmpty(packageId))
                 throw new ArgumentNullException(nameof(packageId));

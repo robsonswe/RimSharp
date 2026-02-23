@@ -50,16 +50,16 @@ namespace RimSharp.Shared.Models
     public class ModItem
     {
         // Required fields from About.xml
-        public string Name { get; set; }
-        public string PackageId { get; set; }
-        public string Authors { get; set; }
-        public string Description { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string PackageId { get; set; } = string.Empty;
+        public string Authors { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
         public List<VersionSupport> SupportedVersions { get; set; } = new List<VersionSupport>();
 
         // Optional fields from About.xml
-        public string ModVersion { get; set; }
-        public string ModIconPath { get; set; }
-        public string Url { get; set; }
+        public string ModVersion { get; set; } = string.Empty;
+        public string ModIconPath { get; set; } = string.Empty;
+        public string Url { get; set; } = string.Empty;
         public List<ModDependency> ModDependencies { get; set; } = new List<ModDependency>();
         public List<ModDependency> ModDependenciesByVersion { get; set; } = new List<ModDependency>();
         public List<string> LoadBefore { get; set; } = new List<string>();
@@ -72,15 +72,15 @@ namespace RimSharp.Shared.Models
         public List<string> IncompatibleWithByVersion { get; set; } = new List<string>();
 
         // Additional fields
-        public string SteamId { get; set; }
-        public string SteamUrl { get; set; }
-        public string ExternalUrl { get; set; }
-        public string Path { get; set; }
+        public string SteamId { get; set; } = string.Empty;
+        public string SteamUrl { get; set; } = string.Empty;
+        public string ExternalUrl { get; set; } = string.Empty;
+        public string Path { get; set; } = string.Empty;
         public bool IsActive { get; set; }
         public ModType ModType { get; set; }
 
         public bool LoadBottom { get; set; }
-        public string PreviewImagePath { get; set; }
+        public string PreviewImagePath { get; set; } = string.Empty;
 
         public bool IsOutdatedRW { get; set; }
 
@@ -88,12 +88,26 @@ namespace RimSharp.Shared.Models
         public bool HasSteamUrl => !string.IsNullOrEmpty(SteamUrl);
         public bool HasExternalUrl => !string.IsNullOrEmpty(ExternalUrl);
 
-        public string GitRepo { get; set; }
+        public string GitRepo { get; set; } = string.Empty;
 
-        public string DateStamp { get; set; }
-        public string UpdateDate { get; set; }
+        public string DateStamp { get; set; } = string.Empty;
+        public string UpdateDate { get; set; } = string.Empty;
 
-        public string Tags { get; set; }
+        public string Tags { get; set; } = string.Empty;
+
+        public string LocalUpdateDate => UpdateDate ?? "N/A";
+        public DateTime LocalUpdateDateTime 
+        {
+            get
+            {
+                if (!string.IsNullOrWhiteSpace(UpdateDate) &&
+                    DateTime.TryParseExact(UpdateDate, "dd/MM/yyyy HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime parsedDate))
+                {
+                    return parsedDate;
+                }
+                return DateTime.MinValue;
+            }
+        }
 
         /// <summary>
         /// Gets or sets a value indicating whether this mod contains C# assembly (.dll) files.
@@ -122,11 +136,11 @@ namespace RimSharp.Shared.Models
         public IEnumerable<string> SupportedVersionStrings => SupportedVersions.Select(v => v.Version);
 
         // New: Efficiently parsed Author list
-        private List<string> _authorList;
+        private List<string>? _authorList;
         public List<string> AuthorList => _authorList ??= ParseCommaSeparatedString(Authors);
 
         // New: Efficiently parsed Tag list
-        private List<string> _tagList;
+        private List<string>? _tagList;
         public List<string> TagList => _tagList ??= ParseCommaSeparatedString(Tags);
         /// <summary>
         /// Gets or sets a value indicating whether this mod instance has detected issues
@@ -140,7 +154,7 @@ namespace RimSharp.Shared.Models
         /// in the current active list context.
         /// This property is managed externally (e.g., by ModListManager).
         /// </summary>
-        public string IssueTooltipText { get; set; } // We'll update this from ModListManager
+        public string IssueTooltipText { get; set; } = string.Empty; // We'll update this from ModListManager
 
         /// <summary>
         /// Invalidates the cached tag list, forcing it to be reparsed on next access.
@@ -168,12 +182,12 @@ namespace RimSharp.Shared.Models
 
     public class ModDependency
     {
-        public string PackageId { get; set; }
-        public string DisplayName { get; set; }
-        public string SteamWorkshopUrl { get; set; }
+        public string PackageId { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string SteamWorkshopUrl { get; set; } = string.Empty;
 
         // --- ADDED CALCULATED PROPERTY ---
-        private string _steamId;
+        private string? _steamId;
         public string SteamId
         {
             get
@@ -188,7 +202,7 @@ namespace RimSharp.Shared.Models
 
         private static readonly Regex SteamIdRegex = new Regex(@"id=(\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-        private static string ExtractSteamIdFromUrl(string url)
+        private static string? ExtractSteamIdFromUrl(string url)
         {
             if (string.IsNullOrWhiteSpace(url))
             {

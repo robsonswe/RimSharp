@@ -22,7 +22,7 @@ namespace RimSharp.Shared.Models
         /// <summary>
         /// Custom load bottom rule defined by the user.
         /// </summary>
-        public LoadBottomRule LoadBottom { get; set; }
+        public LoadBottomRule? LoadBottom { get; set; }
 
         /// <summary>
         /// Additional game versions the mod supports according to user.
@@ -38,12 +38,12 @@ namespace RimSharp.Shared.Models
         /// <summary>
         /// User-defined external URL for the mod.
         /// </summary>
-        public string ExternalUrl { get; set; }
+        public string? ExternalUrl { get; set; }
 
         /// <summary>
         /// User-defined tags for the mod.
         /// </summary>
-        public string Tags { get; set; }
+        public string? Tags { get; set; }
 
         /// <summary>
         /// User-defined favorite status for the mod.

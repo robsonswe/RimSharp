@@ -1,31 +1,28 @@
 using System;
-using System.Globalization;
-using System.Windows.Data;
 using System.Collections;
+using System.Globalization;
+using System.Linq;
+using Avalonia.Data.Converters;
 
 namespace RimSharp.Core.Converters.Logic
 {
     public class CountToBooleanConverter : IValueConverter
     {
-        // Returns true if the count is greater than 0
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            if (value is int count)
-            {
-                return count > 0;
-            }
-            // Optional: Handle other collection types if needed
-            if (value is ICollection collection)
-            {
-                 return collection.Count > 0;
-            }
-            return false; // Default to false if type is wrong or collection is null/doesn't have count
+            if (value is int i) return i > 0;
+            if (value is long l) return l > 0;
+            if (value is double d) return d > 0;
+            if (value is decimal m) return m > 0;
+            if (value is ICollection collection) return collection.Count > 0;
+            if (value is IEnumerable enumerable) return enumerable.Cast<object>().Any();
+            return false;
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            // Not needed for IsEnabled binding
-            throw new NotImplementedException();
+            return null;
         }
     }
 }
+

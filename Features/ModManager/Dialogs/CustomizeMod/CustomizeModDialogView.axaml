@@ -1,0 +1,126 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                 xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+                 xmlns:vm="clr-namespace:RimSharp.Features.ModManager.Dialogs.CustomizeMod"
+                 x:Class="RimSharp.Features.ModManager.Dialogs.CustomizeMod.CustomizeModDialogView"
+                 x:DataType="vm:CustomizeModDialogViewModel"
+                 Width="650"
+                 Height="700"
+                 Title="{Binding Title}">
+    
+    <dialogs:BaseDialog.MainContent>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="10" Spacing="10">
+                <TextBlock Text="Basic Properties" FontWeight="Bold"/>
+
+                <CheckBox Content="Favorite" IsChecked="{Binding IsFavorite}" FontWeight="SemiBold"/>
+
+                <StackPanel Spacing="2">
+                    <TextBlock Text="External URL:"/>
+                    <TextBox Text="{Binding ExternalUrl}"/>
+                </StackPanel>
+                
+                <StackPanel Spacing="2">
+                    <TextBlock Text="Tags (comma-separated):"/>
+                    <TextBox Text="{Binding Tags}"/>
+                </StackPanel>
+                
+                <StackPanel Spacing="5">
+                    <TextBlock Text="Supported Versions:"/>
+                    
+                    <Border Padding="5" BorderBrush="#CCCCCC" BorderThickness="1" Background="#F0F0F0" IsVisible="{Binding HasOriginalVersions}">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="Original:" FontWeight="SemiBold"/>
+                            <ItemsControl ItemsSource="{Binding OriginalSupportedVersions}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" Margin="5,0,0,0" Foreground="Black"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                    
+                    <TextBlock Text="Custom versions (comma-separated):"/>
+                    <TextBox Text="{Binding SupportedVersions}"/>
+                    <Border Padding="5" BorderBrush="#CCCCCC" BorderThickness="1" Background="#F0F0F0">
+                        <StackPanel>
+                            <TextBlock Text="Recommendation" FontStyle="Italic" Foreground="Black"/>
+                            <TextBlock Foreground="Gray" FontSize="11" TextWrapping="Wrap">
+                                This customization only removes the warning within the app. To fully suppress version warnings in-game, install Mlie's 'No Version Warning' mod.
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+                
+                <!-- Load Bottom -->
+                <Border Padding="10" BorderBrush="#CCCCCC" BorderThickness="1">
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Load Bottom" FontWeight="SemiBold"/>
+                        
+                        <Border Padding="5" BorderBrush="#CCCCCC" BorderThickness="1" Background="#F0F0F0" IsVisible="{Binding HasOriginalLoadBottom}">
+                            <StackPanel>
+                                <TextBlock Text="Original: Enabled" FontStyle="Italic" Foreground="Black"/>
+                                <TextBlock Text="This setting cannot be overridden" Foreground="Gray" FontSize="11"/>
+                            </StackPanel>
+                        </Border>
+                        
+                        <StackPanel IsEnabled="{Binding CanCustomizeLoadBottom}" Spacing="5">
+                            <CheckBox Content="Enable Load Bottom" IsChecked="{Binding LoadBottom}"/>
+                            <Grid ColumnDefinitions="Auto,*" IsEnabled="{Binding LoadBottom}">
+                                <TextBlock Grid.Column="0" Text="Comment:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                <TextBox Grid.Column="1" Text="{Binding LoadBottomComment}" />
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                
+                <!-- Expander: Load Before -->
+                <Expander Header="Load Before Rules" IsExpanded="True">
+                    <StackPanel Spacing="10" Margin="10">
+                        <Border Padding="5" BorderBrush="#CCCCCC" BorderThickness="1" Background="#F0F0F0" IsVisible="{Binding HasOriginalLoadBefore}">
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="Original Load Before Rules:" FontWeight="SemiBold" Foreground="Black"/>
+                                <ItemsControl ItemsSource="{Binding OriginalLoadBeforeItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" Margin="5,2,0,2" Foreground="Black"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                        
+                        <DataGrid ItemsSource="{Binding CustomLoadBefore}" MaxHeight="150" SelectedItem="{Binding SelectedLoadBeforeRule}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="All">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Package ID" Binding="{Binding PackageId}" Width="150"/>
+                                <DataGridTextColumn Header="Display Name" Binding="{Binding DisplayName}" Width="150"/>
+                                <DataGridTextColumn Header="Comment" Binding="{Binding Comment}" Width="200"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                            <Button Content="Add" Command="{Binding AddLoadBeforeCommand}" Classes="RimworldButtonStyle"/>
+                            <Button Content="Edit" Command="{Binding EditLoadBeforeCommand}" Classes="RimworldButtonStyle"/>
+                            <Button Content="Remove" Command="{Binding RemoveLoadBeforeCommand}" Classes="RimworldButtonStyle"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Expander>
+
+                <!-- Help text -->
+                <TextBlock TextWrapping="Wrap" Foreground="Gray">
+                    Note: Original mod settings cannot be changed. Custom settings you define here will be saved separately.
+                </TextBlock>
+            </StackPanel>
+        </ScrollViewer>
+    </dialogs:BaseDialog.MainContent>
+    
+    <dialogs:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Content="Save" Command="{Binding SaveCommand}" Classes="RimworldButtonStyle" Width="80" />
+            <Button Content="Cancel" Command="{Binding CancelCommand}" Classes="RimworldButtonStyle" Width="80" />
+        </StackPanel>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

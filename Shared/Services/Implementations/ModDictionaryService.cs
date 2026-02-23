@@ -16,7 +16,7 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
         private readonly IPathService _pathService; // Now needed for GetEntryByPackageId logic
         private readonly ILoggerService _logger;
         private readonly IDataUpdateService _dataUpdateService; 
-        private Dictionary<string, ModDictionaryEntry> _dictionaryCache = null; // Cache keyed by lowercase SteamId
+        private Dictionary<string, ModDictionaryEntry>? _dictionaryCache; // Cache keyed by lowercase SteamId
         private bool _isInitialized = false;
         private readonly object _lock = new object();
 
@@ -31,14 +31,14 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
         public Dictionary<string, ModDictionaryEntry> GetAllEntries()
         {
             // Double-check locking for thread safety
-            if (_isInitialized)
+            if (_isInitialized && _dictionaryCache != null)
             {
                 return _dictionaryCache;
             }
 
             lock (_lock)
             {
-                if (_isInitialized) // Check again inside lock
+                if (_isInitialized && _dictionaryCache != null) // Check again inside lock
                 {
                     return _dictionaryCache;
                 }
@@ -51,7 +51,7 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
             }
         }
 
-        public ModDictionaryEntry GetEntryBySteamId(string steamId)
+        public ModDictionaryEntry? GetEntryBySteamId(string steamId)
         {
             if (string.IsNullOrWhiteSpace(steamId)) return null;
 
@@ -62,7 +62,7 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
             return entry; // Returns null if not found
         }
 
-        public ModDictionaryEntry GetEntryByPackageId(string packageId)
+        public ModDictionaryEntry? GetEntryByPackageId(string packageId)
         {
             if (string.IsNullOrWhiteSpace(packageId)) return null;
 
@@ -256,7 +256,7 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
         {
             // Key: packageId (string)
             // Value: Dictionary where Key is steamId (string) and Value is ModDetails
-            public Dictionary<string, Dictionary<string, ModDetails>> Mods { get; set; }
+            public Dictionary<string, Dictionary<string, ModDetails>>? Mods { get; set; }
         }
 
         /// <summary>
@@ -264,9 +264,9 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
         /// </summary>
         private class ModDetails
         {
-            public string Name { get; set; }
-            public List<string> Versions { get; set; }
-            public string Authors { get; set; }
+            public string Name { get; set; } = string.Empty;
+            public List<string> Versions { get; set; } = new();
+            public string Authors { get; set; } = string.Empty;
             // Ensure this matches the case in your JSON or use [JsonPropertyName("published")] if needed
             public bool Published { get; set; }
         }

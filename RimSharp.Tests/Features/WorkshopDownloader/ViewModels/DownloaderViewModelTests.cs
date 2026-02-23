@@ -123,13 +123,13 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.ViewModels
         }
 
         [Fact]
-        public void SetWebView_ShouldNotThrow()
+        public void SetBrowserControl_ShouldNotThrow()
         {
             // Arrange
             var vm = CreateViewModel();
 
-            // Act & Assert - Should not throw even if WebView2 is not fully initialized in test environment
-            vm.Invoking(v => v.SetWebView(null!)).Should().NotThrow();
+            // Act & Assert
+            vm.Invoking(v => v.SetBrowserControl(null!)).Should().NotThrow();
         }
 
         [Fact]

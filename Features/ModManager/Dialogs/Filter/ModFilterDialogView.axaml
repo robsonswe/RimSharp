@@ -1,0 +1,126 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                   xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+                   xmlns:local="clr-namespace:RimSharp.Features.ModManager.Dialogs.Filter"
+                   x:Class="RimSharp.Features.ModManager.Dialogs.Filter.ModFilterDialogView"
+                   x:DataType="local:ModFilterDialogViewModel"
+                   mc:Ignorable="d"
+                   Title="{Binding Title}"
+                   Width="600"
+                   MinHeight="500" MinWidth="500"
+                   SizeToContent="Height">
+
+    <dialogs:BaseDialog.MainContent>
+        <Border Background="{DynamicResource RimworldDarkBeigeBrush}" Padding="10">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="10">
+                    <!-- General Filters -->
+                    <Expander Header="General" IsExpanded="True">
+                        <StackPanel Spacing="10" Margin="10">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Search by Name/PackageId:"/>
+                                <TextBox Text="{Binding SearchText, Mode=TwoWay}" Classes="RimworldTextBox"/>
+                            </StackPanel>
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Filter by Author:"/>
+                                <TextBox Text="{Binding AuthorFilterText, Mode=TwoWay}" Classes="RimworldTextBox"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Expander>
+
+                    <!-- Categorization -->
+                    <Expander Header="Categorization" IsExpanded="True">
+                        <Grid ColumnDefinitions="*,10,*,10,*" Margin="10">
+                            <!-- Mod Types -->
+                            <StackPanel Grid.Column="0" Spacing="5">
+                                <TextBlock Text="Mod Types" FontWeight="Medium"/>
+                                <ListBox ItemsSource="{Binding AvailableModTypes}" Height="150">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox Content="{Binding DisplayName}" IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </StackPanel>
+
+                            <!-- Supported Versions -->
+                            <StackPanel Grid.Column="2" Spacing="5">
+                                <TextBlock Text="Supported Versions" FontWeight="Medium"/>
+                                <ListBox ItemsSource="{Binding AvailableVersions}" Height="150">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox Content="{Binding DisplayName}" IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </StackPanel>
+
+                            <!-- Tags -->
+                            <StackPanel Grid.Column="4" Spacing="5">
+                                <TextBlock Text="Tags" FontWeight="Medium"/>
+                                <ListBox ItemsSource="{Binding AvailableTags}" Height="150">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox Content="{Binding DisplayName}" IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </StackPanel>
+                        </Grid>
+                    </Expander>
+
+                    <!-- Properties -->
+                    <Expander Header="Properties" IsExpanded="True">
+                        <UniformGrid Columns="2" Margin="10">
+                            <StackPanel Spacing="5" Margin="5">
+                                <TextBlock Text="Supports Current Version:"/>
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <RadioButton Content="Any" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"/>
+                                    <RadioButton Content="No" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"/>
+                                    <RadioButton Content="Yes" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <StackPanel Spacing="5" Margin="5">
+                                <TextBlock Text="Is Favorite:"/>
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <RadioButton Content="Any" GroupName="IsFavorite" IsChecked="{Binding IsFavoriteFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"/>
+                                    <RadioButton Content="Yes" GroupName="IsFavorite" IsChecked="{Binding IsFavoriteFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"/>
+                                    <RadioButton Content="No" GroupName="IsFavorite" IsChecked="{Binding IsFavoriteFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <StackPanel Spacing="5" Margin="5">
+                                <TextBlock Text="Has Assemblies (.dll):"/>
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <RadioButton Content="Any" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"/>
+                                    <RadioButton Content="Yes" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"/>
+                                    <RadioButton Content="No" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <StackPanel Spacing="5" Margin="5">
+                                <TextBlock Text="Has Textures:"/>
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <RadioButton Content="Any" GroupName="HasTextures" IsChecked="{Binding HasTexturesFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"/>
+                                    <RadioButton Content="Yes" GroupName="HasTextures" IsChecked="{Binding HasTexturesFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"/>
+                                    <RadioButton Content="No" GroupName="HasTextures" IsChecked="{Binding HasTexturesFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </UniformGrid>
+                    </Expander>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </dialogs:BaseDialog.MainContent>
+
+    <dialogs:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="10">
+            <Button Content="Apply" Command="{Binding ApplyCommand}" Classes="RimworldSaveButtonStyle" MinWidth="90"/>
+            <Button Content="Clear" Command="{Binding ClearCommand}" Classes="RimworldButtonStyle" MinWidth="90"/>
+            <Button Content="Cancel" Command="{Binding CancelCommand}" Classes="RimworldRunButtonStyle" MinWidth="90"/>
+        </StackPanel>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

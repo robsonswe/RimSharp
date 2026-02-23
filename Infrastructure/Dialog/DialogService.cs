@@ -1,34 +1,39 @@
 #nullable enable
-using System.Windows;
-using Microsoft.Win32;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Threading;
+using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
-using System.Threading;
 using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
 using RimSharp.Features.ModManager.Dialogs.Filter;
 using RimSharp.Features.ModManager.Dialogs.Replacements;
 using RimSharp.Features.ModManager.Dialogs.Dependencies;
 using RimSharp.Features.ModManager.Dialogs.MissingMods;
 using RimSharp.Features.WorkshopDownloader.Dialogs.Collection;
-using System.Collections.Generic;
 using RimSharp.Features.ModManager.Dialogs.Strip;
-using System.ComponentModel;
-using System;
+using Avalonia.Platform.Storage;
 
 namespace RimSharp.Infrastructure.Dialog
 {
     public class DialogService : IDialogService, INotifyPropertyChanged
     {
         private readonly IAppUpdaterService? _appUpdaterService;
+        private readonly IFileDialogService? _fileDialogService;
         private int _openDialogCount;
         public bool IsAnyDialogOpen => _openDialogCount > 0;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        public DialogService(IAppUpdaterService appUpdaterService)
+        public DialogService(IAppUpdaterService appUpdaterService, IFileDialogService? fileDialogService = null)
         {
             _appUpdaterService = appUpdaterService;
+            _fileDialogService = fileDialogService;
         }
 
         private void OnPropertyChanged(string propertyName)
@@ -48,18 +53,32 @@ namespace RimSharp.Infrastructure.Dialog
             if (_openDialogCount == 0) OnPropertyChanged(nameof(IsAnyDialogOpen));
         }
 
-        private MessageDialogResult ShowDialogInternal(MessageDialogViewModel viewModel)
+        private Window? GetMainWindow()
+        {
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                return desktop.MainWindow;
+            }
+            return null;
+        }
+
+        private async Task<TResult> ShowDialogInternalAsync<TResult>(DialogViewModelBase<TResult> viewModel, BaseDialog dialog)
         {
             IncrementDialogCount();
             try
             {
-                var dialog = new MessageDialogView(viewModel)
+                // Ensure the dialog template is applied before showing
+                // dialog.ApplyTemplate(); // REMOVED: Causes interactivity issues
+                
+                var owner = GetMainWindow();
+                if (owner != null)
                 {
-                    Owner = Application.Current.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                    ShowInTaskbar = false
-                };
-                dialog.ShowDialog();
+                    await dialog.ShowDialog(owner);
+                }
+                else
+                {
+                    dialog.Show();
+                }
                 return viewModel.DialogResult;
             }
             finally
@@ -68,61 +87,87 @@ namespace RimSharp.Infrastructure.Dialog
             }
         }
 
-        public void ShowInformation(string title, string message)
+        public async Task ShowInformation(string title, string message)
         {
             var viewModel = new MessageDialogViewModel(title, message, MessageDialogType.Information);
-            ShowDialogInternal(viewModel);
+            var dialog = new MessageDialogView(viewModel);
+            await ShowDialogInternalAsync<MessageDialogResult>(viewModel, dialog);
         }
 
-        public void ShowWarning(string title, string message)
+        public async Task ShowWarning(string title, string message)
         {
             var viewModel = new MessageDialogViewModel(title, message, MessageDialogType.Warning);
-            ShowDialogInternal(viewModel);
+            var dialog = new MessageDialogView(viewModel);
+            await ShowDialogInternalAsync<MessageDialogResult>(viewModel, dialog);
         }
 
-        public void ShowError(string title, string message)
+        public async Task ShowError(string title, string message)
         {
             var viewModel = new MessageDialogViewModel(title, message, MessageDialogType.Error);
-            ShowDialogInternal(viewModel);
+            var dialog = new MessageDialogView(viewModel);
+            await ShowDialogInternalAsync<MessageDialogResult>(viewModel, dialog);
         }
 
         public MessageDialogResult ShowConfirmation(string title, string message, bool showCancel = false)
+        {
+            return ShowConfirmationAsync(title, message, showCancel).GetAwaiter().GetResult();
+        }
+
+        public async Task<MessageDialogResult> ShowConfirmationAsync(string title, string message, bool showCancel = false)
         {
             var viewModel = new MessageDialogViewModel(title, message, MessageDialogType.Question)
             {
                 ShowOkButton = true,
                 ShowCancelButton = showCancel
             };
-            return ShowDialogInternal(viewModel);
+            var dialog = new MessageDialogView(viewModel);
+            return await ShowDialogInternalAsync<MessageDialogResult>(viewModel, dialog);
+        }
+
+        public async Task<UpdateCheckDialogResult> ShowUpdateCheckDialogAsync(UpdateCheckDialogViewModel viewModel)
+        {
+            var dialog = new UpdateCheckDialogView(viewModel);
+            return await ShowDialogInternalAsync<UpdateCheckDialogResult>(viewModel, dialog);
         }
 
         public UpdateCheckDialogResult ShowUpdateCheckDialog(UpdateCheckDialogViewModel viewModel)
         {
-            IncrementDialogCount();
-            try
-            {
-                var dialog = new UpdateCheckDialogView(viewModel)
-                {
-                    Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                    ShowInTaskbar = false
-                };
-                dialog.ShowDialog();
-                return viewModel.DialogResult;
-            }
-            finally
-            {
-                DecrementDialogCount();
-            }
+            var dialog = new UpdateCheckDialogView(viewModel);
+            return ShowDialogInternalAsync<UpdateCheckDialogResult>(viewModel, dialog).GetAwaiter().GetResult();
         }
 
-        public void ShowMessageWithCopy(string title, string message, MessageDialogType dialogType = MessageDialogType.Information)
+        public async Task ShowMessageWithCopy(string title, string message, MessageDialogType dialogType = MessageDialogType.Information)
         {
             var viewModel = new MessageDialogViewModel(title, message, dialogType)
             {
                 ShowCopyButton = true
             };
-            ShowDialogInternal(viewModel);
+            var dialog = new MessageDialogView(viewModel);
+            await ShowDialogInternalAsync<MessageDialogResult>(viewModel, dialog);
+        }
+
+        public async Task<(MessageDialogResult Result, string Input)> ShowInputDialogAsync(string title, string message, string defaultInput = "")
+        {
+            var viewModel = new InputDialogViewModel(title, message, defaultInput);
+            var dialog = new InputDialogView(viewModel);
+            var result = await ShowDialogInternalAsync<MessageDialogResult>(viewModel, dialog);
+            return (result, viewModel.Input);
+        }
+
+        public (MessageDialogResult Result, string Input) ShowInputDialog(string title, string message, string defaultInput = "")
+        {
+            var viewModel = new InputDialogViewModel(title, message, defaultInput);
+            var dialog = new InputDialogView(viewModel);
+            var result = ShowDialogInternalAsync<MessageDialogResult>(viewModel, dialog).GetAwaiter().GetResult();
+            return (result, viewModel.Input);
+        }
+
+        public async Task ShowAboutDialog()
+        {
+            if (_appUpdaterService == null) return;
+            var viewModel = new AboutDialogViewModel(_appUpdaterService);
+            var dialog = new AboutDialogView(viewModel);
+            await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }
 
         public ProgressDialogViewModel ShowProgressDialog(string title, string message, bool canCancel = false, bool isIndeterminate = true, CancellationTokenSource? cts = null, bool closeable = false, bool showInTaskbar = true)
@@ -130,278 +175,271 @@ namespace RimSharp.Infrastructure.Dialog
             var viewModel = new ProgressDialogViewModel(title, message, canCancel, isIndeterminate, cts);
             var dialog = new ProgressDialogView(viewModel)
             {
-                Owner = Application.Current?.MainWindow,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Closeable = closeable,
-                ShowInTaskbar = showInTaskbar
+                Closeable = closeable
             };
 
             IncrementDialogCount();
             dialog.Closed += (s, e) => DecrementDialogCount();
 
-            dialog.Show();
+            var owner = GetMainWindow();
+            if (owner != null) dialog.Show(owner);
+            else dialog.Show();
+
             return viewModel;
         }
 
-        public (MessageDialogResult Result, string Input) ShowInputDialog(string title, string message, string defaultInput = "")
+        public async Task<ModCustomizationResult> ShowCustomizeModDialog(CustomizeModDialogViewModel viewModel)
         {
-            var viewModel = new InputDialogViewModel(title, message, defaultInput);
-            IncrementDialogCount();
-            try
-            {
-                var dialog = new InputDialogView(viewModel)
-                {
-                    Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                    ShowInTaskbar = false
-                };
-                dialog.ShowDialog();
-                return (viewModel.DialogResult, viewModel.Input);
-            }
-            finally
-            {
-                DecrementDialogCount();
-            }
+            var dialog = new CustomizeModDialogView(viewModel);
+            return await ShowDialogInternalAsync<ModCustomizationResult>(viewModel, dialog);
         }
 
-        public (bool, IEnumerable<string>?) ShowStripModsDialog(StripDialogViewModel viewModel)
+        public async Task<bool> ShowIncompatibilityDialogAsync(RimSharp.Features.ModManager.Dialogs.Incompatibilities.ModIncompatibilityDialogViewModel viewModel)
         {
-            IncrementDialogCount();
-            try
-            {
-                var dialog = new StripModsDialogView(viewModel)
-                {
-                    Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                    ShowInTaskbar = false
-                };
-                dialog.ShowDialog();
-                return viewModel.DialogResult;
-            }
-            finally
-            {
-                DecrementDialogCount();
-            }
+            var dialog = new RimSharp.Features.ModManager.Dialogs.Incompatibilities.ModIncompatibilityDialogView(viewModel);
+            return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }
 
-        public ModCustomizationResult ShowCustomizeModDialog(CustomizeModDialogViewModel viewModel)
+        public void ShowIncompatibilityDialog(RimSharp.Features.ModManager.Dialogs.Incompatibilities.ModIncompatibilityDialogViewModel viewModel)
         {
-            IncrementDialogCount();
-            try
-            {
-                var dialog = new CustomizeModDialogView(viewModel)
-                {
-                    Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                    ShowInTaskbar = false
-                };
-                dialog.ShowDialog();
-                return viewModel.DialogResult;
-            }
-            finally
-            {
-                DecrementDialogCount();
-            }
+            var dialog = new RimSharp.Features.ModManager.Dialogs.Incompatibilities.ModIncompatibilityDialogView(viewModel);
+            _ = ShowDialogInternalAsync<bool>(viewModel, dialog);
         }
-        public ModFilterDialogResult ShowModFilterDialog(ModFilterDialogViewModel viewModel)
+
+        public async Task<bool> ShowDuplicateModsDialogAsync(RimSharp.Features.ModManager.Dialogs.DuplicateMods.DuplicateModDialogViewModel viewModel)
         {
-            IncrementDialogCount();
-            try
-            {
-                var dialog = new ModFilterDialogView(viewModel)
-                {
-                    Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                    ShowInTaskbar = false
-                };
-                dialog.ShowDialog();
-                return viewModel.DialogResult;
-            }
-            finally
-            {
-                DecrementDialogCount();
-            }
+            var dialog = new RimSharp.Features.ModManager.Dialogs.DuplicateMods.DuplicateModDialogView(viewModel);
+            return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }
-        public ModReplacementDialogResult ShowModReplacementDialog(ModReplacementDialogViewModel viewModel)
+
+        public void ShowDuplicateModsDialog(RimSharp.Features.ModManager.Dialogs.DuplicateMods.DuplicateModDialogViewModel viewModel)
         {
-            IncrementDialogCount();
-            try
-            {
-                var dialog = new ModReplacementDialogView(viewModel)
-                {
-                    Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                    ShowInTaskbar = false
-                };
-                dialog.ShowDialog();
-                return viewModel.DialogResult;
-            }
-            finally
-            {
-                DecrementDialogCount();
-            }
+            var dialog = new RimSharp.Features.ModManager.Dialogs.DuplicateMods.DuplicateModDialogView(viewModel);
+            _ = ShowDialogInternalAsync<bool>(viewModel, dialog);
         }
-        public DependencyResolutionDialogResult ShowDependencyResolutionDialog(DependencyResolutionDialogViewModel viewModel)
+
+        public async Task<(bool Result, string? FilePath)> ShowOpenFileDialogAsync(string title, string filter, string initialDirectory = "")
         {
-            DependencyResolutionDialogResult result = DependencyResolutionDialogResult.Cancel;
-            Application.Current.Dispatcher.Invoke(() =>
+            if (_fileDialogService != null)
             {
-                IncrementDialogCount();
-                try
-                {
-                    var dialog = new DependencyResolutionDialogView(viewModel)
-                    {
-                        Owner = Application.Current?.MainWindow,
-                        WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                        ShowInTaskbar = false
-                    };
-                    dialog.ShowDialog();
-                    result = viewModel.DialogResult;
-                }
-                finally
-                {
-                    DecrementDialogCount();
-                }
+                return await _fileDialogService.ShowOpenFileDialogAsync(title, filter, string.IsNullOrEmpty(initialDirectory) ? null : initialDirectory);
+            }
+            
+            // Fallback to direct implementation
+            var window = GetMainWindow();
+            if (window == null) return (false, null);
+
+            var files = await window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = title,
+                AllowMultiple = false
             });
-            return result;
-        }
 
-        public MissingModSelectionDialogOutput ShowMissingModSelectionDialog(MissingModSelectionDialogViewModel viewModel)
-        {
-            MissingModSelectionDialogOutput? result = null;
-            Application.Current.Dispatcher.Invoke(() =>
+            if (files.Count > 0)
             {
-                IncrementDialogCount();
-                try
-                {
-                    var dialog = new MissingModSelectionDialogView(viewModel)
-                    {
-                        Owner = Application.Current?.MainWindow,
-                        WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                        ShowInTaskbar = false
-                    };
-                    dialog.ShowDialog();
-                    result = viewModel.DialogResult ?? new MissingModSelectionDialogOutput();
-                }
-                finally
-                {
-                    DecrementDialogCount();
-                }
-            });
-            return result ?? new MissingModSelectionDialogOutput();
-        }
-
-        public List<string>? ShowCollectionDialog(CollectionDialogViewModel viewModel)
-        {
-            List<string>? result = null;
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                IncrementDialogCount();
-                try
-                {
-                    var dialog = new CollectionDialogView(viewModel)
-                    {
-                        Owner = Application.Current?.MainWindow,
-                        WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                        ShowInTaskbar = false
-                    };
-                    dialog.ShowDialog();
-                    result = viewModel.DialogResult;
-                }
-                finally
-                {
-                    DecrementDialogCount();
-                }
-            });
-            return result;
-        }
-
-        public bool ShowDependencyRuleEditor(DependencyRuleEditorDialogViewModel viewModel)
-        {
-            IncrementDialogCount();
-            try
-            {
-                var dialog = new DependencyRuleEditorDialogView(viewModel)
-                {
-                    Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                    ShowInTaskbar = false
-                };
-                return dialog.ShowDialog() == true;
+                return (true, files[0].Path.LocalPath);
             }
-            finally
-            {
-                DecrementDialogCount();
-            }
-        }
-
-        public bool ShowIncompatibilityRuleEditor(IncompatibilityRuleEditorDialogViewModel viewModel)
-        {
-            IncrementDialogCount();
-            try
-            {
-                var dialog = new IncompatibilityRuleEditorDialogView(viewModel)
-                {
-                    Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                    ShowInTaskbar = false
-                };
-                return dialog.ShowDialog() == true;
-            }
-            finally
-            {
-                DecrementDialogCount();
-            }
+            return (false, null);
         }
 
         public (bool Result, string? FilePath) ShowOpenFileDialog(string title, string filter, string initialDirectory = "")
         {
-            var dialog = new OpenFileDialog
+            if (_fileDialogService != null)
+            {
+                return _fileDialogService.ShowOpenFileDialogAsync(title, filter, string.IsNullOrEmpty(initialDirectory) ? null : initialDirectory).GetAwaiter().GetResult();
+            }
+            
+            // Fallback to direct implementation
+            var window = GetMainWindow();
+            if (window == null) return (false, null);
+
+            var files = window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
                 Title = title,
-                Filter = filter,
-                InitialDirectory = initialDirectory,
-                CheckFileExists = true
-            };
+                AllowMultiple = false
+            }).GetAwaiter().GetResult();
 
-            bool? result = dialog.ShowDialog(Application.Current?.MainWindow);
-            return (result == true, dialog.FileName);
+            if (files.Count > 0)
+            {
+                return (true, files[0].Path.LocalPath);
+            }
+            return (false, null);
         }
 
         public (bool Result, string? FilePath) ShowSaveFileDialog(string title, string filter, string initialDirectory = "", string defaultExt = "", string defaultFileName = "")
         {
-            var dialog = new SaveFileDialog
+            if (_fileDialogService != null)
+            {
+                return _fileDialogService.ShowSaveFileDialogAsync(title, filter,
+                    string.IsNullOrEmpty(initialDirectory) ? null : initialDirectory,
+                    string.IsNullOrEmpty(defaultExt) ? null : defaultExt,
+                    string.IsNullOrEmpty(defaultFileName) ? null : defaultFileName).GetAwaiter().GetResult();
+            }
+
+            // Fallback to direct implementation
+            var window = GetMainWindow();
+            if (window == null) return (false, null);
+
+            var file = window.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
             {
                 Title = title,
-                Filter = filter,
-                InitialDirectory = initialDirectory,
-                DefaultExt = defaultExt,
-                FileName = defaultFileName
-            };
+                DefaultExtension = defaultExt,
+                SuggestedFileName = defaultFileName
+            }).GetAwaiter().GetResult();
 
-            bool? result = dialog.ShowDialog(Application.Current?.MainWindow);
-            return (result == true, dialog.FileName);
+            if (file != null)
+            {
+                return (true, file.Path.LocalPath);
+            }
+            return (false, null);
         }
 
-        public void ShowAboutDialog()
+        public async Task<(bool Result, string? FilePath)> ShowSaveFileDialogAsync(string title, string filter, string initialDirectory = "", string defaultExt = "", string defaultFileName = "")
         {
-            if (_appUpdaterService == null) return;
-            var viewModel = new AboutDialogViewModel(_appUpdaterService);
-            IncrementDialogCount();
-            try
+            if (_fileDialogService != null)
             {
-                var dialog = new AboutDialogView(viewModel)
-                {
-                    Owner = Application.Current?.MainWindow,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                    ShowInTaskbar = false
-                };
-                dialog.ShowDialog();
+                return await _fileDialogService.ShowSaveFileDialogAsync(title, filter,
+                    string.IsNullOrEmpty(initialDirectory) ? null : initialDirectory,
+                    string.IsNullOrEmpty(defaultExt) ? null : defaultExt,
+                    string.IsNullOrEmpty(defaultFileName) ? null : defaultFileName);
             }
-            finally
+
+            // Fallback to direct implementation
+            var window = GetMainWindow();
+            if (window == null) return (false, null);
+
+            var file = await window.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
             {
-                DecrementDialogCount();
+                Title = title,
+                DefaultExtension = defaultExt,
+                SuggestedFileName = defaultFileName
+            });
+
+            if (file != null)
+            {
+                return (true, file.Path.LocalPath);
             }
+            return (false, null);
+        }
+
+        public async Task<(bool Result, string? Path)> ShowOpenFolderDialogAsync(string title, string initialDirectory = "")
+        {
+            if (_fileDialogService != null)
+            {
+                return await _fileDialogService.ShowOpenFolderDialogAsync(title, string.IsNullOrEmpty(initialDirectory) ? null : initialDirectory);
+            }
+            
+            // Fallback to direct implementation
+            var window = GetMainWindow();
+            if (window == null) return (false, null);
+
+            var folders = await window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = title,
+                AllowMultiple = false
+            });
+
+            if (folders.Count > 0)
+            {
+                return (true, folders[0].Path.LocalPath);
+            }
+            return (false, null);
+        }
+
+        public async Task<ModFilterDialogResult> ShowModFilterDialogAsync(ModFilterDialogViewModel viewModel)
+        {
+            var dialog = new ModFilterDialogView(viewModel);
+            return await ShowDialogInternalAsync<ModFilterDialogResult>(viewModel, dialog);
+        }
+
+        public ModFilterDialogResult ShowModFilterDialog(ModFilterDialogViewModel viewModel)
+        {
+            var dialog = new ModFilterDialogView(viewModel);
+            return ShowDialogInternalAsync<ModFilterDialogResult>(viewModel, dialog).GetAwaiter().GetResult();
+        }
+
+        public async Task<ModReplacementDialogResult> ShowModReplacementDialogAsync(ModReplacementDialogViewModel viewModel)
+        {
+            var dialog = new ModReplacementDialogView(viewModel);
+            return await ShowDialogInternalAsync<ModReplacementDialogResult>(viewModel, dialog);
+        }
+
+        public ModReplacementDialogResult ShowModReplacementDialog(ModReplacementDialogViewModel viewModel)
+        {
+            var dialog = new ModReplacementDialogView(viewModel);
+            return ShowDialogInternalAsync<ModReplacementDialogResult>(viewModel, dialog).GetAwaiter().GetResult();
+        }
+
+        public async Task<DependencyResolutionDialogResult> ShowDependencyResolutionDialogAsync(DependencyResolutionDialogViewModel viewModel)
+        {
+            var dialog = new DependencyResolutionDialogView(viewModel);
+            return await ShowDialogInternalAsync<DependencyResolutionDialogResult>(viewModel, dialog);
+        }
+
+        public DependencyResolutionDialogResult ShowDependencyResolutionDialog(DependencyResolutionDialogViewModel viewModel)
+        {
+            var dialog = new DependencyResolutionDialogView(viewModel);
+            return ShowDialogInternalAsync<DependencyResolutionDialogResult>(viewModel, dialog).GetAwaiter().GetResult();
+        }
+
+        public async Task<MissingModSelectionDialogOutput> ShowMissingModSelectionDialogAsync(MissingModSelectionDialogViewModel viewModel)
+        {
+            var dialog = new MissingModSelectionDialogView(viewModel);
+            return await ShowDialogInternalAsync<MissingModSelectionDialogOutput>(viewModel, dialog);
+        }
+
+        public MissingModSelectionDialogOutput ShowMissingModSelectionDialog(MissingModSelectionDialogViewModel viewModel)
+        {
+            var dialog = new MissingModSelectionDialogView(viewModel);
+            return ShowDialogInternalAsync<MissingModSelectionDialogOutput>(viewModel, dialog).GetAwaiter().GetResult();
+        }
+
+        public async Task<List<string>?> ShowCollectionDialogAsync(CollectionDialogViewModel viewModel)
+        {
+            var dialog = new CollectionDialogView(viewModel);
+            return await ShowDialogInternalAsync<List<string>>(viewModel, dialog);
+        }
+
+        public List<string>? ShowCollectionDialog(CollectionDialogViewModel viewModel)
+        {
+            var dialog = new CollectionDialogView(viewModel);
+            return ShowDialogInternalAsync<List<string>>(viewModel, dialog).GetAwaiter().GetResult();
+        }
+
+        public async Task<bool> ShowDependencyRuleEditorAsync(DependencyRuleEditorDialogViewModel viewModel)
+        {
+            var dialog = new DependencyRuleEditorDialogView(viewModel);
+            return await ShowDialogInternalAsync<bool>(viewModel, dialog);
+        }
+
+        public bool ShowDependencyRuleEditor(DependencyRuleEditorDialogViewModel viewModel)
+        {
+            var dialog = new DependencyRuleEditorDialogView(viewModel);
+            return ShowDialogInternalAsync<bool>(viewModel, dialog).GetAwaiter().GetResult();
+        }
+
+        public async Task<bool> ShowIncompatibilityRuleEditorAsync(IncompatibilityRuleEditorDialogViewModel viewModel)
+        {
+            var dialog = new IncompatibilityRuleEditorDialogView(viewModel);
+            return await ShowDialogInternalAsync<bool>(viewModel, dialog);
+        }
+
+        public bool ShowIncompatibilityRuleEditor(IncompatibilityRuleEditorDialogViewModel viewModel)
+        {
+            var dialog = new IncompatibilityRuleEditorDialogView(viewModel);
+            return ShowDialogInternalAsync<bool>(viewModel, dialog).GetAwaiter().GetResult();
+        }
+
+        public async Task<(bool, IEnumerable<string>?)> ShowStripModsDialogAsync(StripDialogViewModel viewModel)
+        {
+            var dialog = new StripModsDialogView(viewModel);
+            return await ShowDialogInternalAsync<(bool, IEnumerable<string>?)>(viewModel, dialog);
+        }
+
+        public (bool, IEnumerable<string>?) ShowStripModsDialog(StripDialogViewModel viewModel)
+        {
+            var dialog = new StripModsDialogView(viewModel);
+            return ShowDialogInternalAsync<(bool, IEnumerable<string>?)>(viewModel, dialog).GetAwaiter().GetResult();
         }
     }
 }

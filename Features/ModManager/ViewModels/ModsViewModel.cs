@@ -13,7 +13,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Input; // For CommandManager
+using System.Windows.Input;
 
 namespace RimSharp.Features.ModManager.ViewModels
 {
@@ -40,8 +40,8 @@ namespace RimSharp.Features.ModManager.ViewModels
         // --- State Properties (Managed by Parent) ---
         private bool _isLoading;
         private bool _hasUnsavedChanges;
-        private ModItem _selectedMod = null!;
-        private IList _selectedItems = null!; // Property to bind ListBox.SelectedItems
+        private ModItem? _selectedMod;
+        private IList? _selectedItems; // Property to bind ListBox.SelectedItems
         public bool HasAnyActiveModIssues => _modListManager?.HasAnyActiveModIssues ?? false;
 
         private string _loadingMessage = string.Empty;
@@ -66,7 +66,6 @@ namespace RimSharp.Features.ModManager.ViewModels
                         Debug.WriteLine($"[ModsViewModel] Setting ModActionsViewModel.IsParentLoading = {value}");
                         ModActionsViewModel.IsParentLoading = value;
                     }
-                    RunOnUIThread(CommandManager.InvalidateRequerySuggested);
                 }
             }
         }
@@ -96,12 +95,11 @@ namespace RimSharp.Features.ModManager.ViewModels
                     // Inform children
                     if (ModActionsViewModel != null) ModActionsViewModel.HasUnsavedChanges = value;
                     // Command observation handles CanExecute updates for commands observing HasUnsavedChanges
-                    RunOnUIThread(CommandManager.InvalidateRequerySuggested);
                 }
             }
         }
 
-        public ModItem SelectedMod
+        public ModItem? SelectedMod
         {
             get => _selectedMod;
             set
@@ -118,7 +116,7 @@ namespace RimSharp.Features.ModManager.ViewModels
 
 
         // Bound from the ListBox's SelectedItems property in the View
-        public IList SelectedItems
+        public IList? SelectedItems
         {
             get => _selectedItems;
             set
@@ -420,9 +418,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                 HasUnsavedChanges = false; // Setter updates ModActionsViewModel and commands
 
                 if (progressDialog != null) progressDialog.CompleteOperation("Mods loaded successfully");
-                // CommandManager.InvalidateRequerySuggested might still be useful for global commands
-                RunOnUIThread(CommandManager.InvalidateRequerySuggested);
-
+                // CommandManager.InvalidateRequerySuggested removed
             }
             catch (OperationCanceledException)
             {
@@ -471,10 +467,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                 HasUnsavedChanges = true; // Setter triggers command updates via observation
                 OnPropertyChanged(nameof(HasAnyActiveModIssues));
 
-                // 4. Invalidate Commands: Explicit call might still be needed for commands
-                //    not directly observing HasUnsavedChanges or IsLoading, or for global UI state.
-                CommandManager.InvalidateRequerySuggested();
-
+                // 4. Invalidate Commands: Explicit call removed
                 Debug.WriteLine("[ModsViewModel] Finished handling ListChanged event on UI thread.");
             });
         }

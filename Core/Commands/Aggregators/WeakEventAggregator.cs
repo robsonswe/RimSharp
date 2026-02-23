@@ -21,7 +21,7 @@ namespace RimSharp.Core.Commands.Aggregators
         {
             if (eventToPublish == null) throw new ArgumentNullException(nameof(eventToPublish));
 
-            Dictionary<Guid, WeakReference> eventSubscribers;
+            Dictionary<Guid, WeakReference>? eventSubscribers;
             List<Guid> deadReferences = new List<Guid>();
 
             lock (_lock)

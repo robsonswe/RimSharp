@@ -30,7 +30,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
     {
         public bool IsSuccess { get; set; }
         public List<ModItem> SortedMods { get; set; } = new List<ModItem>();
-        public string ErrorMessage { get; set; }
+        public string? ErrorMessage { get; set; }
         public List<string> Warnings { get; set; } = new List<string>();
         public List<CycleInfo> CyclicDependencies { get; set; } = new List<CycleInfo>();
     }
@@ -67,7 +67,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             "taranchuk.performanceoptimizer"
         };
 
-        public ModDependencySorter(ILogger logger = null)
+        public ModDependencySorter(ILogger? logger = null)
         {
             _logger = logger ?? new ConsoleLogger();
         }

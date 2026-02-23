@@ -1,37 +1,29 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
-using System.Windows.Data;
+using System.Linq;
+using Avalonia.Data.Converters;
 
 namespace RimSharp.Core.Converters.Numeric
 {
     public class MultiplyMultiValueConverter : IMultiValueConverter
     {
-        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
         {
-            if (values == null || values.Length < 2) 
-                return 0;
-
-            double result = 1;
+            double result = 1.0;
             foreach (var value in values)
             {
-                if (value is double d)
-                    result *= d;
-                else if (value is int i)
-                    result *= i;
-                else if (value is float f)
-                    result *= f;
+                if (value is double d) result *= d;
+                else if (value is int i) result *= i;
+                else if (value is float f) result *= f;
             }
 
-            // Apply parameter as multiplier if provided
-            if (parameter is string paramStr && double.TryParse(paramStr, out double param))
-                result *= param;
-            
-            return result;
-        }
+            if (parameter is string s && double.TryParse(s, out var p))
+            {
+                result *= p;
+            }
 
-        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
+            return result;
         }
     }
 }

@@ -1,5 +1,4 @@
 #nullable enable
-using Microsoft.Win32;
 using RimSharp.AppDir.Dialogs;
 using RimSharp.Core.Extensions;
 using RimSharp.Features.ModManager.Dialogs.MissingMods;
@@ -17,7 +16,6 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows; // Keep for Application.Current
 using System.Xml.Linq;
 
 namespace RimSharp.Infrastructure.Mods.IO
@@ -69,8 +67,8 @@ namespace RimSharp.Infrastructure.Mods.IO
                 // Ensure Lists directory exists
                 var listsDirectory = await EnsureListsDirectoryAsync();
 
-                // Show file dialog
-                var (result, filePath) = _dialogService.ShowOpenFileDialog(
+                // Show file dialog (async)
+                var (result, filePath) = await _dialogService.ShowOpenFileDialogAsync(
                     "Import Mod List",
                     "XML Files (*.xml)|*.xml|All Files (*.*)|*.*",
                     listsDirectory);
@@ -91,7 +89,7 @@ namespace RimSharp.Infrastructure.Mods.IO
                 // Check which mods are missing
                 var availableModIds = allMods
                     .Where(m => !string.IsNullOrEmpty(m.PackageId))
-                    .Select(m => m.PackageId!.ToLowerInvariant()) // Use null-forgiving operator as we've already checked
+                    .Select(m => m.PackageId!.ToLowerInvariant())
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
                 var missingModIds = activeModIds
@@ -105,12 +103,11 @@ namespace RimSharp.Infrastructure.Mods.IO
 
                 await Task.Run(() => _modListManager.Initialize(allMods, availableActiveModIds));
 
-                // FIX: Await the async method to ensure the import process doesn't end prematurely.
                 await DisplayImportResultsAsync(Path.GetFileName(filePath), availableActiveModIds.Count, missingModIds);
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError("Import Error", $"An unexpected error occurred during import: {ex.Message}");
+                await _dialogService.ShowError("Import Error", $"An unexpected error occurred during import: {ex.Message}");
             }
         }
 
@@ -124,8 +121,8 @@ namespace RimSharp.Infrastructure.Mods.IO
                 // Ensure Lists directory exists
                 var listsDirectory = await EnsureListsDirectoryAsync();
 
-                // Show file dialog
-                var (result, filePath) = _dialogService.ShowSaveFileDialog(
+                // Show file dialog (async)
+                var (result, filePath) = await _dialogService.ShowSaveFileDialogAsync(
                     "Export Mod List",
                     "XML Files (*.xml)|*.xml|All Files (*.*)|*.*",
                     listsDirectory,
@@ -143,15 +140,15 @@ namespace RimSharp.Infrastructure.Mods.IO
                 // Create XML document with active mods
                 await SaveModListFileAsync(filePath, validActiveMods);
 
-                _dialogService.ShowInformation("Export Successful", $"Mod list exported successfully to {Path.GetFileName(filePath)}!");
+                await _dialogService.ShowInformation("Export Successful", $"Mod list exported successfully to {Path.GetFileName(filePath)}!");
             }
             catch (UnauthorizedAccessException)
             {
-                _dialogService.ShowError("Export Error", "Error: Permission denied when saving the file.");
+                await _dialogService.ShowError("Export Error", "Error: Permission denied when saving the file.");
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError("Export Error", $"An unexpected error occurred during export: {ex.Message}");
+                await _dialogService.ShowError("Export Error", $"An unexpected error occurred during export: {ex.Message}");
             }
         }
 
@@ -181,7 +178,7 @@ namespace RimSharp.Infrastructure.Mods.IO
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError("Import Error", $"Error loading XML file: {ex.Message}");
+                await _dialogService.ShowError("Import Error", $"Error loading XML file: {ex.Message}");
                 return null;
             }
             
@@ -189,7 +186,7 @@ namespace RimSharp.Infrastructure.Mods.IO
 
             if (!activeModIds.Any())
             {
-                _dialogService.ShowWarning("Import Warning", "The file contains an empty mod list or invalid format.");
+                await _dialogService.ShowWarning("Import Warning", "The file contains an empty mod list or invalid format.");
                 return null;
             }
 
@@ -211,7 +208,7 @@ namespace RimSharp.Infrastructure.Mods.IO
         {
             if (missingModIds.Count == 0)
             {
-                _dialogService.ShowInformation(
+                await _dialogService.ShowInformation(
                     "Import Successful",
                     $"Successfully imported mod list from {fileName} with {importedCount} active mods.");
                 return;
@@ -230,7 +227,7 @@ namespace RimSharp.Infrastructure.Mods.IO
 
             messageBuilder.AppendLine();
 
-            var confirmResult = _dialogService.ShowConfirmation(
+            var confirmResult = await _dialogService.ShowConfirmationAsync(
                 "Import Partially Successful",
                 messageBuilder.ToString(),
                 showCancel: true); 
@@ -243,7 +240,7 @@ namespace RimSharp.Infrastructure.Mods.IO
             else
             {
                 _logger.LogInfo("User declined to download missing mods from import.", nameof(ModListIOService));
-                _dialogService.ShowInformation(
+                await _dialogService.ShowInformation(
                     "Import Successful",
                     $"Successfully imported mod list from {fileName} with {importedCount} active mods.");
             }
@@ -289,7 +286,7 @@ namespace RimSharp.Infrastructure.Mods.IO
                 if (allEntries is null)
                 {
                     _logger.LogWarning("Mod dictionary was null, cannot match missing mods.", nameof(ModListIOService));
-                    _dialogService.ShowWarning("Dictionary Missing", "Could not load the mod dictionary to find missing mods.");
+                    await _dialogService.ShowWarning("Dictionary Missing", "Could not load the mod dictionary to find missing mods.");
                     return; // Exit early
                 }
                 
@@ -330,10 +327,10 @@ namespace RimSharp.Infrastructure.Mods.IO
                 await ThreadHelper.RunOnUIThreadAsync(() => prepProgressDialog?.CompleteOperation("Ready."));
 
                 MissingModSelectionDialogOutput? selectionResult = null;
-                await ThreadHelper.RunOnUIThreadAsync(() =>
+                await ThreadHelper.RunOnUIThreadAsync(async () =>
                 {
                     var selectionViewModel = new MissingModSelectionDialogViewModel(groups, unknownIds);
-                    selectionResult = _dialogService.ShowMissingModSelectionDialog(selectionViewModel);
+                    selectionResult = await _dialogService.ShowMissingModSelectionDialogAsync(selectionViewModel);
                 });
 
                 // FIX: Add a null check on selectionResult before accessing its properties.
@@ -350,19 +347,19 @@ namespace RimSharp.Infrastructure.Mods.IO
             catch (OperationCanceledException)
             {
                 _logger.LogInfo("Preparation for missing mod download was cancelled.", nameof(ModListIOService));
-                await ThreadHelper.RunOnUIThreadAsync(() =>
+                await ThreadHelper.RunOnUIThreadAsync(async () =>
                 {
                     prepProgressDialog?.ForceClose();
-                    _dialogService.ShowWarning("Operation Cancelled", "Preparing download options was cancelled.");
+                    await _dialogService.ShowWarning("Operation Cancelled", "Preparing download options was cancelled.");
                 });
             }
             catch (Exception ex)
             {
                 _logger.LogException(ex, "Error preparing missing mod download options.", nameof(ModListIOService));
-                await ThreadHelper.RunOnUIThreadAsync(() =>
+                await ThreadHelper.RunOnUIThreadAsync(async () =>
                 {
                     prepProgressDialog?.ForceClose();
-                    _dialogService.ShowError("Error", $"Failed to prepare download options: {ex.Message}");
+                    await _dialogService.ShowError("Error", $"Failed to prepare download options: {ex.Message}");
                 });
             }
             finally
@@ -415,13 +412,13 @@ namespace RimSharp.Infrastructure.Mods.IO
 
                 queueResult = await _steamWorkshopQueueProcessor.ProcessAndEnqueueModsAsync(steamIds, progressReporter, combinedToken);
 
-                await ThreadHelper.RunOnUIThreadAsync(() =>
+                await ThreadHelper.RunOnUIThreadAsync(async () =>
                 {
                     if (queueResult.WasCancelled)
                     {
                         _logger.LogInfo("Queueing missing mods was cancelled.", nameof(ModListIOService));
                         progressDialog?.ForceClose();
-                        _dialogService.ShowWarning("Operation Cancelled", "Queueing selected mods for download was cancelled.");
+                        await _dialogService.ShowWarning("Operation Cancelled", "Queueing selected mods for download was cancelled.");
                         return;
                     }
 
@@ -439,9 +436,9 @@ namespace RimSharp.Infrastructure.Mods.IO
                         if (queueResult.ErrorMessages.Count > 5) sb.AppendLine("    (Check logs for more details...)");
                     }
 
-                    if (queueResult.FailedProcessing > 0 && queueResult.SuccessfullyAdded > 0) _dialogService.ShowWarning("Download Partially Queued", sb.ToString().Trim());
-                    else if (queueResult.FailedProcessing > 0 && queueResult.SuccessfullyAdded == 0) _dialogService.ShowError("Download Queue Failed", sb.ToString().Trim());
-                    else _dialogService.ShowInformation("Download Queued", sb.ToString().Trim());
+                    if (queueResult.FailedProcessing > 0 && queueResult.SuccessfullyAdded > 0) await _dialogService.ShowWarning("Download Partially Queued", sb.ToString().Trim());
+                    else if (queueResult.FailedProcessing > 0 && queueResult.SuccessfullyAdded == 0) await _dialogService.ShowError("Download Queue Failed", sb.ToString().Trim());
+                    else await _dialogService.ShowInformation("Download Queued", sb.ToString().Trim());
 
                     if (queueResult.SuccessfullyAdded > 0)
                     {
@@ -458,7 +455,7 @@ namespace RimSharp.Infrastructure.Mods.IO
             {
                 _logger.LogException(ex, "Outer error during ProcessAndQueueSelectedModsAsync.", nameof(ModListIOService));
                 await ThreadHelper.RunOnUIThreadAsync(() => progressDialog?.ForceClose());
-                await ThreadHelper.RunOnUIThreadAsync(() => _dialogService.ShowError("Queueing Error", $"An unexpected error occurred: {ex.Message}"));
+                await ThreadHelper.RunOnUIThreadAsync(async () => await _dialogService.ShowError("Queueing Error", $"An unexpected error occurred: {ex.Message}"));
             }
             finally
             {

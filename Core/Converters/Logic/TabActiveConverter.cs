@@ -1,19 +1,21 @@
 using System;
 using System.Globalization;
-using System.Windows.Data;
+using Avalonia.Data.Converters;
 
 namespace RimSharp.Core.Converters.Logic
 {
     public class TabActiveConverter : IValueConverter
     {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            return value?.ToString() != parameter?.ToString();
+            if (value == null || parameter == null) return true;
+            return value.ToString() != parameter.ToString();
         }
-        
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            throw new NotImplementedException();
+            return null;
         }
     }
 }
+

@@ -6,10 +6,10 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Microsoft.Web.WebView2.Wpf;
 using RimSharp.Features.WorkshopDownloader.Models;
 using System.Linq;
 using System.Web;
+using RimSharp.Features.WorkshopDownloader.Components.Browser;
 
 namespace RimSharp.Features.WorkshopDownloader.Services
 {
@@ -23,6 +23,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         Task<List<string>> ExtractVersionTagsAsync();
         Task<string> ConvertToStandardDate(string dateString);
         Task<ModInfoDto?> ExtractFullModInfo();
+        Task<string> ExecuteScriptAsync(string script);
         bool IsModInfoAvailable { get; }
         event EventHandler? IsModInfoAvailableChanged;
         void Reset();
@@ -30,7 +31,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
     public class ModExtractorService : IModExtractorService, IDisposable
     {
-        private readonly Microsoft.Web.WebView2.Wpf.WebView2 _webView;
+        private readonly IBrowserControl _browserControl;
         private bool _isModNameAvailable;
         private bool _isModDateAvailable;
         private bool _lastReportedModInfoAvailableState;
@@ -38,9 +39,9 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         public bool IsModInfoAvailable => _isModNameAvailable && _isModDateAvailable;
         public event EventHandler? IsModInfoAvailableChanged;
 
-        public ModExtractorService(Microsoft.Web.WebView2.Wpf.WebView2 webView)
+        public ModExtractorService(IBrowserControl browserControl)
         {
-            _webView = webView;
+            _browserControl = browserControl;
         }
 
         public void Reset()
@@ -62,13 +63,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
         public async Task<string?> ExtractModName()
         {
-            if (_webView?.CoreWebView2 == null)
-            {
-                _isModNameAvailable = false;
-                CheckAndNotifyModInfoAvailability();
-                return null;
-            }
-
             try
             {
                 string script = @"(function() {
@@ -76,7 +70,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                     return titleElement ? titleElement.textContent.trim() : '';
                 })();";
 
-                string result = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+                string result = await _browserControl.ExecuteScriptAsync(script);
                 string name = UnwrapJsonString(result);
                 _isModNameAvailable = !string.IsNullOrEmpty(name);
                 CheckAndNotifyModInfoAvailability();
@@ -93,13 +87,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
         public async Task<string?> ExtractModDateInfo()
         {
-            if (_webView?.CoreWebView2 == null)
-            {
-                _isModDateAvailable = false;
-                CheckAndNotifyModInfoAvailability();
-                return null;
-            }
-
             try
             {
                 string script = @"(function() {
@@ -116,12 +103,10 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                             postedDate = values[i].textContent.trim();
                         }
                     }
-
-                    // Prioritize 'Updated' date. If not found, use 'Posted' date.
                     return updatedDate || postedDate;
                 })();";
 
-                string result = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+                string result = await _browserControl.ExecuteScriptAsync(script);
                 string date = UnwrapJsonString(result);
                 _isModDateAvailable = !string.IsNullOrEmpty(date);
                 CheckAndNotifyModInfoAvailability();
@@ -138,8 +123,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
         public async Task<string?> ExtractFileSizeRawString()
         {
-            if (_webView?.CoreWebView2 == null) return null;
-
             try
             {
                 string script = @"(function() {
@@ -153,7 +136,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                     return '';
                 })();";
 
-                string result = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+                string result = await _browserControl.ExecuteScriptAsync(script);
                 return UnwrapJsonString(result);
             }
             catch (Exception ex)
@@ -165,8 +148,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
         public async Task<List<string>> ExtractVersionTagsAsync()
         {
-            if (_webView?.CoreWebView2 == null) return new List<string>();
-
             try
             {
                 string script = @"(function() {
@@ -177,22 +158,17 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                     return JSON.stringify(tags);
                 })();";
 
-                string jsonResult = await _webView.CoreWebView2.ExecuteScriptAsync(script);
+                string jsonResult = await _browserControl.ExecuteScriptAsync(script);
                 string unwrappedJson = UnwrapJsonString(jsonResult);
 
-                if (string.IsNullOrWhiteSpace(unwrappedJson))
-                {
-                    return new List<string>();
-                }
+                if (string.IsNullOrWhiteSpace(unwrappedJson)) return new List<string>();
 
                 var tags = JsonSerializer.Deserialize<List<string>>(unwrappedJson) ?? new List<string>();
-
                 var versionTags = tags
                     .Where(t => !string.IsNullOrWhiteSpace(t) && Version.TryParse(t, out _))
                     .ToList();
 
                 versionTags.Sort((v1, v2) => new Version(v1).CompareTo(new Version(v2)));
-
                 return versionTags;
             }
             catch (Exception ex)
@@ -204,10 +180,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
         public Task<long> ParseFileSizeAsync(string sizeString)
         {
-            if (string.IsNullOrWhiteSpace(sizeString))
-            {
-                return Task.FromResult(0L);
-            }
+            if (string.IsNullOrWhiteSpace(sizeString)) return Task.FromResult(0L);
 
             long fileSizeInBytes = 0;
             try
@@ -263,40 +236,29 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
         public Task<string> ConvertToStandardDate(string dateString)
         {
-            if (string.IsNullOrWhiteSpace(dateString))
-            {
-                return Task.FromResult(string.Empty);
-            }
+            if (string.IsNullOrWhiteSpace(dateString)) return Task.FromResult(string.Empty);
 
             try
             {
-                // STEP 1: Normalize the string to handle scraping inconsistencies.
                 string cleanedDateString = dateString.Trim();
-                cleanedDateString = Regex.Replace(cleanedDateString, @"\s+", " "); // Collapse multiple spaces
+                cleanedDateString = Regex.Replace(cleanedDateString, @"\s+", " ");
                 cleanedDateString = cleanedDateString.Replace(" ,", ",");
 
-                // STEP 2: Handle missing year by intelligently injecting the current year.
                 if (!Regex.IsMatch(cleanedDateString, @"\b\d{4}\b"))
                 {
-                    // This handles cases like "16 Jul @ 12:36am"
                     var parts = cleanedDateString.Split(new[] { " @ " }, StringSplitOptions.None);
                     if (parts.Length == 2)
                     {
-                        // Reconstruct the string with the year added.
-                        // E.g., "16 Jul" + ", 2025" + " @ 12:36am"
                         cleanedDateString = $"{parts[0].Trim()}, {DateTime.Now.Year} @ {parts[1].Trim()}";
                     }
                 }
 
-                // STEP 3: Parse the date string.
-                // We try multiple cultures and methods because Steam localizes dates.
                 DateTime parsedDate;
                 bool parsed = DateTime.TryParse(cleanedDateString, CultureInfo.CurrentCulture, DateTimeStyles.None, out parsedDate) ||
                               DateTime.TryParse(cleanedDateString, CultureInfo.InvariantCulture, DateTimeStyles.None, out parsedDate);
 
                 if (!parsed)
                 {
-                    // Fallback to exact formats for English dates if generic parsing fails.
                     var formats = new[]
                     {
                         "d MMM, yyyy @ h:mmtt", "d MMMM, yyyy @ h:mmtt", "d MMM yyyy @ h:mmtt",
@@ -305,27 +267,13 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                     parsed = DateTime.TryParseExact(cleanedDateString, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out parsedDate);
                 }
 
-
                 if (parsed)
                 {
-                    // STEP 4: Steam's web interface shows the date/time in the user's local timezone
-                    // So we treat the parsed date as already being in local time
                     var localDateTime = DateTime.SpecifyKind(parsedDate, DateTimeKind.Local);
-
-                    // Convert to UTC to match the Steam API format
                     var utcDateTime = localDateTime.ToUniversalTime();
-
-                    // Debug logging to verify conversion
-                    Debug.WriteLine($"[ConvertToStandardDate] Original: '{dateString}' -> Cleaned: '{cleanedDateString}'");
-                    Debug.WriteLine($"[ConvertToStandardDate] Parsed as local: {localDateTime:yyyy-MM-dd HH:mm:ss}");
-                    Debug.WriteLine($"[ConvertToStandardDate] Converted to UTC: {utcDateTime:yyyy-MM-dd HH:mm:ss}");
-                    Debug.WriteLine($"[ConvertToStandardDate] Local timezone offset: {TimeZoneInfo.Local.GetUtcOffset(localDateTime)}");
-
-                    // Return in the same format as before (UTC time in dd/MM/yyyy HH:mm:ss format)
                     return Task.FromResult(utcDateTime.ToString("dd/MM/yyyy HH:mm:ss"));
                 }
 
-                Debug.WriteLine($"[ConvertToStandardDate] All parsing attempts failed for cleaned string: '{cleanedDateString}' (Original: '{dateString}')");
                 return Task.FromResult(dateString);
             }
             catch (Exception ex)
@@ -334,41 +282,27 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 return Task.FromResult(dateString);
             }
         }
+
         public async Task<ModInfoDto?> ExtractFullModInfo()
         {
-            if (_webView?.Source == null || _webView.CoreWebView2 == null) return null;
+            if (_browserControl.Source == null) return null;
 
-            var url = _webView.Source.ToString();
+            var url = _browserControl.Source;
 
-            // Step 1: Safely try to create the Uri and ensure it's not null.
-            // 'out var uri' infers uri as a nullable Uri (Uri?)
-            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri is null)
-            {
-                Debug.WriteLine($"URL is not a valid URI: {url}");
-                return null;
-            }
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri is null) return null;
 
-            // Step 2: Now that we know 'uri' is not null, validate its properties.
             if (!(uri.Host.EndsWith("steamcommunity.com") &&
                   (uri.AbsolutePath.Contains("/sharedfiles/filedetails/") || uri.AbsolutePath.Contains("/workshop/filedetails/"))))
             {
-                Debug.WriteLine($"URL is not a valid Steam Workshop item page: {url}");
                 return null;
             }
 
             var queryParams = HttpUtility.ParseQueryString(uri.Query);
             var id = queryParams["id"];
 
-            if (!string.IsNullOrEmpty(id))
-            {
-                id = new string(id.Trim().Where(char.IsDigit).ToArray());
-            }
+            if (!string.IsNullOrEmpty(id)) id = new string(id.Trim().Where(char.IsDigit).ToArray());
 
-            if (string.IsNullOrEmpty(id))
-            {
-                Debug.WriteLine($"Could not extract 'id' from URL: {url}");
-                return null;
-            }
+            if (string.IsNullOrEmpty(id)) return null;
 
             string? modName = await ExtractModName();
             string? dateInfo = await ExtractModDateInfo();
@@ -377,11 +311,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             long fileSize = await ParseFileSizeAsync(fileSizeRaw ?? string.Empty);
             List<string> latestVersions = await ExtractVersionTagsAsync();
 
-            // Ensure modName is not null before assigning it to the DTO
-            if (string.IsNullOrEmpty(modName))
-            {
-                modName = $"Mod {id}";
-            }
+            if (string.IsNullOrEmpty(modName)) modName = $"Mod {id}";
 
             string finalPublishDate = dateInfo ?? string.Empty;
             if (DateTime.TryParseExact(standardDate, "dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var utcDateTime))
@@ -403,14 +333,12 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
         public void Dispose()
         {
-            // In case you need to unsubscribe from any events from the WebView2 instance
             Debug.WriteLine("[ModExtractorService] Disposed.");
         }
 
         private string UnwrapJsonString(string? jsonValue)
         {
-            if (string.IsNullOrEmpty(jsonValue) || jsonValue == "null")
-                return string.Empty;
+            if (string.IsNullOrEmpty(jsonValue) || jsonValue == "null") return string.Empty;
 
             try
             {
@@ -434,8 +362,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         public async Task<List<CollectionItemInfo>> ExtractCollectionItemsAsync()
         {
             var items = new List<CollectionItemInfo>();
-            if (_webView?.CoreWebView2 == null) return items;
-
             try
             {
                 string script = @"(function() {
@@ -457,16 +383,12 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                     return JSON.stringify(results);
                 })();";
 
-                string? jsonResult = await _webView.CoreWebView2.ExecuteScriptAsync(script);
-                if (string.IsNullOrEmpty(jsonResult) || jsonResult == "null" || jsonResult == "\"[]\"")
-                {
-                    return items;
-                }
+                string? jsonResult = await _browserControl.ExecuteScriptAsync(script);
+                if (string.IsNullOrEmpty(jsonResult) || jsonResult == "null" || jsonResult == "\"[]\"") return items;
+                
                 string unwrappedJson = UnwrapJsonString(jsonResult);
-                if (string.IsNullOrWhiteSpace(unwrappedJson))
-                {
-                    return items;
-                }
+                if (string.IsNullOrWhiteSpace(unwrappedJson)) return items;
+                
                 var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                 var extractedData = JsonSerializer.Deserialize<List<Dictionary<string, string>>>(unwrappedJson, options);
 
@@ -488,6 +410,11 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 Debug.WriteLine($"[ModExtractorService] Error extracting collection items: {ex.Message}");
             }
             return items;
+        }
+
+        public Task<string> ExecuteScriptAsync(string script)
+        {
+            return _browserControl.ExecuteScriptAsync(script);
         }
     }
 }

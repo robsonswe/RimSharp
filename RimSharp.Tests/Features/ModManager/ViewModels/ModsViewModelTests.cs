@@ -161,7 +161,7 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
 
             // Assert
             vm.IsLoading.Should().BeFalse();
-            _mockDialogService.Received(1).ShowError(Arg.Any<string>(), Arg.Is<string>(s => s.Contains("Test Error")));
+            await _mockDialogService.Received(1).ShowError(Arg.Any<string>(), Arg.Is<string>(s => s.Contains("Test Error")));
         }
     }
 }

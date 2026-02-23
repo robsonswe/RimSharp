@@ -6,6 +6,8 @@ namespace RimSharp.Shared.Services.Contracts
 {
     public interface IModFilterService
     {
+        event System.EventHandler? FilteringCompleted;
+
         // Keep existing properties for direct search text access
         string ActiveSearchText { get; }
         string InactiveSearchText { get; }

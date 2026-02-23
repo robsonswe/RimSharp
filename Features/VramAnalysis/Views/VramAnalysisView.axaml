@@ -1,0 +1,177 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:vm="clr-namespace:RimSharp.Features.VramAnalysis.ViewModels"
+             x:Class="RimSharp.Features.VramAnalysis.Views.VramAnalysisView"
+             x:DataType="vm:VramAnalysisViewModel"
+             mc:Ignorable="d" 
+             d:DesignHeight="600" d:DesignWidth="800">
+
+    <UserControl.Styles>
+        <!-- Custom DataGrid Style -->
+        <Style Selector="DataGrid">
+            <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="RowBackground" Value="Transparent"/>
+            <Setter Property="ScrollViewer.AllowAutoHide" Value="False"/>
+            <Style Selector="^ /template/ ScrollViewer /template/ ScrollContentPresenter#PART_ContentPresenter">
+                <Setter Property="Grid.ColumnSpan" Value="1"/>
+                <Setter Property="Grid.RowSpan" Value="1"/>
+            </Style>
+        </Style>
+
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="SeparatorBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        </Style>
+
+        <Style Selector="DataGridRow:nth-child(odd)">
+            <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
+        </Style>
+
+        <Style Selector="DataGridRow:nth-child(even)">
+            <Setter Property="Background" Value="#998C74"/>
+        </Style>
+
+        <Style Selector="DataGridRow">
+            <Setter Property="FontSize" Value="12"/>
+            <Style Selector="^:selected /template/ Rectangle#Background">
+                <Setter Property="Fill" Value="{DynamicResource RimworldHighlightBrush}"/>
+                <Setter Property="Opacity" Value="0.3"/>
+            </Style>
+            <Style Selector="^:pointerover /template/ Rectangle#Background">
+                <Setter Property="Fill" Value="{DynamicResource RimworldHighlightBrush}"/>
+                <Setter Property="Opacity" Value="0.1"/>
+            </Style>
+        </Style>
+
+        <Style Selector="DataGridCell">
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Style Selector="^:selected /template/ Grid#FocusVisual">
+                <Setter Property="IsVisible" Value="False"/>
+            </Style>
+        </Style>
+    </UserControl.Styles>
+
+    <DockPanel Margin="10">
+        <!-- Top Control Bar -->
+        <Border DockPanel.Dock="Top" Margin="0,0,0,10" Classes="RimworldPanelBorder">
+            <Grid ColumnDefinitions="Auto,*">
+                <Button Grid.Column="0" Content="Calculate VRAM" Command="{Binding CalculateVramCommand}" Classes="RimworldButtonStyle" Padding="15,5" ToolTip.Tip="Starts the process of analyzing texture files to estimate VRAM usage."/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="20">
+                    <!-- Current View -->
+                    <StackPanel Orientation="Horizontal" IsVisible="{Binding !ShowMaxVram}" Spacing="5">
+                        <TextBlock Text="Active Textures (Atlas/Total): " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                        <TextBlock Text="{Binding TotalInAtlasCountActiveMods, StringFormat=N0}" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                        <TextBlock Text="/" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding TotalTextureCountActiveMods, StringFormat=N0}" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                        <TextBlock Text="Active VRAM: " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}" Margin="10,0,0,0"/>
+                        <TextBlock Text="{Binding TotalVramCompressedActiveMods, Converter={StaticResource FileSizeConverter}}" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                    </StackPanel>
+                    <!-- User VRAM -->
+                    <StackPanel Orientation="Horizontal" IsVisible="{Binding IsUserVramAvailable}" Spacing="5">
+                        <TextBlock Text="User VRAM: " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                        <TextBlock Text="{Binding UserVram, Converter={StaticResource FileSizeConverter}}" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+        
+        <!-- Filter Bar -->
+        <Border DockPanel.Dock="Top" Margin="0,0,0,10" Classes="RimworldSubtlePanelBorder">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Spacing="25">
+                <CheckBox Content="Show only active mods" IsChecked="{Binding ShowOnlyActive}" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                <CheckBox Content="Show only favorite mods" IsChecked="{Binding ShowOnlyFavorites}" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                <CheckBox Content="Show Max VRAM" IsChecked="{Binding ShowMaxVram}" Foreground="{DynamicResource RimworldDarkBrownBrush}" ToolTip.Tip="When checked, shows the maximum possible VRAM usage."/>
+            </StackPanel>
+        </Border>
+
+        <!-- Main Content -->
+        <Grid>
+            <Border Classes="RimworldPanelBorder" Padding="0">
+                <DataGrid ItemsSource="{Binding VramMods}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserSortColumns="True"
+                          RowDetailsVisibilityMode="VisibleWhenSelected"
+                          BorderThickness="0">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Mod Name" Binding="{Binding Mod.Name}" Width="2*"/>
+                        <DataGridTextColumn Header="Atlas" Binding="{Binding InAtlasCount}" Width="80"/>
+                        <DataGridTextColumn Header="Textures" Binding="{Binding TextureCount}" Width="80"/>
+                        
+                        <DataGridTemplateColumn Header="VRAM (Compressed)" Width="150">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding EstimatedVramCompressed, Converter={StaticResource FileSizeConverter}}" 
+                                               Foreground="{DynamicResource RimworldBrownBrush}"
+                                               FontWeight="Medium"
+                                               HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTemplateColumn Header="VRAM (Uncompressed)" Width="165">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding EstimatedVramUncompressed, Converter={StaticResource FileSizeConverter}}" 
+                                               Foreground="{DynamicResource RimworldLightBrownBrush}"
+                                               HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+
+                    <DataGrid.RowDetailsTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource RimworldDarkBeigeBrush}" 
+                                    BorderBrush="{DynamicResource RimworldBrownBrush}" 
+                                    BorderThickness="0,1,0,1" 
+                                    Padding="15,10">
+                                <StackPanel Spacing="5">
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Text="Path:" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Width="80"/>
+                                        <SelectableTextBlock Grid.Column="1" Text="{Binding Mod.Path}" FontSize="11" Opacity="0.8"/>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Text="Package ID:" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Width="80"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Mod.PackageId}" FontSize="11"/>
+                                    </Grid>
+                                    <Separator Background="{DynamicResource RimworldBrownBrush}" Opacity="0.2" Margin="0,5"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="20">
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <TextBlock Text="Compressed Atlas:" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding InAtlasCount}"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <TextBlock Text="Compressed Individual:" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding TextureCount}"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </DataGrid.RowDetailsTemplate>
+                </DataGrid>
+            </Border>
+            
+            <Border Background="#88000000" IsVisible="{Binding IsBusy}">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10">
+                    <ProgressBar IsIndeterminate="True" Width="200" Classes="RimworldProgressBarStyle"/>
+                    <TextBlock Text="Analyzing Textures..." HorizontalAlignment="Center" FontSize="16" FontWeight="Bold" Foreground="White"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</UserControl>

@@ -10,7 +10,7 @@ namespace RimSharp.Shared.Services.Implementations
     public class ModRulesService : IModRulesService
     {
         private readonly IModRulesRepository _repository;
-        private Dictionary<string, ModRule> _cachedRules;
+        private Dictionary<string, ModRule>? _cachedRules;
         private bool _rulesLoaded = false;
 
         public ModRulesService(IModRulesRepository repository)
@@ -21,14 +21,14 @@ namespace RimSharp.Shared.Services.Implementations
         public Dictionary<string, ModRule> GetRules()
         {
             // Consider thread safety if needed (using lock)
-            if (!_rulesLoaded)
+            if (!_rulesLoaded || _cachedRules == null)
             {
                 _cachedRules = _repository.GetAllRules()
                     // Normalize keys to lowercase when loading
                     .ToDictionary(kvp => kvp.Key.ToLowerInvariant(), kvp => kvp.Value, StringComparer.OrdinalIgnoreCase);
                 _rulesLoaded = true;
             }
-            return _cachedRules;
+            return _cachedRules!;
         }
 
         public ModRule GetRulesForMod(string packageId)
@@ -132,11 +132,11 @@ namespace RimSharp.Shared.Services.Implementations
                     }
 
                     // Apply incompatibilities
-                    if (rule.Incompatibilities != null)
+                    if (rule.Incompatibilities != null && rule.Incompatibilities.Count > 0)
                     {
                         foreach (var incompatibility in rule.Incompatibilities)
                         {
-                            if (!string.IsNullOrWhiteSpace(incompatibility.Key) && !mod.IncompatibleWith.ContainsKey(incompatibility.Key))
+                            if (!string.IsNullOrWhiteSpace(incompatibility.Key) && !mod.IncompatibleWith.ContainsKey(incompatibility.Key) && incompatibility.Value != null)
                             {
                                 mod.IncompatibleWith.Add(incompatibility.Key, incompatibility.Value);
 

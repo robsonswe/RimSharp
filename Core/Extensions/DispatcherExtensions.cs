@@ -1,6 +1,6 @@
 using System;
 using System.Threading.Tasks;
-using System.Windows.Threading;
+using Avalonia.Threading;
 
 namespace RimSharp.Core.Extensions
 {
@@ -13,18 +13,21 @@ namespace RimSharp.Core.Extensions
             if (dispatcher?.CheckAccess() != false)
                 action();
             else
-                dispatcher.Invoke(action);
+                dispatcher.Post(action);
         }
 
-        public static Task SafeInvokeAsync(this Dispatcher dispatcher, Func<Task> action)
+        public static async Task SafeInvokeAsync(this Dispatcher dispatcher, Func<Task> action)
         {
             if (action is null)
-                return Task.CompletedTask;
+                return;
 
             if (dispatcher?.CheckAccess() != false)
-                return action();
+            {
+                await action();
+                return;
+            }
 
-            return dispatcher.InvokeAsync(action).Task.Unwrap();
+            if (dispatcher != null) await dispatcher.InvokeAsync(action);
         }
 
         public static void SafeBeginInvoke(this Dispatcher dispatcher, Action action)
@@ -34,17 +37,18 @@ namespace RimSharp.Core.Extensions
             if (dispatcher?.CheckAccess() != false)
                 action();
             else
-                dispatcher.BeginInvoke(action);
+                dispatcher.Post(action);
         }
 
-        public static ValueTask<T> SafeInvokeAsync<T>(this Dispatcher dispatcher, Func<T> func)
+        public static async ValueTask<T> SafeInvokeAsync<T>(this Dispatcher dispatcher, Func<T> func)
         {
-            if (func is null) return ValueTask.FromResult(default(T));
+            if (func is null) return default(T)!;
 
             if (dispatcher?.CheckAccess() != false)
-                return ValueTask.FromResult(func());
+                return func();
 
-            return new ValueTask<T>(dispatcher.InvokeAsync(func).Task);
+            if (dispatcher != null) return await dispatcher.InvokeAsync(func);
+            return default(T)!;
         }
     }
 }

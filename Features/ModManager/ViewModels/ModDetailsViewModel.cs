@@ -6,15 +6,16 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows.Input;
 using System;
+using System.Threading.Tasks;
 
 namespace RimSharp.Features.ModManager.ViewModels
 {
     public class ModDetailsViewModel : ViewModelBase
     {
         private readonly IDialogService _dialogService;
-        private ModItem _currentMod;
+        private ModItem? _currentMod;
 
-        public ModItem CurrentMod
+        public ModItem? CurrentMod
         {
             get => _currentMod;
             set
@@ -43,9 +44,9 @@ namespace RimSharp.Features.ModManager.ViewModels
         public ModDetailsViewModel(IDialogService dialogService)
         {
             _dialogService = dialogService;
-            // Use base helper CreateCommand and observe CurrentMod
+            // Use base helper CreateAsyncCommand and observe CurrentMod
             // CanExecute depends on HasValidUrlOrPath, which depends on CurrentMod
-            OpenUrlCommand = CreateCommand(ExecuteOpenUrl, CanExecuteOpenUrl, nameof(CurrentMod));
+            OpenUrlCommand = CreateAsyncCommand(ExecuteOpenUrl, CanExecuteOpenUrl, nameof(CurrentMod));
         }
 
         private bool CanExecuteOpenUrl()
@@ -54,7 +55,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             return HasValidUrlOrPath;
         }
 
-        private void ExecuteOpenUrl()
+        private async Task ExecuteOpenUrl()
         {
              // CanExecute check already done by framework
             if (CurrentMod == null) return;
@@ -67,7 +68,7 @@ namespace RimSharp.Features.ModManager.ViewModels
 
             if (string.IsNullOrWhiteSpace(target))
             {
-                _dialogService.ShowInformation("Information", "No URL or local path available for the selected mod.");
+                await _dialogService.ShowInformation("Information", "No URL or local path available for the selected mod.");
                 return;
             }
 
@@ -78,7 +79,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             catch (Exception ex)
             {
                 Debug.WriteLine($"Could not open path/URL '{target}': {ex}");
-                _dialogService.ShowError("Error", $"Could not open path/URL: {ex.Message}");
+                await _dialogService.ShowError("Error", $"Could not open path/URL: {ex.Message}");
             }
         }
     }

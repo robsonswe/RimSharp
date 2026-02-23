@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Input;
 using RimSharp.AppDir.AppFiles;
 using RimSharp.AppDir.Dialogs;
@@ -14,21 +13,21 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 {
     public class ModDependencyRuleViewModel : ViewModelBase
     {
-        private string _packageId;
+        private string _packageId = string.Empty;
         public string PackageId
         {
             get => _packageId;
             set => SetProperty(ref _packageId, value);
         }
 
-        private string _displayName;
+        private string _displayName = string.Empty;
         public string DisplayName
         {
             get => _displayName;
             set => SetProperty(ref _displayName, value);
         }
 
-        private string _comment;
+        private string _comment = string.Empty;
         public string Comment
         {
             get => _comment;
@@ -45,21 +44,21 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 
     public class ModIncompatibilityRuleViewModel : ViewModelBase
     {
-        private string _packageId;
+        private string _packageId = string.Empty;
         public string PackageId
         {
             get => _packageId;
             set => SetProperty(ref _packageId, value);
         }
 
-        private string _displayName;
+        private string _displayName = string.Empty;
         public string DisplayName
         {
             get => _displayName;
             set => SetProperty(ref _displayName, value);
         }
 
-        private string _comment;
+        private string _comment = string.Empty;
         public string Comment
         {
             get => _comment;
@@ -93,8 +92,8 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         private readonly List<string> _originalIncompatibilities;
         private readonly bool _originalLoadBottom;
         private readonly List<string> _originalSupportedVersions;
-        private readonly string _originalExternalUrl;
-        private readonly string _originalTags;
+        private readonly string? _originalExternalUrl;
+        private readonly string? _originalTags;
 
 
         // Original mod properties (display-only)
@@ -116,21 +115,21 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             set => SetProperty(ref _isFavorite, value);
         }
 
-        private string _externalUrl;
+        private string _externalUrl = string.Empty;
         public string ExternalUrl
         {
             get => _externalUrl;
             set => SetProperty(ref _externalUrl, value);
         }
 
-        private string _tags;
+        private string _tags = string.Empty;
         public string Tags
         {
             get => _tags;
             set => SetProperty(ref _tags, value);
         }
 
-        private string _supportedVersions;
+        private string _supportedVersions = string.Empty;
         public string SupportedVersions
         {
             get => _supportedVersions;
@@ -147,7 +146,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             set => SetProperty(ref _loadBottom, value);
         }
 
-        private string _loadBottomComment;
+        private string _loadBottomComment = string.Empty;
         public string LoadBottomComment
         {
             get => _loadBottomComment;
@@ -160,22 +159,22 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         public ObservableCollection<ModIncompatibilityRuleViewModel> CustomIncompatibilities { get; } = new();
 
         // Selected items for editing
-        private ModDependencyRuleViewModel _selectedLoadBeforeRule;
-        public ModDependencyRuleViewModel SelectedLoadBeforeRule
+        private ModDependencyRuleViewModel? _selectedLoadBeforeRule;
+        public ModDependencyRuleViewModel? SelectedLoadBeforeRule
         {
             get => _selectedLoadBeforeRule;
             set => SetProperty(ref _selectedLoadBeforeRule, value);
         }
 
-        private ModDependencyRuleViewModel _selectedLoadAfterRule;
-        public ModDependencyRuleViewModel SelectedLoadAfterRule
+        private ModDependencyRuleViewModel? _selectedLoadAfterRule;
+        public ModDependencyRuleViewModel? SelectedLoadAfterRule
         {
             get => _selectedLoadAfterRule;
             set => SetProperty(ref _selectedLoadAfterRule, value);
         }
 
-        private ModIncompatibilityRuleViewModel _selectedIncompatibilityRule;
-        public ModIncompatibilityRuleViewModel SelectedIncompatibilityRule
+        private ModIncompatibilityRuleViewModel? _selectedIncompatibilityRule;
+        public ModIncompatibilityRuleViewModel? SelectedIncompatibilityRule
         {
             get => _selectedIncompatibilityRule;
             set => SetProperty(ref _selectedIncompatibilityRule, value);
@@ -523,7 +522,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 
         private void AddLoadBefore()
         {
-            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Add Load Before Rule");
+            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Add Load Before Rule", _dialogService);
             if (_dialogService.ShowDependencyRuleEditor(dialogViewModel))
             {
                 // Validate the package ID before adding
@@ -545,9 +544,9 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         private bool CanEditLoadBefore() => SelectedLoadBeforeRule != null && !SelectedLoadBeforeRule.IsOriginal;
         private void EditLoadBefore()
         {
-            if (!CanEditLoadBefore()) return;
+            if (SelectedLoadBeforeRule == null || SelectedLoadBeforeRule.IsOriginal) return;
 
-            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Edit Load Before Rule")
+            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Edit Load Before Rule", _dialogService)
             {
                 PackageId = SelectedLoadBeforeRule.PackageId,
                 DisplayName = SelectedLoadBeforeRule.DisplayName,
@@ -579,7 +578,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 
         private void AddLoadAfter()
         {
-            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Add Load After Rule");
+            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Add Load After Rule", _dialogService);
             if (_dialogService.ShowDependencyRuleEditor(dialogViewModel))
             {
                 // Validate the package ID before adding
@@ -601,9 +600,9 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         private bool CanEditLoadAfter() => SelectedLoadAfterRule != null && !SelectedLoadAfterRule.IsOriginal;
         private void EditLoadAfter()
         {
-            if (!CanEditLoadAfter()) return;
+            if (SelectedLoadAfterRule == null || SelectedLoadAfterRule.IsOriginal) return;
 
-            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Edit Load After Rule")
+            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Edit Load After Rule", _dialogService)
             {
                 PackageId = SelectedLoadAfterRule.PackageId,
                 DisplayName = SelectedLoadAfterRule.DisplayName,
@@ -635,7 +634,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 
         private void AddIncompatibility()
         {
-            var dialogViewModel = new IncompatibilityRuleEditorDialogViewModel("Add Incompatibility Rule");
+            var dialogViewModel = new IncompatibilityRuleEditorDialogViewModel("Add Incompatibility Rule", _dialogService);
             if (_dialogService.ShowIncompatibilityRuleEditor(dialogViewModel))
             {
                 // Validate the package ID before adding
@@ -658,9 +657,9 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         private bool CanEditIncompatibility() => SelectedIncompatibilityRule != null && !SelectedIncompatibilityRule.IsOriginal;
         private void EditIncompatibility()
         {
-            if (!CanEditIncompatibility()) return;
+            if (SelectedIncompatibilityRule == null || SelectedIncompatibilityRule.IsOriginal) return;
 
-            var dialogViewModel = new IncompatibilityRuleEditorDialogViewModel("Edit Incompatibility Rule")
+            var dialogViewModel = new IncompatibilityRuleEditorDialogViewModel("Edit Incompatibility Rule", _dialogService)
             {
                 PackageId = SelectedIncompatibilityRule.PackageId,
                 DisplayName = SelectedIncompatibilityRule.DisplayName,

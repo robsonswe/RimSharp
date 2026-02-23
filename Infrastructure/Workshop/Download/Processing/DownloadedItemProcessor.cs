@@ -278,7 +278,15 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
                 return false;
             }
 
-            return string.Equals(root1, root2, StringComparison.OrdinalIgnoreCase);
+            // On Windows, roots are drive letters (C:\), comparison should be case-insensitive.
+            // On Linux/macOS, roots are usually just '/', and we'd need more complex logic 
+            // (checking mount points) to be 100% sure if they are the same physical volume.
+            // For now, simple comparison is a good "terrain" for future extension.
+            var comparison = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
+
+            return string.Equals(root1, root2, comparison);
         }
 
         private async Task CopyDirectoryRecursivelyAsync(string sourceDir, string destinationDir, CancellationToken cancellationToken)

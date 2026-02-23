@@ -1,0 +1,47 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:RimSharp.AppDir.AppFiles"
+             xmlns:vmMods="clr-namespace:RimSharp.Features.ModManager.ViewModels"
+             xmlns:vMods="clr-namespace:RimSharp.Features.ModManager.Views"
+             xmlns:vmDownloader="clr-namespace:RimSharp.Features.WorkshopDownloader.ViewModels"
+             xmlns:vDownloader="clr-namespace:RimSharp.Features.WorkshopDownloader.Views"
+             xmlns:vmGitMods="clr-namespace:RimSharp.Features.GitModManager.ViewModels"
+             xmlns:vGitMods="clr-namespace:RimSharp.Features.GitModManager.Views"
+             xmlns:vmVram="clr-namespace:RimSharp.Features.VramAnalysis.ViewModels"
+             xmlns:vVram="clr-namespace:RimSharp.Features.VramAnalysis.Views"
+             x:Class="RimSharp.AppDir.AppFiles.App"
+             RequestedThemeVariant="Dark">
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://RimSharp/Shared/Resources/Colors.axaml"/>
+                <ResourceInclude Source="avares://RimSharp/Shared/Resources/Brushes.axaml"/>
+                <ResourceInclude Source="avares://RimSharp/Shared/Resources/Converters.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
+        <StyleInclude Source="avares://RimSharp/Shared/Resources/BaseStyles.axaml"/>
+        <StyleInclude Source="avares://RimSharp/Shared/Resources/ButtonStyles.axaml"/>
+        <StyleInclude Source="avares://RimSharp/Infrastructure/Dialog/DialogTemplates.axaml"/>
+    </Application.Styles>
+
+    <Application.DataTemplates>
+        <DataTemplate DataType="{x:Type vmMods:ModsViewModel}">
+            <vMods:ModsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vmDownloader:DownloaderViewModel}">
+            <vDownloader:DownloaderView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vmGitMods:GitModsViewModel}">
+            <vGitMods:GitModsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vmVram:VramAnalysisViewModel}">
+            <vVram:VramAnalysisView/>
+        </DataTemplate>
+    </Application.DataTemplates>
+</Application>

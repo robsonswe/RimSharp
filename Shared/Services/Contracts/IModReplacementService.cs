@@ -23,7 +23,7 @@ namespace RimSharp.Shared.Services.Contracts
         /// </summary>
         /// <param name="steamId">The original Steam Workshop ID of the mod to look up.</param>
         /// <returns>The <see cref="ModReplacementInfo"/> if found, otherwise null.</returns>
-        ModReplacementInfo GetReplacementBySteamId(string steamId);
+        ModReplacementInfo? GetReplacementBySteamId(string steamId);
 
         /// <summary>
         /// Gets replacement information for a specific mod based on its original package ID (ModId).
@@ -31,6 +31,6 @@ namespace RimSharp.Shared.Services.Contracts
         /// </summary>
         /// <param name="packageId">The original package ID (ModId) of the mod to look up.</param>
         /// <returns>The <see cref="ModReplacementInfo"/> if found, otherwise null.</returns>
-        ModReplacementInfo GetReplacementByPackageId(string packageId);
+        ModReplacementInfo? GetReplacementByPackageId(string packageId);
     }
 }

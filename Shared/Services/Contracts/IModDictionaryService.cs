@@ -23,7 +23,7 @@ namespace RimSharp.Shared.Services.Contracts
         /// </summary>
         /// <param name="steamId">The Steam Workshop ID of the mod to look up.</param>
         /// <returns>The <see cref="ModDictionaryEntry"/> if found, otherwise null.</returns>
-        ModDictionaryEntry GetEntryBySteamId(string steamId);
+        ModDictionaryEntry? GetEntryBySteamId(string steamId);
 
         /// <summary>
         /// Gets dictionary entry information for a specific mod based on its package ID (ModId).
@@ -32,7 +32,7 @@ namespace RimSharp.Shared.Services.Contracts
         /// </summary>
         /// <param name="packageId">The package ID (ModId) of the mod to look up.</param>
         /// <returns>The first matching <see cref="ModDictionaryEntry"/> if found, otherwise null.</returns>
-        ModDictionaryEntry GetEntryByPackageId(string packageId);
+        ModDictionaryEntry? GetEntryByPackageId(string packageId);
 
         /// <summary>
         /// Gets *all* dictionary entry information for a specific mod based on its package ID (ModId).

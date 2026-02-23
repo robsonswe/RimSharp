@@ -1,16 +1,18 @@
 using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
 using RimSharp.Core.Commands;
 using RimSharp.AppDir.AppFiles;
+using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Input;
+using ReactiveUI;
 
 namespace RimSharp.Features.ModManager.Dialogs.Incompatibilities
 {
-    public class ModIncompatibilityDialogViewModel : ViewModelBase
+    public class ModIncompatibilityDialogViewModel : DialogViewModelBase<bool>
     {
         public ObservableCollection<IncompatibilityGroupViewModel> IncompatibilityGroups { get; }
             = new ObservableCollection<IncompatibilityGroupViewModel>();
@@ -20,7 +22,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Incompatibilities
         public bool IsCancelEnabled
         {
             get => _isCancelEnabled;
-            set => SetProperty(ref _isCancelEnabled, value);
+            set => this.RaiseAndSetIfChanged(ref _isCancelEnabled, value);
         }
 
         public ICommand ApplyResolutionsCommand { get; }
@@ -29,19 +31,18 @@ namespace RimSharp.Features.ModManager.Dialogs.Incompatibilities
         private readonly List<IncompatibilityGroup> _originalGroups;
         private readonly Action<List<ModItem>> _applyCallback;
         private readonly Action _cancelCallback;
-        public event Action<bool> RequestClose;
-
 
         public ModIncompatibilityDialogViewModel(
             List<IncompatibilityGroup> groups,
             Action<List<ModItem>> applyCallback,
             Action cancelCallback,
             bool canCancel = true)
+            : base("Resolve Mod Incompatibilities")
         {
             _originalGroups = groups;
             _applyCallback = applyCallback;
             _cancelCallback = cancelCallback;
-            IsCancelEnabled = canCancel;
+            _isCancelEnabled = canCancel;
 
             foreach (var group in groups)
             {
@@ -51,7 +52,6 @@ namespace RimSharp.Features.ModManager.Dialogs.Incompatibilities
             ApplyResolutionsCommand = CreateCommand(ApplyResolutions);
             CancelCommand = CreateCommand(Cancel, () => IsCancelEnabled, nameof(IsCancelEnabled));
         }
-
 
         private void ApplyResolutions()
         {
@@ -63,13 +63,13 @@ namespace RimSharp.Features.ModManager.Dialogs.Incompatibilities
             }
 
             _applyCallback?.Invoke(modsToRemove.Distinct().ToList());
-            RequestClose?.Invoke(true);
+            CloseDialog(true);
         }
 
         private void Cancel()
         {
             _cancelCallback?.Invoke();
-            RequestClose?.Invoke(false);
+            CloseDialog(false);
         }
     }
 }

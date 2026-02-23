@@ -30,7 +30,7 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
             vm.SelectAllCommand.Execute(null);
 
             // Assert
-            vm.MissingDependencies.Count(i => i.IsSelected).Should().Be(2);
+            vm.MissingDependencies!.Count(i => i.IsSelected).Should().Be(2);
             vm.SelectedCount.Should().Be(2);
         }
 
@@ -43,7 +43,7 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
                 ("M1", "id1", "https://steamcommunity.com/sharedfiles/filedetails/?id=1", new List<string>())
             };
             var vm = new DependencyResolutionDialogViewModel(data);
-            vm.MissingDependencies[0].IsSelected = true;
+            vm.MissingDependencies![0].IsSelected = true;
 
             // Act
             vm.SelectNoneCommand.Execute(null);
@@ -63,8 +63,8 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
                 ("M2", "id2", "https://steamcommunity.com/sharedfiles/filedetails/?id=2", new List<string>())
             };
             var vm = new DependencyResolutionDialogViewModel(data);
-            vm.MissingDependencies[0].IsSelected = true;
-            vm.MissingDependencies[1].IsSelected = false;
+            vm.MissingDependencies![0].IsSelected = true;
+            vm.MissingDependencies![1].IsSelected = false;
 
             // Act
             var ids = vm.GetSelectedSteamIds();

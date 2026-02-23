@@ -27,15 +27,14 @@ namespace RimSharp.Shared.Models
         public bool IsActive()
         {
             return !string.IsNullOrWhiteSpace(SearchText)
-                || !string.IsNullOrWhiteSpace(AuthorFilterText) // Check Author
+                || !string.IsNullOrWhiteSpace(AuthorFilterText)
                 || (SelectedModTypes != null && SelectedModTypes.Any())
                 || (SelectedSupportedVersions != null && SelectedSupportedVersions.Any())
-                // Check Tags
                 || (SelectedTags != null && SelectedTags.Any())
                 || IsOutdatedFilter.HasValue
                 || IsFavoriteFilter.HasValue
                 || HasAssembliesFilter.HasValue
-                || HasTexturesFilter.HasValue; // <<< ADDED CHECK >>>
+                || HasTexturesFilter.HasValue;
         }
 
         public void Clear()

@@ -111,11 +111,13 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
         }
 
         [Fact]
-        public void SaveCommand_ShouldCallDataService()
+        public async Task SaveCommand_ShouldCallDataService()
         {
             // Arrange
             var vm = CreateViewModel();
             vm.HasUnsavedChanges = true;
+            _mockModListManager.HasAnyActiveModIssues.Returns(false); // Ensure no warnings triggered
+
             var activeMods = new List<(ModItem Mod, int LoadOrder)> 
             { 
                 (new ModItem { PackageId = "m1" }, 0) 
@@ -124,6 +126,10 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
 
             // Act
             vm.SaveCommand.Execute(null);
+            
+            // Wait for command
+            await Task.Delay(50);
+            await WaitUntil(() => _mockDataService.ReceivedCalls().Any(c => c.GetMethodInfo().Name == "SaveActiveModIdsToConfig"));
 
             // Assert
             _mockDataService.Received(1).SaveActiveModIdsToConfig(Arg.Is<IEnumerable<string>>(en => en.Count() == 1 && en.First() == "m1"));
@@ -145,14 +151,16 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
             {
                 var mods = new List<ModItem> { new ModItem { Name = "M1", Path = testPath, ModType = ModType.Workshop } };
                 vm.SelectedItems = mods;
-                _mockDialogService.ShowConfirmation(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>())
-                    .Returns(RimSharp.AppDir.Dialogs.MessageDialogResult.OK);
+                
+                // Mock Async confirmation
+                _mockDialogService.ShowConfirmationAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>())
+                    .Returns(Task.FromResult(RimSharp.AppDir.Dialogs.MessageDialogResult.OK));
 
                 // Act
                 vm.DeleteModsCommand.Execute(mods);
                 
                 // Wait for call
-                await Task.Delay(50);
+                await Task.Delay(100); // Increased delay for safety
                 await WaitUntil(() => _mockDeletionService.ReceivedCalls().Any(c => c.GetMethodInfo().Name == "DeleteDirectoryRobustAsync"));
 
                 // Assert

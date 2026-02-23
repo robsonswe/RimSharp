@@ -1,40 +1,30 @@
 using System;
 using System.Globalization;
-using System.Windows.Data;
-using System.Windows.Media;
+using Avalonia.Data.Converters;
+using Avalonia.Media;
 
 namespace RimSharp.Core.Converters.Visual
 {
     public class DarkenColorConverter : IValueConverter
     {
-        public double DarkenFactor { get; set; } = 0.7; // Adjust this value (0-1) for desired darkness
+        public double DarkenFactor { get; set; } = 0.7;
 
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            if (value is Color color)
-            {
-                return DarkenColor(color, DarkenFactor);
-            }
-            else if (value is SolidColorBrush brush)
-            {
-                return new SolidColorBrush(DarkenColor(brush.Color, DarkenFactor));
-            }
-
+            if (value is Color color) return Darken(color);
+            if (value is ISolidColorBrush brush) return new SolidColorBrush(Darken(brush.Color));
             return value;
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        private Color Darken(Color color)
         {
-            throw new NotImplementedException();
+            return Color.FromArgb(color.A, (byte)(color.R * DarkenFactor), (byte)(color.G * DarkenFactor), (byte)(color.B * DarkenFactor));
         }
 
-        private Color DarkenColor(Color color, double factor)
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            return Color.FromArgb(
-                color.A,
-                (byte)(color.R * factor),
-                (byte)(color.G * factor),
-                (byte)(color.B * factor));
+            return null;
         }
     }
 }
+
