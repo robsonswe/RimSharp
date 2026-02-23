@@ -78,6 +78,11 @@ namespace RimSharp.Features.ModManager.ViewModels
             {
                 if (SetProperty(ref _isViewActive, value))
                 {
+                    if (value)
+                    {
+                        EnsureSelection();
+                    }
+
                     if (ModActionsViewModel != null)
                         ModActionsViewModel.IsViewActive = value;
                 }
@@ -96,6 +101,29 @@ namespace RimSharp.Features.ModManager.ViewModels
                     if (ModActionsViewModel != null) ModActionsViewModel.HasUnsavedChanges = value;
                     // Command observation handles CanExecute updates for commands observing HasUnsavedChanges
                 }
+            }
+        }
+
+        private void EnsureSelection()
+        {
+            if (SelectedMod != null) return;
+
+            ModItem? candidate = null;
+
+            if (_modListManager.VirtualActiveMods.Any())
+            {
+                candidate = _modListManager.VirtualActiveMods.FirstOrDefault(vm => vm.Mod.ModType == ModType.Core).Mod ??
+                            _modListManager.VirtualActiveMods.FirstOrDefault().Mod;
+            }
+
+            if (candidate == null)
+            {
+                candidate = _modListManager.AllInactiveMods.FirstOrDefault();
+            }
+
+            if (candidate != null)
+            {
+                SelectedMod = candidate;
             }
         }
 
