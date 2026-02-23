@@ -178,7 +178,14 @@ namespace RimSharp.AppDir.MainPage
 
             var initialProgress = new Progress<(int current, int total, string message)>(update =>
             {
-                InitialLoadingProgress = (int)((double)update.current / update.total * 100);
+                if (update.total > 0)
+                {
+                    InitialLoadingProgress = (int)((double)update.current / update.total * 100);
+                }
+                else
+                {
+                    InitialLoadingProgress = 0;
+                }
             });
 
             var startupTasks = new List<Task>();

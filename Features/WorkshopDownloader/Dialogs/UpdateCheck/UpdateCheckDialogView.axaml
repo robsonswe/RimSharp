@@ -6,7 +6,9 @@
         xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
         x:Class="RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck.UpdateCheckDialogView"
         x:DataType="vm:UpdateCheckDialogViewModel"
+        x:CompileBindings="True"
         mc:Ignorable="d"
+        x:Name="RootUpdateCheckDialog"
         Width="850" Height="550"
         Title="{Binding Title}">
 
@@ -111,12 +113,12 @@
                         <DataGridTemplateColumn Width="60">
                             <DataGridTemplateColumn.HeaderTemplate>
                                 <DataTemplate>
-                                    <CheckBox IsChecked="{Binding $parent[dialogs:BaseDialog].DataContext.SelectAll, Mode=TwoWay}"
+                                    <CheckBox IsChecked="{Binding #RootUpdateCheckDialog.((vm:UpdateCheckDialogViewModel)DataContext).SelectAll, Mode=TwoWay, FallbackValue=False}"
                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.HeaderTemplate>
                             <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
+                                <DataTemplate x:DataType="vm:UpdateCheckItemViewModel">
                                     <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" 
                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </DataTemplate>
@@ -129,7 +131,7 @@
                         
                         <DataGridTemplateColumn Header="Last Update" Width="150">
                             <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
+                                <DataTemplate x:DataType="vm:UpdateCheckItemViewModel">
                                     <TextBlock Text="{Binding LocalUpdateDate}" 
                                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </DataTemplate>

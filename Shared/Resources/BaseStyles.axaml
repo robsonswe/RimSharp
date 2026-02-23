@@ -196,6 +196,34 @@
         <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Height" Value="24"/>
+        <Setter Property="IsIndeterminate" Value="False"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="ProgressBarRoot"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="2"
+                        ClipToBounds="True">
+                    <Grid x:Name="PART_InternalGrid">
+                        <!-- Determinate Indicator -->
+                        <Border x:Name="PART_Indicator"
+                                Background="{TemplateBinding Foreground}"
+                                HorizontalAlignment="Left"
+                                IsVisible="{Binding !IsIndeterminate, RelativeSource={RelativeSource TemplatedParent}}"/>
+                        
+                        <!-- Indeterminate state handling -->
+                        <Border x:Name="IndeterminateIndicator"
+                                Background="{TemplateBinding Foreground}"
+                                Width="100"
+                                HorizontalAlignment="Left"
+                                IsVisible="{TemplateBinding IsIndeterminate}">
+                            <!-- Note: Simple placeholder for indeterminate, avoids default Fluent keyframes -->
+                        </Border>
+                    </Grid>
+                </Border>
+            </ControlTemplate>
+        </Setter>
     </Style>
 
     <!-- Separator -->

@@ -37,8 +37,12 @@
                                 <!-- Dependency Details -->
                                 <StackPanel Grid.Column="1">
                                     <TextBlock FontWeight="Medium">
-                                        <Run Text="{Binding DisplayName}"/>
-                                        <Run Text="{Binding PackageId, StringFormat='({0})'}" Foreground="Gray" FontSize="11"/>
+                                        <TextBlock.Text>
+                                            <MultiBinding StringFormat="{}{0} ({1})">
+                                                <Binding Path="DisplayName" FallbackValue="Unknown"/>
+                                                <Binding Path="PackageId" FallbackValue="Unknown"/>
+                                            </MultiBinding>
+                                        </TextBlock.Text>
                                     </TextBlock>
 
                                     <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding IsSelectable}">

@@ -190,7 +190,12 @@
             <Border Grid.Row="0" Classes="RimworldListHeaderBorder">
                  <Grid RowDefinitions="Auto,Auto">
                     <TextBlock Grid.Row="0" FontWeight="Bold" Margin="4" HorizontalAlignment="Left" Foreground="{DynamicResource RimworldWhiteBrush}">
-                        <Run Text="{Binding #RootModListView.HeaderText}"/><Run Text=" ["/><Run Text="{Binding #RootModListView.ItemCount}"/><Run Text="]"/>
+                        <TextBlock.Text>
+                            <MultiBinding StringFormat="{}{0} [{1}]">
+                                <Binding Path="#RootModListView.HeaderText" FallbackValue="Items"/>
+                                <Binding Path="#RootModListView.ItemCount" FallbackValue="0"/>
+                            </MultiBinding>
+                        </TextBlock.Text>
                     </TextBlock>
                     <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="4,0,4,4">
                         <TextBox Grid.Column="0" Watermark="{Binding #RootModListView.SearchPlaceholder}" Classes="RimworldTextBoxWatermark" VerticalAlignment="Center" Text="{Binding #RootModListView.SearchText, Mode=TwoWay}"/>

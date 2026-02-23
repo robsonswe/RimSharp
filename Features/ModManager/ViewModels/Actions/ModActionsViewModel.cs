@@ -410,7 +410,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     "Queueing Mods for Redownload",
                     "Starting...",
                     canCancel: true,
-                    isIndeterminate: false,
+                    isIndeterminate: false, // Explicitly set to false as we update progress
                     cts: null, // Will create linked CTS below
                     closeable: false);
                 });

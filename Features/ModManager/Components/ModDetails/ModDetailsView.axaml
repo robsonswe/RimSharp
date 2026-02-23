@@ -3,10 +3,12 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:RimSharp.Features.ModManager.ViewModels"
+             xmlns:models="clr-namespace:RimSharp.Shared.Models"
              xmlns:convViewVisibility="clr-namespace:RimSharp.Core.Converters.ViewVisibility"
              x:Class="RimSharp.Features.ModManager.Components.ModDetails.ModDetailsView"
              mc:Ignorable="d"
              x:DataType="vm:ModDetailsViewModel"
+             x:CompileBindings="True"
              d:DesignHeight="600" d:DesignWidth="450">
 
     <UserControl.Styles>
@@ -76,10 +78,20 @@
 
     </UserControl.Styles>
 
-    <Grid DataContext="{Binding CurrentMod}" RowDefinitions="Auto,Auto,Auto,*">
+    <Panel>
+        <!-- Empty state message -->
+        <TextBlock Text="Select a mod to view details"
+                   IsVisible="{Binding CurrentMod, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Invert}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   FontStyle="Italic" Foreground="{DynamicResource RimworldLightBrownBrush}"/>
 
-        <!-- Mod Preview -->
-        <Border Grid.Row="0" Margin="10,10,10,0" HorizontalAlignment="Stretch" VerticalAlignment="Top">
+        <ContentControl Content="{Binding CurrentMod}"
+                        IsVisible="{Binding Converter={StaticResource NullToVisibilityConverter}}">
+            <ContentControl.ContentTemplate>
+                <DataTemplate x:DataType="models:ModItem">
+                    <Grid RowDefinitions="Auto,Auto,Auto,*">
+                        <!-- Mod Preview -->
+                        <Border Grid.Row="0" Margin="10,10,10,0" HorizontalAlignment="Stretch" VerticalAlignment="Top">
             <Border Background="{DynamicResource RimworldDarkBrownBrush}" CornerRadius="3" MaxWidth="560" MaxHeight="360">
                 <Viewbox Stretch="Uniform">
                     <Grid Width="560" Height="308">
@@ -160,19 +172,23 @@
                         <ToolTip.Tip>
                             <ToolTip>
                                 <StackPanel Margin="2">
-                                    <TextBlock Margin="0,0,0,3">
-                                        <Run Text="Disk Size:" FontWeight="SemiBold"/><Run Text=" "/><Run Text="{Binding SizeInfo.TotalSize, Converter={StaticResource FileSizeConverter}}"/>
-                                    </TextBlock>
+                                    <TextBlock Margin="0,0,0,3" FontWeight="SemiBold"
+                                               Text="{Binding SizeInfo.TotalSize, Converter={StaticResource FileSizeConverter}, StringFormat='Disk Size: {0}', FallbackValue='Disk Size: 0 B'}"/>
+                                    
                                     <StackPanel IsVisible="{Binding SizeInfo.MaxTextureSize, Converter={StaticResource CountToBooleanConverter}}">
                                         <Separator />
                                         <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                                            <TextBlock><Run Text="Texture Size (Disk):" FontWeight="SemiBold"/></TextBlock>
+                                            <TextBlock Text="Texture Size (Disk):" FontWeight="SemiBold"/>
                                             <TextBlock Margin="5,0,0,0" IsVisible="{Binding SizeInfo.HasSignificantTextureSizeDifference}">
-                                                <Run Text="{Binding SizeInfo.MinTextureSize, Converter={StaticResource FileSizeConverter}}"/><Run Text=" - "/><Run Text="{Binding SizeInfo.MaxTextureSize, Converter={StaticResource FileSizeConverter}}"/>
+                                                <TextBlock.Text>
+                                                    <MultiBinding StringFormat="{}{0} - {1}">
+                                                        <Binding Path="SizeInfo.MinTextureSize" Converter="{StaticResource FileSizeConverter}" FallbackValue="0 B"/>
+                                                        <Binding Path="SizeInfo.MaxTextureSize" Converter="{StaticResource FileSizeConverter}" FallbackValue="0 B"/>
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
                                             </TextBlock>
-                                            <TextBlock Margin="5,0,0,0" IsVisible="{Binding !SizeInfo.HasSignificantTextureSizeDifference}">
-                                                <Run Text="{Binding SizeInfo.MaxTextureSize, Converter={StaticResource FileSizeConverter}}"/>
-                                            </TextBlock>
+                                            <TextBlock Margin="5,0,0,0" IsVisible="{Binding !SizeInfo.HasSignificantTextureSizeDifference}"
+                                                       Text="{Binding SizeInfo.MaxTextureSize, Converter={StaticResource FileSizeConverter}, FallbackValue='0 B'}"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
@@ -271,11 +287,15 @@
                                       VerticalScrollBarVisibility="Auto"
                                       AllowAutoHide="False">
                 
-                    <SelectableTextBlock Text="{Binding Description, Mode=OneWay}"
-                                         TextWrapping="Wrap"
-                                         FontSize="13"
-                                         Foreground="{DynamicResource RimworldBrownBrush}"/>
-                </ScrollViewer>
-            </Grid>
-        </UserControl>
+                            <SelectableTextBlock Text="{Binding Description, Mode=OneWay}"
+                                                 TextWrapping="Wrap"
+                                                 FontSize="13"
+                                                 Foreground="{DynamicResource RimworldBrownBrush}"/>
+                        </ScrollViewer>
+                    </Grid>
+                </DataTemplate>
+            </ContentControl.ContentTemplate>
+        </ContentControl>
+    </Panel>
+</UserControl>
         

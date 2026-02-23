@@ -6,7 +6,9 @@
              xmlns:vm="clr-namespace:RimSharp.Features.GitModManager.ViewModels"
              x:Class="RimSharp.Features.GitModManager.Views.GitModsView"
              x:DataType="vm:GitModsViewModel"
+             x:CompileBindings="True"
              mc:Ignorable="d"
+             x:Name="RootGitModsView"
              d:DesignHeight="450" d:DesignWidth="800">
 
     <UserControl.Styles>
@@ -73,12 +75,22 @@
     <DockPanel Margin="10">
         <!-- Button Bar -->
         <Border DockPanel.Dock="Top" Margin="0,0,0,15" Classes="RimworldSubtlePanelBorder">
-            <StackPanel Orientation="Horizontal" Spacing="15">
-                <Button Content="Check Updates" Command="{Binding CheckUpdatesCommand}" Classes="RimworldButtonStyle" Padding="15,5"/>
-                <Button Content="Pull Updates" Command="{Binding PullUpdatesCommand}" Classes="RimworldSaveButtonStyle" Padding="15,5"/>
-                <Rectangle Width="1" Fill="{DynamicResource RimworldBrownBrush}" Margin="5,2"/>
-                <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" Foreground="{DynamicResource RimworldDarkBrownBrush}" FontWeight="Medium"/>
-            </StackPanel>
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="15">
+                    <Button Content="Check Updates" Command="{Binding CheckUpdatesCommand}" Classes="RimworldButtonStyle" Padding="15,5"/>
+                    <Button Content="Pull Updates" Command="{Binding PullUpdatesCommand}" Classes="RimworldSaveButtonStyle" Padding="15,5"/>
+                    <Rectangle Width="1" Fill="{DynamicResource RimworldBrownBrush}" Margin="5,2"/>
+                    <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" Foreground="{DynamicResource RimworldDarkBrownBrush}" FontWeight="Medium"/>
+                </StackPanel>
+                
+                <ProgressBar Grid.Column="2" 
+                             Width="150" 
+                             Height="12"
+                             VerticalAlignment="Center"
+                             IsIndeterminate="{Binding IsBusy}"
+                             IsVisible="{Binding IsBusy}"
+                             Classes="RimworldProgressBarStyle"/>
+            </Grid>
         </Border>
 
         <!-- Mods List Container -->
@@ -102,7 +114,7 @@
                           RowDetailsVisibilityMode="VisibleWhenSelected"
                           BorderThickness="0">
                     <DataGrid.ContextMenu>
-                        <ContextMenu>
+                        <ContextMenu x:CompileBindings="False">
                             <MenuItem Header="Check Updates" Command="{Binding CheckUpdatesCommand}">
                                 <MenuItem.Icon><TextBlock Text="🔄" FontSize="14"/></MenuItem.Icon>
                             </MenuItem>
@@ -121,12 +133,13 @@
                         <DataGridTemplateColumn Width="60">
                             <DataGridTemplateColumn.HeaderTemplate>
                                 <DataTemplate>
-                                    <CheckBox IsChecked="{Binding $parent[UserControl].DataContext.SelectAll, Mode=TwoWay}"
+                                    <CheckBox x:CompileBindings="False"
+                                              IsChecked="{Binding DataContext.SelectAll, RelativeSource={RelativeSource FindAncestor, AncestorType=UserControl}, Mode=TwoWay, FallbackValue=False}"
                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.HeaderTemplate>
                             <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
+                                <DataTemplate x:DataType="vm:GitModItemWrapper">
                                     <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" 
                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </DataTemplate>
@@ -137,7 +150,7 @@
                         
                         <DataGridTemplateColumn Header="Updates" Width="150">
                             <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
+                                <DataTemplate x:DataType="vm:GitModItemWrapper">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="5">
                                         <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" 
                                                    IsVisible="{Binding UpdateStatus, Converter={StaticResource EqualityConverter}, ConverterParameter='Up to date'}"
@@ -158,7 +171,7 @@
                         
                         <DataGridTemplateColumn Header="Supported Versions" Width="150">
                             <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
+                                <DataTemplate x:DataType="vm:GitModItemWrapper">
                                     <ContentControl Content="{Binding ModItem.SupportedVersions, Converter={StaticResource VersionSupportConverter}}"
                                                    FontSize="11" VerticalAlignment="Center"/>
                                 </DataTemplate>
@@ -167,7 +180,7 @@
 
                         <DataGridTemplateColumn Header="Active" Width="80">
                             <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
+                                <DataTemplate x:DataType="vm:GitModItemWrapper">
                                     <Border Background="{Binding ModItem.IsActive, Converter={StaticResource BooleanToColorConverter}, ConverterParameter='#20008000|#20808080'}"
                                             CornerRadius="4" Padding="8,2">
                                         <TextBlock Text="{Binding ModItem.IsActive, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='Yes|No'}"
@@ -183,7 +196,7 @@
                     </DataGrid.Columns>
 
                     <DataGrid.RowDetailsTemplate>
-                        <DataTemplate>
+                        <DataTemplate x:DataType="vm:GitModItemWrapper">
                             <Border Background="{DynamicResource RimworldDarkBeigeBrush}" 
                                     BorderBrush="{DynamicResource RimworldBrownBrush}" 
                                     BorderThickness="0,1,0,1" 

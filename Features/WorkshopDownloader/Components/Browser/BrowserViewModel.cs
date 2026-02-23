@@ -43,10 +43,33 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         public string ActualCurrentUrl { get => _actualCurrentUrl; private set => this.RaiseAndSetIfChanged(ref _actualCurrentUrl, value); }
 
         private string _addressBarUrl = string.Empty;
-        public string AddressBarUrl { get => _addressBarUrl; set => this.RaiseAndSetIfChanged(ref _addressBarUrl, value); }
+        public string AddressBarUrl
+        {
+            get => _addressBarUrl;
+            set
+            {
+                if (SetProperty(ref _addressBarUrl, value))
+                {
+                    OnPropertyChanged(nameof(AddressBarUrl));
+                }
+            }
+        }
 
         public bool IsNavigating => _navigationService.IsNavigating;
         public bool IsDomReady => _navigationService.IsDomReady;
+
+        private bool _isLoading;
+        public bool IsLoading
+        {
+            get => _isLoading;
+            private set
+            {
+                if (SetProperty(ref _isLoading, value))
+                {
+                    OnPropertyChanged(nameof(IsLoading));
+                }
+            }
+        }
 
         private bool _isSecure;
         public bool IsSecure { get => _isSecure; private set => this.RaiseAndSetIfChanged(ref _isSecure, value); }
@@ -117,8 +140,10 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
         private void NavigationService_NavigationStarted(object? sender, string url)
         {
+            Debug.WriteLine($"[BrowserVM] NavigationStarted: {url}");
             RunOnUIThread(() =>
             {
+                IsLoading = true;
                 AddressBarUrl = url;
                 IsSecure = url.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
                 IsValidModUrl = false;
@@ -131,8 +156,10 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
         private void NavigationService_NavigationEnded(object? sender, EventArgs e)
         {
+            Debug.WriteLine("[BrowserVM] NavigationEnded");
             RunOnUIThread(() =>
             {
+                IsLoading = false;
                 if (_isAnalyzingContent)
                     _isAnalyzingContent = false;
             });
@@ -319,10 +346,15 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
         private void NavigationService_SourceUrlChanged(object? sender, string newUrl)
         {
+            Debug.WriteLine($"[BrowserVM] SourceUrlChanged: {newUrl}");
             RunOnUIThread(() =>
             {
                 ActualCurrentUrl = newUrl;
-                if (AddressBarUrl != newUrl && !IsNavigating) AddressBarUrl = newUrl;
+                if (AddressBarUrl != newUrl && !IsNavigating)
+                {
+                    Debug.WriteLine($"[BrowserVM] Updating AddressBarUrl to: {newUrl}");
+                    AddressBarUrl = newUrl;
+                }
                 IsSecure = newUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
             });
         }

@@ -28,10 +28,7 @@
                                     <Border Margin="10,10,10,0" Padding="10" Background="{DynamicResource RimworldBeigeBrush}" CornerRadius="3" BorderThickness="1" BorderBrush="{DynamicResource RimworldBrownBrush}">
                                         <RadioButton IsChecked="{Binding IsIgnored}" GroupName="{Binding GroupName}">
                                             <StackPanel>
-                                                <TextBlock FontWeight="SemiBold" FontSize="13">
-                                                    <Run Text="Ignore: " Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
-                                                    <Run Text="Keep all versions of this mod" Foreground="{DynamicResource RimworldDarkGreenBrush}"/>
-                                                </TextBlock>
+                                                <TextBlock FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource RimworldDarkGreenBrush}" Text="Ignore: Keep all versions of this mod"/>
                                                 <TextBlock Margin="20,4,0,0" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource RimworldDarkBrownBrush}">
                                                     No mods in this group will be deleted.
                                                 </TextBlock>
@@ -46,16 +43,19 @@
                                                     <RadioButton IsChecked="{Binding IsActive}" GroupName="{Binding ParentGroup.GroupName}">
                                                         <StackPanel>
                                                             <TextBlock FontWeight="SemiBold" FontSize="13">
-                                                                <Run Text="Keep: " Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
-                                                                <Run Text="{Binding Name}" Foreground="{DynamicResource RimworldDarkGreenBrush}"/>
-                                                                <Run FontStyle="Italic" Text="{Binding IsOriginal, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='| (Original)'}"/>
+                                                                <TextBlock.Text>
+                                                                    <MultiBinding StringFormat="Keep: {0} {1}">
+                                                                        <Binding Path="Name" FallbackValue="Unknown"/>
+                                                                        <Binding Path="IsOriginal" Converter="{StaticResource BooleanToTextConverter}" ConverterParameter="| (Original)" FallbackValue=""/>
+                                                                    </MultiBinding>
+                                                                </TextBlock.Text>
                                                             </TextBlock>
                                                             <StackPanel Margin="20,8,0,0" Spacing="2">
-                                                                <TextBlock Text="{Binding Authors}" FontSize="12"/>
+                                                                <TextBlock Text="{Binding Authors, FallbackValue='Unknown', TargetNullValue='Unknown'}" FontSize="12"/>
                                                                 <ContentControl Content="{Binding Original.SupportedVersions, Converter={StaticResource VersionSupportConverter}}" FontSize="12"/>
-                                                                <TextBlock Text="{Binding Path}" FontSize="12" TextWrapping="Wrap"/>
+                                                                <TextBlock Text="{Binding Path, FallbackValue='N/A', TargetNullValue='N/A'}" FontSize="12" TextWrapping="Wrap"/>
                                                                 <TextBlock Text="{Binding SteamId}" FontSize="12" IsVisible="{Binding SteamId, Converter={StaticResource IsNotNullOrEmptyConverter}}"/>
-                                                                <TextBlock Text="{Binding Original.ModType, Converter={StaticResource ModTypeToDescriptionConverter}}" FontSize="12"/>
+                                                                <TextBlock Text="{Binding Original.ModType, Converter={StaticResource ModTypeToDescriptionConverter}, FallbackValue='Unknown'}" FontSize="12"/>
                                                             </StackPanel>
                                                         </StackPanel>
                                                     </RadioButton>

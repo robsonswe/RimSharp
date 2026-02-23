@@ -2,7 +2,7 @@ using RimSharp.Shared.Models;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Globalization; // Add for CultureInfo
+using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
@@ -10,6 +10,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
 {
     public class ModReplacementItem : INotifyPropertyChanged
     {
+        private bool _isSelected = true;
+
         public ModItem OriginalMod { get; }
         public ModReplacementInfo ReplacementInfo { get; }
         public bool ReplacementAlreadyInstalled { get; set; }
@@ -60,7 +62,6 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
             };
         }
 
-        private bool _isSelected = true;
         public bool IsSelected
         {
             get => _isSelected;
@@ -75,13 +76,12 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
             }
         }
 
-                public event EventHandler? SelectionChanged;
-                public event PropertyChangedEventHandler? PropertyChanged;
-        
-                protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-                {
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-                }
-            }
+        public event EventHandler? SelectionChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
-        
+    }
+}

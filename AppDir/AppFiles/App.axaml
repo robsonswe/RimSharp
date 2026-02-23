@@ -9,6 +9,16 @@
              xmlns:vGitMods="clr-namespace:RimSharp.Features.GitModManager.Views"
              xmlns:vmVram="clr-namespace:RimSharp.Features.VramAnalysis.ViewModels"
              xmlns:vVram="clr-namespace:RimSharp.Features.VramAnalysis.Views"
+             xmlns:vmModActions="clr-namespace:RimSharp.Features.ModManager.ViewModels.Actions"
+             xmlns:vModActions="clr-namespace:RimSharp.Features.ModManager.Components.ModActions"
+             xmlns:vmModDetails="clr-namespace:RimSharp.Features.ModManager.ViewModels"
+             xmlns:vModDetails="clr-namespace:RimSharp.Features.ModManager.Components.ModDetails"
+             xmlns:vmBrowser="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.Browser"
+             xmlns:vBrowser="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.Browser"
+             xmlns:vmQueue="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.DownloadQueue"
+             xmlns:vQueue="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.DownloadQueue"
+             xmlns:vmStatusBar="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.StatusBar"
+             xmlns:vStatusBar="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.StatusBar"
              x:Class="RimSharp.AppDir.AppFiles.App"
              RequestedThemeVariant="Dark">
 
@@ -42,6 +52,21 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type vmVram:VramAnalysisViewModel}">
             <vVram:VramAnalysisView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vmModActions:ModActionsViewModel}">
+            <vModActions:ModActionsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vmModDetails:ModDetailsViewModel}">
+            <vModDetails:ModDetailsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vmBrowser:BrowserViewModel}">
+            <vBrowser:BrowserView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vmQueue:DownloadQueueViewModel}">
+            <vQueue:DownloadQueueView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vmStatusBar:StatusBarViewModel}">
+            <vStatusBar:StatusBarView/>
         </DataTemplate>
     </Application.DataTemplates>
 </Application>
