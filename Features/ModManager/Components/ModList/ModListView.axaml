@@ -185,7 +185,7 @@
     </UserControl.Styles>
 
     <Border Classes="RimworldPanelBorder">
-        <Grid RowDefinitions="Auto,*">
+        <Grid RowDefinitions="Auto,*" PointerPressed="Root_PointerPressed" Background="Transparent">
             <!-- Header -->
             <Border Grid.Row="0" Classes="RimworldListHeaderBorder">
                  <Grid RowDefinitions="Auto,Auto">
@@ -198,7 +198,8 @@
                         </TextBlock.Text>
                     </TextBlock>
                     <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="4,0,4,4">
-                        <TextBox Grid.Column="0" Watermark="{Binding #RootModListView.SearchPlaceholder}" Classes="RimworldTextBoxWatermark" VerticalAlignment="Center" Text="{Binding #RootModListView.SearchText, Mode=TwoWay}"/>
+                        <TextBox Grid.Column="0" Watermark="{Binding #RootModListView.SearchPlaceholder}" Classes="RimworldTextBoxWatermark" VerticalAlignment="Center" Text="{Binding #RootModListView.SearchText, Mode=TwoWay}"
+                                 KeyDown="SearchTextBox_KeyDown"/>
                         <Button Grid.Column="1" Content="Filters" Command="{Binding #RootModListView.FilterCommand}"
                                 ToolTip.Tip="{Binding #RootModListView.FilterToolTip}"
                                 Classes="FilterButtonStyle"

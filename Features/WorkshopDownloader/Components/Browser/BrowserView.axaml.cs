@@ -215,13 +215,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 {
                     viewModel.SearchCommand.Execute(null);
                     e.Handled = true;
-                    // Unfocus the search box
-                    var textBox = sender as Avalonia.Controls.Control;
-                    if (textBox != null)
-                    {
-                        textBox.Focusable = false;
-                        textBox.Focusable = true;
-                    }
+                    ClearAllFocus();
                 }
             }
         }
@@ -234,15 +228,25 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 {
                     viewModel.NavigateToUrlCommand.Execute(viewModel.AddressBarUrl);
                     e.Handled = true;
-                    // Unfocus the address box
-                    var textBox = sender as Avalonia.Controls.Control;
-                    if (textBox != null)
-                    {
-                        textBox.Focusable = false;
-                        textBox.Focusable = true;
-                    }
+                    ClearAllFocus();
                 }
             }
+        }
+
+        private void Root_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+        {
+            ClearAllFocus();
+        }
+
+        private void SearchButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            ClearAllFocus();
+        }
+
+        private void ClearAllFocus()
+        {
+            var topLevel = TopLevel.GetTopLevel(this);
+            topLevel?.FocusManager?.ClearFocus();
         }
     }
 }
