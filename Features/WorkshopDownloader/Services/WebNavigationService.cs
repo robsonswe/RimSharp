@@ -75,6 +75,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                     if (_currentUrl != value && !string.IsNullOrEmpty(value))
                     {
                         _currentUrl = value;
+                        SourceUrlChanged?.Invoke(this, value);
                     }
                 }
             }

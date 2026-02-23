@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Windows.Input;
 
@@ -88,6 +89,15 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
             private set => SetProperty(ref _hasAlreadyInstalledReplacements, value);
         }
 
+        private bool _hasRegularReplacements;
+        public bool HasRegularReplacements
+        {
+            get => _hasRegularReplacements;
+            private set => SetProperty(ref _hasRegularReplacements, value);
+        }
+
+        public bool HasAnyReplacements => HasRegularReplacements || HasAlreadyInstalledReplacements;
+
         private int _selectedCount;
         public int SelectedCount
         {
@@ -153,7 +163,6 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
                 })
                 .ToList();
 
-            // Group into regular and already installed collections
             var regularItems = itemGroups
                 .Where(item => !item.ReplacementAlreadyInstalled)
                 .ToList();
@@ -161,6 +170,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
             var alreadyInstalledItems = itemGroups
                 .Where(item => item.ReplacementAlreadyInstalled)
                 .ToList();
+
+            Debug.WriteLine($"[ModReplacementVM] Found {regularItems.Count} regular and {alreadyInstalledItems.Count} already installed replacements.");
 
             // Subscribe to property change events for the regular items that can be selected/deselected
             foreach (var item in regularItems)
@@ -171,6 +182,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
             // Set the collections
             Replacements = new ObservableCollection<ModReplacementItem>(regularItems);
             AlreadyInstalledReplacements = new ObservableCollection<ModReplacementItem>(alreadyInstalledItems);
+            
+            HasRegularReplacements = regularItems.Count > 0;
             HasAlreadyInstalledReplacements = alreadyInstalledItems.Count > 0;
         }
 

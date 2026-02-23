@@ -40,6 +40,11 @@ namespace RimSharp.Features.ModManager.Dialogs.DuplicateMods
                 CloseDialog(false);
                 return;
             }
+
+            foreach (var group in duplicateGroups)
+            {
+                DuplicateGroups.Add(new DuplicateModGroupViewModel(group));
+            }
         }
 
         private async void ApplyResolutions()

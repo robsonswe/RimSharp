@@ -31,20 +31,25 @@
                                                         <StackPanel Spacing="5">
                                                             <Panel>
                                                                 <TextBlock IsVisible="{Binding ModToKeep, Converter={StaticResource NullToVisibilityConverter}}" FontWeight="SemiBold" FontSize="13">
-                                                                    <Run Text="Keep: " Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
-                                                                    <Run Text="{Binding ModToKeep.Name}" Foreground="{DynamicResource RimworldDarkGreenBrush}"/>
+                                                                    <TextBlock.Text>
+                                                                        <MultiBinding StringFormat="Keep: {0}">
+                                                                            <Binding Path="ModToKeep.Name" FallbackValue="Unknown"/>
+                                                                        </MultiBinding>
+                                                                    </TextBlock.Text>
                                                                 </TextBlock>
                                                                 <TextBlock IsVisible="{Binding ModToKeep, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Invert}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource RimworldDarkGreenBrush}" Text="Keep all mods (soft incompatibility)"/>
                                                             </Panel>
                                                             
                                                             <StackPanel Margin="20,0,0,0" IsVisible="{Binding ModsToRemove.Count}">
                                                                 <TextBlock Text="Will remove the following mods:" FontSize="12"/>
-                                                                <ItemsControl ItemsSource="{Binding RemovalReasons}">
-                                                                    <ItemsControl.ItemTemplate>
-                                                                        <DataTemplate>
-                                                                            <StackPanel Margin="0,5">
-                                                                                <TextBlock FontWeight="Bold" Foreground="{DynamicResource RimworldRedBrush}" Text="{Binding Key.Name}"/>
-                                                                                <ItemsControl ItemsSource="{Binding Value}" Margin="15,0,0,0">
+                                                                                                                                    <ItemsControl ItemsSource="{Binding RemovalReasons}">
+                                                                                                                                    <ItemsControl.ItemTemplate>
+                                                                                                                                        <DataTemplate>
+                                                                                                                                            <StackPanel Margin="0,5">
+                                                                                                                                                <TextBlock FontWeight="Bold" Foreground="{DynamicResource RimworldRedBrush}" 
+                                                                                                                                                           Text="{Binding Key.Name, FallbackValue='Unknown', TargetNullValue='Unknown'}"/>
+                                                                                                                                                <ItemsControl ItemsSource="{Binding Value}" Margin="15,0,0,0">
+                                                                
                                                                                     <ItemsControl.ItemTemplate>
                                                                                         <DataTemplate>
                                                                                             <TextBlock Text="{Binding Reason, StringFormat='• {0}'}" FontSize="11" TextWrapping="Wrap"/>

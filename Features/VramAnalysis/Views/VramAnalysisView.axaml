@@ -168,7 +168,7 @@
             
             <Border Background="#88000000" IsVisible="{Binding IsBusy}">
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10">
-                    <ProgressBar IsIndeterminate="True" Width="200" Classes="RimworldProgressBarStyle"/>
+                    <ProgressBar IsIndeterminate="{Binding IsBusy}" Width="200" Classes="RimworldProgressBarStyle"/>
                     <TextBlock Text="Analyzing Textures..." HorizontalAlignment="Center" FontSize="16" FontWeight="Bold" Foreground="White"/>
                 </StackPanel>
             </Border>

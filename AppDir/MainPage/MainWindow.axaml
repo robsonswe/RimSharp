@@ -164,14 +164,15 @@
                                FontStyle="Italic"/>
                     
                     <!-- App Version -->
-                    <TextBlock Text="{Binding AppVersion}" 
+                    <TextBlock Text="{Binding AppVersion, FallbackValue='v1.0.0', TargetNullValue='v1.0.0'}" 
                                FontSize="12" 
                                Foreground="{DynamicResource RimworldBrownBrush}" 
                                HorizontalAlignment="Center" 
                                FontStyle="Italic"/>
 
                     <!-- Custom Progress Bar -->
-                    <ProgressBar Value="{Binding InitialLoadingProgress}"
+                    <ProgressBar Value="{Binding InitialLoadingProgress, FallbackValue=0}"
+                                 IsIndeterminate="False"
                                  Classes="RimworldProgressBarStyle"
                                  Height="10" />
 

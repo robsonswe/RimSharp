@@ -12,8 +12,8 @@
 
     <dialogs:BaseDialog.MainContent>
         <Grid Margin="10" RowDefinitions="Auto,*,Auto">
-            <!-- Header -->
-            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+            <!-- Header (Only show if there are regular replacements) -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10" IsVisible="{Binding HasRegularReplacements}">
                 <TextBlock Grid.Column="0" Text="The following mods have newer replacement versions available:" TextWrapping="Wrap" FontWeight="Medium" />
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
                     <Button Content="Select All" Command="{Binding SelectAllCommand}" Classes="RimworldButtonStyle"/>
@@ -24,66 +24,117 @@
             <!-- Replacements List -->
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                 <StackPanel Spacing="10">
-                    <ListBox ItemsSource="{Binding Replacements}" Classes="RimworldListBox">
-                        <ListBox.ItemTemplate>
+                    <!-- Informational message if only already installed ones were found -->
+                    <Border IsVisible="{Binding !HasRegularReplacements}" Classes="RimworldPanelBorder" Padding="15" Margin="0,0,0,10">
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="No new replacements to download." FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                            <TextBlock Text="All identified replacement mods are already installed on your system." FontSize="12" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <ItemsControl ItemsSource="{Binding Replacements}" IsVisible="{Binding HasRegularReplacements}">
+                        <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="local:ModReplacementItem">
-                                <Grid ColumnDefinitions="Auto,*" Margin="5">
-                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                    <StackPanel Grid.Column="1" Spacing="2">
-                                        <TextBlock FontWeight="Medium">
-                                            <Run Text="Original:"/>
-                                            <Run Text="{Binding OriginalMod.Name}"/>
-                                            <Run Text=" by "/>
-                                            <Run Text="{Binding OriginalMod.Authors}"/>
-                                        </TextBlock>
-                                        <StackPanel Orientation="Horizontal" Spacing="5">
-                                            <TextBlock Text="{Binding OriginalMod.PackageId, StringFormat='ID: {0}'}" FontSize="10" Foreground="Gray"/>
-                                            <Button Content="{Binding OriginalMod.SteamId, StringFormat='Steam: {0}'}" 
-                                                    Command="{Binding $parent[Window].DataContext.OpenUrlCommand}"
-                                                    CommandParameter="{Binding OriginalMod.SteamUrl}"
-                                                    Background="Transparent" BorderThickness="0" Padding="0"
-                                                    Foreground="{DynamicResource RimworldDarkGreenBrush}" FontSize="10"/>
-                                            <TextBlock Text="{Binding FormattedOriginalLastUpdate, StringFormat='| Updated: {0}'}" FontSize="10" Foreground="Gray"/>
-                                        </StackPanel>
-                                        
-                                        <TextBlock FontWeight="Medium" Foreground="{DynamicResource RimworldDarkGreenBrush}">
-                                            <Run Text="Replace with:"/>
-                                            <Run Text="{Binding ReplacementInfo.ReplacementName}"/>
-                                            <Run Text=" by "/>
-                                            <Run Text="{Binding ReplacementInfo.ReplacementAuthor}"/>
-                                        </TextBlock>
-                                        <StackPanel Orientation="Horizontal" Spacing="5">
-                                            <TextBlock Text="{Binding ReplacementInfo.ReplacementModId, StringFormat='ID: {0}'}" FontSize="10" Foreground="Gray"/>
-                                            <Button Content="{Binding ReplacementInfo.ReplacementSteamId, StringFormat='Steam: {0}'}" 
-                                                    Command="{Binding $parent[Window].DataContext.OpenUrlCommand}"
-                                                    CommandParameter="{Binding ReplacementInfo.ReplacementSteamUrl}"
-                                                    Background="Transparent" BorderThickness="0" Padding="0"
-                                                    Foreground="{DynamicResource RimworldDarkGreenBrush}" FontSize="10"/>
-                                            <TextBlock Text="{Binding FormattedReplacementLastUpdate, StringFormat='| Updated: {0}'}" FontSize="10" Foreground="Gray"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </Grid>
+                                <Border Margin="0,0,0,10" Padding="10" Background="{DynamicResource RimworldBeigeBrush}" CornerRadius="3" BorderThickness="1" BorderBrush="{DynamicResource RimworldBrownBrush}">
+                                                                        <Grid ColumnDefinitions="Auto,*">
+                                                                            <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                                                            <StackPanel Grid.Column="1" Spacing="2">
+                                                                                <TextBlock FontWeight="Medium">
+                                                                                    <TextBlock.Text>
+                                                                                        <MultiBinding StringFormat="Original: {0} by {1}">
+                                                                                            <Binding Path="OriginalMod.Name" FallbackValue="Unknown"/>
+                                                                                            <Binding Path="OriginalMod.Authors" FallbackValue="Unknown"/>
+                                                                                        </MultiBinding>
+                                                                                    </TextBlock.Text>
+                                                                                </TextBlock>
+                                                                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                                                                    <TextBlock Text="{Binding OriginalMod.PackageId, StringFormat='ID: {0}', FallbackValue='ID: Unknown'}" FontSize="10" Foreground="Gray"/>
+                                                                                    <Button Content="{Binding OriginalMod.SteamId, StringFormat='Steam: {0}', FallbackValue='Steam: N/A'}" 
+                                                                                            Command="{Binding OriginalMod.SteamUrl, Converter={StaticResource LinkToCommandConverter}}"
+                                                                                            Background="Transparent" BorderThickness="0" Padding="0"
+                                                                                            Foreground="{DynamicResource RimworldDarkGreenBrush}" FontSize="10"/>
+                                                                                    <TextBlock Text="{Binding FormattedOriginalLastUpdate, StringFormat='| Updated: {0}', FallbackValue='| Updated: N/A'}" FontSize="10" Foreground="Gray"/>
+                                                                                </StackPanel>
+                                                                                
+                                                                                <TextBlock FontWeight="Medium" Foreground="{DynamicResource RimworldDarkGreenBrush}">
+                                                                                    <TextBlock.Text>
+                                                                                        <MultiBinding StringFormat="Replace with: {0} by {1}">
+                                                                                            <Binding Path="ReplacementInfo.ReplacementName" FallbackValue="Unknown"/>
+                                                                                            <Binding Path="ReplacementInfo.ReplacementAuthor" FallbackValue="Unknown"/>
+                                                                                        </MultiBinding>
+                                                                                    </TextBlock.Text>
+                                                                                </TextBlock>
+                                                                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                                                                    <TextBlock Text="{Binding ReplacementInfo.ReplacementModId, StringFormat='ID: {0}', FallbackValue='ID: Unknown'}" FontSize="10" Foreground="Gray"/>
+                                                                                    <Button Content="{Binding ReplacementInfo.ReplacementSteamId, StringFormat='Steam: {0}', FallbackValue='Steam: N/A'}" 
+                                                                                            Command="{Binding ReplacementInfo.ReplacementSteamUrl, Converter={StaticResource LinkToCommandConverter}}"
+                                                                                            Background="Transparent" BorderThickness="0" Padding="0"
+                                                                                            Foreground="{DynamicResource RimworldDarkGreenBrush}" FontSize="10"/>
+                                                                                    <TextBlock Text="{Binding FormattedReplacementLastUpdate, StringFormat='| Updated: {0}', FallbackValue='| Updated: N/A'}" FontSize="10" Foreground="Gray"/>
+                                                                                </StackPanel>
+                                                                            </StackPanel>
+                                                                        </Grid>
+                                    
+                                </Border>
                             </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
 
                     <Border IsVisible="{Binding HasAlreadyInstalledReplacements}" BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="0,1,0,0" Padding="0,10,0,0">
                         <StackPanel Spacing="10">
                             <TextBlock Text="The following replacement mods are already installed:" FontWeight="Medium"/>
-                            <ListBox ItemsSource="{Binding AlreadyInstalledReplacements}" Classes="RimworldListBox">
-                                <ListBox.ItemTemplate>
+                            <ItemsControl ItemsSource="{Binding AlreadyInstalledReplacements}">
+                                <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="local:ModReplacementItem">
-                                        <Grid ColumnDefinitions="Auto,*" Margin="5">
-                                            <CheckBox Grid.Column="0" IsChecked="False" IsEnabled="False" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                            <StackPanel Grid.Column="1" Spacing="2">
-                                                <TextBlock FontWeight="Medium" Text="{Binding OriginalMod.Name, StringFormat='Original: {0}'}"/>
-                                                <TextBlock FontWeight="Medium" Foreground="{DynamicResource RimworldDarkGreenBrush}" Text="{Binding ReplacementInfo.ReplacementName, StringFormat='Replacement already installed: {0}'}"/>
-                                                <TextBlock Text="⚠ You should remove the original mod to avoid conflicts." Foreground="{DynamicResource RimworldOrangeBrush}" FontSize="11" TextWrapping="Wrap"/>
-                                            </StackPanel>
-                                        </Grid>
+                                        <Border Margin="0,0,0,10" Padding="10" Background="{DynamicResource RimworldBeigeBrush}" CornerRadius="3" BorderThickness="1" BorderBrush="{DynamicResource RimworldBrownBrush}">
+                                            <Grid ColumnDefinitions="Auto,*">
+                                                <CheckBox Grid.Column="0" IsChecked="False" IsEnabled="False" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                                <StackPanel Grid.Column="1" Spacing="2">
+                                                    <TextBlock FontWeight="Medium">
+                                                        <TextBlock.Text>
+                                                            <MultiBinding StringFormat="Original: {0} by {1}">
+                                                                <Binding Path="OriginalMod.Name" FallbackValue="Unknown"/>
+                                                                <Binding Path="OriginalMod.Authors" FallbackValue="Unknown"/>
+                                                            </MultiBinding>
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
+                                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                                        <TextBlock Text="{Binding OriginalMod.PackageId, StringFormat='ID: {0}', FallbackValue='ID: Unknown'}" FontSize="10" Foreground="Gray"/>
+                                                        <Button Content="{Binding OriginalMod.SteamId, StringFormat='Steam: {0}', FallbackValue='Steam: N/A'}" 
+                                                                Command="{Binding OriginalMod.SteamUrl, Converter={StaticResource LinkToCommandConverter}}"
+                                                                Background="Transparent" BorderThickness="0" Padding="0"
+                                                                Foreground="{DynamicResource RimworldDarkGreenBrush}" FontSize="10"/>
+                                                        <TextBlock Text="{Binding FormattedOriginalLastUpdate, StringFormat='| Updated: {0}', FallbackValue='| Updated: N/A'}" FontSize="10" Foreground="Gray"/>
+                                                    </StackPanel>
+                                                    
+                                                    <TextBlock FontWeight="Medium" Foreground="{DynamicResource RimworldDarkGreenBrush}">
+                                                        <TextBlock.Text>
+                                                            <MultiBinding StringFormat="Replacement (Already Installed): {0} by {1}">
+                                                                <Binding Path="ReplacementInfo.ReplacementName" FallbackValue="Unknown"/>
+                                                                <Binding Path="ReplacementInfo.ReplacementAuthor" FallbackValue="Unknown"/>
+                                                            </MultiBinding>
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
+                                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                                        <TextBlock Text="{Binding ReplacementInfo.ReplacementModId, StringFormat='ID: {0}', FallbackValue='ID: Unknown'}" FontSize="10" Foreground="Gray"/>
+                                                        <Button Content="{Binding ReplacementInfo.ReplacementSteamId, StringFormat='Steam: {0}', FallbackValue='Steam: N/A'}" 
+                                                                Command="{Binding ReplacementInfo.ReplacementSteamUrl, Converter={StaticResource LinkToCommandConverter}}"
+                                                                Background="Transparent" BorderThickness="0" Padding="0"
+                                                                Foreground="{DynamicResource RimworldDarkGreenBrush}" FontSize="10"/>
+                                                        <TextBlock Text="{Binding FormattedReplacementLastUpdate, StringFormat='| Updated: {0}', FallbackValue='| Updated: N/A'}" FontSize="10" Foreground="Gray"/>
+                                                    </StackPanel>
+                                                    
+                                                    <Border Margin="0,5,0,0" Padding="8,4" Background="#33FF8C00" CornerRadius="2">
+                                                        <TextBlock Text="⚠ You should remove the original mod to avoid load-order conflicts." 
+                                                                   Foreground="{DynamicResource RimworldOrangeBrush}" 
+                                                                   FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                    </Border>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
                                     </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
                     </Border>
                 </StackPanel>

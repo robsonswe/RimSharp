@@ -5,6 +5,7 @@
              xmlns:vm="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.Browser"
              x:Class="RimSharp.Features.WorkshopDownloader.Components.Browser.BrowserView"
              x:DataType="vm:BrowserViewModel"
+             x:CompileBindings="True"
              mc:Ignorable="d">
 
     <UserControl.Styles>

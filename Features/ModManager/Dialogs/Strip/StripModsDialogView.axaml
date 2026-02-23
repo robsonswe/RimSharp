@@ -85,8 +85,11 @@
                     <Button Content="Select None" Command="{Binding SelectNoneCommand}" Classes="RimworldButtonStyle" Padding="12,4"/>
                 </StackPanel>
                 <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <Run Text="Total Selected Size: " FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
-                    <Run Text="{Binding TotalSelectedSize, Converter={StaticResource FileSizeConverter}, Mode=OneWay}" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                    <TextBlock.Text>
+                        <MultiBinding StringFormat="Total Selected Size: {0}">
+                            <Binding Path="TotalSelectedSize" Converter="{StaticResource FileSizeConverter}" FallbackValue="0 B"/>
+                        </MultiBinding>
+                    </TextBlock.Text>
                 </TextBlock>
             </Grid>
         </Grid>

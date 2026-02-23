@@ -6,6 +6,7 @@
              x:Class="RimSharp.Features.ModManager.Components.ModActions.ModActionsView"
              mc:Ignorable="d"
              x:DataType="vm:ModActionsViewModel"
+             x:CompileBindings="True"
              d:DesignHeight="450" d:DesignWidth="800">
 
     <Grid ColumnDefinitions="*,Auto">
