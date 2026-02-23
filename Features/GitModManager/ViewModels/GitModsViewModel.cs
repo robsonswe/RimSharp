@@ -142,6 +142,8 @@ namespace RimSharp.Features.GitModManager.ViewModels
         public ICommand CheckUpdatesCommand { get; }
         public ICommand PullUpdatesCommand { get; }
         public ICommand OpenGitHubRepoCommand { get; }
+        public ICommand CheckIndividualUpdateCommand { get; }
+        public ICommand PullIndividualUpdateCommand { get; }
 
         // --- Constructor ---
         public GitModsViewModel(
@@ -159,6 +161,9 @@ namespace RimSharp.Features.GitModManager.ViewModels
             PullUpdatesCommand = CreateCancellableAsyncCommand(ExecutePullUpdatesAsync, CanPullUpdates, nameof(IsBusy));
             OpenGitHubRepoCommand = CreateAsyncCommand<string>(OpenGitHubRepo, CanOpenGitHubRepo);
 
+            CheckIndividualUpdateCommand = CreateAsyncCommand<GitModItemWrapper>(ExecuteCheckIndividualUpdateAsync, wrapper => !IsBusy && wrapper != null, nameof(IsBusy));
+            PullIndividualUpdateCommand = CreateAsyncCommand<GitModItemWrapper>(ExecutePullIndividualUpdateAsync, wrapper => !IsBusy && wrapper != null && wrapper.IsSelected, nameof(IsBusy));
+
             _modListManager.ListChanged += HandleModListChanged;
             _ = Task.Run(LoadGitMods);
         }
@@ -173,6 +178,94 @@ namespace RimSharp.Features.GitModManager.ViewModels
         }
 
         // --- Execution Methods ---
+
+        private async Task ExecuteCheckIndividualUpdateAsync(GitModItemWrapper wrapper)
+        {
+            if (wrapper == null) return;
+
+            IsBusy = true;
+            StatusMessage = $"Checking {wrapper.ModItem.Name}...";
+            try
+            {
+                var mod = wrapper.ModItem;
+                if (!_gitService.IsRepository(mod.Path))
+                {
+                    wrapper.UpdateStatus = "Not a git repository";
+                    wrapper.IsSelected = false;
+                    return;
+                }
+
+                await _gitService.FetchAsync(mod.Path, "origin", CancellationToken.None);
+                var div = await _gitService.GetDivergenceAsync(mod.Path, "origin", CancellationToken.None);
+
+                if (!div.IsValid)
+                {
+                    wrapper.UpdateStatus = div.ErrorMessage ?? "Error";
+                    wrapper.IsSelected = false;
+                }
+                else if (div.BehindBy > 0)
+                {
+                    wrapper.UpdateStatus = $"{div.BehindBy} update(s)";
+                    wrapper.IsSelected = true;
+                }
+                else if (div.AheadBy > 0)
+                {
+                    wrapper.UpdateStatus = $"Up to date ({div.AheadBy} local commits)";
+                    wrapper.IsSelected = false;
+                }
+                else
+                {
+                    wrapper.UpdateStatus = "Up to date";
+                    wrapper.IsSelected = false;
+                }
+                StatusMessage = "Check complete.";
+            }
+            catch (Exception ex)
+            {
+                wrapper.UpdateStatus = "Error checking";
+                StatusMessage = $"Error: {ex.Message}";
+            }
+            finally
+            {
+                IsBusy = false;
+                ((AsyncRelayCommand)PullUpdatesCommand).RaiseCanExecuteChanged();
+            }
+        }
+
+        private async Task ExecutePullIndividualUpdateAsync(GitModItemWrapper wrapper)
+        {
+            if (wrapper == null) return;
+
+            IsBusy = true;
+            StatusMessage = $"Pulling {wrapper.ModItem.Name}...";
+            try
+            {
+                var mod = wrapper.ModItem;
+                var result = await _gitService.PullAsync(mod.Path, "origin", CancellationToken.None);
+
+                wrapper.UpdateStatus = result.Status switch
+                {
+                    GitPullStatus.UpToDate => "Already up to date",
+                    GitPullStatus.FastForward => "Updated successfully",
+                    GitPullStatus.NonFastForward => "Updated (Non-FF)",
+                    GitPullStatus.Conflict => "Error: Conflicts",
+                    _ => result.Message ?? "Error pulling"
+                };
+
+                wrapper.IsSelected = false;
+                StatusMessage = "Pull complete.";
+            }
+            catch (Exception ex)
+            {
+                wrapper.UpdateStatus = "Pull error";
+                StatusMessage = $"Error: {ex.Message}";
+            }
+            finally
+            {
+                IsBusy = false;
+                ((AsyncRelayCommand)PullUpdatesCommand).RaiseCanExecuteChanged();
+            }
+        }
 
         private async Task ExecuteCheckUpdatesAsync(CancellationToken ct)
         {
@@ -215,6 +308,8 @@ namespace RimSharp.Features.GitModManager.ViewModels
 
                 Debug.WriteLine($"[GitModsVM] Processing {totalMods} mods");
 
+                foreach (var m in GitMods) m.IsSelected = false;
+
                 foreach (var modWrapper in GitMods)
                 {
                     linkedCts.Token.ThrowIfCancellationRequested();
@@ -232,7 +327,6 @@ namespace RimSharp.Features.GitModManager.ViewModels
                     {
                         Debug.WriteLine($"[GitModsVM] {mod.Name} is not a git repository");
                         modWrapper.UpdateStatus = "Not a git repository";
-                        modWrapper.IsSelected = false;
                         continue;
                     }
 
@@ -248,7 +342,6 @@ namespace RimSharp.Features.GitModManager.ViewModels
                         {
                             Debug.WriteLine($"[GitModsVM] {mod.Name} divergence invalid: {div.ErrorMessage}");
                             modWrapper.UpdateStatus = div.ErrorMessage ?? "Error";
-                            modWrapper.IsSelected = false;
                         }
                         else if (div.BehindBy > 0)
                         {
@@ -260,20 +353,17 @@ namespace RimSharp.Features.GitModManager.ViewModels
                         {
                             Debug.WriteLine($"[GitModsVM] {mod.Name} is ahead by {div.AheadBy}");
                             modWrapper.UpdateStatus = $"Up to date ({div.AheadBy} local commits)";
-                            modWrapper.IsSelected = false;
                         }
                         else
                         {
                             Debug.WriteLine($"[GitModsVM] {mod.Name} is up to date");
                             modWrapper.UpdateStatus = "Up to date";
-                            modWrapper.IsSelected = false;
                         }
                     }
                     catch (Exception ex)
                     {
                         Debug.WriteLine($"[GitModsVM] Error checking {mod.Name}: {ex.Message}");
                         modWrapper.UpdateStatus = "Error checking";
-                        modWrapper.IsSelected = false;
                     }
                 }
 
@@ -528,6 +618,7 @@ namespace RimSharp.Features.GitModManager.ViewModels
                 RunOnUIThread(() => 
                 {
                     ((AsyncRelayCommand)PullUpdatesCommand).RaiseCanExecuteChanged();
+                    ((AsyncRelayCommand)PullIndividualUpdateCommand).RaiseCanExecuteChanged();
                     OnPropertyChanged(nameof(SelectAll));
                 });
                 Debug.WriteLine("[DEBUG] Item selection changed, PullUpdatesCommand.CanExecute updated");
