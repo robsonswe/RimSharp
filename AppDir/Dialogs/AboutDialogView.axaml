@@ -41,7 +41,7 @@
                                    FontSize="14" VerticalAlignment="Center" 
                                    Foreground="{DynamicResource RimworldBrownBrush}"/>
 
-                        <Button Grid.Column="2" Content="Update RimSharp" 
+                        <Button Grid.Column="2" Content="Update" 
                                 Command="{Binding ReleaseUrl, Converter={StaticResource LinkToCommandConverter}}"
                                 Classes="RimworldSaveButtonStyle"
                                 IsVisible="{Binding IsNewVersionAvailable}"
