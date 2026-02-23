@@ -17,9 +17,24 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
         </Style>
+
+        <!-- Remove default focus effects for browser bar text boxes -->
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="TextBox">
+            <Setter Property="FocusAdorner" Value="{x:Null}" />
+        </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,*" PointerPressed="Root_PointerPressed" Background="Transparent">
         <!-- Navigation Bar -->
         <Border Grid.Row="0" Classes="RimworldInfoHeaderBorder" Padding="5,3">
             <Grid ColumnDefinitions="Auto,Auto,*,Auto,170">
@@ -51,7 +66,8 @@
                     <Grid ColumnDefinitions="*,Auto">
                          <TextBox x:Name="SearchTextBox" Grid.Column="0" Text="{Binding SearchText}" Watermark="Search Workshop..." VerticalContentAlignment="Center" Padding="5,0,0,0" BorderThickness="0" Background="Transparent" Foreground="{DynamicResource RimworldBrownBrush}" FontSize="12"
                                   KeyDown="SearchTextBox_KeyDown"/>
-                         <Button Grid.Column="1" Command="{Binding SearchCommand}" Content="🔍" FontSize="12" Classes="SearchIconButton" ToolTip.Tip="Search Steam Workshop"/>
+                         <Button x:Name="SearchButton" Grid.Column="1" Command="{Binding SearchCommand}" Content="🔍" FontSize="12" Classes="SearchIconButton" ToolTip.Tip="Search Steam Workshop"
+                                 Click="SearchButton_Click"/>
                     </Grid>
                 </Border>
             </Grid>

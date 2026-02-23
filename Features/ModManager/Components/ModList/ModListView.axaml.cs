@@ -345,5 +345,24 @@ namespace RimSharp.Features.ModManager.Components.ModList
             get => GetValue(SelectionModeProperty);
             set => SetValue(SelectionModeProperty, value);
         }
+
+        private void Root_PointerPressed(object? sender, PointerPressedEventArgs e)
+        {
+            ClearAllFocus();
+        }
+
+        private void SearchTextBox_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                ClearAllFocus();
+            }
+        }
+
+        private void ClearAllFocus()
+        {
+            var topLevel = TopLevel.GetTopLevel(this);
+            topLevel?.FocusManager?.ClearFocus();
+        }
     }
 }
