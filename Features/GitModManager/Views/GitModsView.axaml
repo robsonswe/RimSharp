@@ -17,8 +17,11 @@
             <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="GridLinesVisibility" Value="All"/>
             <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="VerticalGridLinesBrush" Value="{DynamicResource RimworldBrownBrush}"/>
             <Setter Property="RowBackground" Value="Transparent"/>
             <Setter Property="ScrollViewer.AllowAutoHide" Value="False"/>
             <Style Selector="^ /template/ ScrollViewer /template/ ScrollContentPresenter#PART_ContentPresenter">
@@ -40,10 +43,10 @@
             <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="12"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="BorderThickness" Value="0,0,1,1"/>
             <Setter Property="Padding" Value="10,6"/>
             <Setter Property="SeparatorBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
         </Style>
 
         <Style Selector="DataGridRow">
@@ -82,14 +85,6 @@
                     <Rectangle Width="1" Fill="{DynamicResource RimworldBrownBrush}" Margin="5,2"/>
                     <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" Foreground="{DynamicResource RimworldDarkBrownBrush}" FontWeight="Medium"/>
                 </StackPanel>
-                
-                <ProgressBar Grid.Column="2" 
-                             Width="150" 
-                             Height="12"
-                             VerticalAlignment="Center"
-                             IsIndeterminate="{Binding IsBusy}"
-                             IsVisible="{Binding IsBusy}"
-                             Classes="RimworldProgressBarStyle"/>
             </Grid>
         </Border>
 
@@ -112,13 +107,19 @@
                           IsReadOnly="True"
                           CanUserSortColumns="True"
                           RowDetailsVisibilityMode="VisibleWhenSelected"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto"
                           BorderThickness="0">
                     <DataGrid.ContextMenu>
                         <ContextMenu x:CompileBindings="False">
-                            <MenuItem Header="Check Updates" Command="{Binding CheckUpdatesCommand}">
+                            <MenuItem Header="Check Update" 
+                                      Command="{Binding CheckIndividualUpdateCommand}"
+                                      CommandParameter="{Binding SelectedItem, ElementName=GitModsDataGrid}">
                                 <MenuItem.Icon><TextBlock Text="🔄" FontSize="14"/></MenuItem.Icon>
                             </MenuItem>
-                            <MenuItem Header="Pull Updates" Command="{Binding PullUpdatesCommand}">
+                            <MenuItem Header="Pull Update" 
+                                      Command="{Binding PullIndividualUpdateCommand}"
+                                      CommandParameter="{Binding SelectedItem, ElementName=GitModsDataGrid}">
                                 <MenuItem.Icon><TextBlock Text="⬇️" FontSize="14"/></MenuItem.Icon>
                             </MenuItem>
                             <Separator/>
@@ -130,22 +131,6 @@
                         </ContextMenu>
                     </DataGrid.ContextMenu>
                     <DataGrid.Columns>
-                        <DataGridTemplateColumn Width="60">
-                            <DataGridTemplateColumn.HeaderTemplate>
-                                <DataTemplate>
-                                    <CheckBox x:CompileBindings="False"
-                                              IsChecked="{Binding DataContext.SelectAll, RelativeSource={RelativeSource FindAncestor, AncestorType=UserControl}, Mode=TwoWay, FallbackValue=False}"
-                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.HeaderTemplate>
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate x:DataType="vm:GitModItemWrapper">
-                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" 
-                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-
                         <DataGridTextColumn Header="Name" Binding="{Binding ModItem.Name}" Width="2*"/>
                         
                         <DataGridTemplateColumn Header="Updates" Width="150">
