@@ -1,52 +1,16 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Media;
+using Avalonia.Data.Converters;
 
 namespace RimSharp.Core.Converters.Text
 {
     public class TrimmedTextTooltipConverter : IMultiValueConverter
     {
-        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
         {
-            // Expecting two values: the TextBlock itself and its ActualWidth
-            if (values.Length < 2 || !(values[0] is TextBlock textBlock) || !(values[1] is double actualWidth))
-            {
-                return null;
-            }
-
-            // Get the PixelsPerDip for the current display
-            var pixelsPerDip = VisualTreeHelper.GetDpi(textBlock).PixelsPerDip;
-
-            // Create a FormattedText object to measure the desired width of the text
-            var formattedText = new FormattedText(
-                textBlock.Text,
-                CultureInfo.CurrentCulture,
-                FlowDirection.LeftToRight,
-                new Typeface(textBlock.FontFamily, textBlock.FontStyle, textBlock.FontWeight, textBlock.FontStretch),
-                textBlock.FontSize,
-                textBlock.Foreground,
-                new NumberSubstitution(),
-                TextFormattingMode.Display,
-                pixelsPerDip
-            );
-
-            // If the desired width is greater than the available width, the text is trimmed.
-            // In this case, return the full text to be used as a tooltip.
-            if (formattedText.Width > actualWidth)
-            {
-                return textBlock.Text;
-            }
-
-            // Otherwise, the text is not trimmed, so no tooltip is needed.
+            if (values.Count > 0) return values[0];
             return null;
-        }
-
-        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
         }
     }
 }

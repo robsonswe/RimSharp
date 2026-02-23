@@ -66,18 +66,24 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
             if (_localModLookupBySteamId.TryGetValue(item.SteamId, out var localMod))
             {
-                // Debug.WriteLine($"[ModInfoEnricher] Enriching item '{item.Name}' ({item.SteamId}): Found local match.");
+                Debug.WriteLine($"[ModInfoEnricher] Found local match for '{item.Name}' ({item.SteamId})");
+                Debug.WriteLine($"  - IsInstalled: {item.IsInstalled} -> true");
+                Debug.WriteLine($"  - IsActive: {item.IsActive} -> {_modListManager.IsModActive(localMod)}");
+                Debug.WriteLine($"  - IsFavorite: {item.IsFavorite} -> {localMod.IsFavorite}");
+                
                 item.IsInstalled = true;
                 item.LocalDateStamp = localMod.DateStamp;
                 item.IsActive = _modListManager.IsModActive(localMod);
                 item.IsLocallyOutdatedRW = localMod.IsOutdatedRW;
                 item.InstalledVersions = localMod.SupportedVersions;
                 item.IsFavorite = localMod.IsFavorite;
+                
+                Debug.WriteLine($"  - After set: IsInstalled={item.IsInstalled}, IsActive={item.IsActive}, IsFavorite={item.IsFavorite}");
             }
             else
             {
-                // Debug.WriteLine($"[ModInfoEnricher] Enriching item '{item.Name}' ({item.SteamId}): No local match found.");
-                item.ClearLocalInfo(); // Use helper to reset properties
+                Debug.WriteLine($"[ModInfoEnricher] No local match for '{item.Name}' ({item.SteamId}). Available IDs: {string.Join(", ", _localModLookupBySteamId.Keys.Take(5))}...");
+                item.ClearLocalInfo();
             }
         }
 

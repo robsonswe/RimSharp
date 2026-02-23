@@ -1,34 +1,33 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
-    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
-    <WebView2InstallMode>Embed</WebView2InstallMode>
-    <RootNamespace>RimSharp</RootNamespace>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationIcon>icon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RootNamespace>RimSharp</RootNamespace>
     <DefaultItemExcludes>$(DefaultItemExcludes);RimSharp.Tests\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
-    <ApplicationDefinition Include="AppDir\AppFiles\App.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </ApplicationDefinition>
-    <Compile Update="AppDir\AppFiles\App.xaml.cs">
-      <DependentUpon>AppDir\AppFiles\App.xaml</DependentUpon>
-      <SubType>Code</SubType>
-    </Compile>
+    <AvaloniaResource Include="icon.ico" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.0.10" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.0.10" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.10" />
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.0.10" />
+    <PackageReference Include="Avalonia.Xaml.Behaviors" Version="11.0.10" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.0.10" />
+    <PackageReference Include="Avalonia.ReactiveUI" Version="11.0.10" />
     <PackageReference Include="FuzzySharp" Version="2.0.2" />
     <PackageReference Include="LibGit2Sharp" Version="0.31.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.3" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.3" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2365.46" />
-    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
     <PackageReference Include="PInvoke.Shell32" Version="0.7.124" />
     <PackageReference Include="PInvoke.User32" Version="0.7.124" />
     <PackageReference Include="QuikGraph" Version="2.5.0" />
@@ -39,16 +38,12 @@
     <Content Include="Rules\db\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-
     <Content Include="version.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-
-    <!-- Existing items -->
     <None Include="Lists\**\*" Condition="Exists('Lists\**\*')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <Resource Include="icon.ico" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -59,43 +54,26 @@
   </PropertyGroup>
 
   <Target Name="EnsureLocalDataFilesExist" BeforeTargets="PrepareForBuild">
-    <!-- Create the Rules\db directory in your source project if it's missing. -->
     <MakeDir Directories="$(ProjectDir)Rules\db" Condition="!Exists('$(ProjectDir)Rules\db')" />
-
-    <!--
-      Create default, empty JSON files if they don't exist. This prevents
-      FileNotFoundExceptions in the application. The Overwrite="false" attribute
-      ensures we don't accidentally erase existing files.
-    -->
-    <WriteLinesToFile File="$(ProjectDir)Rules\db\manifest.json"
-      Lines="$(DefaultManifestJsonContent)" Overwrite="false"
-      Condition="!Exists('$(ProjectDir)Rules\db\manifest.json')" />
-    <WriteLinesToFile File="$(ProjectDir)Rules\db\rules.json" Lines="$(DefaultRulesJsonContent)"
-      Overwrite="false" Condition="!Exists('$(ProjectDir)Rules\db\rules.json')" />
-    <WriteLinesToFile File="$(ProjectDir)Rules\db\db.json" Lines="$(DefaultDbJsonContent)"
-      Overwrite="false" Condition="!Exists('$(ProjectDir)Rules\db\db.json')" />
-    <WriteLinesToFile File="$(ProjectDir)Rules\db\replacements.json"
-      Lines="$(DefaultReplacementsJsonContent)" Overwrite="false"
-      Condition="!Exists('$(ProjectDir)Rules\db\replacements.json')" />
+    <WriteLinesToFile File="$(ProjectDir)Rules\db\manifest.json" Lines="$(DefaultManifestJsonContent)" Overwrite="false" Condition="!Exists('$(ProjectDir)Rules\db\manifest.json')" />
+    <WriteLinesToFile File="$(ProjectDir)Rules\db\rules.json" Lines="$(DefaultRulesJsonContent)" Overwrite="false" Condition="!Exists('$(ProjectDir)Rules\db\rules.json')" />
+    <WriteLinesToFile File="$(ProjectDir)Rules\db\db.json" Lines="$(DefaultDbJsonContent)" Overwrite="false" Condition="!Exists('$(ProjectDir)Rules\db\db.json')" />
+    <WriteLinesToFile File="$(ProjectDir)Rules\db\replacements.json" Lines="$(DefaultReplacementsJsonContent)" Overwrite="false" Condition="!Exists('$(ProjectDir)Rules\db\replacements.json')" />
   </Target>
 
-  <!-- Automatically set Assembly Version from version.txt -->
   <Target Name="SetVersionFromTextFile" BeforeTargets="BeforeBuild">
     <ReadLinesFromFile File="version.txt">
       <Output TaskParameter="Lines" ItemName="VersionLines" />
     </ReadLinesFromFile>
     <PropertyGroup>
       <RawVersion>@(VersionLines->'%(Identity)')</RawVersion>
-      <!-- Remove 'v' prefix for the assembly version -->
       <Version Condition="$(RawVersion.StartsWith('v'))">$(RawVersion.Substring(1))</Version>
       <Version Condition="!$(RawVersion.StartsWith('v'))">$(RawVersion)</Version>
     </PropertyGroup>
     <Message Importance="high" Text="Setting Assembly Version to: $(Version)" />
   </Target>
 
-
   <Target Name="PostBuild" AfterTargets="PostBuild">
-    <!-- Create output folders -->
     <MakeDir Directories="$(OutputPath)Rules\db" />
     <MakeDir Directories="$(OutputPath)Lists" />
   </Target>

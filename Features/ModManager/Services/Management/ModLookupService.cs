@@ -22,8 +22,13 @@ namespace RimSharp.Features.ModManager.Services.Management
             }
         }
 
-        public bool TryGetMod(string packageId, out ModItem mod)
+        public bool TryGetMod(string? packageId, out ModItem? mod)
         {
+            if (string.IsNullOrEmpty(packageId))
+            {
+                mod = null;
+                return false;
+            }
             return _modLookup.TryGetValue(packageId.ToLowerInvariant(), out mod);
         }
 

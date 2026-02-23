@@ -17,7 +17,7 @@ namespace RimSharp.Shared.Services.Implementations
 
         private readonly IPathService _pathService;
         private readonly ILoggerService _logger;
-        private Dictionary<string, List<string>> _mlieVersionsCache = null;
+        private Dictionary<string, List<string>>? _mlieVersionsCache;
         private bool _isInitialized = false;
         private readonly object _lock = new object();
 
@@ -30,14 +30,14 @@ namespace RimSharp.Shared.Services.Implementations
         public Dictionary<string, List<string>> GetMlieVersions()
         {
             // Double-check locking for thread safety
-            if (_isInitialized)
+            if (_isInitialized && _mlieVersionsCache != null)
             {
                 return _mlieVersionsCache;
             }
 
             lock (_lock)
             {
-                if (_isInitialized) // Check again inside lock
+                if (_isInitialized && _mlieVersionsCache != null) // Check again inside lock
                 {
                     return _mlieVersionsCache;
                 }
@@ -45,8 +45,8 @@ namespace RimSharp.Shared.Services.Implementations
                 _logger.LogInfo("Initializing MlieVersionService cache.", nameof(MlieVersionService));
                 _mlieVersionsCache = LoadMlieVersions();
                 _isInitialized = true;
-                _logger.LogInfo($"MlieVersionService cache initialized. Found compatibility info for {_mlieVersionsCache.Count} mods.", nameof(MlieVersionService));
-                return _mlieVersionsCache;
+                _logger.LogInfo($"MlieVersionService cache initialized. Found compatibility info for {_mlieVersionsCache!.Count} mods.", nameof(MlieVersionService));
+                return _mlieVersionsCache!;
             }
         }
 
@@ -101,7 +101,7 @@ namespace RimSharp.Shared.Services.Implementations
                            // _logger.LogDebug($"Found {packageIds.Count} package IDs in '{filePath}'.", nameof(MlieVersionService));
                             foreach (var packageId in packageIds)
                             {
-                                string lowerPackageId = packageId.ToLowerInvariant(); // Normalize to lowercase
+                                string lowerPackageId = packageId!.ToLowerInvariant(); // Normalize to lowercase
                                 if (!results.TryGetValue(lowerPackageId, out var versionList))
                                 {
                                     versionList = new List<string>();

@@ -29,14 +29,14 @@ namespace RimSharp.Core.Services.Commanding
         /// </summary>
         /// <param name="commandName">The name of the command to get.</param>
         /// <returns>The command, or null if not found.</returns>
-        ICommand GetCommand(string commandName);
+        ICommand? GetCommand(string commandName);
 
         /// <summary>
         /// Gets a composite command from the service.
         /// </summary>
         /// <param name="commandName">The name of the composite command to get.</param>
         /// <returns>The composite command, or null if not found.</returns>
-        CompositeCommand GetCompositeCommand(string commandName);
+        CompositeCommand? GetCompositeCommand(string commandName);
 
         /// <summary>
         /// Adds a command to a composite command.
@@ -119,7 +119,7 @@ namespace RimSharp.Core.Services.Commanding
         /// </summary>
         /// <param name="commandName">The name of the command to get.</param>
         /// <returns>The command, or null if not found.</returns>
-        public ICommand GetCommand(string commandName)
+        public ICommand? GetCommand(string commandName)
         {
             if (string.IsNullOrEmpty(commandName)) throw new ArgumentNullException(nameof(commandName));
 
@@ -134,7 +134,7 @@ namespace RimSharp.Core.Services.Commanding
         /// </summary>
         /// <param name="commandName">The name of the composite command to get.</param>
         /// <returns>The composite command, or null if not found.</returns>
-        public CompositeCommand GetCompositeCommand(string commandName)
+        public CompositeCommand? GetCompositeCommand(string commandName)
         {
             if (string.IsNullOrEmpty(commandName)) throw new ArgumentNullException(nameof(commandName));
 

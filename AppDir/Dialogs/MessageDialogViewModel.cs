@@ -1,75 +1,60 @@
 using System;
-using System.Diagnostics;
-using System.Windows;
 using System.Windows.Input;
-using RimSharp.Core.Commands; // Keep specific command type if needed
-using RimSharp.Core.Commands.Base; // For DelegateCommand
+using RimSharp.AppDir.AppFiles;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
 
 namespace RimSharp.AppDir.Dialogs
 {
-    public enum MessageDialogType
-    {
-        Information,
-        Warning,
-        Error,
-        Question // For Yes/No scenarios later
-    }
-
     public enum MessageDialogResult
     {
-        OK,
-        Cancel,
-        Yes,
-        No
+        None, OK, Yes, No, Cancel
     }
 
-    // Use the generic base to return a result (e.g., OK/Cancel)
+    public enum MessageDialogType
+    {
+        Information, Warning, Error, Question
+    }
+
     public class MessageDialogViewModel : DialogViewModelBase<MessageDialogResult>
     {
-        public string Message { get; }
-        public MessageDialogType DialogType { get; }
+        private string _message;
+        private MessageDialogType _dialogType;
+        private bool _showOkButton = true;
+        private bool _showCancelButton = false;
+        private bool _showCopyButton = false;
 
-        // Button Visibility Flags
-        public bool ShowOkButton { get; set; } = true;
-        public bool ShowCancelButton { get; set; } = false;
-        public bool ShowCopyButton { get; set; }
+        public string Message { get => _message; set => SetProperty(ref _message, value); }
+        public MessageDialogType DialogType { get => _dialogType; set => SetProperty(ref _dialogType, value); }
+        public bool ShowOkButton { get => _showOkButton; set => SetProperty(ref _showOkButton, value); }
+        public bool ShowCancelButton { get => _showCancelButton; set => SetProperty(ref _showCancelButton, value); }
+        public bool ShowCopyButton { get => _showCopyButton; set => SetProperty(ref _showCopyButton, value); }
 
-
-        // Commands
         public ICommand OkCommand { get; }
         public ICommand CancelCommand { get; }
         public ICommand CopyToClipboardCommand { get; }
 
-        public MessageDialogViewModel(string title, string message, MessageDialogType type = MessageDialogType.Information)
+        public MessageDialogViewModel(string title, string message, MessageDialogType dialogType = MessageDialogType.Information)
             : base(title)
         {
-            Message = message;
-            DialogType = type;
+            _message = message;
+            _dialogType = dialogType;
 
-            // Use base CloseDialog method via standard commands (no dependencies)
-            OkCommand = new DelegateCommand(() => CloseDialog(MessageDialogResult.OK));
-            CancelCommand = new DelegateCommand(() => CloseDialog(MessageDialogResult.Cancel));
-            CopyToClipboardCommand = new DelegateCommand(CopyToClipboard);
-
-            if (type == MessageDialogType.Question)
-            {
-                ShowOkButton = false;
-                // Configure Yes/No visibility if added later
-            }
+            OkCommand = CreateCommand(() => CloseDialog(MessageDialogResult.OK));
+            CancelCommand = CreateCommand(() => CloseDialog(MessageDialogResult.Cancel));
+            CopyToClipboardCommand = CreateCommand(CopyToClipboard);
         }
-        private void CopyToClipboard()
+
+        private async void CopyToClipboard()
         {
-            try
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
             {
-                 // Consider running on UI thread if called from non-UI context, though unlikely for dialogs
-                Clipboard.SetText(Message);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Failed to copy to clipboard: {ex}");
-                // Maybe show error dialog?
+                var clipboard = desktop.MainWindow.Clipboard;
+                if (clipboard != null)
+                {
+                    await clipboard.SetTextAsync(Message);
+                }
             }
         }
-
     }
 }

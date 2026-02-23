@@ -24,10 +24,10 @@ namespace RimSharp.Shared.Services.Implementations
         private ModsCustomRoot _modsData;
         private bool _isInitialized = false;
         private readonly object _initLock = new object(); // Lock for initialization
-        private readonly ILoggerService _logger;
+        private readonly ILoggerService? _logger;
         private readonly SemaphoreSlim _initSemaphore = new SemaphoreSlim(1, 1);
         // Constructor takes appBasePath and optional logger
-        public ModCustomService(string appBasePath, ILoggerService logger = null)
+        public ModCustomService(string appBasePath, ILoggerService? logger = null)
         {
             _appBasePath = appBasePath ?? throw new ArgumentNullException(nameof(appBasePath));
             // Updated path calculation
@@ -74,7 +74,7 @@ namespace RimSharp.Shared.Services.Implementations
                 }
 
                 _isInitialized = true; // Mark initialized *before* releasing lock
-                _logger?.LogInfo($"ModCustomService initialized. Loaded custom data for {_modsData.Mods.Count} mods.", nameof(ModCustomService));
+                _logger?.LogInfo($"ModCustomService initialized. Loaded custom data for {_modsData.Mods?.Count ?? 0} mods.", nameof(ModCustomService));
             }
             catch (Exception ex) // Catch specific exceptions like IO, UnauthorizedAccess, JsonException
             {
@@ -160,7 +160,7 @@ namespace RimSharp.Shared.Services.Implementations
                 // 4. Serialize and write
                 string json = JsonSerializer.Serialize(_modsData, options);
                 await File.WriteAllTextAsync(_modsJsonPath, json);
-                _logger?.LogDebug($"Saved Mods.json with {_modsData.Mods.Count} custom mods to '{_modsJsonPath}'", nameof(ModCustomService));
+                _logger?.LogDebug($"Saved Mods.json with {_modsData.Mods!.Count} custom mods to '{_modsJsonPath}'", nameof(ModCustomService));
             }
             catch (IOException ioEx)
             {
@@ -183,11 +183,11 @@ namespace RimSharp.Shared.Services.Implementations
         public Dictionary<string, ModCustomInfo> GetAllCustomMods()
         {
             EnsureInitializedAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-            return new Dictionary<string, ModCustomInfo>(_modsData.Mods, StringComparer.OrdinalIgnoreCase);
+            return new Dictionary<string, ModCustomInfo>(_modsData.Mods ?? new Dictionary<string, ModCustomInfo>(), StringComparer.OrdinalIgnoreCase);
         }
 
         /// <inheritdoc />
-        public ModCustomInfo GetCustomModInfo(string packageId)
+        public ModCustomInfo? GetCustomModInfo(string packageId)
         {
             if (string.IsNullOrEmpty(packageId)) return null;
 
@@ -195,7 +195,7 @@ namespace RimSharp.Shared.Services.Implementations
             EnsureInitializedAsync().ConfigureAwait(false).GetAwaiter().GetResult();
 
             // Use case-insensitive lookup
-            if (_modsData.Mods.TryGetValue(packageId, out var info)) // No ToLowerInvariant needed due to comparer
+            if (_modsData.Mods != null && _modsData.Mods.TryGetValue(packageId, out var info)) // No ToLowerInvariant needed due to comparer
             {
                 return info;
             }
@@ -219,7 +219,7 @@ namespace RimSharp.Shared.Services.Implementations
             CleanupEmptyCollections(customInfo);
 
             // Update or add the custom mod info (using normalized ID)
-            _modsData.Mods[normalizedId] = customInfo;
+            _modsData.Mods![normalizedId] = customInfo;
 
             // Save changes to file (SaveModsDataAsync now handles directory creation)
             await SaveModsDataAsync();
@@ -236,7 +236,7 @@ namespace RimSharp.Shared.Services.Implementations
             await EnsureInitializedAsync(); // Ensure loaded/initialized before modifying
 
             string normalizedId = packageId.ToLowerInvariant(); // Keep normalization for the key
-            bool removed = _modsData.Mods.Remove(normalizedId);
+            bool removed = _modsData.Mods!.Remove(normalizedId);
 
             if (removed)
             {
@@ -373,52 +373,53 @@ namespace RimSharp.Shared.Services.Implementations
         }
 
 
-        // --- CleanupEmptyCollections remains the same ---
-        /// <summary>
-        /// Cleans up empty collections to avoid storing unnecessary null data in JSON.
-        /// Sets collections to null if they are empty.
-        /// </summary>
-        private void CleanupEmptyCollections(ModCustomInfo customInfo)
-        {
-            if (customInfo.LoadBefore?.Count == 0) customInfo.LoadBefore = null;
-            if (customInfo.LoadAfter?.Count == 0) customInfo.LoadAfter = null;
-            if (customInfo.IncompatibleWith?.Count == 0) customInfo.IncompatibleWith = null;
-            if (customInfo.SupportedVersions?.Count == 0) customInfo.SupportedVersions = null;
-            if (customInfo.LoadBottom != null && !customInfo.LoadBottom.Value) customInfo.LoadBottom = null;
-            if (customInfo.Favorite.HasValue && !customInfo.Favorite.Value) customInfo.Favorite = null;
-
-            customInfo.SupportedVersions?.RemoveAll(string.IsNullOrWhiteSpace);
-            if (customInfo.SupportedVersions?.Count == 0) customInfo.SupportedVersions = null;
-
-            Action<Dictionary<string, ModDependencyRule>> cleanupDepRule = dict =>
-            {
-                if (dict == null) return;
-                foreach (var rule in dict.Values)
-                {
-                    if (rule.Name?.Count == 0) rule.Name = null;
-                    if (rule.Comment?.Count == 0) rule.Comment = null;
+                // --- CleanupEmptyCollections remains the same ---
+                /// <summary>
+                /// Cleans up empty collections to avoid storing unnecessary null data in JSON.
+                /// Sets collections to null if they are empty.
+                /// </summary>
+                        private void CleanupEmptyCollections(ModCustomInfo customInfo)
+                        {
+                            if (customInfo.LoadBefore?.Count == 0) customInfo.LoadBefore = null!;
+                            if (customInfo.LoadAfter?.Count == 0) customInfo.LoadAfter = null!;
+                            if (customInfo.IncompatibleWith?.Count == 0) customInfo.IncompatibleWith = null!;
+                            if (customInfo.SupportedVersions?.Count == 0) customInfo.SupportedVersions = null!;
+                            if (customInfo.LoadBottom != null && !customInfo.LoadBottom.Value) customInfo.LoadBottom = null!;
+                            if (customInfo.Favorite.HasValue && !customInfo.Favorite.Value) customInfo.Favorite = null!;
+                
+                            customInfo.SupportedVersions?.RemoveAll(string.IsNullOrWhiteSpace);
+                            if (customInfo.SupportedVersions?.Count == 0) customInfo.SupportedVersions = null!;
+                                                Action<Dictionary<string, ModDependencyRule>?> cleanupDepRule = dict =>
+                                {
+                                    if (dict == null) return;
+                                    foreach (var rule in dict.Values)
+                                    {
+                                        if (rule.Name?.Count == 0) rule.Name = null!;
+                                        if (rule.Comment?.Count == 0) rule.Comment = null!;
+                                    }
+                                };
+                                Action<Dictionary<string, ModIncompatibilityRule>?> cleanupIncompRule = dict =>
+                                {
+                                    if (dict == null) return;
+                                    foreach (var rule in dict.Values)
+                                    {
+                                        if (rule.Name?.Count == 0) rule.Name = null!;
+                                        if (rule.Comment?.Count == 0) rule.Comment = null!;
+                                    }
+                                };
+                                cleanupDepRule(customInfo.LoadBefore);
+                                cleanupDepRule(customInfo.LoadAfter);
+                                cleanupIncompRule(customInfo.IncompatibleWith);
+                                if (customInfo.LoadBottom != null && customInfo.LoadBottom.Comment?.Count == 0) customInfo.LoadBottom.Comment = null!;
+                    
                 }
-            };
-            Action<Dictionary<string, ModIncompatibilityRule>> cleanupIncompRule = dict =>
-            {
-                if (dict == null) return;
-                foreach (var rule in dict.Values)
+        
+                // Helper class to match the JSON structure {"Mods": {...}}
+                // Note the capital "M" as requested for the default file content
+                private class ModsCustomRoot
                 {
-                    if (rule.Name?.Count == 0) rule.Name = null;
-                    if (rule.Comment?.Count == 0) rule.Comment = null;
+                    public Dictionary<string, ModCustomInfo>? Mods { get; set; }
                 }
-            };
-            cleanupDepRule(customInfo.LoadBefore);
-            cleanupDepRule(customInfo.LoadAfter);
-            cleanupIncompRule(customInfo.IncompatibleWith);
-            if (customInfo.LoadBottom?.Comment?.Count == 0) customInfo.LoadBottom.Comment = null;
+            }
         }
-
-        // Helper class to match the JSON structure {"Mods": {...}}
-        // Note the capital "M" as requested for the default file content
-        private class ModsCustomRoot
-        {
-            public Dictionary<string, ModCustomInfo> Mods { get; set; }
-        }
-    }
-}
+        

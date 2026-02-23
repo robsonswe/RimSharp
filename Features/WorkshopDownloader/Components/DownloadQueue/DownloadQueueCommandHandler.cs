@@ -173,7 +173,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 {
                     progressDialog?.CompleteOperation("Setup completed successfully!");
                     StatusChanged?.Invoke(this, "SteamCMD setup successful.");
-                    _dialogService.ShowInformation("Setup Complete", "SteamCMD has been set up successfully.");
+                    await _dialogService.ShowInformation("Setup Complete", "SteamCMD has been set up successfully.");
                 }
                 else
                 {
@@ -191,7 +191,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             {
                 StatusChanged?.Invoke(this, $"Error during SteamCMD setup: {ex.Message}");
                 if (progressDialog != null) progressDialog.Message = $"Error: {ex.Message}";
-                _dialogService.ShowError("Setup Error", $"An unexpected error occurred during setup: {ex.Message}");
+                await _dialogService.ShowError("Setup Error", $"An unexpected error occurred during setup: {ex.Message}");
                 Debug.WriteLine($"[ExecuteSetupSteamCmdAsync] Error: {ex}");
             }
             finally
@@ -212,7 +212,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             if (!IsSteamCmdReady)
             {
                 StatusChanged?.Invoke(this, "SteamCMD is not ready. Please run setup first.");
-                _dialogService.ShowWarning("SteamCMD Not Ready", "SteamCMD setup needs to be completed before downloading mods.");
+                await _dialogService.ShowWarning("SteamCMD Not Ready", "SteamCMD setup needs to be completed before downloading mods.");
                 return;
             }
 
@@ -342,15 +342,15 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 // SHOW THE DIALOG WITH THE DETAILED MESSAGE
                 if (downloadResult.FailedItems.Any())
                 {
-                    _dialogService.ShowMessageWithCopy(summaryTitle, finalDialogSummary, MessageDialogType.Error);
+                    await _dialogService.ShowMessageWithCopy(summaryTitle, finalDialogSummary, MessageDialogType.Error);
                 }
                 else if (token.IsCancellationRequested || !downloadResult.OverallSuccess)
                 {
-                    _dialogService.ShowWarning(summaryTitle, finalDialogSummary);
+                    await _dialogService.ShowWarning(summaryTitle, finalDialogSummary);
                 }
                 else
                 {
-                    _dialogService.ShowInformation(summaryTitle, finalDialogSummary);
+                    await _dialogService.ShowInformation(summaryTitle, finalDialogSummary);
                 }
                 // --- MODIFICATION END ---
 
@@ -367,7 +367,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             {
                 StatusChanged?.Invoke(this, "Download operation cancelled by user.");
                 progressDialog?.CompleteOperation("Download operation cancelled.");
-                _dialogService.ShowInformation("Cancelled", "Download operation cancelled. Partially processed items may exist.");
+                await _dialogService.ShowInformation("Cancelled", "Download operation cancelled. Partially processed items may exist.");
                 Debug.WriteLine("[CommandHandler] Download cancelled, re-enriching queue items.");
                 _modInfoEnricher.EnrichAllDownloadItems(_queueService.Items);
             }
@@ -376,7 +376,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 StatusChanged?.Invoke(this, $"Error during download process: {ex.Message}");
                 progressDialog?.CompleteOperation($"Error: {ex.Message}");
                 Debug.WriteLine($"[ExecuteDownloadAsync] Exception: {ex}");
-                _dialogService.ShowError("Download Error", $"An unexpected error occurred during the download: {ex.Message}");
+                await _dialogService.ShowError("Download Error", $"An unexpected error occurred during the download: {ex.Message}");
                 Debug.WriteLine("[CommandHandler] Download error occurred, re-enriching queue items.");
                 _modInfoEnricher.EnrichAllDownloadItems(_queueService.Items);
             }
@@ -392,7 +392,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             if (!IsSteamCmdReady)
             {
                 StatusChanged?.Invoke(this, "Cannot add mod: SteamCMD is not ready.");
-                _dialogService.ShowWarning("SteamCMD Not Ready", "SteamCMD setup needs to be completed before adding mods.");
+                await _dialogService.ShowWarning("SteamCMD Not Ready", "SteamCMD setup needs to be completed before adding mods.");
                 return;
             }
 
@@ -415,7 +415,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 else
                 {
                     StatusChanged?.Invoke(this, "Cannot add mod: Current page is not a valid mod or collection page, or required info is missing.");
-                    _dialogService.ShowWarning("Cannot Add Mod", "The current browser page is not recognized as a valid mod or collection, or essential information couldn't be extracted.");
+                    await _dialogService.ShowWarning("Cannot Add Mod", "The current browser page is not recognized as a valid mod or collection, or essential information couldn't be extracted.");
                 }
             }
             catch (OperationCanceledException)
@@ -426,7 +426,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             {
                 StatusChanged?.Invoke(this, $"Error adding mod(s): {ex.Message}");
                 Debug.WriteLine($"[ExecuteAddModAsync] Error: {ex}");
-                _dialogService.ShowError("Add Mod Error", $"An error occurred while trying to add the mod(s): {ex.Message}");
+                await _dialogService.ShowError("Add Mod Error", $"An error occurred while trying to add the mod(s): {ex.Message}");
             }
             finally
             {
@@ -440,7 +440,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             if (!_browserViewModel.IsModInfoAvailable)
             {
                 string reason = "Mod information is not available. The mod may be deleted, unlisted, or the page hasn't loaded correctly.";
-                _dialogService.ShowError("Add Mod Failed", reason);
+                await _dialogService.ShowError("Add Mod Failed", reason);
                 StatusChanged?.Invoke(this, reason);
                 return;
             }
@@ -455,17 +455,19 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             {
                 var queryParams = System.Web.HttpUtility.ParseQueryString(uri.Query);
                 steamId = queryParams["id"];
+                
+                // Also check if the ID is in the path (some URL formats)
+                if (string.IsNullOrEmpty(steamId))
+                {
+                    var pathMatch = System.Text.RegularExpressions.Regex.Match(uri.AbsolutePath, @"/filedetails/(\d+)");
+                    if (pathMatch.Success)
+                    {
+                        steamId = pathMatch.Groups[1].Value;
+                    }
+                }
             }
 
-            if (string.IsNullOrEmpty(steamId))
-            {
-                failedReason = "Could not extract Steam ID from the browser URL.";
-                _dialogService.ShowError("Add Mod Failed", failedReason);
-                StatusChanged?.Invoke(this, failedReason);
-                return;
-            }
-
-            // --- 2. Try ModExtractorService first ---
+            // --- 2. Try ModExtractorService first (this will also get the Steam ID) ---
             try
             {
                 StatusChanged?.Invoke(this, "Attempting to extract mod info from browser page...");
@@ -473,7 +475,12 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 token.ThrowIfCancellationRequested();
                 if (modInfo != null)
                 {
-                    Debug.WriteLine($"[CommandHandler] Successfully extracted mod info via browser: {modInfo.Name}");
+                    Debug.WriteLine($"[CommandHandler] Successfully extracted mod info via browser: {modInfo.Name} (ID: {modInfo.SteamId})");
+                    // Use the Steam ID from the extracted mod info if URL extraction failed
+                    if (string.IsNullOrEmpty(steamId) && !string.IsNullOrEmpty(modInfo.SteamId))
+                    {
+                        steamId = modInfo.SteamId;
+                    }
                 }
                 else
                 {
@@ -488,7 +495,35 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 StatusChanged?.Invoke(this, "Browser extraction failed, trying Steam API fallback...");
             }
 
-            // --- 3. If browser extraction failed, try Steam API fallback ---
+            // --- 3. If we still don't have a Steam ID, try to extract it from the page ---
+            if (string.IsNullOrEmpty(steamId))
+            {
+                try
+                {
+                    StatusChanged?.Invoke(this, "Trying to extract Steam ID from page content...");
+                    var pageSteamId = await _browserViewModel.ExtractSteamIdFromPageAsync(token);
+                    if (!string.IsNullOrEmpty(pageSteamId))
+                    {
+                        steamId = pageSteamId;
+                        Debug.WriteLine($"[CommandHandler] Extracted Steam ID from page: {steamId}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[CommandHandler] Error extracting Steam ID from page: {ex.Message}");
+                }
+            }
+
+            // --- 4. Final check: If we still don't have a Steam ID, fail ---
+            if (string.IsNullOrEmpty(steamId))
+            {
+                failedReason = "Could not extract Steam ID from the browser URL or page content. Please make sure you're on a valid Steam Workshop mod page.";
+                await _dialogService.ShowError("Add Mod Failed", failedReason);
+                StatusChanged?.Invoke(this, failedReason);
+                return;
+            }
+
+            // --- 5. If browser extraction failed, try Steam API fallback ---
             if (modInfo == null)
             {
                 Debug.WriteLine($"[CommandHandler] Attempting Steam API fallback for ID: {steamId}");
@@ -552,7 +587,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             {
                 // If modInfo is still null, both methods failed
                 failedReason ??= "Could not retrieve mod information using browser extraction or Steam API.";
-                _dialogService.ShowError("Add Mod Failed", failedReason);
+                await _dialogService.ShowError("Add Mod Failed", failedReason);
                 StatusChanged?.Invoke(this, failedReason);
             }
         }
@@ -568,7 +603,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             if (collectionItems == null || !collectionItems.Any())
             {
                 StatusChanged?.Invoke(this, "No items found in the collection or extraction failed.");
-                _dialogService.ShowWarning("Extraction Failed", "Could not find any items in the collection on the current page, or an error occurred during extraction.");
+                await _dialogService.ShowWarning("Extraction Failed", "Could not find any items in the collection on the current page, or an error occurred during extraction.");
                 return;
             }
 
@@ -576,7 +611,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
             // --- Show Selection Dialog ---
             var dialogViewModel = new CollectionDialogViewModel(collectionItems);
-            List<string>? selectedIds = _dialogService.ShowCollectionDialog(dialogViewModel); // Runs on UI thread internally
+            List<string>? selectedIds = await _dialogService.ShowCollectionDialogAsync(dialogViewModel); // Runs on UI thread internally
 
             token.ThrowIfCancellationRequested();
 
@@ -641,7 +676,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                     summary = $"Processing cancelled. Successfully added {processResult.SuccessfullyAdded} mods before cancellation.";
                     // Don't call CompleteOperation if already cancelled? Or call with cancel message?
                     progressDialog?.ForceClose(); // Force close if cancelled externally or via button
-                    _dialogService.ShowInformation("Processing Cancelled", summary);
+                    await _dialogService.ShowInformation("Processing Cancelled", summary);
                 }
                 else
                 {
@@ -651,11 +686,11 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                     if (processResult.FailedProcessing > 0)
                     {
                         string errors = string.Join("\n- ", processResult.ErrorMessages.Take(5)); // Show first 5 errors
-                        _dialogService.ShowWarning("Processing Issues", $"{summary}\n\nSome items failed:\n- {errors}{(processResult.ErrorMessages.Count > 5 ? "\n..." : "")}");
+                        await _dialogService.ShowWarning("Processing Issues", $"{summary}\n\nSome items failed:\n- {errors}{(processResult.ErrorMessages.Count > 5 ? "\n..." : "")}");
                     }
                     else
                     {
-                        _dialogService.ShowInformation("Processing Complete", summary);
+                        await _dialogService.ShowInformation("Processing Complete", summary);
                     }
                 }
                 StatusChanged?.Invoke(this, summary);
@@ -671,7 +706,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 StatusChanged?.Invoke(this, $"Error processing collection items: {ex.Message}");
                 progressDialog?.CompleteOperation($"Error: {ex.Message}"); // Show error before force close
                 Debug.WriteLine($"[AddItemsFromCollectionAsync] Error: {ex}");
-                _dialogService.ShowError("Processing Error", $"An unexpected error occurred while processing collection items: {ex.Message}");
+                await _dialogService.ShowError("Processing Error", $"An unexpected error occurred while processing collection items: {ex.Message}");
             }
             finally
             {
@@ -679,11 +714,11 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             }
         }
 
-        public void ExecuteRemoveItem(DownloadItem? item)
+        public async Task ExecuteRemoveItemAsync(DownloadItem? item)
         {
             if (item == null) return;
 
-            var result = _dialogService.ShowConfirmation("Remove from Queue",
+            var result = await _dialogService.ShowConfirmationAsync("Remove from Queue",
                 $"Are you sure you want to remove '{item.Name}' from the queue?",
                 showCancel: true);
 
@@ -691,14 +726,11 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
             if (_queueService.RemoveFromQueue(item))
             {
-                // Message handled by queue service StatusChanged
-                // Optionally show an info dialog here too
-                // _dialogService.ShowInformation("Item Removed", $"Removed '{item.Name}' from the queue.");
                 StatusChanged?.Invoke(this, $"Removed '{item.Name}' from the queue.");
             }
         }
 
-        public void ExecuteNavigateToUrl(string? url)
+        public async Task ExecuteNavigateToUrl(string? url)
         {
             if (string.IsNullOrWhiteSpace(url)) return;
 
@@ -719,12 +751,12 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             catch (Exception ex)
             {
                 StatusChanged?.Invoke(this, $"Failed to initiate browser navigation: {ex.Message}");
-                _dialogService.ShowError("Navigation Error", $"Could not navigate the internal browser: {ex.Message}");
+                await _dialogService.ShowError("Navigation Error", $"Could not navigate the internal browser: {ex.Message}");
                 Debug.WriteLine($"[CommandHandler] Error executing NavigateToUrl: {ex}");
             }
         }
 
-        public void ExecuteRemoveItems(System.Collections.IList? selectedItems)
+        public async Task ExecuteRemoveItemsAsync(System.Collections.IList? selectedItems)
         {
             if (selectedItems == null || selectedItems.Count == 0) return;
 
@@ -733,7 +765,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 ? $"Are you sure you want to remove '{items[0].Name}' from the queue?"
                 : $"Are you sure you want to remove {items.Count} items from the queue?";
 
-            var result = _dialogService.ShowConfirmation("Remove from Queue", confirmMessage, showCancel: true);
+            var result = await _dialogService.ShowConfirmationAsync("Remove from Queue", confirmMessage, showCancel: true);
             if (result != MessageDialogResult.OK && result != MessageDialogResult.Yes) return;
 
             int removedCount = 0;
@@ -741,22 +773,23 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
             foreach (var item in items)
             {
-                if (item.Name != null && _queueService.RemoveFromQueue(item))
+                if (_queueService.RemoveFromQueue(item))
                 {
                     removedCount++;
-                    removedNames.Add(item.Name); // Add name if successfully removed
+                    if (!string.IsNullOrEmpty(item.Name))
+                    {
+                        removedNames.Add(item.Name);
+                    }
                 }
             }
 
             if (removedCount > 0)
             {
                 string message = removedCount == 1
-                    ? $"Removed '{removedNames.FirstOrDefault() ?? "item"}' from the queue." // Use FirstOrDefault for safety
+                    ? $"Removed '{removedNames.FirstOrDefault() ?? "item"}' from the queue."
                     : $"Removed {removedCount} items from the queue.";
-                // Message handled by queue service StatusChanged
-                // Optionally show an info dialog here too
-                // _dialogService.ShowInformation("Items Removed", message);
-                StatusChanged?.Invoke(this, $"Removed {removedCount} item(s) from queue.");
+                
+                StatusChanged?.Invoke(this, message);
             }
         }
 
@@ -765,7 +798,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             if (!IsSteamCmdReady)
             {
                 StatusChanged?.Invoke(this, "Cannot check updates: SteamCMD is not ready.");
-                _dialogService.ShowWarning("SteamCMD Not Ready", "SteamCMD setup needs to be completed before checking for mod updates.");
+                await _dialogService.ShowWarning("SteamCMD Not Ready", "SteamCMD setup needs to be completed before checking for mod updates.");
                 return;
             }
 
@@ -806,7 +839,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 OperationCompleted?.Invoke(this, EventArgs.Empty); // Reset busy state on failure
                 StatusChanged?.Invoke(this, $"Error loading mod list: {ex.Message}");
                 Debug.WriteLine($"[CommandHandler] Error getting mods for update check: {ex}");
-                _dialogService.ShowError("Mod Load Error", $"Failed to load installed mods: {ex.Message}");
+                await _dialogService.ShowError("Mod Load Error", $"Failed to load installed mods: {ex.Message}");
                 return;
             }
 
@@ -814,12 +847,12 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             {
                 OperationCompleted?.Invoke(this, EventArgs.Empty); // Reset busy state
                 StatusChanged?.Invoke(this, "No installed Steam Workshop mods found to check.");
-                _dialogService.ShowInformation("Check Updates", "No installed Steam Workshop mods were found in your mods folder.");
+                await _dialogService.ShowInformation("Check Updates", "No installed Steam Workshop mods were found in your mods folder.");
                 return;
             }
 
             var dialogViewModel = new UpdateCheckDialogViewModel(workshopMods);
-            var dialogResult = _dialogService.ShowUpdateCheckDialog(dialogViewModel);
+            var dialogResult = await _dialogService.ShowUpdateCheckDialogAsync(dialogViewModel);
 
             if (dialogResult != RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck.UpdateCheckDialogResult.CheckUpdates)
             {
@@ -880,7 +913,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                         summary += $" Errors: {updateResult.ErrorsEncountered}.";
 
                         var allErrorsMessage = string.Join("\n • ", updateResult.ErrorMessages);
-                        _dialogService.ShowWarning("Update Check Errors",
+                        await _dialogService.ShowWarning("Update Check Errors",
                             $"Encountered {updateResult.ErrorsEncountered} error(s) during the update check.\n" +
                             $"Check status messages or logs for more context.\n\n" +
                             $"Errors Reported:\n • {allErrorsMessage}");
@@ -891,11 +924,11 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                     if (updateResult.UpdatesFound > 0)
                     {
                         // Items are added to queue by the UpdateCheckerService, show confirmation
-                        _dialogService.ShowInformation("Updates Found", $"Found {updateResult.UpdatesFound} mod(s) with updates available. They have been added to the download queue.");
+                        await _dialogService.ShowInformation("Updates Found", $"Found {updateResult.UpdatesFound} mod(s) with updates available. They have been added to the download queue.");
                     }
                     else if (updateResult.ErrorsEncountered == 0)
                     {
-                        _dialogService.ShowInformation("No Updates Found", "All selected mods appear to be up to date.");
+                        await _dialogService.ShowInformation("No Updates Found", "All selected mods appear to be up to date.");
                     }
 
                     Debug.WriteLine("[CommandHandler] Update check finished, re-enriching queue items.");
@@ -912,7 +945,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 if (progressDialog != null) progressDialog.Message = $"Error: {ex.Message}";
                 StatusChanged?.Invoke(this, $"An error occurred during the update check process: {ex.Message}");
                 Debug.WriteLine($"[CommandHandler] Error executing update check: {ex}");
-                _dialogService.ShowError("Update Check Failed", $"An unexpected error occurred: {ex.Message}");
+                await _dialogService.ShowError("Update Check Failed", $"An unexpected error occurred: {ex.Message}");
                 Debug.WriteLine("[CommandHandler] Update check error, re-enriching queue items.");
                 _modInfoEnricher.EnrichAllDownloadItems(_queueService.Items);
             }

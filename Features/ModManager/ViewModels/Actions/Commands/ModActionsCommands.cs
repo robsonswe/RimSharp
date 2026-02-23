@@ -26,76 +26,81 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 CanExecuteDeleteMods,
                 nameof(SelectedItems), nameof(IsParentLoading));
 
-            OpenModFoldersCommand = CreateCommand<IList>(
-                OpenModFolders,
+            OpenModFoldersCommand = CreateAsyncCommand<IList>(
+                OpenModFoldersAsync,
                 CanExecuteMultiSelectActions,
                 nameof(SelectedItems), nameof(IsParentLoading));
 
-            OpenUrlsCommand = CreateCommand<IList>(
-                OpenUrls,
+            OpenUrlsCommand = CreateAsyncCommand<IList>(
+                OpenUrlsAsync,
                 CanExecuteMultiSelectActions,
                 nameof(SelectedItems), nameof(IsParentLoading));
 
-            OpenWorkshopPagesCommand = CreateCommand<IList>(
-                OpenWorkshopPages,
+            OpenWorkshopPagesCommand = CreateAsyncCommand<IList>(
+                OpenWorkshopPagesAsync,
                 CanExecuteMultiSelectActions,
                 nameof(SelectedItems), nameof(IsParentLoading));
 
-            OpenOtherUrlsCommand = CreateCommand<IList>(
-                OpenOtherUrls,
+            OpenOtherUrlsCommand = CreateAsyncCommand<IList>(
+                OpenOtherUrlsAsync,
                 CanExecuteMultiSelectActions,
                 nameof(SelectedItems), nameof(IsParentLoading));
         }
 
-        private bool CanExecuteDeleteMod(ModItem mod)
+        private bool CanExecuteDeleteMod(ModItem? mod)
         {
-            mod = mod ?? SelectedMod;
-            return CanBeDeleted(mod) && !string.IsNullOrEmpty(mod?.Path) && !IsParentLoading;
+            mod ??= SelectedMod;
+            return mod != null && CanBeDeleted(mod) && !string.IsNullOrEmpty(mod.Path) && !IsParentLoading;
         }
 
-        private bool CanExecuteDeleteMods(IList selectedItems)
+        private bool CanExecuteDeleteMods(IList? selectedItems)
         {
-            selectedItems = selectedItems ?? SelectedItems;
+            selectedItems ??= SelectedItems;
             return selectedItems != null
                 && selectedItems.Count > 0
                 && selectedItems.Cast<ModItem>().Any(CanBeDeleted)
                 && !IsParentLoading;
         }
 
-        private bool CanExecuteMultiSelectActions(IList selectedItems)
+        private bool CanExecuteMultiSelectActions(IList? selectedItems)
         {
-            selectedItems = selectedItems ?? SelectedItems;
+            selectedItems ??= SelectedItems;
             return selectedItems != null && selectedItems.Count > 0 && !IsParentLoading;
         }
 
-        private async Task ExecuteDeleteModAsync(ModItem mod, CancellationToken ct)
+        private async Task ExecuteDeleteModAsync(ModItem? mod, CancellationToken ct)
         {
             await DeleteSingleModAsyncInternal(mod ?? SelectedMod, ct);
         }
 
-        private async Task ExecuteDeleteModsAsync(IList selectedItems, CancellationToken ct)
+        private async Task ExecuteDeleteModsAsync(IList? selectedItems, CancellationToken ct)
         {
             await DeleteMultipleModsAsyncInternal(selectedItems ?? SelectedItems, ct);
         }
 
-        private void OpenModFolders(IList selectedItems)
+        private async Task OpenModFoldersAsync(IList? selectedItems)
         {
-            OpenItems(selectedItems ?? SelectedItems, m => m.Path, "folders", Directory.Exists);
+            await OpenItemsAsync(selectedItems ?? SelectedItems, m => m.Path, "folders", Directory.Exists);
         }
 
-        private void OpenUrls(IList selectedItems)
+        private async Task OpenUrlsAsync(IList? selectedItems)
         {
-            OpenItems(selectedItems ?? SelectedItems, m => m.Url, "URLs");
+            await OpenItemsAsync(selectedItems ?? SelectedItems, m => m.Url, "URLs");
         }
 
-        private void OpenWorkshopPages(IList selectedItems)
+        private async Task OpenWorkshopPagesAsync(IList? selectedItems)
         {
-            OpenItems(selectedItems ?? SelectedItems, m => m.SteamUrl, "workshop pages");
+            await OpenWorkshopPagesAsyncInternal(selectedItems);
         }
 
-        private void OpenOtherUrls(IList selectedItems)
+        private async Task OpenWorkshopPagesAsyncInternal(IList? selectedItems)
         {
-            OpenItems(selectedItems ?? SelectedItems, m => m.ExternalUrl, "external URLs");
+            await OpenItemsAsync(selectedItems ?? SelectedItems, m => m.SteamUrl, "workshop pages");
+        }
+
+        private async Task OpenOtherUrlsAsync(IList? selectedItems)
+        {
+            await OpenItemsAsync(selectedItems ?? SelectedItems, m => m.ExternalUrl, "external URLs");
         }
     }
 }

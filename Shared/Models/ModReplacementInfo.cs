@@ -12,24 +12,24 @@ namespace RimSharp.Shared.Models
     public class ModReplacementInfo
     {
         // Original Mod Info
-        public string Author { get; set; }
-        public string ModId { get; set; } // Original PackageId
-        public string ModName { get; set; }
-        public string SteamId { get; set; } // Primary Key (Original Steam ID)
-        public string Versions { get; set; } // Comma-separated string
+        public string Author { get; set; } = string.Empty;
+        public string ModId { get; set; } = string.Empty; // Original PackageId
+        public string ModName { get; set; } = string.Empty;
+        public string SteamId { get; set; } = string.Empty; // Primary Key (Original Steam ID)
+        public string Versions { get; set; } = string.Empty; // Comma-separated string
 
         // Replacement Mod Info
-        public string ReplacementAuthor { get; set; }
-        public string ReplacementModId { get; set; } // Replacement PackageId
-        public string ReplacementName { get; set; }
-        public string ReplacementSteamId { get; set; }
-        public string ReplacementVersions { get; set; } // Comma-separated string
+        public string ReplacementAuthor { get; set; } = string.Empty;
+        public string ReplacementModId { get; set; } = string.Empty; // Replacement PackageId
+        public string ReplacementName { get; set; } = string.Empty;
+        public string ReplacementSteamId { get; set; } = string.Empty;
+        public string ReplacementVersions { get; set; } = string.Empty; // Comma-separated string
 
         // Source of this information
         public ReplacementSource Source { get; set; }
 
         [JsonIgnore]
-        public string ReplacementSteamUrl => !string.IsNullOrEmpty(ReplacementSteamId)
+        public string? ReplacementSteamUrl => !string.IsNullOrEmpty(ReplacementSteamId)
                                             ? $"https://steamcommunity.com/sharedfiles/filedetails/?id={ReplacementSteamId}"
                                             : null;
 
@@ -55,8 +55,9 @@ namespace RimSharp.Shared.Models
     /// <summary>
     /// Structure matching the replacements.json file format.
     /// </summary>
-    internal class ReplacementJsonRoot // Internal as it's only used for deserialization
-    {
-        public Dictionary<string, ModReplacementInfo> Mods { get; set; }
+        internal class ReplacementJsonRoot // Internal as it's only used for deserialization
+        {
+            public Dictionary<string, ModReplacementInfo> Mods { get; set; } = new();
+        }
     }
-}
+    

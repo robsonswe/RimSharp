@@ -30,8 +30,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
 
         public ReplacementSelectionViewModel(ModItem original, ModReplacementInfo replacement)
         {
-            OriginalMod = original;
-            ReplacementInfo = replacement;
+            OriginalMod = original ?? throw new ArgumentNullException(nameof(original));
+            ReplacementInfo = replacement ?? throw new ArgumentNullException(nameof(replacement));
             IsSelected = true; // Default to selected
         }
     }
@@ -39,8 +39,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
 
     public class ModReplacementDialogViewModel : DialogViewModelBase<ModReplacementDialogResult>
     {
-        private ObservableCollection<ModReplacementItem> _replacements = new ObservableCollection<ModReplacementItem>();
-        public ObservableCollection<ModReplacementItem> Replacements
+        private ObservableCollection<ModReplacementItem>? _replacements = new ObservableCollection<ModReplacementItem>();
+        public ObservableCollection<ModReplacementItem>? Replacements
         {
             get => _replacements;
             set
@@ -50,7 +50,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
                 {
                     foreach (var item in _replacements)
                     {
-                        item.PropertyChanged -= ReplacementItem_PropertyChanged;
+                        if (item != null)
+                            item.PropertyChanged -= ReplacementItem_PropertyChanged;
                     }
                 }
 
@@ -61,7 +62,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
                     {
                         foreach (var item in _replacements)
                         {
-                            item.PropertyChanged += ReplacementItem_PropertyChanged;
+                            if (item != null)
+                                item.PropertyChanged += ReplacementItem_PropertyChanged;
                         }
                         UpdateSelectedCount(); // Initial count
                     }
@@ -93,10 +95,10 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
             private set => SetProperty(ref _selectedCount, value); // Make setter private
         }
 
-        private ICommand _selectAllCommand;
+        private ICommand? _selectAllCommand;
         public ICommand SelectAllCommand => _selectAllCommand ??= CreateCommand(SelectAll);
 
-        private ICommand _selectNoneCommand;
+        private ICommand? _selectNoneCommand;
         public ICommand SelectNoneCommand => _selectNoneCommand ??= CreateCommand(SelectNone);
 
         public ModReplacementDialogViewModel(
@@ -141,10 +143,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
                     }
                     // --- END ACCURATE INSTALLED CHECK ---
 
-                    return new ModReplacementItem
+                    return new ModReplacementItem(r.Original, r.Replacement)
                     {
-                        OriginalMod = r.Original,
-                        ReplacementInfo = r.Replacement,
                         OriginalLastUpdate = r.OriginalUpdate,
                         ReplacementLastUpdate = r.ReplacementUpdate,
                         IsSelected = !alreadyInstalled,
@@ -174,7 +174,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
             HasAlreadyInstalledReplacements = alreadyInstalledItems.Count > 0;
         }
 
-        private void ReplacementItem_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void ReplacementItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ModReplacementItem.IsSelected))
             {
@@ -184,6 +184,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
 
         private void SelectAll()
         {
+            if (Replacements == null) return;
             foreach (var item in Replacements)
             {
                 item.IsSelected = true;
@@ -192,6 +193,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
 
         private void SelectNone()
         {
+            if (Replacements == null) return;
             foreach (var item in Replacements)
             {
                 item.IsSelected = false;
@@ -200,15 +202,15 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
 
         private void UpdateSelectedCount()
         {
-            SelectedCount = Replacements.Count(r => r.IsSelected);
+            SelectedCount = Replacements?.Count(r => r.IsSelected) ?? 0;
         }
 
         public List<ReplacementSelectionViewModel> GetSelectedReplacements()
         {
-            return Replacements
+            return Replacements?
                 .Where(r => r.IsSelected)
                 .Select(r => new ReplacementSelectionViewModel(r.OriginalMod, r.ReplacementInfo))
-                .ToList();
+                .ToList() ?? new List<ReplacementSelectionViewModel>();
         }
     }
 }

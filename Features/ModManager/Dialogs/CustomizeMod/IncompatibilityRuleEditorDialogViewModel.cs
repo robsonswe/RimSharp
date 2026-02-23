@@ -1,33 +1,36 @@
-using System.Windows;
+using System;
 using System.Windows.Input;
 using RimSharp.AppDir.Dialogs;
+using RimSharp.Shared.Services.Contracts;
 
 namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 {
     public class IncompatibilityRuleEditorDialogViewModel : DialogViewModelBase<bool>
     {
-        private string _packageId;
+        private readonly IDialogService _dialogService;
+        private string _packageId = string.Empty;
+        private string _displayName = string.Empty;
+        private string _comment = string.Empty;
+        private bool _hardIncompatibility;
+
         public string PackageId
         {
             get => _packageId;
             set => SetProperty(ref _packageId, value);
         }
 
-        private string _displayName;
         public string DisplayName
         {
             get => _displayName;
             set => SetProperty(ref _displayName, value);
         }
 
-        private string _comment;
         public string Comment
         {
             get => _comment;
             set => SetProperty(ref _comment, value);
         }
 
-        private bool _hardIncompatibility;
         public bool HardIncompatibility
         {
             get => _hardIncompatibility;
@@ -37,25 +40,22 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         public ICommand SaveCommand { get; }
         public ICommand CancelCommand { get; }
 
-        public IncompatibilityRuleEditorDialogViewModel(string title) : base(title)
+        public IncompatibilityRuleEditorDialogViewModel(string title, IDialogService dialogService) : base(title)
         {
+            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
             SaveCommand = CreateCommand(Save);
             CancelCommand = CreateCommand(Cancel);
         }
 
         private void Save()
         {
-            // Basic validation: ensure PackageId is not empty
             if (string.IsNullOrWhiteSpace(PackageId))
             {
-                MessageBox.Show("Package ID cannot be empty.", "Validation Error", 
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                _dialogService.ShowWarning("Validation Error", "Package ID cannot be empty.");
                 return;
             }
             
-            // Trim whitespace from PackageId
             PackageId = PackageId.Trim();
-            
             CloseDialog(true);
         }
 

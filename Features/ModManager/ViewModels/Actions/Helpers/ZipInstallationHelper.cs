@@ -142,8 +142,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         
                         return new ModItem
                         {
-                            Name = root.Element("name")?.Value?.Trim(),
-                            PackageId = root.Element("packageId")?.Value?.Trim(),
+                            Name = root.Element("name")?.Value?.Trim() ?? string.Empty,
+                            PackageId = root.Element("packageId")?.Value?.Trim() ?? string.Empty,
                             Authors = root.Element("author")?.Value?.Trim() ??
                                       string.Join(", ", root.Element("authors")?.Elements("li").Select(x => x.Value?.Trim()) ?? Array.Empty<string>())
                         };

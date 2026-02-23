@@ -64,7 +64,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
 
             // Assert
             result.Should().NotBeNull();
-            result.Favorite.Should().BeTrue();
+            result!.Favorite.Should().BeTrue();
         }
 
         [Fact]

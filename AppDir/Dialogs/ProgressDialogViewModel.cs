@@ -11,7 +11,7 @@ namespace RimSharp.AppDir.Dialogs
     // Implement IDisposable to manage the CancellationTokenSource
     public class ProgressDialogViewModel : DialogViewModelBase<bool>, IDisposable
     {
-        private string _message;
+        private string _message = string.Empty;
         private int _progress;
         private bool _isIndeterminate;
         private bool _canCancel;
@@ -19,7 +19,7 @@ namespace RimSharp.AppDir.Dialogs
         // Keep the CancellationTokenSource internal
         private readonly CancellationTokenSource _cts;
 
-        public event EventHandler Cancelled;
+        public event EventHandler? Cancelled;
 
         public string Message
         {
@@ -51,7 +51,7 @@ namespace RimSharp.AppDir.Dialogs
         public CancellationToken CancellationToken => _cts.Token;
 
         public ProgressDialogViewModel(string title, string message, bool canCancel = false,
-            bool isIndeterminate = true, CancellationTokenSource externalCts = null, bool closeable = true)
+            bool isIndeterminate = true, CancellationTokenSource? externalCts = null, bool closeable = true)
             : base(title)
         {
             Message = message;
@@ -73,7 +73,7 @@ namespace RimSharp.AppDir.Dialogs
              Closeable = closeable; // Set property inherited from DialogViewModelBase
         }
 
-        public void UpdateProgress(int value, string message = null)
+        public void UpdateProgress(int value, string? message = null)
         {
              // Use base class disposed flag
              if (_disposed || _cts.IsCancellationRequested) return;
@@ -88,7 +88,7 @@ namespace RimSharp.AppDir.Dialogs
              });
         }
 
-        public void CompleteOperation(string message = null)
+        public void CompleteOperation(string? message = null)
         {
              // Use base class disposed flag
              if (_disposed || _cts.IsCancellationRequested) return;
@@ -97,13 +97,13 @@ namespace RimSharp.AppDir.Dialogs
              {
                  // Double check after marshalling
                  if (_disposed || _cts.IsCancellationRequested) return;
-                 if (!string.IsNullOrEmpty(message)) Message = message;
+                 if (!string.IsNullOrEmpty(message)) Message = message!;
                  CanCancel = false; // Disable cancel on completion
                  CloseDialog(true); // Indicate success
              });
         }
 
-        private void OnCancel(string message = null)
+        private void OnCancel(string? message = null)
         {
              // Use base class disposed flag
              if (_disposed || !CanCancel || _cts.IsCancellationRequested) return;
@@ -112,7 +112,7 @@ namespace RimSharp.AppDir.Dialogs
              {
                  // Double check after marshalling
                  if (_disposed || !CanCancel || _cts.IsCancellationRequested) return;
-                 if (!string.IsNullOrEmpty(message)) Message = message;
+                 if (!string.IsNullOrEmpty(message)) Message = message!;
                  IsIndeterminate = true;
                  CanCancel = false; // Disable further cancellation attempts (setter updates command)
 
@@ -158,8 +158,9 @@ namespace RimSharp.AppDir.Dialogs
             {
                 // --- Derived Class Specific Managed Cleanup ---
                 Debug.WriteLine("[ProgressDialogViewModel] Disposing derived managed resources (CTS)...");
-                Cancelled = null; // Remove event handlers
-
+                // Removed redundant event nulling as base.Dispose or garbage collection handles it, 
+                // but if we do it, it must be safe.
+                
                 try
                 {
                     if (!_cts.IsCancellationRequested)

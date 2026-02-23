@@ -1,0 +1,208 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:helpers="clr-namespace:RimSharp.Core.Helpers">
+
+    <!-- Custom Border Style for RimWorld-like panels -->
+    <Style Selector="Border.RimworldPanelBorder">
+        <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Padding" Value="8"/>
+    </Style>
+
+    <Style Selector="Border.RimworldSubtlePanelBorder">
+        <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/> <!-- Adjusted to existing brush -->
+        <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="5"/>
+    </Style>
+
+    <!-- RimWorld-style TextBox -->
+    <Style Selector="TextBox.RimworldTextBox">
+        <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="5,3"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="2">
+                    <ScrollViewer x:Name="PART_ScrollViewer"
+                                  Background="Transparent"
+                                  Focusable="false"
+                                  HorizontalScrollBarVisibility="Hidden"
+                                  VerticalScrollBarVisibility="Hidden"
+                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                  Padding="{TemplateBinding Padding}">
+                        <TextPresenter x:Name="PART_TextPresenter"
+                                       Text="{TemplateBinding Text}"
+                                       CaretIndex="{TemplateBinding CaretIndex}"
+                                       SelectionStart="{TemplateBinding SelectionStart}"
+                                       SelectionEnd="{TemplateBinding SelectionEnd}"
+                                       TextAlignment="{TemplateBinding TextAlignment}"
+                                       TextWrapping="{TemplateBinding TextWrapping}"
+                                       IsHitTestVisible="False"/>
+                    </ScrollViewer>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- RimWorld-style Watermark TextBox (complete style, not just template) -->
+    <Style Selector="TextBox.RimworldTextBoxWatermark">
+        <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="5,3"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="2">
+                    <Grid>
+                        <ScrollViewer x:Name="PART_ScrollViewer"
+                                      HorizontalScrollBarVisibility="Hidden"
+                                      VerticalScrollBarVisibility="Hidden"
+                                      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                      Padding="{TemplateBinding Padding}">
+                            <TextPresenter x:Name="PART_TextPresenter"
+                                           Text="{TemplateBinding Text}"
+                                           CaretIndex="{TemplateBinding CaretIndex}"
+                                           SelectionStart="{TemplateBinding SelectionStart}"
+                                           SelectionEnd="{TemplateBinding SelectionEnd}"
+                                           TextAlignment="{TemplateBinding TextAlignment}"
+                                           TextWrapping="{TemplateBinding TextWrapping}"
+                                           IsHitTestVisible="False"/>
+                        </ScrollViewer>
+                        <TextBlock x:Name="PART_Watermark"
+                                   Text="{TemplateBinding Watermark}"
+                                   Foreground="{DynamicResource RimworldLightBrownBrush}"
+                                   IsHitTestVisible="False"
+                                   Margin="6,3"
+                                   VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                   HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}">
+                            <TextBlock.IsVisible>
+                                <Binding Path="Text" RelativeSource="{RelativeSource TemplatedParent}" Converter="{StaticResource StringIsNullOrEmptyConverter}"/>
+                            </TextBlock.IsVisible>
+                        </TextBlock>
+                    </Grid>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- RimWorld-style ListBox -->
+    <Style Selector="ListBox.RimworldListBox">
+        <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="1"/>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="ScrollViewer.AllowAutoHide" Value="False"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="3">
+                    <ScrollViewer Focusable="False" 
+                                  Padding="{TemplateBinding Padding}"
+                                  AllowAutoHide="False">
+                        <ItemsPresenter/>
+                    </ScrollViewer>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- Global ScrollViewer Style to prevent auto-hide and overlay -->
+    <Style Selector="ScrollViewer">
+        <Setter Property="AllowAutoHide" Value="False"/>
+    </Style>
+
+    <!-- Force ScrollBars to take space instead of overlaying -->
+    <Style Selector="ScrollViewer /template/ ScrollContentPresenter#PART_ContentPresenter">
+        <Setter Property="Grid.ColumnSpan" Value="1"/>
+        <Setter Property="Grid.RowSpan" Value="1"/>
+    </Style>
+
+    <!-- RimWorld-style ListBox Item Style -->
+    <Style Selector="ListBox.RimworldListBox > ListBoxItem">
+        <Setter Property="Padding" Value="5,4"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="Bd"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        Background="{TemplateBinding Background}"
+                        Padding="{TemplateBinding Padding}">
+                    <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pointerover /template/ Border#Bd">
+            <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
+        </Style>
+        <Style Selector="^:pointerover /template/ ContentPresenter">
+            <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
+        </Style>
+        <Style Selector="^:selected /template/ Border#Bd">
+            <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
+        </Style>
+        <Style Selector="^:selected /template/ ContentPresenter">
+            <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+        </Style>
+    </Style>
+
+    <!-- RimWorld List Header Border -->
+    <Style Selector="Border.RimworldListHeaderBorder">
+        <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="Padding" Value="7,5"/>
+    </Style>
+
+    <!-- RimWorld Info Header Border (for top bar) -->
+    <Style Selector="Border.RimworldInfoHeaderBorder">
+        <Setter Property="Background" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="Padding" Value="10,8"/>
+    </Style>
+
+    <!-- Progress Bar -->
+    <Style Selector="ProgressBar.RimworldProgressBarStyle">
+        <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource RimworldDarkGreenBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Height" Value="24"/>
+    </Style>
+
+    <!-- Separator -->
+    <Style Selector="Separator.RimworldSeparatorStyle">
+        <Setter Property="Background" Value="{DynamicResource RimworldBrownBrush}"/> 
+        <Setter Property="Height" Value="1"/>
+        <Setter Property="Margin" Value="0,5,0,5"/> 
+    </Style>
+
+</Styles>

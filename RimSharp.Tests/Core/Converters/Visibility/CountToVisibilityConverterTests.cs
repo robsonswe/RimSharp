@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using WinVisibility = System.Windows.Visibility;
 using FluentAssertions;
 using RimSharp.Core.Converters.ViewVisibility;
 using Xunit;
@@ -18,16 +17,16 @@ namespace RimSharp.Tests.Core.Converters.Visibility
         }
 
         [Theory]
-        [InlineData(1, WinVisibility.Visible)]
-        [InlineData(0, WinVisibility.Collapsed)]
-        [InlineData(-1, WinVisibility.Collapsed)]
-        [InlineData(5L, WinVisibility.Visible)]
-        [InlineData(null, WinVisibility.Collapsed)]
-        [InlineData("not a number", WinVisibility.Collapsed)]
-        public void Convert_WithNumericValues_ShouldReturnCorrectVisibility(object? value, WinVisibility expected)
+        [InlineData(1, true)]
+        [InlineData(0, false)]
+        [InlineData(-1, false)]
+        [InlineData(5L, true)]
+        [InlineData(null, false)]
+        [InlineData("not a number", false)]
+        public void Convert_WithNumericValues_ShouldReturnCorrectVisibility(object? value, bool expected)
         {
             // Act
-            var result = _converter.Convert(value!, typeof(WinVisibility), null, CultureInfo.InvariantCulture);
+            var result = _converter.Convert(value!, typeof(bool), null, CultureInfo.InvariantCulture);
 
             // Assert
             result.Should().Be(expected);
@@ -41,12 +40,12 @@ namespace RimSharp.Tests.Core.Converters.Visibility
             var nonEmptyList = new List<string> { "item" };
 
             // Act
-            var resultEmpty = _converter.Convert(emptyList, typeof(WinVisibility), null, CultureInfo.InvariantCulture);
-            var resultNonEmpty = _converter.Convert(nonEmptyList, typeof(WinVisibility), null, CultureInfo.InvariantCulture);
+            var resultEmpty = _converter.Convert(emptyList, typeof(bool), null, CultureInfo.InvariantCulture);
+            var resultNonEmpty = _converter.Convert(nonEmptyList, typeof(bool), null, CultureInfo.InvariantCulture);
 
             // Assert
-            resultEmpty.Should().Be(WinVisibility.Collapsed);
-            resultNonEmpty.Should().Be(WinVisibility.Visible);
+            resultEmpty.Should().Be(false);
+            resultNonEmpty.Should().Be(true);
         }
     }
 }

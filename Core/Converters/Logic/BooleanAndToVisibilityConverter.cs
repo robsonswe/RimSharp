@@ -1,22 +1,16 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Windows;
-using System.Windows.Data;
+using Avalonia.Data.Converters;
 
 namespace RimSharp.Core.Converters.Logic
 {
     public class BooleanAndToVisibilityConverter : IMultiValueConverter
     {
-        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
         {
-            bool allTrue = values != null && values.All(v => v is bool b && b);
-            return allTrue ? Visibility.Visible : Visibility.Collapsed;
-        }
-
-        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
+            return values.All(v => v is bool b && b);
         }
     }
 }

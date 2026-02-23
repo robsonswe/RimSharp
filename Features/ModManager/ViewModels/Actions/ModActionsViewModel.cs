@@ -16,7 +16,6 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Input;
 using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
 using RimSharp.Features.WorkshopDownloader.Services;
@@ -151,7 +150,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             }
         }
 
-        private readonly System.Windows.Threading.DispatcherTimer _gameCheckTimer;
+        private readonly Avalonia.Threading.DispatcherTimer _gameCheckTimer;
 
 
         // Command Properties (Declarations remain here)
@@ -192,9 +191,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         // Events (Remain here)
         // FIX: Initialized with null-forgiving operator. Events should be handled carefully.
         // If no subscribers are expected, they can be left as is, but this silences the warning.
-        public event EventHandler<bool> IsLoadingRequest = null!;
-        public event EventHandler RequestDataRefresh = null!;
-        public event EventHandler<bool> HasUnsavedChangesRequest = null!;
+        public event EventHandler<bool>? IsLoadingRequest;
+        public event EventHandler? RequestDataRefresh;
+        public event EventHandler<bool>? HasUnsavedChangesRequest;
 
         // Helper state (Example, might be better encapsulated if complex)
         private bool _installSuccess = false;
@@ -238,7 +237,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             RefreshPathValidity();
 
             // Initialize game check timer (every 2 seconds)
-            _gameCheckTimer = new System.Windows.Threading.DispatcherTimer();
+            _gameCheckTimer = new Avalonia.Threading.DispatcherTimer();
             _gameCheckTimer.Interval = TimeSpan.FromSeconds(2);
             _gameCheckTimer.Tick += (s, e) => CheckIfGameIsRunning();
             // Start will be managed by IsViewActive property
@@ -367,7 +366,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             return anyValid; // Command is executable if at least one valid item exists
         }
 
-        private async Task ExecuteRedownloadModsAsync(IList selectedItems, CancellationToken ct)
+        private async Task ExecuteRedownloadModsAsync(IList? selectedItems, CancellationToken ct)
         {
             var currentSelection = selectedItems ?? SelectedItems;
 
@@ -379,7 +378,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             if (modsToProcess == null || !modsToProcess.Any())
             {
                 Debug.WriteLine("[ExecuteRedownloadModsAsync] No valid WorkshopL mods found in the selection after filtering.");
-                _dialogService.ShowInformation("Redownload Mod", "No selected mods are eligible for redownload (must be locally installed Workshop mods).");
+                await _dialogService.ShowInformation("Redownload Mod", "No selected mods are eligible for redownload (must be locally installed Workshop mods).");
                 return;
             }
 
@@ -389,7 +388,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 ? $"Are you sure you want to queue '{originalMods.First().Name}' for redownload?\n\nThis will add the mod to the download queue. It will *not* check if an update is available."
                 : $"Are you sure you want to queue {originalMods.Count} Workshop mod(s) for redownload?\n\nThis will add the selected mods to the download queue. It will *not* check if updates are available.";
 
-            var confirmResult = _dialogService.ShowConfirmation("Confirm Redownload", confirmMessage, showCancel: true);
+            var confirmResult = await _dialogService.ShowConfirmationAsync("Confirm Redownload", confirmMessage, showCancel: true);
             if (confirmResult != MessageDialogResult.OK && confirmResult != MessageDialogResult.Yes)
             {
                 Debug.WriteLine("[ExecuteRedownloadModsAsync] User cancelled redownload confirmation.");
@@ -438,13 +437,13 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 queueResult = await _steamWorkshopQueueProcessor.ProcessAndEnqueueModsAsync(modsToProcess, progressReporter, combinedToken);
 
                 // --- Show Summary ---
-                await RunOnUIThreadAsync(() =>
+                await RunOnUIThreadAsync(async () =>
                 {
                     if (queueResult.WasCancelled)
                     {
                         Debug.WriteLine("Redownload operation cancelled.", nameof(ModActionsViewModel));
                         progressDialog?.ForceClose();
-                        _dialogService.ShowWarning("Operation Cancelled", "Queueing mods for redownload was cancelled.");
+                        await _dialogService.ShowWarning("Operation Cancelled", "Queueing mods for redownload was cancelled.");
                         return;
                     }
 
@@ -467,11 +466,11 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
                     // Show appropriate dialog based on result counts
                     if (queueResult.FailedProcessing > 0 && queueResult.SuccessfullyAdded > 0) // Partial success
-                        _dialogService.ShowWarning("Redownload Partially Queued", sb.ToString().Trim());
+                        await _dialogService.ShowWarning("Redownload Partially Queued", sb.ToString().Trim());
                     else if (queueResult.FailedProcessing > 0 && queueResult.SuccessfullyAdded == 0) // All failed or skipped
-                        _dialogService.ShowError("Redownload Queue Failed", sb.ToString().Trim());
+                        await _dialogService.ShowError("Redownload Queue Failed", sb.ToString().Trim());
                     else // All succeeded or skipped (already queued)
-                        _dialogService.ShowInformation("Redownload Queued", sb.ToString().Trim());
+                        await _dialogService.ShowInformation("Redownload Queued", sb.ToString().Trim());
 
                     // Navigate if items were added
                     if (queueResult.SuccessfullyAdded > 0)
@@ -490,7 +489,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             {
                 //_logger.LogException(ex, "[ExecuteRedownloadModsAsync] Outer error", nameof(ModActionsViewModel));
                 await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
-                RunOnUIThread(() => _dialogService.ShowError("Redownload Error", $"An unexpected error occurred: {ex.Message}"));
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowError("Redownload Error", $"An unexpected error occurred: {ex.Message}"));
             }
             finally
             {
@@ -512,63 +511,46 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         {
             if (mod == null) return;
 
-            // FIX: Declared as nullable to correctly handle the case where it might be null.
             ModCustomInfo? customInfo = null;
             CustomizeModDialogViewModel? viewModel = null;
-            ModCustomizationResult result = ModCustomizationResult.Cancel; // Default result
-
-            // Indicate loading potentially (optional, if it's quick, maybe not needed)
-            // IsLoadingRequest?.Invoke(this, true); // Consider if needed
+            ModCustomizationResult result = ModCustomizationResult.Cancel;
 
             try
             {
                 Debug.WriteLine($"Attempting to customize mod: {mod.PackageId}");
 
-                // 1. Load data in the background (Keep this)
-                // FIX: GetCustomModInfo can return null, so the result is stored in a nullable variable.
+                // Load data in the background
                 customInfo = await Task.Run(() => _modService.GetCustomModInfo(mod.PackageId));
-                // Execution resumes here, potentially on UI thread or background thread after await
 
-                // 2. Ensure subsequent UI operations run on the UI thread.
-                // Use the RunOnUIThread helper from ViewModelBase.
-                RunOnUIThread(() =>
+                // Create ViewModel and show dialog on UI thread
+                viewModel = new CustomizeModDialogViewModel(mod, customInfo ?? new ModCustomInfo(), _modService, _dialogService);
+
+                Debug.WriteLine("Showing customize dialog on UI thread...");
+
+                // Show Dialog (blocks until dialog closes)
+                result = await _dialogService.ShowCustomizeModDialog(viewModel);
+
+                Debug.WriteLine($"Dialog result: {result}");
+
+                if (result == ModCustomizationResult.Save)
                 {
-                    // Create ViewModel (safe on UI thread)
-                    // The customInfo variable is correctly passed as a nullable type.
-                    viewModel = new CustomizeModDialogViewModel(mod, customInfo, _modService, _dialogService);
-
-                    Debug.WriteLine("Showing customize dialog on UI thread...");
-
-                    // Show Dialog (Must be on UI thread)
-                    result = _dialogService.ShowCustomizeModDialog(viewModel); // ShowDialog blocks here
-
-                    Debug.WriteLine($"Dialog result: {result}");
-
-                    if (result == ModCustomizationResult.Save)
-                    {
-                        Debug.WriteLine("Requesting data refresh after save...");
-                        // Trigger refresh event (also safer on UI thread)
-                        RequestDataRefresh?.Invoke(this, EventArgs.Empty);
-                    }
-                });
+                    Debug.WriteLine("Requesting data refresh after save...");
+                    RequestDataRefresh?.Invoke(this, EventArgs.Empty);
+                }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error in ExecuteCustomizeMod: {ex}");
-                // Show error message on UI thread
-                RunOnUIThread(() => _dialogService.ShowError("Customization Error", $"Failed to customize mod '{mod?.Name ?? "Unknown"}': {ex.Message}"));
-            }
-            finally
-            {
-                // IsLoadingRequest?.Invoke(this, false); // Turn off loading indicator if used
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowError("Customization Error", $"Failed to customize mod '{mod?.Name ?? "Unknown"}': {ex.Message}"));
             }
         }
+
         private async Task ExecuteStripModsAsync(CancellationToken ct)
         {
             var workshopMods = _modListManager.GetAllMods().Where(m => m.ModType == ModType.WorkshopL).ToList();
             if (!workshopMods.Any())
             {
-                _dialogService.ShowInformation("Strip Mods", "No locally installed Workshop mods found to strip.");
+                await _dialogService.ShowInformation("Strip Mods", "No locally installed Workshop mods found to strip.");
                 return;
             }
 
@@ -621,21 +603,21 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 // --- Dialog Phase ---
                 if (!strippableModsVms.Any())
                 {
-                    _dialogService.ShowInformation("Strip Mods", "Scan complete. No unnecessary files or folders found.");
+                    await _dialogService.ShowInformation("Strip Mods", "Scan complete. No unnecessary files or folders found.");
                     return;
                 }
 
                 (bool shouldStrip, IEnumerable<string>? pathsToDelete) = (false, null);
-                await RunOnUIThreadAsync(() =>
+                await RunOnUIThreadAsync(async () =>
                 {
                     // <<< UPDATED: Now instantiates the external ViewModel >>>
                     var dialogViewModel = new StripDialogViewModel(strippableModsVms);
-                    (shouldStrip, pathsToDelete) = _dialogService.ShowStripModsDialog(dialogViewModel);
+                    (shouldStrip, pathsToDelete) = await _dialogService.ShowStripModsDialogAsync(dialogViewModel);
                 });
 
                 if (!shouldStrip || pathsToDelete == null || !pathsToDelete.Any())
                 {
-                    _dialogService.ShowInformation("Strip Mods", "Operation cancelled by user.");
+                    // Silent return if user cancelled or didn't select anything
                     return;
                 }
 
@@ -679,17 +661,17 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 });
 
                 await RunOnUIThreadAsync(() => progressDialog.ForceClose());
-                _dialogService.ShowInformation("Strip Complete", $"Successfully stripped {deletedCount} items, freeing approximately {(bytesFreed / 1024.0 / 1024.0):F2} MB.");
+                await _dialogService.ShowInformation("Strip Complete", $"Successfully stripped {deletedCount} items, freeing approximately {(bytesFreed / 1024.0 / 1024.0):F2} MB.");
             }
             catch (OperationCanceledException)
             {
                 await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
-                _dialogService.ShowWarning("Operation Cancelled", "The strip mods operation was cancelled.");
+                await _dialogService.ShowWarning("Operation Cancelled", "The strip mods operation was cancelled.");
             }
             catch (Exception ex)
             {
                 await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
-                _dialogService.ShowError("Strip Error", $"An unexpected error occurred: {ex.Message}");
+                await _dialogService.ShowError("Strip Error", $"An unexpected error occurred: {ex.Message}");
             }
             finally
             {

@@ -55,9 +55,9 @@ namespace RimSharp.Features.ModManager.Services.Management
             for (int index = 0; index < activeIdList.Count; index++)
             {
                 string packageId = activeIdList[index];
-                if (_lookupService.TryGetMod(packageId, out var mod) && _stateTracker.IsModActive(mod))
+                if (_lookupService.TryGetMod(packageId, out var mod) && _stateTracker.IsModActive(mod!))
                 {
-                    initialActiveModsForOrder.Add((Mod: mod, LoadOrder: index));
+                    initialActiveModsForOrder.Add((Mod: mod!, LoadOrder: index));
                 }
             }
 
@@ -219,7 +219,7 @@ namespace RimSharp.Features.ModManager.Services.Management
                     }
                     else
                     {
-                        string finalDisplayName = dependency.DisplayName ?? depPackageIdLower;
+                        string finalDisplayName = !string.IsNullOrWhiteSpace(dependency.DisplayName) ? dependency.DisplayName : depPackageIdLower;
                         string? finalSteamUrl = dependency.SteamWorkshopUrl;
 
                         bool needsLookup = string.IsNullOrWhiteSpace(finalSteamUrl) || finalSteamUrl.Trim().StartsWith("steam://", StringComparison.OrdinalIgnoreCase);

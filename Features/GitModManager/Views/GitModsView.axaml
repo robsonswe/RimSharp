@@ -1,0 +1,218 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:RimSharp.Features.GitModManager.Views"
+             xmlns:vm="clr-namespace:RimSharp.Features.GitModManager.ViewModels"
+             x:Class="RimSharp.Features.GitModManager.Views.GitModsView"
+             x:DataType="vm:GitModsViewModel"
+             mc:Ignorable="d"
+             d:DesignHeight="450" d:DesignWidth="800">
+
+    <UserControl.Styles>
+        <!-- Custom DataGrid Style -->
+        <Style Selector="DataGrid">
+            <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="RowBackground" Value="Transparent"/>
+            <Setter Property="ScrollViewer.AllowAutoHide" Value="False"/>
+            <Style Selector="^ /template/ ScrollViewer /template/ ScrollContentPresenter#PART_ContentPresenter">
+                <Setter Property="Grid.ColumnSpan" Value="1"/>
+                <Setter Property="Grid.RowSpan" Value="1"/>
+            </Style>
+        </Style>
+
+        <Style Selector="DataGridRow:nth-child(odd)">
+            <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
+        </Style>
+
+        <Style Selector="DataGridRow:nth-child(even)">
+            <Setter Property="Background" Value="#998C74"/>
+        </Style>
+
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="SeparatorBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        </Style>
+
+        <Style Selector="DataGridRow">
+            <Setter Property="FontSize" Value="12"/>
+            <Style Selector="^:selected /template/ Rectangle#Background">
+                <Setter Property="Fill" Value="{DynamicResource RimworldHighlightBrush}"/>
+                <Setter Property="Opacity" Value="0.3"/>
+            </Style>
+            <Style Selector="^:pointerover /template/ Rectangle#Background">
+                <Setter Property="Fill" Value="{DynamicResource RimworldHighlightBrush}"/>
+                <Setter Property="Opacity" Value="0.1"/>
+            </Style>
+        </Style>
+
+        <Style Selector="DataGridCell">
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Style Selector="^:selected /template/ Grid#FocusVisual">
+                <Setter Property="IsVisible" Value="False"/>
+            </Style>
+        </Style>
+
+        <!-- Status Styles -->
+        <Style Selector="TextBlock.StatusText">
+            <Setter Property="FontWeight" Value="Medium"/>
+        </Style>
+    </UserControl.Styles>
+
+    <DockPanel Margin="10">
+        <!-- Button Bar -->
+        <Border DockPanel.Dock="Top" Margin="0,0,0,15" Classes="RimworldSubtlePanelBorder">
+            <StackPanel Orientation="Horizontal" Spacing="15">
+                <Button Content="Check Updates" Command="{Binding CheckUpdatesCommand}" Classes="RimworldButtonStyle" Padding="15,5"/>
+                <Button Content="Pull Updates" Command="{Binding PullUpdatesCommand}" Classes="RimworldSaveButtonStyle" Padding="15,5"/>
+                <Rectangle Width="1" Fill="{DynamicResource RimworldBrownBrush}" Margin="5,2"/>
+                <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" Foreground="{DynamicResource RimworldDarkBrownBrush}" FontWeight="Medium"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Mods List Container -->
+        <Border Classes="RimworldPanelBorder" Padding="0">
+            <Grid>
+                <!-- Empty list message -->
+                <TextBlock Text="No Git mods found. Git mods will appear here when installed."
+                           Foreground="{DynamicResource RimworldLightBrownBrush}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           FontSize="14"
+                           FontStyle="Italic"
+                           IsVisible="{Binding !GitMods.Count}"/>
+
+                <DataGrid x:Name="GitModsDataGrid"
+                          ItemsSource="{Binding GitMods}"
+                          SelectionMode="Single"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserSortColumns="True"
+                          RowDetailsVisibilityMode="VisibleWhenSelected"
+                          BorderThickness="0">
+                    <DataGrid.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Check Updates" Command="{Binding CheckUpdatesCommand}">
+                                <MenuItem.Icon><TextBlock Text="🔄" FontSize="14"/></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Pull Updates" Command="{Binding PullUpdatesCommand}">
+                                <MenuItem.Icon><TextBlock Text="⬇️" FontSize="14"/></MenuItem.Icon>
+                            </MenuItem>
+                            <Separator/>
+                            <MenuItem Header="Open Repository" 
+                                      Command="{Binding OpenGitHubRepoCommand}"
+                                      CommandParameter="{Binding SelectedItem.ModItem.GitRepo, ElementName=GitModsDataGrid}">
+                                <MenuItem.Icon><TextBlock Text="🌐" FontSize="14"/></MenuItem.Icon>
+                            </MenuItem>
+                        </ContextMenu>
+                    </DataGrid.ContextMenu>
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Width="60">
+                            <DataGridTemplateColumn.HeaderTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding $parent[UserControl].DataContext.SelectAll, Mode=TwoWay}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.HeaderTemplate>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" 
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTextColumn Header="Name" Binding="{Binding ModItem.Name}" Width="2*"/>
+                        
+                        <DataGridTemplateColumn Header="Updates" Width="150">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="5">
+                                        <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" 
+                                                   IsVisible="{Binding UpdateStatus, Converter={StaticResource EqualityConverter}, ConverterParameter='Up to date'}"
+                                                   Foreground="ForestGreen" VerticalAlignment="Center"/>
+                                        <TextBlock Text="&#xE777;" FontFamily="Segoe MDL2 Assets" 
+                                                   IsVisible="{Binding UpdateStatus, Converter={StaticResource InequalityConverter}, ConverterParameter='Up to date'}"
+                                                   Foreground="{DynamicResource RimworldHighlightBrush}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding UpdateStatus}" 
+                                                   Foreground="{Binding UpdateStatus, Converter={StaticResource UpdateStatusToColorConverter}}"
+                                                   FontWeight="Medium"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTextColumn Header="Version" Binding="{Binding ModItem.ModVersion}" Width="100"/>
+                        
+                        <DataGridTemplateColumn Header="Supported Versions" Width="150">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ContentControl Content="{Binding ModItem.SupportedVersions, Converter={StaticResource VersionSupportConverter}}"
+                                                   FontSize="11" VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTemplateColumn Header="Active" Width="80">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Background="{Binding ModItem.IsActive, Converter={StaticResource BooleanToColorConverter}, ConverterParameter='#20008000|#20808080'}"
+                                            CornerRadius="4" Padding="8,2">
+                                        <TextBlock Text="{Binding ModItem.IsActive, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='Yes|No'}"
+                                                   Foreground="{Binding ModItem.IsActive, Converter={StaticResource BooleanToColorConverter}, ConverterParameter='ForestGreen|RimworldDarkBrown'}"
+                                                   FontWeight="Bold"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTextColumn Header="Package ID" Binding="{Binding ModItem.PackageId}" Width="1.5*"/>
+                    </DataGrid.Columns>
+
+                    <DataGrid.RowDetailsTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource RimworldDarkBeigeBrush}" 
+                                    BorderBrush="{DynamicResource RimworldBrownBrush}" 
+                                    BorderThickness="0,1,0,1" 
+                                    Padding="15,10">
+                                <StackPanel Spacing="8">
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Text="Authors:" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Width="80"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding ModItem.Authors}" TextWrapping="Wrap"/>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Text="Repo:" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Width="80"/>
+                                        <SelectableTextBlock Grid.Column="1" Text="{Binding ModItem.GitRepo}" Foreground="{DynamicResource RimworldDarkGreenBrush}"/>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Text="Path:" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Width="80"/>
+                                        <SelectableTextBlock Grid.Column="1" Text="{Binding ModItem.Path}" FontSize="11" Opacity="0.8"/>
+                                    </Grid>
+                                    <Separator Background="{DynamicResource RimworldBrownBrush}" Opacity="0.3" Margin="0,5"/>
+                                    <TextBlock Text="{Binding ModItem.Description}" 
+                                               TextWrapping="Wrap" 
+                                               FontStyle="Italic" 
+                                               Opacity="0.9"
+                                               MaxHeight="100"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </DataGrid.RowDetailsTemplate>
+                </DataGrid>
+            </Grid>
+        </Border>
+    </DockPanel>
+</UserControl>

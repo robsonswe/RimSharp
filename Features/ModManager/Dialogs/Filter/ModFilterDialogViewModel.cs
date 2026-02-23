@@ -11,8 +11,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
 {
     public class ModFilterDialogViewModel : DialogViewModelBase<ModFilterDialogResult>
     {
-        private string _searchText;
-        private string _authorFilterText; // New
+        private string _searchText = string.Empty;
+        private string _authorFilterText = string.Empty; // New
         private bool? _isOutdatedFilter;
         private bool? _hasAssembliesFilter;
         private bool? _hasTexturesFilter; // <<< NEW FIELD >>>
@@ -74,7 +74,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
                 Enum.GetValues(typeof(ModType)).Cast<ModType>()
                     .Select(mt => new SelectableItemViewModel<ModType>(
                         mt,
-                        (string)modTypeConverter.Convert(mt, typeof(string), null, System.Globalization.CultureInfo.CurrentCulture),
+                        (string?)modTypeConverter.Convert(mt, typeof(string), null, System.Globalization.CultureInfo.CurrentCulture) ?? mt.ToString(),
                         _initialCriteria.SelectedModTypes?.Contains(mt) ?? false
                     ))
             );
@@ -140,7 +140,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
             CloseDialog(ModFilterDialogResult.Clear);
         }
 
-        public ModFilterCriteria CurrentCriteria { get; private set; } = null;
+        public ModFilterCriteria? CurrentCriteria { get; private set; } = null;
 
         protected override void OnRequestCloseDialog()
         {

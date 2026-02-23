@@ -1,0 +1,77 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:RimSharp.Infrastructure.Dialog">
+
+    <Style Selector="Window.base-dialog">
+        <Setter Property="SystemDecorations" Value="None"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="TransparencyLevelHint" Value="Transparent"/>
+        <Setter Property="CanResize" Value="False"/>
+        <Setter Property="WindowStartupLocation" Value="CenterOwner"/>
+        <Setter Property="Template">
+            <ControlTemplate TargetType="local:BaseDialog">
+                <!-- High-Performance Shadow -->
+                <Border Background="#44000000" CornerRadius="6" Padding="0,0,2,3">
+                    <!-- Main window container -->
+                    <Border Background="{DynamicResource RimworldBeigeBrush}"
+                            BorderBrush="{DynamicResource RimworldBrownBrush}"
+                            BorderThickness="1"
+                            CornerRadius="5"
+                            ClipToBounds="True">
+                        <Grid RowDefinitions="Auto,*,Auto">
+                            
+                            <!-- Header/Title Bar -->
+                            <Border x:Name="PART_TitleBar" 
+                                    Grid.Row="0" 
+                                    Background="{DynamicResource RimworldBrownBrush}" 
+                                    Height="30">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="{TemplateBinding Title}"
+                                            Foreground="{DynamicResource RimworldWhiteBrush}"
+                                            FontWeight="Medium"
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Center"
+                                            Margin="10,0"
+                                            Grid.Column="0"/>
+                                    
+                                    <!-- Close button -->
+                                    <Button Name="PART_CloseButton"
+                                            Grid.Column="1"
+                                            Width="30"
+                                            Height="30"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Command="{Binding CloseCommand}"
+                                            IsVisible="{TemplateBinding Closeable}">
+                                        <TextBlock Text="✕"
+                                                Foreground="{DynamicResource RimworldWhiteBrush}"
+                                                FontWeight="Bold"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"/>
+                                        <Button.Styles>
+                                            <Style Selector="Button:pointerover">
+                                                <Setter Property="Background" Value="{DynamicResource RimworldRedBrush}"/>
+                                            </Style>
+                                        </Button.Styles>
+                                    </Button>
+                                </Grid>
+                            </Border>
+                            
+                            <!-- Main content area -->
+                            <ContentPresenter Name="PART_MainContentPresenter"
+                                            Grid.Row="1" 
+                                            Content="{TemplateBinding MainContent}"
+                                            Margin="10,10,10,0"/>
+                            
+                            <!-- Button area -->
+                            <ContentPresenter Name="PART_ButtonContentPresenter"
+                                            Grid.Row="2" 
+                                            Content="{TemplateBinding ButtonContent}"
+                                            Margin="10,10,10,10"/>
+                        </Grid>
+                    </Border>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+</Styles>

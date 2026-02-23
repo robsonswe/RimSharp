@@ -14,7 +14,7 @@ namespace RimSharp.Shared.JsonConverters
             if (reader.TokenType == JsonTokenType.String)
             {
                 // If it's a single string, return a list containing just that string
-                string value = reader.GetString();
+                string? value = reader.GetString();
                 return !string.IsNullOrEmpty(value) ? new List<string> { value } : new List<string>();
             }
 
@@ -25,7 +25,7 @@ namespace RimSharp.Shared.JsonConverters
                 var listOptions = new JsonSerializerOptions(options);
                 listOptions.Converters.Remove(this); // Prevent infinite loop
 
-                return JsonSerializer.Deserialize<List<string>>(ref reader, listOptions);
+                return JsonSerializer.Deserialize<List<string>>(ref reader, listOptions) ?? new List<string>();
             }
 
             // Handle null or unexpected types

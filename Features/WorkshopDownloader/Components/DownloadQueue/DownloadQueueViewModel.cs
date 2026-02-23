@@ -171,20 +171,20 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             );
 
             // Sync commands observe IsOperationInProgress to disable during operations
-            RemoveItemCommand = CreateCommand<DownloadItem>(
-                _commandHandler.ExecuteRemoveItem,
+            RemoveItemCommand = CreateAsyncCommand<DownloadItem>(
+                _commandHandler.ExecuteRemoveItemAsync,
                 item => !IsOperationInProgress && item != null,
                 nameof(IsOperationInProgress)
             );
 
-            NavigateToUrlCommand = CreateCommand<string>(
+            NavigateToUrlCommand = CreateAsyncCommand<string>(
                 _commandHandler.ExecuteNavigateToUrl,
                 url => !IsOperationInProgress && !string.IsNullOrWhiteSpace(url),
                 nameof(IsOperationInProgress)
             );
 
-            RemoveItemsCommand = CreateCommand<System.Collections.IList>(
-                _commandHandler.ExecuteRemoveItems,
+            RemoveItemsCommand = CreateAsyncCommand<System.Collections.IList>(
+                _commandHandler.ExecuteRemoveItemsAsync,
                 items => !IsOperationInProgress && items != null && items.Count > 0,
                 nameof(IsOperationInProgress)
             );

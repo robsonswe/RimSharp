@@ -78,7 +78,7 @@ namespace RimSharp.Features.ModManager.Dialogs.DuplicateMods
             }
         }
 
-        public ModItem GetSelectedModToKeep()
+        public ModItem? GetSelectedModToKeep()
         {
             return Mods.FirstOrDefault(m => m?.IsActive == true)?.Original;
         }

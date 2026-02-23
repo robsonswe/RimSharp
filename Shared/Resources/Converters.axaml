@@ -1,0 +1,67 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:convVisual="clr-namespace:RimSharp.Core.Converters.Visual"
+                    xmlns:convViewVisibility="clr-namespace:RimSharp.Core.Converters.ViewVisibility"
+                    xmlns:convLogic="clr-namespace:RimSharp.Core.Converters.Logic"
+                    xmlns:convNumeric="clr-namespace:RimSharp.Core.Converters.Numeric"
+                    xmlns:convText="clr-namespace:RimSharp.Core.Converters.Text"
+                    xmlns:convUtility="clr-namespace:RimSharp.Core.Converters.Utility">
+
+     <!-- Visibility Converters -->
+     <convViewVisibility:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+     <convViewVisibility:BooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" Inverse="True"/>
+     <convViewVisibility:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
+     <convViewVisibility:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+     <convViewVisibility:IsNotNullOrEmptyToVisibilityConverter x:Key="IsNotNullOrEmptyToVisibilityConverter"/>
+     <convViewVisibility:IsActiveAndHasIssuesToVisibilityConverter x:Key="IsActiveAndHasIssuesToVisibilityConverter"/>
+     <convViewVisibility:TabVisibilityConverter x:Key="TabVisibilityConverter"/>
+     <convViewVisibility:ContextMenuVisibilityConverter x:Key="ContextMenuVisibilityConverter"/>
+     <convViewVisibility:ModTypeToRedownloadVisibilityConverter x:Key="ModTypeToRedownloadVisibilityConverter"/>
+     <convViewVisibility:ModTypeToDeleteVisibilityConverter x:Key="ModTypeToDeleteVisibilityConverter"/>
+
+     <!-- Logic Converters -->
+     <convLogic:NullToBoolConverter x:Key="NullToBoolConverter"/>
+     <convLogic:InvertedBooleanConverter x:Key="InvertedBooleanConverter"/>
+     <convLogic:StringIsNullOrEmptyConverter x:Key="StringIsNullOrEmptyConverter"/>
+     <convLogic:IsNotNullOrEmptyConverter x:Key="IsNotNullOrEmptyConverter"/>
+     <convLogic:IsNotNullOrEmptyConverter x:Key="IsNullOrEmptyConverter" Inverse="True"/>
+     <convLogic:BooleanAndToVisibilityConverter x:Key="BooleanAndToVisibilityConverter"/>
+     <convLogic:CountToBooleanConverter x:Key="CountToBooleanConverter"/>
+     <convLogic:InequalityConverter x:Key="InequalityConverter"/>
+     <convLogic:EqualityConverter x:Key="EqualityConverter"/>
+     <convLogic:TabActiveConverter x:Key="TabActiveConverter"/>
+
+     <!-- Numeric Converters -->
+     <convNumeric:ClampValueConverter x:Key="ClampValueConverter"/>
+     <convNumeric:MultiplyValueConverter x:Key="MultiplyValueConverter"/>
+     <convNumeric:MultiplyMultiValueConverter x:Key="MultiplyMultiValueConverter"/>
+
+     <!-- Text Converters -->
+     <convText:BooleanToTextConverter x:Key="BooleanToTextConverter"/>
+     <convText:ListToStringConverter x:Key="ListToStringConverter"/>
+     <convText:ModTypeToDescriptionConverter x:Key="ModTypeToDescriptionConverter"/>
+     <convText:ModTypeToInitialConverter x:Key="ModTypeToInitialConverter"/>
+     <convText:VersionSupportConverter x:Key="VersionSupportConverter"/>
+     <convText:ConditionalTextConverter x:Key="ConditionalTextConverter"/>
+     <convText:StringToUriConverter x:Key="StringToUriConverter"/>
+     <convText:TrimmedTextTooltipConverter x:Key="TrimmedTextTooltipConverter"/>
+     <convText:DialogTypeToIconConverter x:Key="DialogTypeToIconConverter"/>
+
+     <!-- Utility Converters -->
+     <convUtility:FileSizeConverter x:Key="FileSizeConverter"/>
+     <convUtility:FilterButtonTagConverter x:Key="FilterButtonTagConverter"/>
+     <convUtility:PathToExplorerFormatConverter x:Key="PathToExplorerFormatConverter"/>
+     <convUtility:LinkToCommandConverter x:Key="LinkToCommandConverter"/>
+
+     <!-- Visual Converters -->
+     <convVisual:ImagePathConverter x:Key="ImagePathConverter"/>
+     <convVisual:BooleanToBrushConverter x:Key="BooleanToBrushConverter"/>
+     <convVisual:BooleanToColorConverter x:Key="BooleanToColorConverter"/>
+     <convVisual:DarkenColorConverter x:Key="DarkenColorConverter"/>
+     <convVisual:UpdateStatusToColorConverter x:Key="UpdateStatusToColorConverter"/>
+     <convVisual:ModTypeToColorConverter x:Key="ModTypeToColorConverter"/>
+     <convVisual:ModTypeToForegroundConverter x:Key="ModTypeToForegroundConverter"/>
+     <convVisual:ModWeightConverter x:Key="ModWeightConverter"/>
+     <convVisual:BooleanToDoubleConverter x:Key="BooleanToDoubleConverter"/>
+     <convVisual:BooleanToThicknessConverter x:Key="BooleanToThicknessConverter"/>
+</ResourceDictionary>

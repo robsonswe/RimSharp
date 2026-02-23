@@ -1,0 +1,100 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                   xmlns:local="clr-namespace:RimSharp.Features.ModManager.Dialogs.Replacements"
+                   xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+                   x:Class="RimSharp.Features.ModManager.Dialogs.Replacements.ModReplacementDialogView"
+                   x:DataType="local:ModReplacementDialogViewModel"
+                   mc:Ignorable="d"
+                   Title="{Binding Title}"
+                   Width="750" MinHeight="450" MaxHeight="650">
+
+    <dialogs:BaseDialog.MainContent>
+        <Grid Margin="10" RowDefinitions="Auto,*,Auto">
+            <!-- Header -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+                <TextBlock Grid.Column="0" Text="The following mods have newer replacement versions available:" TextWrapping="Wrap" FontWeight="Medium" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
+                    <Button Content="Select All" Command="{Binding SelectAllCommand}" Classes="RimworldButtonStyle"/>
+                    <Button Content="Select None" Command="{Binding SelectNoneCommand}" Classes="RimworldButtonStyle"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Replacements List -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="10">
+                    <ListBox ItemsSource="{Binding Replacements}" Classes="RimworldListBox">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="local:ModReplacementItem">
+                                <Grid ColumnDefinitions="Auto,*" Margin="5">
+                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <StackPanel Grid.Column="1" Spacing="2">
+                                        <TextBlock FontWeight="Medium">
+                                            <Run Text="Original:"/>
+                                            <Run Text="{Binding OriginalMod.Name}"/>
+                                            <Run Text=" by "/>
+                                            <Run Text="{Binding OriginalMod.Authors}"/>
+                                        </TextBlock>
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <TextBlock Text="{Binding OriginalMod.PackageId, StringFormat='ID: {0}'}" FontSize="10" Foreground="Gray"/>
+                                            <Button Content="{Binding OriginalMod.SteamId, StringFormat='Steam: {0}'}" 
+                                                    Command="{Binding $parent[Window].DataContext.OpenUrlCommand}"
+                                                    CommandParameter="{Binding OriginalMod.SteamUrl}"
+                                                    Background="Transparent" BorderThickness="0" Padding="0"
+                                                    Foreground="{DynamicResource RimworldDarkGreenBrush}" FontSize="10"/>
+                                            <TextBlock Text="{Binding FormattedOriginalLastUpdate, StringFormat='| Updated: {0}'}" FontSize="10" Foreground="Gray"/>
+                                        </StackPanel>
+                                        
+                                        <TextBlock FontWeight="Medium" Foreground="{DynamicResource RimworldDarkGreenBrush}">
+                                            <Run Text="Replace with:"/>
+                                            <Run Text="{Binding ReplacementInfo.ReplacementName}"/>
+                                            <Run Text=" by "/>
+                                            <Run Text="{Binding ReplacementInfo.ReplacementAuthor}"/>
+                                        </TextBlock>
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <TextBlock Text="{Binding ReplacementInfo.ReplacementModId, StringFormat='ID: {0}'}" FontSize="10" Foreground="Gray"/>
+                                            <Button Content="{Binding ReplacementInfo.ReplacementSteamId, StringFormat='Steam: {0}'}" 
+                                                    Command="{Binding $parent[Window].DataContext.OpenUrlCommand}"
+                                                    CommandParameter="{Binding ReplacementInfo.ReplacementSteamUrl}"
+                                                    Background="Transparent" BorderThickness="0" Padding="0"
+                                                    Foreground="{DynamicResource RimworldDarkGreenBrush}" FontSize="10"/>
+                                            <TextBlock Text="{Binding FormattedReplacementLastUpdate, StringFormat='| Updated: {0}'}" FontSize="10" Foreground="Gray"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Border IsVisible="{Binding HasAlreadyInstalledReplacements}" BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="0,1,0,0" Padding="0,10,0,0">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="The following replacement mods are already installed:" FontWeight="Medium"/>
+                            <ListBox ItemsSource="{Binding AlreadyInstalledReplacements}" Classes="RimworldListBox">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="local:ModReplacementItem">
+                                        <Grid ColumnDefinitions="Auto,*" Margin="5">
+                                            <CheckBox Grid.Column="0" IsChecked="False" IsEnabled="False" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                            <StackPanel Grid.Column="1" Spacing="2">
+                                                <TextBlock FontWeight="Medium" Text="{Binding OriginalMod.Name, StringFormat='Original: {0}'}"/>
+                                                <TextBlock FontWeight="Medium" Foreground="{DynamicResource RimworldDarkGreenBrush}" Text="{Binding ReplacementInfo.ReplacementName, StringFormat='Replacement already installed: {0}'}"/>
+                                                <TextBlock Text="⚠ You should remove the original mod to avoid conflicts." Foreground="{DynamicResource RimworldOrangeBrush}" FontSize="11" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Footer -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0" Spacing="10">
+                <TextBlock Text="{Binding SelectedCount, StringFormat='{}{0} replacements selected'}" VerticalAlignment="Center"/>
+                <Button Content="Cancel" Command="{Binding CloseWithResultCommand}" CommandParameter="{x:Static local:ModReplacementDialogResult.Cancel}" Classes="RimworldButtonStyle"/>
+                <Button Content="Download Selected" Command="{Binding CloseWithResultCommand}" CommandParameter="{x:Static local:ModReplacementDialogResult.Download}" Classes="RimworldButtonStyle" IsEnabled="{Binding SelectedCount}"/>
+            </StackPanel>
+        </Grid>
+    </dialogs:BaseDialog.MainContent>
+</dialogs:BaseDialog>

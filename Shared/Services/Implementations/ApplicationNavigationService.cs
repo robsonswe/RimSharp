@@ -8,7 +8,7 @@ namespace RimSharp.Shared.Services.Implementations
     /// </summary>
     public class ApplicationNavigationService : IApplicationNavigationService
     {
-        public event EventHandler<string> TabSwitchRequested;
+        public event EventHandler<string>? TabSwitchRequested;
 
         public void RequestTabSwitch(string tabName)
         {

@@ -7,7 +7,7 @@ namespace RimSharp.Features.WorkshopDownloader.Models
     public class SteamApiResponse
     {
         [JsonPropertyName("response")]
-        public SteamApiResponseDetails Response { get; set; }
+        public SteamApiResponseDetails Response { get; set; } = new();
     }
 
     public class SteamApiResponseDetails
@@ -19,13 +19,13 @@ namespace RimSharp.Features.WorkshopDownloader.Models
         public int ResultCount { get; set; }
 
         [JsonPropertyName("publishedfiledetails")]
-        public List<SteamPublishedFileDetails> PublishedFileDetails { get; set; }
+        public List<SteamPublishedFileDetails> PublishedFileDetails { get; set; } = new();
     }
 
     public class SteamPublishedFileDetails
     {
         [JsonPropertyName("publishedfileid")]
-        public string PublishedFileId { get; set; } // String, though usually numeric
+        public string PublishedFileId { get; set; } = string.Empty; // String, though usually numeric
 
         [JsonPropertyName("result")]
         public int Result { get; set; } // 1 for success for this specific item
@@ -34,7 +34,7 @@ namespace RimSharp.Features.WorkshopDownloader.Models
         public int ConsumerAppId { get; set; } // Should be 294100 for RimWorld
 
         [JsonPropertyName("title")]
-        public string Title { get; set; }
+        public string Title { get; set; } = string.Empty;
 
         [JsonPropertyName("time_updated")]
         public long TimeUpdated { get; set; } // Unix timestamp (seconds since epoch)
@@ -43,7 +43,7 @@ namespace RimSharp.Features.WorkshopDownloader.Models
         public long FileSize { get; set; } // Added: Size in bytes
 
         [JsonPropertyName("tags")]
-        public List<SteamTag> Tags { get; set; }
+        public List<SteamTag> Tags { get; set; } = new();
         // Add other fields if needed later, like description, preview_url etc.
         // [JsonPropertyName("description")]
         // public string Description { get; set; }
@@ -52,6 +52,6 @@ namespace RimSharp.Features.WorkshopDownloader.Models
     public class SteamTag
     {
         [JsonPropertyName("tag")]
-        public string Tag { get; set; }
+        public string Tag { get; set; } = string.Empty;
     }
 }

@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text; // For StringBuilder
+using System.Threading.Tasks;
 
 namespace RimSharp.Features.ModManager.ViewModels.Actions
 {
@@ -14,7 +15,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
     public partial class ModActionsViewModel
     {
         // Helper method called by Open... commands
-        private void OpenItems(IList selectedItems, Func<ModItem, string> targetSelector, string itemTypeDescription, Func<string, bool> validator = null)
+        private async Task OpenItemsAsync(IList? selectedItems, Func<ModItem, string?> targetSelector, string itemTypeDescription, Func<string, bool>? validator = null)
         {
             var mods = selectedItems?.Cast<ModItem>().ToList();
             if (mods == null || !mods.Any()) return;
@@ -25,7 +26,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
             foreach (var mod in mods)
             {
-                string target = null;
+                string? target = null;
                 try
                 {
                     target = targetSelector(mod);
@@ -37,7 +38,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     continue;
                 }
 
-                bool isValid = !string.IsNullOrWhiteSpace(target) && (validator == null || validator(target));
+                bool isValid = !string.IsNullOrWhiteSpace(target) && (validator == null || validator(target!));
 
                 if (isValid)
                 {
@@ -46,7 +47,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                         try
                         {
                             Debug.WriteLine($"Opening {itemTypeDescription}: {target}");
-                            Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
+                            Process.Start(new ProcessStartInfo(target!) { UseShellExecute = true });
                             opened.Add(mod.Name);
                         }
                         catch (Exception ex)
@@ -80,8 +81,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 message.AppendLine($"Could not open {itemTypeDescription} for:");
                 message.AppendLine(string.Join("\n - ", notOpened.Prepend("")));
 
-                // ***** This is the line that uses the extension method *****
-                RunOnUIThread(() => _dialogService.ShowWarning($"Open {itemTypeDescription.CapitalizeFirst()}", message.ToString().Trim()));
+                await _dialogService.ShowWarning($"Open {itemTypeDescription.CapitalizeFirst()}", message.ToString().Trim());
             }
         }
 

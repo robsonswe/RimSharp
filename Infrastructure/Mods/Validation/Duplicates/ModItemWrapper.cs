@@ -38,16 +38,16 @@ namespace RimSharp.Infrastructure.Mods.Validation.Duplicates
         public ModItem Original { get; }
         public DuplicateModGroupViewModel ParentGroup { get; }
 
-        public string Name => Original?.Name;
-        public string Authors => Original?.Authors;
-        public string ModVersion => Original?.ModVersion;
-        public string Path => Original?.Path;
-        public string SteamId => Original?.SteamId;
-        public string Url => Original?.Url;
-        public string SteamUrl => Original?.SteamUrl;
-        public string ExternalUrl => Original?.ExternalUrl;
+        public string Name => Original.Name;
+        public string Authors => Original.Authors;
+        public string ModVersion => Original.ModVersion;
+        public string Path => Original.Path;
+        public string SteamId => Original.SteamId;
+        public string Url => Original.Url;
+        public string SteamUrl => Original.SteamUrl;
+        public string ExternalUrl => Original.ExternalUrl;
 
-        public string SupportedVersions => Original?.SupportedVersions != null && Original.SupportedVersions.Any()
+        public string SupportedVersions => Original.SupportedVersions != null && Original.SupportedVersions.Any()
             ? string.Join(", ", Original.SupportedVersions.Select(v => v.ToString()))
             : "Unknown";
 
