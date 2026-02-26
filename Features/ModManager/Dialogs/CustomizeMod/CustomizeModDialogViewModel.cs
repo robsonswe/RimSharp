@@ -553,7 +553,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 
         private async Task AddLoadBeforeAsync()
         {
-            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Add Load Before Rule", _dialogService);
+            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Add Load Before Rule", _dialogService, _modService);
             if (await _dialogService.ShowDependencyRuleEditorAsync(dialogViewModel))
             {
                 // Validate the package ID before adding
@@ -577,7 +577,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         {
             if (SelectedLoadBeforeRule == null || SelectedLoadBeforeRule.IsOriginal) return;
 
-            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Edit Load Before Rule", _dialogService)
+            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Edit Load Before Rule", _dialogService, _modService)
             {
                 PackageId = SelectedLoadBeforeRule.PackageId,
                 DisplayName = SelectedLoadBeforeRule.DisplayName,
@@ -609,7 +609,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 
         private async Task AddLoadAfterAsync()
         {
-            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Add Load After Rule", _dialogService);
+            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Add Load After Rule", _dialogService, _modService);
             if (await _dialogService.ShowDependencyRuleEditorAsync(dialogViewModel))
             {
                 // Validate the package ID before adding
@@ -633,7 +633,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         {
             if (SelectedLoadAfterRule == null || SelectedLoadAfterRule.IsOriginal) return;
 
-            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Edit Load After Rule", _dialogService)
+            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Edit Load After Rule", _dialogService, _modService)
             {
                 PackageId = SelectedLoadAfterRule.PackageId,
                 DisplayName = SelectedLoadAfterRule.DisplayName,
@@ -665,7 +665,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 
         private async Task AddIncompatibilityAsync()
         {
-            var dialogViewModel = new IncompatibilityRuleEditorDialogViewModel("Add Incompatibility Rule", _dialogService);
+            var dialogViewModel = new IncompatibilityRuleEditorDialogViewModel("Add Incompatibility Rule", _dialogService, _modService);
             if (await _dialogService.ShowIncompatibilityRuleEditorAsync(dialogViewModel))
             {
                 // Validate the package ID before adding
@@ -690,7 +690,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         {
             if (SelectedIncompatibilityRule == null || SelectedIncompatibilityRule.IsOriginal) return;
 
-            var dialogViewModel = new IncompatibilityRuleEditorDialogViewModel("Edit Incompatibility Rule", _dialogService)
+            var dialogViewModel = new IncompatibilityRuleEditorDialogViewModel("Edit Incompatibility Rule", _dialogService, _modService)
             {
                 PackageId = SelectedIncompatibilityRule.PackageId,
                 DisplayName = SelectedIncompatibilityRule.DisplayName,

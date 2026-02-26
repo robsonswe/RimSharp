@@ -1,13 +1,17 @@
 using System;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Services.Contracts;
+using RimSharp.Features.ModManager.Dialogs.ModSelector;
 
 namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 {
     public class IncompatibilityRuleEditorDialogViewModel : DialogViewModelBase<bool>
     {
         private readonly IDialogService _dialogService;
+        private readonly IModService _modService;
         private string _packageId = string.Empty;
         private string _displayName = string.Empty;
         private string _comment = string.Empty;
@@ -39,12 +43,35 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 
         public ICommand SaveCommand { get; }
         public ICommand CancelCommand { get; }
+        public ICommand OpenModSelectorCommand { get; }
 
-        public IncompatibilityRuleEditorDialogViewModel(string title, IDialogService dialogService) : base(title)
+        public IncompatibilityRuleEditorDialogViewModel(string title, IDialogService dialogService, IModService modService) : base(title)
         {
             _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
+            _modService = modService ?? throw new ArgumentNullException(nameof(modService));
+            
             SaveCommand = CreateCommand(Save);
             CancelCommand = CreateCommand(Cancel);
+            OpenModSelectorCommand = CreateAsyncCommand(OpenModSelectorAsync);
+        }
+
+        private async Task OpenModSelectorAsync()
+        {
+            var allMods = _modService.GetLoadedMods();
+            var viewModel = new ModSelectorDialogViewModel(allMods);
+
+            // If user already typed something, use it as initial search
+            if (!string.IsNullOrWhiteSpace(PackageId))
+            {
+                viewModel.SearchText = PackageId;
+            }
+
+            var selectedMod = await _dialogService.ShowModSelectorDialogAsync(viewModel);
+            if (selectedMod != null)
+            {
+                PackageId = selectedMod.PackageId;
+                DisplayName = selectedMod.Name;
+            }
         }
 
         private void Save()

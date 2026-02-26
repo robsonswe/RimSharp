@@ -11,6 +11,7 @@ using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
 using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
+using RimSharp.Features.ModManager.Dialogs.ModSelector;
 using RimSharp.Features.ModManager.Dialogs.Filter;
 using RimSharp.Features.ModManager.Dialogs.Replacements;
 using RimSharp.Features.ModManager.Dialogs.Dependencies;
@@ -53,10 +54,17 @@ namespace RimSharp.Infrastructure.Dialog
             if (_openDialogCount == 0) OnPropertyChanged(nameof(IsAnyDialogOpen));
         }
 
-        private Window? GetMainWindow()
+        private Window? GetActiveWindow()
         {
             if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
+                // Try to find the topmost active window
+                var windows = desktop.Windows;
+                for (int i = windows.Count - 1; i >= 0; i--)
+                {
+                    if (windows[i].IsActive || windows[i].IsVisible)
+                        return windows[i];
+                }
                 return desktop.MainWindow;
             }
             return null;
@@ -70,8 +78,8 @@ namespace RimSharp.Infrastructure.Dialog
                 // Ensure the dialog template is applied before showing
                 // dialog.ApplyTemplate(); // REMOVED: Causes interactivity issues
                 
-                var owner = GetMainWindow();
-                if (owner != null)
+                var owner = GetActiveWindow();
+                if (owner != null && owner != dialog) // Don't set self as owner
                 {
                     await dialog.ShowDialog(owner);
                 }
@@ -181,8 +189,8 @@ namespace RimSharp.Infrastructure.Dialog
             IncrementDialogCount();
             dialog.Closed += (s, e) => DecrementDialogCount();
 
-            var owner = GetMainWindow();
-            if (owner != null) dialog.Show(owner);
+            var owner = GetActiveWindow();
+            if (owner != null && owner != dialog) dialog.Show(owner);
             else dialog.Show();
 
             return viewModel;
@@ -226,7 +234,7 @@ namespace RimSharp.Infrastructure.Dialog
             }
             
             // Fallback to direct implementation
-            var window = GetMainWindow();
+            var window = GetActiveWindow();
             if (window == null) return (false, null);
 
             var files = await window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -250,7 +258,7 @@ namespace RimSharp.Infrastructure.Dialog
             }
             
             // Fallback to direct implementation
-            var window = GetMainWindow();
+            var window = GetActiveWindow();
             if (window == null) return (false, null);
 
             var files = window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -277,7 +285,7 @@ namespace RimSharp.Infrastructure.Dialog
             }
 
             // Fallback to direct implementation
-            var window = GetMainWindow();
+            var window = GetActiveWindow();
             if (window == null) return (false, null);
 
             var file = window.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
@@ -305,7 +313,7 @@ namespace RimSharp.Infrastructure.Dialog
             }
 
             // Fallback to direct implementation
-            var window = GetMainWindow();
+            var window = GetActiveWindow();
             if (window == null) return (false, null);
 
             var file = await window.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
@@ -330,7 +338,7 @@ namespace RimSharp.Infrastructure.Dialog
             }
             
             // Fallback to direct implementation
-            var window = GetMainWindow();
+            var window = GetActiveWindow();
             if (window == null) return (false, null);
 
             var folders = await window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
@@ -440,6 +448,18 @@ namespace RimSharp.Infrastructure.Dialog
         {
             var dialog = new StripModsDialogView(viewModel);
             return ShowDialogInternalAsync<(bool, IEnumerable<string>?)>(viewModel, dialog).GetAwaiter().GetResult();
+        }
+
+        public async Task<RimSharp.Shared.Models.ModItem?> ShowModSelectorDialogAsync(ModSelectorDialogViewModel viewModel)
+        {
+            var dialog = new ModSelectorDialogView(viewModel);
+            return await ShowDialogInternalAsync<RimSharp.Shared.Models.ModItem?>(viewModel, dialog);
+        }
+
+        public RimSharp.Shared.Models.ModItem? ShowModSelectorDialog(ModSelectorDialogViewModel viewModel)
+        {
+            var dialog = new ModSelectorDialogView(viewModel);
+            return ShowDialogInternalAsync<RimSharp.Shared.Models.ModItem?>(viewModel, dialog).GetAwaiter().GetResult();
         }
     }
 }
