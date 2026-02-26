@@ -11,105 +11,11 @@
                    Width="650"
                    Height="500">
 
-    <dialogs:BaseDialog.Styles>
-        <!-- RimWorld Styles -->
-        
-        <!-- Intuitive TabItem Style -->
-        <Style Selector="TabItem">
-            <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="Margin" Value="0,0,5,5"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <Border Name="PART_LayoutRoot" Background="{TemplateBinding Background}" BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="1" CornerRadius="3">
-                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Header}" Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                </ControlTemplate>
-            </Setter>
-        </Style>
-        <Style Selector="TabItem:pointerover /template/ Border#PART_LayoutRoot">
-            <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
-        </Style>
-        <Style Selector="TabItem:selected /template/ Border#PART_LayoutRoot">
-            <Setter Property="Background" Value="{DynamicResource RimworldBrownBrush}"/>
-        </Style>
-        <Style Selector="TabItem:selected">
-            <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
-        </Style>
-
-        <!-- RimWorld RadioButton Style -->
-        <Style Selector="RadioButton">
-            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
-            <Setter Property="HorizontalAlignment" Value="Center"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-        <Style Selector="RadioButton /template/ Ellipse#OuterEllipse">
-            <Setter Property="Stroke" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="Fill" Value="{DynamicResource RimworldBeigeBrush}"/>
-            <Setter Property="StrokeThickness" Value="1"/>
-            <Setter Property="Width" Value="16"/>
-            <Setter Property="Height" Value="16"/>
-        </Style>
-        <Style Selector="RadioButton:checked /template/ Ellipse#CheckGlyph">
-            <Setter Property="Fill" Value="{DynamicResource RimworldBrownBrush}"/>
-        </Style>
-
-        <!-- RimWorld Checkbox Style -->
-        <Style Selector="CheckBox">
-            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
-        </Style>
-        <Style Selector="CheckBox /template/ Border#NormalRectangle">
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
-            <Setter Property="CornerRadius" Value="0"/>
-            <Setter Property="BorderThickness" Value="1"/>
-        </Style>
-        <Style Selector="CheckBox:checked /template/ Border#NormalRectangle">
-            <Setter Property="Background" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-        </Style>
-        <Style Selector="CheckBox:checked /template/ Path#CheckMark">
-            <Setter Property="Fill" Value="{DynamicResource RimworldWhiteBrush}"/>
-        </Style>
-
-        <!-- TextBox Style -->
-        <Style Selector="TextBox.RimworldTextBox">
-            <Setter Property="MinHeight" Value="26"/>
-            <Setter Property="Height" Value="26"/>
-            <Setter Property="Padding" Value="6,0,6,0"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-
-        <!-- Safe ListBox Style -->
-        <Style Selector="ListBox.SafeRimworldList">
-            <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="0"/>
-        </Style>
-        <Style Selector="ListBox.SafeRimworldList ListBoxItem">
-            <Setter Property="Padding" Value="5,4"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="BorderThickness" Value="0,0,0,1"/>
-        </Style>
-        <Style Selector="ListBox.SafeRimworldList ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
-        </Style>
-        <Style Selector="ListBox.SafeRimworldList ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
-        </Style>
-    </dialogs:BaseDialog.Styles>
-
-    <dialogs:BaseDialog.MainContent>
-        <Grid RowDefinitions="*, Auto" Margin="10,10,10,0">
-            
-            <TabControl Grid.Row="0">
-                
-                <!-- TAB 1: GENERAL (Search & Properties) -->
+        <dialogs:BaseDialog.MainContent>
+            <Grid RowDefinitions="*, Auto" Margin="10,10,10,0">
+    
+                <TabControl Grid.Row="0" Classes="RimworldTabControl">
+                    <!-- TAB 1: GENERAL (Search & Properties) -->
                 <TabItem Header="General">
                     <Border Classes="RimworldSubtlePanelBorder">
                         <Grid RowDefinitions="Auto, 15, Auto, *" Margin="15" VerticalAlignment="Top">
@@ -204,7 +110,7 @@
                     <Border Classes="RimworldSubtlePanelBorder">
                         <Grid RowDefinitions="Auto, 5, *">
                             <TextBlock Grid.Row="0" Text="Mod Types" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="5"/>
-                            <ListBox Grid.Row="2" ItemsSource="{Binding AvailableModTypes}" Classes="SafeRimworldList">
+                            <ListBox Grid.Row="2" ItemsSource="{Binding AvailableModTypes}" Classes="RimworldSafeListBox">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <CheckBox Content="{Binding DisplayName}" IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="2,0"/>
@@ -220,7 +126,7 @@
                     <Border Classes="RimworldSubtlePanelBorder">
                         <Grid RowDefinitions="Auto, 5, *">
                             <TextBlock Grid.Row="0" Text="Steam Workshop Tags" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="5"/>
-                            <ListBox Grid.Row="2" ItemsSource="{Binding AvailableTags}" Classes="SafeRimworldList">
+                            <ListBox Grid.Row="2" ItemsSource="{Binding AvailableTags}" Classes="RimworldSafeListBox">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <CheckBox Content="{Binding DisplayName}" IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="2,0"/>
@@ -236,7 +142,7 @@
                     <Border Classes="RimworldSubtlePanelBorder">
                         <Grid RowDefinitions="Auto, 5, *">
                             <TextBlock Grid.Row="0" Text="Supported Game Versions" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="5"/>
-                            <ListBox Grid.Row="2" ItemsSource="{Binding AvailableVersions}" Classes="SafeRimworldList">
+                            <ListBox Grid.Row="2" ItemsSource="{Binding AvailableVersions}" Classes="RimworldSafeListBox">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <CheckBox Content="{Binding DisplayName}" IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="2,0"/>

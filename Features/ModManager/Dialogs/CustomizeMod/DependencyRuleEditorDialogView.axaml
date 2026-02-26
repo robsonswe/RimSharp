@@ -5,16 +5,6 @@
                   x:Class="RimSharp.Features.ModManager.Dialogs.CustomizeMod.DependencyRuleEditorDialogView"
                   x:DataType="vm:DependencyRuleEditorDialogViewModel"
                   Width="450" Height="270" Title="{Binding Title}">
-    
-    <dialogs:BaseDialog.Styles>
-        <!-- Fix for TextBox heights and text alignment to match parent -->
-        <Style Selector="TextBox.RimworldTextBox">
-            <Setter Property="MinHeight" Value="26"/>
-            <Setter Property="Height" Value="26"/>
-            <Setter Property="Padding" Value="6,0,6,0"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-    </dialogs:BaseDialog.Styles>
 
     <dialogs:BaseDialog.MainContent>
         <Border Classes="RimworldSubtlePanelBorder" Margin="10,10,10,5">

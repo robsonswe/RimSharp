@@ -5,40 +5,6 @@
                   x:Class="RimSharp.Features.ModManager.Dialogs.CustomizeMod.IncompatibilityRuleEditorDialogView"
                   x:DataType="vm:IncompatibilityRuleEditorDialogViewModel"
                   Width="480" Height="480" Title="{Binding Title}">
-    
-    <dialogs:BaseDialog.Styles>
-        <!-- Fix for TextBox heights and text alignment -->
-        <Style Selector="TextBox.RimworldTextBox">
-            <Setter Property="MinHeight" Value="26"/>
-            <Setter Property="Height" Value="26"/>
-            <Setter Property="Padding" Value="6,0,6,0"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-
-        <!-- RimWorld Checkbox Style Override -->
-        <Style Selector="CheckBox">
-            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
-        </Style>
-        <!-- Unchecked State -->
-        <Style Selector="CheckBox /template/ Border#NormalRectangle">
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
-            <Setter Property="CornerRadius" Value="0"/>
-            <Setter Property="BorderThickness" Value="1"/>
-        </Style>
-        <!-- Checked State -->
-        <Style Selector="CheckBox:checked /template/ Border#NormalRectangle">
-            <Setter Property="Background" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-        </Style>
-        <Style Selector="CheckBox:checked /template/ Path#CheckMark">
-            <Setter Property="Fill" Value="{DynamicResource RimworldWhiteBrush}"/>
-        </Style>
-        <!-- Pointer Over -->
-        <Style Selector="CheckBox:pointerover /template/ Border#NormalRectangle">
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldDarkBrownBrush}"/>
-        </Style>
-    </dialogs:BaseDialog.Styles>
 
     <dialogs:BaseDialog.MainContent>
         <Border Classes="RimworldSubtlePanelBorder" Margin="10,10,10,5">

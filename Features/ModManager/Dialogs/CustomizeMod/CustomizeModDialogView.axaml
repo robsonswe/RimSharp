@@ -9,108 +9,12 @@
                  Width="750"
                  Height="680"
                  Title="{Binding Title}">
+
+        <dialogs:BaseDialog.MainContent>
+            <Grid RowDefinitions="*, Auto" Margin="10,10,10,0">
     
-    <dialogs:BaseDialog.Styles>
-        <!-- RimWorld Checkbox Style Override -->
-        <Style Selector="CheckBox">
-            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
-        </Style>
-        <Style Selector="CheckBox /template/ Border#NormalRectangle">
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
-            <Setter Property="CornerRadius" Value="0"/>
-            <Setter Property="BorderThickness" Value="1"/>
-        </Style>
-        <Style Selector="CheckBox:checked /template/ Border#NormalRectangle">
-            <Setter Property="Background" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-        </Style>
-        <Style Selector="CheckBox:checked /template/ Path#CheckMark">
-            <Setter Property="Fill" Value="{DynamicResource RimworldWhiteBrush}"/>
-        </Style>
-        <Style Selector="CheckBox:pointerover /template/ Border#NormalRectangle">
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldDarkBrownBrush}"/>
-        </Style>
-
-        <!-- Intuitive TabItem Style (Matches RimWorld Toggle Buttons) -->
-        <Style Selector="TabItem">
-            <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="Padding" Value="16,8"/>
-            <Setter Property="Margin" Value="0,0,8,10"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <Border Name="PART_LayoutRoot"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{DynamicResource RimworldBrownBrush}"
-                            BorderThickness="1"
-                            CornerRadius="3">
-                        <ContentPresenter Name="PART_ContentPresenter"
-                                          Content="{TemplateBinding Header}"
-                                          Margin="{TemplateBinding Padding}"
-                                          HorizontalAlignment="Center"
-                                          VerticalAlignment="Center"/>
-                    </Border>
-                </ControlTemplate>
-            </Setter>
-        </Style>
-        <Style Selector="TabItem:pointerover /template/ Border#PART_LayoutRoot">
-            <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
-        </Style>
-        <Style Selector="TabItem:selected /template/ Border#PART_LayoutRoot">
-            <Setter Property="Background" Value="{DynamicResource RimworldBrownBrush}"/>
-        </Style>
-        <Style Selector="TabItem:selected">
-            <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
-        </Style>
-
-        <!-- Fix for TextBox heights and text alignment -->
-        <Style Selector="TextBox.RimworldTextBox">
-            <Setter Property="MinHeight" Value="26"/>
-            <Setter Property="Height" Value="26"/>
-            <Setter Property="Padding" Value="6,0,6,0"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-
-        <!-- Safe ListBox Style for editable rules that bypasses the BaseStyle bug -->
-        <Style Selector="ListBox.SafeRimworldList">
-            <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
-            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
-        </Style>
-        <Style Selector="ListBox.SafeRimworldList ListBoxItem">
-            <Setter Property="Padding" Value="5,4"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="BorderThickness" Value="0,0,0,1"/>
-        </Style>
-        
-        <!-- Smart text coloring: Brown by default, White when selected -->
-        <Style Selector="ListBox.SafeRimworldList ListBoxItem TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
-        </Style>
-        <Style Selector="ListBox.SafeRimworldList ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
-        </Style>
-        <Style Selector="ListBox.SafeRimworldList ListBoxItem:selected TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
-        </Style>
-        <Style Selector="ListBox.SafeRimworldList ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
-        </Style>
-    </dialogs:BaseDialog.Styles>
-
-    <dialogs:BaseDialog.MainContent>
-        <Grid RowDefinitions="*, Auto" Margin="10,10,10,0">
-            
-            <TabControl Grid.Row="0">
-                
-                <!-- TAB 1: GENERAL INFO -->
+                <TabControl Grid.Row="0" Classes="RimworldTabControl">
+                    <!-- TAB 1: GENERAL INFO -->
                 <TabItem Header="General Info">
                     <Border Classes="RimworldSubtlePanelBorder">
                         <Grid RowDefinitions="Auto, Auto, Auto, *" Margin="15">
@@ -241,7 +145,7 @@
                                             <TextBlock Grid.Column="2" Text="Comment" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
                                         </Grid>
                                     </Border>
-                                    <ListBox Grid.Row="1" ItemsSource="{Binding CustomLoadBefore}" SelectedItem="{Binding SelectedLoadBeforeRule}" Classes="SafeRimworldList" Margin="0,-2,0,0">
+                                    <ListBox Grid.Row="1" ItemsSource="{Binding CustomLoadBefore}" SelectedItem="{Binding SelectedLoadBeforeRule}" Classes="RimworldSafeListBox" Margin="0,-2,0,0">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate x:DataType="vm:ModDependencyRuleViewModel">
                                                 <Grid ColumnDefinitions="150, 180, *">
@@ -298,7 +202,7 @@
                                             <TextBlock Grid.Column="2" Text="Comment" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
                                         </Grid>
                                     </Border>
-                                    <ListBox Grid.Row="1" ItemsSource="{Binding CustomLoadAfter}" SelectedItem="{Binding SelectedLoadAfterRule}" Classes="SafeRimworldList" Margin="0,-2,0,0">
+                                    <ListBox Grid.Row="1" ItemsSource="{Binding CustomLoadAfter}" SelectedItem="{Binding SelectedLoadAfterRule}" Classes="RimworldSafeListBox" Margin="0,-2,0,0">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate x:DataType="vm:ModDependencyRuleViewModel">
                                                 <Grid ColumnDefinitions="150, 180, *">
@@ -356,7 +260,7 @@
                                             <TextBlock Grid.Column="3" Text="Comment" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
                                         </Grid>
                                     </Border>
-                                    <ListBox Grid.Row="1" ItemsSource="{Binding CustomIncompatibilities}" SelectedItem="{Binding SelectedIncompatibilityRule}" Classes="SafeRimworldList" Margin="0,-2,0,0">
+                                    <ListBox Grid.Row="1" ItemsSource="{Binding CustomIncompatibilities}" SelectedItem="{Binding SelectedIncompatibilityRule}" Classes="RimworldSafeListBox" Margin="0,-2,0,0">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate x:DataType="vm:ModIncompatibilityRuleViewModel">
                                                 <Grid ColumnDefinitions="150, 150, 60, *">
