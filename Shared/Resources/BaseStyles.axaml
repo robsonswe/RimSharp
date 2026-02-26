@@ -24,7 +24,9 @@
         <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="5,3"/>
+        <Setter Property="Padding" Value="6,0,6,0"/>
+        <Setter Property="MinHeight" Value="26"/>
+        <Setter Property="Height" Value="26"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Template">
             <ControlTemplate>
@@ -60,7 +62,9 @@
         <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="5,3"/>
+        <Setter Property="Padding" Value="6,0,6,0"/>
+        <Setter Property="MinHeight" Value="26"/>
+        <Setter Property="Height" Value="26"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Template">
             <ControlTemplate>
@@ -88,8 +92,8 @@
                                    Text="{TemplateBinding Watermark}"
                                    Foreground="{DynamicResource RimworldLightBrownBrush}"
                                    IsHitTestVisible="False"
-                                   Margin="6,3"
-                                   VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                   Margin="6,0"
+                                   VerticalAlignment="Center"
                                    HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}">
                             <TextBlock.IsVisible>
                                 <Binding Path="Text" RelativeSource="{RelativeSource TemplatedParent}" Converter="{StaticResource StringIsNullOrEmptyConverter}"/>
@@ -99,6 +103,76 @@
                 </Border>
             </ControlTemplate>
         </Setter>
+    </Style>
+
+    <!-- RimWorld-style CheckBox -->
+    <Style Selector="CheckBox.RimworldCheckBox, CheckBox">
+        <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+    </Style>
+    <Style Selector="CheckBox.RimworldCheckBox /template/ Border#NormalRectangle, CheckBox /template/ Border#NormalRectangle">
+        <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
+        <Setter Property="CornerRadius" Value="0"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="CheckBox.RimworldCheckBox:checked /template/ Border#NormalRectangle, CheckBox:checked /template/ Border#NormalRectangle">
+        <Setter Property="Background" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+    </Style>
+    <Style Selector="CheckBox.RimworldCheckBox:checked /template/ Path#CheckMark, CheckBox:checked /template/ Path#CheckMark">
+        <Setter Property="Fill" Value="{DynamicResource RimworldWhiteBrush}"/>
+    </Style>
+    <Style Selector="CheckBox.RimworldCheckBox:pointerover /template/ Border#NormalRectangle, CheckBox:pointerover /template/ Border#NormalRectangle">
+        <Setter Property="BorderBrush" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+    </Style>
+
+    <!-- RimWorld-style RadioButton -->
+    <Style Selector="RadioButton.RimworldRadioButton, RadioButton">
+        <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+    </Style>
+    <Style Selector="RadioButton.RimworldRadioButton /template/ Ellipse#OuterEllipse, RadioButton /template/ Ellipse#OuterEllipse">
+        <Setter Property="Stroke" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="Fill" Value="{DynamicResource RimworldBeigeBrush}"/>
+        <Setter Property="StrokeThickness" Value="1"/>
+        <Setter Property="Width" Value="16"/>
+        <Setter Property="Height" Value="16"/>
+    </Style>
+    <Style Selector="RadioButton.RimworldRadioButton:checked /template/ Ellipse#CheckGlyph, RadioButton:checked /template/ Ellipse#CheckGlyph">
+        <Setter Property="Fill" Value="{DynamicResource RimworldBrownBrush}"/>
+    </Style>
+
+    <!-- RimWorld-style TabItem (Toggles) -->
+    <Style Selector="TabControl.RimworldTabControl TabItem">
+        <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="Padding" Value="12,6"/>
+        <Setter Property="Margin" Value="0,0,5,5"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="PART_LayoutRoot"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{DynamicResource RimworldBrownBrush}"
+                        BorderThickness="1"
+                        CornerRadius="3">
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Header}"
+                                      Margin="{TemplateBinding Padding}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="TabControl.RimworldTabControl TabItem:pointerover /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
+    </Style>
+    <Style Selector="TabControl.RimworldTabControl TabItem:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource RimworldBrownBrush}"/>
+    </Style>
+    <Style Selector="TabControl.RimworldTabControl TabItem:selected">
+        <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
     </Style>
 
     <!-- RimWorld-style ListBox -->
@@ -171,6 +245,34 @@
         <Style Selector="^:selected /template/ ContentPresenter">
             <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
         </Style>
+    </Style>
+
+    <!-- RimWorld Safe ListBox (Doesn't override control template, just styles) -->
+    <Style Selector="ListBox.RimworldSafeListBox">
+        <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+    </Style>
+    <Style Selector="ListBox.RimworldSafeListBox ListBoxItem">
+        <Setter Property="Padding" Value="5,4"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+    </Style>
+    <Style Selector="ListBox.RimworldSafeListBox ListBoxItem TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
+    </Style>
+    <Style Selector="ListBox.RimworldSafeListBox ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
+    </Style>
+    <Style Selector="ListBox.RimworldSafeListBox ListBoxItem:selected TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+    </Style>
+    <Style Selector="ListBox.RimworldSafeListBox ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
     </Style>
 
     <!-- RimWorld List Header Border -->
