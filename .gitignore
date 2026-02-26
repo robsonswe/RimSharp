@@ -11,6 +11,7 @@ rules/db/Custom
 .env
 
 # User-specific files
+fatal_crash.txt
 *.rsuser
 *.suo
 *.user
