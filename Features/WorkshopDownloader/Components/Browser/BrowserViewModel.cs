@@ -42,7 +42,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         private string _actualCurrentUrl = string.Empty;
         public string ActualCurrentUrl { get => _actualCurrentUrl; private set => this.RaiseAndSetIfChanged(ref _actualCurrentUrl, value); }
 
-        private string _addressBarUrl = string.Empty;
+        private const string HomeUrl = "https://steamcommunity.com/app/294100/workshop/";
+        private string _addressBarUrl = HomeUrl;
         public string AddressBarUrl
         {
             get => _addressBarUrl;
@@ -140,6 +141,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
         private void NavigationService_NavigationStarted(object? sender, string url)
         {
+            if (url == "about:blank") return;
             Debug.WriteLine($"[BrowserVM] NavigationStarted: {url}");
             RunOnUIThread(() =>
             {
@@ -346,6 +348,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
         private void NavigationService_SourceUrlChanged(object? sender, string newUrl)
         {
+            if (newUrl == "about:blank") return;
             Debug.WriteLine($"[BrowserVM] SourceUrlChanged: {newUrl}");
             RunOnUIThread(() =>
             {

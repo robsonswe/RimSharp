@@ -161,7 +161,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 _webView = new WebView2
                 {
                     Dock = System.Windows.Forms.DockStyle.Fill,
-                    Visible = true
+                    Visible = true,
+                    Source = new Uri("about:blank")
                 };
 
                 Debug.WriteLine("[BrowserView] Calling EnsureCoreWebView2Async...");
