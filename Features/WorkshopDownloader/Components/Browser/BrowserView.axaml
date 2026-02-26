@@ -9,52 +9,188 @@
              mc:Ignorable="d">
 
     <UserControl.Styles>
+
+        <!-- ================================================== -->
+        <!-- 1. NAVIGATION BUTTONS                              -->
+        <!-- ================================================== -->
+        <Style Selector="Button.BrowserNavButtonStyle">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="ButtonBorder"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="0"
+                            CornerRadius="2">
+                        <ContentPresenter Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          Background="Transparent"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <!-- STRICTLY override the theme's background changes -->
+        <Style Selector="Button.BrowserNavButtonStyle:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.BrowserNavButtonStyle:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.BrowserNavButtonStyle:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+
+        <!-- Handle Icon Color Changes (Fill) -->
+        <Style Selector="Button.BrowserNavButtonStyle:pointerover Path">
+            <Setter Property="Fill" Value="{DynamicResource RimworldHighlightBrush}"/>
+        </Style>
+        <Style Selector="Button.BrowserNavButtonStyle:pressed Path">
+            <Setter Property="Fill" Value="{DynamicResource RimworldHighlightBrush}"/>
+        </Style>
+        <Style Selector="Button.BrowserNavButtonStyle:disabled Path">
+            <Setter Property="Opacity" Value="0.3"/>
+            <Setter Property="Fill" Value="{DynamicResource RimworldWhiteBrush}"/>
+        </Style>
+
+        <!-- ================================================== -->
+        <!-- 2. SEARCH BUTTON                                   -->
+        <!-- ================================================== -->
         <Style Selector="Button.SearchIconButton">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="Padding" Value="4,0"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Width" Value="26"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="PART_Border" Background="{TemplateBinding Background}">
+                        <ContentPresenter Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          HorizontalAlignment="Center" 
+                                          VerticalAlignment="Center"
+                                          Background="Transparent"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        
+        <!-- Strict Transparency Overrides -->
+        <Style Selector="Button.SearchIconButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.SearchIconButton:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.SearchIconButton:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
 
-        <!-- Remove default focus effects for browser bar text boxes -->
-        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
+        <!-- Icon Color Logic -->
+        <Style Selector="Button.SearchIconButton:pointerover Path">
+            <Setter Property="Fill" Value="{DynamicResource RimworldHighlightBrush}"/>
         </Style>
-        <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
+        <Style Selector="Button.SearchIconButton:pressed Path">
+            <Setter Property="Fill" Value="{DynamicResource RimworldHighlightBrush}"/>
         </Style>
-        <Style Selector="TextBox">
+        <Style Selector="Button.SearchIconButton:disabled Path">
+            <Setter Property="Opacity" Value="0.5"/>
+            <Setter Property="Fill" Value="{DynamicResource RimworldBrownBrush}"/>
+        </Style>
+
+        <!-- ================================================== -->
+        <!-- 3. TEXTBOX STYLES                                  -->
+        <!-- ================================================== -->
+        <Style Selector="TextBox.BrowserTextBox">
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Padding" Value="5,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="FocusAdorner" Value="{x:Null}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}" />
+            <Setter Property="FontSize" Value="12" />
         </Style>
+        
+        <Style Selector="TextBox.BrowserTextBox /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="TextBox.BrowserTextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="TextBox.BrowserTextBox:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        
+        <Style Selector="TextBox.BrowserTextBox /template/ TextBlock#PART_Watermark">
+            <Setter Property="Foreground" Value="{DynamicResource RimworldLightBrownBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,*" PointerPressed="Root_PointerPressed" Background="Transparent">
+        
         <!-- Navigation Bar -->
         <Border Grid.Row="0" Classes="RimworldInfoHeaderBorder" Padding="5,3">
             <Grid ColumnDefinitions="Auto,Auto,*,Auto,170">
+                
                 <!-- Navigation Buttons -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="2">
-                     <Button Command="{Binding GoBackCommand}" Classes="BrowserNavButtonStyle" ToolTip.Tip="Back" Content="◄" FontSize="12"/>
-                     <Button Command="{Binding GoForwardCommand}" Classes="BrowserNavButtonStyle" ToolTip.Tip="Forward" Content="►" FontSize="12"/>
-                     <Button Command="{Binding GoHomeCommand}" Classes="BrowserNavButtonStyle" ToolTip.Tip="Home" Content="⌂" FontSize="12"/>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                     
+                     <!-- Back -->
+                     <Button Command="{Binding GoBackCommand}" Classes="BrowserNavButtonStyle" ToolTip.Tip="Back" Margin="0,0,2,0">
+                         <Path Data="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" 
+                               Fill="{DynamicResource RimworldWhiteBrush}" Stretch="Uniform" Width="12" Height="12"/>
+                     </Button>
+
+                     <!-- Forward -->
+                     <Button Command="{Binding GoForwardCommand}" Classes="BrowserNavButtonStyle" ToolTip.Tip="Forward" Margin="0,0,2,0">
+                         <Path Data="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" 
+                               Fill="{DynamicResource RimworldWhiteBrush}" Stretch="Uniform" Width="12" Height="12"/>
+                     </Button>
+
+                     <!-- Home: Margin removed, pure center alignment -->
+                     <Button Command="{Binding GoHomeCommand}" Classes="BrowserNavButtonStyle" ToolTip.Tip="Home">
+                         <Path Data="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" 
+                               Fill="{DynamicResource RimworldWhiteBrush}" Stretch="Uniform" Width="14" Height="14"/>
+                     </Button>
                 </StackPanel>
 
-                <!-- Refresh Button -->
-                <Button Grid.Column="1" Command="{Binding RefreshCommand}" Classes="BrowserNavButtonStyle" ToolTip.Tip="Refresh" Content="↻" FontSize="12" Margin="5,0"/>
+                <!-- Refresh -->
+                <Button Grid.Column="1" Command="{Binding RefreshCommand}" Classes="BrowserNavButtonStyle" ToolTip.Tip="Refresh" Margin="5,0,5,0">
+                    <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
+                          Fill="{DynamicResource RimworldWhiteBrush}" Stretch="Uniform" Width="12" Height="12"/>
+                </Button>
 
                 <!-- Address Bar -->
                 <Border Grid.Column="2" Background="{DynamicResource RimworldBeigeBrush}" BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="1" CornerRadius="3" VerticalAlignment="Center" Height="26">
                     <Grid ColumnDefinitions="Auto,*,Auto">
-                        <TextBlock Grid.Column="0" Text="🔒" Margin="5,0,2,0" VerticalAlignment="Center" Foreground="{DynamicResource RimworldDarkGreenBrush}" FontSize="10" IsVisible="{Binding IsSecure}"/>
-                        <TextBox x:Name="AddressTextBox" Grid.Column="1" Text="{Binding AddressBarUrl}" VerticalContentAlignment="Center" Padding="5,0" BorderThickness="0" Background="Transparent" Foreground="{DynamicResource RimworldBrownBrush}" FontSize="12"
-                                 KeyDown="AddressTextBox_KeyDown"/>
-                        <TextBlock Grid.Column="2" Text="⏳" FontSize="10" Foreground="{DynamicResource RimworldBrownBrush}" Margin="2,0,5,0" VerticalAlignment="Center" IsVisible="{Binding IsLoading}"/>
+                        <!-- Lock: Reverted to TextBlock with Font -->
+                        <TextBlock Grid.Column="0" Text="🔒" Margin="5,0,2,0" VerticalAlignment="Center" Foreground="{DynamicResource RimworldDarkGreenBrush}" FontSize="12" ToolTip.Tip="Connection is secure (HTTPS)" IsVisible="{Binding IsSecure}" FontFamily="Segoe UI Symbol"/>
+                        
+                        <TextBox x:Name="AddressTextBox" Grid.Column="1" Classes="BrowserTextBox" Text="{Binding AddressBarUrl}" ToolTip.Tip="Enter URL or search query and press Enter" KeyDown="AddressTextBox_KeyDown"/>
+                        
+                        <TextBlock Grid.Column="2" Text="⏳" FontSize="12" Foreground="{DynamicResource RimworldBrownBrush}" Margin="2,0,5,0" VerticalAlignment="Center" ToolTip.Tip="Page is loading..." IsVisible="{Binding IsLoading}" FontFamily="Segoe UI Symbol"/>
                     </Grid>
                 </Border>
 
@@ -64,10 +200,14 @@
                 <!-- Search Box -->
                 <Border Grid.Column="4" Background="{DynamicResource RimworldBeigeBrush}" BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="1" CornerRadius="3" VerticalAlignment="Center" Height="26" Margin="0,0,5,0">
                     <Grid ColumnDefinitions="*,Auto">
-                         <TextBox x:Name="SearchTextBox" Grid.Column="0" Text="{Binding SearchText}" Watermark="Search Workshop..." VerticalContentAlignment="Center" Padding="5,0,0,0" BorderThickness="0" Background="Transparent" Foreground="{DynamicResource RimworldBrownBrush}" FontSize="12"
-                                  KeyDown="SearchTextBox_KeyDown"/>
-                         <Button x:Name="SearchButton" Grid.Column="1" Command="{Binding SearchCommand}" Content="🔍" FontSize="12" Classes="SearchIconButton" ToolTip.Tip="Search Steam Workshop"
-                                 Click="SearchButton_Click"/>
+                         
+                         <TextBox x:Name="SearchTextBox" Grid.Column="0" Classes="BrowserTextBox" Text="{Binding SearchText}" Watermark="Search Workshop..." KeyDown="SearchTextBox_KeyDown"/>
+                         
+                         <!-- Search Button -->
+                         <Button x:Name="SearchButton" Grid.Column="1" Command="{Binding SearchCommand}" Classes="SearchIconButton" ToolTip.Tip="Search Steam Workshop" Click="SearchButton_Click" Margin="0">
+                             <Path Data="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
+                                   Fill="{DynamicResource RimworldBrownBrush}" Stretch="Uniform" Width="14" Height="14"/>
+                         </Button>
                     </Grid>
                 </Border>
             </Grid>

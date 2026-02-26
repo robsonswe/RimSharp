@@ -247,4 +247,66 @@
         <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
     </Style>
 
+    <!-- Browser Navigation Button Style -->
+    <Style Selector="Button.BrowserNavButtonStyle">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+        <Setter Property="Width" Value="28"/>
+        <Setter Property="Height" Value="24"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Margin" Value="0,0,5,0"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="ButtonBorder"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="2">
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="Button.BrowserNavButtonStyle:pointerover /template/ Border#ButtonBorder">
+        <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
+    </Style>
+
+    <Style Selector="Button.BrowserNavButtonStyle:pressed /template/ Border#ButtonBorder">
+        <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
+    </Style>
+    <Style Selector="Button.BrowserNavButtonStyle:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource RimworldHighlightBrush}"/>
+    </Style>
+
+    <Style Selector="Button.BrowserNavButtonStyle:disabled">
+        <Setter Property="Opacity" Value="0.5"/>
+    </Style>
+    <Style Selector="Button.BrowserNavButtonStyle:disabled /template/ Border#ButtonBorder">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.BrowserNavButtonStyle:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+    </Style>
+<Style Selector="Button.BrowserNavButtonStyle:pressed /template/ Border#ButtonBorder">
+        <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
+    </Style>
+    <Style Selector="Button.BrowserNavButtonStyle:pressed">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource RimworldHighlightBrush}"/>
+    </Style>
+
+    <Style Selector="Button.BrowserNavButtonStyle:disabled">
+        <Setter Property="Opacity" Value="0.5"/>
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+    </Style>
+    <Style Selector="Button.BrowserNavButtonStyle:disabled /template/ Border#ButtonBorder">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
 </Styles>
