@@ -22,10 +22,10 @@
                             <CheckBox Grid.Row="0" Content="Favorite Mod" IsChecked="{Binding IsFavorite}" FontWeight="Bold" FontSize="14"/>
 
                             <Grid Grid.Row="1" ColumnDefinitions="100, *" RowDefinitions="Auto, 10, Auto" Margin="0,15,0,15">
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="External URL:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="External URL:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
                                 <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ExternalUrl}" Classes="RimworldTextBox" Watermark="e.g. https://steamcommunity.com/sharedfiles/..."/>
                                 
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Tags:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Tags:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
                                 <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Tags}" Classes="RimworldTextBox" Watermark="Comma-separated tags"/>
                             </Grid>
 
@@ -54,7 +54,7 @@
                                         </ScrollViewer>
                                     </Border>
                                     
-                                    <TextBlock Text="Custom Versions (comma-separated):" FontSize="12" Margin="0,5,0,0"/>
+                                    <TextBlock Text="Custom Versions (comma-separated):" FontSize="12" Margin="0,5,0,0" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
                                     <TextBox Text="{Binding SupportedVersions}" Classes="RimworldTextBox"/>
                                     
                                     <!-- DISTINCT WHITE DISCLAIMER BOX -->
@@ -81,7 +81,7 @@
 
                                     <StackPanel IsEnabled="{Binding CanCustomizeLoadBottom}" Spacing="8">
                                         <CheckBox Content="Force Load at Bottom" IsChecked="{Binding LoadBottom}" FontWeight="SemiBold"/>
-                                        <TextBlock Text="Comment / Reason:" FontSize="12" IsEnabled="{Binding LoadBottom}"/>
+                                        <TextBlock Text="Comment / Reason:" FontSize="12" IsEnabled="{Binding LoadBottom}" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
                                         <TextBox Text="{Binding LoadBottomComment}" Classes="RimworldTextBox" IsEnabled="{Binding LoadBottom}"/>
                                     </StackPanel>
                                 </StackPanel>

@@ -20,75 +20,76 @@
                     <Border Classes="RimworldSubtlePanelBorder">
                         <Grid RowDefinitions="Auto, 15, Auto, *" Margin="15" VerticalAlignment="Top">
                             
-                            <!-- Search Inputs -->
-                            <Grid Grid.Row="0" ColumnDefinitions="140, *">
-                                <TextBlock Grid.Column="0" Text="Name / PackageId:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
-                                <TextBox Grid.Column="1" Text="{Binding SearchText, Mode=TwoWay}" Classes="RimworldTextBox" Watermark="e.g. Harmony"/>
-                            </Grid>
+                                                        <!-- Search Inputs -->
+                                                        <Grid Grid.Row="0" ColumnDefinitions="140, *">
+                                                            <TextBlock Grid.Column="0" Text="Name / PackageId:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                                            <TextBox Grid.Column="1" Text="{Binding SearchText, Mode=TwoWay}" Classes="RimworldTextBox" Watermark="e.g. Harmony"/>
+                                                        </Grid>
                             
-                            <Grid Grid.Row="2" ColumnDefinitions="140, *">
-                                <TextBlock Grid.Column="0" Text="Author:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
-                                <TextBox Grid.Column="1" Text="{Binding AuthorFilterText, Mode=TwoWay}" Classes="RimworldTextBox" Watermark="e.g. Brrainz"/>
-                            </Grid>
-
-                            <!-- Properties Table -->
-                            <StackPanel Grid.Row="3" Margin="0,20,0,0">
-                                <TextBlock Text="Filter by State &amp; Content" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="0,0,0,10"/>
-                                
-                                <Border BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="1" Background="{DynamicResource RimworldBeigeBrush}">
-                                    <Grid ColumnDefinitions="*, 60, 60, 60" RowDefinitions="Auto, 1, 35, 1, 35, 1, 35, 1, 35">
-                                        
-                                        <!-- Header Row -->
-                                        <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Background="{DynamicResource RimworldLightBrownBrush}" Padding="10,5">
-                                            <Grid ColumnDefinitions="*, 60, 60, 60">
-                                                <TextBlock Text="Criteria" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
-                                                <TextBlock Grid.Column="1" Text="Any" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}" HorizontalAlignment="Center"/>
-                                                <TextBlock Grid.Column="2" Text="Yes" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}" HorizontalAlignment="Center"/>
-                                                <TextBlock Grid.Column="3" Text="No" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}" HorizontalAlignment="Center"/>
-                                            </Grid>
-                                        </Border>
-
-                                        <!-- Row 1: Outdated -->
-                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Is Outdated?" VerticalAlignment="Center" Margin="10,0" FontWeight="SemiBold"/>
-                                        <RadioButton Grid.Row="2" Grid.Column="1" GroupName="IsOutdated" 
-                                                     IsChecked="{Binding IsOutdatedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
-                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsOutdated|Null"/>
-                                        <RadioButton Grid.Row="2" Grid.Column="2" GroupName="IsOutdated" 
-                                                     IsChecked="{Binding IsOutdatedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"
-                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsOutdated|False"/>
-                                        <RadioButton Grid.Row="2" Grid.Column="3" GroupName="IsOutdated" 
-                                                     IsChecked="{Binding IsOutdatedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"
-                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsOutdated|True"/>
-                                        <Rectangle Grid.Row="3" Grid.ColumnSpan="4" Fill="{DynamicResource RimworldBrownBrush}" Opacity="0.3"/>
-
-                                        <!-- Row 2: Favorite -->
-                                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Is Favorite?" VerticalAlignment="Center" Margin="10,0" FontWeight="SemiBold"/>
-                                        <RadioButton Grid.Row="4" Grid.Column="1" GroupName="IsFavorite" 
-                                                     IsChecked="{Binding IsFavoriteFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
-                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsFavorite|Null"/>
-                                        <RadioButton Grid.Row="4" Grid.Column="2" GroupName="IsFavorite" 
-                                                     IsChecked="{Binding IsFavoriteFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"
-                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsFavorite|True"/>
-                                        <RadioButton Grid.Row="4" Grid.Column="3" GroupName="IsFavorite" 
-                                                     IsChecked="{Binding IsFavoriteFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"
-                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsFavorite|False"/>
-                                        <Rectangle Grid.Row="5" Grid.ColumnSpan="4" Fill="{DynamicResource RimworldBrownBrush}" Opacity="0.3"/>
-
-                                        <!-- Row 3: Assemblies -->
-                                        <TextBlock Grid.Row="6" Grid.Column="0" Text="Has Assemblies (.dll)?" VerticalAlignment="Center" Margin="10,0" FontWeight="SemiBold"/>
-                                        <RadioButton Grid.Row="6" Grid.Column="1" GroupName="HasAssemblies" 
-                                                     IsChecked="{Binding HasAssembliesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
-                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasAssemblies|Null"/>
-                                        <RadioButton Grid.Row="6" Grid.Column="2" GroupName="HasAssemblies" 
-                                                     IsChecked="{Binding HasAssembliesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"
-                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasAssemblies|True"/>
-                                        <RadioButton Grid.Row="6" Grid.Column="3" GroupName="HasAssemblies" 
-                                                     IsChecked="{Binding HasAssembliesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"
-                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasAssemblies|False"/>
-                                        <Rectangle Grid.Row="7" Grid.ColumnSpan="4" Fill="{DynamicResource RimworldBrownBrush}" Opacity="0.3"/>
-
-                                        <!-- Row 4: Textures -->
-                                        <TextBlock Grid.Row="8" Grid.Column="0" Text="Has Textures?" VerticalAlignment="Center" Margin="10,0" FontWeight="SemiBold"/>
+                                                        <Grid Grid.Row="2" ColumnDefinitions="140, *">
+                                                            <TextBlock Grid.Column="0" Text="Author:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                                            <TextBox Grid.Column="1" Text="{Binding AuthorFilterText, Mode=TwoWay}" Classes="RimworldTextBox" Watermark="e.g. Brrainz"/>
+                                                        </Grid>
+                            
+                                                        <!-- Properties Table -->
+                                                        <StackPanel Grid.Row="3" Margin="0,20,0,0">
+                                                            <TextBlock Text="Filter by State &amp; Content" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="0,0,0,10"/>
+                            
+                                                            <Border BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="1" Background="{DynamicResource RimworldBeigeBrush}">
+                                                                <Grid ColumnDefinitions="*, 60, 60, 60" RowDefinitions="Auto, 1, 35, 1, 35, 1, 35, 1, 35">
+                            
+                                                                    <!-- Header Row -->
+                                                                    <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Background="{DynamicResource RimworldLightBrownBrush}" Padding="10,5">
+                                                                        <Grid ColumnDefinitions="*, 60, 60, 60">
+                                                                            <TextBlock Text="Criteria" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                                                            <TextBlock Grid.Column="1" Text="Any" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}" HorizontalAlignment="Center"/>
+                                                                            <TextBlock Grid.Column="2" Text="Yes" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}" HorizontalAlignment="Center"/>
+                                                                            <TextBlock Grid.Column="3" Text="No" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}" HorizontalAlignment="Center"/>
+                                                                        </Grid>
+                                                                    </Border>
+                            
+                                                                    <!-- Row 1: Outdated -->
+                                                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Is Outdated?" VerticalAlignment="Center" Margin="10,0" FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                                                    <RadioButton Grid.Row="2" Grid.Column="1" GroupName="IsOutdated" 
+                                                                                 IsChecked="{Binding IsOutdatedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
+                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsOutdated|Null"/>
+                                                                    <RadioButton Grid.Row="2" Grid.Column="2" GroupName="IsOutdated" 
+                                                                                 IsChecked="{Binding IsOutdatedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"
+                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsOutdated|False"/>
+                                                                    <RadioButton Grid.Row="2" Grid.Column="3" GroupName="IsOutdated" 
+                                                                                 IsChecked="{Binding IsOutdatedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"
+                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsOutdated|True"/>
+                                                                    <Rectangle Grid.Row="3" Grid.ColumnSpan="4" Fill="{DynamicResource RimworldBrownBrush}" Opacity="0.3"/>
+                            
+                                                                    <!-- Row 2: Favorite -->
+                                                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Is Favorite?" VerticalAlignment="Center" Margin="10,0" FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                                                    <RadioButton Grid.Row="4" Grid.Column="1" GroupName="IsFavorite" 
+                                                                                 IsChecked="{Binding IsFavoriteFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
+                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsFavorite|Null"/>
+                                                                    <RadioButton Grid.Row="4" Grid.Column="2" GroupName="IsFavorite" 
+                                                                                 IsChecked="{Binding IsFavoriteFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"
+                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsFavorite|True"/>
+                                                                    <RadioButton Grid.Row="4" Grid.Column="3" GroupName="IsFavorite" 
+                                                                                 IsChecked="{Binding IsFavoriteFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"
+                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsFavorite|False"/>
+                                                                    <Rectangle Grid.Row="5" Grid.ColumnSpan="4" Fill="{DynamicResource RimworldBrownBrush}" Opacity="0.3"/>
+                            
+                                                                    <!-- Row 3: Assemblies -->
+                                                                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Has Assemblies (.dll)?" VerticalAlignment="Center" Margin="10,0" FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                                                    <RadioButton Grid.Row="6" Grid.Column="1" GroupName="HasAssemblies" 
+                                                                                 IsChecked="{Binding HasAssembliesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
+                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasAssemblies|Null"/>
+                                                                    <RadioButton Grid.Row="6" Grid.Column="2" GroupName="HasAssemblies" 
+                                                                                 IsChecked="{Binding HasAssembliesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"
+                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasAssemblies|True"/>
+                                                                    <RadioButton Grid.Row="6" Grid.Column="3" GroupName="HasAssemblies" 
+                                                                                 IsChecked="{Binding HasAssembliesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"
+                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasAssemblies|False"/>
+                                                                    <Rectangle Grid.Row="7" Grid.ColumnSpan="4" Fill="{DynamicResource RimworldBrownBrush}" Opacity="0.3"/>
+                            
+                                                                    <!-- Row 4: Textures -->
+                                                                    <TextBlock Grid.Row="8" Grid.Column="0" Text="Has Textures?" VerticalAlignment="Center" Margin="10,0" FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                            
                                         <RadioButton Grid.Row="8" Grid.Column="1" GroupName="HasTextures" 
                                                      IsChecked="{Binding HasTexturesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
                                                      Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasTextures|Null"/>

@@ -107,38 +107,79 @@
 
     <!-- RimWorld-style CheckBox -->
     <Style Selector="CheckBox.RimworldCheckBox, CheckBox">
-        <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
-    </Style>
-    <Style Selector="CheckBox.RimworldCheckBox /template/ Border#NormalRectangle, CheckBox /template/ Border#NormalRectangle">
-        <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-        <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
-        <Setter Property="CornerRadius" Value="0"/>
-        <Setter Property="BorderThickness" Value="1"/>
-    </Style>
-    <Style Selector="CheckBox.RimworldCheckBox:checked /template/ Border#NormalRectangle, CheckBox:checked /template/ Border#NormalRectangle">
-        <Setter Property="Background" Value="{DynamicResource RimworldBrownBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-    </Style>
-    <Style Selector="CheckBox.RimworldCheckBox:checked /template/ Path#CheckMark, CheckBox:checked /template/ Path#CheckMark">
-        <Setter Property="Fill" Value="{DynamicResource RimworldWhiteBrush}"/>
-    </Style>
-    <Style Selector="CheckBox.RimworldCheckBox:pointerover /template/ Border#NormalRectangle, CheckBox:pointerover /template/ Border#NormalRectangle">
-        <Setter Property="BorderBrush" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="Padding" Value="8,0,0,0"/>
+        <Style.Resources>
+            <!-- Border / Stroke - Unchecked -->
+            <StaticResource x:Key="CheckBoxCheckBackgroundStroke" ResourceKey="RimworldBrownBrush" />
+            <StaticResource x:Key="CheckBoxCheckBackgroundStrokePointerOver" ResourceKey="RimworldDarkBrownBrush" />
+            <StaticResource x:Key="CheckBoxCheckBackgroundStrokePressed" ResourceKey="RimworldDarkBrownBrush" />
+            <StaticResource x:Key="CheckBoxCheckBackgroundStrokeDisabled" ResourceKey="RimworldGrayBrush" />
+
+            <!-- Background / Fill - Unchecked -->
+            <StaticResource x:Key="CheckBoxCheckBackgroundFill" ResourceKey="RimworldBeigeBrush" />
+            <StaticResource x:Key="CheckBoxCheckBackgroundFillPointerOver" ResourceKey="RimworldDarkBeigeBrush" />
+            <StaticResource x:Key="CheckBoxCheckBackgroundFillPressed" ResourceKey="RimworldDarkBeigeBrush" />
+            <StaticResource x:Key="CheckBoxCheckBackgroundFillDisabled" ResourceKey="RimworldGrayBrush" />
+
+            <!-- Border / Stroke - Checked -->
+            <StaticResource x:Key="CheckBoxCheckBackgroundStrokeChecked" ResourceKey="RimworldBrownBrush" />
+            <StaticResource x:Key="CheckBoxCheckBackgroundStrokeCheckedPointerOver" ResourceKey="RimworldDarkBrownBrush" />
+            <StaticResource x:Key="CheckBoxCheckBackgroundStrokeCheckedPressed" ResourceKey="RimworldDarkBrownBrush" />
+            <StaticResource x:Key="CheckBoxCheckBackgroundStrokeCheckedDisabled" ResourceKey="RimworldGrayBrush" />
+
+            <!-- Background / Fill - Checked -->
+            <StaticResource x:Key="CheckBoxCheckBackgroundFillChecked" ResourceKey="RimworldBrownBrush" />
+            <StaticResource x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" ResourceKey="RimworldDarkBrownBrush" />
+            <StaticResource x:Key="CheckBoxCheckBackgroundFillCheckedPressed" ResourceKey="RimworldDarkBrownBrush" />
+            <StaticResource x:Key="CheckBoxCheckBackgroundFillCheckedDisabled" ResourceKey="RimworldGrayBrush" />
+
+            <!-- Foreground - Ensure ALWAYS brown -->
+            <StaticResource x:Key="CheckBoxForeground" ResourceKey="RimworldBrownBrush" />
+            <StaticResource x:Key="CheckBoxForegroundPointerOver" ResourceKey="RimworldBrownBrush" />
+            <StaticResource x:Key="CheckBoxForegroundPressed" ResourceKey="RimworldBrownBrush" />
+            <StaticResource x:Key="CheckBoxForegroundChecked" ResourceKey="RimworldBrownBrush" />
+            <StaticResource x:Key="CheckBoxForegroundCheckedPointerOver" ResourceKey="RimworldBrownBrush" />
+            <StaticResource x:Key="CheckBoxForegroundCheckedPressed" ResourceKey="RimworldBrownBrush" />
+            <StaticResource x:Key="CheckBoxForegroundDisabled" ResourceKey="RimworldGrayBrush" />
+
+            <!-- Glyph (Checkmark) -->
+            <StaticResource x:Key="CheckBoxCheckGlyphForegroundChecked" ResourceKey="RimworldWhiteBrush" />
+            <StaticResource x:Key="CheckBoxCheckGlyphForegroundCheckedPointerOver" ResourceKey="RimworldWhiteBrush" />
+            <StaticResource x:Key="CheckBoxCheckGlyphForegroundCheckedPressed" ResourceKey="RimworldWhiteBrush" />
+        </Style.Resources>
     </Style>
 
     <!-- RimWorld-style RadioButton -->
     <Style Selector="RadioButton.RimworldRadioButton, RadioButton">
-        <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
-    </Style>
-    <Style Selector="RadioButton.RimworldRadioButton /template/ Ellipse#OuterEllipse, RadioButton /template/ Ellipse#OuterEllipse">
-        <Setter Property="Stroke" Value="{DynamicResource RimworldBrownBrush}"/>
-        <Setter Property="Fill" Value="{DynamicResource RimworldBeigeBrush}"/>
-        <Setter Property="StrokeThickness" Value="1"/>
-        <Setter Property="Width" Value="16"/>
-        <Setter Property="Height" Value="16"/>
-    </Style>
-    <Style Selector="RadioButton.RimworldRadioButton:checked /template/ Ellipse#CheckGlyph, RadioButton:checked /template/ Ellipse#CheckGlyph">
-        <Setter Property="Fill" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="Padding" Value="8,0,0,0"/>
+        <Style.Resources>
+            <!-- Normal State -->
+            <StaticResource x:Key="RadioButtonOuterEllipseFill" ResourceKey="RimworldBeigeBrush" />
+            <StaticResource x:Key="RadioButtonOuterEllipseStroke" ResourceKey="RimworldBrownBrush" />
+            
+            <!-- PointerOver State -->
+            <StaticResource x:Key="RadioButtonOuterEllipseFillPointerOver" ResourceKey="RimworldDarkBeigeBrush" />
+            <StaticResource x:Key="RadioButtonOuterEllipseStrokePointerOver" ResourceKey="RimworldDarkBrownBrush" />
+            <StaticResource x:Key="RadioButtonForegroundPointerOver" ResourceKey="RimworldBrownBrush" />
+            
+            <!-- Pressed State -->
+            <StaticResource x:Key="RadioButtonOuterEllipseFillPressed" ResourceKey="RimworldDarkBeigeBrush" />
+            <StaticResource x:Key="RadioButtonOuterEllipseStrokePressed" ResourceKey="RimworldDarkBrownBrush" />
+            <StaticResource x:Key="RadioButtonForegroundPressed" ResourceKey="RimworldBrownBrush" />
+            
+            <!-- Checked State -->
+            <StaticResource x:Key="RadioButtonOuterEllipseFillChecked" ResourceKey="RimworldBrownBrush" />
+            <StaticResource x:Key="RadioButtonOuterEllipseStrokeChecked" ResourceKey="RimworldBrownBrush" />
+            <StaticResource x:Key="RadioButtonOuterEllipseFillCheckedPointerOver" ResourceKey="RimworldDarkBrownBrush" />
+            <StaticResource x:Key="RadioButtonOuterEllipseStrokeCheckedPointerOver" ResourceKey="RimworldDarkBrownBrush" />
+            
+            <!-- Glyph (Dot) -->
+            <StaticResource x:Key="RadioButtonCheckGlyphFill" ResourceKey="RimworldWhiteBrush" />
+            <StaticResource x:Key="RadioButtonCheckGlyphFillPointerOver" ResourceKey="RimworldWhiteBrush" />
+            <StaticResource x:Key="RadioButtonCheckGlyphFillPressed" ResourceKey="RimworldWhiteBrush" />
+        </Style.Resources>
     </Style>
 
     <!-- RimWorld-style TabItem (Toggles) -->
@@ -267,9 +308,6 @@
     </Style>
     <Style Selector="ListBox.RimworldSafeListBox ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
-    </Style>
-    <Style Selector="ListBox.RimworldSafeListBox ListBoxItem:selected TextBlock">
-        <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
     </Style>
     <Style Selector="ListBox.RimworldSafeListBox ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
