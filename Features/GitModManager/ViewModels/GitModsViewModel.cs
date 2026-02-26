@@ -228,7 +228,7 @@ namespace RimSharp.Features.GitModManager.ViewModels
             finally
             {
                 IsBusy = false;
-                ((AsyncRelayCommand)PullUpdatesCommand).RaiseCanExecuteChanged();
+                ((IDelegateCommand)PullUpdatesCommand).RaiseCanExecuteChanged();
             }
         }
 
@@ -263,7 +263,7 @@ namespace RimSharp.Features.GitModManager.ViewModels
             finally
             {
                 IsBusy = false;
-                ((AsyncRelayCommand)PullUpdatesCommand).RaiseCanExecuteChanged();
+                ((IDelegateCommand)PullUpdatesCommand).RaiseCanExecuteChanged();
             }
         }
 
@@ -617,8 +617,8 @@ namespace RimSharp.Features.GitModManager.ViewModels
                 // Update commands that depend on selection state (PullUpdatesCommand)
                 RunOnUIThread(() => 
                 {
-                    ((AsyncRelayCommand)PullUpdatesCommand).RaiseCanExecuteChanged();
-                    ((AsyncRelayCommand)PullIndividualUpdateCommand).RaiseCanExecuteChanged();
+                    ((IDelegateCommand)PullUpdatesCommand).RaiseCanExecuteChanged();
+                    ((IDelegateCommand<GitModItemWrapper>)PullIndividualUpdateCommand).RaiseCanExecuteChanged();
                     OnPropertyChanged(nameof(SelectAll));
                 });
                 Debug.WriteLine("[DEBUG] Item selection changed, PullUpdatesCommand.CanExecute updated");
