@@ -8,7 +8,10 @@
     <dialogs:BaseDialog.MainContent>
         <StackPanel Margin="10" Spacing="5">
             <TextBlock Text="Package ID:"/>
-            <TextBox Text="{Binding PackageId}" Margin="0,0,0,5"/>
+            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,5">
+                <TextBox Grid.Column="0" Text="{Binding PackageId}"/>
+                <Button Grid.Column="1" Content="Search" Command="{Binding OpenModSelectorCommand}" Margin="5,0,0,0" Classes="RimworldButtonStyle"/>
+            </Grid>
 
             <TextBlock Text="Display Name:"/>
             <TextBox Text="{Binding DisplayName}" Margin="0,0,0,5"/>

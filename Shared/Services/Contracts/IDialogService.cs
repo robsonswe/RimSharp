@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
+using RimSharp.Features.ModManager.Dialogs.ModSelector;
 using RimSharp.Features.ModManager.Dialogs.Dependencies;
 using RimSharp.Features.ModManager.Dialogs.Filter;
 using RimSharp.Features.ModManager.Dialogs.Replacements;
@@ -53,6 +54,9 @@ namespace RimSharp.Shared.Services.Contracts
         void ShowIncompatibilityDialog(RimSharp.Features.ModManager.Dialogs.Incompatibilities.ModIncompatibilityDialogViewModel viewModel);
         Task<bool> ShowDuplicateModsDialogAsync(RimSharp.Features.ModManager.Dialogs.DuplicateMods.DuplicateModDialogViewModel viewModel);
         void ShowDuplicateModsDialog(RimSharp.Features.ModManager.Dialogs.DuplicateMods.DuplicateModDialogViewModel viewModel);
+        
+        Task<RimSharp.Shared.Models.ModItem?> ShowModSelectorDialogAsync(ModSelectorDialogViewModel viewModel);
+        RimSharp.Shared.Models.ModItem? ShowModSelectorDialog(ModSelectorDialogViewModel viewModel);
         
         // File dialogs - delegated to IFileDialogService for cross-platform support
         Task<(bool Result, string? FilePath)> ShowOpenFileDialogAsync(string title, string filter, string initialDirectory = "");
