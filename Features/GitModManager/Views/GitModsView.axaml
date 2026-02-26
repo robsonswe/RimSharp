@@ -43,10 +43,11 @@
             <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Padding" Value="8,6"/>
             <Setter Property="SeparatorBrush" Value="{DynamicResource RimworldBrownBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
             <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
         </Style>
 
         <Style Selector="DataGridRow">
@@ -106,8 +107,9 @@
                           AutoGenerateColumns="False"
                           IsReadOnly="True"
                           CanUserSortColumns="True"
+                          CanUserResizeColumns="True"
                           RowDetailsVisibilityMode="VisibleWhenSelected"
-                          HorizontalScrollBarVisibility="Disabled"
+                          HorizontalScrollBarVisibility="Auto"
                           VerticalScrollBarVisibility="Auto"
                           BorderThickness="0">
                     <DataGrid.ContextMenu>
@@ -131,12 +133,12 @@
                         </ContextMenu>
                     </DataGrid.ContextMenu>
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Name" Binding="{Binding ModItem.Name}" Width="2*"/>
+                        <DataGridTextColumn Header="Name" Binding="{Binding ModItem.Name}" Width="2*" CanUserResize="True"/>
                         
-                        <DataGridTemplateColumn Header="Updates" Width="150">
+                        <DataGridTemplateColumn Header="Updates" Width="Auto" MinWidth="150" CanUserResize="True">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate x:DataType="vm:GitModItemWrapper">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="5">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="5" Margin="10,0">
                                         <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" 
                                                    IsVisible="{Binding UpdateStatus, Converter={StaticResource EqualityConverter}, ConverterParameter='Up to date'}"
                                                    Foreground="ForestGreen" VerticalAlignment="Center"/>
@@ -152,22 +154,22 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <DataGridTextColumn Header="Version" Binding="{Binding ModItem.ModVersion}" Width="100"/>
+                        <DataGridTextColumn Header="Version" Binding="{Binding ModItem.ModVersion}" Width="100" CanUserResize="True"/>
                         
-                        <DataGridTemplateColumn Header="Supported Versions" Width="150">
+                        <DataGridTemplateColumn Header="Supported Versions" Width="Auto" MinWidth="135" CanUserResize="True">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate x:DataType="vm:GitModItemWrapper">
                                     <ContentControl Content="{Binding ModItem.SupportedVersions, Converter={StaticResource VersionSupportConverter}}"
-                                                   FontSize="11" VerticalAlignment="Center"/>
+                                                   FontSize="11" VerticalAlignment="Center" Margin="10,0"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <DataGridTemplateColumn Header="Active" Width="80">
+                        <DataGridTemplateColumn Header="Active" Width="Auto" MinWidth="70" CanUserResize="True">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate x:DataType="vm:GitModItemWrapper">
                                     <Border Background="{Binding ModItem.IsActive, Converter={StaticResource BooleanToColorConverter}, ConverterParameter='#20008000|#20808080'}"
-                                            CornerRadius="4" Padding="8,2">
+                                            CornerRadius="4" Padding="8,2" Margin="10,0" HorizontalAlignment="Center">
                                         <TextBlock Text="{Binding ModItem.IsActive, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='Yes|No'}"
                                                    Foreground="{Binding ModItem.IsActive, Converter={StaticResource BooleanToColorConverter}, ConverterParameter='ForestGreen|RimworldDarkBrown'}"
                                                    FontWeight="Bold"
@@ -177,7 +179,7 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <DataGridTextColumn Header="Package ID" Binding="{Binding ModItem.PackageId}" Width="1.5*"/>
+                        <DataGridTextColumn Header="Package ID" Binding="{Binding ModItem.PackageId}" Width="1.5*" CanUserResize="True"/>
                     </DataGrid.Columns>
 
                     <DataGrid.RowDetailsTemplate>

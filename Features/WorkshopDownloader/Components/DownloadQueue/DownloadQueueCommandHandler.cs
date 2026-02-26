@@ -891,8 +891,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                     if (progressDialog != null)
                     {
                         progressDialog.Message = $"Checking {update.modName}... ({update.current}/{update.total})";
-                        progressDialog.Progress = (int)((double)update.current / update.total * 100);
-                        progressDialog.IsIndeterminate = false;
+                        progressDialog.IsIndeterminate = true;
                     }
                     StatusChanged?.Invoke(this, $"Checking {update.modName} ({update.current} of {update.total})...");
                 });

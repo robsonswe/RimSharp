@@ -35,8 +35,9 @@
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
             <Setter Property="BorderThickness" Value="0,0,1,1"/>
-            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Padding" Value="8,6"/>
             <Setter Property="SeparatorBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
         </Style>
 
         <Style Selector="DataGridRow:nth-child(odd)">
@@ -83,13 +84,13 @@
                         <Rectangle Width="1" Fill="{DynamicResource RimworldBrownBrush}" Margin="5,2"/>
 
                         <Menu Background="Transparent" VerticalAlignment="Center">
-                            <MenuItem Header="Select by Update" Classes="RimworldButtonStyle" Padding="10,4">
-                                <MenuItem Header="Outdated (Game Version)" Command="{Binding SelectByTimeframeCommand}" CommandParameter="outdated"/>
+                            <MenuItem Header="Select by Update" Classes="RimworldDropDownButtonStyle" Padding="15,5">
+                                <MenuItem Header="Outdated (Game Version)" Command="{Binding SelectByTimeframeCommand}" CommandParameter="outdated" Classes="RimworldMenuItemStyle"/>
                                 <Separator Classes="RimworldSeparatorStyle"/>
-                                <MenuItem Header="Not updated in 1 week" Command="{Binding SelectByTimeframeCommand}" CommandParameter="week"/>
-                                <MenuItem Header="Not updated in 1 month" Command="{Binding SelectByTimeframeCommand}" CommandParameter="month"/>
-                                <MenuItem Header="Not updated in 6 months" Command="{Binding SelectByTimeframeCommand}" CommandParameter="6months"/>
-                                <MenuItem Header="Not updated in 1 year" Command="{Binding SelectByTimeframeCommand}" CommandParameter="year"/>
+                                <MenuItem Header="Not updated in 1 week" Command="{Binding SelectByTimeframeCommand}" CommandParameter="week" Classes="RimworldMenuItemStyle"/>
+                                <MenuItem Header="Not updated in 1 month" Command="{Binding SelectByTimeframeCommand}" CommandParameter="month" Classes="RimworldMenuItemStyle"/>
+                                <MenuItem Header="Not updated in 6 months" Command="{Binding SelectByTimeframeCommand}" CommandParameter="6months" Classes="RimworldMenuItemStyle"/>
+                                <MenuItem Header="Not updated in 1 year" Command="{Binding SelectByTimeframeCommand}" CommandParameter="year" Classes="RimworldMenuItemStyle"/>
                             </MenuItem>
                         </Menu>
                     </StackPanel>
@@ -108,13 +109,16 @@
                           AutoGenerateColumns="False"
                           IsReadOnly="True"
                           CanUserSortColumns="True"
+                          CanUserResizeColumns="True"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto"
                           BorderThickness="0">
                     <DataGrid.Columns>
-                        <DataGridTemplateColumn Width="60">
+                        <DataGridTemplateColumn Width="Auto" MinWidth="70" CanUserResize="True">
                             <DataGridTemplateColumn.HeaderTemplate>
                                 <DataTemplate>
                                     <CheckBox IsChecked="{Binding #RootUpdateCheckDialog.((vm:UpdateCheckDialogViewModel)DataContext).SelectAll, Mode=TwoWay, FallbackValue=False}"
-                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" Margin="12,0,0,0"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.HeaderTemplate>
                             <DataGridTemplateColumn.CellTemplate>
@@ -125,15 +129,15 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*"/>
-                        <DataGridTextColumn Header="Package ID" Binding="{Binding PackageId}" Width="1.5*"/>
-                        <DataGridTextColumn Header="Steam ID" Binding="{Binding SteamId}" Width="110"/>
+                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*" CanUserResize="True"/>
+                        <DataGridTextColumn Header="Package ID" Binding="{Binding PackageId}" Width="1.5*" CanUserResize="True"/>
+                        <DataGridTextColumn Header="Steam ID" Binding="{Binding SteamId}" Width="Auto" MinWidth="110" CanUserResize="True"/>
                         
-                        <DataGridTemplateColumn Header="Last Update" Width="150">
+                        <DataGridTemplateColumn Header="Last Update" Width="Auto" MinWidth="150" CanUserResize="True">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate x:DataType="vm:UpdateCheckItemViewModel">
                                     <TextBlock Text="{Binding LocalUpdateDate}" 
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" Margin="10,0"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>

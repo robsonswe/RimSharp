@@ -94,6 +94,8 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
             {
                 item.IsSelected = item.ModItem.IsActive;
             }
+            UpdateSelectedCount();
+            this.RaisePropertyChanged(nameof(SelectAll));
         }
 
         private void SelectByTimeframe(string timeframe)
@@ -118,6 +120,8 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
                     item.IsSelected = item.LocalUpdateDateTime < cutoff;
                 }
             }
+            UpdateSelectedCount();
+            this.RaisePropertyChanged(nameof(SelectAll));
         }
 
         private void ExecuteUpdate()

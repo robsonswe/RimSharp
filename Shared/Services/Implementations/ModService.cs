@@ -1090,11 +1090,17 @@ namespace RimSharp.Shared.Services.Implementations
                 var doc = XDocument.Load(configPath);
 
                 // Create a lookup dictionary for faster mod searches
-                var packageIdLookup = _allMods.ToDictionary(
-                    m => m.PackageId?.ToLowerInvariant() ?? string.Empty,
-                    m => m,
-                    StringComparer.OrdinalIgnoreCase
-                );
+                // Handle duplicate PackageIds safely by taking the first one found (usually priority is handled elsewhere)
+                var packageIdLookup = new Dictionary<string, ModItem>(StringComparer.OrdinalIgnoreCase);
+                foreach (var mod in _allMods)
+                {
+                    if (string.IsNullOrEmpty(mod.PackageId)) continue;
+                    var key = mod.PackageId.ToLowerInvariant();
+                    if (!packageIdLookup.ContainsKey(key))
+                    {
+                        packageIdLookup[key] = mod;
+                    }
+                }
 
                 // Get active mod IDs and set IsActive efficiently
                 var activeMods = doc.Root?.Element("activeMods")?.Elements("li")
