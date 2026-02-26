@@ -88,6 +88,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         private ModCustomInfo _customInfo;
 
         private readonly List<string> _originalLoadBefore;
+        private readonly List<string> _originalDependencies;
         private readonly List<string> _originalLoadAfter;
         private readonly List<string> _originalIncompatibilities;
         private readonly bool _originalLoadBottom;
@@ -99,11 +100,13 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         // Original mod properties (display-only)
         public bool HasOriginalLoadBottom => _originalLoadBottom;
         public List<string> OriginalLoadBeforeItems => _originalLoadBefore;
+        public List<string> OriginalDependenciesItems => _originalDependencies;
         public List<string> OriginalLoadAfterItems => _originalLoadAfter;
         public List<string> OriginalIncompatibilityItems => _originalIncompatibilities;
         public List<string> OriginalSupportedVersions => _originalSupportedVersions;
         public bool HasOriginalVersions => OriginalSupportedVersions?.Any() ?? false;
         public bool HasOriginalLoadBefore => OriginalLoadBeforeItems?.Any() ?? false;
+        public bool HasOriginalDependencies => OriginalDependenciesItems?.Any() ?? false;
         public bool HasOriginalLoadAfter => OriginalLoadAfterItems?.Any() ?? false;
         public bool HasOriginalIncompatibilities => OriginalIncompatibilityItems?.Any() ?? false;
 
@@ -209,6 +212,9 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             _originalLoadBefore = mod.LoadBefore?
                 .Where(id => !_customInfo.LoadBefore?.ContainsKey(id) ?? true)
                 .ToList() ?? new List<string>();
+
+            // Dependencies are immutable for customization but used for validation
+            _originalDependencies = mod.ModDependencies?.Select(d => d.PackageId).ToList() ?? new List<string>();
 
             _originalLoadAfter = mod.LoadAfter?
                 .Where(id => !_customInfo.LoadAfter?.ContainsKey(id) ?? true)
@@ -434,6 +440,10 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                 (_originalLoadBefore.Contains(packageId) || CustomLoadBefore.Any(x => x.PackageId == packageId)))
                 return true;
 
+            // Check if in Dependencies (original) - always treated as a LoadBefore
+            if (listType != "LoadBefore" && _originalDependencies.Contains(packageId))
+                return true;
+
             // Check if in LoadAfter (original or custom)
             if (listType != "LoadAfter" &&
                 (_originalLoadAfter.Contains(packageId) || CustomLoadAfter.Any(x => x.PackageId == packageId)))
@@ -459,10 +469,17 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                 return false;
             }
 
+            // Check if it's already a dependency (redundant but not an error)
+            if (_originalDependencies.Contains(packageId))
+            {
+                await _dialogService.ShowInformation("Redundant Rule", $"Package ID '{packageId}' is already a dependency. Dependencies are automatically loaded before this mod.");
+                return false;
+            }
+
             // Check if in other lists
             if (IsPackageIdInOtherLists(packageId, "LoadBefore"))
             {
-                await _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list. " +
+                await _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list (Load After or Incompatible). " +
                     "A package ID cannot be in multiple lists.");
                 return false;
             }
@@ -482,10 +499,17 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                 return false;
             }
 
+            // Check if it's a dependency (conflict: dependencies must be before)
+            if (_originalDependencies.Contains(packageId))
+            {
+                await _dialogService.ShowError("Rule Conflict", $"Package ID '{packageId}' is a dependency. Dependencies MUST be loaded before this mod, so they cannot be added to the Load After list.");
+                return false;
+            }
+
             // Check if in other lists
             if (IsPackageIdInOtherLists(packageId, "LoadAfter"))
             {
-                await _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list. " +
+                await _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list (Load Before or Incompatible). " +
                     "A package ID cannot be in multiple lists.");
                 return false;
             }
@@ -505,10 +529,17 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                 return false;
             }
 
+            // Check if it's a dependency (conflict)
+            if (_originalDependencies.Contains(packageId))
+            {
+                await _dialogService.ShowError("Rule Conflict", $"Package ID '{packageId}' is a dependency. A required dependency cannot also be marked as incompatible.");
+                return false;
+            }
+
             // Check if in other lists
             if (IsPackageIdInOtherLists(packageId, "IncompatibleWith"))
             {
-                await _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list. " +
+                await _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list (Load Before or Load After). " +
                     "A package ID cannot be in multiple lists.");
                 return false;
             }

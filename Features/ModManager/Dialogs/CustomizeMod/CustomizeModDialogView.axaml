@@ -78,7 +78,7 @@
                 </Border>
                 
                 <!-- Expander: Load Before -->
-                <Expander Header="Load Before Rules" IsExpanded="True">
+                <Expander Header="Load Before Rules" IsExpanded="False">
                     <StackPanel Spacing="10" Margin="10">
                         <Border Padding="5" BorderBrush="#CCCCCC" BorderThickness="1" Background="#F0F0F0" IsVisible="{Binding HasOriginalLoadBefore}">
                             <StackPanel Spacing="5">
@@ -105,6 +105,90 @@
                             <Button Content="Add" Command="{Binding AddLoadBeforeCommand}" Classes="RimworldButtonStyle"/>
                             <Button Content="Edit" Command="{Binding EditLoadBeforeCommand}" Classes="RimworldButtonStyle"/>
                             <Button Content="Remove" Command="{Binding RemoveLoadBeforeCommand}" Classes="RimworldButtonStyle"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Expander>
+
+                <!-- Expander: Dependencies (Read-only) -->
+                <Expander Header="Original Dependencies" IsExpanded="False" IsVisible="{Binding HasOriginalDependencies}">
+                    <StackPanel Spacing="10" Margin="10">
+                        <Border Padding="5" BorderBrush="#CCCCCC" BorderThickness="1" Background="#F0F0F0">
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="These mods MUST be loaded before this mod:" FontWeight="SemiBold" Foreground="Black"/>
+                                <ItemsControl ItemsSource="{Binding OriginalDependenciesItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" Margin="5,2,0,2" Foreground="Black"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Text="Dependencies cannot be customized here." Foreground="Gray" FontSize="11" FontStyle="Italic"/>
+                    </StackPanel>
+                </Expander>
+
+                <!-- Expander: Load After -->
+                <Expander Header="Load After Rules" IsExpanded="False">
+                    <StackPanel Spacing="10" Margin="10">
+                        <Border Padding="5" BorderBrush="#CCCCCC" BorderThickness="1" Background="#F0F0F0" IsVisible="{Binding HasOriginalLoadAfter}">
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="Original Load After Rules:" FontWeight="SemiBold" Foreground="Black"/>
+                                <ItemsControl ItemsSource="{Binding OriginalLoadAfterItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" Margin="5,2,0,2" Foreground="Black"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                        
+                        <DataGrid ItemsSource="{Binding CustomLoadAfter}" MaxHeight="150" SelectedItem="{Binding SelectedLoadAfterRule}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="All">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Package ID" Binding="{Binding PackageId}" Width="150"/>
+                                <DataGridTextColumn Header="Display Name" Binding="{Binding DisplayName}" Width="150"/>
+                                <DataGridTextColumn Header="Comment" Binding="{Binding Comment}" Width="200"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                            <Button Content="Add" Command="{Binding AddLoadAfterCommand}" Classes="RimworldButtonStyle"/>
+                            <Button Content="Edit" Command="{Binding EditLoadAfterCommand}" Classes="RimworldButtonStyle"/>
+                            <Button Content="Remove" Command="{Binding RemoveLoadAfterCommand}" Classes="RimworldButtonStyle"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Expander>
+
+                <!-- Expander: Incompatibilities -->
+                <Expander Header="Incompatibility Rules" IsExpanded="False">
+                    <StackPanel Spacing="10" Margin="10">
+                        <Border Padding="5" BorderBrush="#CCCCCC" BorderThickness="1" Background="#F0F0F0" IsVisible="{Binding HasOriginalIncompatibilities}">
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="Original Incompatibility Rules:" FontWeight="SemiBold" Foreground="Black"/>
+                                <ItemsControl ItemsSource="{Binding OriginalIncompatibilityItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" Margin="5,2,0,2" Foreground="Black"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                        
+                        <DataGrid ItemsSource="{Binding CustomIncompatibilities}" MaxHeight="150" SelectedItem="{Binding SelectedIncompatibilityRule}" AutoGenerateColumns="False" IsReadOnly="True" GridLinesVisibility="All">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Package ID" Binding="{Binding PackageId}" Width="150"/>
+                                <DataGridTextColumn Header="Display Name" Binding="{Binding DisplayName}" Width="150"/>
+                                <DataGridTextColumn Header="Hard?" Binding="{Binding HardIncompatibility}" Width="80"/>
+                                <DataGridTextColumn Header="Comment" Binding="{Binding Comment}" Width="200"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                            <Button Content="Add" Command="{Binding AddIncompatibilityCommand}" Classes="RimworldButtonStyle"/>
+                            <Button Content="Edit" Command="{Binding EditIncompatibilityCommand}" Classes="RimworldButtonStyle"/>
+                            <Button Content="Remove" Command="{Binding RemoveIncompatibilityCommand}" Classes="RimworldButtonStyle"/>
                         </StackPanel>
                     </StackPanel>
                 </Expander>
