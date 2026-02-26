@@ -59,17 +59,9 @@
         </StackPanel>
 
         <Border DockPanel.Dock="Top" Classes="RimworldListHeaderBorder" Margin="0,10,0,0">
-            <Grid ColumnDefinitions="*,Auto,Auto">
+            <Grid ColumnDefinitions="*,Auto">
                 <TextBlock Grid.Column="0" Text="Download Queue" Foreground="{DynamicResource RimworldWhiteBrush}" FontWeight="Medium"/>
-                <ProgressBar Grid.Column="1" 
-                             Width="80" 
-                             Height="10"
-                             Margin="5,0"
-                             VerticalAlignment="Center"
-                             IsIndeterminate="{Binding IsOperationInProgress}"
-                             IsVisible="{Binding IsOperationInProgress}"
-                             Classes="RimworldProgressBarStyle"/>
-                <TextBlock Grid.Column="2" Text="{Binding DownloadList.Count, StringFormat='({0} items)'}" Foreground="{DynamicResource RimworldWhiteBrush}" FontSize="12" Margin="5,0,0,0"/>
+                <TextBlock Grid.Column="1" Text="{Binding DownloadList.Count, StringFormat='({0} items)'}" Foreground="{DynamicResource RimworldWhiteBrush}" FontSize="12" Margin="5,0,0,0"/>
             </Grid>
         </Border>
 
