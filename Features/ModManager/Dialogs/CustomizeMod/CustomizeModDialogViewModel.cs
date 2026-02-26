@@ -251,16 +251,16 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             CancelCommand = CreateCommand(Cancel);
 
             // Rule management commands with property observation
-            AddLoadBeforeCommand = CreateCommand(AddLoadBefore);
-            EditLoadBeforeCommand = CreateCommand(EditLoadBefore, CanEditLoadBefore, nameof(SelectedLoadBeforeRule));
+            AddLoadBeforeCommand = CreateAsyncCommand(AddLoadBeforeAsync);
+            EditLoadBeforeCommand = CreateAsyncCommand(EditLoadBeforeAsync, CanEditLoadBefore, nameof(SelectedLoadBeforeRule));
             RemoveLoadBeforeCommand = CreateCommand(RemoveLoadBefore, CanRemoveLoadBefore, nameof(SelectedLoadBeforeRule));
 
-            AddLoadAfterCommand = CreateCommand(AddLoadAfter);
-            EditLoadAfterCommand = CreateCommand(EditLoadAfter, CanEditLoadAfter, nameof(SelectedLoadAfterRule));
+            AddLoadAfterCommand = CreateAsyncCommand(AddLoadAfterAsync);
+            EditLoadAfterCommand = CreateAsyncCommand(EditLoadAfterAsync, CanEditLoadAfter, nameof(SelectedLoadAfterRule));
             RemoveLoadAfterCommand = CreateCommand(RemoveLoadAfter, CanRemoveLoadAfter, nameof(SelectedLoadAfterRule));
 
-            AddIncompatibilityCommand = CreateCommand(AddIncompatibility);
-            EditIncompatibilityCommand = CreateCommand(EditIncompatibility, CanEditIncompatibility, nameof(SelectedIncompatibilityRule));
+            AddIncompatibilityCommand = CreateAsyncCommand(AddIncompatibilityAsync);
+            EditIncompatibilityCommand = CreateAsyncCommand(EditIncompatibilityAsync, CanEditIncompatibility, nameof(SelectedIncompatibilityRule));
             RemoveIncompatibilityCommand = CreateCommand(RemoveIncompatibility, CanRemoveIncompatibility, nameof(SelectedIncompatibilityRule));
         }
 
@@ -450,19 +450,19 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         /// <summary>
         /// Validates a package ID before adding to LoadBefore
         /// </summary>
-        private bool ValidateLoadBefore(string packageId)
+        private async Task<bool> ValidateLoadBeforeAsync(string packageId)
         {
             // Check if already in LoadBefore
             if (_originalLoadBefore.Contains(packageId) || CustomLoadBefore.Any(x => x.PackageId == packageId))
             {
-                _dialogService.ShowWarning("Duplicate Entry", $"Package ID '{packageId}' already exists in the Load Before list.");
+                await _dialogService.ShowWarning("Duplicate Entry", $"Package ID '{packageId}' already exists in the Load Before list.");
                 return false;
             }
 
             // Check if in other lists
             if (IsPackageIdInOtherLists(packageId, "LoadBefore"))
             {
-                _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list. " +
+                await _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list. " +
                     "A package ID cannot be in multiple lists.");
                 return false;
             }
@@ -473,19 +473,19 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         /// <summary>
         /// Validates a package ID before adding to LoadAfter
         /// </summary>
-        private bool ValidateLoadAfter(string packageId)
+        private async Task<bool> ValidateLoadAfterAsync(string packageId)
         {
             // Check if already in LoadAfter
             if (_originalLoadAfter.Contains(packageId) || CustomLoadAfter.Any(x => x.PackageId == packageId))
             {
-                _dialogService.ShowWarning("Duplicate Entry", $"Package ID '{packageId}' already exists in the Load After list.");
+                await _dialogService.ShowWarning("Duplicate Entry", $"Package ID '{packageId}' already exists in the Load After list.");
                 return false;
             }
 
             // Check if in other lists
             if (IsPackageIdInOtherLists(packageId, "LoadAfter"))
             {
-                _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list. " +
+                await _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list. " +
                     "A package ID cannot be in multiple lists.");
                 return false;
             }
@@ -496,19 +496,19 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         /// <summary>
         /// Validates a package ID before adding to IncompatibleWith
         /// </summary>
-        private bool ValidateIncompatibility(string packageId)
+        private async Task<bool> ValidateIncompatibilityAsync(string packageId)
         {
             // Check if already in IncompatibleWith
             if (_originalIncompatibilities.Contains(packageId) || CustomIncompatibilities.Any(x => x.PackageId == packageId))
             {
-                _dialogService.ShowWarning("Duplicate Entry", $"Package ID '{packageId}' already exists in the Incompatible With list.");
+                await _dialogService.ShowWarning("Duplicate Entry", $"Package ID '{packageId}' already exists in the Incompatible With list.");
                 return false;
             }
 
             // Check if in other lists
             if (IsPackageIdInOtherLists(packageId, "IncompatibleWith"))
             {
-                _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list. " +
+                await _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list. " +
                     "A package ID cannot be in multiple lists.");
                 return false;
             }
@@ -520,13 +520,13 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 
         #region Rule Management Methods
 
-        private void AddLoadBefore()
+        private async Task AddLoadBeforeAsync()
         {
             var dialogViewModel = new DependencyRuleEditorDialogViewModel("Add Load Before Rule", _dialogService);
-            if (_dialogService.ShowDependencyRuleEditor(dialogViewModel))
+            if (await _dialogService.ShowDependencyRuleEditorAsync(dialogViewModel))
             {
                 // Validate the package ID before adding
-                if (!ValidateLoadBefore(dialogViewModel.PackageId))
+                if (!await ValidateLoadBeforeAsync(dialogViewModel.PackageId))
                     return;
 
                 var newRule = new ModDependencyRuleViewModel
@@ -542,7 +542,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         }
 
         private bool CanEditLoadBefore() => SelectedLoadBeforeRule != null && !SelectedLoadBeforeRule.IsOriginal;
-        private void EditLoadBefore()
+        private async Task EditLoadBeforeAsync()
         {
             if (SelectedLoadBeforeRule == null || SelectedLoadBeforeRule.IsOriginal) return;
 
@@ -552,12 +552,12 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                 DisplayName = SelectedLoadBeforeRule.DisplayName,
                 Comment = SelectedLoadBeforeRule.Comment
             };
-            if (_dialogService.ShowDependencyRuleEditor(dialogViewModel))
+            if (await _dialogService.ShowDependencyRuleEditorAsync(dialogViewModel))
             {
                 // If the package ID changed, validate it
                 if (dialogViewModel.PackageId != SelectedLoadBeforeRule.PackageId)
                 {
-                    if (!ValidateLoadBefore(dialogViewModel.PackageId))
+                    if (!await ValidateLoadBeforeAsync(dialogViewModel.PackageId))
                         return;
                 }
 
@@ -576,13 +576,13 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             }
         }
 
-        private void AddLoadAfter()
+        private async Task AddLoadAfterAsync()
         {
             var dialogViewModel = new DependencyRuleEditorDialogViewModel("Add Load After Rule", _dialogService);
-            if (_dialogService.ShowDependencyRuleEditor(dialogViewModel))
+            if (await _dialogService.ShowDependencyRuleEditorAsync(dialogViewModel))
             {
                 // Validate the package ID before adding
-                if (!ValidateLoadAfter(dialogViewModel.PackageId))
+                if (!await ValidateLoadAfterAsync(dialogViewModel.PackageId))
                     return;
 
                 var newRule = new ModDependencyRuleViewModel
@@ -598,7 +598,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         }
 
         private bool CanEditLoadAfter() => SelectedLoadAfterRule != null && !SelectedLoadAfterRule.IsOriginal;
-        private void EditLoadAfter()
+        private async Task EditLoadAfterAsync()
         {
             if (SelectedLoadAfterRule == null || SelectedLoadAfterRule.IsOriginal) return;
 
@@ -608,12 +608,12 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                 DisplayName = SelectedLoadAfterRule.DisplayName,
                 Comment = SelectedLoadAfterRule.Comment
             };
-            if (_dialogService.ShowDependencyRuleEditor(dialogViewModel))
+            if (await _dialogService.ShowDependencyRuleEditorAsync(dialogViewModel))
             {
                 // If the package ID changed, validate it
                 if (dialogViewModel.PackageId != SelectedLoadAfterRule.PackageId)
                 {
-                    if (!ValidateLoadAfter(dialogViewModel.PackageId))
+                    if (!await ValidateLoadAfterAsync(dialogViewModel.PackageId))
                         return;
                 }
 
@@ -632,13 +632,13 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             }
         }
 
-        private void AddIncompatibility()
+        private async Task AddIncompatibilityAsync()
         {
             var dialogViewModel = new IncompatibilityRuleEditorDialogViewModel("Add Incompatibility Rule", _dialogService);
-            if (_dialogService.ShowIncompatibilityRuleEditor(dialogViewModel))
+            if (await _dialogService.ShowIncompatibilityRuleEditorAsync(dialogViewModel))
             {
                 // Validate the package ID before adding
-                if (!ValidateIncompatibility(dialogViewModel.PackageId))
+                if (!await ValidateIncompatibilityAsync(dialogViewModel.PackageId))
                     return;
 
                 var newRule = new ModIncompatibilityRuleViewModel
@@ -655,7 +655,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         }
 
         private bool CanEditIncompatibility() => SelectedIncompatibilityRule != null && !SelectedIncompatibilityRule.IsOriginal;
-        private void EditIncompatibility()
+        private async Task EditIncompatibilityAsync()
         {
             if (SelectedIncompatibilityRule == null || SelectedIncompatibilityRule.IsOriginal) return;
 
@@ -666,12 +666,12 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                 Comment = SelectedIncompatibilityRule.Comment,
                 HardIncompatibility = SelectedIncompatibilityRule.HardIncompatibility
             };
-            if (_dialogService.ShowIncompatibilityRuleEditor(dialogViewModel))
+            if (await _dialogService.ShowIncompatibilityRuleEditorAsync(dialogViewModel))
             {
                 // If the package ID changed, validate it
                 if (dialogViewModel.PackageId != SelectedIncompatibilityRule.PackageId)
                 {
-                    if (!ValidateIncompatibility(dialogViewModel.PackageId))
+                    if (!await ValidateIncompatibilityAsync(dialogViewModel.PackageId))
                         return;
                 }
 

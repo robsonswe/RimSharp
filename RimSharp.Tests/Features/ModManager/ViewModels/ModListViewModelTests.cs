@@ -85,7 +85,7 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
             vm.ActiveSearchText = "search";
             
             // Wait for debounce (300ms + buffer)
-            await Task.Delay(500);
+            await Task.Delay(1000);
 
             // Assert
             _mockFilterService.Received(1).ApplyActiveFilter("search");
