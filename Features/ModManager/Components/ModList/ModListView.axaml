@@ -27,6 +27,13 @@
                 <Setter Property="Grid.ColumnSpan" Value="1"/>
                 <Setter Property="Grid.RowSpan" Value="1"/>
             </Style>
+            <Style.Resources>
+                <!-- Standardize selection brushes to override Avalonia defaults -->
+                <StaticResource x:Key="SystemControlHighlightListAccentLowBrush" ResourceKey="RimworldHighlightBrush" />
+                <StaticResource x:Key="SystemControlHighlightListAccentMediumBrush" ResourceKey="RimworldHighlightBrush" />
+                <StaticResource x:Key="SystemControlHighlightListAccentHighBrush" ResourceKey="RimworldHighlightBrush" />
+                <StaticResource x:Key="SystemControlHighlightListLowBrush" ResourceKey="RimworldHighlightBrush" />
+            </Style.Resources>
             <Setter Property="Template">
                 <ControlTemplate>
                     <Border Background="{TemplateBinding Background}"
@@ -92,7 +99,7 @@
                 </Setter.Value>
             </Setter>
             <Style Selector="^:pointerover">
-                <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
+                <Setter Property="Background" Value="{DynamicResource RimworldHighlightBrush}"/>
             </Style>
             <Style Selector="^:selected">
                 <Setter Property="Background" Value="{DynamicResource RimworldHighlightBrush}"/>
