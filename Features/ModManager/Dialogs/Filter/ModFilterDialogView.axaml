@@ -6,121 +6,256 @@
                    xmlns:local="clr-namespace:RimSharp.Features.ModManager.Dialogs.Filter"
                    x:Class="RimSharp.Features.ModManager.Dialogs.Filter.ModFilterDialogView"
                    x:DataType="local:ModFilterDialogViewModel"
-                   mc:Ignorable="d"
+                   x:CompileBindings="True"
                    Title="{Binding Title}"
-                   Width="600"
-                   MinHeight="500" MinWidth="500"
-                   SizeToContent="Height">
+                   Width="650"
+                   Height="500">
+
+    <dialogs:BaseDialog.Styles>
+        <!-- RimWorld Styles -->
+        
+        <!-- Intuitive TabItem Style -->
+        <Style Selector="TabItem">
+            <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Margin" Value="0,0,5,5"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="PART_LayoutRoot" Background="{TemplateBinding Background}" BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="1" CornerRadius="3">
+                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Header}" Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="TabItem:pointerover /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
+        </Style>
+        <Style Selector="TabItem:selected /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="{DynamicResource RimworldBrownBrush}"/>
+        </Style>
+        <Style Selector="TabItem:selected">
+            <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+        </Style>
+
+        <!-- RimWorld RadioButton Style -->
+        <Style Selector="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="RadioButton /template/ Ellipse#OuterEllipse">
+            <Setter Property="Stroke" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="Fill" Value="{DynamicResource RimworldBeigeBrush}"/>
+            <Setter Property="StrokeThickness" Value="1"/>
+            <Setter Property="Width" Value="16"/>
+            <Setter Property="Height" Value="16"/>
+        </Style>
+        <Style Selector="RadioButton:checked /template/ Ellipse#CheckGlyph">
+            <Setter Property="Fill" Value="{DynamicResource RimworldBrownBrush}"/>
+        </Style>
+
+        <!-- RimWorld Checkbox Style -->
+        <Style Selector="CheckBox">
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+        </Style>
+        <Style Selector="CheckBox /template/ Border#NormalRectangle">
+            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="CheckBox:checked /template/ Border#NormalRectangle">
+            <Setter Property="Background" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        </Style>
+        <Style Selector="CheckBox:checked /template/ Path#CheckMark">
+            <Setter Property="Fill" Value="{DynamicResource RimworldWhiteBrush}"/>
+        </Style>
+
+        <!-- TextBox Style -->
+        <Style Selector="TextBox.RimworldTextBox">
+            <Setter Property="MinHeight" Value="26"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Padding" Value="6,0,6,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <!-- Safe ListBox Style -->
+        <Style Selector="ListBox.SafeRimworldList">
+            <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style Selector="ListBox.SafeRimworldList ListBoxItem">
+            <Setter Property="Padding" Value="5,4"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+        <Style Selector="ListBox.SafeRimworldList ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
+        </Style>
+        <Style Selector="ListBox.SafeRimworldList ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
+        </Style>
+    </dialogs:BaseDialog.Styles>
 
     <dialogs:BaseDialog.MainContent>
-        <Border Background="{DynamicResource RimworldDarkBeigeBrush}" Padding="10">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel Spacing="10">
-                    <!-- General Filters -->
-                    <Expander Header="General" IsExpanded="True">
-                        <StackPanel Spacing="10" Margin="10">
-                            <StackPanel Spacing="2">
-                                <TextBlock Text="Search by Name/PackageId:"/>
-                                <TextBox Text="{Binding SearchText, Mode=TwoWay}" Classes="RimworldTextBox"/>
-                            </StackPanel>
-                            <StackPanel Spacing="2">
-                                <TextBlock Text="Filter by Author:"/>
-                                <TextBox Text="{Binding AuthorFilterText, Mode=TwoWay}" Classes="RimworldTextBox"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Expander>
+        <Grid RowDefinitions="*, Auto" Margin="10,10,10,0">
+            
+            <TabControl Grid.Row="0">
+                
+                <!-- TAB 1: GENERAL (Search & Properties) -->
+                <TabItem Header="General">
+                    <Border Classes="RimworldSubtlePanelBorder">
+                        <Grid RowDefinitions="Auto, 15, Auto, *" Margin="15" VerticalAlignment="Top">
+                            
+                            <!-- Search Inputs -->
+                            <Grid Grid.Row="0" ColumnDefinitions="140, *">
+                                <TextBlock Grid.Column="0" Text="Name / PackageId:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                <TextBox Grid.Column="1" Text="{Binding SearchText, Mode=TwoWay}" Classes="RimworldTextBox" Watermark="e.g. Harmony"/>
+                            </Grid>
+                            
+                            <Grid Grid.Row="2" ColumnDefinitions="140, *">
+                                <TextBlock Grid.Column="0" Text="Author:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                <TextBox Grid.Column="1" Text="{Binding AuthorFilterText, Mode=TwoWay}" Classes="RimworldTextBox" Watermark="e.g. Brrainz"/>
+                            </Grid>
 
-                    <!-- Categorization -->
-                    <Expander Header="Categorization" IsExpanded="True">
-                        <Grid ColumnDefinitions="*,10,*,10,*" Margin="10">
-                            <!-- Mod Types -->
-                            <StackPanel Grid.Column="0" Spacing="5">
-                                <TextBlock Text="Mod Types" FontWeight="Medium"/>
-                                <ListBox ItemsSource="{Binding AvailableModTypes}" Height="150">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <CheckBox Content="{Binding DisplayName}" IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-                            </StackPanel>
+                            <!-- Properties Table -->
+                            <StackPanel Grid.Row="3" Margin="0,20,0,0">
+                                <TextBlock Text="Filter by State &amp; Content" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="0,0,0,10"/>
+                                
+                                <Border BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="1" Background="{DynamicResource RimworldBeigeBrush}">
+                                    <Grid ColumnDefinitions="*, 60, 60, 60" RowDefinitions="Auto, 1, 35, 1, 35, 1, 35, 1, 35">
+                                        
+                                        <!-- Header Row -->
+                                        <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Background="{DynamicResource RimworldLightBrownBrush}" Padding="10,5">
+                                            <Grid ColumnDefinitions="*, 60, 60, 60">
+                                                <TextBlock Text="Criteria" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                                <TextBlock Grid.Column="1" Text="Any" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}" HorizontalAlignment="Center"/>
+                                                <TextBlock Grid.Column="2" Text="Yes" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}" HorizontalAlignment="Center"/>
+                                                <TextBlock Grid.Column="3" Text="No" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}" HorizontalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
 
-                            <!-- Supported Versions -->
-                            <StackPanel Grid.Column="2" Spacing="5">
-                                <TextBlock Text="Supported Versions" FontWeight="Medium"/>
-                                <ListBox ItemsSource="{Binding AvailableVersions}" Height="150">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <CheckBox Content="{Binding DisplayName}" IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-                            </StackPanel>
+                                        <!-- Row 1: Outdated -->
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Is Outdated?" VerticalAlignment="Center" Margin="10,0" FontWeight="SemiBold"/>
+                                        <RadioButton Grid.Row="2" Grid.Column="1" GroupName="IsOutdated" 
+                                                     IsChecked="{Binding IsOutdatedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsOutdated|Null"/>
+                                        <RadioButton Grid.Row="2" Grid.Column="2" GroupName="IsOutdated" 
+                                                     IsChecked="{Binding IsOutdatedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsOutdated|False"/>
+                                        <RadioButton Grid.Row="2" Grid.Column="3" GroupName="IsOutdated" 
+                                                     IsChecked="{Binding IsOutdatedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsOutdated|True"/>
+                                        <Rectangle Grid.Row="3" Grid.ColumnSpan="4" Fill="{DynamicResource RimworldBrownBrush}" Opacity="0.3"/>
 
-                            <!-- Tags -->
-                            <StackPanel Grid.Column="4" Spacing="5">
-                                <TextBlock Text="Tags" FontWeight="Medium"/>
-                                <ListBox ItemsSource="{Binding AvailableTags}" Height="150">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <CheckBox Content="{Binding DisplayName}" IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
+                                        <!-- Row 2: Favorite -->
+                                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Is Favorite?" VerticalAlignment="Center" Margin="10,0" FontWeight="SemiBold"/>
+                                        <RadioButton Grid.Row="4" Grid.Column="1" GroupName="IsFavorite" 
+                                                     IsChecked="{Binding IsFavoriteFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsFavorite|Null"/>
+                                        <RadioButton Grid.Row="4" Grid.Column="2" GroupName="IsFavorite" 
+                                                     IsChecked="{Binding IsFavoriteFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsFavorite|True"/>
+                                        <RadioButton Grid.Row="4" Grid.Column="3" GroupName="IsFavorite" 
+                                                     IsChecked="{Binding IsFavoriteFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsFavorite|False"/>
+                                        <Rectangle Grid.Row="5" Grid.ColumnSpan="4" Fill="{DynamicResource RimworldBrownBrush}" Opacity="0.3"/>
+
+                                        <!-- Row 3: Assemblies -->
+                                        <TextBlock Grid.Row="6" Grid.Column="0" Text="Has Assemblies (.dll)?" VerticalAlignment="Center" Margin="10,0" FontWeight="SemiBold"/>
+                                        <RadioButton Grid.Row="6" Grid.Column="1" GroupName="HasAssemblies" 
+                                                     IsChecked="{Binding HasAssembliesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasAssemblies|Null"/>
+                                        <RadioButton Grid.Row="6" Grid.Column="2" GroupName="HasAssemblies" 
+                                                     IsChecked="{Binding HasAssembliesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasAssemblies|True"/>
+                                        <RadioButton Grid.Row="6" Grid.Column="3" GroupName="HasAssemblies" 
+                                                     IsChecked="{Binding HasAssembliesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasAssemblies|False"/>
+                                        <Rectangle Grid.Row="7" Grid.ColumnSpan="4" Fill="{DynamicResource RimworldBrownBrush}" Opacity="0.3"/>
+
+                                        <!-- Row 4: Textures -->
+                                        <TextBlock Grid.Row="8" Grid.Column="0" Text="Has Textures?" VerticalAlignment="Center" Margin="10,0" FontWeight="SemiBold"/>
+                                        <RadioButton Grid.Row="8" Grid.Column="1" GroupName="HasTextures" 
+                                                     IsChecked="{Binding HasTexturesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasTextures|Null"/>
+                                        <RadioButton Grid.Row="8" Grid.Column="2" GroupName="HasTextures" 
+                                                     IsChecked="{Binding HasTexturesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasTextures|True"/>
+                                        <RadioButton Grid.Row="8" Grid.Column="3" GroupName="HasTextures" 
+                                                     IsChecked="{Binding HasTexturesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasTextures|False"/>
+                                    </Grid>
+                                </Border>
                             </StackPanel>
                         </Grid>
-                    </Expander>
+                    </Border>
+                </TabItem>
 
-                    <!-- Properties -->
-                    <Expander Header="Properties" IsExpanded="True">
-                        <UniformGrid Columns="2" Margin="10">
-                            <StackPanel Spacing="5" Margin="5">
-                                <TextBlock Text="Supports Current Version:"/>
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <RadioButton Content="Any" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"/>
-                                    <RadioButton Content="No" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"/>
-                                    <RadioButton Content="Yes" GroupName="IsOutdated" IsChecked="{Binding IsOutdatedFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"/>
-                                </StackPanel>
-                            </StackPanel>
+                <!-- TAB 2: MOD TYPES (Dedicated) -->
+                <TabItem Header="Mod Types">
+                    <Border Classes="RimworldSubtlePanelBorder">
+                        <Grid RowDefinitions="Auto, 5, *">
+                            <TextBlock Grid.Row="0" Text="Mod Types" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="5"/>
+                            <ListBox Grid.Row="2" ItemsSource="{Binding AvailableModTypes}" Classes="SafeRimworldList">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <CheckBox Content="{Binding DisplayName}" IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="2,0"/>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+                </TabItem>
 
-                            <StackPanel Spacing="5" Margin="5">
-                                <TextBlock Text="Is Favorite:"/>
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <RadioButton Content="Any" GroupName="IsFavorite" IsChecked="{Binding IsFavoriteFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"/>
-                                    <RadioButton Content="Yes" GroupName="IsFavorite" IsChecked="{Binding IsFavoriteFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"/>
-                                    <RadioButton Content="No" GroupName="IsFavorite" IsChecked="{Binding IsFavoriteFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"/>
-                                </StackPanel>
-                            </StackPanel>
+                <!-- TAB 3: TAGS (Dedicated) -->
+                <TabItem Header="Tags">
+                    <Border Classes="RimworldSubtlePanelBorder">
+                        <Grid RowDefinitions="Auto, 5, *">
+                            <TextBlock Grid.Row="0" Text="Steam Workshop Tags" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="5"/>
+                            <ListBox Grid.Row="2" ItemsSource="{Binding AvailableTags}" Classes="SafeRimworldList">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <CheckBox Content="{Binding DisplayName}" IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="2,0"/>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+                </TabItem>
 
-                            <StackPanel Spacing="5" Margin="5">
-                                <TextBlock Text="Has Assemblies (.dll):"/>
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <RadioButton Content="Any" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"/>
-                                    <RadioButton Content="Yes" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"/>
-                                    <RadioButton Content="No" GroupName="HasAssemblies" IsChecked="{Binding HasAssembliesFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"/>
-                                </StackPanel>
-                            </StackPanel>
-
-                            <StackPanel Spacing="5" Margin="5">
-                                <TextBlock Text="Has Textures:"/>
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <RadioButton Content="Any" GroupName="HasTextures" IsChecked="{Binding HasTexturesFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"/>
-                                    <RadioButton Content="Yes" GroupName="HasTextures" IsChecked="{Binding HasTexturesFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"/>
-                                    <RadioButton Content="No" GroupName="HasTextures" IsChecked="{Binding HasTexturesFilter, Mode=TwoWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"/>
-                                </StackPanel>
-                            </StackPanel>
-                        </UniformGrid>
-                    </Expander>
-                </StackPanel>
-            </ScrollViewer>
-        </Border>
+                <!-- TAB 4: VERSIONS -->
+                <TabItem Header="Versions">
+                    <Border Classes="RimworldSubtlePanelBorder">
+                        <Grid RowDefinitions="Auto, 5, *">
+                            <TextBlock Grid.Row="0" Text="Supported Game Versions" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="5"/>
+                            <ListBox Grid.Row="2" ItemsSource="{Binding AvailableVersions}" Classes="SafeRimworldList">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <CheckBox Content="{Binding DisplayName}" IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="2,0"/>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+                </TabItem>
+                
+            </TabControl>
+        </Grid>
     </dialogs:BaseDialog.MainContent>
 
     <dialogs:BaseDialog.ButtonContent>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="10">
-            <Button Content="Apply" Command="{Binding ApplyCommand}" Classes="RimworldSaveButtonStyle" MinWidth="90"/>
-            <Button Content="Clear" Command="{Binding ClearCommand}" Classes="RimworldButtonStyle" MinWidth="90"/>
-            <Button Content="Cancel" Command="{Binding CancelCommand}" Classes="RimworldRunButtonStyle" MinWidth="90"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,15,0,0">
+            <Button Content="Apply Filters" Command="{Binding ApplyCommand}" Classes="RimworldSaveButtonStyle" MinWidth="100"/>
+            <Button Content="Clear All" Command="{Binding ClearCommand}" Classes="RimworldButtonStyle" MinWidth="100"/>
+            <Button Content="Cancel" Command="{Binding CancelCommand}" Classes="RimworldButtonStyle" MinWidth="80"/>
         </StackPanel>
     </dialogs:BaseDialog.ButtonContent>
 </dialogs:BaseDialog>
