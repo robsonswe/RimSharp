@@ -355,15 +355,30 @@
                         <!-- Indeterminate state handling -->
                         <Border x:Name="IndeterminateIndicator"
                                 Background="{TemplateBinding Foreground}"
-                                Width="100"
+                                Width="150"
                                 HorizontalAlignment="Left"
                                 IsVisible="{TemplateBinding IsIndeterminate}">
-                            <!-- Note: Simple placeholder for indeterminate, avoids default Fluent keyframes -->
+                            <Border.RenderTransform>
+                                <TranslateTransform X="0" />
+                            </Border.RenderTransform>
                         </Border>
                     </Grid>
                 </Border>
             </ControlTemplate>
         </Setter>
+    </Style>
+
+    <Style Selector="ProgressBar.RimworldProgressBarStyle[IsIndeterminate=True] /template/ Border#IndeterminateIndicator">
+        <Style.Animations>
+            <Animation Duration="0:0:1.5" IterationCount="Infinite">
+                <KeyFrame KeyTime="0:0:0">
+                    <Setter Property="TranslateTransform.X" Value="-150"/>
+                </KeyFrame>
+                <KeyFrame KeyTime="0:0:1.5">
+                    <Setter Property="TranslateTransform.X" Value="600"/>
+                </KeyFrame>
+            </Animation>
+        </Style.Animations>
     </Style>
 
     <!-- Separator -->
