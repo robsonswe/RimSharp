@@ -74,6 +74,34 @@
                             <Setter Property="Padding" Value="0"/>
                             <Setter Property="HorizontalContentAlignment" Value="Center"/>
                         </Style>
+                        <!-- Remove selection and hover highlights -->
+                        <Style Selector="DataGridRow:selected /template/ Rectangle#Background">
+                            <Setter Property="Fill" Value="Transparent"/>
+                            <Setter Property="Opacity" Value="0"/>
+                        </Style>
+                        <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+                            <Setter Property="Fill" Value="Transparent"/>
+                            <Setter Property="Opacity" Value="0"/>
+                        </Style>
+                        <Style Selector="DataGridRow:pointerover /template/ Rectangle#Background">
+                            <Setter Property="Fill" Value="Transparent"/>
+                            <Setter Property="Opacity" Value="0"/>
+                        </Style>
+                        <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
+                            <Setter Property="Fill" Value="Transparent"/>
+                            <Setter Property="Opacity" Value="0"/>
+                        </Style>
+                        <Style Selector="DataGridRow:selected:pointerover /template/ Rectangle#Background">
+                            <Setter Property="Fill" Value="Transparent"/>
+                            <Setter Property="Opacity" Value="0"/>
+                        </Style>
+                        <Style Selector="DataGridRow:selected:pointerover /template/ Rectangle#BackgroundRectangle">
+                            <Setter Property="Fill" Value="Transparent"/>
+                            <Setter Property="Opacity" Value="0"/>
+                        </Style>
+                        <Style Selector="DataGridCell:selected /template/ Grid#FocusVisual">
+                            <Setter Property="IsVisible" Value="False" />
+                        </Style>
                     </DataGrid.Styles>
                     <DataGrid.Columns>
                         <DataGridTemplateColumn Width="70" CanUserResize="True" CellStyleClasses="CenteredColumn">
