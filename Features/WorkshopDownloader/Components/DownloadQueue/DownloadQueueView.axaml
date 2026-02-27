@@ -73,33 +73,46 @@
                  BorderBrush="{DynamicResource RimworldBrownBrush}"
                  BorderThickness="1"
                  ScrollViewer.AllowAutoHide="False">
+            <ListBox.Resources>
+                <SolidColorBrush x:Key="SystemControlHighlightListAccentLowBrush" Color="#3326a0da" />
+                <SolidColorBrush x:Key="SystemControlHighlightListAccentMediumBrush" Color="#4D26a0da" />
+                <SolidColorBrush x:Key="SystemControlHighlightListLowBrush" Color="#1A26a0da" />
+            </ListBox.Resources>
             <ListBox.ItemContainerTheme>
                 <ControlTheme TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="Padding" Value="10,6"/>
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
                 </ControlTheme>
             </ListBox.ItemContainerTheme>
             <ListBox.Styles>
-                <Style Selector="ListBoxItem:selected">
-                    <Setter Property="Background" Value="#33ADD8E7"/>
+                <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="#3326a0da" />
                 </Style>
-                <Style Selector="ListBoxItem:pointerover">
-                    <Setter Property="Background" Value="#1AADD8E7"/>
+                <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="#4D26a0da" />
+                </Style>
+                <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="#1A26a0da" />
                 </Style>
             </ListBox.Styles>
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="models:DownloadItem">
-                    <Grid Margin="0,2">
+                    <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/> <!-- Name -->
-                            <RowDefinition Height="Auto"/> <!-- ID, Status -->
+                            <RowDefinition Height="Auto"/> <!-- ID -->
                             <RowDefinition Height="Auto"/> <!-- Latest Date -->
                             <RowDefinition Height="Auto"/> <!-- Latest Versions -->
                             <RowDefinition Height="Auto"/> <!-- Installed Date -->
                             <RowDefinition Height="Auto"/> <!-- Installed Versions -->
                             <RowDefinition Height="Auto"/> <!-- File Size -->
+                            <RowDefinition Height="Auto"/> <!-- Badges -->
                         </Grid.RowDefinitions>
 
                         <!-- Row 0: Name -->
@@ -109,13 +122,10 @@
                                    Foreground="{DynamicResource RimworldBrownBrush}"
                                    TextWrapping="Wrap"/>
 
-                        <!-- Row 1: ID, Installed, Active, Favorite -->
-                        <StackPanel Grid.Row="1" Orientation="Horizontal">
-                            <TextBlock Text="ID: " FontSize="11" Foreground="{DynamicResource RimworldLightBrownBrush}"/>
-                            <TextBlock Text="{Binding SteamId, FallbackValue='N/A', TargetNullValue='N/A'}" FontSize="11" Foreground="{DynamicResource RimworldLightBrownBrush}" Margin="0,0,5,0"/>
-                            <TextBlock Text="(Installed)" FontSize="11" FontWeight="SemiBold" Foreground="ForestGreen" Margin="5,0,0,0" IsVisible="{Binding IsInstalled}"/>
-                            <TextBlock Text="(Active)" FontSize="11" Foreground="DodgerBlue" Margin="5,0,0,0" IsVisible="{Binding IsActive}"/>
-                            <TextBlock Text="(Favorite)" FontSize="11" FontWeight="SemiBold" Foreground="Goldenrod" Margin="5,0,0,0" IsVisible="{Binding IsFavorite}"/>
+                        <!-- Row 1: ID -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,2">
+                            <TextBlock Text="ID: " FontSize="11" Foreground="{DynamicResource RimworldLightBrownBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding SteamId, FallbackValue='N/A', TargetNullValue='N/A'}" FontSize="11" Foreground="{DynamicResource RimworldLightBrownBrush}" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <!-- Row 2: Latest Version (Date) -->
@@ -158,6 +168,21 @@
                         <StackPanel Grid.Row="6" Orientation="Horizontal">
                             <TextBlock Text="Size: " FontSize="11" Foreground="{DynamicResource RimworldLightBrownBrush}"/>
                             <TextBlock Text="{Binding FileSize, Converter={StaticResource FileSizeConverter}}" FontSize="11" Foreground="{DynamicResource RimworldLightBrownBrush}" ToolTip.Tip="{Binding FileSize, StringFormat={}{0} Bytes}"/>
+                        </StackPanel>
+
+                        <!-- Row 7: Status Badges -->
+                        <StackPanel Grid.Row="7" Orientation="Horizontal" Spacing="5" Margin="0,4,0,0">
+                            <Border Background="#20008000" BorderBrush="ForestGreen" BorderThickness="1" CornerRadius="3" Padding="4,1" IsVisible="{Binding IsInstalled}">
+                                <TextBlock Text="INSTALLED" FontSize="9" FontWeight="Bold" Foreground="ForestGreen"/>
+                            </Border>
+                            
+                            <Border Background="#201E90FF" BorderBrush="DodgerBlue" BorderThickness="1" CornerRadius="3" Padding="4,1" IsVisible="{Binding IsActive}">
+                                <TextBlock Text="ACTIVE" FontSize="9" FontWeight="Bold" Foreground="DodgerBlue"/>
+                            </Border>
+                            
+                            <Border Background="#20DAA520" BorderBrush="Goldenrod" BorderThickness="1" CornerRadius="3" Padding="4,1" IsVisible="{Binding IsFavorite}">
+                                <TextBlock Text="FAVORITE" FontSize="9" FontWeight="Bold" Foreground="Goldenrod"/>
+                            </Border>
                         </StackPanel>
                     </Grid>
                 </DataTemplate>
