@@ -26,4 +26,9 @@
     <Color x:Key="RimworldCodeBlue">#406090</Color>    <!-- For C# / Assemblies -->
     <Color x:Key="RimworldConfigOrange">#D09040</Color> <!-- For XML / Config only -->
 
+    <!-- DataGrid Row Colors - white with gray alternation for better contrast -->
+    <Color x:Key="DataGridRowWhite">#FFFFFF</Color>       <!-- White row background -->
+    <Color x:Key="DataGridRowGray">#E8E8E8</Color>        <!-- Light gray alternating row -->
+    <Color x:Key="DataGridGridLine">#CCCCCC</Color>       <!-- Subtle grid line color -->
+
 </ResourceDictionary>

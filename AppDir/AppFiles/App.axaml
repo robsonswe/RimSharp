@@ -24,6 +24,7 @@
 
     <Application.Resources>
         <ResourceDictionary>
+            <x:Double x:Key="DataGridSortIconMinWidth">0</x:Double>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="avares://RimSharp/Shared/Resources/Colors.axaml"/>
                 <ResourceInclude Source="avares://RimSharp/Shared/Resources/Brushes.axaml"/>
@@ -37,6 +38,7 @@
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
         <StyleInclude Source="avares://RimSharp/Shared/Resources/BaseStyles.axaml"/>
         <StyleInclude Source="avares://RimSharp/Shared/Resources/ButtonStyles.axaml"/>
+        <StyleInclude Source="avares://RimSharp/Shared/Resources/DataGridStyles.axaml"/>
         <StyleInclude Source="avares://RimSharp/Infrastructure/Dialog/DialogTemplates.axaml"/>
     </Application.Styles>
 

@@ -1,80 +1,12 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:vm="clr-namespace:RimSharp.Features.VramAnalysis.ViewModels"
              x:Class="RimSharp.Features.VramAnalysis.Views.VramAnalysisView"
              x:DataType="vm:VramAnalysisViewModel"
-             mc:Ignorable="d" 
+             mc:Ignorable="d"
              d:DesignHeight="600" d:DesignWidth="800">
-
-    <UserControl.Styles>
-        <!-- Custom DataGrid Style -->
-        <Style Selector="DataGrid">
-            <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
-            <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="RowBackground" Value="Transparent"/>
-            <Setter Property="ScrollViewer.AllowAutoHide" Value="False"/>
-            <Style Selector="^ /template/ ScrollViewer /template/ ScrollContentPresenter#PART_ContentPresenter">
-                <Setter Property="Grid.ColumnSpan" Value="1"/>
-                <Setter Property="Grid.RowSpan" Value="1"/>
-            </Style>
-        </Style>
-
-        <Style Selector="DataGridColumnHeader">
-            <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="BorderThickness" Value="0,0,1,1"/>
-            <Setter Property="Padding" Value="10,6"/>
-            <Setter Property="SeparatorBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="Cursor" Value="Arrow"/>
-        </Style>
-
-        <Style Selector="DataGridColumnHeader Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Margin" Value="0"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-
-        <Style Selector="DataGridRow:nth-child(odd)">
-            <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
-        </Style>
-
-        <Style Selector="DataGridRow:nth-child(even)">
-            <Setter Property="Background" Value="#998C74"/>
-        </Style>
-
-        <Style Selector="DataGridRow">
-            <Setter Property="FontSize" Value="12"/>
-            <Style Selector="^:selected /template/ Rectangle#Background">
-                <Setter Property="Fill" Value="{DynamicResource RimworldHighlightBrush}"/>
-                <Setter Property="Opacity" Value="0.3"/>
-            </Style>
-            <Style Selector="^:pointerover /template/ Rectangle#Background">
-                <Setter Property="Fill" Value="{DynamicResource RimworldHighlightBrush}"/>
-                <Setter Property="Opacity" Value="0.1"/>
-            </Style>
-        </Style>
-
-        <Style Selector="DataGridCell">
-            <Setter Property="Padding" Value="10,4"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Style Selector="^:selected /template/ Grid#FocusVisual">
-                <Setter Property="IsVisible" Value="False"/>
-            </Style>
-        </Style>
-    </UserControl.Styles>
 
     <DockPanel Margin="10">
         <!-- Top Control Bar -->
@@ -112,7 +44,8 @@
         <!-- Main Content -->
         <Grid>
             <Border Classes="RimworldPanelBorder" Padding="0">
-                <DataGrid ItemsSource="{Binding VramMods}"
+                <DataGrid x:Name="VramModsDataGrid"
+                          ItemsSource="{Binding VramMods}"
                           AutoGenerateColumns="False"
                           IsReadOnly="True"
                           CanUserSortColumns="True"
@@ -178,28 +111,25 @@
 
                     <DataGrid.RowDetailsTemplate>
                         <DataTemplate>
-                            <Border Background="{DynamicResource RimworldDarkBeigeBrush}" 
-                                    BorderBrush="{DynamicResource RimworldBrownBrush}" 
-                                    BorderThickness="0,1,0,1" 
-                                    Padding="15,10">
+                            <Border Classes="DataGridRowDetails">
                                 <StackPanel Spacing="5">
                                     <Grid ColumnDefinitions="Auto,*">
-                                        <TextBlock Text="Path:" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Width="80"/>
-                                        <SelectableTextBlock Grid.Column="1" Text="{Binding Mod.Path}" FontSize="11" Opacity="0.8"/>
+                                        <TextBlock Text="Path:" FontWeight="Bold" Foreground="{DynamicResource RimworldBlackBrush}" Width="80"/>
+                                        <SelectableTextBlock Grid.Column="1" Text="{Binding Mod.Path}" FontSize="11" Foreground="{DynamicResource RimworldBlackBrush}" Opacity="0.8"/>
                                     </Grid>
                                     <Grid ColumnDefinitions="Auto,*">
-                                        <TextBlock Text="Package ID:" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Width="80"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding Mod.PackageId}" FontSize="11"/>
+                                        <TextBlock Text="Package ID:" FontWeight="Bold" Foreground="{DynamicResource RimworldBlackBrush}" Width="80"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Mod.PackageId}" FontSize="11" Foreground="{DynamicResource RimworldBlackBrush}"/>
                                     </Grid>
-                                    <Separator Background="{DynamicResource RimworldBrownBrush}" Opacity="0.2" Margin="0,5"/>
+                                    <Separator Classes="DataGridRowDetails"/>
                                     <StackPanel Orientation="Horizontal" Spacing="20">
                                         <StackPanel Orientation="Horizontal" Spacing="5">
-                                            <TextBlock Text="Compressed Atlas:" FontWeight="SemiBold"/>
-                                            <TextBlock Text="{Binding InAtlasCount}"/>
+                                            <TextBlock Text="Compressed Atlas:" FontWeight="SemiBold" Foreground="{DynamicResource RimworldBlackBrush}"/>
+                                            <TextBlock Text="{Binding InAtlasCount}" Foreground="{DynamicResource RimworldBlackBrush}"/>
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal" Spacing="5">
-                                            <TextBlock Text="Compressed Individual:" FontWeight="SemiBold"/>
-                                            <TextBlock Text="{Binding TextureCount}"/>
+                                            <TextBlock Text="Compressed Individual:" FontWeight="SemiBold" Foreground="{DynamicResource RimworldBlackBrush}"/>
+                                            <TextBlock Text="{Binding TextureCount}" Foreground="{DynamicResource RimworldBlackBrush}"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </StackPanel>

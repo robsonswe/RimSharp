@@ -12,10 +12,11 @@
                 <TextBox Text="{Binding SearchText, Mode=TwoWay}" Watermark="Type to search..." FontSize="12"/>
             </StackPanel>
 
-            <DataGrid ItemsSource="{Binding FilteredMods}" 
+            <DataGrid x:Name="ModsDataGrid"
+                      ItemsSource="{Binding FilteredMods}"
                       SelectedItem="{Binding SelectedMod}"
-                      AutoGenerateColumns="False" 
-                      IsReadOnly="True" 
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
                       GridLinesVisibility="All"
                       BorderThickness="1"
                       BorderBrush="{DynamicResource RimworldBorderBrush}"
@@ -23,11 +24,11 @@
                       FontSize="12"
                       DoubleTapped="DataGrid_DoubleTapped">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*" />
-                    <DataGridTextColumn Header="Package ID" Binding="{Binding PackageId}" Width="1.5*" />
-                    <DataGridTextColumn Header="Steam ID" Binding="{Binding SteamId}" Width="100" />
-                    <DataGridTextColumn Header="Authors" Binding="{Binding Authors}" Width="1.5*" />
-                    <DataGridTemplateColumn Header="Versions" Width="100">
+                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*" CanUserResize="True" />
+                    <DataGridTextColumn Header="Package ID" Binding="{Binding PackageId}" Width="1.5*" CanUserResize="True" />
+                    <DataGridTextColumn Header="Steam ID" Binding="{Binding SteamId}" Width="100" CanUserResize="True" />
+                    <DataGridTextColumn Header="Authors" Binding="{Binding Authors}" Width="1.5*" CanUserResize="True" />
+                    <DataGridTemplateColumn Header="Versions" Width="100" CanUserResize="True">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding SupportedVersionStrings, Converter={StaticResource ListToStringConverter}}" 
