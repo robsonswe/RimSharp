@@ -73,44 +73,81 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             AvaloniaXamlLoader.Load(this);
             _container = this.FindControl<ContentControl>("BrowserContainer");
             
+            if (_container == null) return;
+
             // Set platform-specific content
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                if (_container != null)
-                {
-                    _container.Content = new Border
-                    {
-                        Background = Avalonia.Application.Current?.FindResource("RimworldBeigeBrush") as Avalonia.Media.IBrush ?? Avalonia.Media.Brushes.Beige,
-                        Padding = new Thickness(20),
-                        Child = new StackPanel
-                        {
-                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-                            Spacing = 15,
-                            Children =
-                            {
-                                new TextBlock { Text = "🌐", FontSize = 48, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center },
-                                new TextBlock { Text = "Web Browser", FontSize = 20, FontWeight = Avalonia.Media.FontWeight.Bold,
-                                    Foreground = Avalonia.Application.Current?.FindResource("RimworldBrownBrush") as Avalonia.Media.IBrush ?? Avalonia.Media.Brushes.Brown,
-                                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                                    TextAlignment = Avalonia.Media.TextAlignment.Center },
-                                new TextBlock { Text = "The embedded web browser is only available on Windows.", FontSize = 14,
-                                    Foreground = Avalonia.Application.Current?.FindResource("RimworldDarkBrownBrush") as Avalonia.Media.IBrush ?? new SolidColorBrush(Color.FromRgb(101, 67, 33)),
-                                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                                    TextAlignment = Avalonia.Media.TextAlignment.Center,
-                                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-                                    MaxWidth = 400 },
-                                new TextBlock { Text = "Please use the Steam Workshop website directly or run on Windows to use the integrated browser.", FontSize = 12,
-                                    Foreground = Avalonia.Application.Current?.FindResource("RimworldLightBrownBrush") as Avalonia.Media.IBrush ?? new SolidColorBrush(Color.FromRgb(139, 115, 85)),
-                                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                                    TextAlignment = Avalonia.Media.TextAlignment.Center,
-                                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-                                    MaxWidth = 400 }
-                            }
-                        }
-                    };
-                }
+                _container.Content = CreatePlaceholderContent(
+                    "Web Browser", 
+                    "The embedded web browser is only available on Windows.", 
+                    "Please use the Steam Workshop website directly or run on Windows to use the integrated browser.", 
+                    false);
             }
+            else
+            {
+                _container.Content = CreatePlaceholderContent(
+                    "Initializing Browser", 
+                    "The Workshop browser is starting up...", 
+                    "This may take a few moments on the first run.", 
+                    true);
+            }
+        }
+
+        private Control CreatePlaceholderContent(string title, string mainText, string subText, bool showProgress)
+        {
+            var beigeBrush = Application.Current?.FindResource("RimworldBeigeBrush") as IBrush ?? Brushes.Beige;
+            var brownBrush = Application.Current?.FindResource("RimworldBrownBrush") as IBrush ?? Brushes.Brown;
+            var darkBrownBrush = Application.Current?.FindResource("RimworldDarkBrownBrush") as IBrush ?? brownBrush;
+            var lightBrownBrush = Application.Current?.FindResource("RimworldLightBrownBrush") as IBrush ?? brownBrush;
+
+            var stack = new StackPanel
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Spacing = 15,
+                Children =
+                {
+                    new TextBlock { Text = "🌐", FontSize = 48, HorizontalAlignment = HorizontalAlignment.Center },
+                    new TextBlock { Text = title, FontSize = 20, FontWeight = FontWeight.Bold,
+                        Foreground = brownBrush,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        TextAlignment = TextAlignment.Center },
+                    new TextBlock { Text = mainText, FontSize = 14,
+                        Foreground = darkBrownBrush,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        TextAlignment = TextAlignment.Center,
+                        TextWrapping = TextWrapping.Wrap,
+                        MaxWidth = 400 },
+                    new TextBlock { Text = subText, FontSize = 12,
+                        Foreground = lightBrownBrush,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        TextAlignment = TextAlignment.Center,
+                        TextWrapping = TextWrapping.Wrap,
+                        MaxWidth = 400 }
+                }
+            };
+
+            if (showProgress)
+            {
+                var progress = new ProgressBar
+                {
+                    IsIndeterminate = true,
+                    Width = 200,
+                    Height = 4,
+                    Margin = new Thickness(0, 10, 0, 0),
+                    HorizontalAlignment = HorizontalAlignment.Center
+                };
+                progress.Classes.Add("RimworldProgressBarStyle");
+                stack.Children.Add(progress);
+            }
+
+            return new Border
+            {
+                Background = beigeBrush,
+                Padding = new Thickness(20),
+                Child = stack
+            };
         }
 
         private void BrowserView_AttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
@@ -158,11 +195,13 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                     return;
                 }
 
+                string defaultUrl = "https://steamcommunity.com/app/294100/workshop/";
+
                 _webView = new WebView2
                 {
                     Dock = System.Windows.Forms.DockStyle.Fill,
                     Visible = true,
-                    Source = new Uri("about:blank")
+                    Source = new Uri(defaultUrl)
                 };
 
                 Debug.WriteLine("[BrowserView] Calling EnsureCoreWebView2Async...");
@@ -175,11 +214,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                     _webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
                     _webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
                     _webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
-
-                    // Navigate to default URL
-                    string defaultUrl = "https://steamcommunity.com/app/294100/workshop/";
-                    Debug.WriteLine($"[BrowserView] Navigating to: {defaultUrl}");
-                    _webView.CoreWebView2.Navigate(defaultUrl);
                 }
                 else
                 {
@@ -190,11 +224,36 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 _wrappedControl = new WindowsBrowserControl(_webView);
                 Debug.WriteLine("[BrowserView] Created WindowsBrowserControl wrapper");
 
-                _container.Content = new WebView2Host(_webView);
-                Debug.WriteLine("[BrowserView] Added WebView2Host to container");
+                // Update placeholder message for navigation phase
+                if (_container != null)
+                {
+                    _container.Content = CreatePlaceholderContent(
+                        "Loading Workshop", 
+                        "Connecting to Steam Workshop...", 
+                        "The page will appear shortly.", 
+                        true);
+                }
 
-                // Give the host time to create the native control
-                await Task.Delay(100);
+                // Wait for navigation to actually start before swapping content to avoid white flashes
+                var navigationStartedTcs = new TaskCompletionSource<bool>();
+                void OnFirstNavigation(object? s, string url)
+                {
+                    _wrappedControl.NavigationStarting -= OnFirstNavigation;
+                    navigationStartedTcs.TrySetResult(true);
+                }
+                _wrappedControl.NavigationStarting += OnFirstNavigation;
+
+                // Create the host but don't show it yet
+                var host = new WebView2Host(_webView);
+
+                // Timeout after 5 seconds if navigation doesn't "start" (safeguard)
+                await Task.WhenAny(navigationStartedTcs.Task, Task.Delay(5000));
+
+                if (_container != null)
+                {
+                    _container.Content = host;
+                    Debug.WriteLine("[BrowserView] Swapped placeholder for WebView2Host");
+                }
 
                 if (this.IsAttachedToVisualTree())
                 {

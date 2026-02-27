@@ -222,13 +222,21 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
         private void CalculateCanAddMod()
         {
+            // Check if the mod is already in the queue
+            bool alreadyInQueue = false;
+            if (BrowserViewModel != null && !string.IsNullOrEmpty(BrowserViewModel.CurrentPageSteamId))
+            {
+                alreadyInQueue = DownloadList.Any(m => m.SteamId == BrowserViewModel.CurrentPageSteamId);
+            }
+
             // Use the public property now for consistency, or keep using _browserViewModel
             CanAddMod = IsSteamCmdReady
                         && !IsOperationInProgress
                         && BrowserViewModel != null
+                        && !alreadyInQueue
                         && ((BrowserViewModel.IsValidModUrl && BrowserViewModel.IsModInfoAvailable) || BrowserViewModel.IsCollectionUrl);
 
-            Debug.WriteLine($"[QueueVM] Calculated CanAddMod: {CanAddMod} (IsSteamCmdReady={IsSteamCmdReady}, !InProg={!IsOperationInProgress}, IsValidModUrl={BrowserViewModel?.IsValidModUrl}, IsCollectionUrl={BrowserViewModel?.IsCollectionUrl}, IsModInfoAvailable={BrowserViewModel?.IsModInfoAvailable})");
+            Debug.WriteLine($"[QueueVM] Calculated CanAddMod: {CanAddMod} (AlreadyInQueue={alreadyInQueue}, IsSteamCmdReady={IsSteamCmdReady}, !InProg={!IsOperationInProgress}, IsValidModUrl={BrowserViewModel?.IsValidModUrl}, IsCollectionUrl={BrowserViewModel?.IsCollectionUrl}, IsModInfoAvailable={BrowserViewModel?.IsModInfoAvailable})");
         }
 
         private void QueueService_ItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -257,9 +265,9 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                     _modInfoEnricher.EnrichAllDownloadItems(DownloadList);
                 }
 
-                // Recalculate CanDownload as list content changed
+                // Recalculate states as list content changed
                 CalculateCanDownload();
-                // CanAddMod is not affected by queue changes
+                CalculateCanAddMod(); // Recalculate duplicates
             });
         }
 
@@ -273,7 +281,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
         {
             if (e.PropertyName == nameof(BrowserViewModel.IsValidModUrl) ||
                 e.PropertyName == nameof(BrowserViewModel.IsModInfoAvailable) ||
-                e.PropertyName == nameof(BrowserViewModel.IsCollectionUrl))
+                e.PropertyName == nameof(BrowserViewModel.IsCollectionUrl) ||
+                e.PropertyName == nameof(BrowserViewModel.CurrentPageSteamId))
             {
                 RunOnUIThread(CalculateCanAddMod); // Recalculate when browser state changes
             }

@@ -39,6 +39,9 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         private bool _isCollectionUrl;
         public bool IsCollectionUrl { get => _isCollectionUrl; private set => this.RaiseAndSetIfChanged(ref _isCollectionUrl, value); }
 
+        private string? _currentPageSteamId;
+        public string? CurrentPageSteamId { get => _currentPageSteamId; private set => this.RaiseAndSetIfChanged(ref _currentPageSteamId, value); }
+
         private string _actualCurrentUrl = string.Empty;
         public string ActualCurrentUrl { get => _actualCurrentUrl; private set => this.RaiseAndSetIfChanged(ref _actualCurrentUrl, value); }
 
@@ -84,6 +87,9 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         private bool _isOperationInProgress;
         public bool IsOperationInProgress { get => _isOperationInProgress; private set => this.RaiseAndSetIfChanged(ref _isOperationInProgress, value); }
 
+        private bool _isBrowserInitialized;
+        public bool IsBrowserInitialized { get => _isBrowserInitialized; private set => this.RaiseAndSetIfChanged(ref _isBrowserInitialized, value); }
+
         public ICommand GoBackCommand { get; }
         public ICommand GoForwardCommand { get; }
         public ICommand GoHomeCommand { get; }
@@ -110,33 +116,33 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
             GoBackCommand = CreateCommand(
                 execute: () => _navigationService.GoBack(),
-                canExecute: () => !IsNavigating && !IsOperationInProgress && CanGoBack,
-                observedProperties: new[] { nameof(IsNavigating), nameof(IsOperationInProgress), nameof(CanGoBack) });
+                canExecute: () => !IsOperationInProgress && CanGoBack && IsBrowserInitialized,
+                observedProperties: new[] { nameof(IsOperationInProgress), nameof(CanGoBack), nameof(IsBrowserInitialized) });
 
             GoForwardCommand = CreateCommand(
                 execute: () => _navigationService.GoForward(),
-                canExecute: () => !IsNavigating && !IsOperationInProgress && CanGoForward,
-                observedProperties: new[] { nameof(IsNavigating), nameof(IsOperationInProgress), nameof(CanGoForward) });
+                canExecute: () => !IsOperationInProgress && CanGoForward && IsBrowserInitialized,
+                observedProperties: new[] { nameof(IsOperationInProgress), nameof(CanGoForward), nameof(IsBrowserInitialized) });
 
             GoHomeCommand = CreateCommand(
                 execute: () => _navigationService.GoHome(),
-                canExecute: () => !IsNavigating && !IsOperationInProgress,
-                observedProperties: new[] { nameof(IsNavigating), nameof(IsOperationInProgress) });
+                canExecute: () => !IsOperationInProgress && IsBrowserInitialized,
+                observedProperties: new[] { nameof(IsOperationInProgress), nameof(IsBrowserInitialized) });
 
             RefreshCommand = CreateCommand(
                 execute: () => _browserControl?.Reload(),
-                canExecute: () => !IsNavigating && !IsOperationInProgress && _browserControl != null,
-                observedProperties: new[] { nameof(IsNavigating), nameof(IsOperationInProgress) });
+                canExecute: () => !IsOperationInProgress && IsBrowserInitialized,
+                observedProperties: new[] { nameof(IsOperationInProgress), nameof(IsBrowserInitialized) });
 
             NavigateToUrlCommand = CreateCommand<string>(
                 execute: (url) => _navigationService.Navigate(url),
-                canExecute: (url) => !IsNavigating && !IsOperationInProgress && !string.IsNullOrWhiteSpace(url),
-                observedProperties: new[] { nameof(IsNavigating), nameof(IsOperationInProgress) });
+                canExecute: (url) => !IsOperationInProgress && !string.IsNullOrWhiteSpace(url) && IsBrowserInitialized,
+                observedProperties: new[] { nameof(IsOperationInProgress), nameof(IsBrowserInitialized) });
 
             SearchCommand = CreateCommand(
                 execute: ExecuteSearch,
-                canExecute: () => !IsNavigating && !IsOperationInProgress && !string.IsNullOrWhiteSpace(SearchText),
-                observedProperties: new[] { nameof(IsNavigating), nameof(IsOperationInProgress), nameof(SearchText) });
+                canExecute: () => !IsOperationInProgress && !string.IsNullOrWhiteSpace(SearchText) && IsBrowserInitialized,
+                observedProperties: new[] { nameof(IsOperationInProgress), nameof(SearchText), nameof(IsBrowserInitialized) });
         }
 
         private void NavigationService_NavigationStarted(object? sender, string url)
@@ -188,10 +194,12 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 IsModInfoAvailable = false;
                 CanGoBack = false;
                 CanGoForward = false;
+                IsBrowserInitialized = false;
                 return;
             }
 
             // New control attached
+            IsBrowserInitialized = true;
             _extractorService = new ModExtractorService(browserControl);
             _extractorService.IsModInfoAvailableChanged += ExtractorService_IsModInfoAvailableChanged;
             IsModInfoAvailable = _extractorService.IsModInfoAvailable;
@@ -208,6 +216,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         private void NavigationService_DomContentLoaded(object? sender, string url)
         {
             Debug.WriteLine($"[BrowserViewModel] DOMContentLoaded received for: {url}");
+            RunOnUIThread(() => OnPropertyChanged(nameof(IsDomReady)));
             // Trigger mod info extraction when DOM is ready
             _ = AnalyzePageContentAsync();
         }
@@ -224,16 +233,23 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 // Reset previous state
                 _extractorService.Reset();
                 
-                // Extract mod name and date to determine if mod info is available
+                // Extract mod name, date, and Steam ID
                 var nameTask = _extractorService.ExtractModName();
                 var dateTask = _extractorService.ExtractModDateInfo();
+                var idTask = ExtractSteamIdFromPageAsync();
 
-                await Task.WhenAll(nameTask, dateTask);
+                await Task.WhenAll(nameTask, dateTask, idTask);
 
                 var name = nameTask.Result;
                 var date = dateTask.Result;
+                var id = idTask.Result;
 
-                Debug.WriteLine($"[BrowserViewModel] Extraction complete - Name: '{name ?? "NULL"}', Date: '{date ?? "NULL"}'");
+                if (!string.IsNullOrEmpty(id))
+                {
+                    CurrentPageSteamId = id;
+                }
+
+                Debug.WriteLine($"[BrowserViewModel] Extraction complete - Name: '{name ?? "NULL"}', Date: '{date ?? "NULL"}', ID: '{id ?? "NULL"}'");
                 Debug.WriteLine($"[BrowserViewModel] IsModInfoAvailable = {_extractorService.IsModInfoAvailable}");
 
                 if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(date))
@@ -359,6 +375,27 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                     AddressBarUrl = newUrl;
                 }
                 IsSecure = newUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+
+                // Early detection based on URL pattern
+                if (Uri.TryCreate(newUrl, UriKind.Absolute, out var uri))
+                {
+                    bool isSteamWorkshop = uri.Host.EndsWith("steamcommunity.com", StringComparison.OrdinalIgnoreCase);
+                    if (isSteamWorkshop)
+                    {
+                        var query = HttpUtility.ParseQueryString(uri.Query);
+                        string? id = query.Get("id");
+                        CurrentPageSteamId = id;
+
+                        bool isModPage = uri.AbsolutePath.Contains("/filedetails/", StringComparison.OrdinalIgnoreCase);
+                        bool isCollectionPage = uri.AbsolutePath.Contains("/workshop/browse/", StringComparison.OrdinalIgnoreCase) && 
+                                               (uri.AbsolutePath.Contains("/collections/", StringComparison.OrdinalIgnoreCase) || 
+                                                query.Get("section") == "collections");
+
+                        // Note: These might be refined later by content analysis
+                        IsValidModUrl = isModPage && !string.IsNullOrEmpty(id);
+                        IsCollectionUrl = isCollectionPage;
+                    }
+                }
             });
         }
 
