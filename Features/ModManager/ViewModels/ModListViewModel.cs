@@ -37,8 +37,8 @@ namespace RimSharp.Features.ModManager.ViewModels
         public ObservableCollection<ModItem> ActiveMods => _filterService.ActiveMods;
         public ObservableCollection<ModItem> InactiveMods => _filterService.InactiveMods;
 
-        public int TotalActiveMods => ActiveMods.Count;
-        public int TotalInactiveMods => InactiveMods.Count;
+        public int TotalActiveMods => ActiveMods.Count(m => m.ModType != ModType.Core);
+        public int TotalInactiveMods => InactiveMods.Count(m => m.ModType != ModType.Core);
 
         public ModItem? SelectedMod
         {
