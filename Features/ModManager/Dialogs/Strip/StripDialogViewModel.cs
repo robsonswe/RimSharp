@@ -95,12 +95,20 @@ namespace RimSharp.Features.ModManager.Dialogs.Strip
             set => SetProperty(ref _isExpanded, value);
         }
 
+        public ICommand ToggleExpandCommand { get; }
+
+        public void ToggleExpand()
+        {
+            IsExpanded = !IsExpanded;
+        }
+
         public long SelectedSize => Children.Where(c => c.IsSelected).Sum(c => c.Size);
 
         public StrippableModViewModel(ModItem mod)
         {
             Mod = mod;
             Children = new ObservableCollection<StrippableItemViewModel>();
+            ToggleExpandCommand = ReactiveUI.ReactiveCommand.Create(ToggleExpand);
         }
 
         // Called by a child when its selection changes
