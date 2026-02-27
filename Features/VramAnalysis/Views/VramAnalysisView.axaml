@@ -33,6 +33,18 @@
             <Setter Property="BorderThickness" Value="0,0,1,1"/>
             <Setter Property="Padding" Value="10,6"/>
             <Setter Property="SeparatorBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="Cursor" Value="Arrow"/>
+        </Style>
+
+        <Style Selector="DataGridColumnHeader Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
         </Style>
 
         <Style Selector="DataGridRow:nth-child(odd)">
@@ -104,17 +116,41 @@
                           AutoGenerateColumns="False"
                           IsReadOnly="True"
                           CanUserSortColumns="True"
+                          CanUserResizeColumns="True"
                           RowDetailsVisibilityMode="VisibleWhenSelected"
                           BorderThickness="0">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Mod Name" Binding="{Binding Mod.Name}" Width="2*"/>
-                        <DataGridTextColumn Header="Atlas" Binding="{Binding InAtlasCount}" Width="80"/>
-                        <DataGridTextColumn Header="Textures" Binding="{Binding TextureCount}" Width="80"/>
-                        
-                        <DataGridTemplateColumn Header="VRAM (Compressed)" Width="150">
+                        <DataGridTextColumn Header="Mod Name" Binding="{Binding Mod.Name}" Width="*" CanUserResize="True"/>
+                        <DataGridTextColumn Header="Atlas" Binding="{Binding InAtlasCount}" Width="90" CanUserResize="True">
+                            <DataGridTextColumn.HeaderTemplate>
+                                <DataTemplate>
+                                    <Button Command="{Binding $parent[DataGrid].DataContext.SortCommand}" CommandParameter="InAtlasCount">
+                                        <TextBlock Text="Atlas"/>
+                                    </Button>
+                                </DataTemplate>
+                            </DataGridTextColumn.HeaderTemplate>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="Textures" Binding="{Binding TextureCount}" Width="100" CanUserResize="True">
+                            <DataGridTextColumn.HeaderTemplate>
+                                <DataTemplate>
+                                    <Button Command="{Binding $parent[DataGrid].DataContext.SortCommand}" CommandParameter="TextureCount">
+                                        <TextBlock Text="Textures"/>
+                                    </Button>
+                                </DataTemplate>
+                            </DataGridTextColumn.HeaderTemplate>
+                        </DataGridTextColumn>
+
+                        <DataGridTemplateColumn Header="VRAM (Compressed)" Width="175" CanUserResize="True">
+                            <DataGridTemplateColumn.HeaderTemplate>
+                                <DataTemplate>
+                                    <Button Command="{Binding $parent[DataGrid].DataContext.SortCommand}" CommandParameter="EstimatedVramCompressed">
+                                        <TextBlock Text="VRAM (Compressed)"/>
+                                    </Button>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.HeaderTemplate>
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding EstimatedVramCompressed, Converter={StaticResource FileSizeConverter}}" 
+                                    <TextBlock Text="{Binding EstimatedVramCompressed, Converter={StaticResource FileSizeConverter}}"
                                                Foreground="{DynamicResource RimworldBrownBrush}"
                                                FontWeight="Medium"
                                                HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
@@ -122,10 +158,17 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <DataGridTemplateColumn Header="VRAM (Uncompressed)" Width="165">
+                        <DataGridTemplateColumn Header="VRAM (Uncompressed)" Width="180" CanUserResize="True">
+                            <DataGridTemplateColumn.HeaderTemplate>
+                                <DataTemplate>
+                                    <Button Command="{Binding $parent[DataGrid].DataContext.SortCommand}" CommandParameter="EstimatedVramUncompressed">
+                                        <TextBlock Text="VRAM (Uncompressed)"/>
+                                    </Button>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.HeaderTemplate>
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding EstimatedVramUncompressed, Converter={StaticResource FileSizeConverter}}" 
+                                    <TextBlock Text="{Binding EstimatedVramUncompressed, Converter={StaticResource FileSizeConverter}}"
                                                Foreground="{DynamicResource RimworldLightBrownBrush}"
                                                HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                 </DataTemplate>
