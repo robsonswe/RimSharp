@@ -12,63 +12,6 @@
         Width="850" Height="550"
         Title="{Binding Title}">
 
-    <dialogs:BaseDialog.Styles>
-        <!-- Custom DataGrid Style -->
-        <Style Selector="DataGrid">
-            <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
-            <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="RowBackground" Value="Transparent"/>
-            <Setter Property="ScrollViewer.AllowAutoHide" Value="False"/>
-            <Style Selector="^ /template/ ScrollViewer /template/ ScrollContentPresenter#PART_ContentPresenter">
-                <Setter Property="Grid.ColumnSpan" Value="1"/>
-                <Setter Property="Grid.RowSpan" Value="1"/>
-            </Style>
-        </Style>
-
-        <Style Selector="DataGridColumnHeader">
-            <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="BorderThickness" Value="0,0,1,1"/>
-            <Setter Property="Padding" Value="8,6"/>
-            <Setter Property="SeparatorBrush" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-        </Style>
-
-        <Style Selector="DataGridRow:nth-child(odd)">
-            <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
-        </Style>
-
-        <Style Selector="DataGridRow:nth-child(even)">
-            <Setter Property="Background" Value="#998C74"/>
-        </Style>
-
-        <Style Selector="DataGridRow">
-            <Setter Property="FontSize" Value="12"/>
-            <Style Selector="^:selected /template/ Rectangle#Background">
-                <Setter Property="Fill" Value="{DynamicResource RimworldHighlightBrush}"/>
-                <Setter Property="Opacity" Value="0.3"/>
-            </Style>
-            <Style Selector="^:pointerover /template/ Rectangle#Background">
-                <Setter Property="Fill" Value="{DynamicResource RimworldHighlightBrush}"/>
-                <Setter Property="Opacity" Value="0.1"/>
-            </Style>
-        </Style>
-
-        <Style Selector="DataGridCell">
-            <Setter Property="Padding" Value="10,4"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Style Selector="^:selected /template/ Grid#FocusVisual">
-                <Setter Property="IsVisible" Value="False"/>
-            </Style>
-        </Style>
-    </dialogs:BaseDialog.Styles>
-
     <dialogs:BaseDialog.MainContent>
         <Grid RowDefinitions="Auto,Auto,*">
             <TextBlock Grid.Row="0" Text="Select Workshop mods to check for updates:"
@@ -79,13 +22,19 @@
                 <Grid ColumnDefinitions="Auto,*,Auto">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
                         <Button Content="Select Active" Command="{Binding SelectActiveCommand}" Classes="RimworldButtonStyle" Padding="10,4"/>
-                        <Button Content="Select None" Command="{Binding SelectNoneCommand}" Classes="RimworldButtonStyle" Padding="10,4"/>
                         
                         <Rectangle Width="1" Fill="{DynamicResource RimworldBrownBrush}" Margin="5,2"/>
 
                         <Menu Background="Transparent" VerticalAlignment="Center">
                             <MenuItem Header="Select by Update" Classes="RimworldDropDownButtonStyle" Padding="15,5">
-                                <MenuItem Header="Outdated (Game Version)" Command="{Binding SelectByTimeframeCommand}" CommandParameter="outdated" Classes="RimworldMenuItemStyle"/>
+                                <MenuItem Command="{Binding SelectByTimeframeCommand}" CommandParameter="outdated" Classes="RimworldMenuItemStyle">
+                                    <MenuItem.Header>
+                                        <StackPanel>
+                                            <TextBlock Text="Outdated (Game Version)" FontWeight="Medium"/>
+                                            <TextBlock Text="Mods not updated for current version" FontSize="10" Foreground="{DynamicResource RimworldLightBrownBrush}"/>
+                                        </StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
                                 <Separator Classes="RimworldSeparatorStyle"/>
                                 <MenuItem Header="Not updated in 1 week" Command="{Binding SelectByTimeframeCommand}" CommandParameter="week" Classes="RimworldMenuItemStyle"/>
                                 <MenuItem Header="Not updated in 1 month" Command="{Binding SelectByTimeframeCommand}" CommandParameter="month" Classes="RimworldMenuItemStyle"/>
@@ -105,35 +54,50 @@
             </Border>
 
             <Border Grid.Row="2" Classes="RimworldPanelBorder" Padding="0">
-                <DataGrid ItemsSource="{Binding ModsView}"
+                <DataGrid x:Name="ModsDataGrid"
+                          ItemsSource="{Binding ModsView}"
                           AutoGenerateColumns="False"
                           IsReadOnly="True"
                           CanUserSortColumns="True"
                           CanUserResizeColumns="True"
+                          GridLinesVisibility="All"
                           HorizontalScrollBarVisibility="Auto"
                           VerticalScrollBarVisibility="Auto"
                           BorderThickness="0">
+                    <DataGrid.Styles>
+                        <Style Selector="DataGridCell.CenteredColumn">
+                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                            <Setter Property="VerticalContentAlignment" Value="Center"/>
+                            <Setter Property="Padding" Value="0"/>
+                        </Style>
+                        <Style Selector="DataGridColumnHeader:nth-child(1)">
+                            <Setter Property="Padding" Value="0"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                        </Style>
+                    </DataGrid.Styles>
                     <DataGrid.Columns>
-                        <DataGridTemplateColumn Width="Auto" MinWidth="70" CanUserResize="True">
+                        <DataGridTemplateColumn Width="70" CanUserResize="True" CellStyleClasses="CenteredColumn">
                             <DataGridTemplateColumn.HeaderTemplate>
                                 <DataTemplate>
-                                    <CheckBox IsChecked="{Binding #RootUpdateCheckDialog.((vm:UpdateCheckDialogViewModel)DataContext).SelectAll, Mode=TwoWay, FallbackValue=False}"
-                                              HorizontalAlignment="Center" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                    <CheckBox IsChecked="{Binding #RootUpdateCheckDialog.((vm:UpdateCheckDialogViewModel)DataContext).SelectAll, Mode=TwoWay}"
+                                              IsThreeState="True"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0" Padding="0"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.HeaderTemplate>
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate x:DataType="vm:UpdateCheckItemViewModel">
                                     <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" 
-                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" 
+                                              Margin="0" Padding="0"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
                         <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*" CanUserResize="True"/>
                         <DataGridTextColumn Header="Package ID" Binding="{Binding PackageId}" Width="1.5*" CanUserResize="True"/>
-                        <DataGridTextColumn Header="Steam ID" Binding="{Binding SteamId}" Width="Auto" MinWidth="110" CanUserResize="True"/>
-                        
-                        <DataGridTemplateColumn Header="Last Update" Width="Auto" MinWidth="150" CanUserResize="True">
+                        <DataGridTextColumn Header="Steam ID" Binding="{Binding SteamId}" Width="110" CanUserResize="True"/>
+
+                        <DataGridTemplateColumn Header="Last Update" Width="150" CanUserResize="True">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate x:DataType="vm:UpdateCheckItemViewModel">
                                     <TextBlock Text="{Binding LocalUpdateDate}" 

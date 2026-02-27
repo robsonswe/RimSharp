@@ -31,4 +31,9 @@
     <SolidColorBrush x:Key="RimworldCodeBlueBrush" Color="{StaticResource RimworldCodeBlue}"/>
     <SolidColorBrush x:Key="RimworldConfigOrangeBrush" Color="{StaticResource RimworldConfigOrange}"/>
 
+    <!-- DataGrid Row Brushes -->
+    <SolidColorBrush x:Key="DataGridRowWhiteBrush" Color="{StaticResource DataGridRowWhite}"/>
+    <SolidColorBrush x:Key="DataGridRowGrayBrush" Color="{StaticResource DataGridRowGray}"/>
+    <SolidColorBrush x:Key="DataGridGridLineBrush" Color="{StaticResource DataGridGridLine}"/>
+
 </ResourceDictionary>

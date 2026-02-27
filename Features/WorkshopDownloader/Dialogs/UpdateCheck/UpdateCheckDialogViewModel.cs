@@ -38,10 +38,18 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
             private set => this.RaiseAndSetIfChanged(ref _selectedModCount, value);
         }
 
-        public bool SelectAll
+        private bool _isUpdatingAll;
+        public bool? SelectAll
         {
-            get => _modsToCheck.Any() && _modsToCheck.All(m => m.IsSelected);
-            set => SetSelectionAll(value);
+            get
+            {
+                if (!_modsToCheck.Any()) return false;
+                var selectedCount = _modsToCheck.Count(m => m.IsSelected);
+                if (selectedCount == 0) return false;
+                if (selectedCount == _modsToCheck.Count) return true;
+                return null; // Indeterminate
+            }
+            set => SetSelectionAll(value ?? false);
         }
 
         public UpdateCheckDialogViewModel(IEnumerable<ModItem> mods)
@@ -70,8 +78,11 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
         {
             if (e.PropertyName == nameof(UpdateCheckItemViewModel.IsSelected))
             {
-                UpdateSelectedCount();
-                this.RaisePropertyChanged(nameof(SelectAll));
+                if (!_isUpdatingAll)
+                {
+                    UpdateSelectedCount();
+                    this.RaisePropertyChanged(nameof(SelectAll));
+                }
             }
         }
 
@@ -80,47 +91,74 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
             SelectedModCount = _modsToCheck.Count(m => m.IsSelected);
         }
 
-        private void SetSelectionAll(bool isSelected)
+        private void SetSelectionAll(bool? isSelected)
         {
-            foreach (var item in _modsToCheck)
+            _isUpdatingAll = true;
+            try
             {
-                item.IsSelected = isSelected;
+                bool value = isSelected ?? false;
+                foreach (var item in _modsToCheck)
+                {
+                    item.IsSelected = value;
+                }
+                UpdateSelectedCount();
             }
+            finally
+            {
+                _isUpdatingAll = false;
+            }
+            this.RaisePropertyChanged(nameof(SelectAll));
         }
 
         private void SelectActiveOnly()
         {
-            foreach (var item in _modsToCheck)
+            _isUpdatingAll = true;
+            try
             {
-                item.IsSelected = item.ModItem.IsActive;
+                foreach (var item in _modsToCheck)
+                {
+                    item.IsSelected = item.ModItem.IsActive;
+                }
+                UpdateSelectedCount();
             }
-            UpdateSelectedCount();
+            finally
+            {
+                _isUpdatingAll = false;
+            }
             this.RaisePropertyChanged(nameof(SelectAll));
         }
 
         private void SelectByTimeframe(string timeframe)
         {
-            DateTime cutoff = timeframe switch
+            _isUpdatingAll = true;
+            try
             {
-                "week" => DateTime.Now.AddDays(-7),
-                "month" => DateTime.Now.AddMonths(-1),
-                "6months" => DateTime.Now.AddMonths(-6),
-                "year" => DateTime.Now.AddYears(-1),
-                _ => DateTime.MinValue
-            };
+                DateTime cutoff = timeframe switch
+                {
+                    "week" => DateTime.Now.AddDays(-7),
+                    "month" => DateTime.Now.AddMonths(-1),
+                    "6months" => DateTime.Now.AddMonths(-6),
+                    "year" => DateTime.Now.AddYears(-1),
+                    _ => DateTime.MinValue
+                };
 
-            foreach (var item in _modsToCheck)
-            {
-                if (timeframe == "outdated")
+                foreach (var item in _modsToCheck)
                 {
-                    item.IsSelected = item.ModItem.IsOutdatedRW;
+                    if (timeframe == "outdated")
+                    {
+                        item.IsSelected = item.ModItem.IsOutdatedRW;
+                    }
+                    else
+                    {
+                        item.IsSelected = item.LocalUpdateDateTime < cutoff;
+                    }
                 }
-                else
-                {
-                    item.IsSelected = item.LocalUpdateDateTime < cutoff;
-                }
+                UpdateSelectedCount();
             }
-            UpdateSelectedCount();
+            finally
+            {
+                _isUpdatingAll = false;
+            }
             this.RaisePropertyChanged(nameof(SelectAll));
         }
 
