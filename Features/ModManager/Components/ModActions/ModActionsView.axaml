@@ -14,26 +14,122 @@
         <!-- Left: Management Actions -->
         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
             <Button Content="Clear" Command="{Binding ClearActiveListCommand}" Classes="RimworldButtonStyle" MinWidth="60"/>
-            <Button Content="Sort" Command="{Binding SortActiveListCommand}" Classes="RimworldButtonStyle" MinWidth="60"/>
+            <Button Command="{Binding SortActiveListCommand}" Classes="RimworldButtonStyle" MinWidth="60">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <TextBlock Text="Sort"/>
+                    <Border Background="{DynamicResource RimworldErrorRedBrush}" 
+                            CornerRadius="10" Padding="5,0" VerticalAlignment="Center"
+                            IsVisible="{Binding ActiveSortingIssuesCount, Converter={StaticResource NumericToBooleanConverter}}">
+                        <TextBlock Text="{Binding ActiveSortingIssuesCount}" Foreground="White" FontSize="10" FontWeight="Bold"/>
+                    </Border>
+                </StackPanel>
+            </Button>
 
             <Border Width="1" Height="16" Background="{DynamicResource RimworldBrownBrush}" Margin="8,0" VerticalAlignment="Center" Opacity="0.3"/>
 
             <Menu Background="Transparent" VerticalAlignment="Center">
-                <MenuItem Header="Analyze" Classes="RimworldDropDownButtonStyle">
-                    <MenuItem Header="Dependencies" Command="{Binding ResolveDependenciesCommand}" Classes="RimworldMenuItemStyle"/>
-                    <MenuItem Header="Incompatibilities" Command="{Binding CheckIncompatibilitiesCommand}" Classes="RimworldMenuItemStyle"/>
-                    <MenuItem Header="Duplicates" Command="{Binding CheckDuplicatesCommand}" Classes="RimworldMenuItemStyle"/>
-                    <MenuItem Header="Replacements" Command="{Binding CheckReplacementsCommand}" Classes="RimworldMenuItemStyle"/>
+                <MenuItem Classes="RimworldDropDownButtonStyle">
+                    <MenuItem.Header>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="Maintenance"/>
+                            <Border Background="{DynamicResource RimworldErrorRedBrush}" 
+                                    CornerRadius="10" Padding="5,0" VerticalAlignment="Center"
+                                    IsVisible="{Binding TotalActiveIssues, Converter={StaticResource NumericToBooleanConverter}}">
+                                <TextBlock Text="{Binding TotalActiveIssues}" Foreground="White" FontSize="10" FontWeight="Bold"/>
+                            </Border>
+                        </StackPanel>
+                    </MenuItem.Header>
+                    <MenuItem Command="{Binding ResolveDependenciesCommand}" Classes="RimworldMenuItemStyle">
+                        <MenuItem.Header>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="📦" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Dependencies" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Border Grid.Column="1" Background="{DynamicResource RimworldErrorRedBrush}" 
+                                        CornerRadius="10" Padding="5,0" VerticalAlignment="Center" Margin="10,0,0,0"
+                                        IsVisible="{Binding ActiveMissingDependenciesCount, Converter={StaticResource NumericToBooleanConverter}}">
+                                    <TextBlock Text="{Binding ActiveMissingDependenciesCount}" Foreground="White" FontSize="10" FontWeight="Bold"/>
+                                </Border>
+                            </Grid>
+                        </MenuItem.Header>
+                    </MenuItem>
+                    <MenuItem Command="{Binding CheckIncompatibilitiesCommand}" Classes="RimworldMenuItemStyle">
+                        <MenuItem.Header>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="🚫" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Incompatibilities" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Border Grid.Column="1" Background="{DynamicResource RimworldErrorRedBrush}" 
+                                        CornerRadius="10" Padding="5,0" VerticalAlignment="Center" Margin="10,0,0,0"
+                                        IsVisible="{Binding ActiveIncompatibilitiesCount, Converter={StaticResource NumericToBooleanConverter}}">
+                                    <TextBlock Text="{Binding ActiveIncompatibilitiesCount}" Foreground="White" FontSize="10" FontWeight="Bold"/>
+                                </Border>
+                            </Grid>
+                        </MenuItem.Header>
+                    </MenuItem>
+                    <MenuItem Command="{Binding CheckDuplicatesCommand}" Classes="RimworldMenuItemStyle">
+                        <MenuItem.Header>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="👯" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Duplicates" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Border Grid.Column="1" Background="{DynamicResource RimworldErrorRedBrush}" 
+                                        CornerRadius="10" Padding="5,0" VerticalAlignment="Center" Margin="10,0,0,0"
+                                        IsVisible="{Binding ActiveDuplicateIssuesCount, Converter={StaticResource NumericToBooleanConverter}}">
+                                    <TextBlock Text="{Binding ActiveDuplicateIssuesCount}" Foreground="White" FontSize="10" FontWeight="Bold"/>
+                                </Border>
+                            </Grid>
+                        </MenuItem.Header>
+                    </MenuItem>
+                    <MenuItem Command="{Binding CheckReplacementsCommand}" Classes="RimworldMenuItemStyle">
+                        <MenuItem.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="🔄" VerticalAlignment="Center"/>
+                                <TextBlock Text="Replacements" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </MenuItem.Header>
+                    </MenuItem>
                 </MenuItem>
             </Menu>
 
             <Menu Background="Transparent" VerticalAlignment="Center">
                 <MenuItem Header="Utilities" Classes="RimworldDropDownButtonStyle">
-                    <MenuItem Header="Strip mods" Command="{Binding StripModsCommand}" Classes="RimworldMenuItemStyle"/>
-                    <MenuItem Header="Fix integrity" Command="{Binding FixIntegrityCommand}" Classes="RimworldMenuItemStyle"/>
+                    <MenuItem Command="{Binding StripModsCommand}" Classes="RimworldMenuItemStyle">
+                        <MenuItem.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="✂️" VerticalAlignment="Center"/>
+                                <TextBlock Text="Strip mods" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </MenuItem.Header>
+                    </MenuItem>
+                    <MenuItem Command="{Binding FixIntegrityCommand}" Classes="RimworldMenuItemStyle">
+                        <MenuItem.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="🛠️" VerticalAlignment="Center"/>
+                                <TextBlock Text="Fix integrity" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </MenuItem.Header>
+                    </MenuItem>
                     <Separator Classes="RimworldSeparatorStyle"/>
-                    <MenuItem Header="Install From Zip" Command="{Binding InstallFromZipCommand}" Classes="RimworldMenuItemStyle"/>
-                    <MenuItem Header="Install From Github" Command="{Binding InstallFromGithubCommand}" Classes="RimworldMenuItemStyle"/>
+                    <MenuItem Command="{Binding InstallFromZipCommand}" Classes="RimworldMenuItemStyle">
+                        <MenuItem.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="📦" VerticalAlignment="Center"/>
+                                <TextBlock Text="Install From Zip" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </MenuItem.Header>
+                    </MenuItem>
+                    <MenuItem Command="{Binding InstallFromGithubCommand}" Classes="RimworldMenuItemStyle">
+                        <MenuItem.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="🐙" VerticalAlignment="Center"/>
+                                <TextBlock Text="Install From Github" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </MenuItem.Header>
+                    </MenuItem>
                 </MenuItem>
             </Menu>
         </StackPanel>

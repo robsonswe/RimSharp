@@ -150,6 +150,15 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             }
         }
 
+        public int ActiveSortingIssuesCount => _modListManager.ActiveSortingIssuesCount;
+        public int ActiveMissingDependenciesCount => _modListManager.ActiveMissingDependenciesCount;
+        public int ActiveIncompatibilitiesCount => _modListManager.ActiveIncompatibilitiesCount;
+        public int ActiveVersionMismatchCount => _modListManager.ActiveVersionMismatchCount;
+        public int ActiveDuplicateIssuesCount => _modListManager.ActiveDuplicateIssuesCount;
+        public int TotalActiveIssues => ActiveMissingDependenciesCount + 
+                                       ActiveIncompatibilitiesCount + 
+                                       ActiveDuplicateIssuesCount;
+
         private readonly Avalonia.Threading.DispatcherTimer _gameCheckTimer;
 
 
@@ -236,6 +245,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             _gitService = gitService;
             RefreshPathValidity();
 
+            _modListManager.ListChanged += OnModListChanged;
+
             // Initialize game check timer (every 2 seconds)
             _gameCheckTimer = new Avalonia.Threading.DispatcherTimer();
             _gameCheckTimer.Interval = TimeSpan.FromSeconds(2);
@@ -243,6 +254,16 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             // Start will be managed by IsViewActive property
 
             InitializeCommands(); // Calls partial initialization methods
+        }
+
+        private void OnModListChanged(object? sender, ModListChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(ActiveSortingIssuesCount));
+            OnPropertyChanged(nameof(ActiveMissingDependenciesCount));
+            OnPropertyChanged(nameof(ActiveIncompatibilitiesCount));
+            OnPropertyChanged(nameof(ActiveVersionMismatchCount));
+            OnPropertyChanged(nameof(ActiveDuplicateIssuesCount));
+            OnPropertyChanged(nameof(TotalActiveIssues));
         }
 
         private void CheckIfGameIsRunning()
@@ -274,6 +295,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 if (disposing)
                 {
                     _gameCheckTimer?.Stop();
+                    _modListManager.ListChanged -= OnModListChanged;
                 }
             }
             base.Dispose(disposing);
