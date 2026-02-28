@@ -27,10 +27,10 @@
 
                         <Menu Background="Transparent" VerticalAlignment="Center">
                             <MenuItem Header="Select by Update" Classes="RimworldDropDownButtonStyle" Padding="15,5">
-                                <MenuItem Command="{Binding SelectByTimeframeCommand}" CommandParameter="outdated" Classes="RimworldMenuItemStyle">
+                                <MenuItem Command="{Binding SelectByTimeframeCommand}" CommandParameter="versionMismatch" Classes="RimworldMenuItemStyle">
                                     <MenuItem.Header>
                                         <StackPanel>
-                                            <TextBlock Text="Outdated (Game Version)" FontWeight="Medium"/>
+                                            <TextBlock Text="Version Mismatch" FontWeight="Medium"/>
                                             <TextBlock Text="Mods not updated for current version" FontSize="10" Foreground="{DynamicResource RimworldLightBrownBrush}"/>
                                         </StackPanel>
                                     </MenuItem.Header>

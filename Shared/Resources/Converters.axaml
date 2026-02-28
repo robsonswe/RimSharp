@@ -49,6 +49,7 @@
      <convText:StringToUriConverter x:Key="StringToUriConverter"/>
      <convText:TrimmedTextTooltipConverter x:Key="TrimmedTextTooltipConverter"/>
      <convText:DialogTypeToIconConverter x:Key="DialogTypeToIconConverter"/>
+     <convText:ModIssueTypeToIconConverter x:Key="ModIssueTypeToIconConverter"/>
 
      <!-- Utility Converters -->
      <convUtility:FileSizeConverter x:Key="FileSizeConverter"/>

@@ -7,7 +7,8 @@ namespace RimSharp.Shared.Models
         Sorting,
         Dependency,
         Incompatibility,
-        Outdated
+        VersionMismatch,
+        Duplicate
     }
 
     public class ModIssue

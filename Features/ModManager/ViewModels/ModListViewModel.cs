@@ -43,7 +43,8 @@ namespace RimSharp.Features.ModManager.ViewModels
         public int ActiveSortingIssuesCount => _modListManager.ActiveSortingIssuesCount;
         public int ActiveMissingDependenciesCount => _modListManager.ActiveMissingDependenciesCount;
         public int ActiveIncompatibilitiesCount => _modListManager.ActiveIncompatibilitiesCount;
-        public int ActiveOutdatedModsCount => _modListManager.ActiveOutdatedModsCount;
+        public int ActiveVersionMismatchCount => _modListManager.ActiveVersionMismatchCount;
+        public int ActiveDuplicateIssuesCount => _modListManager.ActiveDuplicateIssuesCount;
         public bool HasAnyActiveIssues => _modListManager.HasAnyActiveModIssues;
 
         public ModItem? SelectedMod
@@ -198,7 +199,8 @@ namespace RimSharp.Features.ModManager.ViewModels
             OnPropertyChanged(nameof(ActiveSortingIssuesCount));
             OnPropertyChanged(nameof(ActiveMissingDependenciesCount));
             OnPropertyChanged(nameof(ActiveIncompatibilitiesCount));
-            OnPropertyChanged(nameof(ActiveOutdatedModsCount));
+            OnPropertyChanged(nameof(ActiveVersionMismatchCount));
+            OnPropertyChanged(nameof(ActiveDuplicateIssuesCount));
             OnPropertyChanged(nameof(HasAnyActiveIssues));
         }
 
@@ -211,7 +213,8 @@ namespace RimSharp.Features.ModManager.ViewModels
             OnPropertyChanged(nameof(ActiveSortingIssuesCount));
             OnPropertyChanged(nameof(ActiveMissingDependenciesCount));
             OnPropertyChanged(nameof(ActiveIncompatibilitiesCount));
-            OnPropertyChanged(nameof(ActiveOutdatedModsCount));
+            OnPropertyChanged(nameof(ActiveVersionMismatchCount));
+            OnPropertyChanged(nameof(ActiveDuplicateIssuesCount));
             OnPropertyChanged(nameof(HasAnyActiveIssues));
         }
 
@@ -232,7 +235,8 @@ namespace RimSharp.Features.ModManager.ViewModels
             OnPropertyChanged(nameof(ActiveSortingIssuesCount));
             OnPropertyChanged(nameof(ActiveMissingDependenciesCount));
             OnPropertyChanged(nameof(ActiveIncompatibilitiesCount));
-            OnPropertyChanged(nameof(ActiveOutdatedModsCount));
+            OnPropertyChanged(nameof(ActiveVersionMismatchCount));
+            OnPropertyChanged(nameof(ActiveDuplicateIssuesCount));
             OnPropertyChanged(nameof(HasAnyActiveIssues));
         }
 

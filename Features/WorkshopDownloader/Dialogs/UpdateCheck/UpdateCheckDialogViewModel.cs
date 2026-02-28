@@ -144,9 +144,9 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
 
                 foreach (var item in _modsToCheck)
                 {
-                    if (timeframe == "outdated")
+                    if (timeframe == "versionMismatch")
                     {
-                        item.IsSelected = item.ModItem.IsOutdatedRW;
+                        item.IsSelected = !item.ModItem.IsSupportedRW;
                     }
                     else
                     {

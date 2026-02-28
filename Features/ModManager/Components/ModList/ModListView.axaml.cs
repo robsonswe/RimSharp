@@ -358,13 +358,22 @@ namespace RimSharp.Features.ModManager.Components.ModList
             set => SetValue(IncompatibilitiesCountProperty, value);
         }
 
-        public static readonly StyledProperty<int> ActiveOutdatedModsCountProperty =
-            AvaloniaProperty.Register<ModListView, int>(nameof(ActiveOutdatedModsCount), 0);
+        public static readonly StyledProperty<int> ActiveVersionMismatchCountProperty =
+            AvaloniaProperty.Register<ModListView, int>(nameof(ActiveVersionMismatchCount), 0);
 
-        public int ActiveOutdatedModsCount
+        public int ActiveVersionMismatchCount
         {
-            get => GetValue(ActiveOutdatedModsCountProperty);
-            set => SetValue(ActiveOutdatedModsCountProperty, value);
+            get => GetValue(ActiveVersionMismatchCountProperty);
+            set => SetValue(ActiveVersionMismatchCountProperty, value);
+        }
+
+        public static readonly StyledProperty<int> ActiveDuplicateIssuesCountProperty =
+            AvaloniaProperty.Register<ModListView, int>(nameof(ActiveDuplicateIssuesCount), 0);
+
+        public int ActiveDuplicateIssuesCount
+        {
+            get => GetValue(ActiveDuplicateIssuesCountProperty);
+            set => SetValue(ActiveDuplicateIssuesCountProperty, value);
         }
 
         public static readonly StyledProperty<ICommand?> OpenIssuesCommandProperty =

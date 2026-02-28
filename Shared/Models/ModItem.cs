@@ -102,7 +102,7 @@ namespace RimSharp.Shared.Models
         public bool LoadBottom { get; set; }
         public string PreviewImagePath { get; set; } = string.Empty;
 
-        public bool IsOutdatedRW { get; set; }
+        public bool IsSupportedRW { get; set; }
 
         public bool HasUrl => !string.IsNullOrEmpty(Url);
         public bool HasSteamUrl => !string.IsNullOrEmpty(SteamUrl);

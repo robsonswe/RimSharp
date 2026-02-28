@@ -71,7 +71,8 @@
                                           SortingIssuesCount="{Binding ModListViewModel.ActiveSortingIssuesCount}"
                                           MissingDependenciesCount="{Binding ModListViewModel.ActiveMissingDependenciesCount}"
                                           IncompatibilitiesCount="{Binding ModListViewModel.ActiveIncompatibilitiesCount}"
-                                          ActiveOutdatedModsCount="{Binding ModListViewModel.ActiveOutdatedModsCount}"
+                                          ActiveVersionMismatchCount="{Binding ModListViewModel.ActiveVersionMismatchCount}"
+                                          ActiveDuplicateIssuesCount="{Binding ModListViewModel.ActiveDuplicateIssuesCount}"
                                           OpenIssuesCommand="{Binding ModListViewModel.OpenActiveIssuesCommand}"
                                           Margin="4,0,0,0"/>
                 </Grid>

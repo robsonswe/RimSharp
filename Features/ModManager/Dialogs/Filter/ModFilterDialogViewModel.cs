@@ -13,7 +13,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
     {
         private string _searchText = string.Empty;
         private string _authorFilterText = string.Empty;
-        private bool? _isOutdatedFilter;
+        private bool? _isSupportedFilter;
         private bool? _hasAssembliesFilter;
         private bool? _hasTexturesFilter;
         private bool? _isFavoriteFilter;
@@ -40,7 +40,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
         public ReadOnlyCollection<string> AllAvailableAuthors { get; }
 
 
-        public bool? IsOutdatedFilter { get => _isOutdatedFilter; set => SetProperty(ref _isOutdatedFilter, value); }
+        public bool? IsSupportedFilter { get => _isSupportedFilter; set => SetProperty(ref _isSupportedFilter, value); }
         public bool? HasAssembliesFilter { get => _hasAssembliesFilter; set => SetProperty(ref _hasAssembliesFilter, value); }
         public bool? HasTexturesFilter { get => _hasTexturesFilter; set => SetProperty(ref _hasTexturesFilter, value); }
         public bool? IsFavoriteFilter { get => _isFavoriteFilter; set => SetProperty(ref _isFavoriteFilter, value); }
@@ -63,7 +63,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
             // Initialize properties from current criteria
             _searchText = _initialCriteria.SearchText;
             _authorFilterText = _initialCriteria.AuthorFilterText;
-            _isOutdatedFilter = _initialCriteria.IsOutdatedFilter;
+            _isSupportedFilter = _initialCriteria.IsSupportedFilter;
             _isFavoriteFilter = _initialCriteria.IsFavoriteFilter;
             _hasAssembliesFilter = _initialCriteria.HasAssembliesFilter;
             _hasTexturesFilter = _initialCriteria.HasTexturesFilter;
@@ -127,7 +127,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
 
             switch (property)
             {
-                case "IsOutdated": IsOutdatedFilter = value; break;
+                case "IsSupported": IsSupportedFilter = value; break;
                 case "IsFavorite": IsFavoriteFilter = value; break;
                 case "HasAssemblies": HasAssembliesFilter = value; break;
                 case "HasTextures": HasTexturesFilter = value; break;
@@ -143,7 +143,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
                 SelectedModTypes = AvailableModTypes.Where(vm => vm.IsSelected).Select(vm => vm.Item).ToList(),
                 SelectedSupportedVersions = AvailableVersions.Where(vm => vm.IsSelected).Select(vm => vm.Item).ToList(),
                 SelectedTags = AvailableTags.Where(vm => vm.IsSelected).Select(vm => vm.Item).ToList(),
-                IsOutdatedFilter = this.IsOutdatedFilter,
+                IsSupportedFilter = this.IsSupportedFilter,
                 IsFavoriteFilter = this.IsFavoriteFilter,
                 HasAssembliesFilter = this.HasAssembliesFilter,
                 HasTexturesFilter = this.HasTexturesFilter
@@ -158,7 +158,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
             foreach (var item in AvailableModTypes) item.IsSelected = false;
             foreach (var item in AvailableVersions) item.IsSelected = false;
             foreach (var item in AvailableTags) item.IsSelected = false;
-            IsOutdatedFilter = null;
+            IsSupportedFilter = null;
             IsFavoriteFilter = null;
             HasAssembliesFilter = null;
             HasTexturesFilter = null;

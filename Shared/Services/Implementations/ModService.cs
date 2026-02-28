@@ -84,12 +84,12 @@ namespace RimSharp.Shared.Services.Implementations
             // ModCustomService.ApplyCustomInfoToMods needs modification (see Step 8)
             _customService.ApplyCustomInfoToMods(_allMods);
 
-            // 6. Final Checks (Outdated Status)
-            _logger.LogDebug("Calculating outdated status...", nameof(ModService));
+            // 6. Final Checks (Version Support Status)
+            _logger.LogDebug("Calculating version support status...", nameof(ModService));
             foreach (var mod in _allMods)
             {
                 // Use the comprehensive SupportedVersions list now
-                mod.IsOutdatedRW = !IsVersionSupported(_currentMajorVersion, mod.SupportedVersions) && mod.SupportedVersions.Any();
+                mod.IsSupportedRW = IsVersionSupported(_currentMajorVersion, mod.SupportedVersions) || !mod.SupportedVersions.Any();
             }
 
             // 7. Set Active Status
@@ -298,13 +298,13 @@ namespace RimSharp.Shared.Services.Implementations
             await Task.Run(() => _customService.ApplyCustomInfoToMods(_allMods));
 
 
-            // 6. Final Checks (Outdated Status)
-            _logger.LogDebug("Calculating outdated status...", nameof(ModService));
+            // 6. Final Checks (Version Support Status)
+            _logger.LogDebug("Calculating version support status...", nameof(ModService));
             progress?.Report((95, 100, "Finalizing metadata..."));
             foreach (var mod in _allMods)
             {
                 // Use the comprehensive SupportedVersions list now
-                mod.IsOutdatedRW = !IsVersionSupported(_currentMajorVersion, mod.SupportedVersions) && mod.SupportedVersions.Any();
+                mod.IsSupportedRW = IsVersionSupported(_currentMajorVersion, mod.SupportedVersions) || !mod.SupportedVersions.Any();
             }
 
             // 7. Set Active Status

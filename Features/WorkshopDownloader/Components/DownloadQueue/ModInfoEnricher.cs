@@ -74,7 +74,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 item.IsInstalled = true;
                 item.LocalDateStamp = localMod.DateStamp;
                 item.IsActive = _modListManager.IsModActive(localMod);
-                item.IsLocallyOutdatedRW = localMod.IsOutdatedRW;
+                item.IsLocallySupportedRW = localMod.IsSupportedRW;
                 item.InstalledVersions = localMod.SupportedVersions;
                 item.IsFavorite = localMod.IsFavorite;
                 

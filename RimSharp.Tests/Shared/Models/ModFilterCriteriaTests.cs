@@ -43,7 +43,7 @@ namespace RimSharp.Tests.Shared.Models
         public void IsActive_WhenTristateSet_ShouldBeTrue()
         {
             // Arrange
-            var criteria = new ModFilterCriteria { IsOutdatedFilter = true };
+            var criteria = new ModFilterCriteria { IsSupportedFilter = true };
 
             // Act & Assert
             criteria.IsActive().Should().BeTrue();
@@ -56,7 +56,7 @@ namespace RimSharp.Tests.Shared.Models
             var criteria = new ModFilterCriteria
             {
                 SearchText = "test",
-                IsOutdatedFilter = true,
+                IsSupportedFilter = true,
                 SelectedModTypes = new List<ModType> { ModType.Core }
             };
 
@@ -65,7 +65,7 @@ namespace RimSharp.Tests.Shared.Models
 
             // Assert
             criteria.SearchText.Should().BeEmpty();
-            criteria.IsOutdatedFilter.Should().BeNull();
+            criteria.IsSupportedFilter.Should().BeNull();
             criteria.SelectedModTypes.Should().BeEmpty();
             criteria.IsActive().Should().BeFalse();
         }
