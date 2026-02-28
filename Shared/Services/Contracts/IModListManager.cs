@@ -37,7 +37,9 @@ namespace RimSharp.Shared.Services.Contracts
         int ActiveSortingIssuesCount { get; }
         int ActiveMissingDependenciesCount { get; }
         int ActiveIncompatibilitiesCount { get; }
-        int ActiveOutdatedModsCount { get; }
+        int ActiveVersionMismatchCount { get; }
+        int ActiveDuplicateIssuesCount { get; }
+        string CurrentMajorGameVersion { get; }
 
         IEnumerable<ModIssue> GetActiveModIssues();
 

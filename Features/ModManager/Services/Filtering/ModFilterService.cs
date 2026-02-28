@@ -187,7 +187,7 @@ namespace RimSharp.Features.ModManager.Services.Filtering
                 filtered = filtered.Where(m => m.TagList.Any(tag => selectedTagsSet.Contains(tag)));
             }
 
-            if (criteria.IsOutdatedFilter.HasValue) filtered = filtered.Where(m => m.IsOutdatedRW == criteria.IsOutdatedFilter.Value);
+            if (criteria.IsSupportedFilter.HasValue) filtered = filtered.Where(m => m.IsSupportedRW == criteria.IsSupportedFilter.Value);
             if (criteria.IsFavoriteFilter.HasValue) filtered = filtered.Where(m => m.IsFavorite == criteria.IsFavoriteFilter.Value);
             if (criteria.HasAssembliesFilter.HasValue) filtered = filtered.Where(m => m.Assemblies == criteria.HasAssembliesFilter.Value);
             if (criteria.HasTexturesFilter.HasValue) filtered = filtered.Where(m => m.Textures == criteria.HasTexturesFilter.Value);

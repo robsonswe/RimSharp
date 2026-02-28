@@ -48,18 +48,17 @@
                                                                         </Grid>
                                                                     </Border>
                             
-                                                                    <!-- Row 1: Outdated -->
-                                                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Is Outdated?" VerticalAlignment="Center" Margin="10,0" FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
-                                                                    <RadioButton Grid.Row="2" Grid.Column="1" GroupName="IsOutdated" 
-                                                                                 IsChecked="{Binding IsOutdatedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
-                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsOutdated|Null"/>
-                                                                    <RadioButton Grid.Row="2" Grid.Column="2" GroupName="IsOutdated" 
-                                                                                 IsChecked="{Binding IsOutdatedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"
-                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsOutdated|True"/>
-                                                                    <RadioButton Grid.Row="2" Grid.Column="3" GroupName="IsOutdated" 
-                                                                                 IsChecked="{Binding IsOutdatedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"
-                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsOutdated|False"/>
-                                                                    <Rectangle Grid.Row="3" Grid.ColumnSpan="4" Fill="{DynamicResource RimworldBrownBrush}" Opacity="0.3"/>
+                                                                    <!-- Row 1: Supported -->
+                                                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Is Supported?" VerticalAlignment="Center" Margin="10,0" FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                                                    <RadioButton Grid.Row="2" Grid.Column="1" GroupName="IsSupported"
+                                                                                 IsChecked="{Binding IsSupportedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
+                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsSupported|Null"/>
+                                                                    <RadioButton Grid.Row="2" Grid.Column="2" GroupName="IsSupported"
+                                                                                 IsChecked="{Binding IsSupportedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"
+                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsSupported|True"/>
+                                                                    <RadioButton Grid.Row="2" Grid.Column="3" GroupName="IsSupported"
+                                                                                 IsChecked="{Binding IsSupportedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"
+                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsSupported|False"/>                                                                    <Rectangle Grid.Row="3" Grid.ColumnSpan="4" Fill="{DynamicResource RimworldBrownBrush}" Opacity="0.3"/>
                             
                                                                     <!-- Row 2: Favorite -->
                                                                     <TextBlock Grid.Row="4" Grid.Column="0" Text="Is Favorite?" VerticalAlignment="Center" Margin="10,0" FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>

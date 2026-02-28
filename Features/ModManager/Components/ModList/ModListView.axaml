@@ -273,7 +273,7 @@
 
                                     <!-- Mod Name -->
                                     <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                                               Foreground="{Binding IsOutdatedRW, Converter={StaticResource BooleanToColorConverter}, ConverterParameter='RimworldErrorRed|RimworldBrown'}">
+                                               Foreground="{Binding IsSupportedRW, Converter={StaticResource BooleanToColorConverter}, ConverterParameter='RimworldBrown|RimworldErrorRed'}">
                                         <TextBlock.FontWeight>
                                             <MultiBinding Converter="{StaticResource ModWeightConverter}">
                                                 <Binding Path="IsFavorite"/>
@@ -318,7 +318,8 @@
                             <Binding Path="#RootModListView.SortingIssuesCount" Converter="{StaticResource NumericToBooleanConverter}"/>
                             <Binding Path="#RootModListView.MissingDependenciesCount" Converter="{StaticResource NumericToBooleanConverter}"/>
                             <Binding Path="#RootModListView.IncompatibilitiesCount" Converter="{StaticResource NumericToBooleanConverter}"/>
-                            <Binding Path="#RootModListView.ActiveOutdatedModsCount" Converter="{StaticResource NumericToBooleanConverter}"/>
+                            <Binding Path="#RootModListView.ActiveVersionMismatchCount" Converter="{StaticResource NumericToBooleanConverter}"/>
+                            <Binding Path="#RootModListView.ActiveDuplicateIssuesCount" Converter="{StaticResource NumericToBooleanConverter}"/>
                         </MultiBinding>
                     </MultiBinding>
                 </Button.IsVisible>
@@ -328,7 +329,7 @@
                                 BorderBrush="{TemplateBinding BorderBrush}" 
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 Padding="4,2">
-                            <Grid ColumnDefinitions="*,*,*,*">
+                            <Grid ColumnDefinitions="*,*,*,*,*">
                                 <!-- Sorting Issues -->
                                 <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
                                     <TextBlock Text="🔃" VerticalAlignment="Center" FontSize="12"/>
@@ -350,11 +351,18 @@
                                     <ToolTip.Tip>Incompatibilities</ToolTip.Tip>
                                 </StackPanel>
 
-                                <!-- Outdated Mods -->
+                                <!-- Version Mismatch -->
                                 <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
                                     <TextBlock Text="⚠️" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource RimworldErrorRedBrush}"/>
-                                    <TextBlock Text="{Binding #RootModListView.ActiveOutdatedModsCount}" FontWeight="Bold" VerticalAlignment="Center"/>
-                                    <ToolTip.Tip>Outdated mods</ToolTip.Tip>
+                                    <TextBlock Text="{Binding #RootModListView.ActiveVersionMismatchCount}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <ToolTip.Tip>Version mismatch</ToolTip.Tip>
+                                </StackPanel>
+
+                                <!-- Duplicates -->
+                                <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
+                                    <TextBlock Text="👯" VerticalAlignment="Center" FontSize="12"/>
+                                    <TextBlock Text="{Binding #RootModListView.ActiveDuplicateIssuesCount}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <ToolTip.Tip>Duplicate mods</ToolTip.Tip>
                                 </StackPanel>
                             </Grid>
                         </Border>

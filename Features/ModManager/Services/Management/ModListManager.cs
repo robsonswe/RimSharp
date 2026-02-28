@@ -18,6 +18,7 @@ namespace RimSharp.Features.ModManager.Services.Management
         private readonly IModDictionaryService _modDictionaryService;
         private readonly List<ModItem> _allAvailableMods = new();
         private bool _hasAnyActiveModIssues = false;
+        private string _currentMajorGameVersion = string.Empty;
         private readonly List<ModIssue> _activeModIssues = new();
 
         public event EventHandler<ModListChangedEventArgs>? ListChanged;
@@ -38,7 +39,9 @@ namespace RimSharp.Features.ModManager.Services.Management
         public int ActiveSortingIssuesCount => _activeModIssues.Count(i => i.Type == ModIssueType.Sorting);
         public int ActiveMissingDependenciesCount => _activeModIssues.Count(i => i.Type == ModIssueType.Dependency);
         public int ActiveIncompatibilitiesCount => _activeModIssues.Count(i => i.Type == ModIssueType.Incompatibility);
-        public int ActiveOutdatedModsCount => _activeModIssues.Count(i => i.Type == ModIssueType.Outdated);
+        public int ActiveVersionMismatchCount => _activeModIssues.Count(i => i.Type == ModIssueType.VersionMismatch);
+        public int ActiveDuplicateIssuesCount => _activeModIssues.Count(i => i.Type == ModIssueType.Duplicate);
+        public string CurrentMajorGameVersion => _currentMajorGameVersion;
 
         public IEnumerable<ModIssue> GetActiveModIssues() => _activeModIssues;
 
@@ -49,6 +52,17 @@ namespace RimSharp.Features.ModManager.Services.Management
             _allAvailableMods.Clear();
             _allAvailableMods.AddRange(allAvailableMods);
             _lookupService.Initialize(_allAvailableMods);
+
+            _currentMajorGameVersion = string.Empty;
+            var coreMod = _allAvailableMods.FirstOrDefault(m => m.ModType == ModType.Core);
+            if (coreMod != null && coreMod.SupportedVersions.Any())
+            {
+                _currentMajorGameVersion = coreMod.SupportedVersions.First().Version;
+            }
+            if (string.IsNullOrEmpty(_currentMajorGameVersion) || _currentMajorGameVersion.StartsWith("N/A"))
+            {
+                _currentMajorGameVersion = "Unknown";
+            }
 
             var activeIdList = activeModPackageIds?
                 .Where(id => !string.IsNullOrEmpty(id))
@@ -456,11 +470,38 @@ namespace RimSharp.Features.ModManager.Services.Management
                     }
                 }
 
-                if (currentMod.IsOutdatedRW)
+                if (!currentMod.IsSupportedRW)
                 {
-                    var desc = "Mod is outdated (not compatible with the current version of RimWorld).";
+                    string supportedList = currentMod.SupportedVersionStrings.Any() 
+                        ? string.Join(", ", currentMod.SupportedVersionStrings) 
+                        : "None listed";
+
+                    var desc = $"Version mismatch. Your current RimWorld version is {_currentMajorGameVersion}, but this mod lists support for: {supportedList}.";
                     issuesStrings.Add(desc);
-                    _activeModIssues.Add(new ModIssue(currentMod, ModIssueType.Outdated, desc));
+                    _activeModIssues.Add(new ModIssue(currentMod, ModIssueType.VersionMismatch, desc));
+                }
+
+                // Duplicate Check
+                if (!string.IsNullOrEmpty(currentMod.PackageId))
+                {
+                    var duplicates = _allAvailableMods.Where(m => 
+                        m != currentMod && 
+                        string.Equals(m.PackageId, currentMod.PackageId, StringComparison.OrdinalIgnoreCase)).ToList();
+                    
+                    if (duplicates.Any())
+                    {
+                        var duplicateDetails = duplicates.Select(d => 
+                        {
+                            var versionInfo = !string.IsNullOrEmpty(d.ModVersion) ? $" (Mod Version: {d.ModVersion})" : "";
+                            var authorInfo = !string.IsNullOrEmpty(d.Authors) ? $" by {d.Authors}" : "";
+                            var rwVersions = d.SupportedVersionStrings.Any() ? $" [RW: {string.Join(", ", d.SupportedVersionStrings)}]" : "";
+                            return $"- {d.Name}{authorInfo}{versionInfo}{rwVersions} at: {d.Path}";
+                        });
+
+                        var desc = $"Duplicate mod detected. There are other versions of this mod installed:{Environment.NewLine}{string.Join(Environment.NewLine, duplicateDetails)}";
+                        issuesStrings.Add(desc);
+                        _activeModIssues.Add(new ModIssue(currentMod, ModIssueType.Duplicate, desc));
+                    }
                 }
 
                 if (issuesStrings.Count > 0)

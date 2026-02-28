@@ -19,7 +19,7 @@ namespace RimSharp.Shared.Models
         public List<string> SelectedTags { get; set; } = new List<string>(); // New: Filter by Tags
 
         // Tristate filters: null = Any, true = Yes, false = No
-        public bool? IsOutdatedFilter { get; set; } = null;
+        public bool? IsSupportedFilter { get; set; } = null;
         public bool? HasAssembliesFilter { get; set; } = null;
         public bool? HasTexturesFilter { get; set; } = null; // <<< NEW FILTER PROPERTY >>>
         public bool? IsFavoriteFilter { get; set; } = null;
@@ -31,7 +31,7 @@ namespace RimSharp.Shared.Models
                 || (SelectedModTypes != null && SelectedModTypes.Any())
                 || (SelectedSupportedVersions != null && SelectedSupportedVersions.Any())
                 || (SelectedTags != null && SelectedTags.Any())
-                || IsOutdatedFilter.HasValue
+                || IsSupportedFilter.HasValue
                 || IsFavoriteFilter.HasValue
                 || HasAssembliesFilter.HasValue
                 || HasTexturesFilter.HasValue;
@@ -44,7 +44,7 @@ namespace RimSharp.Shared.Models
             SelectedModTypes?.Clear();
             SelectedSupportedVersions?.Clear();
             SelectedTags?.Clear(); // Clear Tags
-            IsOutdatedFilter = null;
+            IsSupportedFilter = null;
             IsFavoriteFilter = null;
             HasAssembliesFilter = null;
             HasTexturesFilter = null;
@@ -60,7 +60,7 @@ namespace RimSharp.Shared.Models
                 SelectedModTypes = new List<ModType>(this.SelectedModTypes ?? Enumerable.Empty<ModType>()),
                 SelectedSupportedVersions = new List<string>(this.SelectedSupportedVersions ?? Enumerable.Empty<string>()),
                 SelectedTags = new List<string>(this.SelectedTags ?? Enumerable.Empty<string>()), // Clone Tags
-                IsOutdatedFilter = this.IsOutdatedFilter,
+                IsSupportedFilter = this.IsSupportedFilter,
                 IsFavoriteFilter = this.IsFavoriteFilter,
                 HasAssembliesFilter = this.HasAssembliesFilter,
                 HasTexturesFilter = this.HasTexturesFilter
