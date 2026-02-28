@@ -115,6 +115,7 @@ namespace RimSharp.AppDir.AppFiles
                 _logger = ServiceProvider.GetRequiredService<ILoggerService>();
 
                 ThreadHelper.Initialize();
+                ServiceProvider.GetRequiredService<IModCustomService>().Initialize();
                 _logger.LogInfo("Application starting up - Initializing UI Components", "App.OnFrameworkInitializationCompleted");
 
                 var mainViewModel = ServiceProvider.GetRequiredService<MainViewModel>();

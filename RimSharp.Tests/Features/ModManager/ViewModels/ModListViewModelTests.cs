@@ -12,17 +12,16 @@ using Xunit;
 
 namespace RimSharp.Tests.Features.ModManager.ViewModels
 {
-    public class ModListViewModelTests
+    public class ModListViewModelTests : IDisposable
     {
         private readonly IModFilterService _mockFilterService;
         private readonly IModListManager _mockModListManager;
         private readonly IModCommandService _mockCommandService;
         private readonly IDialogService _mockDialogService;
+        private ModListViewModel? _vm;
 
         public ModListViewModelTests()
         {
-            RimSharp.Core.Extensions.ThreadHelper.Initialize();
-            
             _mockFilterService = Substitute.For<IModFilterService>();
             _mockModListManager = Substitute.For<IModListManager>();
             _mockCommandService = Substitute.For<IModCommandService>();
@@ -37,14 +36,20 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
             _mockFilterService.InactiveSearchText.Returns(string.Empty);
         }
 
+        public void Dispose()
+        {
+            _vm?.Dispose();
+        }
+
         private ModListViewModel CreateViewModel()
         {
-            return new ModListViewModel(
+            _vm = new ModListViewModel(
                 _mockFilterService,
                 _mockModListManager,
                 _mockCommandService,
                 _mockDialogService
             );
+            return _vm;
         }
 
         [Fact]
@@ -76,7 +81,7 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
         }
 
         [Fact]
-        public async Task ActiveSearchText_ShouldDebounceAndApplyFilter()
+        public void ActiveSearchText_ShouldDebounceAndApplyFilter()
         {
             // Arrange
             var vm = CreateViewModel();
@@ -84,9 +89,6 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
             // Act
             vm.ActiveSearchText = "search";
             
-            // Wait for debounce (300ms + buffer)
-            await Task.Delay(1000);
-
             // Assert
             _mockFilterService.Received(1).ApplyActiveFilter("search");
         }

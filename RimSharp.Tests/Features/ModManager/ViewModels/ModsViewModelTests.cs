@@ -149,6 +149,35 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
         }
 
         [Fact]
+        public void OnModListManagerChanged_WhenSelectedModRemoved_ShouldResetSelectionToCore()
+        {
+            // Arrange
+            var vm = CreateViewModel();
+            var coreMod = new ModItem { Name = "Core", PackageId = "Ludeon.RimWorld", ModType = ModType.Core };
+            var otherMod = new ModItem { Name = "Other", PackageId = "other" };
+            var allMods = new List<ModItem> { coreMod, otherMod };
+
+            _mockModListManager.GetAllMods().Returns(allMods);
+            _mockModListManager.VirtualActiveMods.Returns(new List<(ModItem Mod, int LoadOrder)> { (coreMod, 0), (otherMod, 1) });
+
+            vm.SelectedMod = otherMod;
+
+            // Simulate removal of otherMod
+            allMods.Remove(otherMod);
+            _mockModListManager.GetAllMods().Returns(allMods);
+            _mockModListManager.VirtualActiveMods.Returns(new List<(ModItem Mod, int LoadOrder)> { (coreMod, 0) });
+
+            // Act
+            // Raise the event manually using NSubstitute's helper if we could, but here we just call the handler directly if it were accessible, 
+            // or trigger it through the mock if it was a real class.
+            // Since it's a private handler, we trigger it via the mock's event.
+            _mockModListManager.ListChanged += Raise.Event<EventHandler<ModListChangedEventArgs>>(_mockModListManager, new ModListChangedEventArgs(true));
+
+            // Assert
+            vm.SelectedMod.Should().Be(coreMod, "Because the previously selected mod was deleted, it should fall back to Core.");
+        }
+
+        [Fact]
         public async Task LoadDataAsync_WhenExceptionOccurs_ShouldShowErrorAndStopLoading()
         {
             // Arrange

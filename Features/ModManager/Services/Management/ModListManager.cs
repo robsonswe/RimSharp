@@ -19,7 +19,7 @@ namespace RimSharp.Features.ModManager.Services.Management
         private readonly List<ModItem> _allAvailableMods = new();
         private bool _hasAnyActiveModIssues = false;
 
-        public event EventHandler? ListChanged;
+        public event EventHandler<ModListChangedEventArgs>? ListChanged;
 
         public ModListManager(IModDictionaryService modDictionaryService)
         {
@@ -64,7 +64,7 @@ namespace RimSharp.Features.ModManager.Services.Management
             _orderService.Initialize(initialActiveModsForOrder);
             RecalculateActiveModIssues();
 
-            RaiseListChanged();
+            RaiseListChanged(false); // Initial load is not a user modification
             Debug.WriteLine($"ModListManager Initialized: {_orderService.VirtualActiveMods.Count} active, {_stateTracker.AllInactiveMods.Count} inactive.");
         }
 
@@ -109,7 +109,7 @@ namespace RimSharp.Features.ModManager.Services.Management
             {
                 _orderService.Clear();
                 _orderService.AddModsAt(sortedMods, 0);
-                RaiseListChanged();
+                RaiseListChanged(true);
             }
 
             return orderChanged;
@@ -118,10 +118,10 @@ namespace RimSharp.Features.ModManager.Services.Management
         public bool IsModActive(ModItem mod) => _stateTracker.IsModActive(mod);
         public IEnumerable<ModItem> GetAllMods() => _allAvailableMods;
 
-        private void RaiseListChanged()
+        private void RaiseListChanged(bool activeListModified)
         {
             RecalculateActiveModIssues();
-            ListChanged?.Invoke(this, EventArgs.Empty);
+            ListChanged?.Invoke(this, new ModListChangedEventArgs(activeListModified));
         }
 
         public void ActivateModsAt(IEnumerable<ModItem> mods, int index)
@@ -152,7 +152,7 @@ namespace RimSharp.Features.ModManager.Services.Management
                 listChanged |= _orderService.AddModsAt(modsToActivate, index);
             }
 
-            if (listChanged) RaiseListChanged();
+            if (listChanged) RaiseListChanged(true);
         }
 
         public void DeactivateMods(IEnumerable<ModItem> mods)
@@ -162,7 +162,7 @@ namespace RimSharp.Features.ModManager.Services.Management
             if (!modsToDeactivate.Any()) return;
 
             foreach (var mod in modsToDeactivate) _stateTracker.Deactivate(mod);
-            if (_orderService.RemoveMods(modsToDeactivate)) RaiseListChanged();
+            if (_orderService.RemoveMods(modsToDeactivate)) RaiseListChanged(true);
         }
 
         public void ReorderMods(IEnumerable<ModItem> modsToMove, int targetIndex)
@@ -171,7 +171,108 @@ namespace RimSharp.Features.ModManager.Services.Management
             var validModsToMove = modsToMove.Where(m => m != null && _stateTracker.IsModActive(m)).Distinct().ToList();
             if (!validModsToMove.Any()) return;
 
-            if (_orderService.ReorderMods(validModsToMove, targetIndex)) RaiseListChanged();
+            if (_orderService.ReorderMods(validModsToMove, targetIndex)) RaiseListChanged(true);
+        }
+
+        public ModRemovalResult RemoveMods(IEnumerable<ModItem> mods)
+        {
+            if (mods == null) return ModRemovalResult.None;
+            var modsList = mods.Where(m => m != null).ToList();
+            if (!modsList.Any()) return ModRemovalResult.None;
+
+            var result = new ModRemovalResult();
+            bool anyListChanged = false;
+            bool activeModified = false;
+
+            foreach (var mod in modsList)
+            {
+                bool wasActive = _stateTracker.IsModActive(mod);
+                if (wasActive) result.InstanceRemoved = true;
+
+                // Find if there is a duplicate (same PackageId)
+                ModItem? alternative = null;
+                if (!string.IsNullOrEmpty(mod.PackageId))
+                {
+                    alternative = _allAvailableMods.FirstOrDefault(m => 
+                        m != mod && // Not the one we are deleting
+                        string.Equals(m.PackageId, mod.PackageId, StringComparison.OrdinalIgnoreCase));
+                }
+
+                // Remove from all core lists
+                bool removedFromAvailable = _allAvailableMods.Remove(mod);
+                _lookupService.Remove(mod);
+                
+                if (removedFromAvailable) anyListChanged = true;
+                
+                if (wasActive)
+                {
+                    if (alternative != null)
+                    {
+                        // SWAP Logic: Replace the removed active mod with its duplicate in-place
+                        var currentEntry = _orderService.VirtualActiveMods.FirstOrDefault(x => x.Mod == mod);
+                        int index = _orderService.VirtualActiveMods.ToList().IndexOf(currentEntry);
+                        
+                        _stateTracker.Remove(mod); 
+                        _orderService.RemoveMods(new[] { mod });
+                        _stateTracker.Activate(alternative);
+                        
+                        if (index >= 0) _orderService.AddModsAt(new[] { alternative }, index);
+                        else _orderService.AddMod(alternative, _orderService.VirtualActiveMods.Count);
+
+                        _lookupService.Register(alternative);
+                        // SWAP is NOT considered a modification of the active list IDs, 
+                        // but it technically changed the instances. 
+                        // However, per requirements, we don't save. 
+                        // Should we set activeModified = true? 
+                        // If we do, Save button lights up. 
+                        // If we don't, Save button stays as is.
+                        // Let's set it to false for Swap.
+                    }
+                    else
+                    {
+                        // No alternative: Remove normally
+                        _stateTracker.Remove(mod);
+                        _orderService.RemoveMods(new[] { mod });
+                        
+                        result.ActivePackageIdLost = true; // Lost the ID entirely
+                        activeModified = true; // Definitely modified IDs
+                    }
+                }
+                else
+                {
+                    // Was not active, just remove from inactive list
+                    _stateTracker.Remove(mod);
+                    
+                    if (alternative != null && !_lookupService.TryGetMod(mod.PackageId, out _))
+                    {
+                        _lookupService.Register(alternative);
+                    }
+                }
+            }
+
+            if (anyListChanged)
+            {
+                RaiseListChanged(activeModified);
+            }
+
+            return result;
+        }
+
+        public List<ModItem> GetActiveModsDependingOn(string packageId)
+        {
+            if (string.IsNullOrEmpty(packageId)) return new List<ModItem>();
+            var targetId = packageId.ToLowerInvariant();
+            
+            var dependents = new List<ModItem>();
+            foreach (var entry in _orderService.VirtualActiveMods)
+            {
+                if (entry.Mod?.ModDependencies == null) continue;
+                if (entry.Mod.ModDependencies.Any(d => d.PackageId?.Equals(targetId, StringComparison.OrdinalIgnoreCase) == true))
+                {
+                    dependents.Add(entry.Mod);
+                }
+            }
+            return dependents;
         }
 
         public (List<ModItem> addedMods, List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)> missingDependencies) ResolveDependencies()
@@ -255,7 +356,7 @@ namespace RimSharp.Features.ModManager.Services.Management
             }
 
             var tempMissing = missingDepsDict.Select(kvp => (kvp.Value.displayName, kvp.Key, kvp.Value.steamUrl, kvp.Value.requiredBy)).ToList();
-            if (listChanged) RaiseListChanged();
+            if (listChanged) RaiseListChanged(true);
             return (addedMods, tempMissing);
         }
 
