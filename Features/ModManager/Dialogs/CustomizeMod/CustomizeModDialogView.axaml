@@ -266,7 +266,7 @@
                                                 <Grid ColumnDefinitions="150, 150, 60, *">
                                                     <TextBlock Grid.Column="0" Text="{Binding PackageId, FallbackValue='Unknown'}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
                                                     <TextBlock Grid.Column="1" Text="{Binding DisplayName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
-                                                    <CheckBox Grid.Column="2" IsChecked="{Binding HardIncompatibility}" IsEnabled="False" VerticalAlignment="Center"/>
+                                                    <CheckBox Grid.Column="2" IsChecked="{Binding HardIncompatibility}" IsHitTestVisible="False" Focusable="False" VerticalAlignment="Center"/>
                                                     <TextBlock Grid.Column="3" Text="{Binding Comment}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                                 </Grid>
                                             </DataTemplate>
