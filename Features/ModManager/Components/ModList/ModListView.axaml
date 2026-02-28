@@ -218,7 +218,6 @@
             <!-- ListBox -->
            <ListBox Grid.Row="1" x:Name="InternalListBox"
                     ItemsSource="{Binding #RootModListView.ItemsSource}"
-                    SelectedItem="{Binding #RootModListView.SelectedItem}"
                     Classes="IntegratedListBox"
                     SelectionMode="{Binding #RootModListView.SelectionMode}"
                     DragDrop.AllowDrop="True"

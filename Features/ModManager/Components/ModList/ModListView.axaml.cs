@@ -8,6 +8,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 
 namespace RimSharp.Features.ModManager.Components.ModList
 {
@@ -24,41 +25,37 @@ namespace RimSharp.Features.ModManager.Components.ModList
                 FilterToolTip = $"Filter {header} mods";
             });
 
-            // Attach event handlers - use FindControl since x:Name might not be generated
+            this.GetObservable(ItemsSourceProperty).Subscribe(_ =>
+            {
+                // When ItemsSource changes (filtering/reset), we want to re-sync selection.
+                _isHandlingFiltering = true;
+                Dispatcher.UIThread.Post(() => {
+                    try {
+                        SyncInternalSelection();
+                    } finally {
+                        _isHandlingFiltering = false;
+                    }
+                }, DispatcherPriority.Loaded);
+            });
+
+            // Attach event handlers
             _internalListBox = this.FindControl<ListBox>("InternalListBox");
-            System.Diagnostics.Debug.WriteLine($"ModListView ctor: InternalListBox={_internalListBox}");
             if (_internalListBox != null)
             {
-                System.Diagnostics.Debug.WriteLine("ModListView: Attaching event handlers");
                 _internalListBox.SelectionChanged += InternalListBox_SelectionChanged;
                 _internalListBox.AddHandler(InputElement.PointerPressedEvent, InternalListBox_PointerPressed, RoutingStrategies.Tunnel | RoutingStrategies.Bubble);
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("ModListView: InternalListBox is NULL!");
             }
         }
 
         private void InternalListBox_PointerPressed(object? sender, PointerPressedEventArgs e)
         {
-            System.Diagnostics.Debug.WriteLine($"PointerPressed: ClickCount={e.ClickCount}, Button={e.GetCurrentPoint(null).Properties.PointerUpdateKind}");
-            
-            // Only handle left button double-click
             var properties = e.GetCurrentPoint(null).Properties;
             if (e.ClickCount == 2 && properties.IsLeftButtonPressed)
             {
-                System.Diagnostics.Debug.WriteLine($"Left double-click detected! SelectedItem={_internalListBox?.SelectedItem}, DoubleClickCommand={DoubleClickCommand}");
-                
                 var item = _internalListBox?.SelectedItem;
-                
                 if (item != null && DoubleClickCommand != null && DoubleClickCommand.CanExecute(item))
                 {
-                    System.Diagnostics.Debug.WriteLine($"Executing DoubleClickCommand with item: {item}");
                     DoubleClickCommand.Execute(item);
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine($"NOT executing: item=null:{item == null}, Command=null:{DoubleClickCommand == null}, CanExecute:{DoubleClickCommand?.CanExecute(item)}");
                 }
             }
         }
@@ -70,49 +67,40 @@ namespace RimSharp.Features.ModManager.Components.ModList
 
         private bool _isUpdatingFromDP;
         private bool _isUpdatingToDP;
-        
-        // MODIFICATION 1: The INCOMING change handler from the ViewModel.
-        private void HandleSelectedItemChanged(object? newValue)
-        {
-            // Prevent feedback loop
-            if (_isUpdatingToDP)
-                return;
-                
-            _isUpdatingFromDP = true;
+        private bool _isHandlingFiltering;
 
+        private void SyncInternalSelection()
+        {
+            if (_internalListBox == null || _isUpdatingToDP) return;
+            
+            _isUpdatingFromDP = true;
             try
             {
-                if (_internalListBox == null) return;
-
-                // The ViewModel has changed the selection.
-                // Check if the new item exists in our list. If not, deselect. Otherwise, select it.
-                var itemsSource = _internalListBox.ItemsSource as IEnumerable;
-                bool itemExistsInThisList = false;
+                var targetValue = this.SelectedItem;
+                object? itemInList = null;
                 
-                if (newValue != null && itemsSource != null)
+                if (targetValue != null)
                 {
-                    foreach (var item in itemsSource)
+                    foreach (var item in _internalListBox.Items)
                     {
-                        if (item == newValue)
+                        if (Equals(item, targetValue))
                         {
-                            itemExistsInThisList = true;
+                            itemInList = item;
                             break;
                         }
                     }
                 }
 
-                // Update the ListBox's selection
-                if (itemExistsInThisList)
+                if (itemInList != null)
                 {
-                    if (_internalListBox.SelectedItem != newValue)
+                    if (!Equals(_internalListBox.SelectedItem, itemInList))
                     {
-                        _internalListBox.SelectedItem = newValue;
+                        _internalListBox.SelectedItem = itemInList;
+                        _internalListBox.ScrollIntoView(itemInList);
                     }
                 }
                 else
                 {
-                    // If the new value is NOT in this list, we should only clear our selection
-                    // if our current selection IS NOT NULL.
                     if (_internalListBox.SelectedItem != null)
                     {
                         _internalListBox.SelectedItem = null;
@@ -125,73 +113,66 @@ namespace RimSharp.Features.ModManager.Components.ModList
             }
         }
         
-        // MODIFICATION 2: The OUTGOING change handler from the ListBox.
         private void InternalListBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
-            if (_internalListBox == null) return;
+            if (_internalListBox == null || _isUpdatingFromDP) return;
             
-            // Prevent feedback loop
-            if (_isUpdatingFromDP)
-                return;
-                
-            _isUpdatingToDP = true;
-            
-            try
-            {
-                // Sync the single selected item.
-                var currentSelectedItem = _internalListBox.SelectedItem;
+            // If we are currently handling a filter change, ignore the ListBox's automatic selection clearing.
+            if (_isHandlingFiltering) return;
 
-                // If items were removed AND no items were added, this is a deselection.
-                // Check if this is because another list selected an item.
-                if (e.RemovedItems.Count > 0 && e.AddedItems.Count == 0)
+            var newSelection = _internalListBox.SelectedItem;
+            var currentGlobalSelection = this.SelectedItem;
+
+            // If the ListBox cleared its selection, but we had one.
+            if (newSelection == null && currentGlobalSelection != null)
+            {
+                bool itemIsStillInList = false;
+                foreach (var item in _internalListBox.Items)
                 {
-                    // If the current global SelectedItem exists in this list but is not what we have now,
-                    // it means we are clearing a real selection.
-                    // If it DOES NOT exist in this list, it means someone else owns it, so we stay quiet.
-                    var globalSelectedItem = this.SelectedItem;
-                    if (globalSelectedItem != null)
+                    if (Equals(item, currentGlobalSelection))
                     {
-                        var itemsSource = _internalListBox.ItemsSource as IEnumerable;
-                        bool globalItemExistsInThisList = false;
-                        if (itemsSource != null)
-                        {
-                            foreach (var item in itemsSource)
-                            {
-                                if (item == globalSelectedItem)
-                                {
-                                    globalItemExistsInThisList = true;
-                                    break;
-                                }
-                            }
-                        }
-                        
-                        if (!globalItemExistsInThisList)
-                        {
-                            // The global selection is not ours anyway, don't push our null.
-                            return;
-                        }
+                        itemIsStillInList = true;
+                        break;
                     }
                 }
-                
-                // Sync multi-select properties. This is always needed for context menus etc.
-                var currentSelectedItems = _internalListBox.SelectedItems?.Cast<object>().ToList() ?? new List<object>();
-                this.SelectedItems = currentSelectedItems;
-                
-                // Update the SelectedItemsHolder resource for context menu bindings
-                if (Resources.TryGetValue("selectedItemsHolder", out var holderObj) && holderObj is SelectedItemsHolder holder)
-                {
-                    holder.SelectedItems = currentSelectedItems;
-                }
 
-                // Update the DP (this will trigger property changed notifications)
-                if (this.SelectedItem != currentSelectedItem)
+                // If the item disappeared from the list, we return early to "remember" it globally.
+                if (!itemIsStillInList)
                 {
-                    this.SelectedItem = currentSelectedItem;
+                    UpdateSelectedItems(new List<object>());
+                    return; 
                 }
+                else
+                {
+                    // Item IS in the list, but ListBox cleared selection.
+                    // This can happen during internal ListBox updates.
+                    // We re-apply the selection.
+                    SyncInternalSelection();
+                    return;
+                }
+            }
+
+            _isUpdatingToDP = true;
+            try
+            {
+                if (!Equals(this.SelectedItem, newSelection))
+                {
+                    this.SelectedItem = newSelection;
+                }
+                UpdateSelectedItems(_internalListBox.SelectedItems?.Cast<object>().ToList() ?? new List<object>());
             }
             finally
             {
                 _isUpdatingToDP = false;
+            }
+        }
+
+        private void UpdateSelectedItems(IList items)
+        {
+            this.SelectedItems = items;
+            if (Resources.TryGetValue("selectedItemsHolder", out var holderObj) && holderObj is SelectedItemsHolder holder)
+            {
+                holder.SelectedItems = items;
             }
         }
 
@@ -200,12 +181,7 @@ namespace RimSharp.Features.ModManager.Components.ModList
             base.OnPropertyChanged(change);
             if (change.Property == SelectedItemProperty)
             {
-                var newValue = change.GetNewValue<object?>();
-                HandleSelectedItemChanged(newValue);
-                if (newValue != null)
-                {
-                    _internalListBox?.ScrollIntoView(newValue);
-                }
+                SyncInternalSelection();
             }
         }
 
