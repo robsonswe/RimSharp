@@ -12,6 +12,7 @@ using Avalonia.Platform;
 using Avalonia.VisualTree;
 using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Web.WebView2.Core;
+using Projektanker.Icons.Avalonia;
 
 namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 {
@@ -108,7 +109,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 Spacing = 15,
                 Children =
                 {
-                    new TextBlock { Text = "🌐", FontSize = 48, HorizontalAlignment = HorizontalAlignment.Center },
+                    new Icon { Value = "fa-globe", FontSize = 48, HorizontalAlignment = HorizontalAlignment.Center, Foreground = brownBrush },
                     new TextBlock { Text = title, FontSize = 20, FontWeight = FontWeight.Bold,
                         Foreground = brownBrush,
                         HorizontalAlignment = HorizontalAlignment.Center,

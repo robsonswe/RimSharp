@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.Browser"
+             xmlns:i="https://github.com/projektanker/icons.avalonia"
              x:Class="RimSharp.Features.WorkshopDownloader.Components.Browser.BrowserView"
              x:DataType="vm:BrowserViewModel"
              x:CompileBindings="True"
@@ -50,16 +51,16 @@
             <Setter Property="Background" Value="Transparent"/>
         </Style>
 
-        <!-- Handle Icon Color Changes (Fill) -->
-        <Style Selector="Button.BrowserNavButtonStyle:pointerover Path">
-            <Setter Property="Fill" Value="{DynamicResource RimworldHighlightBrush}"/>
+        <!-- Handle Icon Color Changes -->
+        <Style Selector="Button.BrowserNavButtonStyle:pointerover i|Icon">
+            <Setter Property="Foreground" Value="{DynamicResource RimworldHighlightBrush}"/>
         </Style>
-        <Style Selector="Button.BrowserNavButtonStyle:pressed Path">
-            <Setter Property="Fill" Value="{DynamicResource RimworldHighlightBrush}"/>
+        <Style Selector="Button.BrowserNavButtonStyle:pressed i|Icon">
+            <Setter Property="Foreground" Value="{DynamicResource RimworldHighlightBrush}"/>
         </Style>
-        <Style Selector="Button.BrowserNavButtonStyle:disabled Path">
+        <Style Selector="Button.BrowserNavButtonStyle:disabled i|Icon">
             <Setter Property="Opacity" Value="0.3"/>
-            <Setter Property="Fill" Value="{DynamicResource RimworldWhiteBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
         </Style>
 
         <!-- ================================================== -->
@@ -98,15 +99,15 @@
         </Style>
 
         <!-- Icon Color Logic -->
-        <Style Selector="Button.SearchIconButton:pointerover Path">
-            <Setter Property="Fill" Value="{DynamicResource RimworldHighlightBrush}"/>
+        <Style Selector="Button.SearchIconButton:pointerover i|Icon">
+            <Setter Property="Foreground" Value="{DynamicResource RimworldHighlightBrush}"/>
         </Style>
-        <Style Selector="Button.SearchIconButton:pressed Path">
-            <Setter Property="Fill" Value="{DynamicResource RimworldHighlightBrush}"/>
+        <Style Selector="Button.SearchIconButton:pressed i|Icon">
+            <Setter Property="Foreground" Value="{DynamicResource RimworldHighlightBrush}"/>
         </Style>
-        <Style Selector="Button.SearchIconButton:disabled Path">
+        <Style Selector="Button.SearchIconButton:disabled i|Icon">
             <Setter Property="Opacity" Value="0.5"/>
-            <Setter Property="Fill" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
         </Style>
 
         <!-- ================================================== -->
@@ -159,38 +160,34 @@
                      
                      <!-- Back -->
                      <Button Command="{Binding GoBackCommand}" Classes="BrowserNavButtonStyle" ToolTip.Tip="Back" Margin="0,0,2,0">
-                         <Path Data="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" 
-                               Fill="{DynamicResource RimworldWhiteBrush}" Stretch="Uniform" Width="12" Height="12"/>
+                         <i:Icon Value="fa-arrow-left" FontSize="12"/>
                      </Button>
 
                      <!-- Forward -->
                      <Button Command="{Binding GoForwardCommand}" Classes="BrowserNavButtonStyle" ToolTip.Tip="Forward" Margin="0,0,2,0">
-                         <Path Data="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" 
-                               Fill="{DynamicResource RimworldWhiteBrush}" Stretch="Uniform" Width="12" Height="12"/>
+                         <i:Icon Value="fa-arrow-right" FontSize="12"/>
                      </Button>
 
                      <!-- Home: Margin removed, pure center alignment -->
                      <Button Command="{Binding GoHomeCommand}" Classes="BrowserNavButtonStyle" ToolTip.Tip="Home">
-                         <Path Data="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" 
-                               Fill="{DynamicResource RimworldWhiteBrush}" Stretch="Uniform" Width="14" Height="14"/>
+                         <i:Icon Value="fa-house" FontSize="12"/>
                      </Button>
                 </StackPanel>
 
                 <!-- Refresh -->
                 <Button Grid.Column="1" Command="{Binding RefreshCommand}" Classes="BrowserNavButtonStyle" ToolTip.Tip="Refresh" Margin="5,0,5,0">
-                    <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
-                          Fill="{DynamicResource RimworldWhiteBrush}" Stretch="Uniform" Width="12" Height="12"/>
+                    <i:Icon Value="fa-rotate-right" FontSize="12"/>
                 </Button>
 
                 <!-- Address Bar -->
                 <Border Grid.Column="2" Background="{DynamicResource RimworldBeigeBrush}" BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="1" CornerRadius="3" VerticalAlignment="Center" Height="26">
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <!-- Lock: Reverted to TextBlock with Font -->
-                        <TextBlock Grid.Column="0" Text="🔒" Margin="5,0,2,0" VerticalAlignment="Center" Foreground="{DynamicResource RimworldDarkGreenBrush}" FontSize="12" ToolTip.Tip="Connection is secure (HTTPS)" IsVisible="{Binding IsSecure}" FontFamily="Segoe UI Symbol"/>
+                        <i:Icon Grid.Column="0" Value="fa-lock" Margin="5,0,2,0" VerticalAlignment="Center" Foreground="{DynamicResource RimworldDarkGreenBrush}" FontSize="12" ToolTip.Tip="Connection is secure (HTTPS)" IsVisible="{Binding IsSecure}"/>
                         
                         <TextBox x:Name="AddressTextBox" Grid.Column="1" Classes="BrowserTextBox" Text="{Binding AddressBarUrl}" ToolTip.Tip="Enter URL or search query and press Enter" KeyDown="AddressTextBox_KeyDown"/>
                         
-                        <TextBlock Grid.Column="2" Text="⏳" FontSize="12" Foreground="{DynamicResource RimworldBrownBrush}" Margin="2,0,5,0" VerticalAlignment="Center" ToolTip.Tip="Page is loading..." IsVisible="{Binding IsLoading}" FontFamily="Segoe UI Symbol"/>
+                        <i:Icon Grid.Column="2" Value="fa-spinner" Animation="Pulse" FontSize="12" Foreground="{DynamicResource RimworldBrownBrush}" Margin="2,0,5,0" VerticalAlignment="Center" ToolTip.Tip="Page is loading..." IsVisible="{Binding IsLoading}"/>
                     </Grid>
                 </Border>
 
@@ -205,8 +202,7 @@
                          
                          <!-- Search Button -->
                          <Button x:Name="SearchButton" Grid.Column="1" Command="{Binding SearchCommand}" Classes="SearchIconButton" ToolTip.Tip="Search Steam Workshop" Click="SearchButton_Click" Margin="0">
-                             <Path Data="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
-                                   Fill="{DynamicResource RimworldBrownBrush}" Stretch="Uniform" Width="14" Height="14"/>
+                             <i:Icon Value="fa-magnifying-glass" FontSize="12"/>
                          </Button>
                     </Grid>
                 </Border>
