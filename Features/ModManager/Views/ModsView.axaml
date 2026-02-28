@@ -67,6 +67,12 @@
                                           GroupName="Active"
                                           DropCommand="{Binding ModListViewModel.DropModCommand}"
                                           DragItemType="{x:Type models:ModItem}"
+                                          ShowProblemBar="True"
+                                          SortingIssuesCount="{Binding ModListViewModel.ActiveSortingIssuesCount}"
+                                          MissingDependenciesCount="{Binding ModListViewModel.ActiveMissingDependenciesCount}"
+                                          IncompatibilitiesCount="{Binding ModListViewModel.ActiveIncompatibilitiesCount}"
+                                          ActiveOutdatedModsCount="{Binding ModListViewModel.ActiveOutdatedModsCount}"
+                                          OpenIssuesCommand="{Binding ModListViewModel.OpenActiveIssuesCommand}"
                                           Margin="4,0,0,0"/>
                 </Grid>
             </Grid>

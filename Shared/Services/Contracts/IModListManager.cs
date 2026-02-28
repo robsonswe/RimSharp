@@ -34,6 +34,13 @@ namespace RimSharp.Shared.Services.Contracts
         /// </summary>
         bool HasAnyActiveModIssues { get; }
 
+        int ActiveSortingIssuesCount { get; }
+        int ActiveMissingDependenciesCount { get; }
+        int ActiveIncompatibilitiesCount { get; }
+        int ActiveOutdatedModsCount { get; }
+
+        IEnumerable<ModIssue> GetActiveModIssues();
+
         void Initialize(IEnumerable<ModItem> allAvailableMods, IEnumerable<string> activeModPackageIds);
         void ActivateMod(ModItem mod);
         void ActivateModAt(ModItem mod, int index);

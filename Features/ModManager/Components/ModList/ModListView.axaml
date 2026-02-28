@@ -192,7 +192,7 @@
     </UserControl.Styles>
 
     <Border Classes="RimworldPanelBorder">
-        <Grid RowDefinitions="Auto,*" PointerPressed="Root_PointerPressed" Background="Transparent">
+        <Grid RowDefinitions="Auto,*,Auto" PointerPressed="Root_PointerPressed" Background="Transparent">
             <!-- Header -->
             <Border Grid.Row="0" Classes="RimworldListHeaderBorder">
                  <Grid RowDefinitions="Auto,Auto">
@@ -302,6 +302,65 @@
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
+
+            <!-- Problems Bar -->
+            <Button Grid.Row="2" 
+                    Command="{Binding #RootModListView.OpenIssuesCommand}"
+                    HorizontalAlignment="Stretch" 
+                    Padding="0"
+                    BorderThickness="0,1,0,0"
+                    BorderBrush="{DynamicResource RimworldDarkBrownBrush}"
+                    Background="{DynamicResource RimworldDarkBrownBrush}">
+                <Button.IsVisible>
+                    <MultiBinding Converter="{StaticResource BooleanAndConverter}">
+                        <Binding Path="#RootModListView.ShowProblemBar"/>
+                        <MultiBinding Converter="{StaticResource OrConverter}">
+                            <Binding Path="#RootModListView.SortingIssuesCount" Converter="{StaticResource NumericToBooleanConverter}"/>
+                            <Binding Path="#RootModListView.MissingDependenciesCount" Converter="{StaticResource NumericToBooleanConverter}"/>
+                            <Binding Path="#RootModListView.IncompatibilitiesCount" Converter="{StaticResource NumericToBooleanConverter}"/>
+                            <Binding Path="#RootModListView.ActiveOutdatedModsCount" Converter="{StaticResource NumericToBooleanConverter}"/>
+                        </MultiBinding>
+                    </MultiBinding>
+                </Button.IsVisible>
+                <Button.Template>
+                    <ControlTemplate>
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="4,2">
+                            <Grid ColumnDefinitions="*,*,*,*">
+                                <!-- Sorting Issues -->
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
+                                    <TextBlock Text="🔃" VerticalAlignment="Center" FontSize="12"/>
+                                    <TextBlock Text="{Binding #RootModListView.SortingIssuesCount}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <ToolTip.Tip>Sorting order problems</ToolTip.Tip>
+                                </StackPanel>
+
+                                <!-- Missing Dependencies -->
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
+                                    <TextBlock Text="📦" VerticalAlignment="Center" FontSize="12"/>
+                                    <TextBlock Text="{Binding #RootModListView.MissingDependenciesCount}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <ToolTip.Tip>Missing dependencies</ToolTip.Tip>
+                                </StackPanel>
+
+                                <!-- Incompatibilities -->
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
+                                    <TextBlock Text="🚫" VerticalAlignment="Center" FontSize="12"/>
+                                    <TextBlock Text="{Binding #RootModListView.IncompatibilitiesCount}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <ToolTip.Tip>Incompatibilities</ToolTip.Tip>
+                                </StackPanel>
+
+                                <!-- Outdated Mods -->
+                                <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
+                                    <TextBlock Text="⚠️" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource RimworldErrorRedBrush}"/>
+                                    <TextBlock Text="{Binding #RootModListView.ActiveOutdatedModsCount}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <ToolTip.Tip>Outdated mods</ToolTip.Tip>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
         </Grid>
     </Border>
 </UserControl>
