@@ -38,7 +38,9 @@ namespace RimSharp.Features.ModManager.Services.Management
         public bool HasAnyActiveModIssues => _hasAnyActiveModIssues;
         public int ActiveSortingIssuesCount => _activeModIssues.Count(i => i.Type == ModIssueType.Sorting);
         public int ActiveMissingDependenciesCount => _activeModIssues.Count(i => i.Type == ModIssueType.Dependency);
-        public int ActiveIncompatibilitiesCount => _activeModIssues.Count(i => i.Type == ModIssueType.Incompatibility);
+        public int ActiveIncompatibilitiesCount => _activeModIssues.Count(i => i.Type == ModIssueType.Incompatibility || 
+                                                                             i.Type == ModIssueType.SoftIncompatibility || 
+                                                                             i.Type == ModIssueType.HardIncompatibility);
         public int ActiveVersionMismatchCount => _activeModIssues.Count(i => i.Type == ModIssueType.VersionMismatch);
         public int ActiveDuplicateIssuesCount => _activeModIssues.Count(i => i.Type == ModIssueType.Duplicate);
         public string CurrentMajorGameVersion => _currentMajorGameVersion;
@@ -441,9 +443,14 @@ namespace RimSharp.Features.ModManager.Services.Management
                             currentMod.IncompatibleWith.TryGetValue(incompatibleId, out var rule);
                             string name = activeModLookup.TryGetValue(incompatibleId, out var incEntry) ? incEntry.Mod?.Name ?? incompatibleId : incompatibleId;
                             var comment = rule?.Comment?.FirstOrDefault();
-                            var desc = $"Incompatible with active mod: '{name}'" + (string.IsNullOrWhiteSpace(comment) ? "" : $" (Reason: {comment})");
+                            
+                            bool isHard = rule?.HardIncompatibility ?? false;
+                            var typeLabel = isHard ? "Hard Incompatibility" : "Soft Incompatibility";
+                            var issueType = isHard ? ModIssueType.HardIncompatibility : ModIssueType.SoftIncompatibility;
+
+                            var desc = $"{typeLabel} with active mod: '{name}'" + (string.IsNullOrWhiteSpace(comment) ? "" : $" (Reason: {comment})");
                             issuesStrings.Add(desc);
-                            _activeModIssues.Add(new ModIssue(currentMod, ModIssueType.Incompatibility, desc));
+                            _activeModIssues.Add(new ModIssue(currentMod, issueType, desc));
                         }
                     }
                 }

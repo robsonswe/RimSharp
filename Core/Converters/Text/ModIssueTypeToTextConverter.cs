@@ -5,7 +5,7 @@ using RimSharp.Shared.Models;
 
 namespace RimSharp.Core.Converters.Text
 {
-    public class ModIssueTypeToIconConverter : IValueConverter
+    public class ModIssueTypeToTextConverter : IValueConverter
     {
         public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
@@ -13,14 +13,14 @@ namespace RimSharp.Core.Converters.Text
             {
                 return type switch
                 {
-                    ModIssueType.Sorting => "🔃",
-                    ModIssueType.Dependency => "📦",
-                    ModIssueType.Incompatibility => "🚫",
-                    ModIssueType.SoftIncompatibility => "⚠️",
-                    ModIssueType.HardIncompatibility => "🚫",
-                    ModIssueType.VersionMismatch => "❗",
-                    ModIssueType.Duplicate => "👯",
-                    _ => "❓"
+                    ModIssueType.Sorting => "Sorting Order",
+                    ModIssueType.Dependency => "Missing Dependency",
+                    ModIssueType.Incompatibility => "Incompatibility",
+                    ModIssueType.SoftIncompatibility => "Soft Incompatibility",
+                    ModIssueType.HardIncompatibility => "Hard Incompatibility",
+                    ModIssueType.VersionMismatch => "Version Mismatch",
+                    ModIssueType.Duplicate => "Duplicate Mod",
+                    _ => type.ToString()
                 };
             }
             return "";
