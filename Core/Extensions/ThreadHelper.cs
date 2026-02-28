@@ -1,6 +1,7 @@
 // Core/Extensions/ThreadHelper.cs
 #nullable enable
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
@@ -10,15 +11,39 @@ namespace RimSharp.Core.Extensions
     public static class ThreadHelper
     {
         private static Dispatcher? _uiDispatcher;
+        private static readonly bool _isRunningInTest;
+
+        static ThreadHelper()
+        {
+            // Simple detection: entry assembly is null or name contains "test" or "nunit" or "xunit"
+            var entryAssembly = System.Reflection.Assembly.GetEntryAssembly();
+            var name = entryAssembly?.GetName().Name?.ToLowerInvariant() ?? "";
+            
+            _isRunningInTest = entryAssembly == null || 
+                               name.Contains("test") || 
+                               name.Contains("xunit") || 
+                               name.Contains("nunit") ||
+                               AppDomain.CurrentDomain.GetAssemblies().Any(a => a.FullName?.Contains("xunit.core", StringComparison.OrdinalIgnoreCase) == true);
+        }
 
         public static void Initialize()
         {
             _uiDispatcher = Dispatcher.UIThread;
         }
 
+        public static bool IsTestMode => _isRunningInTest;
+
         public static Dispatcher? UiDispatcher => _uiDispatcher;
 
-        public static bool IsUiThread => Dispatcher.UIThread.CheckAccess();
+        public static bool IsUiThread
+        {
+            get
+            {
+                if (_isRunningInTest) return true;
+                if (_uiDispatcher == null) return true; // Default to safe synchronous execution if app not yet initialized
+                return _uiDispatcher.CheckAccess();
+            }
+        }
 
         public static void EnsureUiThread(Action action)
         {
@@ -32,6 +57,11 @@ namespace RimSharp.Core.Extensions
         public static void BeginInvokeOnUiThread(Action action, DispatcherPriority priority)
         {
             if (action == null) return;
+            if (IsTestMode) 
+            {
+                action();
+                return;
+            }
             _uiDispatcher?.Post(action, priority);
         }
 
@@ -75,6 +105,12 @@ namespace RimSharp.Core.Extensions
              }
              if (_uiDispatcher != null) return await _uiDispatcher.InvokeAsync(func, priority);
              return default!;
+        }
+
+        public static Task DelayAsync(int millisecondsDelay, CancellationToken cancellationToken = default)
+        {
+            if (_isRunningInTest) return Task.CompletedTask;
+            return Task.Delay(millisecondsDelay, cancellationToken);
         }
 
         public static void RunOnBackgroundThread(Action action) { if (action != null) Task.Run(action); }

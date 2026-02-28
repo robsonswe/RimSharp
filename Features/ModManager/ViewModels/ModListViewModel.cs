@@ -151,7 +151,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                 {
                     _activeSearchCts.Cancel();
                     _activeSearchCts = new CancellationTokenSource();
-                    await Task.Delay(300, _activeSearchCts.Token);
+                    await RimSharp.Core.Extensions.ThreadHelper.DelayAsync(300, _activeSearchCts.Token);
 
                     // Apply the filter using the current text from the backing field
                     _filterService.ApplyActiveFilter(_activeSearchText);
@@ -160,7 +160,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                 {
                     _inactiveSearchCts.Cancel();
                     _inactiveSearchCts = new CancellationTokenSource();
-                    await Task.Delay(300, _inactiveSearchCts.Token);
+                    await RimSharp.Core.Extensions.ThreadHelper.DelayAsync(300, _inactiveSearchCts.Token);
 
                     _filterService.ApplyInactiveFilter(_inactiveSearchText);
                 }

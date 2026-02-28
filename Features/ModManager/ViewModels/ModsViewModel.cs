@@ -474,9 +474,9 @@ namespace RimSharp.Features.ModManager.ViewModels
 
 
         // Handles changes triggered by ModListManager (Activate, Deactivate, Sort, Clear, etc.)
-        private void OnModListManagerChanged(object? sender, EventArgs e)
+        private void OnModListManagerChanged(object? sender, ModListChangedEventArgs e)
         {
-            Debug.WriteLine("[ModsViewModel] Handling ModListManager ListChanged event.");
+            Debug.WriteLine($"[ModsViewModel] Handling ModListManager ListChanged event. ActiveModified: {e.ActiveListModified}");
 
             RunOnUIThread(() =>
             {
@@ -491,8 +491,20 @@ namespace RimSharp.Features.ModManager.ViewModels
                 // 2. Refresh Counts in ModListViewModel
                 ModListViewModel.RefreshCounts();
 
-                // 3. Set HasUnsavedChanges Flag
-                HasUnsavedChanges = true; // Setter triggers command updates via observation
+                // 3. Ensure selection is valid (if selected mod was deleted, it won't be in GetAllMods)
+                if (SelectedMod != null && !_modListManager.GetAllMods().Contains(SelectedMod))
+                {
+                    Debug.WriteLine("[ModsViewModel] Selected mod was removed. Resetting selection to default (Core).");
+                    SelectedMod = null;
+                    EnsureSelection();
+                }
+
+                // 4. Set HasUnsavedChanges Flag only if active list changed
+                if (e.ActiveListModified)
+                {
+                    HasUnsavedChanges = true; // Setter triggers command updates via observation
+                }
+                
                 OnPropertyChanged(nameof(HasAnyActiveModIssues));
 
                 // 4. Invalidate Commands: Explicit call removed

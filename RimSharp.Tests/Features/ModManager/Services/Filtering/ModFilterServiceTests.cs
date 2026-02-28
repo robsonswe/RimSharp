@@ -20,14 +20,13 @@ namespace RimSharp.Tests.Features.ModManager.Services.Filtering
 
         private async Task WaitForFilteringAsync(Action action, int expectedEvents = 1)
         {
-            var tcs = new TaskCompletionSource<bool>();
+            using var semaphore = new System.Threading.SemaphoreSlim(0);
             int eventsReceived = 0;
             EventHandler handler = (s, e) => 
             {
-                eventsReceived++;
-                if (eventsReceived >= expectedEvents)
+                if (System.Threading.Interlocked.Increment(ref eventsReceived) >= expectedEvents)
                 {
-                    tcs.TrySetResult(true);
+                    semaphore.Release();
                 }
             };
             
@@ -35,7 +34,12 @@ namespace RimSharp.Tests.Features.ModManager.Services.Filtering
             try
             {
                 action();
-                await Task.WhenAny(tcs.Task, Task.Delay(2000));
+                // Use a reasonable timeout for tests
+                bool signaled = await semaphore.WaitAsync(2000);
+                if (!signaled && eventsReceived < expectedEvents)
+                {
+                    throw new TimeoutException($"Timed out waiting for {expectedEvents} filtering events. Only received {eventsReceived}.");
+                }
             }
             finally
             {

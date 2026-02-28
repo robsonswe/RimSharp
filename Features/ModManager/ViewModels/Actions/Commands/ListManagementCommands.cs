@@ -31,7 +31,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
 
             SaveCommand = CreateAsyncCommand(
-                ExecuteSaveMods,
+                () => ExecuteSaveMods(false), // Default: Don't suppress warnings
                 CanExecuteSaveMods,
                 // Observe all relevant properties for CanExecuteSaveMods
                 observedProperties: new[] { nameof(HasUnsavedChanges), nameof(IsParentLoading) }); // Save doesn't depend on paths, only unsaved changes and loading state
@@ -149,9 +149,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             finally { IsLoadingRequest?.Invoke(this, false); }
         }
 
-        private async Task ExecuteSaveMods() // Changed to async Task
+        private async Task ExecuteSaveMods(bool suppressWarnings = false) // Changed to async Task with suppression flag
         {
-            if (_modListManager.HasAnyActiveModIssues)
+            if (!suppressWarnings && _modListManager.HasAnyActiveModIssues)
             {
                 var confirmationResult = await _dialogService.ShowConfirmationAsync(
                     "Save Warning",

@@ -49,6 +49,26 @@ namespace RimSharp.Shared.Models
 
     public class ModItem
     {
+        /// <summary>
+        /// A unique identifier for this specific instance of the mod in memory.
+        /// Useful for tracking and removing specific mods when PackageId or SteamId are not unique.
+        /// </summary>
+        public Guid InstanceId { get; } = Guid.NewGuid();
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is ModItem other)
+            {
+                return InstanceId == other.InstanceId;
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return InstanceId.GetHashCode();
+        }
+
         // Required fields from About.xml
         public string Name { get; set; } = string.Empty;
         public string PackageId { get; set; } = string.Empty;

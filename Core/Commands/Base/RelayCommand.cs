@@ -284,6 +284,11 @@ namespace RimSharp.Core.Commands.Base
 
         public async void Execute(object? parameter)
         {
+            await ExecuteAsync(parameter);
+        }
+
+        public async Task ExecuteAsync(object? parameter)
+        {
             CancellationToken token = parameter is CancellationToken ct ? ct : CancellationToken.None;
 
             if (!CanExecute(parameter)) return;
@@ -294,15 +299,15 @@ namespace RimSharp.Core.Commands.Base
                 RaiseCanExecuteChanged();
                 await _execute(token);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                 Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Exception during execution: {ex}");
-                 // throw;
+                Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Exception during execution: {ex}");
+                // throw;
             }
             finally
             {
                 _isExecuting = false;
-                 if(!_disposed) RaiseCanExecuteChanged();
+                if (!_disposed) RaiseCanExecuteChanged();
             }
         }
 

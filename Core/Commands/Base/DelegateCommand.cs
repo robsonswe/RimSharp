@@ -284,25 +284,30 @@ namespace RimSharp.Core.Commands.Base
                                 ? default(T)!
                                 : (T)parameter!;
 
-             CancellationToken token = CancellationToken.None;
+             await ExecuteAsync(typedParameter);
+        }
 
-             try
-             {
-                 _isExecuting = true;
-                 RaiseCanExecuteChanged();
-                 await _execute(typedParameter, token);
-             }
-             catch(Exception ex)
-             {
-                  Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Exception during execution: {ex}");
-                 // throw;
-             }
-             finally
-             {
-                 _isExecuting = false;
-                 // Check disposal state before raising event in finally block
-                 if(!_disposed) RaiseCanExecuteChanged();
-             }
+        public async Task ExecuteAsync(T parameter)
+        {
+            CancellationToken token = CancellationToken.None;
+
+            try
+            {
+                _isExecuting = true;
+                RaiseCanExecuteChanged();
+                await _execute(parameter, token);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Exception during execution: {ex}");
+                // throw;
+            }
+            finally
+            {
+                _isExecuting = false;
+                // Check disposal state before raising event in finally block
+                if (!_disposed) RaiseCanExecuteChanged();
+            }
         }
 
         public void RaiseCanExecuteChanged()
@@ -467,6 +472,8 @@ namespace RimSharp.Core.Commands.Base
             : base( (param, _) => execute(param), canExecute == null ? null : new Predicate<object>(canExecute!))
         {
         }
+
+        public Task ExecuteAsync() => base.ExecuteAsync(null!);
 
         public new AsyncDelegateCommand ObservesProperty(INotifyPropertyChanged owner, string propertyName)
         {
