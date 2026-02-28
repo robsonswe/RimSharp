@@ -16,7 +16,9 @@ namespace RimSharp.Core.Converters.Text
                     ModIssueType.Sorting => "🔃",
                     ModIssueType.Dependency => "📦",
                     ModIssueType.Incompatibility => "🚫",
-                    ModIssueType.VersionMismatch => "⚠️",
+                    ModIssueType.SoftIncompatibility => "⚠️",
+                    ModIssueType.HardIncompatibility => "🚫",
+                    ModIssueType.VersionMismatch => "❗",
                     ModIssueType.Duplicate => "👯",
                     _ => "❓"
                 };

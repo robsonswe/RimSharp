@@ -53,7 +53,7 @@
                                                         <TextBlock Grid.Column="0" Text="{Binding Type, Converter={StaticResource ModIssueTypeToIconConverter}}" 
                                                                    FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                                         <StackPanel Grid.Column="1">
-                                                            <TextBlock Text="{Binding Type}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                                            <TextBlock Text="{Binding Type, Converter={StaticResource ModIssueTypeToTextConverter}}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
                                                             <TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource RimworldBrownBrush}"/>
                                                         </StackPanel>
                                                     </Grid>

@@ -50,6 +50,7 @@
      <convText:TrimmedTextTooltipConverter x:Key="TrimmedTextTooltipConverter"/>
      <convText:DialogTypeToIconConverter x:Key="DialogTypeToIconConverter"/>
      <convText:ModIssueTypeToIconConverter x:Key="ModIssueTypeToIconConverter"/>
+     <convText:ModIssueTypeToTextConverter x:Key="ModIssueTypeToTextConverter"/>
 
      <!-- Utility Converters -->
      <convUtility:FileSizeConverter x:Key="FileSizeConverter"/>

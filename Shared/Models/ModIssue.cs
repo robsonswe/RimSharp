@@ -7,6 +7,8 @@ namespace RimSharp.Shared.Models
         Sorting,
         Dependency,
         Incompatibility,
+        SoftIncompatibility,
+        HardIncompatibility,
         VersionMismatch,
         Duplicate
     }
