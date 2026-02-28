@@ -308,6 +308,7 @@
                     Command="{Binding #RootModListView.OpenIssuesCommand}"
                     HorizontalAlignment="Stretch" 
                     Padding="0"
+                    Cursor="Hand"
                     BorderThickness="0,1,0,0"
                     BorderBrush="{DynamicResource RimworldDarkBrownBrush}"
                     Background="{DynamicResource RimworldDarkBrownBrush}">
