@@ -13,6 +13,7 @@ using RimSharp.AppDir.Dialogs;
 using RimSharp.Features.WorkshopDownloader.Dialogs.Collection;
 using System.Collections.Generic;
 using RimSharp.Features.ModManager.Dialogs.Strip;
+using RimSharp.Features.ModManager.Dialogs.ActiveIssues;
 
 namespace RimSharp.Shared.Services.Contracts
 {
@@ -46,6 +47,7 @@ namespace RimSharp.Shared.Services.Contracts
         List<string>? ShowCollectionDialog(CollectionDialogViewModel viewModel);
         Task<(bool, IEnumerable<string>?)> ShowStripModsDialogAsync(StripDialogViewModel viewModel);
         (bool, IEnumerable<string>?) ShowStripModsDialog(StripDialogViewModel viewModel);
+        Task<bool> ShowActiveIssuesDialogAsync(ActiveIssuesDialogViewModel viewModel);
         Task<bool> ShowDependencyRuleEditorAsync(DependencyRuleEditorDialogViewModel viewModel);
         bool ShowDependencyRuleEditor(DependencyRuleEditorDialogViewModel viewModel);
         Task<bool> ShowIncompatibilityRuleEditorAsync(IncompatibilityRuleEditorDialogViewModel viewModel);

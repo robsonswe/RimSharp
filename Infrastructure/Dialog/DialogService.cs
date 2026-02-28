@@ -18,6 +18,7 @@ using RimSharp.Features.ModManager.Dialogs.Dependencies;
 using RimSharp.Features.ModManager.Dialogs.MissingMods;
 using RimSharp.Features.WorkshopDownloader.Dialogs.Collection;
 using RimSharp.Features.ModManager.Dialogs.Strip;
+using RimSharp.Features.ModManager.Dialogs.ActiveIssues;
 using Avalonia.Platform.Storage;
 
 namespace RimSharp.Infrastructure.Dialog
@@ -448,6 +449,12 @@ namespace RimSharp.Infrastructure.Dialog
         {
             var dialog = new StripModsDialogView(viewModel);
             return ShowDialogInternalAsync<(bool, IEnumerable<string>?)>(viewModel, dialog).GetAwaiter().GetResult();
+        }
+
+        public async Task<bool> ShowActiveIssuesDialogAsync(ActiveIssuesDialogViewModel viewModel)
+        {
+            var dialog = new ActiveIssuesDialogView(viewModel);
+            return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }
 
         public async Task<RimSharp.Shared.Models.ModItem?> ShowModSelectorDialogAsync(ModSelectorDialogViewModel viewModel)

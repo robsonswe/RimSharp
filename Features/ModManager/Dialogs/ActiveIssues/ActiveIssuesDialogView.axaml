@@ -1,0 +1,161 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                  xmlns:local="clr-namespace:RimSharp.Features.ModManager.Dialogs.ActiveIssues"
+                  xmlns:models="clr-namespace:RimSharp.Shared.Models"
+                  xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+                  mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+                  x:Class="RimSharp.Features.ModManager.Dialogs.ActiveIssues.ActiveIssuesDialogView"
+                  x:DataType="local:ActiveIssuesDialogViewModel"
+                  Width="800" Height="600"
+                  Title="Active Mod List Issues">
+
+    <dialogs:BaseDialog.MainContent>
+        <Grid Margin="10">
+            <TabControl Classes="RimworldTabControl" SelectedIndex="{Binding SelectedTabIndex}">
+                <!-- Sorting Issues Tab -->
+                <TabItem IsVisible="{Binding HasSortingIssues}">
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Sorting"/>
+                            <Border Background="{DynamicResource RimworldErrorRedBrush}" 
+                                    CornerRadius="10" Padding="6,1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding SortingIssues.Count}" 
+                                           Foreground="White" FontSize="11" FontWeight="Bold"/>
+                            </Border>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <Border Classes="RimworldSubtlePanelBorder">
+                        <Grid RowDefinitions="Auto, *">
+                            <Border Grid.Row="0" Classes="RimworldListHeaderBorder">
+                                <Grid ColumnDefinitions="250, *">
+                                    <TextBlock Grid.Column="0" Text="Mod Name" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                    <TextBlock Grid.Column="1" Text="Issue Description" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                </Grid>
+                            </Border>
+                            <ListBox Grid.Row="1" ItemsSource="{Binding SortingIssues}" Classes="RimworldSafeListBox">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="models:ModIssue">
+                                        <Grid ColumnDefinitions="250, *">
+                                            <TextBlock Grid.Column="0" Text="{Binding Mod.Name}" VerticalAlignment="Top" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Description}" VerticalAlignment="Top" TextWrapping="Wrap"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+                </TabItem>
+
+                <!-- Dependency Issues Tab -->
+                <TabItem IsVisible="{Binding HasDependencyIssues}">
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Dependencies"/>
+                            <Border Background="{DynamicResource RimworldErrorRedBrush}" 
+                                    CornerRadius="10" Padding="6,1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding DependencyIssues.Count}" 
+                                           Foreground="White" FontSize="11" FontWeight="Bold"/>
+                            </Border>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <Border Classes="RimworldSubtlePanelBorder">
+                        <Grid RowDefinitions="Auto, *">
+                            <Border Grid.Row="0" Classes="RimworldListHeaderBorder">
+                                <Grid ColumnDefinitions="250, *">
+                                    <TextBlock Grid.Column="0" Text="Mod Name" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                    <TextBlock Grid.Column="1" Text="Issue Description" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                </Grid>
+                            </Border>
+                            <ListBox Grid.Row="1" ItemsSource="{Binding DependencyIssues}" Classes="RimworldSafeListBox">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="models:ModIssue">
+                                        <Grid ColumnDefinitions="250, *">
+                                            <TextBlock Grid.Column="0" Text="{Binding Mod.Name}" VerticalAlignment="Top" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Description}" VerticalAlignment="Top" TextWrapping="Wrap"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+                </TabItem>
+
+                <!-- Incompatibility Issues Tab -->
+                <TabItem IsVisible="{Binding HasIncompatibilityIssues}">
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Incompatibilities"/>
+                            <Border Background="{DynamicResource RimworldErrorRedBrush}" 
+                                    CornerRadius="10" Padding="6,1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding IncompatibilityIssues.Count}" 
+                                           Foreground="White" FontSize="11" FontWeight="Bold"/>
+                            </Border>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <Border Classes="RimworldSubtlePanelBorder">
+                        <Grid RowDefinitions="Auto, *">
+                            <Border Grid.Row="0" Classes="RimworldListHeaderBorder">
+                                <Grid ColumnDefinitions="250, *">
+                                    <TextBlock Grid.Column="0" Text="Mod Name" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                    <TextBlock Grid.Column="1" Text="Issue Description" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                </Grid>
+                            </Border>
+                            <ListBox Grid.Row="1" ItemsSource="{Binding IncompatibilityIssues}" Classes="RimworldSafeListBox">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="models:ModIssue">
+                                        <Grid ColumnDefinitions="250, *">
+                                            <TextBlock Grid.Column="0" Text="{Binding Mod.Name}" VerticalAlignment="Top" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Description}" VerticalAlignment="Top" TextWrapping="Wrap"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+                </TabItem>
+
+                <!-- Outdated Issues Tab -->
+                <TabItem IsVisible="{Binding HasOutdatedIssues}">
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Outdated"/>
+                            <Border Background="{DynamicResource RimworldErrorRedBrush}" 
+                                    CornerRadius="10" Padding="6,1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding OutdatedIssues.Count}" 
+                                           Foreground="White" FontSize="11" FontWeight="Bold"/>
+                            </Border>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <Border Classes="RimworldSubtlePanelBorder">
+                        <Grid RowDefinitions="Auto, *">
+                            <Border Grid.Row="0" Classes="RimworldListHeaderBorder">
+                                <Grid ColumnDefinitions="250, *">
+                                    <TextBlock Grid.Column="0" Text="Mod Name" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                    <TextBlock Grid.Column="1" Text="Issue Description" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                </Grid>
+                            </Border>
+                            <ListBox Grid.Row="1" ItemsSource="{Binding OutdatedIssues}" Classes="RimworldSafeListBox">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="models:ModIssue">
+                                        <Grid ColumnDefinitions="250, *">
+                                            <TextBlock Grid.Column="0" Text="{Binding Mod.Name}" VerticalAlignment="Top" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Description}" VerticalAlignment="Top" TextWrapping="Wrap"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+                </TabItem>
+            </TabControl>
+        </Grid>
+    </dialogs:BaseDialog.MainContent>
+
+    <dialogs:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Content="Close" Command="{Binding CloseIssuesCommand}" Width="100" Classes="RimworldButtonStyle"/>
+        </StackPanel>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

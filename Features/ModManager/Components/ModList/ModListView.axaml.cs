@@ -322,6 +322,60 @@ namespace RimSharp.Features.ModManager.Components.ModList
             set => SetValue(SelectionModeProperty, value);
         }
 
+        public static readonly StyledProperty<bool> ShowProblemBarProperty =
+            AvaloniaProperty.Register<ModListView, bool>(nameof(ShowProblemBar), false);
+
+        public bool ShowProblemBar
+        {
+            get => GetValue(ShowProblemBarProperty);
+            set => SetValue(ShowProblemBarProperty, value);
+        }
+
+        public static readonly StyledProperty<int> SortingIssuesCountProperty =
+            AvaloniaProperty.Register<ModListView, int>(nameof(SortingIssuesCount), 0);
+
+        public int SortingIssuesCount
+        {
+            get => GetValue(SortingIssuesCountProperty);
+            set => SetValue(SortingIssuesCountProperty, value);
+        }
+
+        public static readonly StyledProperty<int> MissingDependenciesCountProperty =
+            AvaloniaProperty.Register<ModListView, int>(nameof(MissingDependenciesCount), 0);
+
+        public int MissingDependenciesCount
+        {
+            get => GetValue(MissingDependenciesCountProperty);
+            set => SetValue(MissingDependenciesCountProperty, value);
+        }
+
+        public static readonly StyledProperty<int> IncompatibilitiesCountProperty =
+            AvaloniaProperty.Register<ModListView, int>(nameof(IncompatibilitiesCount), 0);
+
+        public int IncompatibilitiesCount
+        {
+            get => GetValue(IncompatibilitiesCountProperty);
+            set => SetValue(IncompatibilitiesCountProperty, value);
+        }
+
+        public static readonly StyledProperty<int> ActiveOutdatedModsCountProperty =
+            AvaloniaProperty.Register<ModListView, int>(nameof(ActiveOutdatedModsCount), 0);
+
+        public int ActiveOutdatedModsCount
+        {
+            get => GetValue(ActiveOutdatedModsCountProperty);
+            set => SetValue(ActiveOutdatedModsCountProperty, value);
+        }
+
+        public static readonly StyledProperty<ICommand?> OpenIssuesCommandProperty =
+            AvaloniaProperty.Register<ModListView, ICommand?>(nameof(OpenIssuesCommand));
+
+        public ICommand? OpenIssuesCommand
+        {
+            get => GetValue(OpenIssuesCommandProperty);
+            set => SetValue(OpenIssuesCommandProperty, value);
+        }
+
         private void Root_PointerPressed(object? sender, PointerPressedEventArgs e)
         {
             ClearAllFocus();

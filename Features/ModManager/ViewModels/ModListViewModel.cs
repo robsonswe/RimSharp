@@ -40,6 +40,12 @@ namespace RimSharp.Features.ModManager.ViewModels
         public int TotalActiveMods => ActiveMods.Count(m => m.ModType != ModType.Core);
         public int TotalInactiveMods => InactiveMods.Count(m => m.ModType != ModType.Core);
 
+        public int ActiveSortingIssuesCount => _modListManager.ActiveSortingIssuesCount;
+        public int ActiveMissingDependenciesCount => _modListManager.ActiveMissingDependenciesCount;
+        public int ActiveIncompatibilitiesCount => _modListManager.ActiveIncompatibilitiesCount;
+        public int ActiveOutdatedModsCount => _modListManager.ActiveOutdatedModsCount;
+        public bool HasAnyActiveIssues => _modListManager.HasAnyActiveModIssues;
+
         public ModItem? SelectedMod
         {
             get => _selectedMod;
@@ -81,6 +87,7 @@ namespace RimSharp.Features.ModManager.ViewModels
         public ICommand DropModCommand { get; }
         public ICommand FilterInactiveCommand { get; }
         public ICommand FilterActiveCommand { get; }
+        public ICommand OpenActiveIssuesCommand { get; }
 
         public event PropertyChangedEventHandler? RequestSelectionChange;
 
@@ -98,6 +105,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             // Use named methods for event handlers to allow for proper unsubscription on Dispose
             _filterService.ActiveMods.CollectionChanged += OnActiveModsChanged;
             _filterService.InactiveMods.CollectionChanged += OnInactiveModsChanged;
+            _modListManager.ListChanged += OnModListChanged;
 
             // Use property observation syntax from ViewModelBase
             ActivateModCommand = CreateCommand<ModItem>(
@@ -138,6 +146,18 @@ namespace RimSharp.Features.ModManager.ViewModels
                 ShowFilterDialogForActive,
                 () => !IsParentLoading, // Can execute when not loading
                 nameof(IsParentLoading)); // Observe IsParentLoading
+
+            OpenActiveIssuesCommand = CreateAsyncCommand(
+                ShowActiveIssuesDialog,
+                () => !IsParentLoading && HasAnyActiveIssues,
+                nameof(IsParentLoading), nameof(HasAnyActiveIssues));
+        }
+
+        private async Task ShowActiveIssuesDialog()
+        {
+            var issues = _modListManager.GetActiveModIssues();
+            var viewModel = new RimSharp.Features.ModManager.Dialogs.ActiveIssues.ActiveIssuesDialogViewModel(issues);
+            await _dialogService.ShowActiveIssuesDialogAsync(viewModel);
         }
 
         /// <summary>
@@ -173,10 +193,26 @@ namespace RimSharp.Features.ModManager.ViewModels
         }
 
         #region Event Handlers
+        private void OnModListChanged(object? sender, ModListChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(ActiveSortingIssuesCount));
+            OnPropertyChanged(nameof(ActiveMissingDependenciesCount));
+            OnPropertyChanged(nameof(ActiveIncompatibilitiesCount));
+            OnPropertyChanged(nameof(ActiveOutdatedModsCount));
+            OnPropertyChanged(nameof(HasAnyActiveIssues));
+        }
+
         private void OnActiveModsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             OnPropertyChanged(nameof(TotalActiveMods));
             OnPropertyChanged(nameof(IsActiveFilterApplied));
+            
+            // Re-evaluate issue counts when collection changes as well
+            OnPropertyChanged(nameof(ActiveSortingIssuesCount));
+            OnPropertyChanged(nameof(ActiveMissingDependenciesCount));
+            OnPropertyChanged(nameof(ActiveIncompatibilitiesCount));
+            OnPropertyChanged(nameof(ActiveOutdatedModsCount));
+            OnPropertyChanged(nameof(HasAnyActiveIssues));
         }
 
         private void OnInactiveModsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
@@ -192,6 +228,12 @@ namespace RimSharp.Features.ModManager.ViewModels
             OnPropertyChanged(nameof(TotalInactiveMods));
             OnPropertyChanged(nameof(IsActiveFilterApplied));
             OnPropertyChanged(nameof(IsInactiveFilterApplied));
+            
+            OnPropertyChanged(nameof(ActiveSortingIssuesCount));
+            OnPropertyChanged(nameof(ActiveMissingDependenciesCount));
+            OnPropertyChanged(nameof(ActiveIncompatibilitiesCount));
+            OnPropertyChanged(nameof(ActiveOutdatedModsCount));
+            OnPropertyChanged(nameof(HasAnyActiveIssues));
         }
 
         public void UpdateSelectedMod(ModItem mod)
