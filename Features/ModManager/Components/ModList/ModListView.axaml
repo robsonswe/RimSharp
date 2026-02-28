@@ -5,7 +5,8 @@
              xmlns:local="clr-namespace:RimSharp.Features.ModManager.Components.ModList"
              xmlns:models="clr-namespace:RimSharp.Shared.Models"
              xmlns:vm="clr-namespace:RimSharp.Features.ModManager.ViewModels"
-             xmlns:i="clr-namespace:Avalonia.Xaml.Interactivity;assembly=Avalonia.Xaml.Interactivity"
+             xmlns:interactivity="clr-namespace:Avalonia.Xaml.Interactivity;assembly=Avalonia.Xaml.Interactivity"
+             xmlns:i="https://github.com/projektanker/icons.avalonia"
              xmlns:behaviors="clr-namespace:RimSharp.Features.ModManager.Behaviors"
              x:Class="RimSharp.Features.ModManager.Components.ModList.ModListView"
              mc:Ignorable="d"
@@ -65,32 +66,32 @@
                             </MultiBinding>
                         </ContextMenu.IsVisible>
                         <MenuItem Header="Open Mod Folder" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.OpenModFoldersCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}">
-                            <MenuItem.Icon><TextBlock Text="📁" FontSize="14"/></MenuItem.Icon>
+                            <MenuItem.Icon><i:Icon Value="fa-folder-open" FontSize="14"/></MenuItem.Icon>
                         </MenuItem>
                         <MenuItem Header="Open URL" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.OpenUrlsCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}">
-                            <MenuItem.Icon><TextBlock Text="🔗" FontSize="14"/></MenuItem.Icon>
+                            <MenuItem.Icon><i:Icon Value="fa-link" FontSize="14"/></MenuItem.Icon>
                             <MenuItem.IsVisible><Binding Path="HasUrl"/></MenuItem.IsVisible>
                         </MenuItem>
                         <MenuItem Header="Open Workshop Page" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.OpenWorkshopPagesCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}">
-                            <MenuItem.Icon><TextBlock Text="☁️" FontSize="14"/></MenuItem.Icon>
+                            <MenuItem.Icon><i:Icon Value="fa-brands fa-steam" FontSize="14"/></MenuItem.Icon>
                             <MenuItem.IsVisible><Binding Path="HasSteamUrl"/></MenuItem.IsVisible>
                         </MenuItem>
                         <MenuItem Header="Open Other URL" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.OpenOtherUrlsCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}">
-                            <MenuItem.Icon><TextBlock Text="🌐" FontSize="14"/></MenuItem.Icon>
+                            <MenuItem.Icon><i:Icon Value="fa-globe" FontSize="14"/></MenuItem.Icon>
                             <MenuItem.IsVisible><Binding Path="HasExternalUrl"/></MenuItem.IsVisible>
                         </MenuItem>
                         <MenuItem Header="Redownload Mod" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.RedownloadModsCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}">
-                            <MenuItem.Icon><TextBlock Text="🔄" FontSize="14"/></MenuItem.Icon>
+                            <MenuItem.Icon><i:Icon Value="fa-arrows-rotate" FontSize="14"/></MenuItem.Icon>
                             <MenuItem.IsVisible>
                                 <Binding Path="ModType" Converter="{StaticResource ModTypeToRedownloadVisibilityConverter}"/>
                             </MenuItem.IsVisible>
                         </MenuItem>
                         <Separator/>
                         <MenuItem Header="Customize Mod" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.CustomizeModCommand}" CommandParameter="{Binding}">
-                            <MenuItem.Icon><TextBlock Text="⚙️" FontSize="14"/></MenuItem.Icon>
+                            <MenuItem.Icon><i:Icon Value="fa-gear" FontSize="14"/></MenuItem.Icon>
                         </MenuItem>
                         <MenuItem Header="Delete Mod" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.DeleteModsCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" Foreground="{DynamicResource RimworldErrorRedBrush}">
-                            <MenuItem.Icon><TextBlock Text="🗑️" FontSize="14"/></MenuItem.Icon>
+                            <MenuItem.Icon><i:Icon Value="fa-trash-can" FontSize="14"/></MenuItem.Icon>
                             <MenuItem.IsVisible>
                                 <Binding Path="ModType" Converter="{StaticResource ModTypeToDeleteVisibilityConverter}"/>
                             </MenuItem.IsVisible>
@@ -222,11 +223,11 @@
                     SelectionMode="{Binding #RootModListView.SelectionMode}"
                     DragDrop.AllowDrop="True"
                     Background="Transparent">
-                <i:Interaction.Behaviors>
+                <interactivity:Interaction.Behaviors>
                     <behaviors:ListBoxDragDropBehavior DropCommand="{Binding #RootModListView.DropCommand}" 
                                                        DragItemType="{Binding #RootModListView.DragItemType}" 
                                                        ListGroupName="{Binding #RootModListView.GroupName}"/>
-                </i:Interaction.Behaviors>
+                </interactivity:Interaction.Behaviors>
                 <ListBox.ItemTemplate>
                      <DataTemplate x:DataType="models:ModItem">
                         <Grid ColumnDefinitions="Auto,*">
@@ -283,19 +284,20 @@
                                     </TextBlock>
 
                                     <!-- Warning Icon - Only visible when HasIssues AND IsActive -->
-                                    <TextBlock Grid.Column="2" Text="⚠️"
+                                    <i:Icon Grid.Column="2" Value="fa-triangle-exclamation"
                                                Foreground="{DynamicResource RimworldRedBrush}"
-                                               VerticalAlignment="Center" HorizontalAlignment="Right" Margin="5,0,2,0">
-                                        <TextBlock.IsVisible>
+                                               VerticalAlignment="Center" HorizontalAlignment="Right" Margin="5,0,2,0"
+                                               FontSize="12">
+                                        <i:Icon.IsVisible>
                                             <MultiBinding Converter="{StaticResource IsActiveAndHasIssuesToVisibilityConverter}">
                                                 <Binding Path="HasIssues"/>
                                                 <Binding Path="IsActive"/>
                                             </MultiBinding>
-                                        </TextBlock.IsVisible>
+                                        </i:Icon.IsVisible>
                                         <ToolTip.Tip>
                                             <ToolTip Content="{Binding IssueTooltipText}"/>
                                         </ToolTip.Tip>
-                                    </TextBlock>
+                                    </i:Icon>
                                 </Grid>
                             </Border>
                         </Grid>
@@ -333,36 +335,36 @@
                             <Grid ColumnDefinitions="*,*,*,*,*">
                                 <!-- Sorting Issues -->
                                 <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
-                                    <TextBlock Text="🔃" VerticalAlignment="Center" FontSize="12"/>
-                                    <TextBlock Text="{Binding #RootModListView.SortingIssuesCount}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <i:Icon Value="fa-arrow-down-z-a" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                    <TextBlock Text="{Binding #RootModListView.SortingIssuesCount}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource RimworldWhiteBrush}"/>
                                     <ToolTip.Tip>Sorting order problems</ToolTip.Tip>
                                 </StackPanel>
 
                                 <!-- Missing Dependencies -->
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
-                                    <TextBlock Text="📦" VerticalAlignment="Center" FontSize="12"/>
-                                    <TextBlock Text="{Binding #RootModListView.MissingDependenciesCount}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <i:Icon Value="fa-box" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                    <TextBlock Text="{Binding #RootModListView.MissingDependenciesCount}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource RimworldWhiteBrush}"/>
                                     <ToolTip.Tip>Missing dependencies</ToolTip.Tip>
                                 </StackPanel>
 
                                 <!-- Incompatibilities -->
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
-                                    <TextBlock Text="🚫" VerticalAlignment="Center" FontSize="12"/>
-                                    <TextBlock Text="{Binding #RootModListView.IncompatibilitiesCount}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <i:Icon Value="fa-ban" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                    <TextBlock Text="{Binding #RootModListView.IncompatibilitiesCount}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource RimworldWhiteBrush}"/>
                                     <ToolTip.Tip>Incompatibilities</ToolTip.Tip>
                                 </StackPanel>
 
                                 <!-- Version Mismatch -->
                                 <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
-                                    <TextBlock Text="⚠️" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource RimworldErrorRedBrush}"/>
-                                    <TextBlock Text="{Binding #RootModListView.ActiveVersionMismatchCount}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <i:Icon Value="fa-triangle-exclamation" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource RimworldErrorRedBrush}"/>
+                                    <TextBlock Text="{Binding #RootModListView.ActiveVersionMismatchCount}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource RimworldWhiteBrush}"/>
                                     <ToolTip.Tip>Version mismatch</ToolTip.Tip>
                                 </StackPanel>
 
                                 <!-- Duplicates -->
                                 <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
-                                    <TextBlock Text="👯" VerticalAlignment="Center" FontSize="12"/>
-                                    <TextBlock Text="{Binding #RootModListView.ActiveDuplicateIssuesCount}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <i:Icon Value="fa-clone" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                    <TextBlock Text="{Binding #RootModListView.ActiveDuplicateIssuesCount}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource RimworldWhiteBrush}"/>
                                     <ToolTip.Tip>Duplicate mods</ToolTip.Tip>
                                 </StackPanel>
                             </Grid>

@@ -5,7 +5,8 @@
         xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
         xmlns:vm="clr-namespace:RimSharp.Features.ModManager.Dialogs.Strip"
         xmlns:helpers="clr-namespace:RimSharp.Core.Helpers"
-        xmlns:i="clr-namespace:Avalonia.Xaml.Interactivity;assembly=Avalonia.Xaml.Interactivity"
+        xmlns:i="https://github.com/projektanker/icons.avalonia"
+        xmlns:interactivity="clr-namespace:Avalonia.Xaml.Interactivity;assembly=Avalonia.Xaml.Interactivity"
         xmlns:ia="clr-namespace:Avalonia.Xaml.Interactions.Core;assembly=Avalonia.Xaml.Interactions"
         x:Class="RimSharp.Features.ModManager.Dialogs.Strip.StripModsDialogView"
         x:DataType="vm:StripDialogViewModel"
@@ -23,7 +24,7 @@
             <!-- 1. Top Info Banner -->
             <Border Grid.Row="0" Classes="RimworldPanelBorder" Margin="0,0,0,12">
                 <Grid ColumnDefinitions="Auto, *">
-                    <TextBlock Grid.Column="0" Text="💡" FontSize="32" Margin="5,0,15,0" VerticalAlignment="Center"/>
+                    <i:Icon Grid.Column="0" Value="fa-lightbulb" FontSize="32" Margin="5,0,15,0" VerticalAlignment="Center" Foreground="{DynamicResource RimworldHighlightBrush}"/>
                     <TextBlock Grid.Column="1" TextWrapping="Wrap" VerticalAlignment="Center" 
                                Foreground="{DynamicResource RimworldDarkBrownBrush}" LineHeight="20">
                         <Run FontWeight="SemiBold">Choose which mods to strip to reduce your folder size.</Run>&#x0a;• Folders not needed for your current game version will be removed.&#x0a;• Unnecessary developer files (source code, .git, .vs, etc.) will be cleaned up.
@@ -87,7 +88,7 @@
                                         <MenuItem Header="Open in Explorer"
                                                   Command="{Binding Data.OpenInExplorerCommand, Source={StaticResource Proxy}}"
                                                   CommandParameter="{Binding Mod.Path}">
-                                            <MenuItem.Icon><TextBlock Text="📁" FontSize="14"/></MenuItem.Icon>
+                                            <MenuItem.Icon><i:Icon Value="fa-folder-open" FontSize="14"/></MenuItem.Icon>
                                         </MenuItem>
                                     </ContextMenu>
                                 </Grid.ContextMenu>
@@ -129,7 +130,7 @@
                                         <MenuItem Header="Open in Explorer"
                                                   Command="{Binding Data.OpenInExplorerCommand, Source={StaticResource Proxy}}"
                                                   CommandParameter="{Binding FullPath}">
-                                            <MenuItem.Icon><TextBlock Text="📁" FontSize="14"/></MenuItem.Icon>
+                                            <MenuItem.Icon><i:Icon Value="fa-folder-open" FontSize="14"/></MenuItem.Icon>
                                         </MenuItem>
                                     </ContextMenu>
                                 </Grid.ContextMenu>

@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:RimSharp.Features.ModManager.ViewModels.Actions"
+             xmlns:i="https://github.com/projektanker/icons.avalonia"
              x:Class="RimSharp.Features.ModManager.Components.ModActions.ModActionsView"
              mc:Ignorable="d"
              x:DataType="vm:ModActionsViewModel"
@@ -43,7 +44,7 @@
                         <MenuItem.Header>
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                                    <TextBlock Text="📦" VerticalAlignment="Center"/>
+                                    <i:Icon Value="fa-box" VerticalAlignment="Center" FontSize="12"/>
                                     <TextBlock Text="Dependencies" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <Border Grid.Column="1" Background="{DynamicResource RimworldErrorRedBrush}" 
@@ -58,7 +59,7 @@
                         <MenuItem.Header>
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                                    <TextBlock Text="🚫" VerticalAlignment="Center"/>
+                                    <i:Icon Value="fa-ban" VerticalAlignment="Center" FontSize="12"/>
                                     <TextBlock Text="Incompatibilities" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <Border Grid.Column="1" Background="{DynamicResource RimworldErrorRedBrush}" 
@@ -73,7 +74,7 @@
                         <MenuItem.Header>
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                                    <TextBlock Text="👯" VerticalAlignment="Center"/>
+                                    <i:Icon Value="fa-clone" VerticalAlignment="Center" FontSize="12"/>
                                     <TextBlock Text="Duplicates" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <Border Grid.Column="1" Background="{DynamicResource RimworldErrorRedBrush}" 
@@ -87,7 +88,7 @@
                     <MenuItem Command="{Binding CheckReplacementsCommand}" Classes="RimworldMenuItemStyle">
                         <MenuItem.Header>
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="🔄" VerticalAlignment="Center"/>
+                                <i:Icon Value="fa-arrows-rotate" VerticalAlignment="Center" FontSize="12"/>
                                 <TextBlock Text="Replacements" VerticalAlignment="Center"/>
                             </StackPanel>
                         </MenuItem.Header>
@@ -100,7 +101,7 @@
                     <MenuItem Command="{Binding StripModsCommand}" Classes="RimworldMenuItemStyle">
                         <MenuItem.Header>
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="✂️" VerticalAlignment="Center"/>
+                                <i:Icon Value="fa-scissors" VerticalAlignment="Center" FontSize="12"/>
                                 <TextBlock Text="Strip mods" VerticalAlignment="Center"/>
                             </StackPanel>
                         </MenuItem.Header>
@@ -108,7 +109,7 @@
                     <MenuItem Command="{Binding FixIntegrityCommand}" Classes="RimworldMenuItemStyle">
                         <MenuItem.Header>
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="🛠️" VerticalAlignment="Center"/>
+                                <i:Icon Value="fa-hammer" VerticalAlignment="Center" FontSize="12"/>
                                 <TextBlock Text="Fix integrity" VerticalAlignment="Center"/>
                             </StackPanel>
                         </MenuItem.Header>
@@ -117,7 +118,7 @@
                     <MenuItem Command="{Binding InstallFromZipCommand}" Classes="RimworldMenuItemStyle">
                         <MenuItem.Header>
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="📦" VerticalAlignment="Center"/>
+                                <i:Icon Value="fa-box" VerticalAlignment="Center" FontSize="12"/>
                                 <TextBlock Text="Install From Zip" VerticalAlignment="Center"/>
                             </StackPanel>
                         </MenuItem.Header>
@@ -125,7 +126,7 @@
                     <MenuItem Command="{Binding InstallFromGithubCommand}" Classes="RimworldMenuItemStyle">
                         <MenuItem.Header>
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="🐙" VerticalAlignment="Center"/>
+                                <i:Icon Value="fa-brands fa-github" VerticalAlignment="Center" FontSize="12"/>
                                 <TextBlock Text="Install From Github" VerticalAlignment="Center"/>
                             </StackPanel>
                         </MenuItem.Header>

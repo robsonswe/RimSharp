@@ -5,6 +5,7 @@
              xmlns:vm="clr-namespace:RimSharp.Features.ModManager.ViewModels"
              xmlns:models="clr-namespace:RimSharp.Shared.Models"
              xmlns:convViewVisibility="clr-namespace:RimSharp.Core.Converters.ViewVisibility"
+             xmlns:i="https://github.com/projektanker/icons.avalonia"
              x:Class="RimSharp.Features.ModManager.Components.ModDetails.ModDetailsView"
              mc:Ignorable="d"
              x:DataType="vm:ModDetailsViewModel"
@@ -13,8 +14,7 @@
 
     <UserControl.Styles>
 
-        <Style Selector="TextBlock.InfoIcon">
-            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+        <Style Selector="i|Icon.InfoIcon">
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
             <Setter Property="Margin" Value="0,0,8,0"/>
@@ -117,25 +117,25 @@
                       RowDefinitions="Auto,Auto,Auto,Auto">
 
                     <!-- Name -->
-                    <TextBlock Grid.Row="0" Grid.Column="0" Classes="InfoIcon" Text="" Margin="0,0,8,8"/>
+                    <i:Icon Grid.Row="0" Grid.Column="0" Value="fa-signature" Classes="InfoIcon" Margin="0,0,8,8"/>
                     <TextBlock Grid.Row="0" Grid.Column="1" Classes="InfoLabel" Text="Name:" Margin="0,0,5,8"/>
                     <SelectableTextBlock Grid.Row="0" Grid.Column="2" Classes="SelectableValue" FontWeight="Bold" Margin="0,0,0,8"
                                          Text="{Binding Name, Mode=OneWay}"/>
 
                     <!-- Authors -->
-                    <TextBlock Grid.Row="1" Grid.Column="0" Classes="InfoIcon" Text="" Margin="0,0,8,8"/>
+                    <i:Icon Grid.Row="1" Grid.Column="0" Value="fa-users" Classes="InfoIcon" Margin="0,0,8,8"/>
                     <TextBlock Grid.Row="1" Grid.Column="1" Classes="InfoLabel" Text="Authors:" Margin="0,0,5,8"/>
                     <SelectableTextBlock Grid.Row="1" Grid.Column="2" Classes="SelectableValue" Margin="0,0,0,8"
                                          Text="{Binding Authors, Mode=OneWay}"/>
 
                     <!-- Mod Type -->
-                    <TextBlock Grid.Row="2" Grid.Column="0" Classes="InfoIcon" Text="" Margin="0,0,8,8"/>
+                    <i:Icon Grid.Row="2" Grid.Column="0" Value="fa-tag" Classes="InfoIcon" Margin="0,0,8,8"/>
                     <TextBlock Grid.Row="2" Grid.Column="1" Classes="InfoLabel" Text="Mod Type:" Margin="0,0,5,8"/>
                     <SelectableTextBlock Grid.Row="2" Grid.Column="2" Classes="SelectableValue" Margin="0,0,0,8"
                                          Text="{Binding ModType, Converter={StaticResource ModTypeToDescriptionConverter}, Mode=OneWay}"/>
 
                     <!-- Tags (hidden when empty) -->
-                    <TextBlock Grid.Row="3" Grid.Column="0" Classes="InfoIcon" Text="" Margin="0,0,8,8"
+                    <i:Icon Grid.Row="3" Grid.Column="0" Value="fa-tags" Classes="InfoIcon" Margin="0,0,8,8"
                                IsVisible="{Binding Tags, Converter={StaticResource IsNotNullOrEmptyConverter}}"/>
                     <TextBlock Grid.Row="3" Grid.Column="1" Classes="InfoLabel" Text="Tags:" Margin="0,0,5,8"
                                IsVisible="{Binding Tags, Converter={StaticResource IsNotNullOrEmptyConverter}}"/>
@@ -150,19 +150,19 @@
                       RowDefinitions="Auto,Auto,Auto,Auto,Auto">
 
                     <!-- Content -->
-                    <TextBlock Grid.Row="0" Grid.Column="0" Classes="InfoIcon" Text="" Margin="0,0,8,8"/>
+                    <i:Icon Grid.Row="0" Grid.Column="0" Value="fa-file-code" Classes="InfoIcon" Margin="0,0,8,8"/>
                     <TextBlock Grid.Row="0" Grid.Column="1" Classes="InfoLabel" Text="Content:" Margin="0,0,5,8"/>
                     <SelectableTextBlock Grid.Row="0" Grid.Column="2" Classes="SelectableValue" Margin="0,0,0,8"
                                          Text="{Binding Assemblies, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='XML-Only|C# Code', Mode=OneWay}"/>
 
                     <!-- Textures -->
-                    <TextBlock Grid.Row="1" Grid.Column="0" Classes="InfoIcon" Text="" Margin="0,0,8,8"/>
+                    <i:Icon Grid.Row="1" Grid.Column="0" Value="fa-image" Classes="InfoIcon" Margin="0,0,8,8"/>
                     <TextBlock Grid.Row="1" Grid.Column="1" Classes="InfoLabel" Text="Textures:" Margin="0,0,5,8"/>
                     <SelectableTextBlock Grid.Row="1" Grid.Column="2" Classes="SelectableValue" Margin="0,0,0,8"
                                          Text="{Binding Textures, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='None|Contains Textures', Mode=OneWay}"/>
 
                     <!-- Size (hidden when zero) -->
-                    <TextBlock Grid.Row="2" Grid.Column="0" Classes="InfoIcon" Text="" Margin="0,0,8,8"
+                    <i:Icon Grid.Row="2" Grid.Column="0" Value="fa-weight-hanging" Classes="InfoIcon" Margin="0,0,8,8"
                                IsVisible="{Binding SizeInfo.TotalSize, Converter={StaticResource CountToVisibilityConverter}}"/>
                     <TextBlock Grid.Row="2" Grid.Column="1" Classes="InfoLabel" Text="Size:" Margin="0,0,5,8"
                                IsVisible="{Binding SizeInfo.TotalSize, Converter={StaticResource CountToVisibilityConverter}}"/>
@@ -197,13 +197,13 @@
                     </SelectableTextBlock>
 
                     <!-- Game Versions -->
-                    <TextBlock Grid.Row="3" Grid.Column="0" Classes="InfoIcon" Text="" Margin="0,0,8,8"/>
+                    <i:Icon Grid.Row="3" Grid.Column="0" Value="fa-code-fork" Classes="InfoIcon" Margin="0,0,8,8"/>
                     <TextBlock Grid.Row="3" Grid.Column="1" Classes="InfoLabel" Text="Game Versions:" Margin="0,0,5,8"/>
                     <ContentControl Grid.Row="3" Grid.Column="2" VerticalAlignment="Center" Margin="0,0,0,8"
                                     Content="{Binding SupportedVersions, Converter={StaticResource VersionSupportConverter}, Mode=OneWay}"/>
 
                     <!-- Mod Version (hidden when empty) -->
-                    <TextBlock Grid.Row="4" Grid.Column="0" Classes="InfoIcon" Text="" Margin="0,0,8,8"
+                    <i:Icon Grid.Row="4" Grid.Column="0" Value="fa-code-commit" Classes="InfoIcon" Margin="0,0,8,8"
                                IsVisible="{Binding ModVersion, Converter={StaticResource IsNotNullOrEmptyConverter}}"/>
                     <TextBlock Grid.Row="4" Grid.Column="1" Classes="InfoLabel" Text="Mod Version:" Margin="0,0,5,8"
                                IsVisible="{Binding ModVersion, Converter={StaticResource IsNotNullOrEmptyConverter}}"/>
@@ -220,7 +220,7 @@
                 <Border Grid.Column="0" Classes="CodeBox" Margin="0,0,5,0">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                            <TextBlock Text="" Classes="InfoIcon" Margin="0"/>
+                            <i:Icon Value="fa-cube" Classes="InfoIcon" Margin="0"/>
                             <TextBlock Text="Package ID" Classes="InfoLabel"/>
                         </StackPanel>
                         <SelectableTextBlock Text="{Binding PackageId, Mode=OneWay}" Classes="CodeBoxText"/>
@@ -232,7 +232,7 @@
                         IsVisible="{Binding SteamId, Converter={StaticResource IsNotNullOrEmptyConverter}}">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                            <TextBlock Text="" Classes="InfoIcon" Margin="0"/>
+                            <i:Icon Value="fa-brands fa-steam" Classes="InfoIcon" Margin="0"/>
                             <TextBlock Text="Steam ID" Classes="InfoLabel"/>
                         </StackPanel>
                         <SelectableTextBlock Text="{Binding SteamId, Mode=OneWay}" Classes="CodeBoxText"/>
@@ -244,7 +244,7 @@
                         IsVisible="{Binding SteamId, Converter={StaticResource IsNullOrEmptyConverter}}">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                            <TextBlock Text="" Classes="InfoIcon" Margin="0"/>
+                            <i:Icon Value="fa-folder" Classes="InfoIcon" Margin="0"/>
                             <TextBlock Text="Path" Classes="InfoLabel"/>
                         </StackPanel>
                         <SelectableTextBlock Classes="SelectableHyperlink" Text="{Binding Path, Mode=OneWay}"
@@ -261,7 +261,7 @@
                         IsVisible="{Binding SteamId, Converter={StaticResource IsNotNullOrEmptyConverter}}">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                            <TextBlock Text="" Classes="InfoIcon" Margin="0"/>
+                            <i:Icon Value="fa-folder" Classes="InfoIcon" Margin="0"/>
                             <TextBlock Text="Path" Classes="InfoLabel"/>
                         </StackPanel>
                         <SelectableTextBlock Classes="SelectableHyperlink" Text="{Binding Path, Mode=OneWay}"

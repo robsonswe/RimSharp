@@ -4,6 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
         xmlns:vmDialogs="clr-namespace:RimSharp.AppDir.Dialogs"
+        xmlns:i="https://github.com/projektanker/icons.avalonia"
         x:Class="RimSharp.AppDir.Dialogs.MessageDialogView"
         mc:Ignorable="d"
         x:DataType="vmDialogs:MessageDialogViewModel"
@@ -25,13 +26,10 @@
                         BorderThickness="1"
                         Margin="0,0,15,0"
                         VerticalAlignment="Top">
-                    <TextBlock x:Name="IconText" 
+                    <i:Icon Value="{Binding DialogType, Converter={StaticResource DialogTypeToIconConverter}}" 
                                HorizontalAlignment="Center" 
                                VerticalAlignment="Center" 
                                FontSize="22"
-                               FontWeight="SemiBold"
-                               FontFamily="Segoe UI Symbol"
-                               Text="{Binding DialogType, Converter={StaticResource DialogTypeToIconConverter}}"
                                Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
                 </Border>
 

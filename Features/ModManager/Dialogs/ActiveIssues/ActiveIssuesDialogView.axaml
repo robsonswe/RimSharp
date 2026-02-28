@@ -5,6 +5,7 @@
                   xmlns:local="clr-namespace:RimSharp.Features.ModManager.Dialogs.ActiveIssues"
                   xmlns:models="clr-namespace:RimSharp.Shared.Models"
                   xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+                  xmlns:i="https://github.com/projektanker/icons.avalonia"
                   mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
                   x:Class="RimSharp.Features.ModManager.Dialogs.ActiveIssues.ActiveIssuesDialogView"
                   x:DataType="local:ActiveIssuesDialogViewModel"
@@ -50,8 +51,9 @@
                                                         CornerRadius="3" BorderThickness="1" 
                                                         BorderBrush="{DynamicResource RimworldBrownBrush}">
                                                     <Grid ColumnDefinitions="Auto, *">
-                                                        <TextBlock Grid.Column="0" Text="{Binding Type, Converter={StaticResource ModIssueTypeToIconConverter}}" 
-                                                                   FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                        <i:Icon Grid.Column="0" Value="{Binding Type, Converter={StaticResource ModIssueTypeToIconConverter}}" 
+                                                                   FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0"
+                                                                   Foreground="{DynamicResource RimworldBrownBrush}"/>
                                                         <StackPanel Grid.Column="1">
                                                             <TextBlock Text="{Binding Type, Converter={StaticResource ModIssueTypeToTextConverter}}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
                                                             <TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource RimworldBrownBrush}"/>

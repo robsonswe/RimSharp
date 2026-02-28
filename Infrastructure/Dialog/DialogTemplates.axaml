@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:i="https://github.com/projektanker/icons.avalonia"
         xmlns:local="clr-namespace:RimSharp.Infrastructure.Dialog">
 
     <Style Selector="Window.base-dialog">
@@ -43,9 +44,9 @@
                                             BorderThickness="0"
                                             Command="{Binding CloseCommand}"
                                             IsVisible="{TemplateBinding Closeable}">
-                                        <TextBlock Text="✕"
+                                        <i:Icon Value="fa-xmark"
                                                 Foreground="{DynamicResource RimworldWhiteBrush}"
-                                                FontWeight="Bold"
+                                                FontSize="14"
                                                 HorizontalAlignment="Center"
                                                 VerticalAlignment="Center"/>
                                         <Button.Styles>

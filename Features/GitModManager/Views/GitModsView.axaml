@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:RimSharp.Features.GitModManager.Views"
              xmlns:vm="clr-namespace:RimSharp.Features.GitModManager.ViewModels"
+             xmlns:i="https://github.com/projektanker/icons.avalonia"
              x:Class="RimSharp.Features.GitModManager.Views.GitModsView"
              x:DataType="vm:GitModsViewModel"
              x:CompileBindings="True"
@@ -52,18 +53,18 @@
                             <MenuItem Header="Check Update" 
                                       Command="{Binding CheckIndividualUpdateCommand}"
                                       CommandParameter="{Binding SelectedItem, ElementName=GitModsDataGrid}">
-                                <MenuItem.Icon><TextBlock Text="🔄" FontSize="14"/></MenuItem.Icon>
+                                <MenuItem.Icon><i:Icon Value="fa-arrows-rotate" FontSize="14"/></MenuItem.Icon>
                             </MenuItem>
                             <MenuItem Header="Pull Update" 
                                       Command="{Binding PullIndividualUpdateCommand}"
                                       CommandParameter="{Binding SelectedItem, ElementName=GitModsDataGrid}">
-                                <MenuItem.Icon><TextBlock Text="⬇️" FontSize="14"/></MenuItem.Icon>
+                                <MenuItem.Icon><i:Icon Value="fa-circle-arrow-down" FontSize="14"/></MenuItem.Icon>
                             </MenuItem>
                             <Separator/>
                             <MenuItem Header="Open Repository" 
                                       Command="{Binding OpenGitHubRepoCommand}"
                                       CommandParameter="{Binding SelectedItem.ModItem.GitRepo, ElementName=GitModsDataGrid}">
-                                <MenuItem.Icon><TextBlock Text="🌐" FontSize="14"/></MenuItem.Icon>
+                                <MenuItem.Icon><i:Icon Value="fa-globe" FontSize="14"/></MenuItem.Icon>
                             </MenuItem>
                         </ContextMenu>
                     </DataGrid.ContextMenu>
@@ -74,12 +75,12 @@
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate x:DataType="vm:GitModItemWrapper">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="5" Margin="10,0">
-                                        <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets"
+                                        <i:Icon Value="fa-circle-check"
                                                    IsVisible="{Binding UpdateStatus, Converter={StaticResource EqualityConverter}, ConverterParameter='Up to date'}"
-                                                   Foreground="ForestGreen" VerticalAlignment="Center"/>
-                                        <TextBlock Text="&#xE777;" FontFamily="Segoe MDL2 Assets"
+                                                   Foreground="ForestGreen" VerticalAlignment="Center" FontSize="14"/>
+                                        <i:Icon Value="fa-circle-info"
                                                    IsVisible="{Binding UpdateStatus, Converter={StaticResource InequalityConverter}, ConverterParameter='Up to date'}"
-                                                   Foreground="{DynamicResource RimworldBlackBrush}" VerticalAlignment="Center"/>
+                                                   Foreground="{DynamicResource RimworldBlackBrush}" VerticalAlignment="Center" FontSize="14"/>
                                         <TextBlock Text="{Binding UpdateStatus}"
                                                    Foreground="{Binding UpdateStatus, Converter={StaticResource UpdateStatusToColorConverter}}"
                                                    FontWeight="Medium"

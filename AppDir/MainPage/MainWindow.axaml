@@ -4,6 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:RimSharp.AppDir.MainPage"
         xmlns:vm="clr-namespace:RimSharp.AppDir.MainPage"
+        xmlns:i="https://github.com/projektanker/icons.avalonia"
         mc:Ignorable="d"
         x:Class="RimSharp.AppDir.MainPage.MainWindow"
         x:DataType="vm:MainViewModel"
@@ -108,7 +109,7 @@
                                 Padding="12,4"
                                 MinWidth="0">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="↻" VerticalAlignment="Center" FontSize="14" FontFamily="Segoe UI Symbol"/>
+                                <i:Icon Value="fa-rotate-right" VerticalAlignment="Center" FontSize="14"/>
                                 <TextBlock Text="Refresh" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
@@ -118,7 +119,7 @@
                                 Classes="RimworldButtonStyle" 
                                 Padding="12,4">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="ℹ" VerticalAlignment="Center" FontSize="14" FontFamily="Segoe UI Symbol"/>
+                                <i:Icon Value="fa-info" VerticalAlignment="Center" FontSize="14"/>
                                 <TextBlock Text="About" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>

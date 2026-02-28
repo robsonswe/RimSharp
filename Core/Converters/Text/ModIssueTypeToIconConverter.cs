@@ -13,14 +13,14 @@ namespace RimSharp.Core.Converters.Text
             {
                 return type switch
                 {
-                    ModIssueType.Sorting => "🔃",
-                    ModIssueType.Dependency => "📦",
-                    ModIssueType.Incompatibility => "🚫",
-                    ModIssueType.SoftIncompatibility => "⚠️",
-                    ModIssueType.HardIncompatibility => "🚫",
-                    ModIssueType.VersionMismatch => "❗",
-                    ModIssueType.Duplicate => "👯",
-                    _ => "❓"
+                    ModIssueType.Sorting => "fa-arrow-down-z-a",
+                    ModIssueType.Dependency => "fa-box",
+                    ModIssueType.Incompatibility => "fa-ban",
+                    ModIssueType.SoftIncompatibility => "fa-triangle-exclamation",
+                    ModIssueType.HardIncompatibility => "fa-ban",
+                    ModIssueType.VersionMismatch => "fa-triangle-exclamation",
+                    ModIssueType.Duplicate => "fa-clone",
+                    _ => "fa-question"
                 };
             }
             return "";

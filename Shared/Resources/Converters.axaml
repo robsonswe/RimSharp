@@ -59,6 +59,7 @@
      <convUtility:LinkToCommandConverter x:Key="LinkToCommandConverter"/>
 
      <!-- Visual Converters -->
+     <convVisual:ResourceKeyToBrushConverter x:Key="ResourceKeyToBrushConverter"/>
      <convVisual:ImagePathConverter x:Key="ImagePathConverter"/>
      <convVisual:BooleanToBrushConverter x:Key="BooleanToBrushConverter"/>
      <convVisual:BooleanToColorConverter x:Key="BooleanToColorConverter"/>

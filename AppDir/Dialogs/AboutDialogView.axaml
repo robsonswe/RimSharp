@@ -4,6 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
         xmlns:local="clr-namespace:RimSharp.AppDir.Dialogs"
+        xmlns:i="https://github.com/projektanker/icons.avalonia"
         x:Class="RimSharp.AppDir.Dialogs.AboutDialogView"
         mc:Ignorable="d"
         x:DataType="local:AboutDialogViewModel"
@@ -34,12 +35,13 @@
                         CornerRadius="4" 
                         Padding="12,10">
                     <Grid ColumnDefinitions="Auto,*,Auto">
-                        <TextBlock Grid.Column="0" Text="{Binding UpdateStatusIcon}" 
+                        <i:Icon Grid.Column="0" Value="{Binding UpdateStatusIcon}" 
+                                   Foreground="{Binding StatusColor, Converter={StaticResource ResourceKeyToBrushConverter}}"
                                    FontSize="18" VerticalAlignment="Center" Margin="0,0,12,0"/>
                         
                         <TextBlock Grid.Column="1" Text="{Binding UpdateStatus}" 
-                                   FontSize="14" VerticalAlignment="Center" 
-                                   Foreground="{DynamicResource RimworldBrownBrush}"/>
+                                   Foreground="{Binding StatusColor, Converter={StaticResource ResourceKeyToBrushConverter}}"
+                                   FontSize="14" VerticalAlignment="Center"/>
 
                         <Button Grid.Column="2" Content="Update" 
                                 Command="{Binding ReleaseUrl, Converter={StaticResource LinkToCommandConverter}}"

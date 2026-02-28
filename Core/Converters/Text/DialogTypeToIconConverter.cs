@@ -14,13 +14,12 @@ namespace RimSharp.Core.Converters.Text
                 // Using simple characters that look subtle when styled with Segoe UI Symbol
                 return type switch
                 {
-                    MessageDialogType.Information => "i",
-                    MessageDialogType.Warning => "!",
-                    MessageDialogType.Error => "X",
-                    MessageDialogType.Question => "?",
+                    MessageDialogType.Information => "fa-info",
+                    MessageDialogType.Warning => "fa-triangle-exclamation",
+                    MessageDialogType.Error => "fa-xmark",
+                    MessageDialogType.Question => "fa-question",
                     _ => ""
-                };
-            }
+                };            }
             return "";
         }
 
