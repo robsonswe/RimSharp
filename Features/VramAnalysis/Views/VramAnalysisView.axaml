@@ -8,6 +8,18 @@
              mc:Ignorable="d"
              d:DesignHeight="600" d:DesignWidth="800">
 
+    <UserControl.Styles>
+        <Style Selector="TextBlock.active">
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+        <Style Selector="TextBlock.favorite">
+            <Setter Property="Foreground" Value="{DynamicResource RimworldCodeBlueBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.conditional">
+            <Setter Property="FontStyle" Value="Italic"/>
+        </Style>
+    </UserControl.Styles>
+
     <DockPanel Margin="10">
         <!-- Top Control Bar -->
         <Border DockPanel.Dock="Top" Margin="0,0,0,10" Classes="RimworldPanelBorder">
@@ -20,8 +32,26 @@
                         <TextBlock Text="{Binding TotalInAtlasCountActiveMods, StringFormat=N0}" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}"/>
                         <TextBlock Text="/" VerticalAlignment="Center"/>
                         <TextBlock Text="{Binding TotalTextureCountActiveMods, StringFormat=N0}" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                        
                         <TextBlock Text="Active VRAM: " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}" Margin="10,0,0,0"/>
                         <TextBlock Text="{Binding TotalVramCompressedActiveMods, Converter={StaticResource FileSizeConverter}}" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}"/>
+
+                        <TextBlock Text="Favorites VRAM: " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}" Margin="10,0,0,0"/>
+                        <TextBlock Text="{Binding TotalVramCompressedFavoriteMods, Converter={StaticResource FileSizeConverter}}" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                    </StackPanel>
+                    
+                    <!-- Max View -->
+                    <StackPanel Orientation="Horizontal" IsVisible="{Binding ShowMaxVram}" Spacing="5">
+                        <TextBlock Text="Active Textures (Atlas/Total): " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                        <TextBlock Text="{Binding MaxTotalInAtlasCountActiveMods, StringFormat=N0}" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                        <TextBlock Text="/" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding MaxTotalTextureCountActiveMods, StringFormat=N0}" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                        
+                        <TextBlock Text="Active VRAM: " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}" Margin="10,0,0,0"/>
+                        <TextBlock Text="{Binding MaxTotalVramCompressedActiveMods, Converter={StaticResource FileSizeConverter}}" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}"/>
+
+                        <TextBlock Text="Favorites VRAM: " FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}" Margin="10,0,0,0"/>
+                        <TextBlock Text="{Binding MaxTotalVramCompressedFavoriteMods, Converter={StaticResource FileSizeConverter}}" VerticalAlignment="Center" Foreground="{DynamicResource RimworldBrownBrush}"/>
                     </StackPanel>
                     <!-- User VRAM -->
                     <StackPanel Orientation="Horizontal" IsVisible="{Binding IsUserVramAvailable}" Spacing="5">
@@ -53,25 +83,61 @@
                           RowDetailsVisibilityMode="VisibleWhenSelected"
                           BorderThickness="0">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Mod Name" Binding="{Binding Mod.Name}" Width="*" CanUserResize="True"/>
-                        <DataGridTextColumn Header="Atlas" Binding="{Binding InAtlasCount}" Width="90" CanUserResize="True">
-                            <DataGridTextColumn.HeaderTemplate>
+                        <DataGridTemplateColumn Header="Mod Name" Width="*" CanUserResize="True">
+                            <DataGridTemplateColumn.HeaderTemplate>
+                                <DataTemplate>
+                                    <Button Command="{Binding $parent[DataGrid].DataContext.SortCommand}" CommandParameter="Mod.Name">
+                                        <TextBlock Text="Mod Name"/>
+                                    </Button>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.HeaderTemplate>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Mod.Name}" 
+                                               VerticalAlignment="Center"
+                                               Margin="10,0"
+                                               TextTrimming="CharacterEllipsis"
+                                               Classes.active="{Binding Mod.IsActive}"
+                                               Classes.favorite="{Binding Mod.IsFavorite}"
+                                               Classes.conditional="{Binding HasConditionalContent}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Atlas" Width="90" CanUserResize="True">
+                            <DataGridTemplateColumn.HeaderTemplate>
                                 <DataTemplate>
                                     <Button Command="{Binding $parent[DataGrid].DataContext.SortCommand}" CommandParameter="InAtlasCount">
                                         <TextBlock Text="Atlas"/>
                                     </Button>
                                 </DataTemplate>
-                            </DataGridTextColumn.HeaderTemplate>
-                        </DataGridTextColumn>
-                        <DataGridTextColumn Header="Textures" Binding="{Binding TextureCount}" Width="100" CanUserResize="True">
-                            <DataGridTextColumn.HeaderTemplate>
+                            </DataGridTemplateColumn.HeaderTemplate>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Panel Margin="10,0,10,0">
+                                        <TextBlock Text="{Binding InAtlasCount}" IsVisible="{Binding !$parent[DataGrid].DataContext.ShowMaxVram}" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                        <TextBlock Text="{Binding MaxInAtlasCount}" IsVisible="{Binding $parent[DataGrid].DataContext.ShowMaxVram}" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                    </Panel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTemplateColumn Header="Textures" Width="100" CanUserResize="True">
+                            <DataGridTemplateColumn.HeaderTemplate>
                                 <DataTemplate>
                                     <Button Command="{Binding $parent[DataGrid].DataContext.SortCommand}" CommandParameter="TextureCount">
                                         <TextBlock Text="Textures"/>
                                     </Button>
                                 </DataTemplate>
-                            </DataGridTextColumn.HeaderTemplate>
-                        </DataGridTextColumn>
+                            </DataGridTemplateColumn.HeaderTemplate>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Panel Margin="10,0,10,0">
+                                        <TextBlock Text="{Binding TextureCount}" IsVisible="{Binding !$parent[DataGrid].DataContext.ShowMaxVram}" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                        <TextBlock Text="{Binding MaxTextureCount}" IsVisible="{Binding $parent[DataGrid].DataContext.ShowMaxVram}" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                    </Panel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
 
                         <DataGridTemplateColumn Header="VRAM (Compressed)" Width="175" CanUserResize="True">
                             <DataGridTemplateColumn.HeaderTemplate>
@@ -83,10 +149,16 @@
                             </DataGridTemplateColumn.HeaderTemplate>
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding EstimatedVramCompressed, Converter={StaticResource FileSizeConverter}}"
-                                               Foreground="{DynamicResource RimworldBrownBrush}"
-                                               FontWeight="Medium"
-                                               HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                    <Panel VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,10,0">
+                                        <TextBlock Text="{Binding EstimatedVramCompressed, Converter={StaticResource FileSizeConverter}}"
+                                                   IsVisible="{Binding !$parent[DataGrid].DataContext.ShowMaxVram}"
+                                                   Foreground="{DynamicResource RimworldBrownBrush}"
+                                                   FontWeight="Medium"/>
+                                        <TextBlock Text="{Binding MaxEstimatedVramCompressed, Converter={StaticResource FileSizeConverter}}"
+                                                   IsVisible="{Binding $parent[DataGrid].DataContext.ShowMaxVram}"
+                                                   Foreground="{DynamicResource RimworldBrownBrush}"
+                                                   FontWeight="Medium"/>
+                                    </Panel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
@@ -101,9 +173,14 @@
                             </DataGridTemplateColumn.HeaderTemplate>
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding EstimatedVramUncompressed, Converter={StaticResource FileSizeConverter}}"
-                                               Foreground="{DynamicResource RimworldLightBrownBrush}"
-                                               HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                    <Panel VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,10,0">
+                                        <TextBlock Text="{Binding EstimatedVramUncompressed, Converter={StaticResource FileSizeConverter}}"
+                                                   IsVisible="{Binding !$parent[DataGrid].DataContext.ShowMaxVram}"
+                                                   Foreground="{DynamicResource RimworldLightBrownBrush}"/>
+                                        <TextBlock Text="{Binding MaxEstimatedVramUncompressed, Converter={StaticResource FileSizeConverter}}"
+                                                   IsVisible="{Binding $parent[DataGrid].DataContext.ShowMaxVram}"
+                                                   Foreground="{DynamicResource RimworldLightBrownBrush}"/>
+                                    </Panel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
