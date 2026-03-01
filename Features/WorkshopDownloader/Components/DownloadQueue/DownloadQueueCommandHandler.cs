@@ -237,8 +237,24 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                     closeable: false // Keep open until processing finishes
                 );
 
+                // Create progress reporter for the post-download processing phase
+                var progress = new Progress<(int current, int total, string message)>(update =>
+                {
+                    if (token.IsCancellationRequested) return;
+                    RunOnUIThread(() =>
+                    {
+                        if (progressDialog != null)
+                        {
+                            progressDialog.IsIndeterminate = false;
+                            progressDialog.Progress = (int)((double)update.current / update.total * 100);
+                            progressDialog.Message = $"{update.message} ({update.current}/{update.total})";
+                        }
+                        StatusChanged?.Invoke(this, $"{update.message} ({update.current} of {update.total})...");
+                    });
+                });
+
                 // Call the modified download service method. It now handles timestamping and moving internally.
-                downloadResult = await _steamCmdService.DownloadModsAsync(itemsToDownload, false, token);
+                downloadResult = await _steamCmdService.DownloadModsAsync(itemsToDownload, false, progress, token);
 
                 // Check for cancellation *after* SteamCMD finishes but *before* processing results
                 if (token.IsCancellationRequested) throw new OperationCanceledException();

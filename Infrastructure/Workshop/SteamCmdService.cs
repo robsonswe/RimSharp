@@ -76,8 +76,9 @@ namespace RimSharp.Infrastructure.Workshop
         public Task<SteamCmdDownloadResult> DownloadModsAsync(
             IEnumerable<DownloadItem> itemsToDownload,
             bool validate,
+            IProgress<(int current, int total, string message)>? progress = null,
             CancellationToken cancellationToken = default) =>
-            _downloader.DownloadModsAsync(itemsToDownload, validate, cancellationToken);
+            _downloader.DownloadModsAsync(itemsToDownload, validate, progress, cancellationToken);
 
         // Method using Core FileSystem
         public Task<bool> ClearDepotCacheAsync() => _fileSystem.ClearDepotCacheAsync();

@@ -73,6 +73,7 @@ namespace RimSharp.Infrastructure.Workshop.Download
         public async Task<SteamCmdDownloadResult> DownloadModsAsync(
                         IEnumerable<DownloadItem> itemsToDownload,
                         bool validate,
+                        IProgress<(int current, int total, string message)>? progress = null,
                         CancellationToken cancellationToken = default)
         {
             _logger.LogInfo($"Starting SteamCMD download operation (Retry Strategy: {MaxDownloadAttempts} attempts, Comprehensive Logging)", "SteamCmdDownloader");
@@ -439,6 +440,7 @@ namespace RimSharp.Infrastructure.Workshop.Download
                     result,
                     finalSucceededItems,
                     finalFailedItemsInfo,
+                    progress,
                     cancellationToken);
 
                 // --- Step 5: Populate Final Result Object ---
@@ -745,15 +747,24 @@ namespace RimSharp.Infrastructure.Workshop.Download
             SteamCmdDownloadResult result,
             List<DownloadItem> finalSucceededItems,
             List<FailedDownloadInfo> finalFailedItems,
+            IProgress<(int current, int total, string message)>? progress,
             CancellationToken cancellationToken)
         {
-            _logger.LogInfo($"Processing {successIds.Count()} items marked as successful by logs...", "SteamCmdDownloader");
-            result.LogMessages.Add($"Processing {successIds.Count()} successfully downloaded items...");
+            var successIdsList = successIds.ToList();
+            int total = successIdsList.Count;
+            int current = 0;
 
-            foreach (var successId in successIds)
+            _logger.LogInfo($"Processing {total} items marked as successful by logs...", "SteamCmdDownloader");
+            result.LogMessages.Add($"Processing {total} successfully downloaded items...");
+
+            foreach (var successId in successIdsList)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 DownloadItem currentItem = itemLookup[successId];
+                current++;
+
+                progress?.Report((current, total, $"Processing mod: {currentItem.Name}"));
+
                 string sourceDownloadPath = Path.Combine(sourceBasePath, successId);
                 string targetModPath = Path.Combine(targetBasePath, successId);
 
