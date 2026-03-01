@@ -11,6 +11,6 @@ public interface ISteamCmdDownloader
     Task<SteamCmdDownloadResult> DownloadModsAsync(
         IEnumerable<DownloadItem> itemsToDownload,
         bool validate,
-        // bool showWindow = false, // Parameter less relevant now, always true behavior
+        IProgress<(int current, int total, string message)>? progress = null,
         CancellationToken cancellationToken = default);
 }
