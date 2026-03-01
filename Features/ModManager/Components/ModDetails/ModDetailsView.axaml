@@ -64,16 +64,44 @@
             <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource RimworldLightBrownBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="3"/>
-            <Setter Property="Padding" Value="8"/>
+            <Setter Property="CornerRadius" Value="2"/>
+            <Setter Property="Padding" Value="8,6"/>
+        </Style>
+
+        <Style Selector="TextBlock.CodeBoxLabel">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,2"/>
+        </Style>
+
+        <Style Selector="i|Icon.CodeBoxIcon">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
         <Style Selector="SelectableTextBlock.CodeBoxText">
-            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="FontFamily" Value="Consolas, Monospace"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="SelectableTextBlock.CodeBoxHyperlink">
+            <Setter Property="FontFamily" Value="Consolas, Monospace"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkGreenBrush}"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        </Style>
+        <Style Selector="SelectableTextBlock.CodeBoxHyperlink:pointerover">
+            <Setter Property="TextDecorations" Value="Underline"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkGreenHoverBrush}"/>
         </Style>
 
     </UserControl.Styles>
@@ -219,9 +247,9 @@
                 <!-- Package ID -->
                 <Border Grid.Column="0" Classes="CodeBox" Margin="0,0,5,0">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                            <i:Icon Value="fa-cube" Classes="InfoIcon" Margin="0"/>
-                            <TextBlock Text="Package ID" Classes="InfoLabel"/>
+                        <StackPanel Orientation="Horizontal">
+                            <i:Icon Value="fa-cube" Classes="CodeBoxIcon"/>
+                            <TextBlock Text="Package ID" Classes="CodeBoxLabel"/>
                         </StackPanel>
                         <SelectableTextBlock Text="{Binding PackageId, Mode=OneWay}" Classes="CodeBoxText"/>
                     </StackPanel>
@@ -231,9 +259,9 @@
                 <Border Grid.Column="1" Classes="CodeBox" Margin="5,0,5,0"
                         IsVisible="{Binding SteamId, Converter={StaticResource IsNotNullOrEmptyConverter}}">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                            <i:Icon Value="fa-brands fa-steam" Classes="InfoIcon" Margin="0"/>
-                            <TextBlock Text="Steam ID" Classes="InfoLabel"/>
+                        <StackPanel Orientation="Horizontal">
+                            <i:Icon Value="fa-brands fa-steam" Classes="CodeBoxIcon"/>
+                            <TextBlock Text="Steam ID" Classes="CodeBoxLabel"/>
                         </StackPanel>
                         <SelectableTextBlock Text="{Binding SteamId, Mode=OneWay}" Classes="CodeBoxText"/>
                     </StackPanel>
@@ -243,11 +271,11 @@
                 <Border Grid.Column="1" Grid.ColumnSpan="2" Classes="CodeBox" Margin="5,0,0,0"
                         IsVisible="{Binding SteamId, Converter={StaticResource IsNullOrEmptyConverter}}">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                            <i:Icon Value="fa-folder" Classes="InfoIcon" Margin="0"/>
-                            <TextBlock Text="Path" Classes="InfoLabel"/>
+                        <StackPanel Orientation="Horizontal">
+                            <i:Icon Value="fa-folder" Classes="CodeBoxIcon"/>
+                            <TextBlock Text="Path" Classes="CodeBoxLabel"/>
                         </StackPanel>
-                        <SelectableTextBlock Classes="SelectableHyperlink" Text="{Binding Path, Mode=OneWay}"
+                        <SelectableTextBlock Classes="CodeBoxHyperlink" Text="{Binding Path, Mode=OneWay}"
                                              Tapped="Path_Tapped">
                             <ToolTip.Tip>
                                 <ToolTip Content="{Binding Path}"/>
@@ -260,11 +288,11 @@
                 <Border Grid.Column="2" Classes="CodeBox" Margin="5,0,0,0"
                         IsVisible="{Binding SteamId, Converter={StaticResource IsNotNullOrEmptyConverter}}">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                            <i:Icon Value="fa-folder" Classes="InfoIcon" Margin="0"/>
-                            <TextBlock Text="Path" Classes="InfoLabel"/>
+                        <StackPanel Orientation="Horizontal">
+                            <i:Icon Value="fa-folder" Classes="CodeBoxIcon"/>
+                            <TextBlock Text="Path" Classes="CodeBoxLabel"/>
                         </StackPanel>
-                        <SelectableTextBlock Classes="SelectableHyperlink" Text="{Binding Path, Mode=OneWay}"
+                        <SelectableTextBlock Classes="CodeBoxHyperlink" Text="{Binding Path, Mode=OneWay}"
                                              Tapped="Path_Tapped">
                             <ToolTip.Tip>
                                 <ToolTip Content="{Binding Path}"/>

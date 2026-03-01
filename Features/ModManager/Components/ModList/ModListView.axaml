@@ -356,7 +356,7 @@
 
                                 <!-- Version Mismatch -->
                                 <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
-                                    <i:Icon Value="fa-triangle-exclamation" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource RimworldErrorRedBrush}"/>
+                                    <i:Icon Value="fa-triangle-exclamation" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource RimworldWhiteBrush}"/>
                                     <TextBlock Text="{Binding #RootModListView.ActiveVersionMismatchCount}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource RimworldWhiteBrush}"/>
                                     <ToolTip.Tip>Version mismatch</ToolTip.Tip>
                                 </StackPanel>
