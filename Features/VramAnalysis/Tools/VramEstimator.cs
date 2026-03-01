@@ -165,6 +165,37 @@ namespace RimSharp.Features.VramAnalysis.Tools
             return (width, height, SimpleTextureFormat.RGBA32, (width % 4 == 0) && (height % 4 == 0)); 
         }
 
-        private static (int, int, SimpleTextureFormat, bool) GetDdsInfo(string filePath) { using var reader = new BinaryReader(File.OpenRead(filePath)); if (reader.BaseStream.Length < 128) return (0, 0, SimpleTextureFormat.Unknown, false); reader.BaseStream.Seek(8, SeekOrigin.Begin); uint headerFlags = reader.ReadUInt32(); int height = reader.ReadInt32(); int width = reader.ReadInt32(); reader.BaseStream.Seek(20, SeekOrigin.Current); int mipMapCount = reader.ReadInt32(); bool hasMips = (headerFlags & 0x20000) != 0 || mipMapCount > 1; reader.BaseStream.Seek(44, SeekOrigin.Current); if ((reader.ReadUInt32() & 0x4) != 0) { var fourCC = new string(reader.ReadChars(4)); if (fourCC.StartsWith("DXT1")) return (width, height, SimpleTextureFormat.DXT1, hasMips); if (fourCC.StartsWith("DXT5")) return (width, height, SimpleTextureFormat.DXT5, hasMips); if (fourCC.StartsWith("DX10")) return (width, height, SimpleTextureFormat.BC7, hasMips); } return (width, height, SimpleTextureFormat.Unknown, false); }
+        private static (int, int, SimpleTextureFormat, bool) GetDdsInfo(string filePath) 
+        { 
+            using var reader = new BinaryReader(File.OpenRead(filePath)); 
+            if (reader.BaseStream.Length < 128) return (0, 0, SimpleTextureFormat.Unknown, false); 
+            
+            reader.BaseStream.Seek(8, SeekOrigin.Begin); // Skip Magic (4) + Size (4) -> Pos 8
+            uint headerFlags = reader.ReadUInt32(); // Pos 12
+            int height = reader.ReadInt32(); // Pos 16
+            int width = reader.ReadInt32(); // Pos 20
+            
+            // Skip Pitch (4) + Depth (4) to reach MipMapCount
+            reader.BaseStream.Seek(8, SeekOrigin.Current); // Pos 28
+            int mipMapCount = reader.ReadInt32(); // Pos 32
+            
+            bool hasMips = (headerFlags & 0x20000) != 0 || mipMapCount > 1;
+            
+            // Skip Reserved1 (44 bytes) to reach PixelFormat
+            reader.BaseStream.Seek(44, SeekOrigin.Current); // Pos 76 (Start of PixelFormat)
+            
+            // PixelFormat struct: Size(4), Flags(4), FourCC(4)
+            reader.ReadUInt32(); // Skip PF Size -> Pos 80
+            uint pfFlags = reader.ReadUInt32(); // Pos 84
+            
+            if ((pfFlags & 0x4) != 0) // DDPF_FOURCC
+            { 
+                var fourCC = new string(reader.ReadChars(4)); // Pos 88
+                if (fourCC.StartsWith("DXT1")) return (width, height, SimpleTextureFormat.DXT1, hasMips); 
+                if (fourCC.StartsWith("DXT5")) return (width, height, SimpleTextureFormat.DXT5, hasMips); 
+                if (fourCC.StartsWith("DX10")) return (width, height, SimpleTextureFormat.BC7, hasMips); 
+            } 
+            return (width, height, SimpleTextureFormat.Unknown, false); 
+        }
     }
 }
