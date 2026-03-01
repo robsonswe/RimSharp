@@ -13,6 +13,7 @@ namespace RimSharp.Infrastructure.Dialog
         public BaseDialog()
         {
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            ShowInTaskbar = false;
             Classes.Add("base-dialog");
         }
 
