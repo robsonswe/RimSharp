@@ -1,0 +1,82 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:RimSharp.Features.ModManager.Views"
+             xmlns:vm="clr-namespace:RimSharp.Features.ModManager.ViewModels"
+             xmlns:modActions="clr-namespace:RimSharp.Features.ModManager.Components.ModActions"
+             xmlns:modDetails="clr-namespace:RimSharp.Features.ModManager.Components.ModDetails"
+             xmlns:modList="clr-namespace:RimSharp.Features.ModManager.Components.ModList"
+             xmlns:models="clr-namespace:RimSharp.Shared.Models"
+             mc:Ignorable="d"
+             x:Class="RimSharp.Features.ModManager.Views.ModsView"
+             x:DataType="vm:ModsViewModel"
+             x:CompileBindings="True"
+             d:DesignHeight="600" d:DesignWidth="1000">
+    <Grid>
+        <!-- Loading Indicator -->
+        <ProgressBar IsIndeterminate="{Binding IsLoading}" Height="4" VerticalAlignment="Top" ZIndex="10" Margin="0"
+                     IsVisible="{Binding IsLoading}"
+                     Classes="RimworldProgressBarStyle"
+                     Foreground="{DynamicResource RimworldHighlightBrush}" Background="Transparent" BorderThickness="0"/>
+
+        <Grid RowDefinitions="Auto,*">
+            <!-- Quick Actions Bar -->
+            <Border Grid.Row="0" Margin="0,0,0,8" Classes="RimworldPanelBorder" Padding="6,4">
+                <ContentControl Content="{Binding ModActionsViewModel}"/>
+            </Border>
+
+            <!-- Main Content -->
+            <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+                <!-- Mod Details Panel -->
+                <Border Grid.Column="0" Width="450" MinWidth="450" MaxWidth="600" Margin="0,0,8,0" Classes="RimworldPanelBorder">
+                    <ContentControl Content="{Binding ModDetailsViewModel}"/>
+                </Border>
+
+                <!-- Mod Lists Panel -->
+                <Grid Grid.Column="1" ColumnDefinitions="*,*">
+                    <!-- Inactive Mods List -->
+                    <modList:ModListView Grid.Column="0"
+                                          HeaderText="Inactive"
+                                          ItemsSource="{Binding ModListViewModel.InactiveMods}"
+                                          SelectedItem="{Binding SelectedMod}"
+                                          SelectedItems="{Binding SelectedItems, Mode=TwoWay}"
+                                          SelectionMode="Multiple"
+                                          ItemCount="{Binding ModListViewModel.TotalInactiveMods}"
+                                          SearchText="{Binding ModListViewModel.InactiveSearchText, Mode=TwoWay}"
+                                          FilterCommand="{Binding ModListViewModel.FilterInactiveCommand}"
+                                          IsFilterApplied="{Binding ModListViewModel.IsInactiveFilterApplied}"
+                                          DoubleClickCommand="{Binding ModListViewModel.ActivateModCommand}"
+                                          GroupName="Inactive"
+                                          DropCommand="{Binding ModListViewModel.DropModCommand}"
+                                          DragItemType="{x:Type models:ModItem}"
+                                          Margin="0,0,4,0"/>
+
+                     <!-- Active Mods List -->
+                     <modList:ModListView Grid.Column="1"
+                                          HeaderText="Active"
+                                          ItemsSource="{Binding ModListViewModel.ActiveMods}"
+                                          SelectedItem="{Binding SelectedMod}"
+                                          SelectedItems="{Binding SelectedItems, Mode=TwoWay}"
+                                          SelectionMode="Multiple"
+                                          ItemCount="{Binding ModListViewModel.TotalActiveMods}"
+                                          SearchText="{Binding ModListViewModel.ActiveSearchText, Mode=TwoWay}"
+                                          FilterCommand="{Binding ModListViewModel.FilterActiveCommand}"
+                                          IsFilterApplied="{Binding ModListViewModel.IsActiveFilterApplied}"
+                                          DoubleClickCommand="{Binding ModListViewModel.DeactivateModCommand}"
+                                          GroupName="Active"
+                                          DropCommand="{Binding ModListViewModel.DropModCommand}"
+                                          DragItemType="{x:Type models:ModItem}"
+                                          ShowProblemBar="True"
+                                          SortingIssuesCount="{Binding ModListViewModel.ActiveSortingIssuesCount}"
+                                          MissingDependenciesCount="{Binding ModListViewModel.ActiveMissingDependenciesCount}"
+                                          IncompatibilitiesCount="{Binding ModListViewModel.ActiveIncompatibilitiesCount}"
+                                          ActiveVersionMismatchCount="{Binding ModListViewModel.ActiveVersionMismatchCount}"
+                                          ActiveDuplicateIssuesCount="{Binding ModListViewModel.ActiveDuplicateIssuesCount}"
+                                          OpenIssuesCommand="{Binding ModListViewModel.OpenActiveIssuesCommand}"
+                                          Margin="4,0,0,0"/>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

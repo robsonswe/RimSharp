@@ -4,7 +4,6 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Input;
 
 namespace RimSharp.Core.Commands.Base
@@ -16,10 +15,10 @@ namespace RimSharp.Core.Commands.Base
     public class DelegateCommand<T> : IDelegateCommand<T>, IDisposable // Add IDisposable
     {
         private readonly Action<T> _execute;
-        private readonly Predicate<T> _canExecute;
+        private readonly Predicate<T>? _canExecute;
 
         // --- Observation Logic Fields ---
-        private Dictionary<INotifyPropertyChanged, HashSet<string>> _observedPropertiesPerOwner;
+        private Dictionary<INotifyPropertyChanged, HashSet<string>>? _observedPropertiesPerOwner;
         private readonly object _observerLock = new object();
         // --- End Observation Logic Fields ---
 
@@ -27,16 +26,16 @@ namespace RimSharp.Core.Commands.Base
         private bool _disposed = false;
         // --- End IDisposable Fields ---
 
-        public event EventHandler CanExecuteChanged;
+        public event EventHandler? CanExecuteChanged;
 
-        public DelegateCommand(Action<T> execute, Predicate<T> canExecute = null)
+        public DelegateCommand(Action<T> execute, Predicate<T>? canExecute = null)
         {
             _execute = execute ?? throw new ArgumentNullException(nameof(execute));
             _canExecute = canExecute;
         }
 
         #region Command Execution Logic (Unchanged)
-        public bool CanExecute(object parameter)
+        public bool CanExecute(object? parameter)
         {
             // Prevent execution if disposed
             if (_disposed) return false;
@@ -48,22 +47,22 @@ namespace RimSharp.Core.Commands.Base
             {
                 if (typeof(T).IsValueType && Nullable.GetUnderlyingType(typeof(T)) == null)
                     return false;
-                return _canExecute(default(T));
+                return _canExecute(default(T)!);
             }
 
             // If parameter is not null, ensure it's assignable to T
             return parameter is T typedParameter && _canExecute(typedParameter);
         }
 
-        public void Execute(object parameter)
+        public void Execute(object? parameter)
         {
             // Re-check CanExecute before execution and check disposal state
             if (!CanExecute(parameter)) return;
 
             // Cast parameter safely
             T typedParameter = (parameter == null && (!typeof(T).IsValueType || Nullable.GetUnderlyingType(typeof(T)) != null))
-                               ? default(T)
-                               : (T)parameter;
+                               ? default(T)!
+                               : (T)parameter!;
             try
             {
                  _execute(typedParameter);
@@ -140,7 +139,7 @@ namespace RimSharp.Core.Commands.Base
             return this;
         }
 
-        private void Owner_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void Owner_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             // If command is disposed, don't process property changes
             if (_disposed) return;
@@ -148,7 +147,7 @@ namespace RimSharp.Core.Commands.Base
             var owner = sender as INotifyPropertyChanged;
             if (owner == null) return;
 
-            HashSet<string> relevantProperties = null;
+            HashSet<string>? relevantProperties = null;
             bool shouldRaise = false;
 
             lock (_observerLock)
@@ -158,7 +157,7 @@ namespace RimSharp.Core.Commands.Base
 
                 if (_observedPropertiesPerOwner != null && _observedPropertiesPerOwner.TryGetValue(owner, out relevantProperties))
                 {
-                    if (string.IsNullOrEmpty(e.PropertyName) || relevantProperties.Contains(e.PropertyName))
+                    if (string.IsNullOrEmpty(e.PropertyName) || (relevantProperties != null && relevantProperties.Contains(e.PropertyName)))
                     {
                         shouldRaise = true;
                          //Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Property '{e.PropertyName ?? "null"}' changed on Owner {owner.GetHashCode()}. Will raise CanExecuteChanged.");
@@ -235,11 +234,11 @@ namespace RimSharp.Core.Commands.Base
     public class AsyncDelegateCommand<T> : IDelegateCommand<T>, IDisposable // Add IDisposable
     {
         private readonly Func<T, CancellationToken, Task> _execute;
-        private readonly Predicate<T> _canExecute;
+        private readonly Predicate<T>? _canExecute;
         private volatile bool _isExecuting;
 
         // --- Observation Logic Fields ---
-        private Dictionary<INotifyPropertyChanged, HashSet<string>> _observedPropertiesPerOwner;
+        private Dictionary<INotifyPropertyChanged, HashSet<string>>? _observedPropertiesPerOwner;
         private readonly object _observerLock = new object();
         // --- End Observation Logic Fields ---
 
@@ -248,21 +247,21 @@ namespace RimSharp.Core.Commands.Base
         // --- End IDisposable Fields ---
 
 
-        public event EventHandler CanExecuteChanged;
+        public event EventHandler? CanExecuteChanged;
 
-        public AsyncDelegateCommand(Func<T, CancellationToken, Task> execute, Predicate<T> canExecute = null)
+        public AsyncDelegateCommand(Func<T, CancellationToken, Task> execute, Predicate<T>? canExecute = null)
         {
             _execute = execute ?? throw new ArgumentNullException(nameof(execute));
             _canExecute = canExecute;
         }
 
-        public AsyncDelegateCommand(Func<T, Task> execute, Predicate<T> canExecute = null)
+        public AsyncDelegateCommand(Func<T, Task> execute, Predicate<T>? canExecute = null)
             : this((param, _) => execute(param), canExecute)
         {
         }
 
         #region Command Execution Logic (Unchanged)
-         public bool CanExecute(object parameter)
+         public bool CanExecute(object? parameter)
         {
              if (_disposed) return false;
              if (_isExecuting) return false;
@@ -272,38 +271,43 @@ namespace RimSharp.Core.Commands.Base
              {
                  if (typeof(T).IsValueType && Nullable.GetUnderlyingType(typeof(T)) == null)
                      return false;
-                 return _canExecute(default(T));
+                 return _canExecute(default(T)!);
              }
              return parameter is T typedParameter && _canExecute(typedParameter);
         }
 
-        public async void Execute(object parameter)
+        public async void Execute(object? parameter)
         {
              if (!CanExecute(parameter)) return;
 
              T typedParameter = (parameter == null && (!typeof(T).IsValueType || Nullable.GetUnderlyingType(typeof(T)) != null))
-                                ? default(T)
-                                : (T)parameter;
+                                ? default(T)!
+                                : (T)parameter!;
 
-             CancellationToken token = CancellationToken.None;
+             await ExecuteAsync(typedParameter);
+        }
 
-             try
-             {
-                 _isExecuting = true;
-                 RaiseCanExecuteChanged();
-                 await _execute(typedParameter, token);
-             }
-             catch(Exception ex)
-             {
-                  Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Exception during execution: {ex}");
-                 // throw;
-             }
-             finally
-             {
-                 _isExecuting = false;
-                 // Check disposal state before raising event in finally block
-                 if(!_disposed) RaiseCanExecuteChanged();
-             }
+        public async Task ExecuteAsync(T parameter)
+        {
+            CancellationToken token = CancellationToken.None;
+
+            try
+            {
+                _isExecuting = true;
+                RaiseCanExecuteChanged();
+                await _execute(parameter, token);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Exception during execution: {ex}");
+                // throw;
+            }
+            finally
+            {
+                _isExecuting = false;
+                // Check disposal state before raising event in finally block
+                if (!_disposed) RaiseCanExecuteChanged();
+            }
         }
 
         public void RaiseCanExecuteChanged()
@@ -365,14 +369,14 @@ namespace RimSharp.Core.Commands.Base
             return this;
         }
 
-        private void Owner_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void Owner_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
              if (_disposed) return;
 
              var owner = sender as INotifyPropertyChanged;
              if (owner == null) return;
 
-             HashSet<string> relevantProperties = null;
+             HashSet<string>? relevantProperties = null;
              bool shouldRaise = false;
 
              lock (_observerLock)
@@ -381,7 +385,7 @@ namespace RimSharp.Core.Commands.Base
 
                  if (_observedPropertiesPerOwner != null && _observedPropertiesPerOwner.TryGetValue(owner, out relevantProperties))
                  {
-                     if (string.IsNullOrEmpty(e.PropertyName) || relevantProperties.Contains(e.PropertyName))
+                     if (string.IsNullOrEmpty(e.PropertyName) || (relevantProperties != null && relevantProperties.Contains(e.PropertyName)))
                      {
                          shouldRaise = true;
                           //Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Property '{e.PropertyName ?? "null"}' changed on Owner {owner.GetHashCode()}. Will raise CanExecuteChanged.");
@@ -437,13 +441,13 @@ namespace RimSharp.Core.Commands.Base
     /// </summary>
     public class DelegateCommand : DelegateCommand<object>
     {
-        public DelegateCommand(Action execute, Func<bool> canExecute = null)
-            : base(_ => execute(), canExecute == null ? null : new Predicate<object>(_ => canExecute()))
+        public DelegateCommand(Action execute, Func<bool>? canExecute = null)
+            : base(_ => execute(), canExecute == null ? null : new Predicate<object>(_ => canExecute()!))
         {
         }
 
-        public DelegateCommand(Action<object> execute, Func<object, bool> canExecute = null)
-            : base(execute, canExecute == null ? null : new Predicate<object>(canExecute))
+        public DelegateCommand(Action<object> execute, Func<object, bool>? canExecute = null)
+            : base(execute, canExecute == null ? null : new Predicate<object>(canExecute!))
         {
         }
 
@@ -459,15 +463,17 @@ namespace RimSharp.Core.Commands.Base
     /// </summary>
     public class AsyncDelegateCommand : AsyncDelegateCommand<object>
     {
-        public AsyncDelegateCommand(Func<Task> execute, Func<bool> canExecute = null)
-            : base(_ => execute(), canExecute == null ? null : new Predicate<object>(_ => canExecute()))
+        public AsyncDelegateCommand(Func<Task> execute, Func<bool>? canExecute = null)
+            : base(_ => execute(), canExecute == null ? null : new Predicate<object>(_ => canExecute()!))
         {
         }
 
-         public AsyncDelegateCommand(Func<object, Task> execute, Func<object, bool> canExecute = null)
-            : base( (param, _) => execute(param), canExecute == null ? null : new Predicate<object>(canExecute))
+         public AsyncDelegateCommand(Func<object, Task> execute, Func<object, bool>? canExecute = null)
+            : base( (param, _) => execute(param), canExecute == null ? null : new Predicate<object>(canExecute!))
         {
         }
+
+        public Task ExecuteAsync() => base.ExecuteAsync(null!);
 
         public new AsyncDelegateCommand ObservesProperty(INotifyPropertyChanged owner, string propertyName)
         {

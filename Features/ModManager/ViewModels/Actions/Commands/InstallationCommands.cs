@@ -1,5 +1,4 @@
 #nullable enable
-using Microsoft.Win32;
 using RimSharp.Core.Commands;
 using RimSharp.AppDir.AppFiles;
 using RimSharp.AppDir.Dialogs;
@@ -29,226 +28,199 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
         }
 
-        public async Task ExecuteInstallFromZip(CancellationToken ct)
-        {
-            IsLoadingRequest?.Invoke(this, true);
-            _installSuccess = false;
-            try
-            {
-                var fileDialog = new OpenFileDialog
+                public async Task ExecuteInstallFromZip(CancellationToken ct)
                 {
-                    Filter = "Zip Files (*.zip)|*.zip",
-                    Title = "Select Mod Zip File"
-                };
-
-                bool? dialogResult = null;
-                await RunOnUIThreadAsync(() => dialogResult = fileDialog.ShowDialog());
-                if (dialogResult != true) return;
-
-                var zipPath = fileDialog.FileName;
-                ct.ThrowIfCancellationRequested();
-
-                if (!IsValidZipFile(zipPath))
-                {
-                    _dialogService.ShowError("Invalid File", "The selected file is not a valid zip file.");
-                    return;
-                }
-
-                using (var archive = ZipFile.OpenRead(zipPath))
-                {
-                    var modInfo = await ValidateModZip(archive, ct);
-                    ct.ThrowIfCancellationRequested();
-
-                    if (modInfo == null)
+                    IsLoadingRequest?.Invoke(this, true);
+                    _installSuccess = false;
+                    try
                     {
-                        _dialogService.ShowError("Invalid Mod", "The selected zip file doesn't contain a valid RimWorld mod.");
-                        return;
+                        var (result, filePath) = await _dialogService.ShowOpenFileDialogAsync(
+                            "Select Mod Zip File",
+                            "Zip Files (*.zip)|*.zip");
+        
+                        if (!result || string.IsNullOrEmpty(filePath)) return;
+        
+                        var zipPath = filePath;
+                        ct.ThrowIfCancellationRequested();
+        
+                        if (!IsValidZipFile(zipPath))
+                        {
+                            await _dialogService.ShowError("Invalid File", "The selected file is not a valid zip file.");
+                            return;
+                        }
+        
+                        using (var archive = ZipFile.OpenRead(zipPath))
+                        {
+                            var modInfo = await ValidateModZip(archive, ct);
+                            ct.ThrowIfCancellationRequested();
+        
+                            if (modInfo == null)
+                            {
+                                await _dialogService.ShowError("Invalid Mod", "The selected zip file doesn't contain a valid RimWorld mod.");
+                                return;
+                            }
+        
+                            var confirmResult = await _dialogService.ShowConfirmationAsync(
+                                "Confirm Installation",
+                                $"Are you sure you want to install the mod '{modInfo.Name}'?",
+                                showCancel: true);
+        
+                            if (confirmResult != MessageDialogResult.OK && confirmResult != MessageDialogResult.Yes) return;
+                            ct.ThrowIfCancellationRequested();
+        
+                            var modsPath = _pathService.GetModsPath();
+                            if (string.IsNullOrEmpty(modsPath))
+                            {
+                                await _dialogService.ShowError("Path Error", "Mods directory is not set.");
+                                return;
+                            }
+        
+                            var rootFolder = GetRootModFolder(archive);
+                            string modName = rootFolder == null
+                                ? Path.GetFileNameWithoutExtension(zipPath).Replace(" ", "")
+                                : rootFolder.FullName.TrimEnd('/', '\\');
+        
+                            var targetDir = Path.Combine(modsPath, modName);
+        
+                            if (Directory.Exists(targetDir))
+                            {
+                                await _dialogService.ShowError("Install Error", $"A mod folder already exists at:\n{targetDir}");
+                                return;
+                            }
+        
+                            await Task.Run(() => ExtractMod(archive, targetDir, rootFolder, ct), ct);
+                            ct.ThrowIfCancellationRequested();
+        
+                            await _dialogService.ShowInformation("Install Complete", $"Mod '{modInfo.Name}' was successfully installed.");
+                            _installSuccess = true;
+                        }
                     }
-
-                    var result = _dialogService.ShowConfirmation(
-                        "Confirm Installation",
-                        $"Are you sure you want to install the mod '{modInfo.Name}'?",
-                        showCancel: true);
-
-                    if (result != MessageDialogResult.OK) return;
-                    ct.ThrowIfCancellationRequested();
-
-                    var modsPath = _pathService.GetModsPath();
-                    if (string.IsNullOrEmpty(modsPath))
+                    catch (OperationCanceledException) { }
+                    catch (Exception ex)
                     {
-                        _dialogService.ShowError("Path Error", "Mods directory is not set.");
-                        return;
+                        await _dialogService.ShowError("Install Error", $"Error installing mod: {ex.Message}");
                     }
-
-                    var rootFolder = GetRootModFolder(archive);
-                    string modName = rootFolder == null
-                        ? Path.GetFileNameWithoutExtension(zipPath).Replace(" ", "")
-                        : rootFolder.FullName.TrimEnd('/', '\\');
-
-                    var targetDir = Path.Combine(modsPath, modName);
-
-                    if (Directory.Exists(targetDir))
+                    finally
                     {
-                        _dialogService.ShowError("Install Error", $"A mod folder already exists at:\n{targetDir}");
-                        return;
+                        IsLoadingRequest?.Invoke(this, false);
+                        if (_installSuccess)
+                        {
+                            RequestDataRefresh?.Invoke(this, EventArgs.Empty);
+                        }
                     }
-
-                    await Task.Run(() => ExtractMod(archive, targetDir, rootFolder, ct), ct);
-                    ct.ThrowIfCancellationRequested();
-
-                    _dialogService.ShowInformation("Install Complete", $"Mod '{modInfo.Name}' was successfully installed.");
-                    _installSuccess = true;
                 }
-            }
-            catch (OperationCanceledException)
-            {
-                Debug.WriteLine("[ExecuteInstallFromZip] Installation cancelled.");
-                _dialogService.ShowWarning("Installation Cancelled", "Mod installation was cancelled.");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error installing mod from zip: {ex}");
-                _dialogService.ShowError("Install Error", $"Error installing mod: {ex.Message}");
-            }
-            finally
-            {
-                IsLoadingRequest?.Invoke(this, false);
-                if (_installSuccess)
+        
+                private async Task ExecuteInstallFromGithub(CancellationToken ct)
                 {
-                    RequestDataRefresh?.Invoke(this, EventArgs.Empty);
-                }
-            }
-        }
-
-        private async Task ExecuteInstallFromGithub(CancellationToken ct)
-        {
-            IsLoadingRequest?.Invoke(this, true);
-            _installSuccess = false;
-            try
-            {
-                var dialogResultTuple = await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-                    _dialogService.ShowInputDialog("Install from GitHub", "Enter the GitHub repository URL:", ""));
-
-                // Deconstruct the result returned by ShowInputDialog
-                (MessageDialogResult result, string gitUrl) = dialogResultTuple;
-
-                if (result != MessageDialogResult.OK || string.IsNullOrWhiteSpace(gitUrl)) return;
-                ct.ThrowIfCancellationRequested();
-
-                ProgressDialogViewModel? progressDialog = null;
-                ModItem? modInfo = null;
-
-                try
-                {
-                    await RunOnUIThreadAsync(() =>
+                    IsLoadingRequest?.Invoke(this, true);
+                    _installSuccess = false;
+                    try
                     {
-                        progressDialog = _dialogService.ShowProgressDialog(
-                            "Validating Repository",
-                            "Checking GitHub repository and fetching mod info...",
-                            canCancel: true,
-                            isIndeterminate: true,
-                            cts: null,
-                            closeable: false);
-                    });
-
-                    if (progressDialog == null) throw new InvalidOperationException("Failed to create progress dialog.");
-
-                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, progressDialog.CancellationToken);
-                    
-                    modInfo = await ValidateGitHubModRepo(gitUrl, linkedCts.Token);
-                    
-                    await RunOnUIThreadAsync(() => progressDialog.ForceClose());
-                }
-                catch (OperationCanceledException)
-                {
-                    await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
-                    throw;
-                }
-                catch (Exception)
-                {
-                    await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
-                    throw;
-                }
-
-                if (modInfo == null) return;
-                ct.ThrowIfCancellationRequested();
-
-                var confirmResult = _dialogService.ShowConfirmation(
-                    "Confirm Installation", $"Are you sure you want to install the mod '{modInfo.Name}'?", showCancel: true);
-                if (confirmResult != MessageDialogResult.OK) return;
-                ct.ThrowIfCancellationRequested();
-
-                var modsPath = _pathService.GetModsPath();
-                if (string.IsNullOrEmpty(modsPath))
-                {
-                    _dialogService.ShowError("Path Error", "Mods directory is not set.");
-                    return;
-                }
-
-                var repoInfo = _gitService.ParseGitHubUrl(gitUrl);
-                if (repoInfo == null) { return; }
-                var modName = repoInfo.Value.repo;
-                var targetDir = Path.Combine(modsPath, modName);
-
-                if (Directory.Exists(targetDir))
-                {
-                    _dialogService.ShowError("Install Error", $"A mod folder already exists at:\n{targetDir}");
-                    return;
-                }
-
-                try
-                {
-                    await RunOnUIThreadAsync(() =>
+                        var dialogResultTuple = await _dialogService.ShowInputDialogAsync("Install from GitHub", "Enter the GitHub repository URL:", "");
+        
+                        (MessageDialogResult dialogResult, string gitUrl) = dialogResultTuple;
+        
+                        if (dialogResult != MessageDialogResult.OK && dialogResult != MessageDialogResult.Yes || string.IsNullOrWhiteSpace(gitUrl)) return;
+                        ct.ThrowIfCancellationRequested();
+        
+                        ProgressDialogViewModel? progressDialog = null;
+                        ModItem? modInfo = null;
+        
+                        try
+                        {
+                            await RunOnUIThreadAsync(() =>
+                            {
+                                progressDialog = _dialogService.ShowProgressDialog(
+                                    "Validating Repository",
+                                    "Checking GitHub repository and fetching mod info...",
+                                    canCancel: true,
+                                    isIndeterminate: true,
+                                    cts: null,
+                                    closeable: false);
+                            });
+        
+                            if (progressDialog == null) throw new InvalidOperationException("Failed to create progress dialog.");
+        
+                            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, progressDialog.CancellationToken);
+                            
+                            modInfo = await ValidateGitHubModRepo(gitUrl, linkedCts.Token);
+                            
+                            await RunOnUIThreadAsync(() => progressDialog.ForceClose());
+        
+                            if (modInfo == null)
+                            {
+                                await _dialogService.ShowError("Invalid Repository", "The provided URL does not point to a valid RimWorld mod repository.");
+                                return;
+                            }
+        
+                            var confirmResult = await _dialogService.ShowConfirmationAsync(
+                                "Confirm Installation",
+                                $"Are you sure you want to install '{modInfo.Name}' from GitHub?",
+                                showCancel: true);
+        
+                            if (confirmResult != MessageDialogResult.OK && confirmResult != MessageDialogResult.Yes) return;
+                            ct.ThrowIfCancellationRequested();
+        
+                            var modsPath = _pathService.GetModsPath();
+                            if (string.IsNullOrEmpty(modsPath))
+                            {
+                                await _dialogService.ShowError("Path Error", "Mods directory is not set.");
+                                return;
+                            }
+        
+                            string folderName = modInfo.PackageId?.Replace(".", "_") ?? Guid.NewGuid().ToString("N");
+                            var targetDir = Path.Combine(modsPath, folderName);
+        
+                            if (Directory.Exists(targetDir))
+                            {
+                                await _dialogService.ShowError("Install Error", $"A folder already exists for this mod at:\n{targetDir}");
+                                return;
+                            }
+        
+                            await RunOnUIThreadAsync(() =>
+                            {
+                                progressDialog = _dialogService.ShowProgressDialog(
+                                    "Installing from GitHub",
+                                    $"Cloning repository for '{modInfo.Name}'...",
+                                    canCancel: true,
+                                    isIndeterminate: true,
+                                    cts: null,
+                                    closeable: false);
+                            });
+        
+                            using var linkedCtsInstall = CancellationTokenSource.CreateLinkedTokenSource(ct, progressDialog!.CancellationToken);
+                            
+                            await _gitService.CloneAsync(gitUrl, targetDir, linkedCtsInstall.Token);
+                            
+                            await RunOnUIThreadAsync(() => progressDialog.ForceClose());
+        
+                            await _dialogService.ShowInformation("Install Complete", $"Mod '{modInfo.Name}' was successfully installed from GitHub.");
+                            _installSuccess = true;
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            if (progressDialog != null) await RunOnUIThreadAsync(() => progressDialog.ForceClose());
+                        }
+                        catch (Exception ex)
+                        {
+                            if (progressDialog != null) await RunOnUIThreadAsync(() => progressDialog.ForceClose());
+                            await _dialogService.ShowError("GitHub Install Error", $"An error occurred: {ex.Message}");
+                        }
+                    }
+                    catch (OperationCanceledException) { }
+                    catch (Exception ex)
                     {
-                        progressDialog = _dialogService.ShowProgressDialog(
-                            "Cloning Repository",
-                            $"Cloning '{modInfo.Name}' to local folder...",
-                            canCancel: true,
-                            isIndeterminate: true,
-                            cts: null,
-                            closeable: false);
-                    });
-
-                    if (progressDialog == null) throw new InvalidOperationException("Failed to create progress dialog.");
-
-                    using var cloneCts = CancellationTokenSource.CreateLinkedTokenSource(ct, progressDialog.CancellationToken);
-                    
-                    await CloneGitMod(gitUrl, targetDir, cloneCts.Token);
-                    
-                    await RunOnUIThreadAsync(() => progressDialog.ForceClose());
+                        await _dialogService.ShowError("GitHub Install Error", $"An unexpected error occurred: {ex.Message}");
+                    }
+                    finally
+                    {
+                        IsLoadingRequest?.Invoke(this, false);
+                        if (_installSuccess)
+                        {
+                            RequestDataRefresh?.Invoke(this, EventArgs.Empty);
+                        }
+                    }
                 }
-                catch (OperationCanceledException)
-                {
-                    await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
-                    throw;
-                }
-                catch (Exception)
-                {
-                    await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
-                    throw;
-                }
-
-                _dialogService.ShowInformation("Install Complete", $"Mod '{modInfo.Name}' was successfully installed from GitHub.");
-                _installSuccess = true;
-            }
-            catch (OperationCanceledException)
-            {
-                Debug.WriteLine("[ExecuteInstallFromGithub] Installation cancelled.");
-                _dialogService.ShowWarning("Installation Cancelled", "Mod installation was cancelled.");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error installing mod from GitHub: {ex}");
-                _dialogService.ShowError("Install Error", $"Error installing mod: {ex.Message}");
-            }
-            finally
-            {
-                IsLoadingRequest?.Invoke(this, false);
-                if (_installSuccess)
-                {
-                    RequestDataRefresh?.Invoke(this, EventArgs.Empty);
-                }
-            }
-        }
+        
     }
 }

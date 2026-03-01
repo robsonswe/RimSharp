@@ -1,20 +1,20 @@
 using System;
 using System.Globalization;
-using System.Windows.Data;
+using Avalonia.Data.Converters;
 
 namespace RimSharp.Core.Converters.Utility
 {
-   public class PathToExplorerFormatConverter : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public class PathToExplorerFormatConverter : IValueConverter
     {
-        return value; // Just return the path as-is
-    }
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            return value?.ToString();
+        }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        throw new NotImplementedException();
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            return null;
+        }
     }
 }
 
-}

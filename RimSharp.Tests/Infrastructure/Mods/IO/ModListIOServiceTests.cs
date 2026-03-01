@@ -78,8 +78,8 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
             var activeMods = new List<ModItem> { new ModItem { PackageId = "m1" } };
             string savePath = Path.Combine(_testTempDir, "Exported.xml");
             
-            _mockDialogService.ShowSaveFileDialog(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>())
-                .Returns((true, savePath));
+            _mockDialogService.ShowSaveFileDialogAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>())
+                .Returns(Task.FromResult((true, (string?)savePath)));
 
             var doc = new XDocument(new XElement("ModList", new XElement("m1")));
             _mockFileParser.Generate(Arg.Any<IEnumerable<string>>()).Returns(doc);
@@ -89,7 +89,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
 
             // Assert
             File.Exists(savePath).Should().BeTrue();
-            _mockDialogService.Received(1).ShowInformation(Arg.Is<string>(s => s.Contains("Export Successful")), Arg.Any<string>());
+            await _mockDialogService.Received(1).ShowInformation(Arg.Is<string>(s => s.Contains("Export Successful")), Arg.Any<string>());
         }
 
         [Fact]
@@ -100,8 +100,8 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
             string importPath = Path.Combine(_testTempDir, "Import.xml");
             File.WriteAllText(importPath, "<xml/>");
 
-            _mockDialogService.ShowOpenFileDialog(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>())
-                .Returns((true, importPath));
+            _mockDialogService.ShowOpenFileDialogAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>())
+                .Returns(Task.FromResult((true, (string?)importPath)));
 
             var importedIds = new List<string> { "m1" };
             _mockFileParser.Parse(Arg.Any<XDocument>()).Returns(importedIds);

@@ -61,11 +61,13 @@ namespace RimSharp.Shared.Services.Contracts
         /// </summary>
         /// <param name="itemsToDownload">A collection of DownloadItem objects representing the mods to download.</param>
         /// <param name="validate">Whether to include the 'validate' parameter in the SteamCMD command (performs integrity check).</param>
+        /// <param name="progress">Optional progress reporter for status updates.</param>
         /// <param name="cancellationToken">Optional cancellation token.</param>
         /// <returns>A <see cref="SteamCmdDownloadResult"/> object detailing succeeded and failed items, log messages, and the exit code.</returns>
-        Task<SteamCmdDownloadResult> DownloadModsAsync( // <<< Correct Return Type from Shared.Models
+        Task<SteamCmdDownloadResult> DownloadModsAsync(
                 IEnumerable<DownloadItem> itemsToDownload,
                 bool validate,
+                IProgress<(int current, int total, string message)>? progress = null,
                 CancellationToken cancellationToken = default);
 
         /// <summary>

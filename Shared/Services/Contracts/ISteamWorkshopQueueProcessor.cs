@@ -12,9 +12,9 @@ namespace RimSharp.Shared.Services.Contracts
     {
         public int CurrentItem { get; set; }
         public int TotalItems { get; set; }
-        public string CurrentSteamId { get; set; }
-        public string Message { get; set; }
-        public string CurrentItemName { get; set; } // Added for better messages
+        public string CurrentSteamId { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public string CurrentItemName { get; set; } = string.Empty; // Added for better messages
     }
 
     /// <summary>

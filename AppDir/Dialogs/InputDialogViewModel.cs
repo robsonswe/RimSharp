@@ -5,7 +5,7 @@ namespace RimSharp.AppDir.Dialogs
 {
     public class InputDialogViewModel : DialogViewModelBase<MessageDialogResult>
     {
-        private string _input;
+        private string _input = string.Empty;
         public string Input
         {
             get => _input;

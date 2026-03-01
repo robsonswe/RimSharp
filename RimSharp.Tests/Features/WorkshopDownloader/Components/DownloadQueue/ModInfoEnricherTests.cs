@@ -31,7 +31,7 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Components.DownloadQueue
             { 
                 SteamId = steamId, 
                 DateStamp = "2024-01-01", 
-                IsOutdatedRW = true,
+                IsSupportedRW = false,
                 IsFavorite = true
             };
             _mockModListManager.GetAllMods().Returns(new List<ModItem> { localMod });
@@ -46,7 +46,7 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Components.DownloadQueue
             downloadItem.IsInstalled.Should().BeTrue();
             downloadItem.LocalDateStamp.Should().Be("2024-01-01");
             downloadItem.IsActive.Should().BeTrue();
-            downloadItem.IsLocallyOutdatedRW.Should().BeTrue();
+            downloadItem.IsLocallySupportedRW.Should().BeFalse();
             downloadItem.IsFavorite.Should().BeTrue();
         }
 

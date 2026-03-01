@@ -138,12 +138,12 @@ namespace RimSharp.Features.ModManager.Services.Commands
 
         public async Task ClearActiveModsAsync()
         {
-            var result = _dialogService.ShowConfirmation(
+            var result = await _dialogService.ShowConfirmationAsync(
                 "Confirm Clear",
                 "This will remove all non-Core and non-Expansion mods from the active list.\nAre you sure?",
                 showCancel: true);
 
-            if (result != MessageDialogResult.OK) return;
+            if (result != MessageDialogResult.OK && result != MessageDialogResult.Yes) return;
 
             await Task.Run(() => _modListManager.ClearActiveList());
         }
@@ -158,14 +158,14 @@ namespace RimSharp.Features.ModManager.Services.Commands
 
                 if (orderChanged)
                 {
-                    _dialogService.ShowInformation(
+                    await _dialogService.ShowInformation(
                         "Sort Complete",
                         "Active mods have been successfully sorted based on dependency rules."
                     );
                 }
                 else
                 {
-                    _dialogService.ShowInformation(
+                    await _dialogService.ShowInformation(
                         "Sort Complete",
                         "Mods are already in the correct order based on dependency rules."
                     );
@@ -174,7 +174,7 @@ namespace RimSharp.Features.ModManager.Services.Commands
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error sorting mods: {ex}");
-                _dialogService.ShowError(
+                await _dialogService.ShowError(
                     "Sorting Error",
                     $"Failed to sort mods due to an error: {ex.Message}\n\n" +
                     "This might be caused by circular dependencies between mods. " +

@@ -1,0 +1,37 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                  xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+                  xmlns:vm="clr-namespace:RimSharp.Features.ModManager.Dialogs.CustomizeMod"
+                  x:Class="RimSharp.Features.ModManager.Dialogs.CustomizeMod.DependencyRuleEditorDialogView"
+                  x:DataType="vm:DependencyRuleEditorDialogViewModel"
+                  Width="450" Height="270" Title="{Binding Title}">
+
+    <dialogs:BaseDialog.MainContent>
+        <Border Classes="RimworldSubtlePanelBorder" Margin="10,10,10,5">
+            <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,15,Auto,15,Auto" Margin="10">
+                
+                <!-- Package ID -->
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Package ID:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                <Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="*,Auto">
+                    <TextBox Grid.Column="0" Text="{Binding PackageId}" Classes="RimworldTextBox" Watermark="e.g. brrainz.harmony"/>
+                    <Button Grid.Column="1" Content="Search" Command="{Binding OpenModSelectorCommand}" Margin="8,0,0,0" Classes="RimworldButtonStyle"/>
+                </Grid>
+
+                <!-- Display Name -->
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Display Name:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding DisplayName}" Classes="RimworldTextBox" Watermark="Optional display name"/>
+
+                <!-- Comment -->
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="Comment:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Comment}" Classes="RimworldTextBox" Watermark="Optional reasoning for this rule"/>
+            </Grid>
+        </Border>
+    </dialogs:BaseDialog.MainContent>
+    
+    <dialogs:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,10,15,15">
+            <Button Content="Save" Command="{Binding SaveCommand}" Classes="RimworldSaveButtonStyle"/>
+            <Button Content="Cancel" Command="{Binding CancelCommand}" Classes="RimworldButtonStyle"/>
+        </StackPanel>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

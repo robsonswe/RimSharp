@@ -35,10 +35,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Incompatibilities
             // If there are NO hard incompatibilities, add the "Keep All" option first.
             if (!ContainsHardIncompatibility)
             {
-                var keepAllOption = new IncompatibilityResolutionOption
+                var keepAllOption = new IncompatibilityResolutionOption(null, this)
                 {
-                    ModToKeep = null, // Using null to signify "Keep All"
-                    ParentGroup = this,
                     IsSelected = true // This is the new default for soft groups
                 };
                 ResolutionOptions.Add(keepAllOption);
@@ -53,11 +51,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Incompatibilities
                 if (!Group.IncompatibilityRelations.Any(r => r.TargetMod == mod || r.SourceMod == mod))
                     continue;
                     
-                var option = new IncompatibilityResolutionOption
-                {
-                    ModToKeep = mod,
-                    ParentGroup = this
-                };
+                var option = new IncompatibilityResolutionOption(mod, this);
                 
                 // Find all relations where this mod is the target
                 // These indicate mods that are incompatible with this one
@@ -79,7 +73,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Incompatibilities
             }
         }
         
-        public ModItem GetSelectedModToKeep()
+        public ModItem? GetSelectedModToKeep()
         {
             var selectedOption = ResolutionOptions.FirstOrDefault(o => o.IsSelected);
             return selectedOption?.ModToKeep;

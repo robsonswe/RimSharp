@@ -1,63 +1,37 @@
 using System;
-using System.Diagnostics;
 using System.Globalization;
-using System.Windows.Data;
-using System.Windows.Media;
-using System.Windows;
+using Avalonia;
+using Avalonia.Data.Converters;
+using Avalonia.Media;
 
 namespace RimSharp.Core.Converters.Visual
 {
     public class BooleanToColorConverter : IValueConverter
     {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            if (!(value is bool boolValue)) return DependencyProperty.UnsetValue;
-            if (!(parameter is string param)) return DependencyProperty.UnsetValue;
-
-            var parts = param.Split('|');
-            if (parts.Length != 2) return DependencyProperty.UnsetValue;
-
-            try
+            if (value is bool boolValue && parameter is string keys)
             {
-                var resourceKey = boolValue ? parts[0].Trim() : parts[1].Trim();
-                if (string.IsNullOrEmpty(resourceKey)) return DependencyProperty.UnsetValue;
-
-                // Try to find the resource exactly as specified
-                var resource = Application.Current.TryFindResource(resourceKey);
-                if (resource is Brush brush) return brush;
-                if (resource is Color color) return new SolidColorBrush(color);
-
-                // If not found, try common variations
-                if (resourceKey.EndsWith("Brush"))
+                var parts = keys.Split('|');
+                if (parts.Length == 2)
                 {
-                    var colorKey = resourceKey.Substring(0, resourceKey.Length - 6);
-                    resource = Application.Current.TryFindResource(colorKey);
-                    if (resource is Color c) return new SolidColorBrush(c);
-                }
-                else
-                {
-                    var brushKey = resourceKey + "Brush";
-                    resource = Application.Current.TryFindResource(brushKey);
-                    if (resource is Brush b) return b;
-                }
-
-                // Final fallback - try direct color parsing
-                if (ColorConverter.ConvertFromString(resourceKey) is Color parsedColor)
-                {
-                    return new SolidColorBrush(parsedColor);
+                    string key = boolValue ? parts[0] : parts[1];
+                    
+                    if (Application.Current?.Resources.TryGetResource(key, null, out var resource) == true ||
+                        Application.Current?.Resources.TryGetResource(key + "Brush", null, out resource) == true)
+                    {
+                        if (resource is Color color) return new SolidColorBrush(color);
+                        if (resource is IBrush brush) return brush;
+                    }
                 }
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"BooleanToColorConverter error: {ex.Message}");
-            }
-
-            return DependencyProperty.UnsetValue;
+            return Brushes.Transparent; // Fallback
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            throw new NotImplementedException();
+            return null;
         }
     }
 }
+

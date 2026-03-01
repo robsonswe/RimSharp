@@ -23,8 +23,11 @@ namespace RimSharp.AppDir.Dialogs
         private string _updateStatus = "Checking for updates...";
         public string UpdateStatus { get => _updateStatus; set => SetProperty(ref _updateStatus, value); }
 
-        private string _updateStatusIcon = "🔄";
+        private string _updateStatusIcon = "fa-arrows-rotate";
         public string UpdateStatusIcon { get => _updateStatusIcon; set => SetProperty(ref _updateStatusIcon, value); }
+
+        private string _statusColor = "RimworldBrownBrush";
+        public string StatusColor { get => _statusColor; set => SetProperty(ref _statusColor, value); }
 
         private bool _isNewVersionAvailable;
         public bool IsNewVersionAvailable { get => _isNewVersionAvailable; set => SetProperty(ref _isNewVersionAvailable, value); }
@@ -33,26 +36,34 @@ namespace RimSharp.AppDir.Dialogs
         public string? ReleaseUrl { get => _releaseUrl; set => SetProperty(ref _releaseUrl, value); }
 
         public ICommand UpdateCommand { get; }
+        public ICommand OpenUrlCommand { get; }
 
         public AboutDialogViewModel(IAppUpdaterService appUpdaterService) : base("About RimSharp")
         {
             _appUpdaterService = appUpdaterService;
             UpdateCommand = CreateCommand(ExecuteUpdate, () => IsNewVersionAvailable, nameof(IsNewVersionAvailable));
+            OpenUrlCommand = CreateCommand<string>(ExecuteOpenUrl);
             _ = CheckForUpdatesAsync();
         }
 
         private void ExecuteUpdate()
         {
+            if (!string.IsNullOrEmpty(ReleaseUrl))
+            {
+                ExecuteOpenUrl(ReleaseUrl);
+            }
+        }
+
+        private void ExecuteOpenUrl(string? url)
+        {
+            if (string.IsNullOrEmpty(url)) return;
             try
             {
-                if (!string.IsNullOrEmpty(ReleaseUrl))
-                {
-                    Process.Start(new ProcessStartInfo(ReleaseUrl) { UseShellExecute = true });
-                }
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error opening download link: {ex.Message}");
+                Debug.WriteLine($"Error opening URL '{url}': {ex.Message}");
             }
         }
 
@@ -65,27 +76,31 @@ namespace RimSharp.AppDir.Dialogs
                 if (isAvailable)
                 {
                     UpdateStatus = $"New version available: {latestVersion}";
-                    UpdateStatusIcon = "⚠️";
+                    UpdateStatusIcon = "fa-triangle-exclamation";
+                    StatusColor = "RimworldRedBrush";
                     IsNewVersionAvailable = true;
                     ReleaseUrl = url;
                 }
                 else if (latestVersion != null)
                 {
                     UpdateStatus = "RimSharp is up to date";
-                    UpdateStatusIcon = "✅";
+                    UpdateStatusIcon = "fa-circle-check";
+                    StatusColor = "RimworldDarkGreenBrush";
                     IsNewVersionAvailable = false;
                 }
                 else
                 {
                     UpdateStatus = "Could not check for updates";
-                    UpdateStatusIcon = "❌";
+                    UpdateStatusIcon = "fa-circle-xmark";
+                    StatusColor = "RimworldErrorRedBrush";
                     IsNewVersionAvailable = false;
                 }
             }
             catch
             {
                 UpdateStatus = "Error checking for updates";
-                UpdateStatusIcon = "❌";
+                UpdateStatusIcon = "fa-circle-xmark";
+                StatusColor = "RimworldErrorRedBrush";
                 IsNewVersionAvailable = false;
             }
         }

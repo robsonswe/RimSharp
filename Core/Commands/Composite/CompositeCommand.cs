@@ -15,7 +15,7 @@ namespace RimSharp.Core.Commands.Composite
         private readonly object _lock = new object();
         private readonly bool _monitorCommandActivity;
 
-        public event EventHandler CanExecuteChanged;
+        public event EventHandler? CanExecuteChanged;
         
         /// <summary>
         /// Gets the list of registered commands.
@@ -32,6 +32,8 @@ namespace RimSharp.Core.Commands.Composite
         public CompositeCommand(bool monitorCommandActivity = true)
         {
             _monitorCommandActivity = monitorCommandActivity;
+            // Initialize CanExecuteChanged to avoid CS8618
+            CanExecuteChanged += (s, e) => { };
         }
 
         /// <summary>
@@ -84,7 +86,7 @@ namespace RimSharp.Core.Commands.Composite
         /// </summary>
         /// <param name="parameter">The parameter to pass to the commands.</param>
         /// <returns>True if all commands can execute; otherwise, false.</returns>
-        public bool CanExecute(object parameter)
+        public bool CanExecute(object? parameter)
         {
             if (!_commands.Any())
             {
@@ -101,7 +103,7 @@ namespace RimSharp.Core.Commands.Composite
         /// Executes all commands that can execute.
         /// </summary>
         /// <param name="parameter">The parameter to pass to the commands.</param>
-        public void Execute(object parameter)
+        public void Execute(object? parameter)
         {
             lock (_lock)
             {
@@ -122,7 +124,7 @@ namespace RimSharp.Core.Commands.Composite
             CanExecuteChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        private void CommandCanExecuteChanged(object sender, EventArgs e)
+        private void CommandCanExecuteChanged(object? sender, EventArgs e)
         {
             RaiseCanExecuteChanged();
         }

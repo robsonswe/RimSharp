@@ -20,11 +20,11 @@ namespace RimSharp.Features.ModManager.ViewModels
         private readonly IModListManager _modListManager;
         private readonly IModCommandService _commandService;
         private readonly IDialogService _dialogService;
-        private ModItem _selectedMod;
+        private ModItem? _selectedMod;
 
         // --- Backing fields and cancellation tokens for debounced search ---
-        private string _activeSearchText;
-        private string _inactiveSearchText;
+        private string _activeSearchText = string.Empty;
+        private string _inactiveSearchText = string.Empty;
         private CancellationTokenSource _activeSearchCts = new CancellationTokenSource();
         private CancellationTokenSource _inactiveSearchCts = new CancellationTokenSource();
         // ---
@@ -37,10 +37,17 @@ namespace RimSharp.Features.ModManager.ViewModels
         public ObservableCollection<ModItem> ActiveMods => _filterService.ActiveMods;
         public ObservableCollection<ModItem> InactiveMods => _filterService.InactiveMods;
 
-        public int TotalActiveMods => ActiveMods.Count;
-        public int TotalInactiveMods => InactiveMods.Count;
+        public int TotalActiveMods => ActiveMods.Count(m => m.ModType != ModType.Core);
+        public int TotalInactiveMods => InactiveMods.Count(m => m.ModType != ModType.Core);
 
-        public ModItem SelectedMod
+        public int ActiveSortingIssuesCount => _modListManager.ActiveSortingIssuesCount;
+        public int ActiveMissingDependenciesCount => _modListManager.ActiveMissingDependenciesCount;
+        public int ActiveIncompatibilitiesCount => _modListManager.ActiveIncompatibilitiesCount;
+        public int ActiveVersionMismatchCount => _modListManager.ActiveVersionMismatchCount;
+        public int ActiveDuplicateIssuesCount => _modListManager.ActiveDuplicateIssuesCount;
+        public bool HasAnyActiveIssues => _modListManager.HasAnyActiveModIssues;
+
+        public ModItem? SelectedMod
         {
             get => _selectedMod;
             set => SetProperty(ref _selectedMod, value);
@@ -81,8 +88,9 @@ namespace RimSharp.Features.ModManager.ViewModels
         public ICommand DropModCommand { get; }
         public ICommand FilterInactiveCommand { get; }
         public ICommand FilterActiveCommand { get; }
+        public ICommand OpenActiveIssuesCommand { get; }
 
-        public event PropertyChangedEventHandler RequestSelectionChange;
+        public event PropertyChangedEventHandler? RequestSelectionChange;
 
         public ModListViewModel(IModFilterService filterService, IModListManager modListManager, IModCommandService commandService, IDialogService dialogService)
         {
@@ -98,16 +106,31 @@ namespace RimSharp.Features.ModManager.ViewModels
             // Use named methods for event handlers to allow for proper unsubscription on Dispose
             _filterService.ActiveMods.CollectionChanged += OnActiveModsChanged;
             _filterService.InactiveMods.CollectionChanged += OnInactiveModsChanged;
+            _modListManager.ListChanged += OnModListChanged;
 
             // Use property observation syntax from ViewModelBase
             ActivateModCommand = CreateCommand<ModItem>(
-                mod => { _modListManager.ActivateMod(mod); },
-                mod => mod != null,
+                mod => { 
+                    System.Diagnostics.Debug.WriteLine($"ActivateModCommand executing for: {mod?.Name}");
+                    _modListManager.ActivateMod(mod!); 
+                },
+                mod => {
+                    var canExec = mod != null;
+                    System.Diagnostics.Debug.WriteLine($"ActivateModCommand CanExecute: {canExec}");
+                    return canExec;
+                },
                 nameof(IsParentLoading));
 
             DeactivateModCommand = CreateCommand<ModItem>(
-                mod => { _modListManager.DeactivateMod(mod); },
-                mod => mod != null && mod.ModType != ModType.Core,
+                mod => { 
+                    System.Diagnostics.Debug.WriteLine($"DeactivateModCommand executing for: {mod?.Name}");
+                    _modListManager.DeactivateMod(mod!); 
+                },
+                mod => {
+                    var canExec = mod != null && mod.ModType != ModType.Core;
+                    System.Diagnostics.Debug.WriteLine($"DeactivateModCommand CanExecute: {canExec}");
+                    return canExec;
+                },
                 nameof(IsParentLoading));
 
             DropModCommand = CreateAsyncCommand<DropModArgs>(
@@ -115,15 +138,27 @@ namespace RimSharp.Features.ModManager.ViewModels
                 args => true,
                 nameof(IsParentLoading));
 
-            FilterInactiveCommand = CreateCommand(
+            FilterInactiveCommand = CreateAsyncCommand(
                 ShowFilterDialogForInactive,
                 () => !IsParentLoading, // Can execute when not loading
                 nameof(IsParentLoading)); // Observe IsParentLoading
 
-            FilterActiveCommand = CreateCommand(
+            FilterActiveCommand = CreateAsyncCommand(
                 ShowFilterDialogForActive,
                 () => !IsParentLoading, // Can execute when not loading
                 nameof(IsParentLoading)); // Observe IsParentLoading
+
+            OpenActiveIssuesCommand = CreateAsyncCommand(
+                ShowActiveIssuesDialog,
+                () => !IsParentLoading && HasAnyActiveIssues,
+                nameof(IsParentLoading), nameof(HasAnyActiveIssues));
+        }
+
+        private async Task ShowActiveIssuesDialog()
+        {
+            var issues = _modListManager.GetActiveModIssues();
+            var viewModel = new RimSharp.Features.ModManager.Dialogs.ActiveIssues.ActiveIssuesDialogViewModel(issues);
+            await _dialogService.ShowActiveIssuesDialogAsync(viewModel);
         }
 
         /// <summary>
@@ -137,7 +172,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                 {
                     _activeSearchCts.Cancel();
                     _activeSearchCts = new CancellationTokenSource();
-                    await Task.Delay(300, _activeSearchCts.Token);
+                    await RimSharp.Core.Extensions.ThreadHelper.DelayAsync(300, _activeSearchCts.Token);
 
                     // Apply the filter using the current text from the backing field
                     _filterService.ApplyActiveFilter(_activeSearchText);
@@ -146,7 +181,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                 {
                     _inactiveSearchCts.Cancel();
                     _inactiveSearchCts = new CancellationTokenSource();
-                    await Task.Delay(300, _inactiveSearchCts.Token);
+                    await RimSharp.Core.Extensions.ThreadHelper.DelayAsync(300, _inactiveSearchCts.Token);
 
                     _filterService.ApplyInactiveFilter(_inactiveSearchText);
                 }
@@ -159,13 +194,31 @@ namespace RimSharp.Features.ModManager.ViewModels
         }
 
         #region Event Handlers
-        private void OnActiveModsChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        private void OnModListChanged(object? sender, ModListChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(ActiveSortingIssuesCount));
+            OnPropertyChanged(nameof(ActiveMissingDependenciesCount));
+            OnPropertyChanged(nameof(ActiveIncompatibilitiesCount));
+            OnPropertyChanged(nameof(ActiveVersionMismatchCount));
+            OnPropertyChanged(nameof(ActiveDuplicateIssuesCount));
+            OnPropertyChanged(nameof(HasAnyActiveIssues));
+        }
+
+        private void OnActiveModsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             OnPropertyChanged(nameof(TotalActiveMods));
             OnPropertyChanged(nameof(IsActiveFilterApplied));
+            
+            // Re-evaluate issue counts when collection changes as well
+            OnPropertyChanged(nameof(ActiveSortingIssuesCount));
+            OnPropertyChanged(nameof(ActiveMissingDependenciesCount));
+            OnPropertyChanged(nameof(ActiveIncompatibilitiesCount));
+            OnPropertyChanged(nameof(ActiveVersionMismatchCount));
+            OnPropertyChanged(nameof(ActiveDuplicateIssuesCount));
+            OnPropertyChanged(nameof(HasAnyActiveIssues));
         }
 
-        private void OnInactiveModsChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        private void OnInactiveModsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             OnPropertyChanged(nameof(TotalInactiveMods));
             OnPropertyChanged(nameof(IsInactiveFilterApplied));
@@ -178,6 +231,13 @@ namespace RimSharp.Features.ModManager.ViewModels
             OnPropertyChanged(nameof(TotalInactiveMods));
             OnPropertyChanged(nameof(IsActiveFilterApplied));
             OnPropertyChanged(nameof(IsInactiveFilterApplied));
+            
+            OnPropertyChanged(nameof(ActiveSortingIssuesCount));
+            OnPropertyChanged(nameof(ActiveMissingDependenciesCount));
+            OnPropertyChanged(nameof(ActiveIncompatibilitiesCount));
+            OnPropertyChanged(nameof(ActiveVersionMismatchCount));
+            OnPropertyChanged(nameof(ActiveDuplicateIssuesCount));
+            OnPropertyChanged(nameof(HasAnyActiveIssues));
         }
 
         public void UpdateSelectedMod(ModItem mod)
@@ -194,17 +254,17 @@ namespace RimSharp.Features.ModManager.ViewModels
         }
         
         // --- Filter Dialog Logic ---
-        private void ShowFilterDialogForActive()
+        private async Task ShowFilterDialogForActive()
         {
-            ShowFilterDialog(isForActiveList: true);
+            await ShowFilterDialog(isForActiveList: true);
         }
 
-        private void ShowFilterDialogForInactive()
+        private async Task ShowFilterDialogForInactive()
         {
-            ShowFilterDialog(isForActiveList: false);
+            await ShowFilterDialog(isForActiveList: false);
         }
 
-        private void ShowFilterDialog(bool isForActiveList)
+        private async Task ShowFilterDialog(bool isForActiveList)
         {
             var currentCriteria = isForActiveList ? _filterService.ActiveFilterCriteria : _filterService.InactiveFilterCriteria;
             var availableVersions = _filterService.AllAvailableSupportedVersions ?? Enumerable.Empty<string>();
@@ -212,14 +272,14 @@ namespace RimSharp.Features.ModManager.ViewModels
             var availableAuthors = _filterService.AllAvailableAuthors ?? Enumerable.Empty<string>();
 
             var viewModel = new ModFilterDialogViewModel(currentCriteria, availableVersions, availableTags, availableAuthors);
-            var result = _dialogService.ShowModFilterDialog(viewModel);
+            var result = await _dialogService.ShowModFilterDialogAsync(viewModel);
 
             switch (result)
             {
                 case ModFilterDialogResult.Apply:
                     if (isForActiveList)
                     {
-                        _filterService.ApplyActiveFilterCriteria(viewModel.CurrentCriteria);
+                        _filterService.ApplyActiveFilterCriteria(viewModel.CurrentCriteria!);
                         // Sync our local backing field and notify the UI without re-triggering the debounce.
                         if (_activeSearchText != _filterService.ActiveSearchText)
                         {
@@ -229,7 +289,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                     }
                     else
                     {
-                        _filterService.ApplyInactiveFilterCriteria(viewModel.CurrentCriteria);
+                        _filterService.ApplyInactiveFilterCriteria(viewModel.CurrentCriteria!);
                         if (_inactiveSearchText != _filterService.InactiveSearchText)
                         {
                             _inactiveSearchText = _filterService.InactiveSearchText;

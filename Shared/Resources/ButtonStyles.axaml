@@ -1,0 +1,313 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:i="https://github.com/projektanker/icons.avalonia">
+
+    <!-- RimWorld-style Base Button -->
+    <Style Selector="Button.RimworldButtonStyle">
+        <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="MinWidth" Value="80"/>
+        <Setter Property="MinHeight" Value="24"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid>
+                    <!-- Shadow/Depth Layer -->
+                    <Border Name="ShadowLayer"
+                            Background="{DynamicResource RimworldDarkBrownBrush}"
+                            CornerRadius="3"
+                            Margin="0,1,0,0" />
+                    
+                    <!-- Main Button Layer -->
+                    <Border Name="ButtonBackground"
+                            Background="{DynamicResource RimworldBrownBrush}"
+                            BorderBrush="{DynamicResource RimworldDarkBrownBrush}"
+                            BorderThickness="1"
+                            CornerRadius="3">
+                        <ContentPresenter Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          Padding="{TemplateBinding Padding}"
+                                          HorizontalContentAlignment="Center"
+                                          VerticalContentAlignment="Center"/>
+                    </Border>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="Button.RimworldButtonStyle:pointerover /template/ Border#ButtonBackground">
+        <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
+    </Style>
+
+    <Style Selector="Button.RimworldButtonStyle:pressed /template/ Border#ButtonBackground">
+        <Setter Property="Background" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+        <Setter Property="Margin" Value="0,1,0,-1"/>
+    </Style>
+
+    <Style Selector="Button.RimworldButtonStyle:disabled /template/ Border#ButtonBackground">
+        <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
+        <Setter Property="Opacity" Value="0.6"/>
+    </Style>
+    <Style Selector="Button.RimworldButtonStyle:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+    </Style>
+
+    <!-- Save Button Style -->
+    <Style Selector="Button.RimworldSaveButtonStyle">
+        <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="MinWidth" Value="80"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid>
+                    <Border Name="ShadowLayer"
+                            Background="{DynamicResource RimworldDarkGreenBorderBrush}"
+                            CornerRadius="3"
+                            Margin="0,1,0,0" />
+                    <Border Name="ButtonBackground"
+                            Background="{DynamicResource RimworldDarkGreenBrush}"
+                            BorderBrush="{DynamicResource RimworldDarkGreenBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="3">
+                        <ContentPresenter Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          Padding="{TemplateBinding Padding}"
+                                          HorizontalContentAlignment="Center"
+                                          VerticalContentAlignment="Center"/>
+                    </Border>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="Button.RimworldSaveButtonStyle:pointerover /template/ Border#ButtonBackground">
+        <Setter Property="Background" Value="{DynamicResource RimworldDarkGreenHoverBrush}"/>
+    </Style>
+
+    <Style Selector="Button.RimworldSaveButtonStyle:pressed /template/ Border#ButtonBackground">
+        <Setter Property="Background" Value="{DynamicResource RimworldDarkGreenBorderBrush}"/>
+        <Setter Property="Margin" Value="0,1,0,-1"/>
+    </Style>
+
+    <!-- Run Button Style -->
+    <Style Selector="Button.RimworldRunButtonStyle">
+        <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="MinWidth" Value="80"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid>
+                    <Border Name="ShadowLayer"
+                            Background="{DynamicResource RimworldRedBorderBrush}"
+                            CornerRadius="3"
+                            Margin="0,1,0,0" />
+                    <Border Name="ButtonBackground"
+                            Background="{DynamicResource RimworldRedBrush}"
+                            BorderBrush="{DynamicResource RimworldRedBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="3">
+                        <ContentPresenter Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          Padding="{TemplateBinding Padding}"
+                                          HorizontalContentAlignment="Center"
+                                          VerticalContentAlignment="Center"/>
+                    </Border>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="Button.RimworldRunButtonStyle:pointerover /template/ Border#ButtonBackground">
+        <Setter Property="Background" Value="{DynamicResource RimworldRedHoverBrush}"/>
+    </Style>
+
+    <Style Selector="Button.RimworldRunButtonStyle:pressed /template/ Border#ButtonBackground">
+        <Setter Property="Background" Value="{DynamicResource RimworldRedBorderBrush}"/>
+        <Setter Property="Margin" Value="0,1,0,-1"/>
+    </Style>
+
+    <!-- Tab Buttons Style -->
+    <Style Selector="Button.RimworldTabButtonStyle">
+        <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="Padding" Value="12,6"/>
+        <Setter Property="MinWidth" Value="80"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="Margin" Value="0,0,8,0"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="ButtonBackground"
+                        Background="{DynamicResource RimworldLightBrownBrush}"
+                        BorderBrush="{DynamicResource RimworldBrownBrush}"
+                        BorderThickness="1"
+                        CornerRadius="3">
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      Padding="{TemplateBinding Padding}"
+                                      HorizontalContentAlignment="Center"
+                                      VerticalContentAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="Button.RimworldTabButtonStyle:pointerover /template/ Border#ButtonBackground">
+        <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
+    </Style>
+    <Style Selector="Button.RimworldTabButtonStyle:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+    </Style>
+
+    <Style Selector="Button.RimworldTabButtonStyle.active /template/ Border#ButtonBackground">
+        <Setter Property="Background" Value="{DynamicResource RimworldBrownBrush}"/>
+    </Style>
+    <Style Selector="Button.RimworldTabButtonStyle.active /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+    </Style>
+
+    <!-- NEW: Rimworld DropDown Button Style (MenuItem as Header) -->
+    <Style Selector="MenuItem.RimworldDropDownButtonStyle">
+        <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="MinWidth" Value="80"/>
+        <Setter Property="MinHeight" Value="24"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid>
+                    <!-- Shadow Layer -->
+                    <Border Name="ButtonShadow"
+                            Background="{DynamicResource RimworldDarkBrownBrush}"
+                            CornerRadius="3"
+                            Margin="0,1,0,0" />
+                    <!-- Main Button -->
+                    <Border Name="ButtonBackground"
+                            Background="{DynamicResource RimworldBrownBrush}"
+                            BorderBrush="{DynamicResource RimworldDarkBrownBrush}"
+                            BorderThickness="1"
+                            CornerRadius="3">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <ContentPresenter Name="PART_HeaderPresenter"
+                                              Content="{TemplateBinding Header}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}" />
+                            <i:Icon Value="fa-caret-down" Grid.Column="1" VerticalAlignment="Center" 
+                                       HorizontalAlignment="Right" Margin="0,0,8,0" FontSize="8" />
+                        </Grid>
+                    </Border>
+
+                    <Popup Name="PART_Popup"
+                           IsOpen="{TemplateBinding IsSubMenuOpen, Mode=TwoWay}"
+                           Placement="Bottom"
+                           IsLightDismissEnabled="True">
+                        <Border Background="{DynamicResource RimworldBeigeBrush}" 
+                                BorderBrush="{DynamicResource RimworldBrownBrush}" 
+                                BorderThickness="1" Margin="0,3,0,0">
+                            <ScrollViewer>
+                                <ItemsPresenter Name="PART_ItemsPresenter"
+                                                ItemsPanel="{TemplateBinding ItemsPanel}" />
+                            </ScrollViewer>
+                        </Border>
+                    </Popup>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="MenuItem.RimworldDropDownButtonStyle:pointerover /template/ Border#ButtonBackground">
+        <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
+    </Style>
+
+    <Style Selector="MenuItem.RimworldDropDownButtonStyle:selected /template/ Border#ButtonBackground">
+        <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
+    </Style>
+
+    <!-- Rimworld MenuItem Style (Items inside dropdown) -->
+    <Style Selector="MenuItem.RimworldMenuItemStyle">
+        <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="Padding" Value="8,5"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="root"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}">
+                    <ContentPresenter Name="PART_HeaderPresenter"
+                                      Content="{TemplateBinding Header}"
+                                      Margin="{TemplateBinding Padding}">
+                    </ContentPresenter>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="MenuItem.RimworldMenuItemStyle:pointerover">
+        <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
+    </Style>
+
+    <!-- Browser Navigation Button Style -->
+    <Style Selector="Button.BrowserNavButtonStyle">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+        <Setter Property="Width" Value="28"/>
+        <Setter Property="Height" Value="24"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Margin" Value="0,0,5,0"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="ButtonBorder"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="2">
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="Button.BrowserNavButtonStyle:pointerover /template/ Border#ButtonBorder">
+        <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
+    </Style>
+
+    <Style Selector="Button.BrowserNavButtonStyle:pressed /template/ Border#ButtonBorder">
+        <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
+    </Style>
+    <Style Selector="Button.BrowserNavButtonStyle:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource RimworldHighlightBrush}"/>
+    </Style>
+
+    <Style Selector="Button.BrowserNavButtonStyle:disabled">
+        <Setter Property="Opacity" Value="0.5"/>
+    </Style>
+    <Style Selector="Button.BrowserNavButtonStyle:disabled /template/ Border#ButtonBorder">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.BrowserNavButtonStyle:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+    </Style>
+<Style Selector="Button.BrowserNavButtonStyle:pressed /template/ Border#ButtonBorder">
+        <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
+    </Style>
+    <Style Selector="Button.BrowserNavButtonStyle:pressed">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource RimworldHighlightBrush}"/>
+    </Style>
+
+    <Style Selector="Button.BrowserNavButtonStyle:disabled">
+        <Setter Property="Opacity" Value="0.5"/>
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+    </Style>
+    <Style Selector="Button.BrowserNavButtonStyle:disabled /template/ Border#ButtonBorder">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+</Styles>

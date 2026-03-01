@@ -1,0 +1,148 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck"
+        xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+        x:Class="RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck.UpdateCheckDialogView"
+        x:DataType="vm:UpdateCheckDialogViewModel"
+        x:CompileBindings="True"
+        mc:Ignorable="d"
+        x:Name="RootUpdateCheckDialog"
+        Width="850" Height="550"
+        Title="{Binding Title}">
+
+    <dialogs:BaseDialog.MainContent>
+        <Grid RowDefinitions="Auto,Auto,*">
+            <TextBlock Grid.Row="0" Text="Select Workshop mods to check for updates:"
+                       Margin="0,0,0,10" FontSize="14" FontWeight="Medium"
+                       Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+
+            <Border Grid.Row="1" Margin="0,0,0,10" Classes="RimworldSubtlePanelBorder">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                        <Button Content="Select Active" Command="{Binding SelectActiveCommand}" Classes="RimworldButtonStyle" Padding="10,4"/>
+                        
+                        <Rectangle Width="1" Fill="{DynamicResource RimworldBrownBrush}" Margin="5,2"/>
+
+                        <Menu Background="Transparent" VerticalAlignment="Center">
+                            <MenuItem Header="Select by Update" Classes="RimworldDropDownButtonStyle" Padding="15,5">
+                                <MenuItem Command="{Binding SelectByTimeframeCommand}" CommandParameter="versionMismatch" Classes="RimworldMenuItemStyle">
+                                    <MenuItem.Header>
+                                        <StackPanel>
+                                            <TextBlock Text="Version Mismatch" FontWeight="Medium"/>
+                                            <TextBlock Text="Mods not updated for current version" FontSize="10" Foreground="{DynamicResource RimworldLightBrownBrush}"/>
+                                        </StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <Separator Classes="RimworldSeparatorStyle"/>
+                                <MenuItem Header="Not updated in 1 week" Command="{Binding SelectByTimeframeCommand}" CommandParameter="week" Classes="RimworldMenuItemStyle"/>
+                                <MenuItem Header="Not updated in 1 month" Command="{Binding SelectByTimeframeCommand}" CommandParameter="month" Classes="RimworldMenuItemStyle"/>
+                                <MenuItem Header="Not updated in 6 months" Command="{Binding SelectByTimeframeCommand}" CommandParameter="6months" Classes="RimworldMenuItemStyle"/>
+                                <MenuItem Header="Not updated in 1 year" Command="{Binding SelectByTimeframeCommand}" CommandParameter="year" Classes="RimworldMenuItemStyle"/>
+                            </MenuItem>
+                        </Menu>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="5">
+                        <TextBlock Text="{Binding SelectedModCount}" Foreground="{DynamicResource RimworldDarkBrownBrush}" FontWeight="Bold"/>
+                        <TextBlock Text="of" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                        <TextBlock Text="{Binding TotalModCount}" Foreground="{DynamicResource RimworldDarkBrownBrush}" FontWeight="Bold"/>
+                        <TextBlock Text="selected" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="2" Classes="RimworldPanelBorder" Padding="0">
+                <DataGrid x:Name="ModsDataGrid"
+                          ItemsSource="{Binding ModsView}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserSortColumns="True"
+                          CanUserResizeColumns="True"
+                          GridLinesVisibility="All"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto"
+                          BorderThickness="0">
+                    <DataGrid.Styles>
+                        <Style Selector="DataGridCell.CenteredColumn">
+                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                            <Setter Property="VerticalContentAlignment" Value="Center"/>
+                            <Setter Property="Padding" Value="0"/>
+                        </Style>
+                        <Style Selector="DataGridColumnHeader:nth-child(1)">
+                            <Setter Property="Padding" Value="0"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                        </Style>
+                        <!-- Remove selection and hover highlights -->
+                        <Style Selector="DataGridRow:selected /template/ Rectangle#Background">
+                            <Setter Property="Fill" Value="Transparent"/>
+                            <Setter Property="Opacity" Value="0"/>
+                        </Style>
+                        <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+                            <Setter Property="Fill" Value="Transparent"/>
+                            <Setter Property="Opacity" Value="0"/>
+                        </Style>
+                        <Style Selector="DataGridRow:pointerover /template/ Rectangle#Background">
+                            <Setter Property="Fill" Value="Transparent"/>
+                            <Setter Property="Opacity" Value="0"/>
+                        </Style>
+                        <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
+                            <Setter Property="Fill" Value="Transparent"/>
+                            <Setter Property="Opacity" Value="0"/>
+                        </Style>
+                        <Style Selector="DataGridRow:selected:pointerover /template/ Rectangle#Background">
+                            <Setter Property="Fill" Value="Transparent"/>
+                            <Setter Property="Opacity" Value="0"/>
+                        </Style>
+                        <Style Selector="DataGridRow:selected:pointerover /template/ Rectangle#BackgroundRectangle">
+                            <Setter Property="Fill" Value="Transparent"/>
+                            <Setter Property="Opacity" Value="0"/>
+                        </Style>
+                        <Style Selector="DataGridCell:selected /template/ Grid#FocusVisual">
+                            <Setter Property="IsVisible" Value="False" />
+                        </Style>
+                    </DataGrid.Styles>
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Width="70" CanUserResize="True" CellStyleClasses="CenteredColumn">
+                            <DataGridTemplateColumn.HeaderTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding #RootUpdateCheckDialog.((vm:UpdateCheckDialogViewModel)DataContext).SelectAll, Mode=TwoWay}"
+                                              IsThreeState="True"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0" Padding="0"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.HeaderTemplate>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="vm:UpdateCheckItemViewModel">
+                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" 
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" 
+                                              Margin="0" Padding="0"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*" CanUserResize="True"/>
+                        <DataGridTextColumn Header="Package ID" Binding="{Binding PackageId}" Width="1.5*" CanUserResize="True"/>
+                        <DataGridTextColumn Header="Steam ID" Binding="{Binding SteamId}" Width="110" CanUserResize="True"/>
+
+                        <DataGridTemplateColumn Header="Last Update" Width="150" CanUserResize="True">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="vm:UpdateCheckItemViewModel">
+                                    <TextBlock Text="{Binding LocalUpdateDate}" 
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" Margin="10,0"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
+        </Grid>
+    </dialogs:BaseDialog.MainContent>
+
+    <dialogs:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="10">
+            <Button Content="Check for Updates" Command="{Binding UpdateCommand}" Classes="RimworldRunButtonStyle" MinWidth="120"/>
+            <Button Content="Cancel" Command="{Binding CancelCommand}" Classes="RimworldButtonStyle" MinWidth="80"/>
+        </StackPanel>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

@@ -51,7 +51,7 @@ namespace RimSharp.Shared.Services.Contracts
         /// </summary>
         /// <param name="packageId">The package ID of the mod.</param>
         /// <returns>The custom information for the mod, or null if not found.</returns>
-        ModCustomInfo GetCustomModInfo(string packageId);
+        ModCustomInfo? GetCustomModInfo(string packageId);
         
         /// <summary>
         /// Saves custom information for a mod.

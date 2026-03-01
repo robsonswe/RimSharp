@@ -1,0 +1,74 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:RimSharp.AppDir.AppFiles"
+             xmlns:vmMods="clr-namespace:RimSharp.Features.ModManager.ViewModels"
+             xmlns:vMods="clr-namespace:RimSharp.Features.ModManager.Views"
+             xmlns:vmDownloader="clr-namespace:RimSharp.Features.WorkshopDownloader.ViewModels"
+             xmlns:vDownloader="clr-namespace:RimSharp.Features.WorkshopDownloader.Views"
+             xmlns:vmGitMods="clr-namespace:RimSharp.Features.GitModManager.ViewModels"
+             xmlns:vGitMods="clr-namespace:RimSharp.Features.GitModManager.Views"
+             xmlns:vmVram="clr-namespace:RimSharp.Features.VramAnalysis.ViewModels"
+             xmlns:vVram="clr-namespace:RimSharp.Features.VramAnalysis.Views"
+             xmlns:vmModActions="clr-namespace:RimSharp.Features.ModManager.ViewModels.Actions"
+             xmlns:vModActions="clr-namespace:RimSharp.Features.ModManager.Components.ModActions"
+             xmlns:vmModDetails="clr-namespace:RimSharp.Features.ModManager.ViewModels"
+             xmlns:vModDetails="clr-namespace:RimSharp.Features.ModManager.Components.ModDetails"
+             xmlns:vmBrowser="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.Browser"
+             xmlns:vBrowser="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.Browser"
+             xmlns:vmQueue="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.DownloadQueue"
+             xmlns:vQueue="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.DownloadQueue"
+             xmlns:vmStatusBar="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.StatusBar"
+             xmlns:vStatusBar="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.StatusBar"
+             x:Class="RimSharp.AppDir.AppFiles.App"
+             RequestedThemeVariant="Dark">
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <x:Double x:Key="DataGridSortIconMinWidth">0</x:Double>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://RimSharp/Shared/Resources/Colors.axaml"/>
+                <ResourceInclude Source="avares://RimSharp/Shared/Resources/Brushes.axaml"/>
+                <ResourceInclude Source="avares://RimSharp/Shared/Resources/Converters.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
+        <StyleInclude Source="avares://RimSharp/Shared/Resources/BaseStyles.axaml"/>
+        <StyleInclude Source="avares://RimSharp/Shared/Resources/ButtonStyles.axaml"/>
+        <StyleInclude Source="avares://RimSharp/Shared/Resources/DataGridStyles.axaml"/>
+        <StyleInclude Source="avares://RimSharp/Infrastructure/Dialog/DialogTemplates.axaml"/>
+    </Application.Styles>
+
+    <Application.DataTemplates>
+        <DataTemplate DataType="{x:Type vmMods:ModsViewModel}">
+            <vMods:ModsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vmDownloader:DownloaderViewModel}">
+            <vDownloader:DownloaderView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vmGitMods:GitModsViewModel}">
+            <vGitMods:GitModsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vmVram:VramAnalysisViewModel}">
+            <vVram:VramAnalysisView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vmModActions:ModActionsViewModel}">
+            <vModActions:ModActionsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vmModDetails:ModDetailsViewModel}">
+            <vModDetails:ModDetailsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vmBrowser:BrowserViewModel}">
+            <vBrowser:BrowserView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vmQueue:DownloadQueueViewModel}">
+            <vQueue:DownloadQueueView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vmStatusBar:StatusBarViewModel}">
+            <vStatusBar:StatusBarView/>
+        </DataTemplate>
+    </Application.DataTemplates>
+</Application>

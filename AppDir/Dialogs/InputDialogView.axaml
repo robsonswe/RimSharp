@@ -1,0 +1,49 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+        xmlns:vmDialogs="clr-namespace:RimSharp.AppDir.Dialogs"
+        x:Class="RimSharp.AppDir.Dialogs.InputDialogView"
+        mc:Ignorable="d"
+        x:DataType="vmDialogs:InputDialogViewModel"
+        Title="{Binding Title}"
+        SizeToContent="Height"
+        Width="450" MinWidth="350" MaxWidth="600"
+        CanResize="False">
+
+    <dialogs:BaseDialog.MainContent>
+        <Border Classes="RimworldPanelBorder">
+            <StackPanel Margin="15,10" Spacing="10">
+                <!-- Message -->
+                <TextBlock Text="{Binding Message}"
+                           TextWrapping="Wrap"
+                           FontSize="14"
+                           Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                
+                <!-- Input Field -->
+                <TextBox Text="{Binding Input}"
+                         AcceptsReturn="True"
+                         Height="60"
+                         FontSize="14"
+                         Padding="5"
+                         BorderBrush="{DynamicResource RimworldBrownBrush}"
+                         BorderThickness="1"/>
+            </StackPanel>
+        </Border>
+    </dialogs:BaseDialog.MainContent>
+
+    <dialogs:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Content="OK"
+                    Command="{Binding OkCommand}"
+                    Classes="RimworldSaveButtonStyle"
+                    IsVisible="{Binding ShowOkButton}"/>
+            
+            <Button Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    Classes="RimworldRunButtonStyle"
+                    IsVisible="{Binding ShowCancelButton}"/>
+        </StackPanel>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

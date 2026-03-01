@@ -1,0 +1,301 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+                 xmlns:vm="clr-namespace:RimSharp.Features.ModManager.Dialogs.CustomizeMod"
+                 xmlns:sys="using:System"
+                 x:Class="RimSharp.Features.ModManager.Dialogs.CustomizeMod.CustomizeModDialogView"
+                 x:DataType="vm:CustomizeModDialogViewModel"
+                 x:CompileBindings="True"
+                 Width="750"
+                 Height="680"
+                 Title="{Binding Title}">
+
+        <dialogs:BaseDialog.MainContent>
+            <Grid RowDefinitions="*, Auto" Margin="10,10,10,0">
+    
+                <TabControl Grid.Row="0" Classes="RimworldTabControl">
+                    <!-- TAB 1: GENERAL INFO -->
+                <TabItem Header="General Info">
+                    <Border Classes="RimworldSubtlePanelBorder">
+                        <Grid RowDefinitions="Auto, Auto, Auto, *" Margin="15">
+                            
+                            <CheckBox Grid.Row="0" Content="Favorite Mod" IsChecked="{Binding IsFavorite}" FontWeight="Bold" FontSize="14"/>
+
+                            <Grid Grid.Row="1" ColumnDefinitions="100, *" RowDefinitions="Auto, 10, Auto" Margin="0,15,0,15">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="External URL:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ExternalUrl}" Classes="RimworldTextBox" Watermark="e.g. https://steamcommunity.com/sharedfiles/..."/>
+                                
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Tags:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Tags}" Classes="RimworldTextBox" Watermark="Comma-separated tags"/>
+                            </Grid>
+
+                            <!-- HORIZONTAL SEPARATOR -->
+                            <Rectangle Grid.Row="2" Height="1" Fill="{DynamicResource RimworldBrownBrush}" Margin="0,5,0,15"/>
+
+                            <Grid Grid.Row="3" ColumnDefinitions="*, Auto, *">
+                                
+                                <StackPanel Grid.Column="0" Spacing="8">
+                                    <TextBlock Text="Supported Versions" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                    
+                                    <TextBlock Text="Original Versions:" IsVisible="{Binding HasOriginalVersions}" FontSize="12" Foreground="{DynamicResource RimworldLightBrownBrush}"/>
+                                    
+                                    <!-- FIXED HEIGHT Read-Only List -->
+                                    <Border Height="85" Background="{DynamicResource RimworldBeigeBrush}" BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="1" IsVisible="{Binding HasOriginalVersions}">
+                                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl ItemsSource="{Binding OriginalSupportedVersions}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="sys:String">
+                                                        <Border BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="0,0,0,1" Padding="5,4">
+                                                            <TextBlock Text="{Binding}" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Border>
+                                    
+                                    <TextBlock Text="Custom Versions (comma-separated):" FontSize="12" Margin="0,5,0,0" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                    <TextBox Text="{Binding SupportedVersions}" Classes="RimworldTextBox"/>
+                                    
+                                    <!-- DISTINCT WHITE DISCLAIMER BOX -->
+                                    <Border Background="{DynamicResource RimworldWhiteBrush}" BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="2" CornerRadius="2" Padding="8" Margin="0,5,0,0">
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="Recommendation:" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                            <TextBlock Text="App-only customization. Install Mlie's 'No Version Warning' mod to fully suppress in-game." FontSize="11" FontStyle="Italic" Foreground="{DynamicResource RimworldDarkBrownBrush}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+
+                                <!-- VERTICAL SEPARATOR -->
+                                <Rectangle Grid.Column="1" Width="1" Fill="{DynamicResource RimworldBrownBrush}" Margin="15,0"/>
+
+                                <StackPanel Grid.Column="2" Spacing="8">
+                                    <TextBlock Text="Load Bottom Rule" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                    
+                                    <Border Background="{DynamicResource RimworldBeigeBrush}" CornerRadius="3" Padding="10" IsVisible="{Binding HasOriginalLoadBottom}">
+                                        <StackPanel Spacing="3">
+                                            <TextBlock Text="Original Mod: Enabled" FontWeight="SemiBold" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                                            <TextBlock Text="This setting is hardcoded in the mod and cannot be overridden here." FontSize="11" Foreground="{DynamicResource RimworldLightBrownBrush}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <StackPanel IsEnabled="{Binding CanCustomizeLoadBottom}" Spacing="8">
+                                        <CheckBox Content="Force Load at Bottom" IsChecked="{Binding LoadBottom}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Comment / Reason:" FontSize="12" IsEnabled="{Binding LoadBottom}" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                        <TextBox Text="{Binding LoadBottomComment}" Classes="RimworldTextBox" IsEnabled="{Binding LoadBottom}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </TabItem>
+                
+                <!-- ... (Other tabs remain unchanged, they will inherit the new styles) ... -->
+                
+                <!-- TAB 2: LOAD BEFORE -->
+                <TabItem Header="Load Before">
+                    <Grid RowDefinitions="Auto, 10, Auto, 10, *">
+                        <Border Grid.Row="0" Classes="RimworldSubtlePanelBorder" IsVisible="{Binding HasOriginalDependencies}">
+                            <Grid RowDefinitions="Auto, *">
+                                <TextBlock Grid.Row="0" Text="Original Dependencies (Must load before this mod)" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="8,5"/>
+                                <Border Grid.Row="1" Background="{DynamicResource RimworldBeigeBrush}" BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="1" MaxHeight="80" Margin="8,0,8,8">
+                                    <ScrollViewer>
+                                        <ItemsControl ItemsSource="{Binding OriginalDependenciesItems}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="sys:String">
+                                                    <Border BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="0,0,0,1" Padding="5,4">
+                                                        <TextBlock Text="{Binding}" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Row="2" Classes="RimworldSubtlePanelBorder" IsVisible="{Binding HasOriginalLoadBefore}">
+                            <Grid RowDefinitions="Auto, *">
+                                <TextBlock Grid.Row="0" Text="Original Load Before Rules" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="8,5"/>
+                                <Border Grid.Row="1" Background="{DynamicResource RimworldBeigeBrush}" BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="1" MaxHeight="80" Margin="8,0,8,8">
+                                    <ScrollViewer>
+                                        <ItemsControl ItemsSource="{Binding OriginalLoadBeforeItems}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="sys:String">
+                                                    <Border BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="0,0,0,1" Padding="5,4">
+                                                        <TextBlock Text="{Binding}" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Row="4" Classes="RimworldSubtlePanelBorder">
+                            <Grid RowDefinitions="Auto, *, Auto" Margin="8">
+                                <TextBlock Grid.Row="0" Text="Custom Load Before Rules" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="0,0,0,8"/>
+                                
+                                <Grid Grid.Row="1" RowDefinitions="Auto, *">
+                                    <Border Grid.Row="0" Classes="RimworldListHeaderBorder">
+                                        <Grid ColumnDefinitions="150, 180, *">
+                                            <TextBlock Grid.Column="0" Text="Package ID" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                            <TextBlock Grid.Column="1" Text="Display Name" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                            <TextBlock Grid.Column="2" Text="Comment" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                        </Grid>
+                                    </Border>
+                                    <ListBox Grid.Row="1" ItemsSource="{Binding CustomLoadBefore}" SelectedItem="{Binding SelectedLoadBeforeRule}" Classes="RimworldSafeListBox" Margin="0,-2,0,0">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:ModDependencyRuleViewModel">
+                                                <Grid ColumnDefinitions="150, 180, *">
+                                                    <TextBlock Grid.Column="0" Text="{Binding PackageId, FallbackValue='Unknown'}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding DisplayName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding Comment}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Grid>
+                                
+                                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,10,0,0">
+                                    <Button Content="Add" Command="{Binding AddLoadBeforeCommand}" Classes="RimworldButtonStyle" Width="70"/>
+                                    <Button Content="Edit" Command="{Binding EditLoadBeforeCommand}" Classes="RimworldButtonStyle" Width="70"/>
+                                    <Button Content="Remove" Command="{Binding RemoveLoadBeforeCommand}" Classes="RimworldButtonStyle" Width="70"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </TabItem>
+
+                <!-- TAB 3: LOAD AFTER -->
+                <TabItem Header="Load After">
+                    <Grid RowDefinitions="Auto, 10, *">
+                        <Border Grid.Row="0" Classes="RimworldSubtlePanelBorder" IsVisible="{Binding HasOriginalLoadAfter}">
+                            <Grid RowDefinitions="Auto, *">
+                                <TextBlock Grid.Row="0" Text="Original Load After Rules" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="8,5"/>
+                                <Border Grid.Row="1" Background="{DynamicResource RimworldBeigeBrush}" BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="1" MaxHeight="120" Margin="8,0,8,8">
+                                    <ScrollViewer>
+                                        <ItemsControl ItemsSource="{Binding OriginalLoadAfterItems}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="sys:String">
+                                                    <Border BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="0,0,0,1" Padding="5,4">
+                                                        <TextBlock Text="{Binding}" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Row="2" Classes="RimworldSubtlePanelBorder">
+                            <Grid RowDefinitions="Auto, *, Auto" Margin="8">
+                                <TextBlock Grid.Row="0" Text="Custom Load After Rules" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="0,0,0,8"/>
+                                
+                                <Grid Grid.Row="1" RowDefinitions="Auto, *">
+                                    <Border Grid.Row="0" Classes="RimworldListHeaderBorder">
+                                        <Grid ColumnDefinitions="150, 180, *">
+                                            <TextBlock Grid.Column="0" Text="Package ID" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                            <TextBlock Grid.Column="1" Text="Display Name" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                            <TextBlock Grid.Column="2" Text="Comment" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                        </Grid>
+                                    </Border>
+                                    <ListBox Grid.Row="1" ItemsSource="{Binding CustomLoadAfter}" SelectedItem="{Binding SelectedLoadAfterRule}" Classes="RimworldSafeListBox" Margin="0,-2,0,0">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:ModDependencyRuleViewModel">
+                                                <Grid ColumnDefinitions="150, 180, *">
+                                                    <TextBlock Grid.Column="0" Text="{Binding PackageId, FallbackValue='Unknown'}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding DisplayName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding Comment}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Grid>
+                                
+                                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,10,0,0">
+                                    <Button Content="Add" Command="{Binding AddLoadAfterCommand}" Classes="RimworldButtonStyle" Width="70"/>
+                                    <Button Content="Edit" Command="{Binding EditLoadAfterCommand}" Classes="RimworldButtonStyle" Width="70"/>
+                                    <Button Content="Remove" Command="{Binding RemoveLoadAfterCommand}" Classes="RimworldButtonStyle" Width="70"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </TabItem>
+
+                <!-- TAB 4: INCOMPATIBILITIES -->
+                <TabItem Header="Incompatibilities">
+                    <Grid RowDefinitions="Auto, 10, *">
+                        <Border Grid.Row="0" Classes="RimworldSubtlePanelBorder" IsVisible="{Binding HasOriginalIncompatibilities}">
+                            <Grid RowDefinitions="Auto, *">
+                                <TextBlock Grid.Row="0" Text="Original Incompatibility Rules" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="8,5"/>
+                                <Border Grid.Row="1" Background="{DynamicResource RimworldBeigeBrush}" BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="1" MaxHeight="120" Margin="8,0,8,8">
+                                    <ScrollViewer>
+                                        <ItemsControl ItemsSource="{Binding OriginalIncompatibilityItems}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="sys:String">
+                                                    <Border BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="0,0,0,1" Padding="5,4">
+                                                        <TextBlock Text="{Binding}" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Row="2" Classes="RimworldSubtlePanelBorder">
+                            <Grid RowDefinitions="Auto, *, Auto" Margin="8">
+                                <TextBlock Grid.Row="0" Text="Custom Incompatibility Rules" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}" Margin="0,0,0,8"/>
+                                
+                                <Grid Grid.Row="1" RowDefinitions="Auto, *">
+                                    <Border Grid.Row="0" Classes="RimworldListHeaderBorder">
+                                        <Grid ColumnDefinitions="150, 150, 60, *">
+                                            <TextBlock Grid.Column="0" Text="Package ID" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                            <TextBlock Grid.Column="1" Text="Display Name" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                            <TextBlock Grid.Column="2" Text="Hard?" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                            <TextBlock Grid.Column="3" Text="Comment" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                        </Grid>
+                                    </Border>
+                                    <ListBox Grid.Row="1" ItemsSource="{Binding CustomIncompatibilities}" SelectedItem="{Binding SelectedIncompatibilityRule}" Classes="RimworldSafeListBox" Margin="0,-2,0,0">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:ModIncompatibilityRuleViewModel">
+                                                <Grid ColumnDefinitions="150, 150, 60, *">
+                                                    <TextBlock Grid.Column="0" Text="{Binding PackageId, FallbackValue='Unknown'}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding DisplayName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
+                                                    <CheckBox Grid.Column="2" IsChecked="{Binding HardIncompatibility}" IsHitTestVisible="False" Focusable="False" VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="3" Text="{Binding Comment}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Grid>
+                                
+                                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,10,0,0">
+                                    <Button Content="Add" Command="{Binding AddIncompatibilityCommand}" Classes="RimworldButtonStyle" Width="70"/>
+                                    <Button Content="Edit" Command="{Binding EditIncompatibilityCommand}" Classes="RimworldButtonStyle" Width="70"/>
+                                    <Button Content="Remove" Command="{Binding RemoveIncompatibilityCommand}" Classes="RimworldButtonStyle" Width="70"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </TabItem>
+            </TabControl>
+
+            <!-- NOTE MOVED TO BOTTOM -->
+            <TextBlock Grid.Row="1" Text="Note: Original mod settings cannot be changed. Custom settings defined here override or append to them." 
+                       Foreground="{DynamicResource RimworldLightBrownBrush}" FontStyle="Italic" Margin="5,15,0,0" VerticalAlignment="Bottom"/>
+
+        </Grid>
+    </dialogs:BaseDialog.MainContent>
+    
+    <dialogs:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,10,0,0">
+            <Button Content="Save Customizations" Command="{Binding SaveCommand}" Classes="RimworldSaveButtonStyle" />
+            <Button Content="Cancel" Command="{Binding CancelCommand}" Classes="RimworldButtonStyle" />
+        </StackPanel>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

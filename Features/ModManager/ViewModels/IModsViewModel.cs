@@ -10,6 +10,6 @@ namespace RimSharp.Features.ModManager.ViewModels
         bool IsLoading { get; }
         bool IsViewActive { get; set; }
         ICommand RequestRefreshCommand { get; }
-        Task InitializeAsync(IProgress<(int current, int total, string message)> progress = null);
+        Task InitializeAsync(IProgress<(int current, int total, string message)>? progress = null);
     }
 }

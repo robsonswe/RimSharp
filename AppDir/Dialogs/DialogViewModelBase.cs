@@ -1,85 +1,72 @@
 using System;
 using System.Collections.Generic;
 using System.Windows.Input;
-using RimSharp.AppDir.AppFiles; // Assuming ViewModelBase is here
+using RimSharp.AppDir.AppFiles;
+using ReactiveUI;
 
 namespace RimSharp.AppDir.Dialogs
 {
-    // Non-generic base
     public abstract class DialogViewModelBase : ViewModelBase
     {
         private string _title;
         private bool _closeable = true;
+        private bool? _dialogResultForWindow = null;
+
         public string Title
         {
             get => _title;
-            protected set => SetProperty(ref _title, value);
+            protected set => this.RaiseAndSetIfChanged(ref _title, value);
         }
+
         public bool Closeable
         {
             get => _closeable;
-            protected set => SetProperty(ref _closeable, value);
+            protected set => this.RaiseAndSetIfChanged(ref _closeable, value);
         }
 
-        // Event to signal the view to close
-        public event EventHandler RequestCloseDialog;
+        public bool? DialogResultForWindow 
+        { 
+            get => _dialogResultForWindow; 
+            protected set => this.RaiseAndSetIfChanged(ref _dialogResultForWindow, value); 
+        }
 
-        // *** ADD THIS PROPERTY ***
-        /// <summary>
-        /// Stores the intended DialogResult for the window, mapped to bool?.
-        /// Set by derived classes before RequestCloseDialog is invoked.
-        /// </summary>
-        public bool? DialogResultForWindow { get; protected set; } = null; // Default to null
+        public event EventHandler? RequestCloseDialog;
 
-        // Command to trigger the close request (can potentially be simplified later)
-        private ICommand _closeCommand;
+        private ICommand? _closeCommand;
         public ICommand CloseCommand => _closeCommand ??= CreateCommand(OnRequestCloseDialog);
 
         protected DialogViewModelBase(string title)
         {
-            Title = title;
+            _title = title;
         }
 
-        // Make OnRequestCloseDialog public or internal if BaseDialog needs to call it directly
-        // Or keep it protected and let commands call it. Raising event is key.
         protected virtual void OnRequestCloseDialog()
         {
-            // Base implementation might set a default result if needed
-            // DialogResultForWindow = null; // Or false? Depends on desired default close behavior
             RequestCloseDialog?.Invoke(this, EventArgs.Empty);
         }
     }
 
-    // Generic base
     public abstract class DialogViewModelBase<TResult> : DialogViewModelBase
     {
-        private TResult _dialogResult;
+        private TResult _dialogResult = default!;
         public TResult DialogResult
         {
             get => _dialogResult;
-            protected set => SetProperty(ref _dialogResult, value);
+            protected set => this.RaiseAndSetIfChanged(ref _dialogResult, value);
         }
 
-        // Command to close with a specific result
-        private ICommand _closeWithResultCommand;
+        private ICommand? _closeWithResultCommand;
         public ICommand CloseWithResultCommand => _closeWithResultCommand ??= CreateCommand<object>(
-            execute: param => ExecuteCloseWithResult(param),
-            canExecute: param => CanExecuteCloseWithResult(param)
+            execute: param => ExecuteCloseWithResult(param)
         );
 
         protected DialogViewModelBase(string title) : base(title)
         {
         }
 
-        private bool CanExecuteCloseWithResult(object param)
-        {
-            // Simplified check, assuming conversion happens in Execute
-            return true; // Or add more specific checks if needed
-        }
-
         private void ExecuteCloseWithResult(object param)
         {
-            TResult result = default;
+            TResult result = default!;
             bool converted = false;
 
             if (param is TResult specificResult)
@@ -87,26 +74,26 @@ namespace RimSharp.AppDir.Dialogs
                 result = specificResult;
                 converted = true;
             }
-            else if (param != null && typeof(TResult).IsEnum && Enum.IsDefined(typeof(TResult), param))
+            else if (param != null && typeof(TResult).IsEnum)
             {
                 try
                 {
-                   result = (TResult)Enum.Parse(typeof(TResult), param.ToString());
+                   result = (TResult)Enum.Parse(typeof(TResult), param.ToString()!);
                    converted = true;
-                } catch {} // Ignore parse errors
+                } catch {} 
             }
-             else if (param != null) // Attempt general conversion
+             else if (param != null) 
             {
                 try
                 {
                     result = (TResult)Convert.ChangeType(param, typeof(TResult));
                     converted = true;
                 }
-                catch {} // Ignore conversion errors
+                catch {} 
             }
-            else if (param == null && !typeof(TResult).IsValueType) // Handle null for reference types
+            else if (param == null && !typeof(TResult).IsValueType) 
             {
-                result = default(TResult); // which is null
+                result = default!;
                 converted = true;
             }
 
@@ -114,64 +101,49 @@ namespace RimSharp.AppDir.Dialogs
             {
                  CloseDialog(result);
             }
-            // Else: Parameter couldn't be converted, maybe log a warning?
         }
 
-
-        // Call this when closing with a result
         public void CloseDialog(TResult result)
         {
             DialogResult = result;
-            // *** MAP TResult to bool? before raising event ***
             MapResultToWindowResult(result);
-            OnRequestCloseDialog(); // Raise event AFTER setting properties
+            OnRequestCloseDialog(); 
         }
 
-        // Default close (e.g., Cancel button) - sets default result and closes
         protected override void OnRequestCloseDialog()
         {
-            // Ensure DialogResult and DialogResultForWindow are set
-            // if they haven't been explicitly set via CloseDialog(result)
-            if (EqualityComparer<TResult>.Default.Equals(DialogResult, default(TResult)))
+            if (EqualityComparer<TResult>.Default.Equals(DialogResult, default!))
             {
-                DialogResult = default(TResult);
-                MapResultToWindowResult(default(TResult)); // Map the default
+                DialogResult = default!;
+                MapResultToWindowResult(default!);
             }
-            // If CloseDialog(result) was called, DialogResultForWindow is already set.
-            base.OnRequestCloseDialog(); // Raise the event
+            base.OnRequestCloseDialog(); 
         }
 
-        // *** ADD THIS HELPER ***
-        /// <summary>
-        /// Maps the generic TResult to the bool? DialogResultForWindow.
-        /// Override this in specific ViewModels if complex mapping is needed.
-        /// Default: Treats common dialog results like OK/Yes/Save as true, others as false.
-        /// </summary>
         protected virtual void MapResultToWindowResult(TResult result)
         {
-            if (result is Enum enumResult) // Handle common enum patterns
+            if (result is Enum enumResult) 
             {
                 string resultString = enumResult.ToString();
                 if (resultString.Equals("OK", StringComparison.OrdinalIgnoreCase) ||
                     resultString.Equals("Yes", StringComparison.OrdinalIgnoreCase) ||
                     resultString.Equals("Save", StringComparison.OrdinalIgnoreCase) ||
-                    resultString.Equals("Proceed", StringComparison.OrdinalIgnoreCase)) // Add other "success" cases
+                    resultString.Equals("Proceed", StringComparison.OrdinalIgnoreCase)) 
                 {
                     DialogResultForWindow = true;
                 }
                 else
                 {
-                    DialogResultForWindow = false; // Assume others (Cancel, No, Abort) are false
+                    DialogResultForWindow = false; 
                 }
             }
-             else if (result is bool boolResult) // Handle bool directly
+             else if (result is bool boolResult) 
              {
                  DialogResultForWindow = boolResult;
              }
             else
             {
-                // Default mapping for unknown types: true if not default, false if default/null
-                DialogResultForWindow = !EqualityComparer<TResult>.Default.Equals(result, default(TResult));
+                DialogResultForWindow = !EqualityComparer<TResult>.Default.Equals(result, default!);
             }
         }
     }

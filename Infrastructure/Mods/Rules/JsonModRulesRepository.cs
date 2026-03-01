@@ -12,7 +12,7 @@ namespace RimSharp.Infrastructure.Mods.Rules
     {
         private const string RulesFileName = "rules.json";
         private readonly string _rulesFilePath;
-        private readonly string _rulesDirectoryPath;
+        private readonly string? _rulesDirectoryPath;
         private Dictionary<string, ModRule> _cachedRules;
         private bool _rulesLoaded = false;
         private readonly object _loadLock = new object(); // Lock for thread safety during load
@@ -53,7 +53,7 @@ namespace RimSharp.Infrastructure.Mods.Rules
                 try
                 {
                     // 1. Ensure the directory exists
-                    if (!Directory.Exists(_rulesDirectoryPath))
+                    if (!string.IsNullOrEmpty(_rulesDirectoryPath) && !Directory.Exists(_rulesDirectoryPath))
                     {
                         Console.WriteLine($"[DEBUG] Rules directory not found at '{_rulesDirectoryPath}'. Creating...");
                         Directory.CreateDirectory(_rulesDirectoryPath);
@@ -151,7 +151,7 @@ namespace RimSharp.Infrastructure.Mods.Rules
 
         private class RulesJsonRoot
         {
-            public Dictionary<string, ModRule> Rules { get; set; }
+            public Dictionary<string, ModRule>? Rules { get; set; }
         }
     }
 }

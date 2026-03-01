@@ -1,0 +1,49 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                  xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+                  xmlns:vm="clr-namespace:RimSharp.Features.ModManager.Dialogs.ModSelector"
+                  x:Class="RimSharp.Features.ModManager.Dialogs.ModSelector.ModSelectorDialogView"
+                  x:DataType="vm:ModSelectorDialogViewModel"
+                  Width="850" Height="500" Title="{Binding Title}">
+    <dialogs:BaseDialog.MainContent>
+        <DockPanel Margin="10">
+            <StackPanel DockPanel.Dock="Top" Spacing="5" Margin="0,0,0,10">
+                <TextBlock Text="Search by Name or Package ID:" FontSize="12"/>
+                <TextBox Text="{Binding SearchText, Mode=TwoWay}" Watermark="Type to search..." FontSize="12"/>
+            </StackPanel>
+
+            <DataGrid x:Name="ModsDataGrid"
+                      ItemsSource="{Binding FilteredMods}"
+                      SelectedItem="{Binding SelectedMod}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      GridLinesVisibility="All"
+                      BorderThickness="1"
+                      BorderBrush="{DynamicResource RimworldBorderBrush}"
+                      CanUserResizeColumns="True"
+                      FontSize="12"
+                      DoubleTapped="DataGrid_DoubleTapped">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*" CanUserResize="True" />
+                    <DataGridTextColumn Header="Package ID" Binding="{Binding PackageId}" Width="1.5*" CanUserResize="True" />
+                    <DataGridTextColumn Header="Steam ID" Binding="{Binding SteamId}" Width="100" CanUserResize="True" />
+                    <DataGridTextColumn Header="Authors" Binding="{Binding Authors}" Width="1.5*" CanUserResize="True" />
+                    <DataGridTemplateColumn Header="Versions" Width="100" CanUserResize="True">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding SupportedVersionStrings, Converter={StaticResource ListToStringConverter}}" 
+                                           VerticalAlignment="Center" Margin="5,0" FontSize="12"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+    </dialogs:BaseDialog.MainContent>
+    <dialogs:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Content="Select" Command="{Binding ConfirmCommand}" Width="80" Classes="RimworldButtonStyle"/>
+            <Button Content="Cancel" Command="{Binding CancelCommand}" Width="80" Classes="RimworldButtonStyle"/>
+        </StackPanel>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

@@ -1,27 +1,23 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
-using System.Windows.Data;
+using Avalonia.Data.Converters;
 
 namespace RimSharp.Core.Converters.Utility
 {
     public class FilterButtonTagConverter : IMultiValueConverter
     {
-        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
         {
-            if (values.Length >= 3 && values[0] is string headerText)
+            if (values.Count >= 3 && values[0] is string header)
             {
-                bool isActive = values[1] as bool? ?? false;
-                bool isInactive = values[2] as bool? ?? false;
+                bool active = values[1] is bool b1 && b1;
+                bool inactive = values[2] is bool b2 && b2;
 
-                if (headerText == "Active" && isActive) return "ActiveFiltered";
-                if (headerText == "Inactive" && isInactive) return "InactiveFiltered";
+                if (header == "Active" && active) return "ActiveFiltered";
+                if (header == "Inactive" && inactive) return "InactiveFiltered";
             }
             return "Unfiltered";
-        }
-
-        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
         }
     }
 }

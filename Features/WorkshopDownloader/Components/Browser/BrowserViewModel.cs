@@ -2,7 +2,6 @@
 using System;
 using System.ComponentModel;
 using System.Windows.Input;
-using Microsoft.Web.WebView2.Wpf;
 using RimSharp.Core.Commands.Base;
 using RimSharp.Features.WorkshopDownloader.ViewModels;
 using RimSharp.AppDir.AppFiles;
@@ -12,10 +11,11 @@ using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Features.WorkshopDownloader.Models;
 using System.Threading.Tasks;
 using System.Threading;
-using System.Web; // For HttpUtility.UrlEncode
+using System.Web;
 using System.Net;
 using System.Collections.Generic;
-using System.Linq; // For WebUtility.UrlEncode (alternative)
+using System.Linq;
+using ReactiveUI;
 
 namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 {
@@ -23,382 +23,384 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
     {
         private readonly IWebNavigationService _navigationService;
         private readonly DownloaderViewModel _parentViewModel;
-        private WebView2? _webView;
+        private IBrowserControl? _browserControl;
         private IModExtractorService? _extractorService;
         private bool _isAnalyzingContent = false;
-        // --- Properties ---
+
         private bool _canGoBack;
-        public bool CanGoBack { get => _canGoBack; private set => SetProperty(ref _canGoBack, value); }
+        public bool CanGoBack { get => _canGoBack; private set => this.RaiseAndSetIfChanged(ref _canGoBack, value); }
 
         private bool _canGoForward;
-        public bool CanGoForward { get => _canGoForward; private set => SetProperty(ref _canGoForward, value); }
+        public bool CanGoForward { get => _canGoForward; private set => this.RaiseAndSetIfChanged(ref _canGoForward, value); }
 
         private bool _isValidModUrl;
-        public bool IsValidModUrl
-        {
-            get => _isValidModUrl;
-            private set => SetProperty(ref _isValidModUrl, value);
-        }
+        public bool IsValidModUrl { get => _isValidModUrl; private set => this.RaiseAndSetIfChanged(ref _isValidModUrl, value); }
 
         private bool _isCollectionUrl;
-        public bool IsCollectionUrl
+        public bool IsCollectionUrl { get => _isCollectionUrl; private set => this.RaiseAndSetIfChanged(ref _isCollectionUrl, value); }
+
+        private string? _currentPageSteamId;
+        public string? CurrentPageSteamId { get => _currentPageSteamId; private set => this.RaiseAndSetIfChanged(ref _currentPageSteamId, value); }
+
+        private string _actualCurrentUrl = string.Empty;
+        public string ActualCurrentUrl { get => _actualCurrentUrl; private set => this.RaiseAndSetIfChanged(ref _actualCurrentUrl, value); }
+
+        private const string HomeUrl = "https://steamcommunity.com/app/294100/workshop/";
+        private string _addressBarUrl = HomeUrl;
+        public string AddressBarUrl
         {
-            get => _isCollectionUrl;
-            private set => SetProperty(ref _isCollectionUrl, value);
+            get => _addressBarUrl;
+            set
+            {
+                if (SetProperty(ref _addressBarUrl, value))
+                {
+                    OnPropertyChanged(nameof(AddressBarUrl));
+                }
+            }
         }
 
+        public bool IsNavigating => _navigationService.IsNavigating;
+        public bool IsDomReady => _navigationService.IsDomReady;
 
-        private string _actualCurrentUrl = string.Empty; // Last *confirmed* URL
-        public string ActualCurrentUrl { get => _actualCurrentUrl; private set => SetProperty(ref _actualCurrentUrl, value); }
-
-        private string _addressBarUrl = string.Empty; // URL shown in the address bar (updated early)
-        public string AddressBarUrl { get => _addressBarUrl; set => SetProperty(ref _addressBarUrl, value); }
-
-        // --- New Properties ---
         private bool _isLoading;
-        /// <summary>
-        /// Gets a value indicating whether the browser is currently loading a page.
-        /// </summary>
-        public bool IsLoading { get => _isLoading; private set => SetProperty(ref _isLoading, value); }
+        public bool IsLoading
+        {
+            get => _isLoading;
+            private set
+            {
+                if (SetProperty(ref _isLoading, value))
+                {
+                    OnPropertyChanged(nameof(IsLoading));
+                }
+            }
+        }
 
-        private bool _isSecure; // Basic HTTPS indicator
-        /// <summary>
-        /// Gets a value indicating whether the current URL is HTTPS.
-        /// </summary>
-        public bool IsSecure { get => _isSecure; private set => SetProperty(ref _isSecure, value); }
+        private bool _isSecure;
+        public bool IsSecure { get => _isSecure; private set => this.RaiseAndSetIfChanged(ref _isSecure, value); }
 
         private string _searchText = string.Empty;
-        /// <summary>
-        /// Gets or sets the text entered in the search box.
-        /// </summary>
-        public string SearchText { get => _searchText; set => SetProperty(ref _searchText, value); }
-        // --- End New Properties ---
+        public string SearchText { get => _searchText; set => this.RaiseAndSetIfChanged(ref _searchText, value); }
 
         private bool _isModInfoAvailable;
-        // Raising PropertyChanged is essential for DownloadQueueViewModel to react.
-        public bool IsModInfoAvailable
-        {
-            get => _isModInfoAvailable;
-            private set => SetProperty(ref _isModInfoAvailable, value);
-        }
+        public bool IsModInfoAvailable { get => _isModInfoAvailable; private set => this.RaiseAndSetIfChanged(ref _isModInfoAvailable, value); }
 
+        private bool _isOperationInProgress;
+        public bool IsOperationInProgress { get => _isOperationInProgress; private set => this.RaiseAndSetIfChanged(ref _isOperationInProgress, value); }
 
-        private bool _isOperationInProgress; // From parent
-        // This property might still be useful for disabling browser navigation buttons
-        public bool IsOperationInProgress { get => _isOperationInProgress; private set => SetProperty(ref _isOperationInProgress, value); }
+        private bool _isBrowserInitialized;
+        public bool IsBrowserInitialized { get => _isBrowserInitialized; private set => this.RaiseAndSetIfChanged(ref _isBrowserInitialized, value); }
 
-        // ---- CanAddMod Property REMOVED ----
-        // private bool _canAddMod;
-        // public bool CanAddMod { get => _canAddMod; private set => SetProperty(ref _canAddMod, value); }
-
-        // --- Commands ---
         public ICommand GoBackCommand { get; }
         public ICommand GoForwardCommand { get; }
         public ICommand GoHomeCommand { get; }
-        public ICommand RefreshCommand { get; } // Added Refresh command
+        public ICommand RefreshCommand { get; }
         public ICommand NavigateToUrlCommand { get; }
-        public ICommand SearchCommand { get; } // Added Search command
+        public ICommand SearchCommand { get; }
 
-        // --- Events ---
         public event EventHandler<string>? StatusChanged;
-        // ---- ModInfoAvailabilityChanged event REMOVED (or repurposed if needed elsewhere) ----
-        // PropertyChanged on IsModInfoAvailable is now the primary notification mechanism
-        // public event EventHandler? ModInfoAvailabilityChanged;
 
-        // --- Named Event Handlers ---
-        private EventHandler<string>? _navStatusHandler;
-        private EventHandler? _navStateChangedHandler;
-        private EventHandler<string>? _navSourceUrlChangedHandler;
-        private EventHandler? _extractorModInfoAvailableHandler; // Still needed to update IsModInfoAvailable property
-        private PropertyChangedEventHandler? _parentPropertyChangedHandler;
-        // New event handlers
-        private EventHandler<string>? _navStartedHandler;
-        private EventHandler? _navEndedHandler;
-        private EventHandler<string>? _potentialWorkshopPageLoadedHandler;
-
-        public BrowserViewModel(IWebNavigationService navigationService, DownloaderViewModel parentViewModel) : base()
+        public BrowserViewModel(IWebNavigationService navigationService, DownloaderViewModel parentViewModel)
         {
-            _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
-            _parentViewModel = parentViewModel ?? throw new ArgumentNullException(nameof(parentViewModel));
+            _navigationService = navigationService;
+            _parentViewModel = parentViewModel;
 
-            // Initialize properties from service/parent state
-            _canGoBack = _navigationService.CanGoBack;
-            _canGoForward = _navigationService.CanGoForward;
-            _actualCurrentUrl = _navigationService.CurrentUrl ?? string.Empty;
-            _addressBarUrl = _actualCurrentUrl;
-            IsSecure = _actualCurrentUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
-            _isOperationInProgress = _parentViewModel.IsOperationInProgress;
-            // _isModInfoAvailable is initialized when extractor is set/changes
+            _navigationService.SourceUrlChanged += NavigationService_SourceUrlChanged;
+            _navigationService.StatusChanged += NavigationService_StatusChanged;
+            _navigationService.NavigationStateChanged += NavigationService_NavigationStateChanged;
+            _navigationService.NavigationStarted += NavigationService_NavigationStarted;
+            _navigationService.NavigationEnded += NavigationService_NavigationEnded;
+            _navigationService.PotentialWorkshopPageLoaded += NavigationService_PotentialWorkshopPageLoaded;
+            _navigationService.DomContentLoaded += NavigationService_DomContentLoaded;
 
-            // Subscribe to navigation service events
-            _navStatusHandler = NavigationService_StatusChanged;
-            _navigationService.StatusChanged += _navStatusHandler;
+            _parentViewModel.PropertyChanged += ParentViewModel_PropertyChanged;
 
-            _navStateChangedHandler = NavigationService_NavigationStateChanged;
-            _navigationService.NavigationStateChanged += _navStateChangedHandler;
-
-            _navSourceUrlChangedHandler = NavigationService_SourceUrlChanged; // Handles *confirmed* URL changes
-            _navigationService.SourceUrlChanged += _navSourceUrlChangedHandler;
-
-            // --- Subscribe to new events ---
-            _navStartedHandler = NavigationService_NavigationStarted;
-            _navigationService.NavigationStarted += _navStartedHandler;
-
-            _navEndedHandler = NavigationService_NavigationEnded;
-            _navigationService.NavigationEnded += _navEndedHandler;
-            // --- End Subscribe ---
-
-            _potentialWorkshopPageLoadedHandler = NavigationService_PotentialWorkshopPageLoaded; // <<< SUBSCRIBE
-            _navigationService.PotentialWorkshopPageLoaded += _potentialWorkshopPageLoadedHandler;
-
-            _parentPropertyChangedHandler = ParentViewModel_PropertyChanged;
-            _parentViewModel.PropertyChanged += _parentPropertyChangedHandler;
-
-            // --- Initialize Commands (Observe IsOperationInProgress/IsLoading for disabling UI) ---
             GoBackCommand = CreateCommand(
                 execute: () => _navigationService.GoBack(),
-                canExecute: () => !IsLoading && !IsOperationInProgress && CanGoBack,
-                observedProperties: new[] { nameof(IsLoading), nameof(IsOperationInProgress), nameof(CanGoBack) }
-            );
+                canExecute: () => !IsOperationInProgress && CanGoBack && IsBrowserInitialized,
+                observedProperties: new[] { nameof(IsOperationInProgress), nameof(CanGoBack), nameof(IsBrowserInitialized) });
 
             GoForwardCommand = CreateCommand(
                 execute: () => _navigationService.GoForward(),
-                canExecute: () => !IsLoading && !IsOperationInProgress && CanGoForward,
-                observedProperties: new[] { nameof(IsLoading), nameof(IsOperationInProgress), nameof(CanGoForward) }
-            );
+                canExecute: () => !IsOperationInProgress && CanGoForward && IsBrowserInitialized,
+                observedProperties: new[] { nameof(IsOperationInProgress), nameof(CanGoForward), nameof(IsBrowserInitialized) });
 
             GoHomeCommand = CreateCommand(
                 execute: () => _navigationService.GoHome(),
-                canExecute: () => !IsLoading && !IsOperationInProgress,
-                observedProperties: new[] { nameof(IsLoading), nameof(IsOperationInProgress) }
-            );
+                canExecute: () => !IsOperationInProgress && IsBrowserInitialized,
+                observedProperties: new[] { nameof(IsOperationInProgress), nameof(IsBrowserInitialized) });
 
-            RefreshCommand = CreateCommand( // Define Refresh Command
-                execute: () => _webView?.CoreWebView2?.Reload(),
-                canExecute: () => !IsLoading && !IsOperationInProgress && _webView?.CoreWebView2 != null,
-                observedProperties: new[] { nameof(IsLoading), nameof(IsOperationInProgress) } // Add dependency if needed
-            );
+            RefreshCommand = CreateCommand(
+                execute: () => _browserControl?.Reload(),
+                canExecute: () => !IsOperationInProgress && IsBrowserInitialized,
+                observedProperties: new[] { nameof(IsOperationInProgress), nameof(IsBrowserInitialized) });
 
             NavigateToUrlCommand = CreateCommand<string>(
-                execute: ExecuteNavigateToUrlCommand, // Logic now handles search-or-go
-                canExecute: url => !IsLoading && !IsOperationInProgress && !string.IsNullOrWhiteSpace(url),
-                observedProperties: new[] { nameof(IsLoading), nameof(IsOperationInProgress) }
-            );
+                execute: (url) => _navigationService.Navigate(url),
+                canExecute: (url) => !IsOperationInProgress && !string.IsNullOrWhiteSpace(url) && IsBrowserInitialized,
+                observedProperties: new[] { nameof(IsOperationInProgress), nameof(IsBrowserInitialized) });
 
-            SearchCommand = CreateCommand( // Define Search Command
-                execute: ExecuteSearchCommand,
-                canExecute: () => !IsLoading && !IsOperationInProgress && !string.IsNullOrWhiteSpace(SearchText),
-                observedProperties: new[] { nameof(IsLoading), nameof(IsOperationInProgress), nameof(SearchText) }
-            );
-            // --- End Initialize Commands ---
-            // ---- CalculateCanAddMod() call REMOVED ----
-
-            Debug.WriteLine("[BrowserVM] Initialized.");
+            SearchCommand = CreateCommand(
+                execute: ExecuteSearch,
+                canExecute: () => !IsOperationInProgress && !string.IsNullOrWhiteSpace(SearchText) && IsBrowserInitialized,
+                observedProperties: new[] { nameof(IsOperationInProgress), nameof(SearchText), nameof(IsBrowserInitialized) });
         }
 
-        public void SetWebView(WebView2 webView)
+        private void NavigationService_NavigationStarted(object? sender, string url)
         {
-            if (_disposed || webView == null) return;
-            _webView = webView;
-
-            // Dispose old extractor if exists
-            if (_extractorService != null)
-            {
-                if (_extractorModInfoAvailableHandler != null)
-                    _extractorService.IsModInfoAvailableChanged -= _extractorModInfoAvailableHandler;
-                (_extractorService as IDisposable)?.Dispose();
-                _extractorService = null;
-                Debug.WriteLine("[BrowserVM] Disposed previous ModExtractorService.");
-            }
-
-            // Create and setup the new extractor
-            try
-            {
-                _extractorService = new ModExtractorService(webView); // Ensure this constructor is robust
-                _extractorModInfoAvailableHandler = ExtractorService_IsModInfoAvailableChanged;
-                _extractorService.IsModInfoAvailableChanged += _extractorModInfoAvailableHandler;
-                Debug.WriteLine("[BrowserVM] Created and subscribed to new ModExtractorService.");
-
-                // Set initial state after creating extractor
-                IsModInfoAvailable = _extractorService?.IsModInfoAvailable ?? false;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[BrowserVM] Error creating ModExtractorService: {ex.Message}");
-                IsModInfoAvailable = false; // Ensure state is false on error
-            }
-
-
-            _navigationService.SetWebView(webView); // Hook up service
-            Debug.WriteLine("[BrowserVM] Passed WebView to NavigationService.");
-
-            RunOnUIThread(() =>
-            {
-                // Update nav state from service after setting WebView
-                CanGoBack = _navigationService.CanGoBack;
-                CanGoForward = _navigationService.CanGoForward;
-                // Refresh command CanExecute state if WebView reference changes
-                (RefreshCommand as DelegateCommand)?.RaiseCanExecuteChanged();
-            });
-        }
-
-        public Task<List<CollectionItemInfo>> ExtractCollectionItemsAsync(CancellationToken token = default)
-        {
-            if (_disposed || _extractorService == null)
-            {
-                Debug.WriteLine($"[BrowserVM] ExtractCollectionItemsAsync called but disposed({_disposed}) or extractor is null.");
-                return Task.FromResult(new List<CollectionItemInfo>());
-            }
-            try
-            {
-                Debug.WriteLine("[BrowserVM] Calling _extractorService.ExtractCollectionItemsAsync().");
-                return _extractorService.ExtractCollectionItemsAsync();
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[BrowserVM] Error calling ExtractCollectionItemsAsync: {ex.Message}");
-                StatusChanged?.Invoke(this, $"Error extracting collection items: {ex.Message}");
-                return Task.FromResult(new List<CollectionItemInfo>());
-            }
-        }
-
-        public async Task<ModInfoDto?> GetCurrentModInfoAsync(CancellationToken token = default)
-        {
-            if (_disposed || _extractorService == null)
-            {
-                Debug.WriteLine($"[BrowserVM] GetCurrentModInfoAsync called but disposed({_disposed}) or extractor is null.");
-                return null;
-            }
-
-            try
-            {
-                Debug.WriteLine("[BrowserVM] Calling _extractorService.ExtractFullModInfo().");
-                ModInfoDto? extractedInfo = await _extractorService.ExtractFullModInfo();
-                token.ThrowIfCancellationRequested(); // Check cancellation after extraction
-
-                // The critical check: If _extractorService.IsModInfoAvailable is false,
-                // it means essential data (like mod name AND date) was not successfully extracted from the page.
-                // In this case, we return null to signal the command handler to use API fallback.
-                if (extractedInfo != null && _extractorService.IsModInfoAvailable)
-                {
-                    Debug.WriteLine($"[BrowserVM] Extracted mod info via browser successfully (IsModInfoAvailable: True).");
-                    return extractedInfo;
-                }
-                else
-                {
-                    // This path is taken if extractedInfo is null OR if _extractorService.IsModInfoAvailable is false
-                    Debug.WriteLine($"[BrowserVM] Extracted mod info is incomplete or unavailable (extractedInfo is null: {extractedInfo == null}, IsModInfoAvailable: {_extractorService.IsModInfoAvailable}). Returning null to trigger API fallback.");
-                    return null;
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                Debug.WriteLine($"[BrowserVM] GetCurrentModInfoAsync cancelled during extraction.");
-                throw; // Re-throw cancellation
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[BrowserVM] Error during browser extraction (GetCurrentModInfoAsync): {ex.Message}");
-                StatusChanged?.Invoke(this, $"Error extracting mod info from browser: {ex.Message}");
-                return null; // Return null on any error to trigger API fallback.
-            }
-        }
-
-        // --- Event Handlers ---
-
-        private void ParentViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            if (_disposed) return;
-
-            // Still need to react to parent's IsOperationInProgress for browser UI (nav buttons)
-            if (e.PropertyName == nameof(DownloaderViewModel.IsOperationInProgress))
-            {
-                RunOnUIThread(() =>
-                {
-                    IsOperationInProgress = _parentViewModel.IsOperationInProgress;
-                    Debug.WriteLine($"[BrowserVM] Parent IsOperationInProgress changed: {IsOperationInProgress}");
-                    // Note: Commands observing IsOperationInProgress will update automatically
-                });
-            }
-            // ---- Handling for Parent IsSteamCmdReady REMOVED (not needed for CanAddMod here) ----
-            // else if (e.PropertyName == nameof(DownloaderViewModel.IsSteamCmdReady))
-            // {
-            //      Debug.WriteLine($"[BrowserVM] Parent IsSteamCmdReady changed: {_parentViewModel.IsSteamCmdReady}");
-            //      // No longer recalculating CanAddMod here
-            // }
-        }
-
-
-        private void NavigationService_StatusChanged(object? sender, string message)
-        {
-            if (_disposed) return;
-            RunOnUIThread(() => StatusChanged?.Invoke(this, message));
-        }
-
-        // Handles the NavigationStarted event from the service
-        private void NavigationService_NavigationStarted(object? sender, string intendedUrl)
-        {
-            if (_disposed) return;
-            Debug.WriteLine($"[BrowserVM] Handling NavigationStarted: {intendedUrl}");
+            if (url == "about:blank") return;
+            Debug.WriteLine($"[BrowserVM] NavigationStarted: {url}");
             RunOnUIThread(() =>
             {
                 IsLoading = true;
-                AddressBarUrl = intendedUrl; // Update address bar early
-                IsSecure = intendedUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
-
+                AddressBarUrl = url;
+                IsSecure = url.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
                 IsValidModUrl = false;
                 IsCollectionUrl = false;
                 IsModInfoAvailable = false;
                 _extractorService?.Reset();
-                _isAnalyzingContent = false; // Also reset analysis flag if navigation interrupts it
-                Debug.WriteLine($"[BrowserVM] Reset validity flags for new navigation to {intendedUrl}.");
-                // --- End FIX ---
-
-                Debug.WriteLine($"[BrowserVM] Updated AddressBarUrl to: {AddressBarUrl}, IsLoading: {IsLoading}, IsSecure: {IsSecure}");
+                _isAnalyzingContent = false;
             });
         }
 
-        // Handles the NavigationEnded event from the service
         private void NavigationService_NavigationEnded(object? sender, EventArgs e)
         {
-            if (_disposed) return;
-            Debug.WriteLine("[BrowserVM] Handling NavigationEnded.");
+            Debug.WriteLine("[BrowserVM] NavigationEnded");
             RunOnUIThread(() =>
             {
-                // If navigation ended (success or failure) but we were analyzing, stop analyzing
+                IsLoading = false;
                 if (_isAnalyzingContent)
-                {
                     _isAnalyzingContent = false;
-                    Debug.WriteLine("[BrowserVM] Analysis flag cleared due to NavigationEnded.");
-                }
-                IsLoading = false; // Main loading flag off
-                Debug.WriteLine($"[BrowserVM] IsLoading set to: {IsLoading}");
-                // Reset validity if navigation failed or was cancelled? Maybe not needed, depends on desired behaviour.
             });
         }
 
-
-
-        // Handles *confirmed* source URL changes (after navigation completes or history changes)
-        private void NavigationService_SourceUrlChanged(object? sender, string newUrl)
+        public void SetBrowserControl(IBrowserControl? browserControl)
         {
             if (_disposed) return;
-            Debug.WriteLine($"[BrowserVM] Handling *Confirmed* SourceUrlChanged: {newUrl}");
+
+            // Clean up existing control
+            if (_extractorService != null)
+            {
+                _extractorService.IsModInfoAvailableChanged -= ExtractorService_IsModInfoAvailableChanged;
+                (_extractorService as IDisposable)?.Dispose();
+                _extractorService = null;
+            }
+
+            _browserControl = browserControl;
+
+            if (browserControl == null)
+            {
+                // Control was detached (tab switched away)
+                _navigationService.SetBrowserControl(null);
+                IsModInfoAvailable = false;
+                CanGoBack = false;
+                CanGoForward = false;
+                IsBrowserInitialized = false;
+                return;
+            }
+
+            // New control attached
+            IsBrowserInitialized = true;
+            _extractorService = new ModExtractorService(browserControl);
+            _extractorService.IsModInfoAvailableChanged += ExtractorService_IsModInfoAvailableChanged;
+            IsModInfoAvailable = _extractorService.IsModInfoAvailable;
+
+            _navigationService.SetBrowserControl(browserControl);
+
+            RunOnUIThread(() =>
+            {
+                CanGoBack = _navigationService.CanGoBack;
+                CanGoForward = _navigationService.CanGoForward;
+            });
+        }
+
+        private void NavigationService_DomContentLoaded(object? sender, string url)
+        {
+            Debug.WriteLine($"[BrowserViewModel] DOMContentLoaded received for: {url}");
+            RunOnUIThread(() => OnPropertyChanged(nameof(IsDomReady)));
+            // Trigger mod info extraction when DOM is ready
+            _ = AnalyzePageContentAsync();
+        }
+
+        private async Task AnalyzePageContentAsync()
+        {
+            if (_isAnalyzingContent || _extractorService == null) return;
+
+            _isAnalyzingContent = true;
+            Debug.WriteLine("[BrowserViewModel] Starting page content analysis...");
+
+            try
+            {
+                // Reset previous state
+                _extractorService.Reset();
+                
+                // Extract mod name, date, and Steam ID
+                var nameTask = _extractorService.ExtractModName();
+                var dateTask = _extractorService.ExtractModDateInfo();
+                var idTask = ExtractSteamIdFromPageAsync();
+
+                await Task.WhenAll(nameTask, dateTask, idTask);
+
+                var name = nameTask.Result;
+                var date = dateTask.Result;
+                var id = idTask.Result;
+
+                if (!string.IsNullOrEmpty(id))
+                {
+                    CurrentPageSteamId = id;
+                }
+
+                Debug.WriteLine($"[BrowserViewModel] Extraction complete - Name: '{name ?? "NULL"}', Date: '{date ?? "NULL"}', ID: '{id ?? "NULL"}'");
+                Debug.WriteLine($"[BrowserViewModel] IsModInfoAvailable = {_extractorService.IsModInfoAvailable}");
+
+                if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(date))
+                {
+                    Debug.WriteLine("[BrowserViewModel] Mod info is available!");
+                }
+                else
+                {
+                    Debug.WriteLine("[BrowserViewModel] Mod info not available - not a valid mod page?");
+                    Debug.WriteLine($"[BrowserViewModel] Name is null/empty: {string.IsNullOrEmpty(name)}");
+                    Debug.WriteLine($"[BrowserViewModel] Date is null/empty: {string.IsNullOrEmpty(date)}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[BrowserViewModel] Error during page analysis: {ex}");
+            }
+            finally
+            {
+                _isAnalyzingContent = false;
+            }
+        }
+
+        private void ExecuteSearch()
+        {
+            if (string.IsNullOrWhiteSpace(SearchText)) return;
+            string encodedSearch = WebUtility.UrlEncode(SearchText);
+            string searchUrl = $"https://steamcommunity.com/workshop/browse/?appid=294100&searchtext={encodedSearch}&childpublishedfileid=0&browsemethod=textsearch&section=home";
+            _navigationService.Navigate(searchUrl);
+        }
+
+        public Task<List<CollectionItemInfo>> ExtractCollectionItemsAsync(CancellationToken token = default)
+        {
+            return _extractorService?.ExtractCollectionItemsAsync() ?? Task.FromResult(new List<CollectionItemInfo>());
+        }
+
+        public Task<ModInfoDto?> GetCurrentModInfoAsync(CancellationToken token = default)
+        {
+            return _extractorService?.ExtractFullModInfo() ?? Task.FromResult<ModInfoDto?>(null);
+        }
+
+        public async Task<string?> ExtractSteamIdFromPageAsync(CancellationToken token = default)
+        {
+            if (_extractorService == null) return null;
+
+            try
+            {
+                // Try to extract the Steam ID from the page using JavaScript
+                string script = @"(function() {
+                    // Try to find the Steam ID from various locations on the page
+                    // 1. Check the subscribe button or report link
+                    const subscribeBtn = document.querySelector('[data-modalcontrol]');
+                    if (subscribeBtn) {
+                        const modalControl = subscribeBtn.getAttribute('data-modalcontrol');
+                        if (modalControl) {
+                            const match = modalControl.match(/sharedfile_(\d+)/);
+                            if (match) return match[1];
+                        }
+                    }
+
+                    // 2. Check the page URL in any links
+                    const links = document.querySelectorAll('a[href*=""filedetails""]');
+                    for (const link of links) {
+                        const href = link.href;
+                        const urlParams = new URLSearchParams(new URL(href).search);
+                        const id = urlParams.get('id');
+                        if (id) return id;
+                    }
+
+                    // 3. Check meta tags
+                    const ogUrl = document.querySelector('meta[property=""og:url""]');
+                    if (ogUrl) {
+                        const content = ogUrl.getAttribute('content');
+                        if (content) {
+                            const urlParams = new URLSearchParams(new URL(content).search);
+                            const id = urlParams.get('id');
+                            if (id) return id;
+                        }
+                    }
+
+                    return null;
+                })();";
+
+                string? result = await _extractorService.ExecuteScriptAsync(script);
+                if (!string.IsNullOrEmpty(result) && result != "null")
+                {
+                    // Clean up the result (remove quotes if present)
+                    result = result.Trim('"');
+                    if (!string.IsNullOrEmpty(result) && long.TryParse(result, out _))
+                    {
+                        return result;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[BrowserViewModel] Error extracting Steam ID from page: {ex.Message}");
+            }
+
+            return null;
+        }
+
+        private void ParentViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(DownloaderViewModel.IsOperationInProgress))
+            {
+                IsOperationInProgress = _parentViewModel.IsOperationInProgress;
+            }
+        }
+
+        private void NavigationService_StatusChanged(object? sender, string message) => StatusChanged?.Invoke(this, message);
+
+        private void NavigationService_SourceUrlChanged(object? sender, string newUrl)
+        {
+            if (newUrl == "about:blank") return;
+            Debug.WriteLine($"[BrowserVM] SourceUrlChanged: {newUrl}");
             RunOnUIThread(() =>
             {
                 ActualCurrentUrl = newUrl;
-                if (AddressBarUrl != newUrl && !IsLoading)
+                if (AddressBarUrl != newUrl && !IsNavigating)
                 {
+                    Debug.WriteLine($"[BrowserVM] Updating AddressBarUrl to: {newUrl}");
                     AddressBarUrl = newUrl;
-                    Debug.WriteLine($"[BrowserVM] Corrected AddressBarUrl based on confirmed source: {AddressBarUrl}");
                 }
                 IsSecure = newUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+
+                // Early detection based on URL pattern
+                if (Uri.TryCreate(newUrl, UriKind.Absolute, out var uri))
+                {
+                    bool isSteamWorkshop = uri.Host.EndsWith("steamcommunity.com", StringComparison.OrdinalIgnoreCase);
+                    if (isSteamWorkshop)
+                    {
+                        var query = HttpUtility.ParseQueryString(uri.Query);
+                        string? id = query.Get("id");
+                        CurrentPageSteamId = id;
+
+                        bool isModPage = uri.AbsolutePath.Contains("/filedetails/", StringComparison.OrdinalIgnoreCase);
+                        bool isCollectionPage = uri.AbsolutePath.Contains("/workshop/browse/", StringComparison.OrdinalIgnoreCase) && 
+                                               (uri.AbsolutePath.Contains("/collections/", StringComparison.OrdinalIgnoreCase) || 
+                                                query.Get("section") == "collections");
+
+                        // Note: These might be refined later by content analysis
+                        IsValidModUrl = isModPage && !string.IsNullOrEmpty(id);
+                        IsCollectionUrl = isCollectionPage;
+                    }
+                }
             });
         }
 
         private void NavigationService_NavigationStateChanged(object? sender, EventArgs e)
         {
-            if (_disposed) return;
             RunOnUIThread(() =>
             {
                 CanGoBack = _navigationService.CanGoBack;
@@ -406,269 +408,66 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             });
         }
 
-
-        // Updates the IsModInfoAvailable property. DownloadQueueViewModel listens for PropertyChanged.
         private void ExtractorService_IsModInfoAvailableChanged(object? sender, EventArgs e)
         {
-            if (_disposed || _extractorService == null) return;
-            RunOnUIThread(() =>
-            {
-                bool newValue = _extractorService.IsModInfoAvailable;
-                // Directly set property - SetProperty handles change check and notification
-                IsModInfoAvailable = newValue;
-                Debug.WriteLine($"[BrowserVM] Handling ExtractorService_IsModInfoAvailableChanged. IsModInfoAvailable: {IsModInfoAvailable}");
-            });
+            if (_extractorService != null) IsModInfoAvailable = _extractorService.IsModInfoAvailable;
         }
 
         private async void NavigationService_PotentialWorkshopPageLoaded(object? sender, string url)
-        // --- FIX: Change Task back to void ---
         {
-            if (_disposed || _extractorService == null || _isAnalyzingContent)
-            {
-                Debug.WriteLine($"[BrowserVM] Skipping PotentialWorkshopPageLoaded handler: Disposed={_disposed}, ExtractorNull={_extractorService == null}, Analyzing={_isAnalyzingContent}, Url='{url}'");
-                return; // Avoid concurrent analysis or if disposed/no extractor
-            }
+            if (_disposed || _extractorService == null || _isAnalyzingContent) return;
+            if ((IsValidModUrl && IsModInfoAvailable) || IsCollectionUrl) return;
 
-            // Skip if already successfully analyzed for this navigation cycle
-            if ((IsValidModUrl && IsModInfoAvailable) || IsCollectionUrl)
-            {
-                Debug.WriteLine($"[BrowserVM] Page already successfully analyzed for {url}. Skipping redundant analysis.");
-                return;
-            }
-
-            Debug.WriteLine($"[BrowserVM] Handling PotentialWorkshopPageLoaded for URL: {url}. Starting content analysis.");
             _isAnalyzingContent = true;
+            StatusChanged?.Invoke(this, "Analyzing page content...");
 
-            // Reset state before analysis
-            // Use RunOnUIThread for UI updates like StatusChanged, direct property sets are usually fine if INPC handles marshalling
-            RunOnUIThread(() => StatusChanged?.Invoke(this, "Analyzing page content..."));
-            // Setting properties directly here is okay, PropertyChanged will fire.
-            IsValidModUrl = false;
-            IsCollectionUrl = false;
-            IsModInfoAvailable = false; // Reset this too
+            var collectionItems = await _extractorService.ExtractCollectionItemsAsync();
+            bool isCollection = collectionItems != null && collectionItems.Any();
 
-            try
+            if (isCollection)
             {
-                List<CollectionItemInfo>? collectionItems = null;
-                try
-                {
-                    if (_webView?.CoreWebView2 == null)
-                    {
-                        Debug.WriteLine($"[BrowserVM] PotentialWorkshopPageLoaded: CoreWebView2 is null, skipping collection extraction for {url}.");
-                        throw new InvalidOperationException("WebView2 Core is not available for script execution.");
-                    }
-                    // Await the collection check
-                    collectionItems = await _extractorService.ExtractCollectionItemsAsync();
-                    Debug.WriteLine($"[BrowserVM] Collection extraction for {url} resulted in {collectionItems?.Count ?? 0} items.");
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[BrowserVM] Error during ExtractCollectionItemsAsync for {url}: {ex.Message}");
-                    collectionItems = null; // Treat error as "not a collection"
-                                            // Log the exception
-                                            // _parentViewModel?.LogService.Error($"[BrowserVM] Failed to extract collection items from {url}: {ex}", ex);
-                }
-
-                bool isCollection = collectionItems != null && collectionItems.Any();
-
-                if (isCollection)
-                {
-                    // It's a collection - update state on UI thread
-                    RunOnUIThread(() =>
-                    {
-                        IsCollectionUrl = true;
-                        IsValidModUrl = false; // Explicitly set false
-                        IsModInfoAvailable = false; // Not applicable for collections
-                        StatusChanged?.Invoke(this, $"Collection detected ({collectionItems!.Count} items).");
-                        Debug.WriteLine($"[BrowserVM] Content analysis determined: IsCollectionUrl=True for {url}");
-                    });
-                }
-                else // Not a collection, treat as potential single mod
-                {
-                    Debug.WriteLine($"[BrowserVM] Content analysis determined: Not a collection for {url}. Attempting single mod info extraction.");
-
-                    if (_webView?.CoreWebView2 == null)
-                    {
-                        Debug.WriteLine($"[BrowserVM] PotentialWorkshopPageLoaded: CoreWebView2 is null, skipping single mod info extraction for {url}.");
-                        throw new InvalidOperationException("WebView2 Core is not available for script execution.");
-                    }
-
-                    ModInfoDto? modInfo = null;
-                    bool extractionSucceeded = false;
-                    try
-                    {
-                        // --- Await the single mod info extraction FIRST ---
-                        modInfo = await GetCurrentModInfoAsync();
-                        // If GetCurrentModInfoAsync completes without error, IsModInfoAvailable *should* be true
-                        // (assuming the extractor service correctly sets its internal state and raises the event).
-                        extractionSucceeded = modInfo != null && _extractorService.IsModInfoAvailable; // Check if info was actually available
-                        Debug.WriteLine($"[BrowserVM] Single mod info extraction completed for {url}. Mod Name: '{modInfo?.Name ?? "N/A"}'. IsModInfoAvailable: {extractionSucceeded}");
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"[BrowserVM] Error during GetCurrentModInfoAsync for {url}: {ex.Message}");
-                        extractionSucceeded = false; // Failed extraction means info not available
-                        // Log the exception
-                        // _parentViewModel?.LogService.Error($"[BrowserVM] Failed to extract single mod info from {url}: {ex}", ex);
-                        // The InvalidOperationException might happen here!
-                    }
-
-                    // --- Now update the state AFTER awaiting ---
-                    RunOnUIThread(() =>
-                    {
-                        IsCollectionUrl = false; // Explicitly set false
-                        IsValidModUrl = true; // Set this true as we've determined it's not a collection
-                        // IsModInfoAvailable should already be set by the event handler triggered from the awaited call.
-                        // We just reflect the success state.
-                        StatusChanged?.Invoke(this, extractionSucceeded ? "Single mod page detected." : "Single mod page detected, but info extraction failed.");
-                        Debug.WriteLine($"[BrowserVM] Final state after single mod check for {url}: IsValidModUrl=True, IsModInfoAvailable={IsModInfoAvailable}, IsCollectionUrl=False");
-                    });
-                }
-            }
-            catch (Exception ex) // Catch unexpected errors during the handler logic itself
-            {
-                Debug.WriteLine($"[BrowserVM] Unexpected error during PotentialWorkshopPageLoaded handler for {url}: {ex.Message}");
-                // Log the exception
-                // _parentViewModel?.LogService.Error($"[BrowserVM] Unexpected error analyzing {url}: {ex}", ex);
-                RunOnUIThread(() =>
-                {
-                    StatusChanged?.Invoke(this, $"Error analyzing page: {ex.Message}");
-                    IsValidModUrl = false; // Reset on error
-                    IsCollectionUrl = false;
-                    IsModInfoAvailable = false;
-                });
-            }
-            finally // Ensure analysis flag is reset
-            {
-                RunOnUIThread(() =>
-                {
-                    _isAnalyzingContent = false;
-                    Debug.WriteLine($"[BrowserVM] Content analysis finished for {url}. Analysis flag reset.");
-                    // Explicitly trigger CanExecuteChanged for AddModCommand in QueueViewModel if needed,
-                    // although observation of IsValidModUrl/IsModInfoAvailable/IsCollectionUrl should handle it.
-                    // (_parentViewModel.QueueViewModel.AddModCommand as DelegateCommand)?.RaiseCanExecuteChanged();
-                });
-            }
-        }
-
-
-
-
-
-        // --- Command Logic (Unchanged) ---
-
-        private void ExecuteNavigateToUrlCommand(string? urlString)
-        {
-            if (_disposed || string.IsNullOrWhiteSpace(urlString)) return;
-
-            string processedInput = urlString.Trim();
-            bool isUrl = Uri.TryCreate(processedInput, UriKind.Absolute, out var uriResult)
-                         && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps || uriResult.Scheme == Uri.UriSchemeFtp);
-
-            if (!isUrl && processedInput.Contains('.') && !processedInput.Contains(' ') && !processedInput.StartsWith("about:"))
-            {
-                string potentialUrl = "https://" + processedInput;
-                if (Uri.TryCreate(potentialUrl, UriKind.Absolute, out uriResult)
-                    && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps))
-                {
-                    processedInput = potentialUrl;
-                    isUrl = true;
-                    Debug.WriteLine($"[BrowserVM] Prepended https:// to likely domain: {processedInput}");
-                }
-            }
-
-
-            if (isUrl)
-            {
-                Debug.WriteLine($"[BrowserVM] Navigating directly to URL: {processedInput}");
-                _navigationService.Navigate(processedInput);
+                IsCollectionUrl = true;
+                IsValidModUrl = false;
+                IsModInfoAvailable = false;
+                StatusChanged?.Invoke(this, $"Collection detected ({collectionItems!.Count} items).");
             }
             else
             {
-                Debug.WriteLine($"[BrowserVM] Treating input as search term: {processedInput}");
-                PerformSteamWorkshopSearch(processedInput);
+                var modInfo = await _extractorService.ExtractFullModInfo();
+                if (modInfo != null)
+                {
+                    IsValidModUrl = true;
+                    IsCollectionUrl = false;
+                    IsModInfoAvailable = true;
+                    StatusChanged?.Invoke(this, "Mod details detected.");
+                }
             }
+            _isAnalyzingContent = false;
         }
 
-        private void ExecuteSearchCommand()
-        {
-            if (_disposed || string.IsNullOrWhiteSpace(SearchText)) return;
-            PerformSteamWorkshopSearch(SearchText.Trim());
-        }
-
-        private void PerformSteamWorkshopSearch(string searchTerm)
-        {
-            if (string.IsNullOrWhiteSpace(searchTerm)) return;
-
-            try
-            {
-                string encodedSearchText = WebUtility.UrlEncode(searchTerm);
-                string searchUrl = $"https://steamcommunity.com/workshop/browse/?appid=294100&searchtext={encodedSearchText}&childpublishedfileid=0&browsesort=textsearch§ion=";
-
-                Debug.WriteLine($"[BrowserVM] Performing search with URL: {searchUrl}");
-                _navigationService.Navigate(searchUrl);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[BrowserVM] Error constructing or executing search: {ex.Message}");
-                RunOnUIThread(() => StatusChanged?.Invoke(this, $"Error performing search: {ex.Message}"));
-            }
-        }
-
-
-        // --- Dispose Implementation (Adjusted) ---
         protected override void Dispose(bool disposing)
         {
-            if (_disposed) return;
-
-            if (disposing)
+            if (!_disposed)
             {
-                Debug.WriteLine("[BrowserVM] Disposing derived managed resources...");
-                // Unsubscribe from Navigation Service
-                if (_navigationService != null)
+                if (disposing)
                 {
-                    if (_navStatusHandler != null) _navigationService.StatusChanged -= _navStatusHandler;
-                    if (_navStateChangedHandler != null) _navigationService.NavigationStateChanged -= _navStateChangedHandler;
-                    if (_navSourceUrlChangedHandler != null) _navigationService.SourceUrlChanged -= _navSourceUrlChangedHandler;
-                    if (_navStartedHandler != null) _navigationService.NavigationStarted -= _navStartedHandler;
-                    if (_navEndedHandler != null) _navigationService.NavigationEnded -= _navEndedHandler;
-                    if (_potentialWorkshopPageLoadedHandler != null) _navigationService.PotentialWorkshopPageLoaded -= _potentialWorkshopPageLoadedHandler;
-                    Debug.WriteLine("[BrowserVM] Unsubscribed from NavigationService events.");
+                    _navigationService.SourceUrlChanged -= NavigationService_SourceUrlChanged;
+                    _navigationService.StatusChanged -= NavigationService_StatusChanged;
+                    _navigationService.NavigationStateChanged -= NavigationService_NavigationStateChanged;
+                    _navigationService.NavigationStarted -= NavigationService_NavigationStarted;
+                    _navigationService.NavigationEnded -= NavigationService_NavigationEnded;
+                    _navigationService.PotentialWorkshopPageLoaded -= NavigationService_PotentialWorkshopPageLoaded;
+                    _parentViewModel.PropertyChanged -= ParentViewModel_PropertyChanged;
+                    
+                    if (_extractorService != null)
+                    {
+                        _extractorService.IsModInfoAvailableChanged -= ExtractorService_IsModInfoAvailableChanged;
+                        (_extractorService as IDisposable)?.Dispose();
+                    }
                 }
-                // Unsubscribe from Extractor Service
-                if (_extractorService != null)
-                {
-                    // Note: The event name IsModInfoAvailableChanged is still used by the service itself
-                    if (_extractorModInfoAvailableHandler != null) _extractorService.IsModInfoAvailableChanged -= _extractorModInfoAvailableHandler;
-                    (_extractorService as IDisposable)?.Dispose();
-                    _extractorService = null;
-                    Debug.WriteLine("[BrowserVM] Unsubscribed from and disposed ModExtractorService.");
-                }
-                // Unsubscribe from Parent VM
-                if (_parentViewModel != null && _parentPropertyChangedHandler != null)
-                {
-                    _parentViewModel.PropertyChanged -= _parentPropertyChangedHandler;
-                    Debug.WriteLine("[BrowserVM] Unsubscribed from ParentViewModel PropertyChanged.");
-                }
-                // Clear handler references
-                _navStatusHandler = null;
-                _navStateChangedHandler = null;
-                _navSourceUrlChangedHandler = null;
-                _extractorModInfoAvailableHandler = null;
-                _parentPropertyChangedHandler = null;
-                _navStartedHandler = null;
-                _navEndedHandler = null;
-                _webView = null;
-                Debug.WriteLine("[BrowserVM] Dispose complete (derived managed resources).");
+                
+                base.Dispose(disposing);
             }
-            Debug.WriteLine($"[BrowserVM] Calling base.Dispose({disposing})...");
-            base.Dispose(disposing);
-            Debug.WriteLine($"[BrowserVM] Finished Dispose({disposing}). Base class disposed state: {_disposed}");
-        }
-        ~BrowserViewModel()
-        {
-            Debug.WriteLine("[BrowserVM] Finalizer called.");
-            Dispose(false);
         }
     }
 }

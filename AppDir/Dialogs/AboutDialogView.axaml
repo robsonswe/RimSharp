@@ -1,0 +1,94 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+        xmlns:local="clr-namespace:RimSharp.AppDir.Dialogs"
+        xmlns:i="https://github.com/projektanker/icons.avalonia"
+        x:Class="RimSharp.AppDir.Dialogs.AboutDialogView"
+        mc:Ignorable="d"
+        x:DataType="local:AboutDialogViewModel"
+        Title="{Binding Title}"
+        SizeToContent="Height"
+        Width="450"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+    
+    <dialogs:BaseDialog.MainContent>
+        <Border Classes="RimworldPanelBorder">
+            <StackPanel Margin="15,10" Spacing="15">
+                <!-- App Header -->
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="avares://RimSharp/icon.ico" Width="64" Height="64" Margin="0,0,20,0"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding AppName}" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                        <TextBlock Text="{Binding AppVersion}" FontSize="14" Foreground="{DynamicResource RimworldLightBrownBrush}" FontStyle="Italic"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <Separator Classes="RimworldSeparatorStyle"/>
+
+                <!-- Update Status Section -->
+                <Border Background="{DynamicResource RimworldDarkBeigeBrush}" 
+                        BorderBrush="{DynamicResource RimworldBrownBrush}" 
+                        BorderThickness="1" 
+                        CornerRadius="4" 
+                        Padding="12,10">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <i:Icon Grid.Column="0" Value="{Binding UpdateStatusIcon}" 
+                                   Foreground="{Binding StatusColor, Converter={StaticResource ResourceKeyToBrushConverter}}"
+                                   FontSize="18" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                        
+                        <TextBlock Grid.Column="1" Text="{Binding UpdateStatus}" 
+                                   Foreground="{Binding StatusColor, Converter={StaticResource ResourceKeyToBrushConverter}}"
+                                   FontSize="14" VerticalAlignment="Center"/>
+
+                        <Button Grid.Column="2" Content="Update" 
+                                Command="{Binding ReleaseUrl, Converter={StaticResource LinkToCommandConverter}}"
+                                Classes="RimworldSaveButtonStyle"
+                                IsVisible="{Binding IsNewVersionAvailable}"
+                                Padding="10,2" Height="26" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+
+                <!-- Info Grid -->
+                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Description:" FontWeight="Bold" Margin="0,0,10,8" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Description}" TextWrapping="Wrap" Margin="0,0,0,8" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Developer:" FontWeight="Bold" Margin="0,0,10,8" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Developer}" Margin="0,0,0,8" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="License:" FontWeight="Bold" Margin="0,0,10,8" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding License}" Margin="0,0,0,8" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="GitHub:" FontWeight="Bold" Margin="0,0,10,0" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                    <Button Grid.Row="3" Grid.Column="1" 
+                            Content="{Binding GitHubUrl}" 
+                            Command="{Binding GitHubUrl, Converter={StaticResource LinkToCommandConverter}}"
+                            Background="Transparent" 
+                            BorderThickness="0" 
+                            Padding="0"
+                            HorizontalAlignment="Left"
+                            Foreground="{DynamicResource RimworldDarkGreenBrush}"
+                            Cursor="Hand">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                <Setter Property="Foreground" Value="{DynamicResource RimworldDarkGreenHoverBrush}"/>
+                                <Setter Property="TextBlock.TextDecorations" Value="Underline"/>
+                            </Style>
+                        </Button.Styles>
+                    </Button>
+                </Grid>
+            </StackPanel>
+        </Border>
+    </dialogs:BaseDialog.MainContent>
+
+    <dialogs:BaseDialog.ButtonContent>
+        <Button Content="Close" 
+                Command="{Binding CloseCommand}"
+                Classes="RimworldButtonStyle" 
+                HorizontalAlignment="Right"
+                MinWidth="100" Height="32"/>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

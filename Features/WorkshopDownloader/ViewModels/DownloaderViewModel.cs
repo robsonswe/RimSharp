@@ -130,9 +130,9 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             RunOnUIThread(() => IsSteamCmdReady = isSetup);
         }
 
-        public void SetWebView(WebView2 webView)
+        public void SetBrowserControl(RimSharp.Features.WorkshopDownloader.Components.Browser.IBrowserControl browserControl)
         {
-            BrowserViewModel.SetWebView(webView);
+            BrowserViewModel.SetBrowserControl(browserControl);
             // No need to refresh BrowserViewModel commands; handled by observation
         }
 

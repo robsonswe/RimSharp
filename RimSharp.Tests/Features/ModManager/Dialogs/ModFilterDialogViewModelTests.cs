@@ -29,7 +29,7 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
 
             // Assert
             vm.DialogResult.Should().Be(ModFilterDialogResult.Apply);
-            vm.CurrentCriteria.SearchText.Should().Be("test");
+            vm.CurrentCriteria!.SearchText.Should().Be("test");
             vm.CurrentCriteria.IsFavoriteFilter.Should().BeTrue();
             vm.CurrentCriteria.SelectedModTypes.Should().HaveCount(1);
         }
@@ -49,7 +49,7 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
             vm.DialogResult.Should().Be(ModFilterDialogResult.Clear);
             vm.SearchText.Should().BeEmpty();
             vm.IsFavoriteFilter.Should().BeNull();
-            vm.CurrentCriteria.SearchText.Should().BeEmpty();
+            vm.CurrentCriteria!.SearchText.Should().BeEmpty();
         }
     }
 }

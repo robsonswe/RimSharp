@@ -1,42 +1,51 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
-using System.Windows.Data;
+using Avalonia.Data.Converters;
 
 namespace RimSharp.Core.Converters.Logic
 {
-    public class InequalityConverter : IMultiValueConverter
+    public class InequalityConverter : IMultiValueConverter, IValueConverter
     {
-        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
         {
-            // Expecting two values: [0] = SelectedTab, [1] = CommandParameter
-            if (values == null || values.Length < 2)
-            {
-                return true; // Not enough info, assume not equal (enabled)
-            }
-
+            if (values.Count < 2) return true;
+            
             var val1 = values[0];
             var val2 = values[1];
 
-            // If one is null and the other isn't, they are not equal
-            if ((val1 == null) != (val2 == null)) // Using XOR for concise null check
+            if (val1 == null && val2 == null) return false;
+            if (val1 == null || val2 == null) return true;
+
+            if (val1.GetType() == val2.GetType())
             {
-                return true; // Not equal -> Enabled
+                return !object.Equals(val1, val2);
             }
 
-            // If both are null, they are equal
-            if (val1 == null && val2 == null)
-            {
-                return false; // Equal -> Disabled
-            }
-
-            // Compare as strings for robustness, matching CommandParameter usage
-            return val1.ToString() != val2.ToString(); // True if NOT equal (Enabled)
+            // Different types, compare as strings
+            return val1.ToString() != val2.ToString();
         }
 
-        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            // Not needed for one-way binding to IsEnabled
-            throw new NotImplementedException();
+            if (value == null && parameter == null) return false;
+            if (value == null || parameter == null) return true;
+
+            return value.ToString() != parameter.ToString();
+        }
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (value is bool boolValue && !boolValue)
+            {
+                return parameter;
+            }
+            return null;
+        }
+
+        public object?[] ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture)
+        {
+            return new object?[] { null, null };
         }
     }
 }

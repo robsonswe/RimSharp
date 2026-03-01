@@ -47,7 +47,7 @@ namespace RimSharp.Tests.Features.GitModManager.ViewModels
 
             // Act
             var vm = CreateViewModel();
-            await WaitUntil(() => vm.GitMods != null);
+            await WaitUntil(() => vm.GitMods.Any());
             
             // Assert
             vm.GitMods.Should().HaveCount(1);

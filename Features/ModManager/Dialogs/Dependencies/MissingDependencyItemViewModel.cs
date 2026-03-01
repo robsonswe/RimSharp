@@ -12,7 +12,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Dependencies
     {
         public string DisplayName { get; }
         public string PackageId { get; }
-        public string SteamId { get; } // Store the extracted ID
+        public string? SteamId { get; } // Store the extracted ID
         public string SteamWorkshopUrl { get; }
         public List<string> RequiredByDisplay { get; } // Simple list for display
 
@@ -38,18 +38,18 @@ namespace RimSharp.Features.ModManager.Dialogs.Dependencies
 
         // Constructor takes the raw data from ModListManager
         public MissingDependencyItemViewModel(
-            string displayName,
+            string? displayName,
             string packageId,
-            string steamWorkshopUrl,
-            List<string> requiredBy) // Pass simple list of names
+            string? steamWorkshopUrl,
+            List<string>? requiredBy) // Pass simple list of names
         {
             DisplayName = displayName ?? packageId ?? "Unknown Dependency";
-            PackageId = packageId;
-            SteamWorkshopUrl = steamWorkshopUrl;
+            PackageId = packageId ?? string.Empty;
+            SteamWorkshopUrl = steamWorkshopUrl ?? string.Empty;
             RequiredByDisplay = requiredBy ?? new List<string>();
 
             // Extract Steam ID using the logic from ModDependency (or re-implement safely)
-            SteamId = ExtractSteamIdFromUrl(steamWorkshopUrl);
+            SteamId = ExtractSteamIdFromUrl(SteamWorkshopUrl);
 
             // Default selection state (only if selectable)
             _isSelected = IsSelectable;
@@ -60,7 +60,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Dependencies
             new System.Text.RegularExpressions.Regex(@"id=(\d+)",
             System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
-        private static string ExtractSteamIdFromUrl(string url)
+        private static string? ExtractSteamIdFromUrl(string? url)
         {
             if (string.IsNullOrWhiteSpace(url)) return null;
             var match = SteamIdRegex.Match(url);

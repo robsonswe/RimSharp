@@ -1,235 +1,121 @@
 // Core/Extensions/ThreadHelper.cs
 #nullable enable
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Threading; // Required for Dispatcher
+using Avalonia.Threading;
 
 namespace RimSharp.Core.Extensions
 {
-    /// <summary>
-    /// Helper class for thread-related operations and UI thread synchronization.
-    /// </summary>
     public static class ThreadHelper
     {
         private static Dispatcher? _uiDispatcher;
+        private static readonly bool _isRunningInTest;
 
-        /// <summary>
-        /// Initializes the ThreadHelper with the UI thread's dispatcher.
-        /// Should be called once on application startup (e.g., in App.xaml.cs OnStartup).
-        /// </summary>
+        static ThreadHelper()
+        {
+            // Simple detection: entry assembly is null or name contains "test" or "nunit" or "xunit"
+            var entryAssembly = System.Reflection.Assembly.GetEntryAssembly();
+            var name = entryAssembly?.GetName().Name?.ToLowerInvariant() ?? "";
+            
+            _isRunningInTest = entryAssembly == null || 
+                               name.Contains("test") || 
+                               name.Contains("xunit") || 
+                               name.Contains("nunit") ||
+                               AppDomain.CurrentDomain.GetAssemblies().Any(a => a.FullName?.Contains("xunit.core", StringComparison.OrdinalIgnoreCase) == true);
+        }
+
         public static void Initialize()
         {
-            // Ensure this runs on the UI thread during initialization
-            if (Application.Current != null)
+            _uiDispatcher = Dispatcher.UIThread;
+        }
+
+        public static bool IsTestMode => _isRunningInTest;
+
+        public static Dispatcher? UiDispatcher => _uiDispatcher;
+
+        public static bool IsUiThread
+        {
+            get
             {
-                 _uiDispatcher = Application.Current.Dispatcher;
-            }
-            else
-            {
-                 // Fallback or log error if Application.Current is null during init
-                 // This might happen in unit tests or if called too early.
-                 System.Diagnostics.Debug.WriteLine("[ThreadHelper] Warning: Application.Current was null during Initialize. UI thread operations might fail.");
-                 // Attempt to get it from the current thread if it's STA
-                 if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA)
-                 {
-                     _uiDispatcher = Dispatcher.CurrentDispatcher;
-                 }
+                if (_isRunningInTest) return true;
+                if (_uiDispatcher == null) return true; // Default to safe synchronous execution if app not yet initialized
+                return _uiDispatcher.CheckAccess();
             }
         }
 
-
-        /// <summary>
-        /// Gets the Dispatcher associated with the UI thread.
-        /// </summary>
-        public static Dispatcher? UiDispatcher => _uiDispatcher;
-
-
-        /// <summary>
-        /// Determines if the current thread is the UI thread by comparing dispatchers.
-        /// </summary>
-        public static bool IsUiThread => _uiDispatcher == null || _uiDispatcher.CheckAccess();
-
-
-        /// <summary>
-        /// Ensures that the specified action executes on the UI thread.
-        /// If already on the UI thread, executes immediately; otherwise marshals synchronously to the UI thread.
-        /// </summary>
-        /// <param name="action">The action to execute on the UI thread.</param>
         public static void EnsureUiThread(Action action)
         {
             if (action == null) return;
+            if (IsUiThread) action();
+            else _uiDispatcher?.Post(action);
+        }
 
-            if (IsUiThread)
+        public static void BeginInvokeOnUiThread(Action action) => BeginInvokeOnUiThread(action, DispatcherPriority.Normal);
+
+        public static void BeginInvokeOnUiThread(Action action, DispatcherPriority priority)
+        {
+            if (action == null) return;
+            if (IsTestMode) 
             {
                 action();
+                return;
             }
-            else
-            {
-                // Use Invoke for synchronous execution
-                _uiDispatcher?.Invoke(action);
-            }
+            _uiDispatcher?.Post(action, priority);
         }
 
+        public static Task RunOnUIThreadAsync(Action action) => RunOnUIThreadAsync(action, DispatcherPriority.Normal);
 
-        /// <summary>
-        /// Asynchronously executes an action on the UI thread using BeginInvoke (fire and forget).
-        /// </summary>
-        /// <param name="action">The action to execute on the UI thread.</param>
-        /// <param name="priority">The priority at which to execute the action.</param>
-        public static void BeginInvokeOnUiThread(Action action, DispatcherPriority priority = DispatcherPriority.Normal)
+        public static async Task RunOnUIThreadAsync(Action action, DispatcherPriority priority)
         {
             if (action == null) return;
-
             if (IsUiThread)
             {
-                action(); // Execute directly if already on UI thread
+                try { action(); }
+                catch { throw; }
+                return;
             }
-            else
-            {
-                // Use BeginInvoke for asynchronous execution (fire and forget)
-                _uiDispatcher?.BeginInvoke(priority, action);
-            }
+            if (_uiDispatcher != null) await _uiDispatcher.InvokeAsync(action, priority);
         }
 
+        public static Task RunOnUIThreadAsync(Func<Task> asyncFunc) => RunOnUIThreadAsync(asyncFunc, DispatcherPriority.Normal);
 
-        /// <summary>
-        /// Asynchronously executes an action on the UI thread and returns a Task that completes when the action finishes.
-        /// </summary>
-        /// <param name="action">The action to execute on the UI thread.</param>
-        /// <param name="priority">The priority at which to execute the action.</param>
-        /// <returns>A Task representing the asynchronous operation on the UI thread.</returns>
-        public static Task RunOnUIThreadAsync(Action action, DispatcherPriority priority = DispatcherPriority.Normal)
+        public static async Task RunOnUIThreadAsync(Func<Task> asyncFunc, DispatcherPriority priority)
         {
-            if (action == null) return Task.CompletedTask;
-
+            if (asyncFunc == null) return;
             if (IsUiThread)
             {
-                // Already on the UI thread, execute directly but wrap in a completed task
-                // if the caller expects to await something (though execution is immediate).
-                try
-                {
-                     action();
-                     return Task.CompletedTask;
-                }
-                catch (Exception ex)
-                {
-                     return Task.FromException(ex); // Propagate exception
-                }
+                try { await asyncFunc(); }
+                catch { throw; }
+                return;
             }
-            else
-            {
-                // Use InvokeAsync for awaitable asynchronous execution on the UI thread
-                return _uiDispatcher?.InvokeAsync(action, priority).Task ?? Task.CompletedTask;
-            }
+            if (_uiDispatcher != null) await _uiDispatcher.InvokeAsync(asyncFunc, priority);
         }
 
+        public static Task<T> RunOnUIThreadAsync<T>(Func<T> func) => RunOnUIThreadAsync(func, DispatcherPriority.Normal);
 
-        /// <summary>
-        /// Asynchronously executes a function on the UI thread and returns a Task<T> that completes with the function's result.
-        /// </summary>
-        /// <typeparam name="T">The return type of the function.</typeparam>
-        /// <param name="func">The function to execute on the UI thread.</param>
-        /// <param name="priority">The priority at which to execute the function.</param>
-        /// <returns>A Task<T> representing the asynchronous operation on the UI thread.</returns>
-        public static Task<T> RunOnUIThreadAsync<T>(Func<T> func, DispatcherPriority priority = DispatcherPriority.Normal)
+        public static async Task<T> RunOnUIThreadAsync<T>(Func<T> func, DispatcherPriority priority)
         {
-             if (func == null) return Task.FromResult<T>(default!);
-
+             if (func == null) return default!;
              if (IsUiThread)
              {
-                 // Already on the UI thread, execute directly and wrap result/exception
-                 try
-                 {
-                      return Task.FromResult(func());
-                 }
-                 catch (Exception ex)
-                 {
-                     return Task.FromException<T>(ex);
-                 }
+                 try { return func(); }
+                 catch { throw; }
              }
-             else
-             {
-                 // Use InvokeAsync for awaitable asynchronous execution on the UI thread
-                 return _uiDispatcher?.InvokeAsync(func, priority).Task ?? Task.FromResult<T>(default!);
-             }
+             if (_uiDispatcher != null) return await _uiDispatcher.InvokeAsync(func, priority);
+             return default!;
         }
 
-
-        /// <summary>
-        /// Executes a potentially long-running action on a background thread pool thread.
-        /// Does nothing if already on a background thread.
-        /// </summary>
-        /// <param name="action">The action to execute.</param>
-        public static void RunOnBackgroundThread(Action action)
+        public static Task DelayAsync(int millisecondsDelay, CancellationToken cancellationToken = default)
         {
-            if (action == null) return;
-
-            if (IsUiThread || !Thread.CurrentThread.IsThreadPoolThread) // Run if on UI or dedicated non-pool thread
-            {
-                // Use Task.Run to queue the action on the thread pool
-                Task.Run(action);
-            }
-            else
-            {
-                 // Already on a background thread pool thread, consider executing directly
-                 // Depending on desired behavior (e.g., prevent blocking current background task)
-                 // For simplicity, we can still Task.Run it to ensure it doesn't block
-                 // Task.Run(action);
-                 // Or execute directly if acceptable:
-                 action();
-            }
+            if (_isRunningInTest) return Task.CompletedTask;
+            return Task.Delay(millisecondsDelay, cancellationToken);
         }
 
-
-        /// <summary>
-        /// Asynchronously executes a potentially long-running function on a background thread pool thread
-        /// and returns its result.
-        /// </summary>
-        /// <typeparam name="T">The return type of the function.</typeparam>
-        /// <param name="func">The function to execute.</param>
-        /// <returns>A task representing the asynchronous operation, yielding the function's result.</returns>
-        public static Task<T> RunOnBackgroundThreadAsync<T>(Func<T> func)
-        {
-            if (func == null)
-                return Task.FromResult<T>(default!);
-
-             // Always use Task.Run to ensure execution on the thread pool
-             // and return an awaitable Task<T>.
-            return Task.Run(func);
-        }
-
-        /// <summary>
-        /// Asynchronously executes a potentially long-running async function on a background thread pool thread.
-        /// Useful for calling async methods that should not run on the UI thread.
-        /// </summary>
-        /// <param name="asyncFunc">The async function to execute.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        public static Task RunOnBackgroundThreadAsync(Func<Task> asyncFunc)
-        {
-             if (asyncFunc == null)
-                 return Task.CompletedTask;
-
-             // Task.Run can directly execute Func<Task>
-             return Task.Run(asyncFunc);
-        }
-
-
-        /// <summary>
-        /// Asynchronously executes a potentially long-running async function on a background thread pool thread
-        /// and returns its result.
-        /// </summary>
-        /// <typeparam name="T">The return type of the async function.</typeparam>
-        /// <param name="asyncFunc">The async function to execute.</param>
-        /// <returns>A task representing the asynchronous operation, yielding the function's result.</returns>
-        public static Task<T> RunOnBackgroundThreadAsync<T>(Func<Task<T>> asyncFunc)
-        {
-             if (asyncFunc == null)
-                 return Task.FromResult<T>(default!);
-
-             // Task.Run can directly execute Func<Task<T>>
-             return Task.Run(asyncFunc);
-        }
+        public static void RunOnBackgroundThread(Action action) { if (action != null) Task.Run(action); }
+        public static Task<T> RunOnBackgroundThreadAsync<T>(Func<T> func) => func == null ? Task.FromResult<T>(default!) : Task.Run(func);
+        public static Task RunOnBackgroundThreadAsync(Func<Task> asyncFunc) => asyncFunc == null ? Task.CompletedTask : Task.Run(asyncFunc);
+        public static Task<T> RunOnBackgroundThreadAsync<T>(Func<Task<T>> asyncFunc) => asyncFunc == null ? Task.FromResult<T>(default!) : Task.Run(asyncFunc);
     }
 }

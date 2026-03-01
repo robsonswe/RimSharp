@@ -1,0 +1,204 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+        xmlns:vm="clr-namespace:RimSharp.Features.ModManager.Dialogs.Strip"
+        xmlns:helpers="clr-namespace:RimSharp.Core.Helpers"
+        xmlns:i="https://github.com/projektanker/icons.avalonia"
+        xmlns:interactivity="clr-namespace:Avalonia.Xaml.Interactivity;assembly=Avalonia.Xaml.Interactivity"
+        xmlns:ia="clr-namespace:Avalonia.Xaml.Interactions.Core;assembly=Avalonia.Xaml.Interactions"
+        x:Class="RimSharp.Features.ModManager.Dialogs.Strip.StripModsDialogView"
+        x:DataType="vm:StripDialogViewModel"
+        mc:Ignorable="d"
+        Title="{Binding Title}"
+        Width="950" Height="650">
+
+    <dialogs:BaseDialog.Resources>
+        <helpers:BindingProxy x:Key="Proxy" Data="{Binding}" />
+    </dialogs:BaseDialog.Resources>
+
+    <dialogs:BaseDialog.MainContent>
+        <Grid RowDefinitions="Auto, *, Auto" Margin="10">
+            
+            <!-- 1. Top Info Banner -->
+            <Border Grid.Row="0" Classes="RimworldPanelBorder" Margin="0,0,0,12">
+                <Grid ColumnDefinitions="Auto, *">
+                    <i:Icon Grid.Column="0" Value="fa-lightbulb" FontSize="32" Margin="5,0,15,0" VerticalAlignment="Center" Foreground="{DynamicResource RimworldHighlightBrush}"/>
+                    <TextBlock Grid.Column="1" TextWrapping="Wrap" VerticalAlignment="Center" 
+                               Foreground="{DynamicResource RimworldDarkBrownBrush}" LineHeight="20">
+                        <Run FontWeight="SemiBold">Choose which mods to strip to reduce your folder size.</Run>&#x0a;• Folders not needed for your current game version will be removed.&#x0a;• Unnecessary developer files (source code, .git, .vs, etc.) will be cleaned up.
+                    </TextBlock>
+                </Grid>
+            </Border>
+
+            <!-- 2. Main Tree List -->
+            <!-- Wrapped in a manual border styled to match RimWorld panels -->
+            <Border Grid.Row="1" Background="{DynamicResource RimworldBeigeBrush}" 
+                    BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="1" 
+                    CornerRadius="3" ClipToBounds="True">
+                
+                <TreeView ItemsSource="{Binding StrippableMods}" 
+                          Background="Transparent" 
+                          BorderThickness="0"
+                          Padding="5">
+                    
+                    <TreeView.Styles>
+                        <!-- Give tree items a little breathing room -->
+                        <Style Selector="TreeViewItem">
+                            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                            <Setter Property="MinHeight" Value="32"/>
+                            <Setter Property="Margin" Value="0,1"/>
+                        </Style>
+                        <!-- Force expander arrow to be black -->
+                        <Style Selector="TreeViewItem /template/ ToggleButton#PART_ExpandCollapseChevron">
+                            <Style.Resources>
+                                <SolidColorBrush x:Key="TreeViewItemForeground" Color="Black" />
+                            </Style.Resources>
+                        </Style>
+                        <!-- Remove background/hover effects for the toggle button -->
+                        <Style Selector="TreeViewItem Button">
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="BorderThickness" Value="0" />
+                        </Style>
+                        <Style Selector="TreeViewItem Button:pointerover /template/ Border#ButtonBackground">
+                            <Setter Property="Background" Value="Transparent" />
+                        </Style>
+                        <Style Selector="TreeViewItem Button:pressed /template/ Border#ButtonBackground">
+                            <Setter Property="Background" Value="Transparent" />
+                        </Style>
+                        <!-- Remove selection and hover highlights -->
+                        <Style Selector="TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+                            <Setter Property="Background" Value="Transparent" />
+                        </Style>
+                        <Style Selector="TreeViewItem:pointerover /template/ Border#PART_LayoutRoot">
+                            <Setter Property="Background" Value="Transparent" />
+                        </Style>
+                        <Style Selector="TreeViewItem:selected:pointerover /template/ Border#PART_LayoutRoot">
+                            <Setter Property="Background" Value="Transparent" />
+                        </Style>
+                    </TreeView.Styles>
+                    
+                    <TreeView.DataTemplates>
+                        <!-- Top Level: Mod Item -->
+                        <TreeDataTemplate DataType="vm:StrippableModViewModel" ItemsSource="{Binding Children}">
+                            <Grid ColumnDefinitions="Auto, *" Margin="0,4,8,4" Background="Transparent">
+                                <Grid.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Open in Explorer"
+                                                  Command="{Binding Data.OpenInExplorerCommand, Source={StaticResource Proxy}}"
+                                                  CommandParameter="{Binding Mod.Path}">
+                                            <MenuItem.Icon><i:Icon Value="fa-folder-open" FontSize="14"/></MenuItem.Icon>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Grid.ContextMenu>
+                                
+                                <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" IsThreeState="True" 
+                                          VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                
+                                <Button Grid.Column="1" Command="{Binding ToggleExpandCommand}" 
+                                        Background="Transparent" BorderThickness="0" Padding="0"
+                                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                        VerticalAlignment="Stretch" VerticalContentAlignment="Center">
+                                    <Grid ColumnDefinitions="*, Auto" Background="Transparent">
+                                        <TextBlock Grid.Column="0" Text="{Binding Mod.Name}" 
+                                                   FontWeight="Bold" FontSize="14" 
+                                                   Foreground="{DynamicResource RimworldDarkBrownBrush}" 
+                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" 
+                                                   ToolTip.Tip="{Binding Mod.Path}"/>
+                                                   
+                                        <!-- Custom Status for Selected/Total Size -->
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center" Margin="8,0,0,0">
+                                            <TextBlock Text="{Binding SelectedSize, Converter={StaticResource FileSizeConverter}}" 
+                                                       FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkGreenBrush}" 
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock Text="/" Foreground="{DynamicResource RimworldBlackBrush}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding TotalStrippableSize, Converter={StaticResource FileSizeConverter}}" 
+                                                       Foreground="{DynamicResource RimworldBrownBrush}" 
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Button>
+                            </Grid>
+                        </TreeDataTemplate>
+
+                        <!-- Sub Level: File / Folder Item -->
+                        <DataTemplate DataType="vm:StrippableItemViewModel">
+                            <Grid ColumnDefinitions="Auto, Auto, *, Auto" Margin="0,4,8,4" Background="Transparent">
+                                <Grid.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Open in Explorer"
+                                                  Command="{Binding Data.OpenInExplorerCommand, Source={StaticResource Proxy}}"
+                                                  CommandParameter="{Binding FullPath}">
+                                            <MenuItem.Icon><i:Icon Value="fa-folder-open" FontSize="14"/></MenuItem.Icon>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Grid.ContextMenu>
+
+                                <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" 
+                                          VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                          
+                                <!-- Pretty Type Badge -->
+                                <Border Grid.Column="1" Background="{DynamicResource RimworldDarkBeigeBrush}" 
+                                        BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="1"
+                                        CornerRadius="3" Padding="6,2" Margin="0,0,12,0" 
+                                        VerticalAlignment="Center" MinWidth="55">
+                                    <TextBlock Text="{Binding ItemType}" FontSize="10" FontWeight="SemiBold" 
+                                               Foreground="{DynamicResource RimworldDarkBrownBrush}" 
+                                               HorizontalAlignment="Center"/>
+                                </Border>
+                                
+                                <!-- File Name and Relative Path -->
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" FontWeight="Medium" 
+                                               Foreground="{DynamicResource RimworldBrownBrush}" 
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding RelativePath}" FontSize="11" 
+                                               Foreground="{DynamicResource RimworldLightBrownBrush}" 
+                                               TextTrimming="CharacterEllipsis" 
+                                               ToolTip.Tip="{Binding FullPath}"/>
+                                </StackPanel>
+
+                                <!-- File Size -->
+                                <TextBlock Grid.Column="3" Text="{Binding Size, Converter={StaticResource FileSizeConverter}}" 
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource RimworldDarkBrownBrush}" 
+                                           VerticalAlignment="Center" Margin="15,0,0,0"/>
+                            </Grid>
+                        </DataTemplate>
+                    </TreeView.DataTemplates>
+                </TreeView>
+            </Border>
+
+            <!-- 3. Bottom Action Bar -->
+            <Border Grid.Row="2" Classes="RimworldSubtlePanelBorder" Margin="0,12,0,0">
+                <Grid ColumnDefinitions="Auto, *, Auto">
+                    
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" Margin="4,0,0,0">
+                        <Button Content="Select All" Command="{Binding SelectAllCommand}" Classes="RimworldButtonStyle" Padding="12,6"/>
+                        <Button Content="Select None" Command="{Binding SelectNoneCommand}" Classes="RimworldButtonStyle" Padding="12,6"/>
+                    </StackPanel>
+                    
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,8,0">
+                        <TextBlock Text="Total space to recover:" 
+                                   Foreground="{DynamicResource RimworldDarkBrownBrush}" 
+                                   VerticalAlignment="Center" FontWeight="SemiBold" FontSize="14"/>
+                        <TextBlock Text="{Binding TotalSelectedSize, Converter={StaticResource FileSizeConverter}}" 
+                                   FontSize="16" FontWeight="Bold" 
+                                   Foreground="{DynamicResource RimworldDarkGreenBrush}" 
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                    
+                </Grid>
+            </Border>
+            
+        </Grid>
+    </dialogs:BaseDialog.MainContent>
+    
+    <dialogs:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="10">
+            <Button Content="Strip Selected" Command="{Binding StripCommand}" Classes="RimworldRunButtonStyle" MinWidth="130" Padding="10,6"/>
+            <Button Content="Cancel" Command="{Binding CancelCommand}" Classes="RimworldButtonStyle" MinWidth="90" Padding="10,6"/>
+        </StackPanel>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

@@ -23,11 +23,14 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
         public int MaxTextureCount { get => _maxTextureCount; set => SetProperty(ref _maxTextureCount, value); }
         private int _maxTextureCount;
         
-        // --- NEW: Atlas Count Properties ---
         public int InAtlasCount { get => _inAtlasCount; set => SetProperty(ref _inAtlasCount, value); }
         private int _inAtlasCount;
         public int MaxInAtlasCount { get => _maxInAtlasCount; set => SetProperty(ref _maxInAtlasCount, value); }
         private int _maxInAtlasCount;
+
+        // --- NEW: Holds the debug trace ---
+        public string Logs { get => _logs; set => SetProperty(ref _logs, value); }
+        private string _logs = string.Empty;
 
         public bool HasConditionalContent => EstimatedVramCompressed != MaxEstimatedVramCompressed;
         public List<ConditionalDependency> ConditionalDependencies { get; set; } = new();

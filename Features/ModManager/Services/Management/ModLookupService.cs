@@ -22,8 +22,35 @@ namespace RimSharp.Features.ModManager.Services.Management
             }
         }
 
-        public bool TryGetMod(string packageId, out ModItem mod)
+        public void Remove(ModItem mod)
         {
+            if (mod == null || string.IsNullOrEmpty(mod.PackageId)) return;
+            string key = mod.PackageId.ToLowerInvariant();
+            
+            // Only remove if this specific instance is the one we have indexed
+            if (_modLookup.TryGetValue(key, out var existing) && existing == mod)
+            {
+                _modLookup.Remove(key);
+            }
+        }
+
+        public void Register(ModItem mod)
+        {
+            if (mod == null || string.IsNullOrEmpty(mod.PackageId)) return;
+            string key = mod.PackageId.ToLowerInvariant();
+            if (!_modLookup.ContainsKey(key))
+            {
+                _modLookup[key] = mod;
+            }
+        }
+
+        public bool TryGetMod(string? packageId, out ModItem? mod)
+        {
+            if (string.IsNullOrEmpty(packageId))
+            {
+                mod = null;
+                return false;
+            }
             return _modLookup.TryGetValue(packageId.ToLowerInvariant(), out mod);
         }
 

@@ -21,7 +21,7 @@ namespace RimSharp.Shared.Services.Implementations
 
         private readonly IPathService _pathService;
         private readonly ILoggerService _logger;
-        private Dictionary<string, ModReplacementInfo> _replacementsCache = null;
+        private Dictionary<string, ModReplacementInfo>? _replacementsCache;
         private bool _isInitialized = false;
         private readonly object _lock = new object();
 
@@ -36,14 +36,14 @@ namespace RimSharp.Shared.Services.Implementations
         public Dictionary<string, ModReplacementInfo> GetAllReplacements()
         {
             // Double-check locking for thread safety
-            if (_isInitialized)
+            if (_isInitialized && _replacementsCache != null)
             {
                 return _replacementsCache;
             }
 
             lock (_lock)
             {
-                if (_isInitialized) // Check again inside lock
+                if (_isInitialized && _replacementsCache != null) // Check again inside lock
                 {
                     return _replacementsCache;
                 }
@@ -56,7 +56,7 @@ namespace RimSharp.Shared.Services.Implementations
             }
         }
 
-        public ModReplacementInfo GetReplacementBySteamId(string steamId)
+        public ModReplacementInfo? GetReplacementBySteamId(string steamId)
         {
             if (string.IsNullOrWhiteSpace(steamId)) return null;
 
@@ -68,7 +68,7 @@ namespace RimSharp.Shared.Services.Implementations
         }
 
         // --- MODIFIED METHOD ---
-        public ModReplacementInfo GetReplacementByPackageId(string packageId)
+        public ModReplacementInfo? GetReplacementByPackageId(string packageId)
         {
             if (string.IsNullOrWhiteSpace(packageId)) return null;
 
@@ -152,9 +152,11 @@ namespace RimSharp.Shared.Services.Implementations
                             _logger.LogWarning($"Skipping null entry in '{jsonFilePath}' for key '{kvp.Key}'.", nameof(ModReplacementService));
                             continue;
                         }
+                        
+                        var safeInfo = info!;
 
                         // Use the original mod's SteamId as the primary key for the dictionary
-                        string key = info.SteamId?.Trim().ToLowerInvariant();
+                        string key = info.SteamId?.Trim().ToLowerInvariant()!;
                         if (string.IsNullOrEmpty(key))
                         {
                             // This is a rule for a non-steam mod, so it can't be a primary key in our SteamId-keyed dictionary.
@@ -168,8 +170,8 @@ namespace RimSharp.Shared.Services.Implementations
                             _logger.LogWarning($"Duplicate key '{key}' detected in '{jsonFilePath}'. Overwriting previous entry.", nameof(ModReplacementService));
                         }
 
-                        info.ModId = info.ModId?.Trim().ToLowerInvariant();
-                        info.ReplacementModId = info.ReplacementModId?.Trim().ToLowerInvariant();
+                        info.ModId = info.ModId?.Trim().ToLowerInvariant() ?? string.Empty;
+                        info.ReplacementModId = info.ReplacementModId?.Trim().ToLowerInvariant() ?? string.Empty;
                         info.Source = ReplacementSource.Database;
 
                         targetDictionary[key] = info; // Add or overwrite
@@ -237,7 +239,7 @@ namespace RimSharp.Shared.Services.Implementations
                     try
                     {
                         XDocument doc = XDocument.Load(filePath);
-                        XElement root = doc.Root;
+                        XElement? root = doc.Root;
 
                         if (root == null || root.Name != "ModReplacement")
                         {
@@ -247,20 +249,20 @@ namespace RimSharp.Shared.Services.Implementations
 
                         var info = new ModReplacementInfo
                         {
-                            Author = root.Element("Author")?.Value?.Trim(),
-                            ModId = root.Element("ModId")?.Value?.Trim().ToLowerInvariant(), // Normalize
-                            ModName = root.Element("ModName")?.Value?.Trim(),
-                            SteamId = root.Element("SteamId")?.Value?.Trim(),
-                            Versions = root.Element("Versions")?.Value?.Trim(),
-                            ReplacementAuthor = root.Element("ReplacementAuthor")?.Value?.Trim(),
-                            ReplacementModId = root.Element("ReplacementModId")?.Value?.Trim().ToLowerInvariant(), // Normalize
-                            ReplacementName = root.Element("ReplacementName")?.Value?.Trim(),
-                            ReplacementSteamId = root.Element("ReplacementSteamId")?.Value?.Trim(),
-                            ReplacementVersions = root.Element("ReplacementVersions")?.Value?.Trim(),
+                            Author = root.Element("Author")?.Value?.Trim() ?? string.Empty,
+                            ModId = root.Element("ModId")?.Value?.Trim().ToLowerInvariant() ?? string.Empty, // Normalize
+                            ModName = root.Element("ModName")?.Value?.Trim() ?? string.Empty,
+                            SteamId = root.Element("SteamId")?.Value?.Trim() ?? string.Empty,
+                            Versions = root.Element("Versions")?.Value?.Trim() ?? string.Empty,
+                            ReplacementAuthor = root.Element("ReplacementAuthor")?.Value?.Trim() ?? string.Empty,
+                            ReplacementModId = root.Element("ReplacementModId")?.Value?.Trim().ToLowerInvariant() ?? string.Empty, // Normalize
+                            ReplacementName = root.Element("ReplacementName")?.Value?.Trim() ?? string.Empty,
+                            ReplacementSteamId = root.Element("ReplacementSteamId")?.Value?.Trim() ?? string.Empty,
+                            ReplacementVersions = root.Element("ReplacementVersions")?.Value?.Trim() ?? string.Empty,
                             Source = ReplacementSource.UseThisInstead // Set source
                         };
 
-                        string key = info.SteamId?.Trim().ToLowerInvariant();
+                        string key = info.SteamId?.Trim().ToLowerInvariant()!;
 
                         // Use a placeholder key if the original mod has no SteamID
                         if (string.IsNullOrEmpty(key))
@@ -300,11 +302,12 @@ namespace RimSharp.Shared.Services.Implementations
             return count;
         }
 
-        // Helper class to match the JSON structure {"mods": {...}}
-        // Using original name from service file, assuming it matches replacements.json structure
-        private class ReplacementJsonRoot
-        {
-            public Dictionary<string, ModReplacementInfo> Mods { get; set; }
+                // Helper class to match the JSON structure {"mods": {...}}
+                // Using original name from service file, assuming it matches replacements.json structure
+                private class ReplacementJsonRoot
+                {
+                    public Dictionary<string, ModReplacementInfo>? Mods { get; set; }
+                }
+            }
         }
-    }
-}
+        

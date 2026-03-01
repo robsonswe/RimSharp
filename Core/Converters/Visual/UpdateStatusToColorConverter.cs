@@ -1,42 +1,37 @@
 using System;
 using System.Globalization;
-using System.Windows.Data;
-using System.Windows;
-using System.Drawing;
+using Avalonia;
+using Avalonia.Data.Converters;
+using Avalonia.Media;
 
 namespace RimSharp.Core.Converters.Visual
 {
     public class UpdateStatusToColorConverter : IValueConverter
     {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             if (value is string status)
             {
-                switch (status.ToLower())
+                string statusLower = status.ToLowerInvariant();
+                string key;
+
+                if (statusLower.Contains("up to date")) key = "RimworldDarkGreenBrush";
+                else if (statusLower.Contains("update(s)") || statusLower.Contains("available") || statusLower.Contains("behind")) key = "RimworldHighlightBrush";
+                else if (statusLower.Contains("error") || statusLower.Contains("fail") || statusLower.Contains("conflict")) key = "RimworldErrorRedBrush";
+                else if (statusLower.Contains("checking") || statusLower.Contains("fetching")) key = "RimworldConfigOrangeBrush";
+                else key = "RimworldGrayBrush";
+
+                if (Application.Current?.Resources.TryGetResource(key, null, out var resource) == true)
                 {
-                    case "up to date":
-                        return (Brush)Application.Current.TryFindResource("RimworldGreenBrush") 
-                            ?? Brushes.Green;
-                    case var s when s.Contains("new updates"):
-                        return (Brush)Application.Current.TryFindResource("RimworldYellowBrush") 
-                            ?? Brushes.Yellow;
-                    case "error checking updates":
-                        return (Brush)Application.Current.TryFindResource("RimworldRedBrush") 
-                            ?? Brushes.Red;
-                    case "no tracking branch":
-                        return (Brush)Application.Current.TryFindResource("RimworldLightBrownBrush") 
-                            ?? Brushes.LightGray;
-                    default:
-                        return (Brush)Application.Current.TryFindResource("RimworldBrownBrush") 
-                            ?? Brushes.Gray;
+                    return resource as IBrush;
                 }
             }
-            return Brushes.Transparent;
+            return Brushes.Gray;
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            throw new NotImplementedException();
+            return null;
         }
     }
 }

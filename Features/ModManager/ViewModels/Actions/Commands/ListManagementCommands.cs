@@ -30,8 +30,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 // OBSERVE BOTH IsParentLoading AND HasValidPaths
                 observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
 
-            SaveCommand = CreateCommand(
-                ExecuteSaveMods,
+            SaveCommand = CreateAsyncCommand(
+                () => ExecuteSaveMods(false), // Default: Don't suppress warnings
                 CanExecuteSaveMods,
                 // Observe all relevant properties for CanExecuteSaveMods
                 observedProperties: new[] { nameof(HasUnsavedChanges), nameof(IsParentLoading) }); // Save doesn't depend on paths, only unsaved changes and loading state
@@ -84,12 +84,12 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             catch (OperationCanceledException)
             {
                 Debug.WriteLine("[ExecuteClearActiveList] Operation cancelled.");
-                RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Clearing the list was cancelled."));
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowWarning("Operation Cancelled", "Clearing the list was cancelled."));
             }
             catch (Exception ex) // Catch potential exceptions from ClearActiveList
             {
                 Debug.WriteLine($"[ExecuteClearActiveList] Error: {ex}");
-                RunOnUIThread(() => _dialogService.ShowError("Clear Error", $"Failed to clear active list: {ex.Message}"));
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowError("Clear Error", $"Failed to clear active list: {ex.Message}"));
             }
             finally { IsLoadingRequest?.Invoke(this, false); }
         }
@@ -126,41 +126,41 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 progressDialog.CompleteOperation("Sorting complete.");
 
                 // Show result dialog on UI thread
-                await RunOnUIThreadAsync(() =>
+                await RunOnUIThreadAsync(async () =>
                 {
                     if (orderChanged)
-                        _dialogService.ShowInformation("Sort Complete", "Active mods sorted successfully.");
+                        await _dialogService.ShowInformation("Sort Complete", "Active mods sorted successfully.");
                     else
-                        _dialogService.ShowInformation("Sort Complete", "Mods already in correct order.");
+                        await _dialogService.ShowInformation("Sort Complete", "Mods already in correct order.");
                 });
             }
             catch (OperationCanceledException)
             {
                 Debug.WriteLine("[ExecuteSortActiveList] Sorting cancelled.");
                 progressDialog?.ForceClose();
-                RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Sorting was cancelled."));
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowWarning("Operation Cancelled", "Sorting was cancelled."));
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error sorting mods: {ex}");
                 progressDialog?.ForceClose();
-                RunOnUIThread(() => _dialogService.ShowError("Sort Error", $"Error sorting mods: {ex.Message}"));
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowError("Sort Error", $"Error sorting mods: {ex.Message}"));
             }
             finally { IsLoadingRequest?.Invoke(this, false); }
         }
 
-        private void ExecuteSaveMods() // Stays synchronous
+        private async Task ExecuteSaveMods(bool suppressWarnings = false) // Changed to async Task with suppression flag
         {
-            if (_modListManager.HasAnyActiveModIssues)
+            if (!suppressWarnings && _modListManager.HasAnyActiveModIssues)
             {
-                var confirmationResult = _dialogService.ShowConfirmation(
+                var confirmationResult = await _dialogService.ShowConfirmationAsync(
                     "Save Warning",
                     "The active mod list has potential issues (e.g., missing dependencies, load order conflicts, incompatibilities).\n\n" +
                     "Saving the list in this state might cause problems when running the game.\n\n" +
                     "Do you want to save anyway?",
                     showCancel: true); // Show OK (Yes) and Cancel (No)
 
-                if (confirmationResult == MessageDialogResult.Cancel) // User chose not to save
+                if (confirmationResult != MessageDialogResult.OK && confirmationResult != MessageDialogResult.Yes) // User chose not to save
                 {
                     Debug.WriteLine("Save cancelled by user due to detected issues.");
                     return; // Exit without saving
@@ -177,7 +177,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                                         .Where(id => !string.IsNullOrEmpty(id))
                                         .ToList();
 
-                _dataService.SaveActiveModIdsToConfig(activeIdsToSave); // Assume synchronous
+                await Task.Run(() => _dataService.SaveActiveModIdsToConfig(activeIdsToSave)); // Assume background save is better
 
                 // Signal parent that changes are now saved
                 HasUnsavedChangesRequest?.Invoke(this, false);
@@ -187,7 +187,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error saving mods config: {ex}");
-                RunOnUIThread(() => _dialogService.ShowError("Save Error", $"Failed to save mod list: {ex.Message}"));
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowError("Save Error", $"Failed to save mod list: {ex.Message}"));
             }
             finally { IsLoadingRequest?.Invoke(this, false); }
         }
@@ -206,18 +206,19 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             catch (OperationCanceledException)
             {
                 Debug.WriteLine("[ExecuteImport] Import cancelled.");
-                RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Mod list import was cancelled."));
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowWarning("Operation Cancelled", "Mod list import was cancelled."));
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error importing list: {ex}");
-                RunOnUIThread(() => _dialogService.ShowError("Import Error", $"Failed to import mod list: {ex.Message}"));
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowError("Import Error", $"Failed to import mod list: {ex.Message}"));
             }
             finally { IsLoadingRequest?.Invoke(this, false); }
         }
 
         private async Task ExecuteExport(CancellationToken ct)
         {
+            // CanExecute checked by framework
             IsLoadingRequest?.Invoke(this, true);
             try
             {
@@ -226,7 +227,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 if (!activeModsToExport.Any())
                 {
                     // Use RunOnUIThread for dialog if CanExecute might race
-                    RunOnUIThread(() => _dialogService.ShowInformation("Export List", "There are no active mods to export."));
+                    await RunOnUIThreadAsync(async () => await _dialogService.ShowInformation("Export List", "There are no active mods to export."));
                     return;
                 }
                 ct.ThrowIfCancellationRequested();
@@ -237,12 +238,12 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             catch (OperationCanceledException)
             {
                 Debug.WriteLine("[ExecuteExport] Export cancelled.");
-                RunOnUIThread(() => _dialogService.ShowWarning("Operation Cancelled", "Mod list export was cancelled."));
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowWarning("Operation Cancelled", "Mod list export was cancelled."));
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error exporting list: {ex}");
-                RunOnUIThread(() => _dialogService.ShowError("Export Error", $"Failed to export mod list: {ex.Message}"));
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowError("Export Error", $"Failed to export mod list: {ex.Message}"));
             }
             finally { IsLoadingRequest?.Invoke(this, false); }
         }

@@ -22,7 +22,7 @@ namespace RimSharp.Features.GitModManager.ViewModels
     public class GitModItemWrapper : INotifyPropertyChanged
     {
         private bool _isSelected;
-        private string _updateStatus;
+        private string _updateStatus = string.Empty;
 
         public ModItem ModItem { get; }
 
@@ -57,9 +57,9 @@ namespace RimSharp.Features.GitModManager.ViewModels
             ModItem = modItem ?? throw new ArgumentNullException(nameof(modItem));
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
@@ -74,10 +74,10 @@ namespace RimSharp.Features.GitModManager.ViewModels
         private readonly IGitService _gitService;
 
         // --- Private Fields ---
-        private List<GitModItemWrapper> _gitMods;
-        private string _statusMessage;
+        private List<GitModItemWrapper> _gitMods = new();
+        private string _statusMessage = string.Empty;
         private bool _isBusy;
-        private List<GitModItemWrapper> _oldGitMods;
+        private List<GitModItemWrapper>? _oldGitMods;
 
         // --- Properties ---
         public List<GitModItemWrapper> GitMods
@@ -122,10 +122,28 @@ namespace RimSharp.Features.GitModManager.ViewModels
             private set => SetProperty(ref _isBusy, value);
         }
 
+        public bool SelectAll
+        {
+            get => GitMods?.All(m => m.IsSelected) ?? false;
+            set
+            {
+                if (GitMods != null)
+                {
+                    foreach (var mod in GitMods)
+                    {
+                        mod.IsSelected = value;
+                    }
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         // --- Commands ---
         public ICommand CheckUpdatesCommand { get; }
         public ICommand PullUpdatesCommand { get; }
         public ICommand OpenGitHubRepoCommand { get; }
+        public ICommand CheckIndividualUpdateCommand { get; }
+        public ICommand PullIndividualUpdateCommand { get; }
 
         // --- Constructor ---
         public GitModsViewModel(
@@ -141,7 +159,10 @@ namespace RimSharp.Features.GitModManager.ViewModels
 
             CheckUpdatesCommand = CreateCancellableAsyncCommand(ExecuteCheckUpdatesAsync, CanExecuteCommands, nameof(IsBusy));
             PullUpdatesCommand = CreateCancellableAsyncCommand(ExecutePullUpdatesAsync, CanPullUpdates, nameof(IsBusy));
-            OpenGitHubRepoCommand = CreateCommand<string>(OpenGitHubRepo, CanOpenGitHubRepo);
+            OpenGitHubRepoCommand = CreateAsyncCommand<string>(OpenGitHubRepo, CanOpenGitHubRepo);
+
+            CheckIndividualUpdateCommand = CreateAsyncCommand<GitModItemWrapper>(ExecuteCheckIndividualUpdateAsync, wrapper => !IsBusy && wrapper != null, nameof(IsBusy));
+            PullIndividualUpdateCommand = CreateAsyncCommand<GitModItemWrapper>(ExecutePullIndividualUpdateAsync, wrapper => !IsBusy && wrapper != null && wrapper.IsSelected, nameof(IsBusy));
 
             _modListManager.ListChanged += HandleModListChanged;
             _ = Task.Run(LoadGitMods);
@@ -158,11 +179,111 @@ namespace RimSharp.Features.GitModManager.ViewModels
 
         // --- Execution Methods ---
 
+        private async Task ExecuteCheckIndividualUpdateAsync(GitModItemWrapper wrapper)
+        {
+            if (wrapper == null) return;
+
+            IsBusy = true;
+            StatusMessage = $"Checking {wrapper.ModItem.Name}...";
+            try
+            {
+                var mod = wrapper.ModItem;
+                if (!_gitService.IsRepository(mod.Path))
+                {
+                    wrapper.UpdateStatus = "Not a git repository";
+                    wrapper.IsSelected = false;
+                    return;
+                }
+
+                await _gitService.FetchAsync(mod.Path, "origin", CancellationToken.None);
+                var div = await _gitService.GetDivergenceAsync(mod.Path, "origin", CancellationToken.None);
+
+                if (!div.IsValid)
+                {
+                    wrapper.UpdateStatus = div.ErrorMessage ?? "Error";
+                    wrapper.IsSelected = false;
+                }
+                else if (div.BehindBy > 0)
+                {
+                    wrapper.UpdateStatus = $"{div.BehindBy} update(s)";
+                    wrapper.IsSelected = true;
+                }
+                else if (div.AheadBy > 0)
+                {
+                    wrapper.UpdateStatus = $"Up to date ({div.AheadBy} local commits)";
+                    wrapper.IsSelected = false;
+                }
+                else
+                {
+                    wrapper.UpdateStatus = "Up to date";
+                    wrapper.IsSelected = false;
+                }
+                StatusMessage = "Check complete.";
+            }
+            catch (Exception ex)
+            {
+                wrapper.UpdateStatus = "Error checking";
+                StatusMessage = $"Error: {ex.Message}";
+            }
+            finally
+            {
+                IsBusy = false;
+                ((IDelegateCommand)PullUpdatesCommand).RaiseCanExecuteChanged();
+            }
+        }
+
+        private async Task ExecutePullIndividualUpdateAsync(GitModItemWrapper wrapper)
+        {
+            if (wrapper == null) return;
+
+            IsBusy = true;
+            StatusMessage = $"Pulling {wrapper.ModItem.Name}...";
+            try
+            {
+                var mod = wrapper.ModItem;
+                var result = await _gitService.PullAsync(mod.Path, "origin", CancellationToken.None);
+
+                wrapper.UpdateStatus = result.Status switch
+                {
+                    GitPullStatus.UpToDate => "Already up to date",
+                    GitPullStatus.FastForward => "Updated successfully",
+                    GitPullStatus.NonFastForward => "Updated (Non-FF)",
+                    GitPullStatus.Conflict => "Error: Conflicts",
+                    _ => result.Message ?? "Error pulling"
+                };
+
+                wrapper.IsSelected = false;
+                StatusMessage = "Pull complete.";
+            }
+            catch (Exception ex)
+            {
+                wrapper.UpdateStatus = "Pull error";
+                StatusMessage = $"Error: {ex.Message}";
+            }
+            finally
+            {
+                IsBusy = false;
+                ((IDelegateCommand)PullUpdatesCommand).RaiseCanExecuteChanged();
+            }
+        }
+
         private async Task ExecuteCheckUpdatesAsync(CancellationToken ct)
         {
+            Debug.WriteLine("[GitModsVM] ExecuteCheckUpdatesAsync called");
+            
+            // Ensure we have git mods to check
+            if (GitMods == null || GitMods.Count == 0)
+            {
+                Debug.WriteLine("[GitModsVM] No git mods available");
+                StatusMessage = "No Git mods loaded yet. Please wait for the mod list to load.";
+                await _dialogService.ShowInformation("Check Updates", "No Git mods are loaded yet. Please wait a moment for the mod list to load and try again.");
+                return;
+            }
+
+            Debug.WriteLine($"[GitModsVM] Starting update check for {GitMods.Count} mods");
             IsBusy = true;
             StatusMessage = "Checking for updates...";
-            ProgressDialogViewModel progressViewModel = null;
+            ProgressDialogViewModel? progressViewModel = null;
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
             try
@@ -177,89 +298,95 @@ namespace RimSharp.Features.GitModManager.ViewModels
                         cts: linkedCts,
                         closeable: false
                     );
+                    Debug.WriteLine("[GitModsVM] Progress dialog shown");
                 });
 
                 await Task.Delay(50, CancellationToken.None);
 
-                int totalMods = GitMods?.Count ?? 0;
+                int totalMods = GitMods.Count;
                 int processedCount = 0;
 
-                if (GitMods != null && totalMods > 0)
+                Debug.WriteLine($"[GitModsVM] Processing {totalMods} mods");
+
+                foreach (var m in GitMods) m.IsSelected = false;
+
+                foreach (var modWrapper in GitMods)
                 {
-                    foreach (var modWrapper in GitMods)
+                    linkedCts.Token.ThrowIfCancellationRequested();
+                    processedCount++;
+                    var mod = modWrapper.ModItem;
+
+                    Debug.WriteLine($"[GitModsVM] Checking mod: {mod.Name}");
+
+                    progressViewModel?.UpdateProgress(
+                        (int)(((double)processedCount / totalMods) * 100),
+                        $"Checking {mod.Name} ({processedCount}/{totalMods})..."
+                    );
+
+                    if (!_gitService.IsRepository(mod.Path))
                     {
-                        linkedCts.Token.ThrowIfCancellationRequested();
-                        processedCount++;
-                        var mod = modWrapper.ModItem;
+                        Debug.WriteLine($"[GitModsVM] {mod.Name} is not a git repository");
+                        modWrapper.UpdateStatus = "Not a git repository";
+                        continue;
+                    }
 
-                        progressViewModel?.UpdateProgress(
-                            (int)(((double)processedCount / totalMods) * 100),
-                            $"Checking {mod.Name} ({processedCount}/{totalMods})..."
-                        );
+                    try
+                    {
+                        Debug.WriteLine($"[GitModsVM] Fetching {mod.Name}");
+                        await _gitService.FetchAsync(mod.Path, "origin", linkedCts.Token);
+                        
+                        Debug.WriteLine($"[GitModsVM] Getting divergence for {mod.Name}");
+                        var div = await _gitService.GetDivergenceAsync(mod.Path, "origin", linkedCts.Token);
 
-                        if (!_gitService.IsRepository(mod.Path))
+                        if (!div.IsValid)
                         {
-                            modWrapper.UpdateStatus = "Not a git repository";
-                            modWrapper.IsSelected = false;
-                            continue;
+                            Debug.WriteLine($"[GitModsVM] {mod.Name} divergence invalid: {div.ErrorMessage}");
+                            modWrapper.UpdateStatus = div.ErrorMessage ?? "Error";
                         }
-
-                        try
+                        else if (div.BehindBy > 0)
                         {
-                            await _gitService.FetchAsync(mod.Path, "origin", linkedCts.Token);
-                            var div = await _gitService.GetDivergenceAsync(mod.Path, "origin", linkedCts.Token);
-
-                            if (!div.IsValid)
-                            {
-                                modWrapper.UpdateStatus = div.ErrorMessage ?? "Error";
-                                modWrapper.IsSelected = false;
-                            }
-                            else if (div.BehindBy > 0)
-                            {
-                                modWrapper.UpdateStatus = $"{div.BehindBy} update(s)";
-                                modWrapper.IsSelected = true;
-                            }
-                            else if (div.AheadBy > 0)
-                            {
-                                modWrapper.UpdateStatus = $"Up to date ({div.AheadBy} local commits)";
-                                modWrapper.IsSelected = false;
-                            }
-                            else
-                            {
-                                modWrapper.UpdateStatus = "Up to date";
-                                modWrapper.IsSelected = false;
-                            }
+                            Debug.WriteLine($"[GitModsVM] {mod.Name} is behind by {div.BehindBy}");
+                            modWrapper.UpdateStatus = $"{div.BehindBy} update(s)";
+                            modWrapper.IsSelected = true;
                         }
-                        catch (Exception ex)
+                        else if (div.AheadBy > 0)
                         {
-                            modWrapper.UpdateStatus = "Error checking";
-                            modWrapper.IsSelected = false;
-                            Debug.WriteLine($"[ERROR] CheckUpdates failed for mod '{mod.Name}': {ex.Message}");
+                            Debug.WriteLine($"[GitModsVM] {mod.Name} is ahead by {div.AheadBy}");
+                            modWrapper.UpdateStatus = $"Up to date ({div.AheadBy} local commits)";
+                        }
+                        else
+                        {
+                            Debug.WriteLine($"[GitModsVM] {mod.Name} is up to date");
+                            modWrapper.UpdateStatus = "Up to date";
                         }
                     }
-                }
-                else
-                {
-                    progressViewModel?.UpdateProgress(100, "No Git mods found to check.");
-                    await Task.Delay(500, CancellationToken.None);
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[GitModsVM] Error checking {mod.Name}: {ex.Message}");
+                        modWrapper.UpdateStatus = "Error checking";
+                    }
                 }
 
+                Debug.WriteLine("[GitModsVM] Update check complete");
                 StatusMessage = "Update check complete.";
                 progressViewModel?.CompleteOperation(StatusMessage);
                 RunOnUIThread(() => ((AsyncRelayCommand)PullUpdatesCommand).RaiseCanExecuteChanged());
             }
             catch (OperationCanceledException)
             {
+                Debug.WriteLine("[GitModsVM] Update check cancelled");
                 StatusMessage = "Update check cancelled.";
                 progressViewModel?.ForceClose();
             }
             catch (Exception ex)
             {
+                Debug.WriteLine($"[GitModsVM] Error in ExecuteCheckUpdatesAsync: {ex}");
                 StatusMessage = $"Error checking updates: {ex.Message}";
                 progressViewModel?.ForceClose();
             }
             finally
             {
+                Debug.WriteLine("[GitModsVM] Setting IsBusy = false");
                 IsBusy = false;
                 progressViewModel?.Dispose();
             }
@@ -271,13 +398,13 @@ namespace RimSharp.Features.GitModManager.ViewModels
             if (selectedMods == null || !selectedMods.Any())
             {
                 StatusMessage = "No mods selected for update.";
-                _dialogService.ShowInformation("Pull Updates", "No mods selected for update.");
+                await _dialogService.ShowInformation("Pull Updates", "No mods selected for update.");
                 return;
             }
 
             IsBusy = true;
             StatusMessage = $"Pulling updates for {selectedMods.Count} mod(s)...";
-            ProgressDialogViewModel progressViewModel = null;
+            ProgressDialogViewModel? progressViewModel = null;
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             int successCount = 0;
             int failCount = 0;
@@ -375,7 +502,7 @@ namespace RimSharp.Features.GitModManager.ViewModels
 
         // --- Other Methods (remain largely the same) ---
 
-        private void OpenGitHubRepo(string gitRepo) // Typed parameter
+        private async Task OpenGitHubRepo(string gitRepo) // Typed parameter
         {
             // CanExecute checked by framework
             if (string.IsNullOrWhiteSpace(gitRepo)) return;
@@ -405,7 +532,7 @@ namespace RimSharp.Features.GitModManager.ViewModels
                 {
                     Debug.WriteLine($"[WARN] Attempted to open invalid URL: {url}");
                     StatusMessage = $"Invalid repository URL format: {gitRepo}";
-                    _dialogService.ShowWarning("Invalid URL", $"The repository URL '{url}' is not valid.");
+                    await _dialogService.ShowWarning("Invalid URL", $"The repository URL '{url}' is not valid.");
                     return;
                 }
 
@@ -421,17 +548,17 @@ namespace RimSharp.Features.GitModManager.ViewModels
             {
                 Debug.WriteLine($"[ERROR] Failed to open GitHub repo {gitRepo}. Win32Exception: {ex.Message} (ErrorCode: {ex.ErrorCode})");
                 StatusMessage = $"Could not open link. Is a default web browser configured?";
-                _dialogService.ShowError("Open Link Error", $"Could not open the link: {ex.Message}\n\nPlease ensure you have a default web browser configured.");
+                await _dialogService.ShowError("Open Link Error", $"Could not open the link: {ex.Message}\n\nPlease ensure you have a default web browser configured.");
             }
             catch (Exception ex) // Catch other potential exceptions
             {
                 Debug.WriteLine($"[ERROR] Failed to open GitHub repo {gitRepo}: {ex}");
                 StatusMessage = $"Failed to open GitHub repo: {ex.Message}";
-                _dialogService.ShowError("Open Link Error", $"Could not open the link: {ex.Message}");
+                await _dialogService.ShowError("Open Link Error", $"Could not open the link: {ex.Message}");
             }
         }
 
-        private void HandleModListChanged(object sender, EventArgs e)
+        private void HandleModListChanged(object? sender, EventArgs e)
         {
             Debug.WriteLine("[DEBUG] GitModsViewModel: Received ListChanged event from ModListManager. Reloading Git mods.");
             // Run LoadGitMods on UI thread as it modifies the GitMods collection which is bound to the UI
@@ -442,50 +569,58 @@ namespace RimSharp.Features.GitModManager.ViewModels
         {
             if (_disposed) return;
 
-            Debug.WriteLine("[DEBUG] GitModsViewModel: LoadGitMods() called.");
+            Debug.WriteLine("[GitModsVM] LoadGitMods() called");
             try
             {
-                var allMods = _modListManager.GetAllMods(); // Assuming this is safe to call from any thread
-                Debug.WriteLine($"[DEBUG] GitModsViewModel: _modListManager.GetAllMods() returned {allMods?.Count() ?? 0} total mods.");
+                Debug.WriteLine("[GitModsVM] Getting all mods from manager");
+                var allMods = _modListManager.GetAllMods();
+                Debug.WriteLine($"[GitModsVM] GetAllMods() returned {allMods?.Count() ?? 0} total mods");
 
                 if (allMods == null)
                 {
-                    GitMods = new List<GitModItemWrapper>(); // Assign empty list, setter handles notification
+                    Debug.WriteLine("[GitModsVM] allMods is null, setting empty list");
+                    GitMods = new List<GitModItemWrapper>();
                     return;
                 }
 
+                Debug.WriteLine("[GitModsVM] Filtering for Git mods");
                 var filteredMods = allMods
-                    .Where(m => m != null && m.ModType == ModType.Git) // Filter for non-null Git mods
-                    .Select(m => new GitModItemWrapper(m)) // Wrap them
-                    .OrderBy(m => m.ModItem.Name) // Order alphabetically
+                    .Where(m => m != null && m.ModType == ModType.Git)
+                    .Select(m => new GitModItemWrapper(m))
+                    .OrderBy(m => m.ModItem.Name)
                     .ToList();
-                Debug.WriteLine($"[DEBUG] GitModsViewModel: Filtered down to {filteredMods.Count} Git mods.");
+                Debug.WriteLine($"[GitModsVM] Filtered to {filteredMods.Count} Git mods");
 
-                // Important: Assign the new list to the property to trigger UI update
                 GitMods = filteredMods;
+                Debug.WriteLine($"[GitModsVM] GitMods property set, Count = {GitMods.Count}");
 
-                // Refresh command states as list content might affect CanExecute
                 RunOnUIThread(() =>
                 {
                     ((AsyncRelayCommand)CheckUpdatesCommand).RaiseCanExecuteChanged();
                     ((AsyncRelayCommand)PullUpdatesCommand).RaiseCanExecuteChanged();
+                    Debug.WriteLine("[GitModsVM] Commands raised CanExecuteChanged");
                 });
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ERROR] GitModsViewModel: Failed to load git mods: {ex}");
+                Debug.WriteLine($"[GitModsVM] ERROR in LoadGitMods: {ex}");
                 StatusMessage = "Error loading Git mods list.";
-                GitMods = new List<GitModItemWrapper>(); // Set to empty on error
+                GitMods = new List<GitModItemWrapper>();
             }
         }
 
         // Event handler for GitModItemWrapper property changes (like IsSelected)
-        private void GitModItem_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void GitModItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(GitModItemWrapper.IsSelected))
             {
                 // Update commands that depend on selection state (PullUpdatesCommand)
-                RunOnUIThread(() => ((AsyncRelayCommand)PullUpdatesCommand).RaiseCanExecuteChanged());
+                RunOnUIThread(() => 
+                {
+                    ((IDelegateCommand)PullUpdatesCommand).RaiseCanExecuteChanged();
+                    ((IDelegateCommand<GitModItemWrapper>)PullIndividualUpdateCommand).RaiseCanExecuteChanged();
+                    OnPropertyChanged(nameof(SelectAll));
+                });
                 Debug.WriteLine("[DEBUG] Item selection changed, PullUpdatesCommand.CanExecute updated");
             }
         }
@@ -521,7 +656,7 @@ namespace RimSharp.Features.GitModManager.ViewModels
                     }
                     _oldGitMods = null; // Clear reference
                 }
-                _gitMods = null; // Clear reference
+                _gitMods = new List<GitModItemWrapper>(); // Clear reference with empty list
 
                 // Note: Do not dispose injected services (_modService, _modListManager, _dialogService) here
                 // --- End Derived Class Specific Cleanup ---

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
@@ -7,9 +8,15 @@ namespace RimSharp.Features.ModManager.Dialogs.Incompatibilities
 {
     public class IncompatibilityResolutionOption
     {
-        public ModItem ModToKeep { get; set; }
-        public List<ModItem> ModsToRemove { get; set; } = new List<ModItem>();
-        public IncompatibilityGroupViewModel ParentGroup { get; set; }
+        public ModItem? ModToKeep { get; }
+        public List<ModItem> ModsToRemove { get; } = new List<ModItem>();
+        public IncompatibilityGroupViewModel ParentGroup { get; }
+
+        public IncompatibilityResolutionOption(ModItem? modToKeep, IncompatibilityGroupViewModel parentGroup)
+        {
+            ModToKeep = modToKeep;
+            ParentGroup = parentGroup ?? throw new ArgumentNullException(nameof(parentGroup));
+        }
 
         
         // Relations grouped by the mod to remove

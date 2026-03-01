@@ -99,14 +99,14 @@ namespace RimSharp.Tests.Infrastructure.Workshop
             // Arrange
             var items = new List<RimSharp.Features.WorkshopDownloader.Models.DownloadItem>();
             var expectedResult = new SteamCmdDownloadResult();
-            _mockDownloader.DownloadModsAsync(items, true, Arg.Any<CancellationToken>()).Returns(expectedResult);
+            _mockDownloader.DownloadModsAsync(items, true, null, Arg.Any<CancellationToken>()).Returns(expectedResult);
 
             // Act
             var result = await _service.DownloadModsAsync(items, true);
 
             // Assert
             result.Should().Be(expectedResult);
-            await _mockDownloader.Received(1).DownloadModsAsync(items, true, Arg.Any<CancellationToken>());
+            await _mockDownloader.Received(1).DownloadModsAsync(items, true, null, Arg.Any<CancellationToken>());
         }
     }
 }

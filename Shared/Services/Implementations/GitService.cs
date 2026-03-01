@@ -21,7 +21,7 @@ namespace RimSharp.Shared.Services.Implementations
     {
         private readonly IDialogService _dialogService;
         public static readonly Regex GitHubUrlRegex = new Regex(
-            @"github\.com[/:](?<owner>[^/]+)/(?<repo>[^/]+?)(?:\.git)?/?$",
+            @"^(?:https?://github\.com/|git@github\.com[:/])(?<owner>[^/]+)/(?<repo>[^/]+?)(?:\.git)?/?$",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         public GitService(IDialogService dialogService)
@@ -129,7 +129,7 @@ namespace RimSharp.Shared.Services.Implementations
             var repoInfo = ParseGitHubUrl(gitUrl);
             if (repoInfo == null)
             {
-                _dialogService.ShowError("Invalid URL", "The provided URL is not a valid GitHub repository URL.");
+                await _dialogService.ShowError("Invalid URL", "The provided URL is not a valid GitHub repository URL.");
                 return null;
             }
 
@@ -170,12 +170,12 @@ namespace RimSharp.Shared.Services.Implementations
                     return await TryLoadModMetadata(client, $"{apiRoot}/About.xml", ct);
                 }
 
-                _dialogService.ShowError("Invalid Mod Structure", "Could not find 'About/About.xml' in the repository.");
+                await _dialogService.ShowError("Invalid Mod Structure", "Could not find 'About/About.xml' in the repository.");
                 return null;
             }
             catch (Exception ex)
             {
-                _dialogService.ShowError("Validation Error", ex.Message);
+                await _dialogService.ShowError("Validation Error", ex.Message);
                 return null;
             }
         }
@@ -209,8 +209,8 @@ namespace RimSharp.Shared.Services.Implementations
 
                 return new ModItem
                 {
-                    Name = root.Element("name")?.Value?.Trim(),
-                    PackageId = root.Element("packageId")?.Value?.Trim(),
+                    Name = root.Element("name")?.Value?.Trim() ?? string.Empty,
+                    PackageId = root.Element("packageId")?.Value?.Trim() ?? string.Empty,
                     Authors = root.Element("author")?.Value?.Trim() ??
                               string.Join(", ", root.Element("authors")?.Elements("li").Select(x => x.Value?.Trim()) ?? Array.Empty<string>())
                 };

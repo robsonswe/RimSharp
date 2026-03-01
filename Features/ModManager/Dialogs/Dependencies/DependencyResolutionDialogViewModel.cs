@@ -11,8 +11,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Dependencies
 {
     public class DependencyResolutionDialogViewModel : DialogViewModelBase<DependencyResolutionDialogResult>
     {
-        private ObservableCollection<MissingDependencyItemViewModel> _missingDependencies;
-        public ObservableCollection<MissingDependencyItemViewModel> MissingDependencies
+        private ObservableCollection<MissingDependencyItemViewModel>? _missingDependencies = new();
+        public ObservableCollection<MissingDependencyItemViewModel>? MissingDependencies
         {
             get => _missingDependencies;
             set
@@ -22,7 +22,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Dependencies
                 {
                     foreach (var item in _missingDependencies)
                     {
-                        item.PropertyChanged -= DependencyItem_PropertyChanged;
+                        if (item != null)
+                            item.PropertyChanged -= DependencyItem_PropertyChanged;
                     }
                 }
 
@@ -34,7 +35,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Dependencies
                         foreach (var item in _missingDependencies)
                         {
                             // Only subscribe if the item can actually change selection state
-                            if(item.IsSelectable)
+                            if(item != null && item.IsSelectable)
                                 item.PropertyChanged += DependencyItem_PropertyChanged;
                         }
                         UpdateSelectedCount(); // Initial count
@@ -77,7 +78,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Dependencies
             // If needed: MissingDependencies.CollectionChanged += (s, e) => RaiseCanExecuteChangedForAllCommands();
         }
 
-        private void DependencyItem_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void DependencyItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(MissingDependencyItemViewModel.IsSelected))
             {
@@ -119,8 +120,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Dependencies
         public List<string> GetSelectedSteamIds()
         {
             return MissingDependencies?
-                .Where(item => item.IsSelected && item.IsSelectable) // Ensure it's selected AND selectable (has ID)
-                .Select(item => item.SteamId)
+                .Where(item => item.IsSelected && item.IsSelectable && item.SteamId != null) // Ensure it's selected AND selectable (has ID)
+                .Select(item => item.SteamId!)
                 .ToList() ?? new List<string>();
         }
 

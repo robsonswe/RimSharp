@@ -16,8 +16,8 @@ namespace RimSharp.Tests.Features.ModManager.Services.Commands
             var args = new DropModArgs();
 
             // Assert
-            args.DroppedItems.Should().BeNull();
-            args.TargetListName.Should().BeNull();
+            args.DroppedItems.Should().BeEmpty();
+            args.TargetListName.Should().BeEmpty();
             args.DropIndex.Should().Be(0);
         }
 
@@ -67,7 +67,7 @@ namespace RimSharp.Tests.Features.ModManager.Services.Commands
             var args = new DropModArgs
             {
                 DroppedItems = new List<ModItem>(),
-                TargetListName = null,
+                TargetListName = null!,
                 DropIndex = 0
             };
 
