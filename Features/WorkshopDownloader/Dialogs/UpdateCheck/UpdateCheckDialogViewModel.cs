@@ -201,7 +201,7 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
         public UpdateCheckItemViewModel(ModItem modItem)
         {
             ModItem = modItem;
-            _isSelected = modItem.IsActive;
+            _isSelected = true;
 
             if (!string.IsNullOrWhiteSpace(modItem.UpdateDate) &&
                 DateTime.TryParseExact(modItem.UpdateDate, "dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedDate))
