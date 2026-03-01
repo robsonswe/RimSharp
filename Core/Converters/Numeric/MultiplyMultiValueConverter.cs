@@ -18,7 +18,7 @@ namespace RimSharp.Core.Converters.Numeric
                 else if (value is float f) result *= f;
             }
 
-            if (parameter is string s && double.TryParse(s, out var p))
+            if (parameter is string s && double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var p))
             {
                 result *= p;
             }

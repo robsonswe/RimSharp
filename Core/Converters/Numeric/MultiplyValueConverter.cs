@@ -8,7 +8,7 @@ namespace RimSharp.Core.Converters.Numeric
     {
         public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            if (value is double d && parameter is string s && double.TryParse(s, out var p))
+            if (value is double d && parameter is string s && double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var p))
             {
                 return d * p;
             }
