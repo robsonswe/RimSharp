@@ -54,7 +54,7 @@
                                                 Foreground="{DynamicResource RimworldDarkGreenBrush}" FontSize="10"/>
                                     </StackPanel>
                                     
-                                    <TextBlock IsVisible="{Binding !IsSelectable}" FontSize="10" Foreground="{DynamicResource RimworldOrangeBrush}" Text="No Steam Workshop link found"/>
+                                    <TextBlock IsVisible="{Binding !IsSelectable}" FontSize="10" Foreground="{DynamicResource RimworldRedBrush}" Text="No Steam Workshop link found"/>
 
                                     <Expander Header="Required By:" Margin="0,5,0,0">
                                          <ItemsControl ItemsSource="{Binding RequiredByDisplay}">

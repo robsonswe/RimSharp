@@ -77,7 +77,7 @@ namespace RimSharp.AppDir.Dialogs
                 {
                     UpdateStatus = $"New version available: {latestVersion}";
                     UpdateStatusIcon = "fa-triangle-exclamation";
-                    StatusColor = "RimworldOrangeBrush";
+                    StatusColor = "RimworldRedBrush";
                     IsNewVersionAvailable = true;
                     ReleaseUrl = url;
                 }

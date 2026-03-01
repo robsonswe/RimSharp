@@ -40,15 +40,14 @@
                                                                         <Grid ColumnDefinitions="Auto,*">
                                                                             <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,10,0" />
                                                                             <StackPanel Grid.Column="1" Spacing="2">
-                                                                                <TextBlock FontWeight="Medium">
+                                                                                <TextBlock FontWeight="Medium" Foreground="{DynamicResource RimworldBrownBrush}">
                                                                                     <TextBlock.Text>
                                                                                         <MultiBinding StringFormat="Original: {0} by {1}">
                                                                                             <Binding Path="OriginalMod.Name" FallbackValue="Unknown"/>
                                                                                             <Binding Path="OriginalMod.Authors" FallbackValue="Unknown"/>
                                                                                         </MultiBinding>
                                                                                     </TextBlock.Text>
-                                                                                </TextBlock>
-                                                                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                                                                </TextBlock>                                                                                <StackPanel Orientation="Horizontal" Spacing="5">
                                                                                     <TextBlock Text="{Binding OriginalMod.PackageId, StringFormat='ID: {0}', FallbackValue='ID: Unknown'}" FontSize="10" Foreground="Gray"/>
                                                                                     <Button Content="{Binding OriginalMod.SteamId, StringFormat='Steam: {0}', FallbackValue='Steam: N/A'}" 
                                                                                             Command="{Binding OriginalMod.SteamUrl, Converter={StaticResource LinkToCommandConverter}}"
@@ -83,7 +82,7 @@
 
                     <Border IsVisible="{Binding HasAlreadyInstalledReplacements}" BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="0,1,0,0" Padding="0,10,0,0">
                         <StackPanel Spacing="10">
-                            <TextBlock Text="The following replacement mods are already installed:" FontWeight="Medium"/>
+                            <TextBlock Text="The following replacement mods are already installed:" FontWeight="Medium" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
                             <ItemsControl ItemsSource="{Binding AlreadyInstalledReplacements}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="local:ModReplacementItem">
@@ -91,15 +90,14 @@
                                             <Grid ColumnDefinitions="Auto,*">
                                                 <CheckBox Grid.Column="0" IsChecked="False" IsEnabled="False" VerticalAlignment="Center" Margin="0,0,10,0" />
                                                 <StackPanel Grid.Column="1" Spacing="2">
-                                                    <TextBlock FontWeight="Medium">
+                                                    <TextBlock FontWeight="Medium" Foreground="{DynamicResource RimworldBrownBrush}">
                                                         <TextBlock.Text>
                                                             <MultiBinding StringFormat="Original: {0} by {1}">
                                                                 <Binding Path="OriginalMod.Name" FallbackValue="Unknown"/>
                                                                 <Binding Path="OriginalMod.Authors" FallbackValue="Unknown"/>
                                                             </MultiBinding>
                                                         </TextBlock.Text>
-                                                    </TextBlock>
-                                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                                    </TextBlock>                                                    <StackPanel Orientation="Horizontal" Spacing="5">
                                                         <TextBlock Text="{Binding OriginalMod.PackageId, StringFormat='ID: {0}', FallbackValue='ID: Unknown'}" FontSize="10" Foreground="Gray"/>
                                                         <Button Content="{Binding OriginalMod.SteamId, StringFormat='Steam: {0}', FallbackValue='Steam: N/A'}" 
                                                                 Command="{Binding OriginalMod.SteamUrl, Converter={StaticResource LinkToCommandConverter}}"
@@ -125,11 +123,11 @@
                                                         <TextBlock Text="{Binding FormattedReplacementLastUpdate, StringFormat='| Updated: {0}', FallbackValue='| Updated: N/A'}" FontSize="10" Foreground="Gray"/>
                                                     </StackPanel>
                                                     
-                                                    <Border Margin="0,5,0,0" Padding="8,4" Background="#33FF8C00" CornerRadius="2">
+                                                    <Border Margin="0,5,0,0" Padding="8,4" Background="#339E2A2A" CornerRadius="2">
                                                         <StackPanel Orientation="Horizontal" Spacing="8">
-                                                            <i:Icon Value="fa-triangle-exclamation" Foreground="{DynamicResource RimworldOrangeBrush}" FontSize="12" VerticalAlignment="Center"/>
+                                                            <i:Icon Value="fa-triangle-exclamation" Foreground="{DynamicResource RimworldRedBrush}" FontSize="12" VerticalAlignment="Center"/>
                                                             <TextBlock Text="You should remove the original mod to avoid load-order conflicts." 
-                                                                       Foreground="{DynamicResource RimworldOrangeBrush}" 
+                                                                       Foreground="{DynamicResource RimworldRedBrush}" 
                                                                        FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center"/>
                                                         </StackPanel>
                                                     </Border>
