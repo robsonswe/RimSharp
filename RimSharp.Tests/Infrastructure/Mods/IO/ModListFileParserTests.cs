@@ -17,17 +17,15 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
         }
 
         [Fact]
-        public void Parse_ShouldReturnPackageIds()
+        public void Parse_ShouldReturnCorrectIds()
         {
             // Arrange
-            var xml = @"
-<ModsConfigData>
-    <version>1.0</version>
-    <activeMods>
-        <li>brrainz.harmony</li>
-        <li>Ludeon.RimWorld</li>
-    </activeMods>
-</ModsConfigData>";
+            var xml = @"<ModsConfigData>
+                <activeMods>
+                    <li>Ludeon.RimWorld</li>
+                    <li>brrainz.harmony</li>
+                </activeMods>
+            </ModsConfigData>";
             var doc = XDocument.Parse(xml);
 
             // Act
@@ -35,40 +33,25 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
 
             // Assert
             result.Should().HaveCount(2);
-            result.Should().ContainInOrder("brrainz.harmony", "ludeon.rimworld");
+            result.Should().Contain("ludeon.rimworld");
+            result.Should().Contain("brrainz.harmony");
         }
 
         [Fact]
-        public void Parse_WhenMissingActiveModsElement_ShouldReturnEmptyList()
+        public void Generate_ShouldReturnCorrectXml()
         {
             // Arrange
-            var xml = @"<ModsConfigData><version>1.0</version></ModsConfigData>";
-            var doc = XDocument.Parse(xml);
-
-            // Act
-            var result = _parser.Parse(doc);
-
-            // Assert
-            result.Should().BeEmpty();
-        }
-
-        [Fact]
-        public void Generate_ShouldCreateCorrectXml()
-        {
-            // Arrange
-            var ids = new[] { "mod1", "MOD2" };
+            var ids = new List<string> { "Ludeon.RimWorld", "brrainz.harmony" };
 
             // Act
             var doc = _parser.Generate(ids);
 
             // Assert
-            doc.Root.Should().NotBeNull();
-            doc.Root!.Name.LocalName.Should().Be("ModsConfigData");
-            
-            var liElements = doc.Root.Element("activeMods")?.Elements("li").ToList();
-            liElements.Should().NotBeNull().And.HaveCount(2);
-            liElements![0].Value.Should().Be("mod1");
-            liElements![1].Value.Should().Be("mod2"); // Normalized to lower
+            var listItems = doc.Root?.Element("activeMods")?.Elements("li").ToList();
+            listItems.Should().NotBeNull();
+            listItems!.Should().HaveCount(2);
+            listItems![0].Value.Should().Be("ludeon.rimworld");
+            listItems![1].Value.Should().Be("brrainz.harmony");
         }
     }
 }

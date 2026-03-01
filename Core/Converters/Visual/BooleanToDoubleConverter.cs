@@ -11,7 +11,7 @@ namespace RimSharp.Core.Converters.Visual
             if (value is bool b && parameter is string values)
             {
                 var parts = values.Split('|');
-                if (parts.Length == 2 && double.TryParse(parts[0], out var trueVal) && double.TryParse(parts[1], out var falseVal))
+                if (parts.Length == 2 && double.TryParse(parts[0], NumberStyles.Any, CultureInfo.InvariantCulture, out var trueVal) && double.TryParse(parts[1], NumberStyles.Any, CultureInfo.InvariantCulture, out var falseVal))
                 {
                     return b ? trueVal : falseVal;
                 }
