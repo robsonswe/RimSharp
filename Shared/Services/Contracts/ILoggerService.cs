@@ -17,8 +17,9 @@ namespace RimSharp.Shared.Services.Contracts
         void LogDebug(string message, string module = "General");
         void LogInfo(string message, string module = "General");
         void LogWarning(string message, string module = "General");
-        void LogError(string message, string module = "General");
-        void LogCritical(string message, string module = "General");
-        void LogException(Exception ex, string message = null, string module = "General");
-    }
-}
+                void LogError(string message, string module = "General");
+                void LogCritical(string message, string module = "General");
+                void LogException(Exception ex, string? message = null, string module = "General");
+            }
+        }
+        

@@ -1,0 +1,329 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:RimSharp.Features.ModManager.ViewModels"
+             xmlns:models="clr-namespace:RimSharp.Shared.Models"
+             xmlns:convViewVisibility="clr-namespace:RimSharp.Core.Converters.ViewVisibility"
+             xmlns:i="https://github.com/projektanker/icons.avalonia"
+             x:Class="RimSharp.Features.ModManager.Components.ModDetails.ModDetailsView"
+             mc:Ignorable="d"
+             x:DataType="vm:ModDetailsViewModel"
+             x:CompileBindings="True"
+             d:DesignHeight="600" d:DesignWidth="450">
+
+    <UserControl.Styles>
+
+        <Style Selector="i|Icon.InfoIcon">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Width" Value="16"/>
+        </Style>
+
+        <Style Selector="TextBlock.InfoLabel">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+            <Setter Property="Margin" Value="0,0,5,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- 
+            SelectableValue: Use SelectableTextBlock for values to ensure perfect 
+            vertical alignment with labels and native character trimming.
+        -->
+        <Style Selector="SelectableTextBlock.SelectableValue">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+
+        <!--
+            Hyperlink path: SelectableTextBlock supports both TextDecorations AND
+            TextTrimming in Avalonia, unlike TextBox which supports neither.
+        -->
+        <Style Selector="SelectableTextBlock.SelectableHyperlink">
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkGreenBrush}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="TextWrapping" Value="NoWrap"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="SelectableTextBlock.SelectableHyperlink:pointerover">
+            <Setter Property="TextDecorations" Value="Underline"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkGreenHoverBrush}"/>
+        </Style>
+
+        <Style Selector="Border.CodeBox">
+            <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource RimworldLightBrownBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="2"/>
+            <Setter Property="Padding" Value="8,6"/>
+        </Style>
+
+        <Style Selector="TextBlock.CodeBoxLabel">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,2"/>
+        </Style>
+
+        <Style Selector="i|Icon.CodeBoxIcon">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="SelectableTextBlock.CodeBoxText">
+            <Setter Property="FontFamily" Value="Consolas, Monospace"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="SelectableTextBlock.CodeBoxHyperlink">
+            <Setter Property="FontFamily" Value="Consolas, Monospace"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkGreenBrush}"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        </Style>
+        <Style Selector="SelectableTextBlock.CodeBoxHyperlink:pointerover">
+            <Setter Property="TextDecorations" Value="Underline"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkGreenHoverBrush}"/>
+        </Style>
+
+    </UserControl.Styles>
+
+    <Panel>
+        <!-- Empty state message -->
+        <TextBlock Text="Select a mod to view details"
+                   IsVisible="{Binding CurrentMod, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Invert}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   FontStyle="Italic" Foreground="{DynamicResource RimworldLightBrownBrush}"/>
+
+        <ContentControl Content="{Binding CurrentMod}"
+                        IsVisible="{Binding Converter={StaticResource NullToVisibilityConverter}}">
+            <ContentControl.ContentTemplate>
+                <DataTemplate x:DataType="models:ModItem">
+                    <Grid RowDefinitions="Auto,Auto,Auto,*">
+                        <!-- Mod Preview -->
+                        <Border Grid.Row="0" Margin="10,10,10,0" HorizontalAlignment="Stretch" VerticalAlignment="Top">
+            <Border Background="{DynamicResource RimworldDarkBrownBrush}" CornerRadius="3" MaxWidth="560" MaxHeight="360">
+                <Viewbox Stretch="Uniform">
+                    <Grid Width="560" Height="308">
+                        <Rectangle Fill="{DynamicResource RimworldDarkBrownBrush}" />
+                        <Image Source="{Binding PreviewImagePath, Converter={StaticResource ImagePathConverter}}" Stretch="Uniform"/>
+                        <TextBlock Text="NO PREVIEW IMAGE" FontSize="18"
+                                   Foreground="{DynamicResource RimworldLightBrownBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" FontStyle="Italic"
+                                   IsVisible="{Binding PreviewImagePath, Converter={StaticResource IsNullOrEmptyConverter}}"/>
+                    </Grid>
+                </Viewbox>
+            </Border>
+        </Border>
+
+        <!-- NON-SCROLLING Info Section -->
+        <StackPanel Grid.Row="1" Margin="10,10,10,0">
+
+            <Grid ColumnDefinitions="*,*">
+
+                <!-- ══ Left Column ══ -->
+                <Grid Grid.Column="0" Margin="0,0,10,0"
+                      ColumnDefinitions="24,Auto,*"
+                      RowDefinitions="Auto,Auto,Auto,Auto">
+
+                    <!-- Name -->
+                    <i:Icon Grid.Row="0" Grid.Column="0" Value="fa-signature" Classes="InfoIcon" Margin="0,0,8,8"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Classes="InfoLabel" Text="Name:" Margin="0,0,5,8"/>
+                    <SelectableTextBlock Grid.Row="0" Grid.Column="2" Classes="SelectableValue" FontWeight="Bold" Margin="0,0,0,8"
+                                         Text="{Binding Name, Mode=OneWay}"/>
+
+                    <!-- Authors -->
+                    <i:Icon Grid.Row="1" Grid.Column="0" Value="fa-users" Classes="InfoIcon" Margin="0,0,8,8"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Classes="InfoLabel" Text="Authors:" Margin="0,0,5,8"/>
+                    <SelectableTextBlock Grid.Row="1" Grid.Column="2" Classes="SelectableValue" Margin="0,0,0,8"
+                                         Text="{Binding Authors, Mode=OneWay}"/>
+
+                    <!-- Mod Type -->
+                    <i:Icon Grid.Row="2" Grid.Column="0" Value="fa-tag" Classes="InfoIcon" Margin="0,0,8,8"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Classes="InfoLabel" Text="Mod Type:" Margin="0,0,5,8"/>
+                    <SelectableTextBlock Grid.Row="2" Grid.Column="2" Classes="SelectableValue" Margin="0,0,0,8"
+                                         Text="{Binding ModType, Converter={StaticResource ModTypeToDescriptionConverter}, Mode=OneWay}"/>
+
+                    <!-- Tags (hidden when empty) -->
+                    <i:Icon Grid.Row="3" Grid.Column="0" Value="fa-tags" Classes="InfoIcon" Margin="0,0,8,8"
+                               IsVisible="{Binding Tags, Converter={StaticResource IsNotNullOrEmptyConverter}}"/>
+                    <TextBlock Grid.Row="3" Grid.Column="1" Classes="InfoLabel" Text="Tags:" Margin="0,0,5,8"
+                               IsVisible="{Binding Tags, Converter={StaticResource IsNotNullOrEmptyConverter}}"/>
+                    <SelectableTextBlock Grid.Row="3" Grid.Column="2" Classes="SelectableValue" Margin="0,0,0,8"
+                                         Text="{Binding Tags, Mode=OneWay}"
+                                         IsVisible="{Binding Tags, Converter={StaticResource IsNotNullOrEmptyConverter}}"/>
+                </Grid>
+
+                <!-- ══ Right Column ══ -->
+                <Grid Grid.Column="1" Margin="10,0,0,0"
+                      ColumnDefinitions="24,Auto,*"
+                      RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+
+                    <!-- Content -->
+                    <i:Icon Grid.Row="0" Grid.Column="0" Value="fa-file-code" Classes="InfoIcon" Margin="0,0,8,8"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Classes="InfoLabel" Text="Content:" Margin="0,0,5,8"/>
+                    <SelectableTextBlock Grid.Row="0" Grid.Column="2" Classes="SelectableValue" Margin="0,0,0,8"
+                                         Text="{Binding Assemblies, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='XML-Only|C# Code', Mode=OneWay}"/>
+
+                    <!-- Textures -->
+                    <i:Icon Grid.Row="1" Grid.Column="0" Value="fa-image" Classes="InfoIcon" Margin="0,0,8,8"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Classes="InfoLabel" Text="Textures:" Margin="0,0,5,8"/>
+                    <SelectableTextBlock Grid.Row="1" Grid.Column="2" Classes="SelectableValue" Margin="0,0,0,8"
+                                         Text="{Binding Textures, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='None|Contains Textures', Mode=OneWay}"/>
+
+                    <!-- Size (hidden when zero) -->
+                    <i:Icon Grid.Row="2" Grid.Column="0" Value="fa-weight-hanging" Classes="InfoIcon" Margin="0,0,8,8"
+                               IsVisible="{Binding SizeInfo.TotalSize, Converter={StaticResource CountToVisibilityConverter}}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Classes="InfoLabel" Text="Size:" Margin="0,0,5,8"
+                               IsVisible="{Binding SizeInfo.TotalSize, Converter={StaticResource CountToVisibilityConverter}}"/>
+                    <SelectableTextBlock Grid.Row="2" Grid.Column="2" Classes="SelectableValue" Margin="0,0,0,8"
+                                         Text="{Binding SizeInfo.TotalSize, Converter={StaticResource FileSizeConverter}, Mode=OneWay}"
+                                         IsVisible="{Binding SizeInfo.TotalSize, Converter={StaticResource CountToVisibilityConverter}}">
+                        <ToolTip.Tip>
+                            <ToolTip>
+                                <StackPanel Margin="2">
+                                    <TextBlock Margin="0,0,0,3" FontWeight="SemiBold"
+                                               Text="{Binding SizeInfo.TotalSize, Converter={StaticResource FileSizeConverter}, StringFormat='Disk Size: {0}', FallbackValue='Disk Size: 0 B'}"/>
+                                    
+                                    <StackPanel IsVisible="{Binding SizeInfo.MaxTextureSize, Converter={StaticResource CountToBooleanConverter}}">
+                                        <Separator />
+                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                            <TextBlock Text="Texture Size (Disk):" FontWeight="SemiBold"/>
+                                            <TextBlock Margin="5,0,0,0" IsVisible="{Binding SizeInfo.HasSignificantTextureSizeDifference}">
+                                                <TextBlock.Text>
+                                                    <MultiBinding StringFormat="{}{0} - {1}">
+                                                        <Binding Path="SizeInfo.MinTextureSize" Converter="{StaticResource FileSizeConverter}" FallbackValue="0 B"/>
+                                                        <Binding Path="SizeInfo.MaxTextureSize" Converter="{StaticResource FileSizeConverter}" FallbackValue="0 B"/>
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                            <TextBlock Margin="5,0,0,0" IsVisible="{Binding !SizeInfo.HasSignificantTextureSizeDifference}"
+                                                       Text="{Binding SizeInfo.MaxTextureSize, Converter={StaticResource FileSizeConverter}, FallbackValue='0 B'}"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                            </ToolTip>
+                        </ToolTip.Tip>
+                    </SelectableTextBlock>
+
+                    <!-- Game Versions -->
+                    <i:Icon Grid.Row="3" Grid.Column="0" Value="fa-code-fork" Classes="InfoIcon" Margin="0,0,8,8"/>
+                    <TextBlock Grid.Row="3" Grid.Column="1" Classes="InfoLabel" Text="Game Versions:" Margin="0,0,5,8"/>
+                    <ContentControl Grid.Row="3" Grid.Column="2" VerticalAlignment="Center" Margin="0,0,0,8"
+                                    Content="{Binding SupportedVersions, Converter={StaticResource VersionSupportConverter}, Mode=OneWay}"/>
+
+                    <!-- Mod Version (hidden when empty) -->
+                    <i:Icon Grid.Row="4" Grid.Column="0" Value="fa-code-commit" Classes="InfoIcon" Margin="0,0,8,8"
+                               IsVisible="{Binding ModVersion, Converter={StaticResource IsNotNullOrEmptyConverter}}"/>
+                    <TextBlock Grid.Row="4" Grid.Column="1" Classes="InfoLabel" Text="Mod Version:" Margin="0,0,5,8"
+                               IsVisible="{Binding ModVersion, Converter={StaticResource IsNotNullOrEmptyConverter}}"/>
+                    <SelectableTextBlock Grid.Row="4" Grid.Column="2" Classes="SelectableValue" Margin="0,0,0,8"
+                                         Text="{Binding ModVersion, Mode=OneWay}"
+                                         IsVisible="{Binding ModVersion, Converter={StaticResource IsNotNullOrEmptyConverter}}"/>
+                </Grid>
+            </Grid>
+
+            <!-- 3-Column Grid: Package ID / Steam ID / Path -->
+            <Grid Margin="0,8,0,0" ColumnDefinitions="*,*,*">
+
+                <!-- Package ID -->
+                <Border Grid.Column="0" Classes="CodeBox" Margin="0,0,5,0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <i:Icon Value="fa-cube" Classes="CodeBoxIcon"/>
+                            <TextBlock Text="Package ID" Classes="CodeBoxLabel"/>
+                        </StackPanel>
+                        <SelectableTextBlock Text="{Binding PackageId, Mode=OneWay}" Classes="CodeBoxText"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Steam ID (hidden when empty) -->
+                <Border Grid.Column="1" Classes="CodeBox" Margin="5,0,5,0"
+                        IsVisible="{Binding SteamId, Converter={StaticResource IsNotNullOrEmptyConverter}}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <i:Icon Value="fa-brands fa-steam" Classes="CodeBoxIcon"/>
+                            <TextBlock Text="Steam ID" Classes="CodeBoxLabel"/>
+                        </StackPanel>
+                        <SelectableTextBlock Text="{Binding SteamId, Mode=OneWay}" Classes="CodeBoxText"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Path: spans cols 1-2 when Steam ID is hidden -->
+                <Border Grid.Column="1" Grid.ColumnSpan="2" Classes="CodeBox" Margin="5,0,0,0"
+                        IsVisible="{Binding SteamId, Converter={StaticResource IsNullOrEmptyConverter}}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <i:Icon Value="fa-folder" Classes="CodeBoxIcon"/>
+                            <TextBlock Text="Path" Classes="CodeBoxLabel"/>
+                        </StackPanel>
+                        <SelectableTextBlock Classes="CodeBoxHyperlink" Text="{Binding Path, Mode=OneWay}"
+                                             Tapped="Path_Tapped">
+                            <ToolTip.Tip>
+                                <ToolTip Content="{Binding Path}"/>
+                            </ToolTip.Tip>
+                        </SelectableTextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- Path: column 2 only when Steam ID is visible -->
+                <Border Grid.Column="2" Classes="CodeBox" Margin="5,0,0,0"
+                        IsVisible="{Binding SteamId, Converter={StaticResource IsNotNullOrEmptyConverter}}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <i:Icon Value="fa-folder" Classes="CodeBoxIcon"/>
+                            <TextBlock Text="Path" Classes="CodeBoxLabel"/>
+                        </StackPanel>
+                        <SelectableTextBlock Classes="CodeBoxHyperlink" Text="{Binding Path, Mode=OneWay}"
+                                             Tapped="Path_Tapped">
+                            <ToolTip.Tip>
+                                <ToolTip Content="{Binding Path}"/>
+                            </ToolTip.Tip>
+                        </SelectableTextBlock>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </StackPanel>
+
+        <!-- Separator and Description Header -->
+        <StackPanel Grid.Row="2" Margin="10,15,10,0">
+            <Separator Classes="RimworldSeparatorStyle" Margin="0,0,0,10"/>
+            <TextBlock Text="Description" Classes="InfoLabel" FontSize="16" Margin="0,0,0,5"/>
+        </StackPanel>
+
+                        <!-- Description field -->
+                        <ScrollViewer Grid.Row="3" Margin="10,0,10,10" 
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto"
+                                      AllowAutoHide="False">
+                
+                            <SelectableTextBlock Text="{Binding Description, Mode=OneWay}"
+                                                 TextWrapping="Wrap"
+                                                 FontSize="13"
+                                                 Foreground="{DynamicResource RimworldBrownBrush}"/>
+                        </ScrollViewer>
+                    </Grid>
+                </DataTemplate>
+            </ContentControl.ContentTemplate>
+        </ContentControl>
+    </Panel>
+</UserControl>
+        

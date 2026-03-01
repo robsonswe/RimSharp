@@ -11,6 +11,12 @@ namespace RimSharp.Shared.Services.Contracts
     public interface IModCustomService
     {
         /// <summary>
+        /// Synchronously ensures the service is initialized and data is loaded.
+        /// Call this during app startup.
+        /// </summary>
+        void Initialize();
+
+        /// <summary>
         /// Retrieves all custom mod data.
         /// </summary>
         /// <returns>A dictionary mapping package IDs to custom mod information.</returns>
@@ -21,7 +27,7 @@ namespace RimSharp.Shared.Services.Contracts
         /// </summary>
         /// <param name="packageId">The package ID of the mod.</param>
         /// <returns>The custom information for the mod, or null if not found.</returns>
-        ModCustomInfo GetCustomModInfo(string packageId);
+        ModCustomInfo? GetCustomModInfo(string packageId);
 
         /// <summary>
         /// Adds or updates custom information for a mod.

@@ -1,22 +1,16 @@
-using System.Windows;
+using Avalonia;
 
 namespace RimSharp.Core.Helpers
 {
-    public class BindingProxy : Freezable
+    public class BindingProxy : AvaloniaObject
     {
-        // Dependency property to hold the data
-        public static readonly DependencyProperty DataProperty =
-            DependencyProperty.Register("Data", typeof(object), typeof(BindingProxy), new PropertyMetadata(null));
+        public static readonly StyledProperty<object?> DataProperty =
+            AvaloniaProperty.Register<BindingProxy, object?>(nameof(Data));
 
-        public object Data
+        public object? Data
         {
             get => GetValue(DataProperty);
             set => SetValue(DataProperty, value);
-        }
-
-        protected override Freezable CreateInstanceCore()
-        {
-            return new BindingProxy();
         }
     }
 }

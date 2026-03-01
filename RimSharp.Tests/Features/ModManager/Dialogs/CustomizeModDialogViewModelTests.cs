@@ -39,22 +39,23 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
         }
 
         [Fact]
-        public void AddLoadBefore_WhenValid_ShouldAddRule()
+        public async Task AddLoadBefore_WhenValid_ShouldAddRule()
         {
             // Arrange
             var mod = new ModItem { Name = "Test Mod", PackageId = "test.mod" };
             var vm = new CustomizeModDialogViewModel(mod, new ModCustomInfo(), _mockModService, _mockDialogService);
             
-            _mockDialogService.ShowDependencyRuleEditor(Arg.Any<DependencyRuleEditorDialogViewModel>())
+            _mockDialogService.ShowDependencyRuleEditorAsync(Arg.Any<DependencyRuleEditorDialogViewModel>())
                 .Returns(x => 
                 {
                     var dialogVm = x.Arg<DependencyRuleEditorDialogViewModel>();
                     dialogVm.PackageId = "other.mod";
-                    return true;
+                    return Task.FromResult(true);
                 });
 
             // Act
             vm.AddLoadBeforeCommand.Execute(null);
+            await Task.Delay(100); // Wait for async command
 
             // Assert
             vm.CustomLoadBefore.Should().HaveCount(1);
@@ -62,26 +63,27 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
         }
 
         [Fact]
-        public void AddLoadBefore_WhenPackageIdDuplicated_ShouldShowWarningAndNotAdd()
+        public async Task AddLoadBefore_WhenPackageIdDuplicated_ShouldShowWarningAndNotAdd()
         {
             // Arrange
             var mod = new ModItem { Name = "Test Mod", PackageId = "test.mod", LoadBefore = new List<string> { "dup.id" } };
             var vm = new CustomizeModDialogViewModel(mod, new ModCustomInfo(), _mockModService, _mockDialogService);
             
-            _mockDialogService.ShowDependencyRuleEditor(Arg.Any<DependencyRuleEditorDialogViewModel>())
+            _mockDialogService.ShowDependencyRuleEditorAsync(Arg.Any<DependencyRuleEditorDialogViewModel>())
                 .Returns(x => 
                 {
                     var dialogVm = x.Arg<DependencyRuleEditorDialogViewModel>();
                     dialogVm.PackageId = "dup.id";
-                    return true;
+                    return Task.FromResult(true);
                 });
 
             // Act
             vm.AddLoadBeforeCommand.Execute(null);
+            await Task.Delay(100); // Wait for async command
 
             // Assert
             vm.CustomLoadBefore.Should().BeEmpty();
-            _mockDialogService.Received(1).ShowWarning(Arg.Any<string>(), Arg.Is<string>(s => s.Contains("already exists")));
+            await _mockDialogService.Received(1).ShowWarning(Arg.Any<string>(), Arg.Is<string>(s => s.Contains("already exists")));
         }
 
         [Fact]

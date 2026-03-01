@@ -18,8 +18,10 @@ namespace RimSharp.Features.ModManager.Services.Management
         private readonly IModDictionaryService _modDictionaryService;
         private readonly List<ModItem> _allAvailableMods = new();
         private bool _hasAnyActiveModIssues = false;
+        private string _currentMajorGameVersion = string.Empty;
+        private readonly List<ModIssue> _activeModIssues = new();
 
-        public event EventHandler? ListChanged;
+        public event EventHandler<ModListChangedEventArgs>? ListChanged;
 
         public ModListManager(IModDictionaryService modDictionaryService)
         {
@@ -34,6 +36,16 @@ namespace RimSharp.Features.ModManager.Services.Management
         public IReadOnlyList<(ModItem Mod, int LoadOrder)> VirtualActiveMods => _orderService.VirtualActiveMods;
         public IReadOnlyList<ModItem> AllInactiveMods => _stateTracker.AllInactiveMods;
         public bool HasAnyActiveModIssues => _hasAnyActiveModIssues;
+        public int ActiveSortingIssuesCount => _activeModIssues.Count(i => i.Type == ModIssueType.Sorting);
+        public int ActiveMissingDependenciesCount => _activeModIssues.Count(i => i.Type == ModIssueType.Dependency);
+        public int ActiveIncompatibilitiesCount => _activeModIssues.Count(i => i.Type == ModIssueType.Incompatibility || 
+                                                                             i.Type == ModIssueType.SoftIncompatibility || 
+                                                                             i.Type == ModIssueType.HardIncompatibility);
+        public int ActiveVersionMismatchCount => _activeModIssues.Count(i => i.Type == ModIssueType.VersionMismatch);
+        public int ActiveDuplicateIssuesCount => _activeModIssues.Count(i => i.Type == ModIssueType.Duplicate);
+        public string CurrentMajorGameVersion => _currentMajorGameVersion;
+
+        public IEnumerable<ModIssue> GetActiveModIssues() => _activeModIssues;
 
         public void Initialize(IEnumerable<ModItem> allAvailableMods, IEnumerable<string> activeModPackageIds)
         {
@@ -42,6 +54,17 @@ namespace RimSharp.Features.ModManager.Services.Management
             _allAvailableMods.Clear();
             _allAvailableMods.AddRange(allAvailableMods);
             _lookupService.Initialize(_allAvailableMods);
+
+            _currentMajorGameVersion = string.Empty;
+            var coreMod = _allAvailableMods.FirstOrDefault(m => m.ModType == ModType.Core);
+            if (coreMod != null && coreMod.SupportedVersions.Any())
+            {
+                _currentMajorGameVersion = coreMod.SupportedVersions.First().Version;
+            }
+            if (string.IsNullOrEmpty(_currentMajorGameVersion) || _currentMajorGameVersion.StartsWith("N/A"))
+            {
+                _currentMajorGameVersion = "Unknown";
+            }
 
             var activeIdList = activeModPackageIds?
                 .Where(id => !string.IsNullOrEmpty(id))
@@ -55,16 +78,16 @@ namespace RimSharp.Features.ModManager.Services.Management
             for (int index = 0; index < activeIdList.Count; index++)
             {
                 string packageId = activeIdList[index];
-                if (_lookupService.TryGetMod(packageId, out var mod) && _stateTracker.IsModActive(mod))
+                if (_lookupService.TryGetMod(packageId, out var mod) && _stateTracker.IsModActive(mod!))
                 {
-                    initialActiveModsForOrder.Add((Mod: mod, LoadOrder: index));
+                    initialActiveModsForOrder.Add((Mod: mod!, LoadOrder: index));
                 }
             }
 
             _orderService.Initialize(initialActiveModsForOrder);
             RecalculateActiveModIssues();
 
-            RaiseListChanged();
+            RaiseListChanged(false); // Initial load is not a user modification
             Debug.WriteLine($"ModListManager Initialized: {_orderService.VirtualActiveMods.Count} active, {_stateTracker.AllInactiveMods.Count} inactive.");
         }
 
@@ -109,7 +132,7 @@ namespace RimSharp.Features.ModManager.Services.Management
             {
                 _orderService.Clear();
                 _orderService.AddModsAt(sortedMods, 0);
-                RaiseListChanged();
+                RaiseListChanged(true);
             }
 
             return orderChanged;
@@ -118,10 +141,10 @@ namespace RimSharp.Features.ModManager.Services.Management
         public bool IsModActive(ModItem mod) => _stateTracker.IsModActive(mod);
         public IEnumerable<ModItem> GetAllMods() => _allAvailableMods;
 
-        private void RaiseListChanged()
+        private void RaiseListChanged(bool activeListModified)
         {
             RecalculateActiveModIssues();
-            ListChanged?.Invoke(this, EventArgs.Empty);
+            ListChanged?.Invoke(this, new ModListChangedEventArgs(activeListModified));
         }
 
         public void ActivateModsAt(IEnumerable<ModItem> mods, int index)
@@ -152,7 +175,7 @@ namespace RimSharp.Features.ModManager.Services.Management
                 listChanged |= _orderService.AddModsAt(modsToActivate, index);
             }
 
-            if (listChanged) RaiseListChanged();
+            if (listChanged) RaiseListChanged(true);
         }
 
         public void DeactivateMods(IEnumerable<ModItem> mods)
@@ -162,7 +185,7 @@ namespace RimSharp.Features.ModManager.Services.Management
             if (!modsToDeactivate.Any()) return;
 
             foreach (var mod in modsToDeactivate) _stateTracker.Deactivate(mod);
-            if (_orderService.RemoveMods(modsToDeactivate)) RaiseListChanged();
+            if (_orderService.RemoveMods(modsToDeactivate)) RaiseListChanged(true);
         }
 
         public void ReorderMods(IEnumerable<ModItem> modsToMove, int targetIndex)
@@ -171,7 +194,108 @@ namespace RimSharp.Features.ModManager.Services.Management
             var validModsToMove = modsToMove.Where(m => m != null && _stateTracker.IsModActive(m)).Distinct().ToList();
             if (!validModsToMove.Any()) return;
 
-            if (_orderService.ReorderMods(validModsToMove, targetIndex)) RaiseListChanged();
+            if (_orderService.ReorderMods(validModsToMove, targetIndex)) RaiseListChanged(true);
+        }
+
+        public ModRemovalResult RemoveMods(IEnumerable<ModItem> mods)
+        {
+            if (mods == null) return ModRemovalResult.None;
+            var modsList = mods.Where(m => m != null).ToList();
+            if (!modsList.Any()) return ModRemovalResult.None;
+
+            var result = new ModRemovalResult();
+            bool anyListChanged = false;
+            bool activeModified = false;
+
+            foreach (var mod in modsList)
+            {
+                bool wasActive = _stateTracker.IsModActive(mod);
+                if (wasActive) result.InstanceRemoved = true;
+
+                // Find if there is a duplicate (same PackageId)
+                ModItem? alternative = null;
+                if (!string.IsNullOrEmpty(mod.PackageId))
+                {
+                    alternative = _allAvailableMods.FirstOrDefault(m => 
+                        m != mod && // Not the one we are deleting
+                        string.Equals(m.PackageId, mod.PackageId, StringComparison.OrdinalIgnoreCase));
+                }
+
+                // Remove from all core lists
+                bool removedFromAvailable = _allAvailableMods.Remove(mod);
+                _lookupService.Remove(mod);
+                
+                if (removedFromAvailable) anyListChanged = true;
+                
+                if (wasActive)
+                {
+                    if (alternative != null)
+                    {
+                        // SWAP Logic: Replace the removed active mod with its duplicate in-place
+                        var currentEntry = _orderService.VirtualActiveMods.FirstOrDefault(x => x.Mod == mod);
+                        int index = _orderService.VirtualActiveMods.ToList().IndexOf(currentEntry);
+                        
+                        _stateTracker.Remove(mod); 
+                        _orderService.RemoveMods(new[] { mod });
+                        _stateTracker.Activate(alternative);
+                        
+                        if (index >= 0) _orderService.AddModsAt(new[] { alternative }, index);
+                        else _orderService.AddMod(alternative, _orderService.VirtualActiveMods.Count);
+
+                        _lookupService.Register(alternative);
+                        // SWAP is NOT considered a modification of the active list IDs, 
+                        // but it technically changed the instances. 
+                        // However, per requirements, we don't save. 
+                        // Should we set activeModified = true? 
+                        // If we do, Save button lights up. 
+                        // If we don't, Save button stays as is.
+                        // Let's set it to false for Swap.
+                    }
+                    else
+                    {
+                        // No alternative: Remove normally
+                        _stateTracker.Remove(mod);
+                        _orderService.RemoveMods(new[] { mod });
+                        
+                        result.ActivePackageIdLost = true; // Lost the ID entirely
+                        activeModified = true; // Definitely modified IDs
+                    }
+                }
+                else
+                {
+                    // Was not active, just remove from inactive list
+                    _stateTracker.Remove(mod);
+                    
+                    if (alternative != null && !_lookupService.TryGetMod(mod.PackageId, out _))
+                    {
+                        _lookupService.Register(alternative);
+                    }
+                }
+            }
+
+            if (anyListChanged)
+            {
+                RaiseListChanged(activeModified);
+            }
+
+            return result;
+        }
+
+        public List<ModItem> GetActiveModsDependingOn(string packageId)
+        {
+            if (string.IsNullOrEmpty(packageId)) return new List<ModItem>();
+            var targetId = packageId.ToLowerInvariant();
+            
+            var dependents = new List<ModItem>();
+            foreach (var entry in _orderService.VirtualActiveMods)
+            {
+                if (entry.Mod?.ModDependencies == null) continue;
+                if (entry.Mod.ModDependencies.Any(d => d.PackageId?.Equals(targetId, StringComparison.OrdinalIgnoreCase) == true))
+                {
+                    dependents.Add(entry.Mod);
+                }
+            }
+            return dependents;
         }
 
         public (List<ModItem> addedMods, List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)> missingDependencies) ResolveDependencies()
@@ -219,7 +343,7 @@ namespace RimSharp.Features.ModManager.Services.Management
                     }
                     else
                     {
-                        string finalDisplayName = dependency.DisplayName ?? depPackageIdLower;
+                        string finalDisplayName = !string.IsNullOrWhiteSpace(dependency.DisplayName) ? dependency.DisplayName : depPackageIdLower;
                         string? finalSteamUrl = dependency.SteamWorkshopUrl;
 
                         bool needsLookup = string.IsNullOrWhiteSpace(finalSteamUrl) || finalSteamUrl.Trim().StartsWith("steam://", StringComparison.OrdinalIgnoreCase);
@@ -255,12 +379,13 @@ namespace RimSharp.Features.ModManager.Services.Management
             }
 
             var tempMissing = missingDepsDict.Select(kvp => (kvp.Value.displayName, kvp.Key, kvp.Value.steamUrl, kvp.Value.requiredBy)).ToList();
-            if (listChanged) RaiseListChanged();
+            if (listChanged) RaiseListChanged(true);
             return (addedMods, tempMissing);
         }
 
         private void RecalculateActiveModIssues()
         {
+            _activeModIssues.Clear();
             var activeModsWithOrder = _orderService.VirtualActiveMods.ToList();
             if (!activeModsWithOrder.Any())
             {
@@ -283,7 +408,7 @@ namespace RimSharp.Features.ModManager.Services.Management
                 var currentMod = currentEntry.Mod;
                 if (currentMod == null) continue;
 
-                var issues = new List<string>();
+                var issuesStrings = new List<string>();
                 currentMod.HasIssues = false;
                 currentMod.IssueTooltipText = string.Empty;
 
@@ -293,9 +418,18 @@ namespace RimSharp.Features.ModManager.Services.Management
                     {
                         if (string.IsNullOrEmpty(dep.PackageId)) continue;
                         var depIdLower = dep.PackageId.ToLowerInvariant();
-                        if (!activePackageIds.Contains(depIdLower)) issues.Add($"Dependency missing: '{dep.DisplayName ?? dep.PackageId}'");
+                        if (!activePackageIds.Contains(depIdLower))
+                        {
+                            var desc = $"Dependency missing: '{dep.DisplayName ?? dep.PackageId}'";
+                            issuesStrings.Add(desc);
+                            _activeModIssues.Add(new ModIssue(currentMod, ModIssueType.Dependency, desc));
+                        }
                         else if (activeModLookup.TryGetValue(depIdLower, out var depEntry) && depEntry.LoadOrder > currentEntry.LoadOrder)
-                            issues.Add($"Dependency load order: '{dep.DisplayName ?? dep.PackageId}' must load before this mod.");
+                        {
+                            var desc = $"Dependency load order: '{dep.DisplayName ?? dep.PackageId}' must load before this mod.";
+                            issuesStrings.Add(desc);
+                            _activeModIssues.Add(new ModIssue(currentMod, ModIssueType.Sorting, desc));
+                        }
                     }
                 }
 
@@ -309,7 +443,14 @@ namespace RimSharp.Features.ModManager.Services.Management
                             currentMod.IncompatibleWith.TryGetValue(incompatibleId, out var rule);
                             string name = activeModLookup.TryGetValue(incompatibleId, out var incEntry) ? incEntry.Mod?.Name ?? incompatibleId : incompatibleId;
                             var comment = rule?.Comment?.FirstOrDefault();
-                            issues.Add($"Incompatible with active mod: '{name}'" + (string.IsNullOrWhiteSpace(comment) ? "" : $" (Reason: {comment})"));
+                            
+                            bool isHard = rule?.HardIncompatibility ?? false;
+                            var typeLabel = isHard ? "Hard Incompatibility" : "Soft Incompatibility";
+                            var issueType = isHard ? ModIssueType.HardIncompatibility : ModIssueType.SoftIncompatibility;
+
+                            var desc = $"{typeLabel} with active mod: '{name}'" + (string.IsNullOrWhiteSpace(comment) ? "" : $" (Reason: {comment})");
+                            issuesStrings.Add(desc);
+                            _activeModIssues.Add(new ModIssue(currentMod, issueType, desc));
                         }
                     }
                 }
@@ -318,20 +459,62 @@ namespace RimSharp.Features.ModManager.Services.Management
                 foreach (var id in loadBeforeIds)
                 {
                     if (activeModLookup.TryGetValue(id, out var target) && target.LoadOrder < currentEntry.LoadOrder)
-                        issues.Add($"Load order: Should load before '{target.Mod?.Name ?? id}', but loads after.");
+                    {
+                        var desc = $"Load order: Should load before '{target.Mod?.Name ?? id}', but loads after.";
+                        issuesStrings.Add(desc);
+                        _activeModIssues.Add(new ModIssue(currentMod, ModIssueType.Sorting, desc));
+                    }
                 }
 
                 var loadAfterIds = (currentMod.LoadAfter ?? Enumerable.Empty<string>()).Concat(currentMod.ForceLoadAfter ?? Enumerable.Empty<string>()).Where(id => !string.IsNullOrEmpty(id)).Select(id => id.ToLowerInvariant());
                 foreach (var id in loadAfterIds)
                 {
                     if (activeModLookup.TryGetValue(id, out var target) && target.LoadOrder > currentEntry.LoadOrder)
-                        issues.Add($"Load order: Should load after '{target.Mod?.Name ?? id}', but loads before.");
+                    {
+                        var desc = $"Load order: Should load after '{target.Mod?.Name ?? id}', but loads before.";
+                        issuesStrings.Add(desc);
+                        _activeModIssues.Add(new ModIssue(currentMod, ModIssueType.Sorting, desc));
+                    }
                 }
 
-                if (issues.Count > 0)
+                if (!currentMod.IsSupportedRW)
+                {
+                    string supportedList = currentMod.SupportedVersionStrings.Any() 
+                        ? string.Join(", ", currentMod.SupportedVersionStrings) 
+                        : "None listed";
+
+                    var desc = $"Version mismatch. Your current RimWorld version is {_currentMajorGameVersion}, but this mod lists support for: {supportedList}.";
+                    issuesStrings.Add(desc);
+                    _activeModIssues.Add(new ModIssue(currentMod, ModIssueType.VersionMismatch, desc));
+                }
+
+                // Duplicate Check
+                if (!string.IsNullOrEmpty(currentMod.PackageId))
+                {
+                    var duplicates = _allAvailableMods.Where(m => 
+                        m != currentMod && 
+                        string.Equals(m.PackageId, currentMod.PackageId, StringComparison.OrdinalIgnoreCase)).ToList();
+                    
+                    if (duplicates.Any())
+                    {
+                        var duplicateDetails = duplicates.Select(d => 
+                        {
+                            var versionInfo = !string.IsNullOrEmpty(d.ModVersion) ? $" (Mod Version: {d.ModVersion})" : "";
+                            var authorInfo = !string.IsNullOrEmpty(d.Authors) ? $" by {d.Authors}" : "";
+                            var rwVersions = d.SupportedVersionStrings.Any() ? $" [RW: {string.Join(", ", d.SupportedVersionStrings)}]" : "";
+                            return $"- {d.Name}{authorInfo}{versionInfo}{rwVersions} at: {d.Path}";
+                        });
+
+                        var desc = $"Duplicate mod detected. There are other versions of this mod installed:{Environment.NewLine}{string.Join(Environment.NewLine, duplicateDetails)}";
+                        issuesStrings.Add(desc);
+                        _activeModIssues.Add(new ModIssue(currentMod, ModIssueType.Duplicate, desc));
+                    }
+                }
+
+                if (issuesStrings.Count > 0)
                 {
                     currentMod.HasIssues = true;
-                    currentMod.IssueTooltipText = string.Join(Environment.NewLine, issues);
+                    currentMod.IssueTooltipText = string.Join(Environment.NewLine, issuesStrings);
                     anyIssuesFound = true;
                 }
             }

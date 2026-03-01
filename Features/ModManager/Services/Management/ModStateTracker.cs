@@ -90,6 +90,13 @@ namespace RimSharp.Features.ModManager.Services.Management
             }
         }
 
+        public void Remove(ModItem mod)
+        {
+            if (mod == null) return;
+            _activeModSet.Remove(mod);
+            _allInactiveMods.Remove(mod);
+        }
+
         private bool IsModInActiveList(ModItem mod, List<string> activeIdList, Dictionary<string, ModItem> modLookup)
         {
             if (string.IsNullOrEmpty(mod.PackageId)) return false;

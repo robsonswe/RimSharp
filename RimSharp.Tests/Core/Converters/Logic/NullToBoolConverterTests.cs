@@ -1,5 +1,5 @@
 using System.Globalization;
-using System.Windows.Data;
+using Avalonia;
 using FluentAssertions;
 using RimSharp.Core.Converters.Logic;
 using Xunit;
@@ -48,13 +48,13 @@ namespace RimSharp.Tests.Core.Converters.Logic
         }
 
         [Fact]
-        public void ConvertBack_WhenCheckedIsFalse_ShouldReturnDoNothing()
+        public void ConvertBack_WhenCheckedIsFalse_ShouldReturnUnsetValue()
         {
             // Act
             var result = _converter.ConvertBack(false, typeof(bool?), "True", CultureInfo.InvariantCulture);
 
             // Assert
-            result.Should().Be(Binding.DoNothing);
+            result.Should().Be(AvaloniaProperty.UnsetValue);
         }
     }
 }

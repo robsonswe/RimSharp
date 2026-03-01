@@ -11,17 +11,17 @@ namespace RimSharp.Shared.Models // Adjust namespace as needed
         /// <summary>
         /// The packageId (folder name) of the mod. Lowercase.
         /// </summary>
-        public string PackageId { get; set; }
+        public string PackageId { get; set; } = string.Empty;
 
         /// <summary>
         /// The Steam Workshop ID of the mod. Lowercase.
         /// </summary>
-        public string SteamId { get; set; }
+        public string SteamId { get; set; } = string.Empty;
 
         /// <summary>
         /// The display name of the mod.
         /// </summary>
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>
         /// List of supported game versions.
@@ -31,7 +31,7 @@ namespace RimSharp.Shared.Models // Adjust namespace as needed
         /// <summary>
         /// The author(s) of the mod.
         /// </summary>
-        public string Authors { get; set; }
+        public string Authors { get; set; } = string.Empty;
 
         /// <summary>
         /// Indicates whether the mod is currently published (e.g., on Steam Workshop).

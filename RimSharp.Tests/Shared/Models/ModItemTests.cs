@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using FluentAssertions;
 using RimSharp.Shared.Models;
@@ -7,6 +8,44 @@ namespace RimSharp.Tests.Shared.Models
 {
     public class ModItemTests
     {
+        [Fact]
+        public void InstanceId_ShouldBeUniqueForEachInstance()
+        {
+            // Arrange & Act
+            var mod1 = new ModItem();
+            var mod2 = new ModItem();
+
+            // Assert
+            mod1.InstanceId.Should().NotBe(Guid.Empty);
+            mod2.InstanceId.Should().NotBe(Guid.Empty);
+            mod1.InstanceId.Should().NotBe(mod2.InstanceId);
+        }
+
+        [Fact]
+        public void Equals_ShouldOnlyMatchSameInstance()
+        {
+            // Arrange
+            var mod1 = new ModItem { PackageId = "test" };
+            var mod2 = new ModItem { PackageId = "test" }; // Same data, different instance
+
+            // Assert
+            mod1.Equals(mod2).Should().BeFalse();
+            (mod1 == mod2).Should().BeFalse(); // Reference check still works as expected
+            mod1.Equals(mod1).Should().BeTrue();
+        }
+
+        [Fact]
+        public void GetHashCode_ShouldBeStableAndUniquePerInstance()
+        {
+            // Arrange
+            var mod1 = new ModItem { PackageId = "test" };
+            var mod2 = new ModItem { PackageId = "test" };
+
+            // Assert
+            mod1.GetHashCode().Should().Be(mod1.GetHashCode());
+            mod1.GetHashCode().Should().NotBe(mod2.GetHashCode());
+        }
+
         [Theory]
         [InlineData("Author1, Author2", new[] { "Author1", "Author2" })]
         [InlineData("Author1; Author2", new[] { "Author1", "Author2" })]

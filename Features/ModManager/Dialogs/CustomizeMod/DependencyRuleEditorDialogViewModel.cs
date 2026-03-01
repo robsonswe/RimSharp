@@ -1,26 +1,33 @@
-using System.Windows;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using RimSharp.AppDir.Dialogs;
+using RimSharp.Shared.Services.Contracts;
+using RimSharp.Features.ModManager.Dialogs.ModSelector;
 
 namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 {
     public class DependencyRuleEditorDialogViewModel : DialogViewModelBase<bool>
     {
-        private string _packageId;
+        private readonly IDialogService _dialogService;
+        private readonly IModService _modService;
+        private string _packageId = string.Empty;
+        private string _displayName = string.Empty;
+        private string _comment = string.Empty;
+
         public string PackageId
         {
             get => _packageId;
             set => SetProperty(ref _packageId, value);
         }
 
-        private string _displayName;
         public string DisplayName
         {
             get => _displayName;
             set => SetProperty(ref _displayName, value);
         }
 
-        private string _comment;
         public string Comment
         {
             get => _comment;
@@ -29,26 +36,46 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 
         public ICommand SaveCommand { get; }
         public ICommand CancelCommand { get; }
+        public ICommand OpenModSelectorCommand { get; }
 
-        public DependencyRuleEditorDialogViewModel(string title) : base(title)
+        public DependencyRuleEditorDialogViewModel(string title, IDialogService dialogService, IModService modService) : base(title)
         {
+            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
+            _modService = modService ?? throw new ArgumentNullException(nameof(modService));
+            
             SaveCommand = CreateCommand(Save);
             CancelCommand = CreateCommand(Cancel);
+            OpenModSelectorCommand = CreateAsyncCommand(OpenModSelectorAsync);
+        }
+
+        private async Task OpenModSelectorAsync()
+        {
+            var allMods = _modService.GetLoadedMods();
+            var viewModel = new ModSelectorDialogViewModel(allMods);
+            
+            // If user already typed something, use it as initial search
+            if (!string.IsNullOrWhiteSpace(PackageId))
+            {
+                viewModel.SearchText = PackageId;
+            }
+
+            var selectedMod = await _dialogService.ShowModSelectorDialogAsync(viewModel);
+            if (selectedMod != null)
+            {
+                PackageId = selectedMod.PackageId;
+                DisplayName = selectedMod.Name;
+            }
         }
 
         private void Save()
         {
-            // Basic validation: ensure PackageId is not empty
             if (string.IsNullOrWhiteSpace(PackageId))
             {
-                MessageBox.Show("Package ID cannot be empty.", "Validation Error", 
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                _dialogService.ShowWarning("Validation Error", "Package ID cannot be empty.");
                 return;
             }
             
-            // Trim whitespace from PackageId
             PackageId = PackageId.Trim();
-            
             CloseDialog(true);
         }
 

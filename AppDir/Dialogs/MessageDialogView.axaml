@@ -1,0 +1,70 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+        xmlns:vmDialogs="clr-namespace:RimSharp.AppDir.Dialogs"
+        xmlns:i="https://github.com/projektanker/icons.avalonia"
+        x:Class="RimSharp.AppDir.Dialogs.MessageDialogView"
+        mc:Ignorable="d"
+        x:DataType="vmDialogs:MessageDialogViewModel"
+        Title="{Binding Title}"
+        SizeToContent="Height"
+        Width="450" MinWidth="350" MaxWidth="600"
+        CanResize="False">
+
+    <dialogs:BaseDialog.MainContent>
+        <Border Classes="RimworldPanelBorder">
+            <Grid ColumnDefinitions="Auto,*" Margin="15,10">
+                <!-- Icon -->
+                <Border Grid.Column="0" 
+                        Width="40" 
+                        Height="40" 
+                        CornerRadius="20" 
+                        Background="{DynamicResource RimworldDarkBeigeBrush}"
+                        BorderBrush="{DynamicResource RimworldBrownBrush}" 
+                        BorderThickness="1"
+                        Margin="0,0,15,0"
+                        VerticalAlignment="Top">
+                    <i:Icon Value="{Binding DialogType, Converter={StaticResource DialogTypeToIconConverter}}" 
+                               HorizontalAlignment="Center" 
+                               VerticalAlignment="Center" 
+                               FontSize="22"
+                               Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                </Border>
+
+                <!-- Message -->
+                <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" MaxHeight="300">
+                    <TextBlock Text="{Binding Message}"
+                               TextWrapping="Wrap"
+                               FontSize="14"
+                               LineHeight="22"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </dialogs:BaseDialog.MainContent>
+
+    <dialogs:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,12,0,5">
+            <Button Content="Copy" 
+                Command="{Binding CopyToClipboardCommand}"
+                Classes="RimworldButtonStyle"
+                IsVisible="{Binding ShowCopyButton}"
+                MinWidth="80" Height="30"/>
+
+            <Button Content="OK"
+                    Command="{Binding OkCommand}"
+                    Classes="RimworldSaveButtonStyle"
+                    IsVisible="{Binding ShowOkButton}"
+                    MinWidth="80" Height="30"/>
+
+            <Button Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    Classes="RimworldRunButtonStyle"
+                    IsVisible="{Binding ShowCancelButton}"
+                    MinWidth="80" Height="30"/>
+        </StackPanel>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

@@ -54,6 +54,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Strip
     {
         private bool? _isSelected = true; // Nullable for indeterminate state
         private bool _isExpanded;
+        private bool _isUpdatingFromChildren;
 
         public ModItem Mod { get; }
         public ObservableCollection<StrippableItemViewModel> Children { get; }
@@ -64,15 +65,24 @@ namespace RimSharp.Features.ModManager.Dialogs.Strip
             get => _isSelected;
             set
             {
-                if (SetProperty(ref _isSelected, value))
+                if (_isSelected == value) return;
+
+                if (_isUpdatingFromChildren)
                 {
-                    if (value.HasValue) // Not indeterminate
+                    _isSelected = value;
+                    OnPropertyChanged();
+                    return;
+                }
+
+                // If user clicks, force a binary state (toggle)
+                bool targetValue = value ?? false;
+                
+                if (SetProperty(ref _isSelected, targetValue))
+                {
+                    // Propagate change to children
+                    foreach (var child in Children)
                     {
-                        // Propagate change to children
-                        foreach (var child in Children)
-                        {
-                            child.IsSelected = value.Value;
-                        }
+                        child.IsSelected = targetValue;
                     }
                     OnPropertyChanged(nameof(SelectedSize));
                 }
@@ -85,29 +95,45 @@ namespace RimSharp.Features.ModManager.Dialogs.Strip
             set => SetProperty(ref _isExpanded, value);
         }
 
+        public ICommand ToggleExpandCommand { get; }
+
+        public void ToggleExpand()
+        {
+            IsExpanded = !IsExpanded;
+        }
+
         public long SelectedSize => Children.Where(c => c.IsSelected).Sum(c => c.Size);
 
         public StrippableModViewModel(ModItem mod)
         {
             Mod = mod;
             Children = new ObservableCollection<StrippableItemViewModel>();
+            ToggleExpandCommand = ReactiveUI.ReactiveCommand.Create(ToggleExpand);
         }
 
         // Called by a child when its selection changes
         public void UpdateParentSelectionState()
         {
-            var selectedCount = Children.Count(c => c.IsSelected);
-            if (selectedCount == 0)
+            _isUpdatingFromChildren = true;
+            try
             {
-                IsSelected = false;
+                var selectedCount = Children.Count(c => c.IsSelected);
+                if (selectedCount == 0)
+                {
+                    IsSelected = false;
+                }
+                else if (selectedCount == Children.Count)
+                {
+                    IsSelected = true;
+                }
+                else
+                {
+                    IsSelected = null; // Indeterminate state
+                }
             }
-            else if (selectedCount == Children.Count)
+            finally
             {
-                IsSelected = true;
-            }
-            else
-            {
-                IsSelected = null; // Indeterminate state
+                _isUpdatingFromChildren = false;
             }
             OnPropertyChanged(nameof(SelectedSize));
         }

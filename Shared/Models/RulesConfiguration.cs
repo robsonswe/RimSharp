@@ -9,6 +9,6 @@ namespace RimSharp.Shared.Models
     public class RulesConfiguration
     {
         public RulesStorageType StorageType { get; set; } = RulesStorageType.Json;
-        public string SqliteConnectionString { get; set; }
+        public string SqliteConnectionString { get; set; } = string.Empty;
     }
 }

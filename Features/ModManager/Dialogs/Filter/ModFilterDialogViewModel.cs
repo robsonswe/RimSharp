@@ -11,11 +11,11 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
 {
     public class ModFilterDialogViewModel : DialogViewModelBase<ModFilterDialogResult>
     {
-        private string _searchText;
-        private string _authorFilterText; // New
-        private bool? _isOutdatedFilter;
+        private string _searchText = string.Empty;
+        private string _authorFilterText = string.Empty;
+        private bool? _isSupportedFilter;
         private bool? _hasAssembliesFilter;
-        private bool? _hasTexturesFilter; // <<< NEW FIELD >>>
+        private bool? _hasTexturesFilter;
         private bool? _isFavoriteFilter;
 
         private readonly ModFilterCriteria _initialCriteria;
@@ -27,7 +27,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
             set => SetProperty(ref _searchText, value);
         }
 
-        public string AuthorFilterText // New
+        public string AuthorFilterText
         {
             get => _authorFilterText;
             set => SetProperty(ref _authorFilterText, value);
@@ -35,38 +35,38 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
 
         public ObservableCollection<SelectableItemViewModel<ModType>> AvailableModTypes { get; }
         public ObservableCollection<SelectableItemViewModel<string>> AvailableVersions { get; }
-        public ObservableCollection<SelectableItemViewModel<string>> AvailableTags { get; } // New
+        public ObservableCollection<SelectableItemViewModel<string>> AvailableTags { get; }
 
-        // Store all authors for potential future autocomplete suggestions
-        public ReadOnlyCollection<string> AllAvailableAuthors { get; } // New
+        public ReadOnlyCollection<string> AllAvailableAuthors { get; }
 
 
-        public bool? IsOutdatedFilter { get => _isOutdatedFilter; set => SetProperty(ref _isOutdatedFilter, value); }
+        public bool? IsSupportedFilter { get => _isSupportedFilter; set => SetProperty(ref _isSupportedFilter, value); }
         public bool? HasAssembliesFilter { get => _hasAssembliesFilter; set => SetProperty(ref _hasAssembliesFilter, value); }
-        public bool? HasTexturesFilter { get => _hasTexturesFilter; set => SetProperty(ref _hasTexturesFilter, value); } // <<< NEW PROPERTY >>>
+        public bool? HasTexturesFilter { get => _hasTexturesFilter; set => SetProperty(ref _hasTexturesFilter, value); }
         public bool? IsFavoriteFilter { get => _isFavoriteFilter; set => SetProperty(ref _isFavoriteFilter, value); }
 
         // Commands
         public ICommand ApplyCommand { get; }
         public ICommand ClearCommand { get; }
-        public ICommand CancelCommand { get; } // Uses base CloseCommand
+        public ICommand CancelCommand { get; }
+        public ICommand SetFilterPropertyCommand { get; } // New command to fix RadioButton behavior
 
         public ModFilterDialogViewModel(
             ModFilterCriteria currentCriteria,
             IEnumerable<string> allSupportedVersions,
-            IEnumerable<string> allAvailableTags, // New
-            IEnumerable<string> allAvailableAuthors) // New
+            IEnumerable<string> allAvailableTags,
+            IEnumerable<string> allAvailableAuthors)
             : base("Filter Mods")
         {
             _initialCriteria = currentCriteria ?? new ModFilterCriteria();
 
             // Initialize properties from current criteria
             _searchText = _initialCriteria.SearchText;
-            _authorFilterText = _initialCriteria.AuthorFilterText; // New
-            _isOutdatedFilter = _initialCriteria.IsOutdatedFilter;
+            _authorFilterText = _initialCriteria.AuthorFilterText;
+            _isSupportedFilter = _initialCriteria.IsSupportedFilter;
             _isFavoriteFilter = _initialCriteria.IsFavoriteFilter;
             _hasAssembliesFilter = _initialCriteria.HasAssembliesFilter;
-            _hasTexturesFilter = _initialCriteria.HasTexturesFilter; // <<< INITIALIZE NEW FILTER >>>
+            _hasTexturesFilter = _initialCriteria.HasTexturesFilter;
 
             // Populate Mod Types
             var modTypeConverter = new ModTypeToDescriptionConverter();
@@ -74,7 +74,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
                 Enum.GetValues(typeof(ModType)).Cast<ModType>()
                     .Select(mt => new SelectableItemViewModel<ModType>(
                         mt,
-                        (string)modTypeConverter.Convert(mt, typeof(string), null, System.Globalization.CultureInfo.CurrentCulture),
+                        (string?)modTypeConverter.Convert(mt, typeof(string), null, System.Globalization.CultureInfo.CurrentCulture) ?? mt.ToString(),
                         _initialCriteria.SelectedModTypes?.Contains(mt) ?? false
                     ))
             );
@@ -88,7 +88,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
                     ))
             );
 
-            // Populate Tags (New)
+            // Populate Tags
             AvailableTags = new ObservableCollection<SelectableItemViewModel<string>>(
                 (allAvailableTags ?? Enumerable.Empty<string>())
                     .OrderBy(t => t, StringComparer.OrdinalIgnoreCase)
@@ -104,7 +104,34 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
             // Initialize Commands
             ApplyCommand = CreateCommand(ApplyFilters);
             ClearCommand = CreateCommand(ClearFilters);
-            CancelCommand = CloseCommand; // Use base CloseCommand for Cancel
+            CancelCommand = CloseCommand;
+            SetFilterPropertyCommand = CreateCommand<string>(SetFilterProperty);
+        }
+
+        private void SetFilterProperty(string parameter)
+        {
+            if (string.IsNullOrEmpty(parameter)) return;
+
+            var parts = parameter.Split('|');
+            if (parts.Length != 2) return;
+
+            string property = parts[0];
+            string valueStr = parts[1];
+
+            bool? value = valueStr switch
+            {
+                "True" => true,
+                "False" => false,
+                _ => null
+            };
+
+            switch (property)
+            {
+                case "IsSupported": IsSupportedFilter = value; break;
+                case "IsFavorite": IsFavoriteFilter = value; break;
+                case "HasAssemblies": HasAssembliesFilter = value; break;
+                case "HasTextures": HasTexturesFilter = value; break;
+            }
         }
 
         private void ApplyFilters()
@@ -112,14 +139,14 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
             CurrentCriteria = new ModFilterCriteria
             {
                 SearchText = this.SearchText,
-                AuthorFilterText = this.AuthorFilterText, // New
+                AuthorFilterText = this.AuthorFilterText,
                 SelectedModTypes = AvailableModTypes.Where(vm => vm.IsSelected).Select(vm => vm.Item).ToList(),
                 SelectedSupportedVersions = AvailableVersions.Where(vm => vm.IsSelected).Select(vm => vm.Item).ToList(),
-                SelectedTags = AvailableTags.Where(vm => vm.IsSelected).Select(vm => vm.Item).ToList(), // New
-                IsOutdatedFilter = this.IsOutdatedFilter,
+                SelectedTags = AvailableTags.Where(vm => vm.IsSelected).Select(vm => vm.Item).ToList(),
+                IsSupportedFilter = this.IsSupportedFilter,
                 IsFavoriteFilter = this.IsFavoriteFilter,
                 HasAssembliesFilter = this.HasAssembliesFilter,
-                HasTexturesFilter = this.HasTexturesFilter // <<< APPLY NEW FILTER >>>
+                HasTexturesFilter = this.HasTexturesFilter
             };
             CloseDialog(ModFilterDialogResult.Apply);
         }
@@ -127,20 +154,20 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
         private void ClearFilters()
         {
             SearchText = string.Empty;
-            AuthorFilterText = string.Empty; // New
+            AuthorFilterText = string.Empty;
             foreach (var item in AvailableModTypes) item.IsSelected = false;
             foreach (var item in AvailableVersions) item.IsSelected = false;
-            foreach (var item in AvailableTags) item.IsSelected = false; // New
-            IsOutdatedFilter = null;
+            foreach (var item in AvailableTags) item.IsSelected = false;
+            IsSupportedFilter = null;
             IsFavoriteFilter = null;
             HasAssembliesFilter = null;
-            HasTexturesFilter = null; // <<< CLEAR NEW FILTER >>>
+            HasTexturesFilter = null;
 
-            CurrentCriteria = new ModFilterCriteria(); // Cleared criteria
+            CurrentCriteria = new ModFilterCriteria();
             CloseDialog(ModFilterDialogResult.Clear);
         }
 
-        public ModFilterCriteria CurrentCriteria { get; private set; } = null;
+        public ModFilterCriteria? CurrentCriteria { get; private set; } = null;
 
         protected override void OnRequestCloseDialog()
         {

@@ -84,12 +84,12 @@ namespace RimSharp.Shared.Services.Implementations
             // ModCustomService.ApplyCustomInfoToMods needs modification (see Step 8)
             _customService.ApplyCustomInfoToMods(_allMods);
 
-            // 6. Final Checks (Outdated Status)
-            _logger.LogDebug("Calculating outdated status...", nameof(ModService));
+            // 6. Final Checks (Version Support Status)
+            _logger.LogDebug("Calculating version support status...", nameof(ModService));
             foreach (var mod in _allMods)
             {
                 // Use the comprehensive SupportedVersions list now
-                mod.IsOutdatedRW = !IsVersionSupported(_currentMajorVersion, mod.SupportedVersions) && mod.SupportedVersions.Any();
+                mod.IsSupportedRW = IsVersionSupported(_currentMajorVersion, mod.SupportedVersions) || !mod.SupportedVersions.Any();
             }
 
             // 7. Set Active Status
@@ -298,13 +298,13 @@ namespace RimSharp.Shared.Services.Implementations
             await Task.Run(() => _customService.ApplyCustomInfoToMods(_allMods));
 
 
-            // 6. Final Checks (Outdated Status)
-            _logger.LogDebug("Calculating outdated status...", nameof(ModService));
+            // 6. Final Checks (Version Support Status)
+            _logger.LogDebug("Calculating version support status...", nameof(ModService));
             progress?.Report((95, 100, "Finalizing metadata..."));
             foreach (var mod in _allMods)
             {
                 // Use the comprehensive SupportedVersions list now
-                mod.IsOutdatedRW = !IsVersionSupported(_currentMajorVersion, mod.SupportedVersions) && mod.SupportedVersions.Any();
+                mod.IsSupportedRW = IsVersionSupported(_currentMajorVersion, mod.SupportedVersions) || !mod.SupportedVersions.Any();
             }
 
             // 7. Set Active Status
@@ -973,19 +973,19 @@ namespace RimSharp.Shared.Services.Implementations
                     Authors = root.Element("author")?.Value ??
                               string.Join(", ", root.Element("authors")?.Elements("li").Select(x => x.Value?.Trim()).Where(v => v != null) ?? Array.Empty<string>()),
                     Description = root.Element("description")?.Value ?? string.Empty,
-                    ModVersion = root.Element("modVersion")?.Value,
-                    ModIconPath = root.Element("modIconPath")?.Value,
-                    Url = validatedUrl,
+                    ModVersion = root.Element("modVersion")?.Value ?? string.Empty,
+                    ModIconPath = root.Element("modIconPath")?.Value ?? string.Empty,
+                    Url = validatedUrl ?? string.Empty,
                     SupportedVersions = supportedVersions,
-                    PreviewImagePath = (previewImagePath != null && File.Exists(previewImagePath)) ? previewImagePath : null,
+                    PreviewImagePath = (previewImagePath != null && File.Exists(previewImagePath)) ? previewImagePath : string.Empty,
                 };
 
                 mod.ModDependencies = root.Element("modDependencies")?.Elements("li")
                     .Select(x => new ModDependency
                     {
-                        PackageId = x.Element("packageId")?.Value,
-                        DisplayName = x.Element("displayName")?.Value,
-                        SteamWorkshopUrl = x.Element("steamWorkshopUrl")?.Value
+                        PackageId = x.Element("packageId")?.Value ?? string.Empty,
+                        DisplayName = x.Element("displayName")?.Value ?? string.Empty,
+                        SteamWorkshopUrl = x.Element("steamWorkshopUrl")?.Value ?? string.Empty
                     }).ToList() ?? new List<ModDependency>();
 
                 if (!string.IsNullOrEmpty(modRootFolder))
@@ -1090,11 +1090,17 @@ namespace RimSharp.Shared.Services.Implementations
                 var doc = XDocument.Load(configPath);
 
                 // Create a lookup dictionary for faster mod searches
-                var packageIdLookup = _allMods.ToDictionary(
-                    m => m.PackageId?.ToLowerInvariant() ?? string.Empty,
-                    m => m,
-                    StringComparer.OrdinalIgnoreCase
-                );
+                // Handle duplicate PackageIds safely by taking the first one found (usually priority is handled elsewhere)
+                var packageIdLookup = new Dictionary<string, ModItem>(StringComparer.OrdinalIgnoreCase);
+                foreach (var mod in _allMods)
+                {
+                    if (string.IsNullOrEmpty(mod.PackageId)) continue;
+                    var key = mod.PackageId.ToLowerInvariant();
+                    if (!packageIdLookup.ContainsKey(key))
+                    {
+                        packageIdLookup[key] = mod;
+                    }
+                }
 
                 // Get active mod IDs and set IsActive efficiently
                 var activeMods = doc.Root?.Element("activeMods")?.Elements("li")
@@ -1145,7 +1151,7 @@ namespace RimSharp.Shared.Services.Implementations
 
 
         // Add method to get custom mod info
-        public ModCustomInfo GetCustomModInfo(string packageId)
+        public ModCustomInfo? GetCustomModInfo(string packageId)
         {
             if (string.IsNullOrEmpty(packageId))
                 throw new ArgumentNullException(nameof(packageId));

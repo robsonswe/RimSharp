@@ -13,7 +13,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Input; // For CommandManager
+using System.Windows.Input;
 
 namespace RimSharp.Features.ModManager.ViewModels
 {
@@ -40,8 +40,8 @@ namespace RimSharp.Features.ModManager.ViewModels
         // --- State Properties (Managed by Parent) ---
         private bool _isLoading;
         private bool _hasUnsavedChanges;
-        private ModItem _selectedMod = null!;
-        private IList _selectedItems = null!; // Property to bind ListBox.SelectedItems
+        private ModItem? _selectedMod;
+        private IList? _selectedItems; // Property to bind ListBox.SelectedItems
         public bool HasAnyActiveModIssues => _modListManager?.HasAnyActiveModIssues ?? false;
 
         private string _loadingMessage = string.Empty;
@@ -66,7 +66,6 @@ namespace RimSharp.Features.ModManager.ViewModels
                         Debug.WriteLine($"[ModsViewModel] Setting ModActionsViewModel.IsParentLoading = {value}");
                         ModActionsViewModel.IsParentLoading = value;
                     }
-                    RunOnUIThread(CommandManager.InvalidateRequerySuggested);
                 }
             }
         }
@@ -79,6 +78,11 @@ namespace RimSharp.Features.ModManager.ViewModels
             {
                 if (SetProperty(ref _isViewActive, value))
                 {
+                    if (value)
+                    {
+                        EnsureSelection();
+                    }
+
                     if (ModActionsViewModel != null)
                         ModActionsViewModel.IsViewActive = value;
                 }
@@ -96,12 +100,34 @@ namespace RimSharp.Features.ModManager.ViewModels
                     // Inform children
                     if (ModActionsViewModel != null) ModActionsViewModel.HasUnsavedChanges = value;
                     // Command observation handles CanExecute updates for commands observing HasUnsavedChanges
-                    RunOnUIThread(CommandManager.InvalidateRequerySuggested);
                 }
             }
         }
 
-        public ModItem SelectedMod
+        private void EnsureSelection()
+        {
+            if (SelectedMod != null) return;
+
+            ModItem? candidate = null;
+
+            if (_modListManager.VirtualActiveMods.Any())
+            {
+                candidate = _modListManager.VirtualActiveMods.FirstOrDefault(vm => vm.Mod.ModType == ModType.Core).Mod ??
+                            _modListManager.VirtualActiveMods.FirstOrDefault().Mod;
+            }
+
+            if (candidate == null)
+            {
+                candidate = _modListManager.AllInactiveMods.FirstOrDefault();
+            }
+
+            if (candidate != null)
+            {
+                SelectedMod = candidate;
+            }
+        }
+
+        public ModItem? SelectedMod
         {
             get => _selectedMod;
             set
@@ -118,7 +144,7 @@ namespace RimSharp.Features.ModManager.ViewModels
 
 
         // Bound from the ListBox's SelectedItems property in the View
-        public IList SelectedItems
+        public IList? SelectedItems
         {
             get => _selectedItems;
             set
@@ -420,9 +446,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                 HasUnsavedChanges = false; // Setter updates ModActionsViewModel and commands
 
                 if (progressDialog != null) progressDialog.CompleteOperation("Mods loaded successfully");
-                // CommandManager.InvalidateRequerySuggested might still be useful for global commands
-                RunOnUIThread(CommandManager.InvalidateRequerySuggested);
-
+                // CommandManager.InvalidateRequerySuggested removed
             }
             catch (OperationCanceledException)
             {
@@ -450,9 +474,9 @@ namespace RimSharp.Features.ModManager.ViewModels
 
 
         // Handles changes triggered by ModListManager (Activate, Deactivate, Sort, Clear, etc.)
-        private void OnModListManagerChanged(object? sender, EventArgs e)
+        private void OnModListManagerChanged(object? sender, ModListChangedEventArgs e)
         {
-            Debug.WriteLine("[ModsViewModel] Handling ModListManager ListChanged event.");
+            Debug.WriteLine($"[ModsViewModel] Handling ModListManager ListChanged event. ActiveModified: {e.ActiveListModified}");
 
             RunOnUIThread(() =>
             {
@@ -467,14 +491,23 @@ namespace RimSharp.Features.ModManager.ViewModels
                 // 2. Refresh Counts in ModListViewModel
                 ModListViewModel.RefreshCounts();
 
-                // 3. Set HasUnsavedChanges Flag
-                HasUnsavedChanges = true; // Setter triggers command updates via observation
+                // 3. Ensure selection is valid (if selected mod was deleted, it won't be in GetAllMods)
+                if (SelectedMod != null && !_modListManager.GetAllMods().Contains(SelectedMod))
+                {
+                    Debug.WriteLine("[ModsViewModel] Selected mod was removed. Resetting selection to default (Core).");
+                    SelectedMod = null;
+                    EnsureSelection();
+                }
+
+                // 4. Set HasUnsavedChanges Flag only if active list changed
+                if (e.ActiveListModified)
+                {
+                    HasUnsavedChanges = true; // Setter triggers command updates via observation
+                }
+                
                 OnPropertyChanged(nameof(HasAnyActiveModIssues));
 
-                // 4. Invalidate Commands: Explicit call might still be needed for commands
-                //    not directly observing HasUnsavedChanges or IsLoading, or for global UI state.
-                CommandManager.InvalidateRequerySuggested();
-
+                // 4. Invalidate Commands: Explicit call removed
                 Debug.WriteLine("[ModsViewModel] Finished handling ListChanged event on UI thread.");
             });
         }

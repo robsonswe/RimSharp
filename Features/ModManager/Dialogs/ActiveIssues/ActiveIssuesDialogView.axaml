@@ -1,0 +1,80 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                  xmlns:local="clr-namespace:RimSharp.Features.ModManager.Dialogs.ActiveIssues"
+                  xmlns:models="clr-namespace:RimSharp.Shared.Models"
+                  xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+                  xmlns:i="https://github.com/projektanker/icons.avalonia"
+                  mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+                  x:Class="RimSharp.Features.ModManager.Dialogs.ActiveIssues.ActiveIssuesDialogView"
+                  x:DataType="local:ActiveIssuesDialogViewModel"
+                  Width="800" Height="600"
+                  Title="Active Mod List Issues">
+
+    <dialogs:BaseDialog.MainContent>
+        <Grid RowDefinitions="Auto, *" Margin="10">
+            <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,10">
+                <TextBlock Grid.Column="0" Text="Detected issues in your active mod list, grouped by mod:" 
+                           FontSize="14" VerticalAlignment="Center" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                <Border Grid.Column="1" Background="{DynamicResource RimworldErrorRedBrush}" 
+                        CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding IssueGroups.Count, StringFormat='{}{0} mods with issues'}" 
+                               Foreground="White" FontSize="12" FontWeight="Bold"/>
+                </Border>
+            </Grid>
+            
+            <ScrollViewer Grid.Row="1" AllowAutoHide="False">
+                <ItemsControl ItemsSource="{Binding IssueGroups}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="local:ModIssueGroup">
+                            <Border Classes="RimworldPanelBorder" Margin="0,0,0,15" Padding="0">
+                                <StackPanel>
+                                    <!-- Mod Header -->
+                                    <Border Classes="RimworldListHeaderBorder">
+                                        <Grid ColumnDefinitions="*, Auto">
+                                            <TextBlock Grid.Column="0" Text="{Binding Mod.Name}" 
+                                                       FontWeight="Bold" VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Issues.Count, StringFormat='{}{0} issues'}" 
+                                                       VerticalAlignment="Center" FontSize="11" Opacity="0.8"
+                                                       Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Issues List for this Mod -->
+                                    <ItemsControl ItemsSource="{Binding Issues}" Margin="10,5">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="models:ModIssue">
+                                                <Border Margin="0,2" Padding="8,6" 
+                                                        Background="{DynamicResource RimworldBeigeBrush}" 
+                                                        CornerRadius="3" BorderThickness="1" 
+                                                        BorderBrush="{DynamicResource RimworldBrownBrush}">
+                                                    <Grid ColumnDefinitions="Auto, *">
+                                                        <i:Icon Grid.Column="0" Value="{Binding Type, Converter={StaticResource ModIssueTypeToIconConverter}}" 
+                                                                   FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0"
+                                                                   Foreground="{DynamicResource RimworldBrownBrush}"/>
+                                                        <StackPanel Grid.Column="1">
+                                                            <TextBlock Text="{Binding Type, Converter={StaticResource ModIssueTypeToTextConverter}}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                                            <TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </dialogs:BaseDialog.MainContent>
+
+    <dialogs:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Content="Close" Command="{Binding CloseIssuesCommand}" Width="100" Classes="RimworldButtonStyle"/>
+        </StackPanel>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

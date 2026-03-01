@@ -60,7 +60,7 @@ namespace RimSharp.Infrastructure.Workshop.Core
             if (!_platformInfo.IsSupported)
             {
                 progress?.Report("Setup failed: Unsupported operating system.");
-                _dialogService.ShowError("Setup Failed", "SteamCMD setup is not supported on this operating system.");
+                await _dialogService.ShowError("Setup Failed", "SteamCMD setup is not supported on this operating system.");
                 return false;
             }
 
@@ -68,12 +68,18 @@ namespace RimSharp.Infrastructure.Workshop.Core
             if (string.IsNullOrWhiteSpace(_gamePathService.GetModsPath()))
             {
                 progress?.Report("Setup failed: RimWorld Mods Path is not configured.");
-                _dialogService.ShowError("Setup Failed", "Cannot set up SteamCMD because the RimWorld Mods Path is not configured in the application settings. This path is needed to move downloaded mods.");
+                await _dialogService.ShowError("Setup Failed", "Cannot set up SteamCMD because the RimWorld Mods Path is not configured in the application settings. This path is needed to move downloaded mods.");
                 return false;
             }
 
             try
             {
+                // --- 0. Report Platform Requirements ---
+                if (!string.IsNullOrEmpty(_platformInfo.SetupRequirements))
+                {
+                    progress?.Report(_platformInfo.SetupRequirements);
+                }
+
                 // --- 1. Ensure Directories Exist ---
                 progress?.Report($"Ensuring SteamCMD directories exist in: {_pathService.SteamCmdPrefixPath}");
                 Directory.CreateDirectory(_pathService.SteamCmdInstallPath);
@@ -134,7 +140,7 @@ namespace RimSharp.Infrastructure.Workshop.Core
                 else
                 {
                     progress?.Report("Setup finished, but SteamCMD executable check failed.");
-                    _dialogService.ShowError("Setup Failed",
+                    await _dialogService.ShowError("Setup Failed",
                         $"Setup process finished, but could not verify the SteamCMD executable at:\n{_pathService.SteamCmdExePath}");
                     return false;
                 }
@@ -147,14 +153,14 @@ namespace RimSharp.Infrastructure.Workshop.Core
             catch (UnauthorizedAccessException ex)
             {
                 progress?.Report($"Setup failed: Permission denied. {ex.Message}");
-                _dialogService.ShowError("Setup Failed",
+                await _dialogService.ShowError("Setup Failed",
                     $"Permission denied during setup. Check permissions for the target directory: {_pathService.SteamCmdPrefixPath}\n\nError: {ex.Message}");
                 return false;
             }
             catch (Exception ex)
             {
                 progress?.Report($"Setup failed: {ex.Message}");
-                _dialogService.ShowError("Setup Failed",
+                await _dialogService.ShowError("Setup Failed",
                     $"An unexpected error occurred during SteamCMD setup:\n\n{ex.Message}");
                 return false;
             }

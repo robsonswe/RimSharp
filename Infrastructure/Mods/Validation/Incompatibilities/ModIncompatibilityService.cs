@@ -56,7 +56,9 @@ namespace RimSharp.Infrastructure.Mods.Validation.Incompatibilities
         public List<ModIncompatibilityRelation> FindIncompatibilityRelations(IEnumerable<ModItem> activeMods)
         {
             var relations = new List<ModIncompatibilityRelation>();
-            var activeModsLookup = activeMods.ToDictionary(m => m.PackageId?.ToLowerInvariant() ?? string.Empty, m => m, StringComparer.OrdinalIgnoreCase);
+            var activeModsLookup = activeMods
+                .Where(m => !string.IsNullOrEmpty(m.PackageId))
+                .ToDictionary(m => m.PackageId.ToLowerInvariant(), m => m, StringComparer.OrdinalIgnoreCase);
             var activeModsWithIds = activeMods.Where(m => !string.IsNullOrEmpty(m.PackageId)).ToList();
             
             var reverseDependencyGraph = BuildReverseDependencyGraph(activeModsWithIds);
@@ -157,7 +159,7 @@ namespace RimSharp.Infrastructure.Mods.Validation.Incompatibilities
             }
         }
 
-        private string GetReason(ModIncompatibilityRule rule, string declarerName)
+        private string GetReason(ModIncompatibilityRule? rule, string declarerName)
         {
             // Default reason if no specific rule is provided (e.g., from a simple string list)
             if (rule == null) return $"Incompatible according to '{declarerName}'";

@@ -1,6 +1,7 @@
 using RimSharp.AppDir.AppFiles; // For ViewModelBase/RunOnUIThread
 using RimSharp.AppDir.Dialogs; // For ProgressDialogViewModel etc.
 using RimSharp.Shared.Models;
+using RimSharp.Shared.Services.Contracts;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -26,32 +27,54 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         // --- Internal Deletion Logic ---
 
         // Helper for deleting a single mod (called by DeleteModCommand)
-        private async Task DeleteSingleModAsyncInternal(ModItem mod, CancellationToken ct = default)
+        private async Task DeleteSingleModAsyncInternal(ModItem? mod, CancellationToken ct = default)
         {
-            mod = mod ?? SelectedMod; // Ensure we have the mod item
+            mod ??= SelectedMod; // Ensure we have the mod item
 
             // Re-check CanExecute conditions specifically for this action
-            if (!CanBeDeleted(mod))
+            if (mod == null || !CanBeDeleted(mod))
             {
                 Debug.WriteLine($"[DeleteSingleModAsyncInternal] Precondition failed for mod '{mod?.Name}'.");
-                RunOnUIThread(() => _dialogService.ShowWarning("Deletion Blocked", $"Cannot delete mod '{mod?.Name}'. It might be Core/DLC or essential information is missing."));
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowWarning("Deletion Blocked", $"Cannot delete mod '{mod?.Name}'. It might be Core/DLC or essential information is missing."));
                 return;
             }
              if (!Directory.Exists(mod.Path))
             {
-                 Debug.WriteLine($"[DeleteSingleModAsyncInternal] Path not found for mod '{mod?.Name}': {mod.Path}");
-                 RunOnUIThread(() => _dialogService.ShowWarning("Deletion Skipped", $"The folder for mod '{mod?.Name}' does not exist or was already deleted.\nPath: {mod.Path}"));
+                 Debug.WriteLine($"[DeleteSingleModAsyncInternal] Path not found for mod '{mod.Name}': {mod.Path}");
+                 await RunOnUIThreadAsync(async () => await _dialogService.ShowWarning("Deletion Skipped", $"The folder for mod '{mod.Name}' does not exist or was already deleted.\nPath: {mod.Path}"));
                  RequestDataRefresh?.Invoke(this, EventArgs.Empty); // Refresh in case it was deleted externally
                  return;
             }
 
+            // --- Pre-deletion Checks ---
+            bool hasDuplicate = _modListManager.GetAllMods().Count(m => string.Equals(m.PackageId, mod.PackageId, StringComparison.OrdinalIgnoreCase)) > 1;
+            List<ModItem> dependingActiveMods = _modListManager.GetActiveModsDependingOn(mod.PackageId);
+            bool warningSuppressionNeeded = false;
 
-            var result = _dialogService.ShowConfirmation(
+            var messageBuilder = new StringBuilder();
+            messageBuilder.AppendLine($"Are you sure you want to permanently delete the mod '{mod.Name}'?");
+            messageBuilder.AppendLine("\nThis action cannot be undone.");
+            messageBuilder.AppendLine($"\nPath: {mod.Path}");
+
+            if (!hasDuplicate && dependingActiveMods.Any())
+            {
+                messageBuilder.AppendLine("\nWARNING: This mod is currently active and required by the following active mods:");
+                foreach(var dep in dependingActiveMods.Take(5)) messageBuilder.AppendLine($" - {dep.Name}");
+                if (dependingActiveMods.Count > 5) messageBuilder.AppendLine($" - ...and {dependingActiveMods.Count - 5} others.");
+                messageBuilder.AppendLine("\nDeleting this mod will break your active mod list.");
+                warningSuppressionNeeded = true;
+            }
+            else if (hasDuplicate)
+            {
+                messageBuilder.AppendLine("\nNote: A duplicate version of this mod was detected. The game will automatically use the remaining version.");
+            }
+
+            var result = await _dialogService.ShowConfirmationAsync(
                "Confirm Deletion",
-               $"Are you sure you want to permanently delete the mod '{mod.Name}'?\n\nThis action cannot be undone.\n\nPath: {mod.Path}",
+               messageBuilder.ToString(),
                showCancel: true);
 
-            if (result != MessageDialogResult.OK) return;
+            if (result != MessageDialogResult.OK && result != MessageDialogResult.Yes) return;
 
             IsLoadingRequest?.Invoke(this, true);
             bool deletionSuccess = false;
@@ -61,37 +84,37 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 await _deletionService.DeleteDirectoryRobustAsync(mod.Path, ct);
                 deletionSuccess = true;
                 Debug.WriteLine($"[DeleteSingleModAsyncInternal] Successfully deleted: {mod.Path}");
-                RunOnUIThread(() => _dialogService.ShowInformation("Deletion Successful", $"Mod '{mod.Name}' was deleted."));
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowInformation("Deletion Successful", $"Mod '{mod.Name}' was deleted."));
             }
             catch (OperationCanceledException)
             {
                 Debug.WriteLine($"[DeleteSingleModAsyncInternal] Deletion cancelled for '{mod.Path}'.");
-                RunOnUIThread(() => _dialogService.ShowWarning("Deletion Cancelled", $"Deletion of mod '{mod.Name}' was cancelled."));
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowWarning("Deletion Cancelled", $"Deletion of mod '{mod.Name}' was cancelled."));
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[DeleteSingleModAsyncInternal] Error deleting '{mod.Path}': {ex}");
-                RunOnUIThread(() => _dialogService.ShowError("Deletion Error", $"Could not delete mod '{mod.Name}'.\nError: {ex.Message}\nPath: {mod.Path}"));
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowError("Deletion Error", $"Could not delete mod '{mod.Name}'.\nError: {ex.Message}\nPath: {mod.Path}"));
             }
             finally
             {
                 IsLoadingRequest?.Invoke(this, false);
-                if (deletionSuccess)
+                if (deletionSuccess && mod != null)
                 {
-                    RequestDataRefresh?.Invoke(this, EventArgs.Empty);
+                    await HandlePostDeletionAsync(new[] { mod }, warningSuppressionNeeded);
                 }
             }
         }
 
         // Helper for deleting multiple mods (called by DeleteModsCommand)
-        private async Task DeleteMultipleModsAsyncInternal(IList selectedItems, CancellationToken ct = default)
+        private async Task DeleteMultipleModsAsyncInternal(IList? selectedItems, CancellationToken ct = default)
         {
-            selectedItems = selectedItems ?? SelectedItems;
+            selectedItems ??= SelectedItems;
             var mods = selectedItems?.Cast<ModItem>().ToList();
 
             if (mods == null || !mods.Any())
             {
-                RunOnUIThread(() => _dialogService.ShowWarning("Deletion Blocked", "No mods selected for deletion."));
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowWarning("Deletion Blocked", "No mods selected for deletion."));
                 return;
             }
 
@@ -100,10 +123,11 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
             if (deletableMods.Count == 0)
             {
-                RunOnUIThread(() => _dialogService.ShowWarning("Deletion Blocked", "None of the selected mods can be deleted (Core/DLC or missing essential info)."));
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowWarning("Deletion Blocked", "None of the selected mods can be deleted (Core/DLC or missing essential info)."));
                 return;
             }
 
+            // Simplistic multi-delete confirmation for now, could be enhanced with dependency checks for batch
             var confirmationMessage = $"Are you sure you want to permanently delete {deletableMods.Count} mod(s)?";
             if (nonDeletableCount > 0)
             {
@@ -111,10 +135,10 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             }
             confirmationMessage += "\n\nThis action cannot be undone.";
 
-            var result = _dialogService.ShowConfirmation("Confirm Deletion", confirmationMessage, showCancel: true);
-            if (result != MessageDialogResult.OK) return;
+            var result = await _dialogService.ShowConfirmationAsync("Confirm Deletion", confirmationMessage, showCancel: true);
+            if (result != MessageDialogResult.OK && result != MessageDialogResult.Yes) return;
 
-            ProgressDialogViewModel progressDialog = null;
+            ProgressDialogViewModel? progressDialog = null;
             IsLoadingRequest?.Invoke(this, true); // Set loading before showing dialog
             var deletionResults = new List<string>();
             bool cancelled = false;
@@ -129,37 +153,34 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             try
             {
                  // Show progress dialog
-                 // Make sure the DialogService call is thread-safe or run on UI thread if needed
                  RunOnUIThread(() =>
                  {
                     progressDialog = _dialogService.ShowProgressDialog(
                        "Deleting Mods",
                        $"Preparing to delete {deletableMods.Count} mods...",
-                       canCancel: true); // Assuming the dialog returns a VM with a CancellationToken
-
-                    // If the dialog provides its own cancellation, link it
-                    // For now, we assume the dialog calls cts.Cancel() if its cancel button is pressed.
-                    // This requires the dialog implementation to have access to the 'cts' or a way to signal cancellation.
-                    // Example: progressDialog.CancelRequested += (_, _) => cts.Cancel();
+                       canCancel: true); 
                  });
 
                  // Allow dialog to appear
-                 await Task.Delay(100, CancellationToken.None); // Small delay, use CancellationToken.None for UI delay
+                 await Task.Delay(100, CancellationToken.None); 
 
-                 operationToken.ThrowIfCancellationRequested(); // Check if cancelled immediately after dialog shown
+                 operationToken.ThrowIfCancellationRequested(); 
 
                 for (int i = 0; i < deletableMods.Count; i++)
                 {
-                    operationToken.ThrowIfCancellationRequested(); // Check before each mod
+                    operationToken.ThrowIfCancellationRequested(); 
 
                     var mod = deletableMods[i];
-                    var modIdentifier = $"{mod.Name} ({mod.PackageId ?? "No ID"})";
+                    var modIdentifier = $"{mod.Name} ({mod.PackageId})";
 
                     // Update progress on UI thread
                     RunOnUIThread(() =>
                     {
-                       progressDialog.Message = $"Deleting {modIdentifier} ({i + 1}/{deletableMods.Count})...";
-                       progressDialog.UpdateProgress((int)((double)(i + 1) / deletableMods.Count * 100.0));
+                       if (progressDialog != null)
+                       {
+                           progressDialog.Message = $"Deleting {modIdentifier} ({i + 1}/{deletableMods.Count})...";
+                           progressDialog.UpdateProgress((int)((double)(i + 1) / deletableMods.Count * 100.0));
+                       }
                     });
 
 
@@ -179,7 +200,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                              Debug.WriteLine($"[DeleteMultipleModsAsyncInternal] Skipped, path not found: {mod.Path}");
                         }
                     }
-                    catch (OperationCanceledException) { throw; } // Re-throw cancellation to be caught outside loop
+                    catch (OperationCanceledException) { throw; } 
                     catch (Exception ex)
                     {
                         Debug.WriteLine($"[DeleteMultipleModsAsyncInternal] Failed to delete {modIdentifier}: {ex}");
@@ -193,10 +214,10 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 deletionResults.Add("Operation cancelled by user.");
                 Debug.WriteLine("[DeleteMultipleModsAsyncInternal] Deletion loop cancelled.");
             }
-            catch (Exception ex) // Catch unexpected errors during the process setup
+            catch (Exception ex)
             {
                 Debug.WriteLine($"[DeleteMultipleModsAsyncInternal] Unexpected error: {ex}");
-                cancelled = true; // Treat unexpected errors like cancellation for reporting
+                cancelled = true; 
                 deletionResults.Add($"An unexpected error occurred: {ex.Message}");
             }
             finally
@@ -208,26 +229,54 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 IsLoadingRequest?.Invoke(this, false);
 
                  // Build and show summary report on UI thread
-                 RunOnUIThread(() =>
+                 await RunOnUIThreadAsync(async () =>
                  {
                      var summaryMessage = new StringBuilder();
                      if (nonDeletableCount > 0) summaryMessage.AppendLine($"{nonDeletableCount} mod(s) were skipped (Core/DLC or missing info).\n");
                      summaryMessage.AppendLine(string.Join("\n", deletionResults));
-                     _dialogService.ShowInformation("Deletion Summary", summaryMessage.ToString());
+                     await _dialogService.ShowInformation("Deletion Summary", summaryMessage.ToString());
                  });
 
                  // Request refresh only if successful deletions occurred and not cancelled
                  if (anySuccess && !cancelled)
                  {
-                     RequestDataRefresh?.Invoke(this, EventArgs.Empty);
+                     var actuallyDeletedMods = deletableMods.Where(m => !deletionResults.Any(r => r.Contains("Failed") && r.Contains(m.Name))).ToList();
+                     await HandlePostDeletionAsync(actuallyDeletedMods);
                  }
             }
         }
 
 
+        private async Task HandlePostDeletionAsync(IEnumerable<ModItem> mods, bool suppressWarnings = false)
+        {
+            if (mods == null || !mods.Any()) return;
+
+            // 1. Remove from the virtual list (ModListManager)
+            // Now receiving granular result about what happened to the active list
+            var result = _modListManager.RemoveMods(mods);
+
+            // 2. If any active mod was removed AND the PackageId was lost (meaning no duplicate took its place)
+            // OR if strictly the instance was removed and we just want to save the new state (even if duplicate replaced it)
+            // Wait, per user request: "in the case where you do have duplicates... you don't even need to call the method to remove from the activelist... and executesave"
+            // Our ModListManager.RemoveMods NOW handles the "remove from active list" logic internally by swapping if duplicate exists.
+            // If it swapped, ActivePackageIdLost is FALSE.
+            // If it didn't swap (no duplicate), ActivePackageIdLost is TRUE.
+            
+            if (result.ActivePackageIdLost)
+            {
+                Debug.WriteLine("[HandlePostDeletionAsync] Active mod(s) deleted and PackageID lost. Saving updated active list.");
+                await ExecuteSaveMods(suppressWarnings);
+            }
+            else if (result.InstanceRemoved)
+            {
+                 Debug.WriteLine("[HandlePostDeletionAsync] Active mod instance deleted but duplicate took over. No save needed for Game, but UI updated.");
+                 // We don't save because the Game loads by PackageID, which is still valid on disk (via the duplicate).
+                 // The UI has been updated by RaiseListChanged in RemoveMods.
+            }
+        }
+
         // Helper for deleting duplicate mods (called by DuplicateModDialogViewModel callback)
-        // async void is acceptable here as it's effectively a top-level event handler from the dialog interaction
-        private async void DeleteDuplicateModsAsyncInternal(List<string> pathsToDelete)
+        private async Task DeleteDuplicateModsAsyncInternal(List<string>? pathsToDelete)
         {
             if (pathsToDelete == null || !pathsToDelete.Any()) return;
 
@@ -236,7 +285,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             var successfullyDeletedCount = 0;
             var errorMessages = new List<string>();
             bool refreshNeeded = false;
-            ProgressDialogViewModel progressDialog = null;
+            ProgressDialogViewModel? progressDialog = null;
 
             // Prepare lookup
             var allModsLookup = _modListManager.GetAllMods()
@@ -268,14 +317,17 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     var path = pathsToDelete[i];
                     if (string.IsNullOrEmpty(path)) continue;
 
-                    allModsLookup.TryGetValue(path, out ModItem modInfo);
-                    string modIdentifier = modInfo != null ? $"{modInfo.Name} ({modInfo.PackageId ?? "No ID"})" : $"'{path}'";
+                    allModsLookup.TryGetValue(path, out ModItem? modInfo);
+                    string modIdentifier = modInfo != null ? $"{modInfo.Name} ({modInfo.PackageId})" : $"'{path}'";
 
                     // Update progress on UI thread
                      RunOnUIThread(() =>
                      {
-                       progressDialog.Message = $"Deleting {modIdentifier} ({i + 1}/{pathsToDelete.Count})...";
-                       progressDialog.UpdateProgress((int)(((double)i + 1) / pathsToDelete.Count * 100.0));
+                       if (progressDialog != null)
+                       {
+                           progressDialog.Message = $"Deleting {modIdentifier} ({i + 1}/{pathsToDelete.Count})...";
+                           progressDialog.UpdateProgress((int)(((double)i + 1) / pathsToDelete.Count * 100.0));
+                       }
                      });
 
 
@@ -316,7 +368,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             finally
             {
                  // Ensure final state update happens on UI thread
-                 RunOnUIThread(() =>
+                 await RunOnUIThreadAsync(async () =>
                  {
                     // Complete/close dialog first
                     bool wasCancelled = errorMessages.Any(m => m.Contains("cancelled"));
@@ -339,13 +391,15 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     if (reportMessage.Length == 0)
                         reportMessage.AppendLine("No duplicate mods were deleted.");
 
-                    _dialogService.ShowMessageWithCopy(reportTitle, reportMessage.ToString().Trim(),
+                    await _dialogService.ShowMessageWithCopy(reportTitle, reportMessage.ToString().Trim(),
                         errorMessages.Any() ? MessageDialogType.Warning : MessageDialogType.Information);
 
                     // Request refresh last (if needed and not cancelled)
                     if (refreshNeeded && !wasCancelled)
                     {
-                        RequestDataRefresh?.Invoke(this, EventArgs.Empty);
+                        var allMods = _modListManager.GetAllMods().ToList();
+                        var deletedMods = allMods.Where(m => pathsToDelete.Contains(m.Path, StringComparer.OrdinalIgnoreCase)).ToList();
+                        await HandlePostDeletionAsync(deletedMods);
                     }
                  });
             }

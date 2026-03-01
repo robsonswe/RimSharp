@@ -51,5 +51,16 @@ namespace RimSharp.Infrastructure.Workshop.Core
         }
 
         public bool IsPosix => Platform == OSPlatform.Linux || Platform == OSPlatform.OSX;
+
+        public string? SetupRequirements => Platform switch
+        {
+            var p when p == OSPlatform.Linux => 
+                "Note: On 64-bit Linux, SteamCMD requires 32-bit libraries (e.g., lib32gcc-s1 or lib32gcc1). " +
+                "Please ensure these are installed via your package manager (e.g., sudo apt install lib32gcc-s1).",
+            var p when p == OSPlatform.OSX => 
+                "Note: macOS may block 'Breakpad.framework' on first run. " +
+                "If SteamCMD fails to start, go to System Settings > Security & Privacy and allow the framework.",
+            _ => null
+        };
     }
 }

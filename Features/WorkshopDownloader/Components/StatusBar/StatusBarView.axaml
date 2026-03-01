@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:RimSharp.Features.WorkshopDownloader.Components.StatusBar"
+             x:Class="RimSharp.Features.WorkshopDownloader.Components.StatusBar.StatusBarView"
+             x:DataType="vm:StatusBarViewModel"
+             x:CompileBindings="True"
+             mc:Ignorable="d">
+
+    <Border Background="{DynamicResource RimworldLightBrownBrush}"
+            BorderBrush="{DynamicResource RimworldBrownBrush}"
+            BorderThickness="0,1,0,0">
+        <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
+                       Padding="5"
+                       Foreground="{DynamicResource RimworldWhiteBrush}"/>
+            
+            <ProgressBar Grid.Column="1" 
+                         Width="150" 
+                         Height="12"
+                         Margin="5,0"
+                         VerticalAlignment="Center"
+                         Value="{Binding Progress}"
+                         IsIndeterminate="{Binding IsIndeterminate}"
+                         IsVisible="{Binding IsProgressBarVisible}"
+                         Classes="RimworldProgressBarStyle"/>
+        </Grid>
+    </Border>
+</UserControl>

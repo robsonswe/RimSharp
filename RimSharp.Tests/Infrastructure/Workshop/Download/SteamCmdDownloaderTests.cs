@@ -90,7 +90,7 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download
                 .Returns((true, "Processed"));
 
             // Act
-            var result = await _downloader.DownloadModsAsync(items, true);
+            var result = await _downloader.DownloadModsAsync(items, true, null);
 
             // Assert
             result.OverallSuccess.Should().BeTrue();
@@ -112,7 +112,7 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download
                 });
 
             // Act
-            var result = await _downloader.DownloadModsAsync(items, true);
+            var result = await _downloader.DownloadModsAsync(items, true, null);
 
             // Assert
             result.OverallSuccess.Should().BeFalse();

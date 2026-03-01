@@ -17,7 +17,7 @@
 - **Dependency Resolver:** Finds and adds missing mod dependencies.
 - **Conflict Detection:** Uses built-in and user rules to flag incompatibilities.
 - **Duplicate Mod Detection:** Detects and helps you clean up duplicate mods.
-- **Replacement Suggestions:** Detects outdated mods and recommends modern equivalents.
+- **Replacement Suggestions:** Detects unsupported mods and recommends modern equivalents.
 - **Version Awareness:** Combines mod info, known patches, and custom rules to highlight unsupported mods.
 
 ### Customization

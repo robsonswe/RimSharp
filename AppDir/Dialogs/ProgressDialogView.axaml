@@ -1,0 +1,55 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+        xmlns:vmDialogs="clr-namespace:RimSharp.AppDir.Dialogs"
+        x:Class="RimSharp.AppDir.Dialogs.ProgressDialogView"
+        mc:Ignorable="d"
+        x:DataType="vmDialogs:ProgressDialogViewModel"
+        Title="{Binding Title}"
+        Closeable="{Binding Closeable}"
+        SizeToContent="Height"
+        Width="450" MinWidth="350" MaxWidth="600"
+        CanResize="False">
+    
+    <dialogs:BaseDialog.MainContent>
+        <Border Classes="RimworldPanelBorder">
+            <StackPanel Margin="20,18" Spacing="22">
+                <!-- Message -->
+                <TextBlock Text="{Binding Message}"
+                           TextWrapping="Wrap"
+                           FontSize="15"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+
+                <!-- Progress Bar Container -->
+                <Panel>
+                    <ProgressBar Value="{Binding Progress}"
+                                IsIndeterminate="{Binding IsIndeterminate}"
+                                Classes="RimworldProgressBarStyle"/>
+                                
+                    <!-- Progress Percentage Overlay -->
+                    <TextBlock Text="{Binding Progress, StringFormat={}{0}%}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontWeight="Medium"
+                               FontSize="13"
+                               Foreground="{DynamicResource RimworldWhiteBrush}"
+                               IsVisible="{Binding !IsIndeterminate}"/>
+                </Panel>
+            </StackPanel>
+        </Border>
+    </dialogs:BaseDialog.MainContent>
+
+    <dialogs:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    Classes="RimworldRunButtonStyle"
+                    MinWidth="100" 
+                    Height="36"
+                    IsVisible="{Binding CanCancel}"/>
+        </StackPanel>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

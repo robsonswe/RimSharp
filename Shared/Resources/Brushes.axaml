@@ -1,0 +1,39 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <SolidColorBrush x:Key="RimworldBrownBrush" Color="{StaticResource RimworldBrown}"/>
+    <SolidColorBrush x:Key="RimworldDarkBrownBrush" Color="{StaticResource RimworldDarkBrown}"/>
+    <SolidColorBrush x:Key="RimworldLightBrownBrush" Color="{StaticResource RimworldLightBrown}"/>
+    <SolidColorBrush x:Key="RimworldBeigeBrush" Color="{StaticResource RimworldBeige}"/>
+    <SolidColorBrush x:Key="RimworldDarkBeigeBrush" Color="{StaticResource RimworldDarkBeige}"/>
+    <SolidColorBrush x:Key="RimworldHighlightBrush" Color="{StaticResource RimworldHighlight}"/>
+    <SolidColorBrush x:Key="RimworldDarkGreenBrush" Color="{StaticResource RimworldDarkGreen}"/>
+    <SolidColorBrush x:Key="RimworldRedBrush" Color="{StaticResource RimworldRed}"/>
+    <SolidColorBrush x:Key="RimworldErrorRedBrush" Color="{StaticResource RimworldErrorRed}"/>
+    <SolidColorBrush x:Key="RimworldOrangeBrush" Color="{StaticResource RimworldOrange}"/>
+    <SolidColorBrush x:Key="RimworldWhiteBrush" Color="{StaticResource RimworldWhite}"/>
+    <SolidColorBrush x:Key="RimworldGrayBrush" Color="{StaticResource RimworldGray}"/>
+    <SolidColorBrush x:Key="RimworldShadowBrush" Color="{StaticResource RimworldShadow}"/>
+    
+    <!-- Added missing brushes from original WPF -->
+    <SolidColorBrush x:Key="RimworldSelectedBackgroundBrush" Color="#FFE8D8B0"/>
+    <SolidColorBrush x:Key="RimworldBorderBrush" Color="{StaticResource RimworldBrown}"/>
+    <SolidColorBrush x:Key="RimworldLightBackgroundBrush" Color="{StaticResource RimworldDarkBeige}"/>
+    
+    <SolidColorBrush x:Key="RimworldDarkGreenHoverBrush" Color="{StaticResource RimworldDarkGreenHover}"/>
+    <SolidColorBrush x:Key="RimworldDarkGreenDisabledBrush" Color="{StaticResource RimworldDarkGreenDisabled}"/>
+    <SolidColorBrush x:Key="RimworldDarkGreenBorderBrush" Color="{StaticResource RimworldDarkGreenBorder}"/>
+    <SolidColorBrush x:Key="RimworldRedHoverBrush" Color="{StaticResource RimworldRedHover}"/>
+    <SolidColorBrush x:Key="RimworldRedDisabledBrush" Color="{StaticResource RimworldRedDisabled}"/>
+    <SolidColorBrush x:Key="RimworldRedBorderBrush" Color="{StaticResource RimworldRedBorder}"/>
+    <SolidColorBrush x:Key="RimworldTextBoxShadowBrush" Color="{StaticResource RimworldTextBoxShadow}"/>
+    <SolidColorBrush x:Key="RimworldBlackBrush" Color="{StaticResource RimworldBlack}"/>
+    <SolidColorBrush x:Key="RimworldCodeBlueBrush" Color="{StaticResource RimworldCodeBlue}"/>
+    <SolidColorBrush x:Key="RimworldConfigOrangeBrush" Color="{StaticResource RimworldConfigOrange}"/>
+
+    <!-- DataGrid Row Brushes -->
+    <SolidColorBrush x:Key="DataGridRowWhiteBrush" Color="{StaticResource DataGridRowWhite}"/>
+    <SolidColorBrush x:Key="DataGridRowGrayBrush" Color="{StaticResource DataGridRowGray}"/>
+    <SolidColorBrush x:Key="DataGridGridLineBrush" Color="{StaticResource DataGridGridLine}"/>
+
+</ResourceDictionary>

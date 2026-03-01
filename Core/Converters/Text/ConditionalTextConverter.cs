@@ -1,58 +1,28 @@
 using System;
 using System.Globalization;
-using System.Windows.Data;
-using System.Diagnostics;
+using Avalonia.Data.Converters;
 
 namespace RimSharp.Core.Converters.Text
 {
-    /// <summary>
-    /// Converts a boolean value to one of two specified text strings.
-    /// Expects the ConverterParameter to be a string in the format "TextForFalse|TextForTrue".
-    /// Falls back to default strings if the parameter is invalid.
-    /// </summary>
     public class ConditionalTextConverter : IValueConverter
     {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            // Default fallback texts
-            string textForFalse = "State False";
-            string textForTrue = "State True";
-
-            // Parse the parameter
-            if (parameter is string paramString && !string.IsNullOrEmpty(paramString))
+            if (value is bool boolValue && parameter is string texts)
             {
-                var parts = paramString.Split('|');
+                var parts = texts.Split('|');
                 if (parts.Length == 2)
                 {
-                    textForFalse = parts[0];
-                    textForTrue = parts[1];
-                }
-                else
-                {
-                    Debug.WriteLine($"[ConditionalTextConverter] Invalid parameter format: '{paramString}'. Expected 'TextForFalse|TextForTrue'. Using fallback texts.");
+                    return boolValue ? parts[1] : parts[0];
                 }
             }
-            else
-            {
-                 Debug.WriteLine($"[ConditionalTextConverter] Parameter is null or empty. Using fallback texts.");
-            }
-
-            // Determine output based on input value
-            if (value is bool condition)
-            {
-                string resultText = condition ? textForTrue : textForFalse;
-                // Debug.WriteLine($"[ConditionalTextConverter] Input: {condition}, Param: '{parameter}', Output: '{resultText}'");
-                return resultText;
-            }
-
-            Debug.WriteLine($"[ConditionalTextConverter] Input value is not a bool ({value}), returning text for false state: '{textForFalse}'");
-            return textForFalse; // Fallback for non-boolean input
+            return value?.ToString();
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            // Not needed for one-way binding
-            throw new NotImplementedException();
+            return null;
         }
     }
 }
+
