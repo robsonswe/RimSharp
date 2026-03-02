@@ -99,6 +99,12 @@ namespace RimSharp.Shared.Models
         public bool IsActive { get; set; }
         public ModType ModType { get; set; }
 
+        /// <summary>
+        /// Gets a value indicating whether technical details (Assemblies, Textures, Size) 
+        /// should be displayed for this mod.
+        /// </summary>
+        public bool IsTechnicalDetailsVisible => ModType != ModType.Core && ModType != ModType.Expansion;
+
         public bool LoadBottom { get; set; }
         public string PreviewImagePath { get; set; } = string.Empty;
 
