@@ -46,7 +46,7 @@
             Hyperlink path: SelectableTextBlock supports both TextDecorations AND
             TextTrimming in Avalonia, unlike TextBox which supports neither.
         -->
-        <Style Selector="SelectableTextBlock.SelectableHyperlink">
+        <Style Selector="SelectableTextBlock.SelectableHyperlink, TextBlock.SelectableHyperlink">
             <Setter Property="Foreground" Value="{DynamicResource RimworldDarkGreenBrush}"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="HorizontalAlignment" Value="Left"/>
@@ -55,7 +55,7 @@
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
-        <Style Selector="SelectableTextBlock.SelectableHyperlink:pointerover">
+        <Style Selector="SelectableTextBlock.SelectableHyperlink:pointerover, TextBlock.SelectableHyperlink:pointerover">
             <Setter Property="TextDecorations" Value="Underline"/>
             <Setter Property="Foreground" Value="{DynamicResource RimworldDarkGreenHoverBrush}"/>
         </Style>
@@ -82,7 +82,7 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
-        <Style Selector="SelectableTextBlock.CodeBoxText">
+        <Style Selector="SelectableTextBlock.CodeBoxText, TextBlock.CodeBoxText">
             <Setter Property="FontFamily" Value="Consolas, Monospace"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
@@ -91,7 +91,7 @@
             <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
         </Style>
 
-        <Style Selector="SelectableTextBlock.CodeBoxHyperlink">
+        <Style Selector="SelectableTextBlock.CodeBoxHyperlink, TextBlock.CodeBoxHyperlink">
             <Setter Property="FontFamily" Value="Consolas, Monospace"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="Foreground" Value="{DynamicResource RimworldDarkGreenBrush}"/>
@@ -100,7 +100,7 @@
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
         </Style>
-        <Style Selector="SelectableTextBlock.CodeBoxHyperlink:pointerover">
+        <Style Selector="SelectableTextBlock.CodeBoxHyperlink:pointerover, TextBlock.CodeBoxHyperlink:pointerover">
             <Setter Property="TextDecorations" Value="Underline"/>
             <Setter Property="Foreground" Value="{DynamicResource RimworldDarkGreenHoverBrush}"/>
         </Style>
@@ -286,12 +286,8 @@
                             <i:Icon Value="fa-folder" Classes="CodeBoxIcon"/>
                             <TextBlock Text="Path" Classes="CodeBoxLabel"/>
                         </StackPanel>
-                        <SelectableTextBlock Classes="CodeBoxHyperlink" Text="{Binding Path, Mode=OneWay}"
-                                             Tapped="Path_Tapped">
-                            <ToolTip.Tip>
-                                <ToolTip Content="{Binding Path}"/>
-                            </ToolTip.Tip>
-                        </SelectableTextBlock>
+                        <TextBlock Classes="CodeBoxHyperlink" Text="{Binding Path, Mode=OneWay}"
+                                   Tapped="Path_Tapped" ToolTip.Tip="{Binding Path}"/>
                     </StackPanel>
                 </Border>
 
@@ -303,12 +299,8 @@
                             <i:Icon Value="fa-folder" Classes="CodeBoxIcon"/>
                             <TextBlock Text="Path" Classes="CodeBoxLabel"/>
                         </StackPanel>
-                        <SelectableTextBlock Classes="CodeBoxHyperlink" Text="{Binding Path, Mode=OneWay}"
-                                             Tapped="Path_Tapped">
-                            <ToolTip.Tip>
-                                <ToolTip Content="{Binding Path}"/>
-                            </ToolTip.Tip>
-                        </SelectableTextBlock>
+                        <TextBlock Classes="CodeBoxHyperlink" Text="{Binding Path, Mode=OneWay}"
+                                   Tapped="Path_Tapped" ToolTip.Tip="{Binding Path}"/>
                     </StackPanel>
                 </Border>
             </Grid>

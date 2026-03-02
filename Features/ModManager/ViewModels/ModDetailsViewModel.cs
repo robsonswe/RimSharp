@@ -25,8 +25,6 @@ namespace RimSharp.Features.ModManager.ViewModels
                 {
                     // Command observation handles CanExecute updates automatically
                     OnPropertyChanged(nameof(HasValidUrlOrPath));
-                    // Manual RaiseCanExecuteChanged removed:
-                    // (OpenUrlCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -38,32 +36,38 @@ namespace RimSharp.Features.ModManager.ViewModels
 
 
         // --- Commands specific to the SINGLE selected mod ---
-        public ICommand OpenUrlCommand { get; } // Renamed for clarity
+        public ICommand OpenUrlCommand { get; }
 
 
         public ModDetailsViewModel(IDialogService dialogService)
         {
             _dialogService = dialogService;
             // Use base helper CreateAsyncCommand and observe CurrentMod
-            // CanExecute depends on HasValidUrlOrPath, which depends on CurrentMod
-            OpenUrlCommand = CreateAsyncCommand(ExecuteOpenUrl, CanExecuteOpenUrl, nameof(CurrentMod));
+            OpenUrlCommand = CreateAsyncCommand<string>(ExecuteOpenUrl, CanExecuteOpenUrl, nameof(CurrentMod));
         }
 
-        private bool CanExecuteOpenUrl()
+        private bool CanExecuteOpenUrl(string? targetPath)
         {
-            // Dependency observed by command
             return HasValidUrlOrPath;
         }
 
-        private async Task ExecuteOpenUrl()
+        private async Task ExecuteOpenUrl(string? targetPath)
         {
-             // CanExecute check already done by framework
             if (CurrentMod == null) return;
 
-            string target = CurrentMod.Url; // Prefer URL
-            if (string.IsNullOrWhiteSpace(target) && !string.IsNullOrWhiteSpace(CurrentMod.Path))
+            // Priority:
+            // 1. targetPath if provided (e.g. from clicking the Path link)
+            // 2. CurrentMod.Url (default mod link)
+            // 3. CurrentMod.Path (fallback)
+            string? target = targetPath;
+            
+            if (string.IsNullOrWhiteSpace(target))
             {
-                target = CurrentMod.Path; // Fallback to Path
+                target = CurrentMod.Url;
+                if (string.IsNullOrWhiteSpace(target) && !string.IsNullOrWhiteSpace(CurrentMod.Path))
+                {
+                    target = CurrentMod.Path;
+                }
             }
 
             if (string.IsNullOrWhiteSpace(target))

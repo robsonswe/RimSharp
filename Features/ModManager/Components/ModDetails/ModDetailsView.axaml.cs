@@ -21,7 +21,7 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
 
         private void Path_Tapped(object? sender, TappedEventArgs e)
         {
-            if (sender is TextBox textBox && textBox.DataContext is Shared.Models.ModItem mod)
+            if (sender is TextBlock { DataContext: Shared.Models.ModItem mod })
             {
                 if (DataContext is ModDetailsViewModel vm)
                 {
