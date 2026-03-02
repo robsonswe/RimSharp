@@ -27,9 +27,14 @@
             </Border>
 
             <!-- Main Content -->
-            <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="0.45*" MinWidth="450" MaxWidth="600"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
                 <!-- Mod Details Panel -->
-                <Border Grid.Column="0" Width="450" MinWidth="450" MaxWidth="600" Margin="0,0,8,0" Classes="RimworldPanelBorder">
+                <Border Grid.Column="0" Margin="0,0,8,0" Classes="RimworldPanelBorder">
                     <ContentControl Content="{Binding ModDetailsViewModel}"/>
                 </Border>
 
