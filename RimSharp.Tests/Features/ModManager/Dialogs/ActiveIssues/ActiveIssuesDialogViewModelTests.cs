@@ -19,7 +19,7 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.ActiveIssues
         [AvaloniaFact]
         public void Grouping_ShouldWorkCorrectly()
         {
-            // Arrange
+
             var mod1 = new ModItem { Name = "Mod 1" };
             var mod2 = new ModItem { Name = "Mod 2" };
             var issues = new List<ModIssue>
@@ -29,10 +29,8 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.ActiveIssues
                 new ModIssue(mod2, ModIssueType.Duplicate, "desc3")
             };
 
-            // Act
             var vm = new ActiveIssuesDialogViewModel(issues);
 
-            // Assert
             vm.IssueGroups.Should().HaveCount(2);
             var group1 = vm.IssueGroups.First(g => g.Mod == mod1);
             group1.Issues.Should().HaveCount(2);
@@ -44,17 +42,16 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.ActiveIssues
         [AvaloniaFact]
         public void CloseIssuesCommand_ShouldSetResult()
         {
-            // Arrange
+
             var vm = new ActiveIssuesDialogViewModel(new List<ModIssue>());
             bool closeRequested = false;
             vm.RequestCloseDialog += (s, e) => closeRequested = true;
 
-            // Act
             vm.CloseIssuesCommand.Execute(null);
 
-            // Assert
             vm.DialogResult.Should().BeTrue();
             closeRequested.Should().BeTrue();
         }
     }
 }
+

@@ -37,14 +37,12 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public async Task SaveCustomModInfoAsync_ShouldCreateFile()
         {
-            // Arrange
+
             var service = new ModCustomService(_testTempDir, _mockLogger);
             var info = new ModCustomInfo { Favorite = true, Tags = "CustomTag" };
 
-            // Act
             await service.SaveCustomModInfoAsync("test.mod", info);
 
-            // Assert
             File.Exists(_modsJsonPath).Should().BeTrue();
             string content = File.ReadAllText(_modsJsonPath);
             content.Should().Contain("test.mod");
@@ -54,15 +52,13 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public async Task GetCustomModInfo_ShouldReturnCorrectInfo()
         {
-            // Arrange
+
             var service = new ModCustomService(_testTempDir, _mockLogger);
             var info = new ModCustomInfo { Favorite = true };
             await service.SaveCustomModInfoAsync("test.mod", info);
 
-            // Act
             var result = service.GetCustomModInfo("TEST.MOD"); // Case insensitive
 
-            // Assert
             result.Should().NotBeNull();
             result!.Favorite.Should().BeTrue();
         }
@@ -70,17 +66,15 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public async Task ApplyCustomInfoToMods_ShouldUpdateModItems()
         {
-            // Arrange
+
             var service = new ModCustomService(_testTempDir, _mockLogger);
             var info = new ModCustomInfo { Favorite = true, Tags = "NewTag", ExternalUrl = "http://example.com" };
             await service.SaveCustomModInfoAsync("test.mod", info);
 
             var mod = new ModItem { PackageId = "test.mod", Name = "Test Mod" };
 
-            // Act
             service.ApplyCustomInfoToMods(new[] { mod });
 
-            // Assert
             mod.IsFavorite.Should().BeTrue();
             mod.Tags.Should().Be("NewTag");
             mod.ExternalUrl.Should().Be("http://example.com");
@@ -89,14 +83,12 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public async Task RemoveCustomModInfoAsync_ShouldUpdateFile()
         {
-            // Arrange
+
             var service = new ModCustomService(_testTempDir, _mockLogger);
             await service.SaveCustomModInfoAsync("test.mod", new ModCustomInfo { Favorite = true });
 
-            // Act
             await service.RemoveCustomModInfoAsync("test.mod");
 
-            // Assert
             var result = service.GetCustomModInfo("test.mod");
             result.Should().BeNull();
             string content = File.ReadAllText(_modsJsonPath);
@@ -104,3 +96,4 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         }
     }
 }
+

@@ -26,10 +26,9 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void Constructor_WhenFileDoesNotExist_ShouldCreateDefaultConfig()
         {
-            // Act
+
             var service = new ConfigService(_testConfigPath);
 
-            // Assert
             File.Exists(_testConfigPath).Should().BeTrue();
             service.GetConfigValue("game_folder").Should().BeEmpty();
             service.GetConfigValue("config_folder").Should().BeEmpty();
@@ -38,13 +37,11 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void LoadConfig_WhenFileExists_ShouldLoadValues()
         {
-            // Arrange
+
             File.WriteAllLines(_testConfigPath, new[] { @"game_folder=C:\Game", @"config_folder=C:\Config" });
 
-            // Act
             var service = new ConfigService(_testConfigPath);
 
-            // Assert
             service.GetConfigValue("game_folder").Should().Be(@"C:\Game");
             service.GetConfigValue("config_folder").Should().Be(@"C:\Config");
         }
@@ -52,14 +49,12 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void SaveConfig_ShouldPersistChanges()
         {
-            // Arrange
+
             var service = new ConfigService(_testConfigPath);
             service.SetConfigValue("game_folder", @"D:\RimWorld");
 
-            // Act
             service.SaveConfig();
 
-            // Assert
             var newService = new ConfigService(_testConfigPath);
             newService.GetConfigValue("game_folder").Should().Be(@"D:\RimWorld");
         }
@@ -67,14 +62,13 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void SetConfigValue_ShouldOnlyAllowValidKeys()
         {
-            // Arrange
+
             var service = new ConfigService(_testConfigPath);
 
-            // Act
             service.SetConfigValue("invalid_key", "some value");
 
-            // Assert
             service.GetConfigValue("invalid_key").Should().BeEmpty();
         }
     }
 }
+

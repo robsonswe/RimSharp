@@ -26,21 +26,20 @@ namespace RimSharp.Tests.Core.Converters.Visual
         [InlineData(false, ModType.Git, FontWeight.Normal)]
         public void Convert_ShouldReturnCorrectWeight(bool isFavorite, ModType type, FontWeight expected)
         {
-            // Act
+
             var result = _converter.Convert(new List<object?> { isFavorite, type }, typeof(FontWeight), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
 
         [Fact]
         public void Convert_WithInsufficientValues_ShouldReturnNormal()
         {
-            // Act
+
             var result = _converter.Convert(new List<object?> { false }, typeof(FontWeight), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(FontWeight.Normal);
         }
     }
 }
+

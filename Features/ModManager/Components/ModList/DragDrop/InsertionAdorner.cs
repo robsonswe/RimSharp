@@ -26,14 +26,12 @@ namespace RimSharp.Features.ModManager.Components.ModList.DragDrop
         {
             if (_relativeTo == null) return;
 
-            // Get the relative container's bounds
             var bounds = _relativeTo.Bounds;
-            
-            // The position is already relative to the parent (ListBox)
+
             double y = _isAbove ? bounds.Top : bounds.Bottom;
             
             // Draw a horizontal line across the parent's width
-            // We use the parent's bounds for the X coordinates
+
             if (Parent is Visual parentVisual)
             {
                 context.DrawLine(new Pen(_brush, _thickness), 
@@ -43,3 +41,5 @@ namespace RimSharp.Features.ModManager.Components.ModList.DragDrop
         }
     }
 }
+
+

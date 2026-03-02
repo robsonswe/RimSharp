@@ -63,8 +63,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                             ct.ThrowIfCancellationRequested();
                             var content = await reader.ReadToEndAsync(); // ReadToEndAsync doesn't take CT directly in older frameworks
                             ct.ThrowIfCancellationRequested();
-        
-                            // Uses helper from GitHubInstallationHelper (or could be duplicated/moved to a common XML helper)
+
                             return ParseAboutXmlFromString(content);
                         }
                     }
@@ -83,15 +82,13 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                                !e.FullName.Replace('\\', '/').TrimEnd('/').Contains('/') && // Only top-level
                                 e.FullName.EndsWith("/")) // Must be a directory entry
                         .ToList();
-        
-                    // Debug log for troubleshooting
+
                     Debug.WriteLine($"Found {rootFolders.Count} root folders in zip: {string.Join(", ", rootFolders.Select(f => f.FullName))}");
         
                     return rootFolders.Count == 1 ? rootFolders[0] : null;
                 }
-        
-        
-                private void ExtractMod(ZipArchive archive, string targetDir, ZipArchiveEntry? rootFolderEntry, CancellationToken ct)
+
+private void ExtractMod(ZipArchive archive, string targetDir, ZipArchiveEntry? rootFolderEntry, CancellationToken ct)
                 {
                     Directory.CreateDirectory(targetDir);
                     string? rootFolderName = rootFolderEntry?.FullName; // e.g., "MyModFolder/"
@@ -153,3 +150,4 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             }
         }
         
+

@@ -25,7 +25,7 @@ namespace RimSharp.Core.Converters.Visual
                     }
                 }
             }
-            return Brushes.Transparent; // Fallback
+            return Brushes.Transparent; 
         }
 
         public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
@@ -34,4 +34,5 @@ namespace RimSharp.Core.Converters.Visual
         }
     }
 }
+
 

@@ -33,7 +33,7 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download.Execution
         [Fact]
         public async Task GenerateScriptAsync_ShouldCreateCorrectScriptFile()
         {
-            // Arrange
+
             var items = new List<DownloadItem>
             {
                 new DownloadItem { SteamId = "123" },
@@ -42,10 +42,8 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download.Execution
             var installDir = @"C:\SteamCMD\RimWorld";
             var uniqueId = "test";
 
-            // Act
             var path = await _generator.GenerateScriptAsync(_testTempDir, uniqueId, installDir, items, true, CancellationToken.None);
 
-            // Assert
             File.Exists(path).Should().BeTrue();
             var content = await File.ReadAllTextAsync(path);
             content.Should().Contain($@"force_install_dir ""{installDir}""");
@@ -58,15 +56,13 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download.Execution
         [Fact]
         public async Task GenerateScriptAsync_WithoutValidate_ShouldNotIncludeValidateInCommands()
         {
-            // Arrange
+
             var items = new List<DownloadItem> { new DownloadItem { SteamId = "789" } };
             var installDir = @"C:\SteamCMD\RimWorld";
             var uniqueId = "test_no_validate";
 
-            // Act
             var path = await _generator.GenerateScriptAsync(_testTempDir, uniqueId, installDir, items, false, CancellationToken.None);
 
-            // Assert
             var content = await File.ReadAllTextAsync(path);
             content.Should().Contain("workshop_download_item 294100 789");
             content.Should().NotContain("validate");
@@ -75,10 +71,9 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download.Execution
         [Fact]
         public async Task GenerateScriptAsync_WithEmptyItems_ShouldStillCreateValidBaseScript()
         {
-            // Act
+
             var path = await _generator.GenerateScriptAsync(_testTempDir, "empty", "dir", new List<DownloadItem>(), false, CancellationToken.None);
 
-            // Assert
             var content = await File.ReadAllTextAsync(path);
             content.Should().Contain("login anonymous");
             content.Should().Contain("quit");
@@ -86,3 +81,4 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download.Execution
         }
     }
 }
+

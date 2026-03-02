@@ -42,8 +42,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 NotifyStatusChanged($"Mod '{modInfo.Name}' is already in the download queue");
                 return false;
             }
-
-            // Create the item
             var downloadItem = new DownloadItem
             {
                 Name = modInfo.Name,
@@ -85,8 +83,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             }
             else
             {
-                // If not on UI thread, we can only check Contains unsafely or just Post
-                // We'll Post the removal and return true to indicate it's being handled
+
                 ThreadHelper.BeginInvokeOnUiThread(() =>
                 {
                     if (_items.Remove(item))
@@ -102,9 +99,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         {
             if (string.IsNullOrEmpty(steamId)) return false;
 
-            // Note: Any() on ObservableCollection from a background thread can throw 
-            // if the collection is being modified on the UI thread.
-            // Ideally we'd use a thread-safe lookup, but for now we'll try to be safe.
             bool exists = false;
             ThreadHelper.EnsureUiThread(() =>
             {
@@ -119,3 +113,5 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         }
     }
 }
+
+

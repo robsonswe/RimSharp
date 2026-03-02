@@ -60,10 +60,9 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             IWorkshopUpdateCheckerService updateCheckerService,
             ISteamCmdService steamCmdService,
             IModListManager modListManager,
-            // New Dependencies (passed down to QueueViewModel/CommandHandler)
-            ModInfoEnricher modInfoEnricher,                     // <<< ADDED parameter
-            ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor, // <<< ADDED parameter
-            ILoggerService loggerService,                         // <<< ADDED parameter
+            ModInfoEnricher modInfoEnricher,
+            ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor,
+            ILoggerService loggerService,
             ISteamApiClient steamApiClient)
         {
             _dialogService = dialogService;
@@ -75,8 +74,8 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             QueueViewModel = new DownloadQueueViewModel(
                             queueService, modService, dialogService, updateCheckerService,
                             steamCmdService, BrowserViewModel, getCancellationTokenFunc, modListManager,
-                            steamWorkshopQueueProcessor, // <<< Already correctly passed
-                            loggerService,                // <<< Already correctly passed
+                            steamWorkshopQueueProcessor,
+                            loggerService,
                             steamApiClient
                         );
             StatusBarViewModel = new StatusBarViewModel();
@@ -133,7 +132,7 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
         public void SetBrowserControl(RimSharp.Features.WorkshopDownloader.Components.Browser.IBrowserControl browserControl)
         {
             BrowserViewModel.SetBrowserControl(browserControl);
-            // No need to refresh BrowserViewModel commands; handled by observation
+
         }
 
         private void SetOperationInProgressInternal(bool inProgress, string statusMessage = "")
@@ -161,10 +160,9 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
                 IsOperationInProgress = inProgress; // Update DownloaderVM's own property
                 RunOnUIThread(() =>
                 {
-                    // This assignment will now trigger the setter logic in QueueViewModel
+
                     QueueViewModel.IsOperationInProgress = inProgress;
-                    // Ensure BrowserViewModel also reacts correctly if needed
-                    // BrowserViewModel.IsOperationInProgress = inProgress; // If BrowserVM needs direct setting
+
                     Debug.WriteLine($"[DownloaderVM] Notified QueueVM: IsOperationInProgress = {inProgress}.");
                 });
 
@@ -214,10 +212,8 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
 
             if (disposing)
             {
-                // --- Derived Class Specific Cleanup ---
                 Debug.WriteLine("[DownloaderVM] Disposing derived resources...");
 
-                // Unsubscribe from events to prevent memory leaks
                 if (_browserStatusHandler != null && BrowserViewModel != null) BrowserViewModel.StatusChanged -= _browserStatusHandler;
                 if (_queueStatusHandler != null && QueueViewModel != null) QueueViewModel.StatusChanged -= _queueStatusHandler;
                 if (_queueOperationStartedHandler != null && QueueViewModel != null) QueueViewModel.OperationStarted -= _queueOperationStartedHandler;
@@ -225,19 +221,15 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
                 if (_queueDownloadCompletedHandler != null && QueueViewModel != null) QueueViewModel.DownloadCompletedAndRefreshNeeded -= _queueDownloadCompletedHandler;
                 if (_steamCmdSetupStateChangedHandler != null && _steamCmdService != null) _steamCmdService.SetupStateChanged -= _steamCmdSetupStateChangedHandler;
 
-                // Dispose owned child ViewModels that implement IDisposable
                 (BrowserViewModel as IDisposable)?.Dispose();
                 (QueueViewModel as IDisposable)?.Dispose();
                 // StatusBarViewModel disposal depends on its implementation
 
-                // Dispose the CancellationTokenSource if it exists
                 var ctsToDispose = _currentOperationCts; // Capture reference
-                _currentOperationCts = null; // Clear field
+                _currentOperationCts = null;
                 ctsToDispose?.Cancel(); // Request cancellation
-                ctsToDispose?.Dispose(); // Dispose
+                ctsToDispose?.Dispose(); 
                 Debug.WriteLine("[DownloaderVM] Disposed internal CTS.");
-
-                // Clear handler references
                 _browserStatusHandler = null;
                 _queueStatusHandler = null;
                 _queueOperationStartedHandler = null;
@@ -246,12 +238,9 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
                 _steamCmdSetupStateChangedHandler = null;
 
                 Debug.WriteLine("[DownloaderVM] Dispose complete (derived resources).");
-                // --- End Derived Class Specific Cleanup ---
             }
 
-            // Dispose unmanaged resources here if any (specific to DownloaderViewModel)
-
-            // IMPORTANT: Call the base class implementation LAST
+// IMPORTANT: Call the base class implementation LAST
             Debug.WriteLine($"[DownloaderVM] Calling base.Dispose({disposing}).");
             base.Dispose(disposing);
             Debug.WriteLine($"[DownloaderVM] Finished Dispose({disposing}). _disposed = {_disposed}");
@@ -263,3 +252,5 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
         }
     }
 }
+
+

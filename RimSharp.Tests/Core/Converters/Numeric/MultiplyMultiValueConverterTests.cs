@@ -22,21 +22,20 @@ namespace RimSharp.Tests.Core.Converters.Numeric
         [InlineData(new object[] { 10, 2.5f }, "2", 50.0)]
         public void Convert_ShouldMultiplyAllValues(object[] values, string parameter, double expected)
         {
-            // Act
+
             var result = _converter.Convert(values, typeof(double), parameter, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
 
         [Fact]
         public void Convert_WithEmptyList_ShouldReturnOne()
         {
-            // Act
+
             var result = _converter.Convert(new List<object?>(), typeof(double), "1", CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(1.0);
         }
     }
 }
+

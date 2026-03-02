@@ -9,7 +9,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-// Removed: using System.Windows; // No longer needed for MessageBox
 using System.Xml.Linq;
 
 namespace RimSharp.Features.ModManager.Services.Data
@@ -18,15 +17,13 @@ namespace RimSharp.Features.ModManager.Services.Data
     {
         private readonly IModService _modService;
         private readonly IPathService _pathService;
-        private readonly IDialogService _dialogService; // Added
+        private readonly IDialogService _dialogService;
         private const string CONFIG_FILENAME = "ModsConfig.xml";
-
-        // Updated Constructor
         public ModDataService(IModService modService, IPathService pathService, IDialogService dialogService)
         {
             _modService = modService ?? throw new ArgumentNullException(nameof(modService));
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
-            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService)); // Added
+            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
         }
 
         public async Task<List<ModItem>> LoadAllModsAsync(System.IProgress<(int current, int total, string message)>? progress = null)
@@ -51,11 +48,9 @@ namespace RimSharp.Features.ModManager.Services.Data
                     return new List<string>();
                 }
 
-                // Load and parse the XML
                 var allModIds = ParseModsConfigXml(configPath);
                 var allMods = _modService.GetLoadedMods();
 
-                // Check which mods are missing
                 var availableModIds = allMods
                     .Where(m => !string.IsNullOrEmpty(m.PackageId))
                     .Select(m => m.PackageId.ToLowerInvariant())
@@ -64,8 +59,6 @@ namespace RimSharp.Features.ModManager.Services.Data
                 var missingModIds = allModIds
                     .Where(id => !availableModIds.Contains(id))
                     .ToList();
-
-                // Show message about missing mods if any
                 if (missingModIds.Count > 0)
                 {
                     var messageBuilder = new System.Text.StringBuilder();
@@ -89,8 +82,7 @@ namespace RimSharp.Features.ModManager.Services.Data
                     });
                 }
 
-
-                return allModIds;
+return allModIds;
             }
             catch (Exception ex) when (ex is ArgumentNullException || ex is DirectoryNotFoundException)
             {
@@ -114,9 +106,8 @@ namespace RimSharp.Features.ModManager.Services.Data
                 var configDir = _pathService.GetConfigPath();
                 if (string.IsNullOrEmpty(configDir) || !Directory.Exists(configDir))
                 {
-                    // --- Replaced MessageBox ---
                     _dialogService.ShowError("Save Error", "Error: Config directory path is not set or invalid.");
-                    // -------------------------
+
                     return;
                 }
 
@@ -124,26 +115,21 @@ namespace RimSharp.Features.ModManager.Services.Data
                 var doc = PrepareModsConfigDocument(configPath, out bool fileExisted);
                 if (doc is null) return;
 
-                // Update or create the activeMods element
                 UpdateActiveModsInDocument(doc, activeModIds);
 
-                // Save the document
                 doc.Save(configPath);
-                // --- Replaced MessageBox ---
                 _dialogService.ShowInformation("Save Successful", $"Mods configuration saved successfully{(fileExisted ? "!" : " to new file")}!");
-                // -------------------------
+
             }
             catch (UnauthorizedAccessException)
             {
-                // --- Replaced MessageBox ---
                 _dialogService.ShowError("Save Error", $"Error: Permission denied saving to {Path.Combine(_pathService.GetConfigPath(), CONFIG_FILENAME)}.");
-                // -------------------------
+
             }
             catch (Exception ex)
             {
-                // --- Replaced MessageBox ---
                 _dialogService.ShowError("Save Error", $"An unexpected error occurred saving mods configuration: {ex.Message}");
-                // -------------------------
+
             }
         }
 
@@ -160,12 +146,11 @@ namespace RimSharp.Features.ModManager.Services.Data
         private void DisplayConfigError(string message)
         {
             Debug.WriteLine(message);
-            // --- Replaced MessageBox ---
             ThreadHelper.EnsureUiThread(() =>
             {
                 _dialogService.ShowWarning("Config Read Warning", $"Warning: Could not read active mods from ModsConfig.xml.\nReason: {message}\nStarting with an empty active list.");
             });
-            // -------------------------
+
         }
 
         private List<string> ParseModsConfigXml(string configPath)
@@ -192,14 +177,11 @@ namespace RimSharp.Features.ModManager.Services.Data
             }
             catch (Exception loadEx)
             {
-                // --- Replaced MessageBox ---
                 var dialogResult = _dialogService.ShowConfirmation(
                     "Load Error",
                     $"Error loading existing ModsConfig.xml: {loadEx.Message}\n\nOverwrite with the current active mod list?",
                     showCancel: true); // Show OK and Cancel
-                // -------------------------
 
-                // Assuming OK maps to Yes, Cancel maps to No
                 if (dialogResult == MessageDialogResult.OK) // Use MessageDialogResult.OK
                 {
                     fileExisted = false;
@@ -221,7 +203,7 @@ namespace RimSharp.Features.ModManager.Services.Data
 
         private void UpdateActiveModsInDocument(XDocument doc, IEnumerable<string> activeModIds)
         {
-            // Get or create activeMods element
+
             var activeModsElement = doc.Root?.Element("activeMods");
             if (activeModsElement is null)
             {
@@ -234,10 +216,8 @@ namespace RimSharp.Features.ModManager.Services.Data
                 doc.Root.Add(activeModsElement);
             }
 
-            // Clear existing entries
             activeModsElement.RemoveAll();
 
-            // Add new entries
             foreach (var modId in activeModIds.Where(id => !string.IsNullOrEmpty(id)))
             {
                 activeModsElement.Add(new XElement("li", modId.ToLowerInvariant()));
@@ -247,3 +227,5 @@ namespace RimSharp.Features.ModManager.Services.Data
         #endregion
     }
 }
+
+

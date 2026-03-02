@@ -31,7 +31,7 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
         [Fact]
         public async Task ProcessAndEnqueueModsAsync_WhenEverythingSucceeds_ShouldReturnSuccess()
         {
-            // Arrange
+
             var steamIds = new[] { "123" };
             var apiResponse = new SteamApiResponse
             {
@@ -54,10 +54,8 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
                 .Returns(apiResponse);
             _mockDownloadQueueService.AddToQueue(Arg.Any<ModInfoDto>()).Returns(true);
 
-            // Act
             var result = await _processor.ProcessAndEnqueueModsAsync(steamIds, null, CancellationToken.None);
 
-            // Assert
             result.SuccessfullyAdded.Should().Be(1);
             result.AlreadyQueued.Should().Be(0);
             result.FailedProcessing.Should().Be(0);
@@ -68,14 +66,12 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
         [Fact]
         public async Task ProcessAndEnqueueModsAsync_WhenAlreadyInQueue_ShouldSkip()
         {
-            // Arrange
+
             var steamIds = new[] { "123" };
             _mockDownloadQueueService.IsInQueue("123").Returns(true);
 
-            // Act
             var result = await _processor.ProcessAndEnqueueModsAsync(steamIds, null, CancellationToken.None);
 
-            // Assert
             result.SuccessfullyAdded.Should().Be(0);
             result.AlreadyQueued.Should().Be(1);
             _ = _mockSteamApiClient.DidNotReceive().GetFileDetailsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -84,16 +80,14 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
         [Fact]
         public async Task ProcessAndEnqueueModsAsync_WhenApiFails_ShouldMarkAsFailed()
         {
-            // Arrange
+
             var steamIds = new[] { "123" };
             _mockDownloadQueueService.IsInQueue("123").Returns(false);
             _mockSteamApiClient.GetFileDetailsAsync("123", Arg.Any<CancellationToken>())
                 .ThrowsAsync(new Exception("Network Error"));
 
-            // Act
             var result = await _processor.ProcessAndEnqueueModsAsync(steamIds, null, CancellationToken.None);
 
-            // Assert
             result.SuccessfullyAdded.Should().Be(0);
             result.FailedProcessing.Should().Be(1);
             result.ErrorMessages.Should().Contain(m => m.Contains("Network Error"));
@@ -102,7 +96,7 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
         [Fact]
         public async Task ProcessAndEnqueueModsAsync_WhenCancelled_ShouldSetFlag()
         {
-            // Arrange
+
             var steamIds = new[] { "123", "456" };
             var cts = new CancellationTokenSource();
             
@@ -113,11 +107,10 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
                     return Task.FromResult<SteamApiResponse?>(null); 
                 });
 
-            // Act
             var result = await _processor.ProcessAndEnqueueModsAsync(steamIds, null, cts.Token);
 
-            // Assert
             result.WasCancelled.Should().BeTrue();
         }
     }
 }
+

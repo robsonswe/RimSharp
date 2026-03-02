@@ -6,7 +6,7 @@ using RimSharp.Core.Commands.Composite;
 namespace RimSharp.Core.Services.Commanding
 {
     /// <summary>
-    /// Interface for a service that manages commands for the application.
+
     /// </summary>
     public interface IModCommandService
     {
@@ -34,7 +34,7 @@ namespace RimSharp.Core.Services.Commanding
         /// <summary>
         /// Gets a composite command from the service.
         /// </summary>
-        /// <param name="commandName">The name of the composite command to get.</param>
+
         /// <returns>The composite command, or null if not found.</returns>
         CompositeCommand? GetCompositeCommand(string commandName);
 
@@ -53,7 +53,7 @@ namespace RimSharp.Core.Services.Commanding
         void AddToCompositeCommand(string compositeName, string commandName);
 
         /// <summary>
-        /// Determines whether a command is registered with the service.
+
         /// </summary>
         /// <param name="commandName">The name of the command to check.</param>
         /// <returns>True if the command is registered; otherwise, false.</returns>
@@ -108,8 +108,7 @@ namespace RimSharp.Core.Services.Commanding
                 }
 
                 _compositeCommands[commandName] = command;
-                
-                // Also register in the regular commands collection for easier lookup
+
                 _commands[commandName] = command;
             }
         }
@@ -132,7 +131,7 @@ namespace RimSharp.Core.Services.Commanding
         /// <summary>
         /// Gets a composite command from the service.
         /// </summary>
-        /// <param name="commandName">The name of the composite command to get.</param>
+
         /// <returns>The composite command, or null if not found.</returns>
         public CompositeCommand? GetCompositeCommand(string commandName)
         {
@@ -192,7 +191,7 @@ namespace RimSharp.Core.Services.Commanding
         }
 
         /// <summary>
-        /// Determines whether a command is registered with the service.
+
         /// </summary>
         /// <param name="commandName">The name of the command to check.</param>
         /// <returns>True if the command is registered; otherwise, false.</returns>

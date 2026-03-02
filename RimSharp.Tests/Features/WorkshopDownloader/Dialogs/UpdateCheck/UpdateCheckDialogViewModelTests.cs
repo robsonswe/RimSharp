@@ -19,7 +19,7 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Dialogs.UpdateCheck
         [AvaloniaFact]
         public void SelectActiveOnly_ShouldSelectOnlyActiveMods()
         {
-            // Arrange
+
             var mods = new List<ModItem>
             {
                 new ModItem { Name = "Active Mod", IsActive = true },
@@ -27,10 +27,8 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Dialogs.UpdateCheck
             };
             var vm = new UpdateCheckDialogViewModel(mods);
 
-            // Act
             vm.SelectActiveCommand.Execute(null);
 
-            // Assert
             vm.GetSelectedMods().Should().HaveCount(1);
             vm.GetSelectedMods().First().Name.Should().Be("Active Mod");
         }
@@ -38,29 +36,26 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Dialogs.UpdateCheck
         [AvaloniaFact]
         public void UpdateCommand_WhenNoModsSelected_ShouldBeDisabled()
         {
-            // Arrange
+
             var vm = new UpdateCheckDialogViewModel(new List<ModItem> { new ModItem() });
-            
-            // Act
+
             vm.SelectNoneCommand.Execute(null);
 
-            // Assert
             vm.UpdateCommand.CanExecute(null).Should().BeFalse();
         }
 
         [AvaloniaFact]
         public void UpdateCommand_Execute_ShouldSetResult()
         {
-            // Arrange
+
             var vm = new UpdateCheckDialogViewModel(new List<ModItem> { new ModItem() });
             UpdateCheckDialogResult? result = null;
             vm.RequestCloseDialog += (s, e) => result = vm.DialogResult;
 
-            // Act
             vm.UpdateCommand.Execute(null);
 
-            // Assert
             result.Should().Be(UpdateCheckDialogResult.CheckUpdates);
         }
     }
 }
+

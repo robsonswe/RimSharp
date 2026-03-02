@@ -21,10 +21,9 @@ namespace RimSharp.Tests.Core.Converters.Numeric
         [InlineData(-1, false)]
         public void Convert_WithInt_ShouldReturnCorrectValue(int value, bool expected)
         {
-            // Act
+
             var result = _converter.Convert(value, typeof(bool), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
 
@@ -34,10 +33,9 @@ namespace RimSharp.Tests.Core.Converters.Numeric
         [InlineData(-1L, false)]
         public void Convert_WithLong_ShouldReturnCorrectValue(long value, bool expected)
         {
-            // Act
+
             var result = _converter.Convert(value, typeof(bool), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
 
@@ -47,10 +45,9 @@ namespace RimSharp.Tests.Core.Converters.Numeric
         [InlineData(-0.1, false)]
         public void Convert_WithDouble_ShouldReturnCorrectValue(double value, bool expected)
         {
-            // Act
+
             var result = _converter.Convert(value, typeof(bool), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
 
@@ -60,21 +57,20 @@ namespace RimSharp.Tests.Core.Converters.Numeric
         [InlineData(-0.1f, false)]
         public void Convert_WithFloat_ShouldReturnCorrectValue(float value, bool expected)
         {
-            // Act
+
             var result = _converter.Convert(value, typeof(bool), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
 
         [Fact]
         public void Convert_WithNonNumeric_ShouldReturnFalse()
         {
-            // Act
+
             var result = _converter.Convert("not a number", typeof(bool), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(false);
         }
     }
 }
+

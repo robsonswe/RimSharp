@@ -16,7 +16,7 @@ namespace RimSharp.Core.Commands.Composite
         private readonly bool _monitorCommandActivity;
 
         public event EventHandler? CanExecuteChanged;
-        
+
         /// <summary>
         /// Gets the list of registered commands.
         /// </summary>
@@ -32,7 +32,6 @@ namespace RimSharp.Core.Commands.Composite
         public CompositeCommand(bool monitorCommandActivity = true)
         {
             _monitorCommandActivity = monitorCommandActivity;
-            // Initialize CanExecuteChanged to avoid CS8618
             CanExecuteChanged += (s, e) => { };
         }
 
@@ -40,17 +39,16 @@ namespace RimSharp.Core.Commands.Composite
         /// Registers a command with the composite command.
         /// </summary>
         /// <param name="command">The command to register.</param>
-        /// <exception cref="ArgumentNullException">Thrown if command is null.</exception>
         public void RegisterCommand(ICommand command)
         {
             if (command == null) throw new ArgumentNullException(nameof(command));
-            
+
             lock (_lock)
             {
                 if (!_commands.Contains(command))
                 {
                     _commands.Add(command);
-                    
+
                     if (_monitorCommandActivity)
                     {
                         command.CanExecuteChanged += CommandCanExecuteChanged;
@@ -66,13 +64,13 @@ namespace RimSharp.Core.Commands.Composite
         public void UnregisterCommand(ICommand command)
         {
             if (command == null) throw new ArgumentNullException(nameof(command));
-            
+
             lock (_lock)
             {
                 if (_commands.Contains(command))
                 {
                     _commands.Remove(command);
-                    
+
                     if (_monitorCommandActivity)
                     {
                         command.CanExecuteChanged -= CommandCanExecuteChanged;
@@ -108,7 +106,7 @@ namespace RimSharp.Core.Commands.Composite
             lock (_lock)
             {
                 List<ICommand> commands = _commands.Where(command => command.CanExecute(parameter)).ToList();
-                
+
                 foreach (var command in commands)
                 {
                     command.Execute(parameter);

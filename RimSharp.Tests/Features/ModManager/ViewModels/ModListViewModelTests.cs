@@ -55,59 +55,52 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
         [Fact]
         public void ActivateModCommand_ShouldCallManager()
         {
-            // Arrange
+
             var vm = CreateViewModel();
             var mod = new ModItem { Name = "Test Mod" };
 
-            // Act
             vm.ActivateModCommand.Execute(mod);
 
-            // Assert
             _mockModListManager.Received(1).ActivateMod(mod);
         }
 
         [Fact]
         public void DeactivateModCommand_ShouldCallManager()
         {
-            // Arrange
+
             var vm = CreateViewModel();
             var mod = new ModItem { Name = "Test Mod", ModType = ModType.Workshop };
 
-            // Act
             vm.DeactivateModCommand.Execute(mod);
 
-            // Assert
             _mockModListManager.Received(1).DeactivateMod(mod);
         }
 
         [Fact]
         public void ActiveSearchText_ShouldDebounceAndApplyFilter()
         {
-            // Arrange
+
             var vm = CreateViewModel();
 
-            // Act
             vm.ActiveSearchText = "search";
-            
-            // Assert
+
             _mockFilterService.Received(1).ApplyActiveFilter("search");
         }
 
         [Fact]
         public void HandleListBoxSelectionChanged_ShouldUpdateSelectedModAndRaiseEvent()
         {
-            // Arrange
+
             var vm = CreateViewModel();
             var mod = new ModItem { Name = "Selected Mod" };
             bool eventRaised = false;
             vm.RequestSelectionChange += (s, e) => eventRaised = true;
 
-            // Act
             vm.HandleListBoxSelectionChanged(mod);
 
-            // Assert
             vm.SelectedMod.Should().Be(mod);
             eventRaised.Should().BeTrue();
         }
     }
 }
+

@@ -3,7 +3,7 @@
 namespace RimSharp.Features.WorkshopDownloader.Models
 {
     /// <summary>
-    /// Represents basic information extracted for an item within a Steam Workshop Collection page.
+
     /// </summary>
     public class CollectionItemInfo
     {
@@ -12,3 +12,4 @@ namespace RimSharp.Features.WorkshopDownloader.Models
         public string Author { get; set; } = string.Empty;
     }
 }
+

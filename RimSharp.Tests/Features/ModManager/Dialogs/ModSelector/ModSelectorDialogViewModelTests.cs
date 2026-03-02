@@ -19,7 +19,7 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.ModSelector
         [AvaloniaFact]
         public void Filter_ShouldFilterByName()
         {
-            // Arrange
+
             var mods = new List<ModItem>
             {
                 new ModItem { Name = "Harmony", PackageId = "brrainz.harmony" },
@@ -28,10 +28,8 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.ModSelector
             };
             var vm = new ModSelectorDialogViewModel(mods);
 
-            // Act
             vm.SearchText = "Har";
 
-            // Assert
             vm.FilteredMods.Should().HaveCount(1);
             vm.FilteredMods.First().Name.Should().Be("Harmony");
         }
@@ -39,24 +37,22 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.ModSelector
         [AvaloniaFact]
         public void Filter_ShouldFilterByPackageId()
         {
-            // Arrange
+
             var mods = new List<ModItem>
             {
                 new ModItem { Name = "Harmony", PackageId = "brrainz.harmony" }
             };
             var vm = new ModSelectorDialogViewModel(mods);
 
-            // Act
             vm.SearchText = "brrainz";
 
-            // Assert
             vm.FilteredMods.Should().HaveCount(1);
         }
 
         [AvaloniaFact]
         public void ConfirmCommand_ShouldReturnSelectedMod()
         {
-            // Arrange
+
             var mod = new ModItem { Name = "Harmony" };
             var vm = new ModSelectorDialogViewModel(new List<ModItem> { mod });
             vm.SelectedMod = mod;
@@ -64,11 +60,10 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.ModSelector
             ModItem? result = null;
             vm.RequestCloseDialog += (s, e) => result = vm.DialogResult;
 
-            // Act
             vm.ConfirmCommand.Execute(null);
 
-            // Assert
             result.Should().Be(mod);
         }
     }
 }
+

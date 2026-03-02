@@ -5,51 +5,45 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using RimSharp.Features.WorkshopDownloader.Models; // For DownloadItem
-using RimSharp.Infrastructure.Workshop.Core;        // For ISteamCmdPathService, ISteamCmdInstaller
-using RimSharp.Infrastructure.Workshop.Download.Execution; // For ISteamCmdScriptGenerator, ISteamCmdProcessRunner
-using RimSharp.Infrastructure.Workshop.Download.Models;    // For SteamCmdDownloadResult
-using RimSharp.Infrastructure.Workshop.Download.Parsing;     // For ISteamCmdLogParser
-using RimSharp.Infrastructure.Workshop.Download.Parsing.Models; // For SteamCmdSessionLogParseResult, SteamCmdLogFilePaths
-using RimSharp.Infrastructure.Workshop.Download.Processing;  // For IDownloadedItemProcessor
-using RimSharp.Shared.Services.Contracts;               // For ILoggerService, IDialogService, IPathService
+using RimSharp.Features.WorkshopDownloader.Models;
+using RimSharp.Infrastructure.Workshop.Core;
+using RimSharp.Infrastructure.Workshop.Download.Execution;
+using RimSharp.Infrastructure.Workshop.Download.Models;
+using RimSharp.Infrastructure.Workshop.Download.Parsing;
+using RimSharp.Infrastructure.Workshop.Download.Parsing.Models;
+using RimSharp.Infrastructure.Workshop.Download.Processing;
+using RimSharp.Shared.Services.Contracts;
 
 namespace RimSharp.Infrastructure.Workshop.Download
 {
     /// <summary>
-    /// Orchestrates the download of Steam Workshop mods using SteamCMD, coordinating
-    /// script generation, process execution, log parsing, and post-download processing.
+    /// Downloads the specified Workshop items using SteamCMD.
     /// Implements a retry mechanism for failed downloads.
     /// </summary>
     public class SteamCmdDownloader : ISteamCmdDownloader
     {
-        // --- Constants ---
-        private const string BackupSuffix = "_backup"; // Suffix for backup folders during update
-        private const int MaxDownloadAttempts = 3;     // Number of times to retry failed downloads
-        // --- End Constants ---
-
-        // --- Dependencies ---
-        private readonly ISteamCmdPathService _pathService; // From Core
-        private readonly ISteamCmdInstaller _installer;     // From Core
+        private const string BackupSuffix = "_backup";
+        private const int MaxDownloadAttempts = 3;
+        private readonly ISteamCmdPathService _pathService;
+        private readonly ISteamCmdInstaller _installer;
         private readonly IDialogService _dialogService;
         private readonly ILoggerService _logger;
-        private readonly IPathService _gamePathService; // RimWorld game path service
-        private readonly ISteamCmdScriptGenerator _scriptGenerator; // From Download.Execution
-        private readonly ISteamCmdProcessRunner _processRunner;     // From Download.Execution
-        private readonly ISteamCmdLogParser _logParser;         // From Download.Parsing (NEW TYPE)
-        private readonly IDownloadedItemProcessor _itemProcessor;   // From Download.Processing
-        // --- End Dependencies ---
+        private readonly IPathService _gamePathService;
+        private readonly ISteamCmdScriptGenerator _scriptGenerator;
+        private readonly ISteamCmdProcessRunner _processRunner;
+        private readonly ISteamCmdLogParser _logParser; 
+        private readonly IDownloadedItemProcessor _itemProcessor;
 
         public SteamCmdDownloader(
-            ISteamCmdPathService pathService,       // Core
-            ISteamCmdInstaller installer,         // Core
+            ISteamCmdPathService pathService,
+            ISteamCmdInstaller installer,
             IDialogService dialogService,
             ILoggerService logger,
-            IPathService gamePathService,        // Game paths (for target dir)
-            ISteamCmdScriptGenerator scriptGenerator, // New
-            ISteamCmdProcessRunner processRunner,     // New
-            ISteamCmdLogParser logParser,             // Changed from IWorkshopLogParser
-            IDownloadedItemProcessor itemProcessor    // New
+            IPathService gamePathService,
+            ISteamCmdScriptGenerator scriptGenerator,
+            ISteamCmdProcessRunner processRunner,
+            ISteamCmdLogParser logParser,
+            IDownloadedItemProcessor itemProcessor
             )
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
@@ -59,17 +53,10 @@ namespace RimSharp.Infrastructure.Workshop.Download
             _gamePathService = gamePathService ?? throw new ArgumentNullException(nameof(gamePathService));
             _scriptGenerator = scriptGenerator ?? throw new ArgumentNullException(nameof(scriptGenerator));
             _processRunner = processRunner ?? throw new ArgumentNullException(nameof(processRunner));
-            _logParser = logParser ?? throw new ArgumentNullException(nameof(logParser)); // Changed variable name
+            _logParser = logParser ?? throw new ArgumentNullException(nameof(logParser));
             _itemProcessor = itemProcessor ?? throw new ArgumentNullException(nameof(itemProcessor));
         }
 
-        /// <summary>
-        /// Downloads the specified Workshop items using SteamCMD.
-        /// </summary>
-        /// <param name="itemsToDownload">The collection of items to download.</param>
-        /// <param name="validate">Whether to include the 'validate' parameter in the SteamCMD command.</param>
-        /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
-        /// <returns>A <see cref="SteamCmdDownloadResult"/> indicating the outcome.</returns>
         public async Task<SteamCmdDownloadResult> DownloadModsAsync(
                         IEnumerable<DownloadItem> itemsToDownload,
                         bool validate,
@@ -79,8 +66,6 @@ namespace RimSharp.Infrastructure.Workshop.Download
             _logger.LogInfo($"Starting SteamCMD download operation (Retry Strategy: {MaxDownloadAttempts} attempts, Comprehensive Logging)", "SteamCmdDownloader");
             var result = new SteamCmdDownloadResult();
             string userModsPath = _gamePathService.GetModsPath();
-
-            // --- Initial Checks ---
             bool isSetupComplete = await _installer.CheckSetupAsync();
             if (!isSetupComplete || string.IsNullOrEmpty(_pathService.SteamCmdExePath))
             {
@@ -91,7 +76,6 @@ namespace RimSharp.Infrastructure.Workshop.Download
             }
             if (!EnsurePathValidity(userModsPath, result)) return result;
 
-            // Filter out invalid items
             var validItems = itemsToDownload
                 .Where(i => i != null && !string.IsNullOrWhiteSpace(i.SteamId) && long.TryParse(i.SteamId.Trim(), out _))
                 .OrderBy(i => i.FileSize)
@@ -99,12 +83,11 @@ namespace RimSharp.Infrastructure.Workshop.Download
 
             _logger.LogDebug($"Sorted item order (IDs): {string.Join(", ", validItems.Select(i => $"{i.SteamId}({i.FileSize}b)"))}", "SteamCmdDownloader");
 
-
             if (!validItems.Any())
             {
                 _logger.LogInfo("Download skipped: No valid workshop items provided", "SteamCmdDownloader");
                 result.LogMessages.Add("Download skipped: No valid workshop items provided.");
-                result.OverallSuccess = true; // No work needed is considered success
+                result.OverallSuccess = true; 
                 return result;
             }
 
@@ -113,49 +96,37 @@ namespace RimSharp.Infrastructure.Workshop.Download
                 _logger.LogWarning("Some items have missing or zero file size, sorting might place them first.", "SteamCmdDownloader");
             }
 
-
-
-            // Prepare lookups and state for retries
             var itemLookup = validItems.ToDictionary(i => i.SteamId!);
             var requestedIds = itemLookup.Keys.ToHashSet();
-            var finalSessionResults = new Dictionary<string, (bool Success, DateTime Timestamp, string? Reason)>(); // Tracks latest log status per ID across attempts
-            var itemsToAttemptIds = new HashSet<string>(requestedIds); // IDs remaining to be downloaded/retried
-
-            // --- Path Setup for SteamCMD operations ---
-            string steamCmdInstallDir = _pathService.SteamCmdInstallPath; // Base install dir (e.g., /path/to/steamcmd)
-            string steamCmdExeDir = Path.GetDirectoryName(_pathService.SteamCmdExePath) ?? steamCmdInstallDir; // Directory containing steamcmd.exe/sh
-            string steamCmdSteamAppsActualPath = _pathService.SteamCmdSteamAppsPath; // Target for 'force_install_dir' (e.g., /path/to/steam)
-            string steamCmdWorkshopContentPath = _pathService.SteamCmdWorkshopContentPath; // Where items are actually downloaded (e.g., /path/to/steam/steamapps/workshop/content/294100)
+            var finalSessionResults = new Dictionary<string, (bool Success, DateTime Timestamp, string? Reason)>();
+            var itemsToAttemptIds = new HashSet<string>(requestedIds);
+            string steamCmdInstallDir = _pathService.SteamCmdInstallPath;
+            string steamCmdExeDir = Path.GetDirectoryName(_pathService.SteamCmdExePath) ?? steamCmdInstallDir;
+            string steamCmdSteamAppsActualPath = _pathService.SteamCmdSteamAppsPath;
+            string steamCmdWorkshopContentPath = _pathService.SteamCmdWorkshopContentPath;
             string workshopLogPath = Path.Combine(steamCmdInstallDir, "logs", "workshop_log.txt");
-            string contentLogPath = Path.Combine(steamCmdInstallDir, "logs", "content_log.txt"); // NEW
-            string bootstrapLogPath = Path.Combine(steamCmdInstallDir, "logs", "bootstrap_log.txt"); // NEW
-            // --- End Path Setup ---
-
+            string contentLogPath = Path.Combine(steamCmdInstallDir, "logs", "content_log.txt"); 
+            string bootstrapLogPath = Path.Combine(steamCmdInstallDir, "logs", "bootstrap_log.txt"); 
             _logger.LogDebug($"SteamCMD Working Directory (for execution): {steamCmdExeDir}", "SteamCmdDownloader");
             _logger.LogDebug($"Workshop Log Path: {workshopLogPath}", "SteamCmdDownloader");
-            _logger.LogDebug($"Content Log Path: {contentLogPath}", "SteamCmdDownloader"); // Log new path
-            _logger.LogDebug($"Bootstrap Log Path: {bootstrapLogPath}", "SteamCmdDownloader"); // Log new path
+            _logger.LogDebug($"Content Log Path: {contentLogPath}", "SteamCmdDownloader");
+            _logger.LogDebug($"Bootstrap Log Path: {bootstrapLogPath}", "SteamCmdDownloader");
             _logger.LogDebug($"SteamCMD Download Target (force_install_dir): {steamCmdSteamAppsActualPath}", "SteamCmdDownloader");
             _logger.LogDebug($"SteamCMD Workshop Content Path (source for processing): {steamCmdWorkshopContentPath}", "SteamCmdDownloader");
             _logger.LogDebug($"User Mods Path (Final Destination): {userModsPath}", "SteamCmdDownloader");
 
-            // Final result accumulators
             var finalSucceededItems = new List<DownloadItem>();
-            var finalFailedItemsInfo = new List<FailedDownloadInfo>(); // Use the new type here
-            int lastExitCode = -1; // Store the exit code from the last SteamCMD process run
-            string lastAttemptPrimaryLogPath = string.Empty; // Keep track of the last primary log file path for final reporting
+            var finalFailedItemsInfo = new List<FailedDownloadInfo>();
+            int lastExitCode = -1;
+            string lastAttemptPrimaryLogPath = string.Empty;
 
             try
             {
-                // --- Step 1: Clean Old Download Leftovers ---
                 await CleanTemporaryLocationAsync(steamCmdWorkshopContentPath, result, cancellationToken);
-                // Clean the downloads state folder (CRUCIAL NEW STEP)
                 string downloadsPath = Path.Combine(_pathService.SteamCmdSteamAppsPath, "steamapps", "workshop", "downloads");
                 await CleanDirectoryContentsAsync(downloadsPath, "Workshop Downloads", result, cancellationToken);
-                // Clean the temp folder (if it exists)
                 string workshopTempPath = Path.Combine(_pathService.SteamCmdSteamAppsPath, "steamapps", "workshop", "temp");
                 await CleanDirectoryContentsAsync(workshopTempPath, "Workshop Temp", result, cancellationToken);
-                // --- Delete the Workshop Manifest file (ACF) ---
                 string acfFileName = $"appworkshop_294100.acf";
                 string acfPath = Path.Combine(_pathService.SteamCmdSteamAppsPath, "steamapps", "workshop", acfFileName);
                 _logger.LogInfo($"Attempting cleanup of Workshop Manifest file: {acfPath}", "SteamCmdDownloader");
@@ -165,16 +136,15 @@ namespace RimSharp.Infrastructure.Workshop.Download
                     if (File.Exists(acfPath))
                     {
                         File.Delete(acfPath);
-                        await Task.Delay(50, cancellationToken); // Brief pause for file system
+                        await Task.Delay(50, cancellationToken);
 
-                        if (!File.Exists(acfPath)) // Verify deletion
+                        if (!File.Exists(acfPath))
                         {
                             _logger.LogInfo($"Successfully deleted Workshop Manifest file: {acfPath}", "SteamCmdDownloader");
                             result.LogMessages.Add("Workshop Manifest file deleted.");
                         }
                         else
                         {
-                            // Log warning if deletion verification failed, but don't necessarily abort yet.
                             _logger.LogWarning($"Failed to verify deletion of Workshop Manifest file after attempt: {acfPath}", "SteamCmdDownloader");
                             result.LogMessages.Add($"Warning: Failed to verify deletion of {acfFileName}. It might be locked.");
                         }
@@ -185,105 +155,90 @@ namespace RimSharp.Infrastructure.Workshop.Download
                         result.LogMessages.Add("Workshop Manifest file not found, no cleanup needed.");
                     }
                 }
-                catch (OperationCanceledException) { throw; } // Propagate cancellation
+                catch (OperationCanceledException) { throw; }
                 catch (Exception ex)
                 {
-                    // Log a warning if the ACF file couldn't be deleted. It might indicate a permission issue
-                    // or the file being locked, which could still cause problems later.
                     _logger.LogWarning($"Failed to delete Workshop Manifest file '{acfPath}': {ex.Message}", "SteamCmdDownloader");
                     result.LogMessages.Add($"Warning: Failed to delete Workshop Manifest file '{acfFileName}'. Error: {ex.Message}");
-                    // Decide if this should be a fatal error or just a warning. For now, warning seems reasonable.
                 }
                 cancellationToken.ThrowIfCancellationRequested();
-
-                // --- Step 2: Retry Loop for Downloading ---
                 for (int attempt = 1; attempt <= MaxDownloadAttempts && itemsToAttemptIds.Any(); attempt++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     _logger.LogInfo($"--- Starting Download Attempt {attempt} of {MaxDownloadAttempts} for {itemsToAttemptIds.Count} items ---", "SteamCmdDownloader");
                     result.LogMessages.Add($"--- Attempt {attempt}/{MaxDownloadAttempts} for {itemsToAttemptIds.Count} items ---");
 
-                    string scriptId = Guid.NewGuid().ToString("N").Substring(0, 8); // Unique ID for this attempt's files
+                    string scriptId = Guid.NewGuid().ToString("N").Substring(0, 8);
                     string scriptPath = Path.Combine(steamCmdExeDir, $"rimsharp_dl_script_{scriptId}.txt");
                     string primaryLogPath = Path.Combine(steamCmdExeDir, $"rimsharp_dl_log_{scriptId}.log");
-                    lastAttemptPrimaryLogPath = primaryLogPath; // Store for final message
+                    lastAttemptPrimaryLogPath = primaryLogPath;
 
                     var currentAttemptItems = validItems.Where(i => itemsToAttemptIds.Contains(i.SteamId!)).ToList();
-                    if (!currentAttemptItems.Any()) { break; } // Should be redundant
-
-                    // --- 2a. Create Script ---
+                    if (!currentAttemptItems.Any()) { break; }
                     if (!await GenerateScriptAsync(steamCmdExeDir, scriptId, steamCmdSteamAppsActualPath, currentAttemptItems, validate, result, cancellationToken))
                     {
-                        finalFailedItemsInfo.AddRange(currentAttemptItems.Select(item => new FailedDownloadInfo(item, "Failed to generate download script."))); // Mark all current items as failed
-                        itemsToAttemptIds.Clear(); // Stop retrying
-                        goto EndProcessing; // Use goto to jump past further attempts and processing
+                        finalFailedItemsInfo.AddRange(currentAttemptItems.Select(item => new FailedDownloadInfo(item, "Failed to generate download script.")));
+                        itemsToAttemptIds.Clear();
+                        goto EndProcessing;
                     }
                     cancellationToken.ThrowIfCancellationRequested();
-
-                    // --- 2b. Execute SteamCMD ---
                     _logger.LogInfo($"Attempt {attempt}: Executing SteamCMD...", "SteamCmdDownloader");
                     result.LogMessages.Add($"Attempt {attempt}: Executing SteamCMD...");
-                    DateTime filterTime = DateTime.Now.AddSeconds(-3); // Use a slightly earlier time for safety margin for log parsing
+                    DateTime filterTime = DateTime.Now.AddSeconds(-3);
                     _logger.LogInfo($"Attempt {attempt}: Parsing logs starting from >= {filterTime:O}", "SteamCmdDownloader");
 
                     try
                     {
                         lastExitCode = await _processRunner.RunSteamCmdAsync(
-                            scriptPath,        // Path to the generated script
-                            primaryLogPath,    // Path for the primary stdout/stderr log
-                            steamCmdExeDir,    // Working directory for the process
+                            scriptPath,
+                            primaryLogPath,
+                            steamCmdExeDir,
                             cancellationToken);
-                        result.ExitCode = lastExitCode; // Store the latest exit code
+                        result.ExitCode = lastExitCode;
                         _logger.LogInfo($"Attempt {attempt}: SteamCMD process exited with code: {lastExitCode}", "SteamCmdDownloader");
                         result.LogMessages.Add($"Attempt {attempt}: SteamCMD exited ({lastExitCode}).");
                     }
-                    catch (FileNotFoundException fnfEx) // Handle cases where runner can't find exe/script
+                    catch (FileNotFoundException fnfEx)
                     {
                         _logger.LogError($"Attempt {attempt}: FAILED to run SteamCMD process: {fnfEx.Message}", "SteamCmdDownloader");
                         result.LogMessages.Add($"Attempt {attempt}: Error running SteamCMD: {fnfEx.Message}. Aborting download operation.");
-                        result.ExitCode = -995; // Indicate critical file not found for runner
+                        result.ExitCode = -995;
                         result.OverallSuccess = false;
-                        finalFailedItemsInfo.AddRange(currentAttemptItems.Select(item => new FailedDownloadInfo(item, "SteamCMD executable/script not found."))); // Mark all current items as failed
-                        itemsToAttemptIds.Clear(); // Stop retrying
-                        goto EndProcessing; // Use goto to jump past further attempts and processing
+                        finalFailedItemsInfo.AddRange(currentAttemptItems.Select(item => new FailedDownloadInfo(item, "SteamCMD executable/script not found.")));
+                        itemsToAttemptIds.Clear();
+                        goto EndProcessing;
                     }
                     catch (OperationCanceledException) { throw; }
-                    catch (Exception runEx) // Catch other potential runner errors
+                    catch (Exception runEx)
                     {
                         _logger.LogError($"Attempt {attempt}: FAILED unexpectedly during SteamCMD execution: {runEx.Message}", "SteamCmdDownloader");
                         result.LogMessages.Add($"Attempt {attempt}: Unexpected error running SteamCMD: {runEx.Message}.");
-                        lastExitCode = -994; // Indicate generic runner error
+                        lastExitCode = -994;
                         result.ExitCode = lastExitCode;
-                        // Log error, but continue to parsing, as some items might have finished before the error.
                     }
                     cancellationToken.ThrowIfCancellationRequested();
-
-
-                    // --- 2c. Parse Multiple Log Files (MODIFIED) ---
                     _logger.LogInfo($"Attempt {attempt}: Parsing session logs (Workshop, Primary, Content, Bootstrap)...", "SteamCmdDownloader");
                     result.LogMessages.Add($"Attempt {attempt}: Parsing session logs...");
 
                     var logFilePaths = new SteamCmdLogFilePaths
                     {
                         WorkshopLogPath = workshopLogPath,
-                        PrimaryExecutionLogPath = primaryLogPath, // The attempt-specific log
+                        PrimaryExecutionLogPath = primaryLogPath,
                         ContentLogPath = contentLogPath,
                         BootstrapLogPath = bootstrapLogPath
                     };
 
-                    SteamCmdSessionLogParseResult sessionParseResult = new(); // Default empty result
+                    SteamCmdSessionLogParseResult sessionParseResult = new();
                     try
                     {
                         sessionParseResult = await _logParser.ParseSteamCmdSessionLogsAsync(
                             logFilePaths,
-                            itemsToAttemptIds,  // Only interested in items for this attempt
+                            itemsToAttemptIds,
                             filterTime,
                             cancellationToken);
 
                         _logger.LogInfo($"Attempt {attempt}: Log parsing complete. Processed {sessionParseResult.ProcessedWorkshopEntryCount} workshop entries. Status: {sessionParseResult.OverallStatus.Flags}", "SteamCmdDownloader");
                         result.LogMessages.Add($"Attempt {attempt}: Log parsing complete ({sessionParseResult.ProcessedWorkshopEntryCount} workshop entries). Status: {sessionParseResult.OverallStatus.Flags}");
-
-                        // Add critical messages from the parser to the main download result
                         if (sessionParseResult.CriticalMessages.Any())
                         {
                             result.LogMessages.Add($"--- Critical Messages (Attempt {attempt}) ---");
@@ -291,7 +246,6 @@ namespace RimSharp.Infrastructure.Workshop.Download
                             result.LogMessages.Add($"--- End Critical Messages ---");
                         }
 
-                        // Optional: Add log samples (maybe only on failure or first attempt)
                         if (attempt == 1 || sessionParseResult.OverallStatus.HasAnyError)
                         {
                             foreach (var kvp in sessionParseResult.LogSamples)
@@ -310,46 +264,36 @@ namespace RimSharp.Infrastructure.Workshop.Download
                     {
                         _logger.LogError($"Attempt {attempt}: Unexpected error during comprehensive log parsing: {parseEx.Message}", "SteamCmdDownloader");
                         result.LogMessages.Add($"Attempt {attempt}: Unexpected error parsing session logs: {parseEx.Message}");
-                        // Continue, relying on subsequent attempts or file checks.
                     }
-
-
-                    // --- 2d. Update Overall Status and Prepare for Next Attempt (MODIFIED) ---
                     var nextAttemptFailedIds = new HashSet<string>();
                     int newlySucceededThisAttempt = 0;
                     int stillFailingThisAttempt = 0;
 
-                    // Check for critical session failures first
                     if (sessionParseResult.OverallStatus.HasLoginFailed ||
-                        sessionParseResult.OverallStatus.HasDiskError || // Treat disk errors as likely fatal for the attempt
-                        sessionParseResult.OverallStatus.HasScriptError) // Script errors usually mean nothing worked
+                        sessionParseResult.OverallStatus.HasDiskError ||
+                        sessionParseResult.OverallStatus.HasScriptError)
                     {
                         _logger.LogWarning($"Attempt {attempt}: Critical session failure detected ({sessionParseResult.OverallStatus.Flags}). Marking all attempted items as failed for this attempt.", "SteamCmdDownloader");
                         result.LogMessages.Add($"Attempt {attempt}: Critical session failure detected ({sessionParseResult.OverallStatus.Flags}). Assuming items failed.");
-                        nextAttemptFailedIds.UnionWith(itemsToAttemptIds); // All items attempted need retry
+                        nextAttemptFailedIds.UnionWith(itemsToAttemptIds);
                         stillFailingThisAttempt = itemsToAttemptIds.Count;
                     }
-                    else // Process item results if no critical session failure
+                    else
                     {
-                        // Iterate through the items we *attempted* in this cycle
                         foreach (string currentItemId in itemsToAttemptIds)
                         {
                             bool isNowConsideredSuccess = false;
                             DateTime latestTimestampForId = DateTime.MinValue;
                             string? failureReasonForId = "Unknown error or no log entry";
-
-                            // Check if the comprehensive parser found a result for this item *in this attempt*
                             if (sessionParseResult.WorkshopItemResults.TryGetValue(currentItemId, out var attemptResult))
                             {
-                                // Update the *overall* status tracker (finalSessionResults) ONLY if this new log entry is more recent
                                 if (!finalSessionResults.TryGetValue(currentItemId, out var existingFinalStatus) || attemptResult.Timestamp > existingFinalStatus.Timestamp)
                                 {
-                                    finalSessionResults[currentItemId] = attemptResult; // Update with the newer status
+                                    finalSessionResults[currentItemId] = attemptResult;
                                     _logger.LogDebug($"Attempt {attempt}: Updated final status for {currentItemId} based on log at {attemptResult.Timestamp:O}. Success: {attemptResult.Success}");
                                 }
                             }
 
-                            // Now, check the LATEST known status from the overall tracker (finalSessionResults)
                             if (finalSessionResults.TryGetValue(currentItemId, out var latestOverallStatus))
                             {
                                 isNowConsideredSuccess = latestOverallStatus.Success;
@@ -357,10 +301,9 @@ namespace RimSharp.Infrastructure.Workshop.Download
                                 failureReasonForId = latestOverallStatus.Reason;
                             }
 
-                            // Decide if this item needs to be retried based on its latest known status
                             if (!isNowConsideredSuccess)
                             {
-                                nextAttemptFailedIds.Add(currentItemId); // Add to the list for the next attempt
+                                nextAttemptFailedIds.Add(currentItemId);
                                 stillFailingThisAttempt++;
                                 _logger.LogWarning($"Attempt {attempt}: Item {currentItemId} marked as FAILED (Reason: {failureReasonForId ?? "N/A"}, Last Log: {latestTimestampForId:O})", "SteamCmdDownloader");
                             }
@@ -370,68 +313,52 @@ namespace RimSharp.Infrastructure.Workshop.Download
                                 _logger.LogInfo($"Attempt {attempt}: Item {currentItemId} marked as SUCCEEDED (Log at {latestTimestampForId:O})", "SteamCmdDownloader");
                             }
                         }
-                    } // --- End else block (no critical session failure) ---
+                    }
 
                     _logger.LogInfo($"Attempt {attempt} Summary: Succeeded now: {newlySucceededThisAttempt}, Still Failing: {stillFailingThisAttempt}, Items for next attempt: {nextAttemptFailedIds.Count}", "SteamCmdDownloader");
                     result.LogMessages.Add($"Attempt {attempt} Summary: Succeeded now: {newlySucceededThisAttempt}, Still Failing: {stillFailingThisAttempt}.");
 
-                    // Update the set of items for the next loop iteration
                     itemsToAttemptIds = nextAttemptFailedIds;
 
-                    // Optional: Add a small delay before the next retry
                     if (itemsToAttemptIds.Any() && attempt < MaxDownloadAttempts)
                     {
                         _logger.LogInfo($"Waiting 1 second before attempt {attempt + 1}...", "SteamCmdDownloader");
                         await Task.Delay(1000, cancellationToken);
                     }
-
-                    // --- 2e. Clean up script file for this attempt ---
                     CleanupScriptFile(scriptPath);
+                }
 
-                } // --- End of Retry Loop ---
-
-
-            EndProcessing: // Label used by goto statements on critical failure
-
-                // --- Step 3: Determine Final Success/Failure based on 'finalSessionResults' ---
+EndProcessing:
                 _logger.LogInfo("Consolidating results after all download attempts...", "SteamCmdDownloader");
                 result.LogMessages.Add("Consolidating results after all attempts...");
 
                 var provisionallySucceededIds = new HashSet<string>();
-
-                // Check if the logs were usable if we expected results but got none
-                if (!finalSessionResults.Any() && requestedIds.Any() && !File.Exists(workshopLogPath) && !File.Exists(lastAttemptPrimaryLogPath)) // Check primary log too if workshop missing
+                if (!finalSessionResults.Any() && requestedIds.Any() && !File.Exists(workshopLogPath) && !File.Exists(lastAttemptPrimaryLogPath))
                 {
                     _logger.LogError($"Neither Workshop log '{workshopLogPath}' nor last primary log '{lastAttemptPrimaryLogPath}' found or usable. Assuming all {requestedIds.Count} items failed.", "SteamCmdDownloader");
                     result.LogMessages.Add($"Error: Key log files unusable after all attempts. Assuming all items failed.");
-                    finalFailedItemsInfo.AddRange(requestedIds.Select(id => new FailedDownloadInfo(itemLookup[id], "Key log files were missing or unreadable."))); // Mark all as failed with reason
+                    finalFailedItemsInfo.AddRange(requestedIds.Select(id => new FailedDownloadInfo(itemLookup[id], "Key log files were missing or unreadable.")));
                 }
                 else
                 {
-                    // Determine final status for each initially requested ID based on the log results
                     foreach (var requestedId in requestedIds)
                     {
                         if (finalSessionResults.TryGetValue(requestedId, out var latestResult) && latestResult.Success)
                         {
-                            // Log indicated success at some point, mark for processing
                             provisionallySucceededIds.Add(requestedId);
                             _logger.LogInfo($"Item {requestedId} final status from logs: SUCCEEDED (Log entry at {latestResult.Timestamp:O})", "SteamCmdDownloader");
                         }
                         else
                         {
-                            // Log indicated failure, or no success entry was ever found
                             string reason = finalSessionResults.TryGetValue(requestedId, out var failResult) ? (failResult.Reason ?? "Unknown/NoLog") : "No success result found in logs";
                             DateTime? failTime = finalSessionResults.TryGetValue(requestedId, out failResult) ? failResult.Timestamp : (DateTime?)null;
                             _logger.LogWarning($"Item {requestedId} final status from logs: FAILED (Reason: {reason}, Last Log At: {failTime?.ToString("O") ?? "N/A"})", "SteamCmdDownloader");
                             result.LogMessages.Add($"Item {requestedId} failed download (Reason: {reason})");
 
-                            // Add to the final failure list immediately
                             finalFailedItemsInfo.Add(new FailedDownloadInfo(itemLookup[requestedId], $"Download failed: {reason}"));
                         }
                     }
                 }
-
-                // --- Step 4: Process Provisionally Succeeded Items (using ItemProcessor) ---
                 await ProcessSucceededItemsAsync(
                     provisionallySucceededIds,
                     itemLookup,
@@ -442,34 +369,24 @@ namespace RimSharp.Infrastructure.Workshop.Download
                     finalFailedItemsInfo,
                     progress,
                     cancellationToken);
-
-                // --- Step 5: Populate Final Result Object ---
                 PopulateFinalResult(result, finalSucceededItems, finalFailedItemsInfo);
-
-
-                // --- Step 6: Define Overall Success ---
                 SetOverallSuccessAndLogFinalStatus(result, validItems.Any(), lastExitCode);
-
             }
             catch (OperationCanceledException)
             {
                 HandleCancellation(result, validItems, finalSucceededItems, finalFailedItemsInfo);
             }
-            catch (Exception ex) // Catch unexpected exceptions during the orchestration
+            catch (Exception ex)
             {
                 HandleUnexpectedException(ex, result, validItems, finalSucceededItems, finalFailedItemsInfo);
             }
             finally
             {
-                // Add messages indicating where log files are kept for debugging
                 LogFinalLogFilePaths(lastAttemptPrimaryLogPath, workshopLogPath, contentLogPath, bootstrapLogPath, result);
             }
 
             return result;
         }
-
-
-        // --- Helper Methods ---
 
         private bool EnsurePathValidity(string userModsPath, SteamCmdDownloadResult result)
         {
@@ -488,8 +405,8 @@ namespace RimSharp.Infrastructure.Workshop.Download
 
         private async Task CleanTemporaryLocationAsync(string tempPath, SteamCmdDownloadResult result, CancellationToken cancellationToken)
         {
-            const int maxRetries = 3; // Number of times to retry deleting an item
-            const int retryDelayMilliseconds = 250; // Wait time between retries
+            const int maxRetries = 3;
+            const int retryDelayMilliseconds = 250;
 
             _logger.LogInfo($"Attempting robust cleanup of temporary download location: {tempPath}", "SteamCmdDownloader");
             result.LogMessages.Add($"Cleaning temporary download location (before start, Max Retries: {maxRetries})...");
@@ -500,7 +417,6 @@ namespace RimSharp.Infrastructure.Workshop.Download
                 result.LogMessages.Add("Temporary download location does not exist, no cleanup needed.");
                 try
                 {
-                    // Ensure parent directory exists so SteamCMD can create subdirs later
                     string? parentDir = Path.GetDirectoryName(tempPath);
                     if (!string.IsNullOrEmpty(parentDir))
                     {
@@ -521,7 +437,6 @@ namespace RimSharp.Infrastructure.Workshop.Download
 
             try
             {
-                // Get all file system entries (files and subdirectories) directly within the tempPath
                 itemsToDelete = Directory.GetFileSystemEntries(tempPath);
                 _logger.LogDebug($"Found {itemsToDelete.Length} file system item(s) in temp location '{tempPath}' to remove.", "SteamCmdDownloader");
             }
@@ -529,7 +444,6 @@ namespace RimSharp.Infrastructure.Workshop.Download
             {
                 _logger.LogError($"Failed to list contents of temporary directory '{tempPath}': {listEx.Message}", "SteamCmdDownloader");
                 result.LogMessages.Add($"Error: Could not list contents of temporary download location. Cleanup aborted. Check permissions.");
-                // Can't proceed if we can't list items.
                 return;
             }
 
@@ -540,12 +454,11 @@ namespace RimSharp.Infrastructure.Workshop.Download
                 return;
             }
 
-
             foreach (string itemPath in itemsToDelete)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 string itemName = Path.GetFileName(itemPath);
-                bool isDirectory = Directory.Exists(itemPath); // Check type just before attempting delete
+                bool isDirectory = Directory.Exists(itemPath);
 
                 _logger.LogDebug($"Attempting to delete {(isDirectory ? "directory" : "file")}: '{itemName}'", "SteamCmdDownloader");
 
@@ -559,10 +472,9 @@ namespace RimSharp.Infrastructure.Workshop.Download
                     {
                         if (isDirectory)
                         {
-                            // Double check it still exists before delete attempt
                             if (Directory.Exists(itemPath))
                             {
-                                Directory.Delete(itemPath, true); // Recursive delete for directories
+                                Directory.Delete(itemPath, true);
                                 _logger.LogDebug($"Successfully deleted directory '{itemName}' on attempt {attempt}.", "SteamCmdDownloader");
                             }
                             else
@@ -570,9 +482,9 @@ namespace RimSharp.Infrastructure.Workshop.Download
                                 _logger.LogDebug($"Directory '{itemName}' disappeared before delete attempt {attempt}. Skipping.", "SteamCmdDownloader");
                             }
                         }
-                        else // Assume it's a file if not a directory (or check File.Exists for certainty)
+                        else
                         {
-                            if (File.Exists(itemPath)) // Double check it exists
+                            if (File.Exists(itemPath))
                             {
                                 File.Delete(itemPath);
                                 _logger.LogDebug($"Successfully deleted file '{itemName}' on attempt {attempt}.", "SteamCmdDownloader");
@@ -583,33 +495,31 @@ namespace RimSharp.Infrastructure.Workshop.Download
                             }
                         }
                         deletedSuccessfully = true;
-                        break; // Exit retry loop on success
+                        break;
                     }
-                    catch (OperationCanceledException) { throw; } // Don't swallow cancellation
-                    catch (IOException ioEx) // Common: File in use, network path issues
+                    catch (OperationCanceledException) { throw; }
+                    catch (IOException ioEx)
                     {
                         lastException = ioEx;
                         _logger.LogDebug($"Attempt {attempt}/{maxRetries} failed to delete '{itemName}': {ioEx.GetType().Name} - {ioEx.Message}", "SteamCmdDownloader");
                     }
-                    catch (UnauthorizedAccessException uaEx) // Common: Permissions
+                    catch (UnauthorizedAccessException uaEx)
                     {
                         lastException = uaEx;
                         _logger.LogWarning($"Attempt {attempt}/{maxRetries} failed to delete '{itemName}' due to permissions: {uaEx.Message}", "SteamCmdDownloader");
-                        // Retrying might not help permissions, but we'll try anyway. Could break early? Maybe not.
                     }
-                    catch (Exception ex) // Catch unexpected errors during delete
+                    catch (Exception ex)
                     {
                         lastException = ex;
                         _logger.LogError($"Attempt {attempt}/{maxRetries} failed to delete '{itemName}' with unexpected error: {ex.GetType().Name} - {ex.Message}", "SteamCmdDownloader");
                     }
 
-                    // If delete failed, wait before retrying (unless it's the last attempt)
                     if (!deletedSuccessfully && attempt < maxRetries)
                     {
                         _logger.LogDebug($"Waiting {retryDelayMilliseconds}ms before retry {attempt + 1} for '{itemName}'.", "SteamCmdDownloader");
                         await Task.Delay(retryDelayMilliseconds, cancellationToken);
                     }
-                } // End retry loop
+                }
 
                 if (!deletedSuccessfully)
                 {
@@ -618,13 +528,8 @@ namespace RimSharp.Infrastructure.Workshop.Download
                     string errorMessage = lastException?.Message ?? "No specific error message.";
                     _logger.LogError($"Failed to delete '{itemName}' after {maxRetries} attempts. Last error: {errorType} - {errorMessage}", "SteamCmdDownloader");
                     result.LogMessages.Add($"Warning: Failed to clean up '{itemName}' after {maxRetries} attempts ({errorType}). Check logs/permissions.");
-                    // Optionally add more details from lastException if needed
-                    // result.LogMessages.Add($"    Details: {errorMessage}");
                 }
-
-            } // End foreach loop over items
-
-            // Log cleanup summary
+            }
             if (cleanupErrors == 0)
             {
                 _logger.LogInfo($"Successfully cleaned {itemsToDelete.Length} item(s) from '{tempPath}'.", "SteamCmdDownloader");
@@ -636,8 +541,6 @@ namespace RimSharp.Infrastructure.Workshop.Download
                 result.LogMessages.Add($"Finished cleaning temporary location with {cleanupErrors} error(s).");
             }
 
-
-            // Post-Cleanup Verification (optional but recommended)
             try
             {
                 string[] remainingItems = Directory.GetFileSystemEntries(tempPath);
@@ -657,7 +560,7 @@ namespace RimSharp.Infrastructure.Workshop.Download
                 result.LogMessages.Add($"Warning: Error verifying temporary location cleanup: {verifyEx.Message}");
             }
 
-            cancellationToken.ThrowIfCancellationRequested(); // Final check after potentially long cleanup
+            cancellationToken.ThrowIfCancellationRequested();
         }
 
         private async Task<bool> GenerateScriptAsync(string scriptDir, string scriptId, string forceInstallDir, List<DownloadItem> items, bool validate, SteamCmdDownloadResult result, CancellationToken cancellationToken)
@@ -677,7 +580,7 @@ namespace RimSharp.Infrastructure.Workshop.Download
             {
                 _logger.LogError($"FAILED to generate script: {genEx.Message}", "SteamCmdDownloader");
                 result.LogMessages.Add($"Error generating script: {genEx.Message}. Aborting.");
-                result.ExitCode = -996; // Indicate script generation failure
+                result.ExitCode = -996;
                 result.OverallSuccess = false;
                 return false;
             }
@@ -723,7 +626,7 @@ namespace RimSharp.Infrastructure.Workshop.Download
                     foreach (DirectoryInfo subDir in dirInfo.GetDirectories())
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        try { subDir.Delete(true); } // Recursive delete for subdirs
+                        try { subDir.Delete(true); }
                         catch (Exception ex) { _logger.LogWarning($"Failed to delete directory during cleanup: {subDir.FullName} - {ex.Message}", "SteamCmdDownloader"); errors++; }
                     }
                     _logger.LogInfo($"Cleanup of '{description}' contents finished with {errors} errors.", "SteamCmdDownloader");
@@ -737,7 +640,6 @@ namespace RimSharp.Infrastructure.Workshop.Download
                 }
             }, cancellationToken);
         }
-
 
         private async Task ProcessSucceededItemsAsync(
             IEnumerable<string> successIds,
@@ -773,15 +675,13 @@ namespace RimSharp.Infrastructure.Workshop.Download
                 (bool processedOk, string reason) processedResult = (false, "Processing did not start.");
                 try
                 {
-                    // Delegate the complex file operations to the dedicated processor
                     processedResult = await _itemProcessor.ProcessItemAsync(
-                        currentItem,          // Item metadata
-                        sourceDownloadPath,   // Source path (in steamcmd download area)
-                        targetModPath,        // Target path (in game mods folder)
-                        BackupSuffix,         // Suffix for backups
+                        currentItem,
+                        sourceDownloadPath,
+                        targetModPath,
+                        BackupSuffix,
                         cancellationToken);
 
-                    // Retrieve and add detailed log messages from the processor for this item
                     var processorLogs = _itemProcessor.GetLogMessages();
                     if (processorLogs != null)
                     {
@@ -790,12 +690,12 @@ namespace RimSharp.Infrastructure.Workshop.Download
                     result.LogMessages.Add($"--- Finished Processing Item {successId} ---");
                 }
                 catch (OperationCanceledException) { throw; }
-                catch (Exception procEx) // Catch unexpected errors *during* the processor call
+                catch (Exception procEx)
                 {
                     _logger.LogError($"Item {successId}: Unexpected error during item processing step: {procEx.Message}", "SteamCmdDownloader");
                     result.LogMessages.Add($"CRITICAL ERROR processing item {successId} ({currentItem.Name}): {procEx.Message}");
-                    processedResult = (false, procEx.Message); // Ensure marked as failed with reason
-                                         // Add any logs collected by the processor before the exception occurred
+                    processedResult = (false, procEx.Message);
+
                     var logs = _itemProcessor.GetLogMessages();
                     if (logs != null)
                     {
@@ -804,8 +704,6 @@ namespace RimSharp.Infrastructure.Workshop.Download
                     result.LogMessages.Add($"--- Finished Processing Item {successId} (with error) ---");
                 }
 
-
-                // Update final lists based on the processor's success/failure outcome
                 if (processedResult.processedOk)
                 {
                     finalSucceededItems.Add(currentItem);
@@ -813,28 +711,25 @@ namespace RimSharp.Infrastructure.Workshop.Download
                 }
                 else
                 {
-                    // Ensure this item is marked as failed if it wasn't already
                     if (!finalFailedItems.Any(fi => fi.Item != null && fi.Item.SteamId == currentItem.SteamId))
                     {
                         finalFailedItems.Add(new FailedDownloadInfo(currentItem, processedResult.reason));
                     }
                     _logger.LogWarning($"Item {successId} processing FAILED by Item Processor. Reason: {processedResult.reason}", "SteamCmdDownloader");
                 }
-
-            } // End foreach provisionallySucceededId
+            }
         }
 
         private void PopulateFinalResult(SteamCmdDownloadResult result, List<DownloadItem> finalSucceededItems, List<FailedDownloadInfo> finalFailedItems)
         {
-            // Add successfully processed items
             result.SucceededItems.AddRange(finalSucceededItems);
-            // Consolidate failed items, ensuring no duplicates and removing any that somehow succeeded processing
+
             var distinctFailedItems = finalFailedItems
                                         .Where(failedInfo => failedInfo?.Item != null && !result.SucceededItems.Any(succeededItem => succeededItem.SteamId == failedInfo.Item.SteamId))
-                                        .GroupBy(failedInfo => failedInfo.Item.SteamId) // Ensure unique by ID
+                                        .GroupBy(failedInfo => failedInfo.Item.SteamId)
                                         .Select(group => group.First())
                                         .ToList();
-            result.FailedItems.Clear(); // Clear any previous additions
+            result.FailedItems.Clear();
             result.FailedItems.AddRange(distinctFailedItems);
 
             _logger.LogInfo($"Final results: Succeeded: {result.SucceededItems.Count}, Failed: {result.FailedItems.Count}", "SteamCmdDownloader");
@@ -844,10 +739,8 @@ namespace RimSharp.Infrastructure.Workshop.Download
 
         private void SetOverallSuccessAndLogFinalStatus(SteamCmdDownloadResult result, bool hadValidItems, int lastExitCode)
         {
-            // Overall success means no items failed, AND (either some items succeeded OR no valid items were requested initially).
             result.OverallSuccess = !result.FailedItems.Any() && (result.SucceededItems.Any() || !hadValidItems);
 
-            // Add final summary status messages based on outcome
             if (result.OverallSuccess && hadValidItems)
             {
                 _logger.LogInfo("Download operation completed successfully for all requested items.", "SteamCmdDownloader");
@@ -855,18 +748,17 @@ namespace RimSharp.Infrastructure.Workshop.Download
             }
             else if (result.OverallSuccess && !hadValidItems)
             {
-                // Message already added at start: "Download skipped: No valid workshop items provided."
             }
-            else if (!result.OverallSuccess && result.FailedItems.Any()) // Failures exist
+            else if (!result.OverallSuccess && result.FailedItems.Any())
             {
                 _logger.LogError($"Download operation finished with failures. Succeeded: {result.SucceededItems.Count}, Failed: {result.FailedItems.Count}. Last SteamCMD Exit Code: {lastExitCode}.", "SteamCmdDownloader");
                 result.LogMessages.Add($"Download completed with {result.FailedItems.Count} failure(s). Last SteamCMD Exit Code: {lastExitCode}. Check messages/logs for details.");
             }
-            else // Should not happen if logic is correct (e.g., OverallSuccess is false but no failed items)
+            else 
             {
                 _logger.LogWarning($"Download operation finished with unclear status. OverallSuccess={result.OverallSuccess}, Succeeded={result.SucceededItems.Count}, Failed={result.FailedItems.Count}, LastExitCode={lastExitCode}", "SteamCmdDownloader");
                 result.LogMessages.Add($"Download finished with unclear status.");
-                result.OverallSuccess = false; // Force false if state is inconsistent
+                result.OverallSuccess = false; 
             }
 
             _logger.LogInfo($"Download processing finished. Overall success flag: {result.OverallSuccess}", "SteamCmdDownloader");
@@ -877,15 +769,13 @@ namespace RimSharp.Infrastructure.Workshop.Download
             _logger.LogWarning("Download operation cancelled by user", "SteamCmdDownloader");
             result.LogMessages.Add("Download operation cancelled.");
             result.OverallSuccess = false;
-            // Mark any items not already succeeded as failed
             var succeededSoFarIds = finalSucceededItems.Select(i => i.SteamId).ToHashSet();
             var newlyFailed = validItems
                 .Where(i => i?.SteamId != null && !succeededSoFarIds.Contains(i.SteamId))
                 .Select(item => new FailedDownloadInfo(item, "Operation cancelled by user."));
-            
+
             finalFailedItems.AddRange(newlyFailed);
 
-            // Repopulate lists cleanly after potential partial processing
             result.SucceededItems.Clear();
             result.SucceededItems.AddRange(finalSucceededItems);
             var distinctFailed = finalFailedItems.Where(i => i?.Item != null).DistinctBy(i => i.Item.SteamId).ToList();
@@ -898,15 +788,13 @@ namespace RimSharp.Infrastructure.Workshop.Download
             _logger.LogError($"Download failed with unexpected exception: {ex.Message}\n{ex.StackTrace}", "SteamCmdDownloader");
             result.LogMessages.Add($"Download failed with unexpected exception: {ex.Message}");
             result.OverallSuccess = false;
-            // Ensure all items not successfully processed are marked failed
             var succeededIds = finalSucceededItems.Select(i => i.SteamId).ToHashSet();
             var newlyFailed = validItems
                 .Where(i => i?.SteamId != null && !succeededIds.Contains(i.SteamId))
                 .Select(item => new FailedDownloadInfo(item, $"An unexpected error occurred: {ex.Message}"));
-            
+
             finalFailedItems.AddRange(newlyFailed);
 
-            // Repopulate lists cleanly
             result.SucceededItems.Clear();
             result.SucceededItems.AddRange(finalSucceededItems);
             var distinctFailed = finalFailedItems.Where(i => i?.Item != null).DistinctBy(i => i.Item.SteamId).ToList();

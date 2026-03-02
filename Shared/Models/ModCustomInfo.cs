@@ -25,7 +25,7 @@ namespace RimSharp.Shared.Models
         public LoadBottomRule? LoadBottom { get; set; }
 
         /// <summary>
-        /// Additional game versions the mod supports according to user.
+
         /// </summary>
         [JsonConverter(typeof(StringOrStringListConverter))]
         public List<string> SupportedVersions { get; set; } = new();
@@ -47,7 +47,7 @@ namespace RimSharp.Shared.Models
 
         /// <summary>
         /// User-defined favorite status for the mod.
-        /// Null means not set, true means it's a favorite.
+
         /// </summary>
         public bool? Favorite { get; set; }
     }

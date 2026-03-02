@@ -5,7 +5,7 @@ using System.Linq;
 namespace RimSharp.Core.Commands.Aggregators
 {
     /// <summary>
-    /// An implementation of IEventAggregator that uses weak references to prevent memory leaks.
+
     /// </summary>
     public class WeakEventAggregator : IEventAggregator
     {
@@ -31,11 +31,9 @@ namespace RimSharp.Core.Commands.Aggregators
                     return;
                 }
 
-                // Create a snapshot to avoid modification exceptions during iteration
                 eventSubscribers = new Dictionary<Guid, WeakReference>(eventSubscribers);
             }
 
-            // Invoke subscribers and collect dead references
             foreach (var subscription in eventSubscribers)
             {
                 if (subscription.Value.Target is Action<TEvent> action)
@@ -60,7 +58,6 @@ namespace RimSharp.Core.Commands.Aggregators
                             currentSubscribers.Remove(key);
                         }
 
-                        // If no subscribers remain, remove the event type
                         if (currentSubscribers.Count == 0)
                         {
                             _subscribers.Remove(typeof(TEvent));
@@ -74,7 +71,7 @@ namespace RimSharp.Core.Commands.Aggregators
         /// Subscribes to an event.
         /// </summary>
         /// <typeparam name="TEvent">The type of event to subscribe to.</typeparam>
-        /// <param name="action">The action to execute when the event is published.</param>
+
         /// <returns>A token that can be used to unsubscribe.</returns>
         public SubscriptionToken Subscribe<TEvent>(Action<TEvent> action)
         {
@@ -162,3 +159,5 @@ namespace RimSharp.Core.Commands.Aggregators
         }
     }
 }
+
+

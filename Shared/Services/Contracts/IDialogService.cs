@@ -59,8 +59,7 @@ namespace RimSharp.Shared.Services.Contracts
         
         Task<RimSharp.Shared.Models.ModItem?> ShowModSelectorDialogAsync(ModSelectorDialogViewModel viewModel);
         RimSharp.Shared.Models.ModItem? ShowModSelectorDialog(ModSelectorDialogViewModel viewModel);
-        
-        // File dialogs - delegated to IFileDialogService for cross-platform support
+
         Task<(bool Result, string? FilePath)> ShowOpenFileDialogAsync(string title, string filter, string initialDirectory = "");
         (bool Result, string? FilePath) ShowOpenFileDialog(string title, string filter, string initialDirectory = "");
         Task<(bool Result, string? FilePath)> ShowSaveFileDialogAsync(string title, string filter, string initialDirectory = "", string defaultExt = "", string defaultFileName = "");

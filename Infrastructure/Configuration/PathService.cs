@@ -22,7 +22,7 @@ namespace RimSharp.Infrastructure.Configuration
 
         public string GetGamePath()
         {
-            // Cache the resolved game path to avoid repeated config reads/checks
+
             if (!_isGamePathResolved)
             {
                 var path = _configService.GetConfigValue("game_folder");
@@ -32,26 +32,22 @@ namespace RimSharp.Infrastructure.Configuration
                 // When GamePath changes, ModsPath *must* be invalidated
                 InvalidateModsPathCache();
             }
-            return _cachedGamePath ?? string.Empty; // Return empty if cache somehow null
+            return _cachedGamePath ?? string.Empty;
         }
 
         public string GetModsPath()
         {
-            // Mods path depends on Game Path, so resolve Game Path first if needed
+
             string gamePath = GetGamePath();
 
-            // Use cached mods path if available
             if (_cachedModsPath != null)
             {
                 return _cachedModsPath;
             }
-
-            // Derive mods path only if game path is valid
             if (!string.IsNullOrEmpty(gamePath))
             {
                 string derivedModsPath = Path.Combine(gamePath, "Mods");
-                // Optionally check if the derived path exists, or just return it
-                // For consistency with other Get methods, let's check existence
+
                 _cachedModsPath = Directory.Exists(derivedModsPath) ? derivedModsPath : string.Empty;
             }
             else
@@ -62,8 +58,7 @@ namespace RimSharp.Infrastructure.Configuration
             return _cachedModsPath;
         }
 
-
-        public string GetConfigPath()
+public string GetConfigPath()
         {
             if (_cachedConfigPath is null)
             {
@@ -90,12 +85,7 @@ namespace RimSharp.Infrastructure.Configuration
              if (string.IsNullOrEmpty(gamePath))
                  return "N/A - No path specified";
 
-             // Cache the version based *on this specific game path* if called directly
-             // However, the main _cachedGameVersion depends on the GetGamePath() result
-             // For simplicity, let's just calculate it directly here without caching tied to the parameter path
-             // The main _cachedGameVersion will be updated via GetGameVersion() (no params) when needed
-
-             try
+try
              {
                  var versionFilePath = Path.Combine(gamePath, "Version.txt");
 
@@ -109,7 +99,6 @@ namespace RimSharp.Infrastructure.Configuration
                      ? "N/A - Empty version file"
                      : firstLine;
 
-                 // Update the primary cache if the path matches the service's current game path
                  if (gamePath == _cachedGamePath)
                  {
                      _cachedGameVersion = result;
@@ -120,7 +109,7 @@ namespace RimSharp.Infrastructure.Configuration
              catch (Exception ex)
              {
                 var errorMsg = $"N/A - Error reading version: {ex.Message.Truncate(50)}";
-                 // Update the primary cache if the path matches the service's current game path
+
                  if (gamePath == _cachedGamePath)
                  {
                      _cachedGameVersion = errorMsg;
@@ -129,7 +118,6 @@ namespace RimSharp.Infrastructure.Configuration
              }
         }
 
-        // Major version logic depends on GetGameVersion, no changes needed here
         public string GetMajorGameVersion()
         {
             if (_cachedMajorGameVersion is null)
@@ -150,28 +138,22 @@ namespace RimSharp.Infrastructure.Configuration
             var versionParts = fullVersion.Split('.');
             if (versionParts.Length < 2)
                 return fullVersion; // Or return "N/A"? Let's return original for now.
-
-            // Handle versions like "1.4.3529 rev704" or "1.5"
             var secondPart = versionParts[1].Split(new[] { ' ', '-', '+' }, StringSplitOptions.RemoveEmptyEntries)[0];
             return $"{versionParts[0]}.{secondPart}";
         }
 
-
-        // Method to invalidate caches when configs change or refresh is needed
         public void InvalidateCache()
         {
             // Reset resolution flag
             _isGamePathResolved = false;
 
-            // Clear caches
-            _cachedGamePath = null;
+_cachedGamePath = null;
             _cachedConfigPath = null;
-            _cachedModsPath = null; // Must clear mods path when game path might change
+            _cachedModsPath = null; 
             _cachedGameVersion = null;
             _cachedMajorGameVersion = null;
         }
 
-        // Helper to invalidate just the mods path cache if needed (e.g., when game path changes)
         private void InvalidateModsPathCache()
         {
             _cachedModsPath = null;
@@ -181,7 +163,7 @@ namespace RimSharp.Infrastructure.Configuration
         {
             // Invalidate cache and reload paths
             InvalidateCache();
-            // Force refresh by accessing properties which will re-read config/derive paths
+
             var _ = GetGamePath();      // Resolves GamePath, potentially invalidates/resolves ModsPath cache
             var __ = GetModsPath();     // Resolves ModsPath based on potentially new GamePath
             var ___ = GetConfigPath();  // Resolves ConfigPath
@@ -190,7 +172,6 @@ namespace RimSharp.Infrastructure.Configuration
         }
     }
 
-    // Helper extension method (optional, place appropriately)
     internal static class StringExtensions
     {
         public static string Truncate(this string value, int maxLength)
@@ -200,3 +181,5 @@ namespace RimSharp.Infrastructure.Configuration
         }
     }
 }
+
+

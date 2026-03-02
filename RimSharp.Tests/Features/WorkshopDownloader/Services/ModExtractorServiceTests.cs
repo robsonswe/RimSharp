@@ -8,9 +8,8 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
 {
     public class ModExtractorServiceTests
     {
-        // We use a mock-less constructor for the testable logic if possible, 
-        // but since it requires WebView2 in ctor, we'll pass null and only test pure logic methods.
-        private readonly ModExtractorService _service;
+
+private readonly ModExtractorService _service;
 
         public ModExtractorServiceTests()
         {
@@ -28,10 +27,9 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
         [InlineData(null, 0)]
         public async Task ParseFileSizeAsync_ShouldReturnCorrectBytes(string? input, double expectedBytes)
         {
-            // Act
+
             var result = await _service.ParseFileSizeAsync(input!);
 
-            // Assert
             result.Should().Be((long)expectedBytes);
         }
 
@@ -41,27 +39,26 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
         [InlineData("15 Oct 2023")] // No time
         public async Task ConvertToStandardDate_ShouldParseValidDates(string input)
         {
-            // Act
+
             var result = await _service.ConvertToStandardDate(input);
 
-            // Assert
             result.Should().NotBeNullOrEmpty();
-            // The result format is dd/MM/yyyy HH:mm:ss
+            
             result.Should().MatchRegex(@"\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}");
         }
 
         [Fact]
         public async Task ConvertToStandardDate_WhenYearMissing_ShouldUseCurrentYear()
         {
-            // Arrange
+
             var input = "10 May @ 5:00pm";
             var currentYear = DateTime.Now.Year.ToString();
 
-            // Act
             var result = await _service.ConvertToStandardDate(input);
 
-            // Assert
             result.Should().Contain(currentYear);
         }
     }
 }
+
+

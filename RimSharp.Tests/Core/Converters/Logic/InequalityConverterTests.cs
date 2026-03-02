@@ -26,21 +26,20 @@ namespace RimSharp.Tests.Core.Converters.Logic
         [InlineData(null, null, false)]
         public void Convert_ShouldReturnCorrectInequality(object? val1, object? val2, bool expected)
         {
-            // Act
+
             var result = _converter.Convert(new[] { val1!, val2! }, typeof(bool), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
 
         [Fact]
         public void Convert_WithInsufficientValues_ShouldReturnTrue()
         {
-            // Act
+
             var result = _converter.Convert(new[] { new object() }, typeof(bool), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(true);
         }
     }
 }
+

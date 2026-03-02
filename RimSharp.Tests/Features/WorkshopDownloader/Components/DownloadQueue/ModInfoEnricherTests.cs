@@ -25,7 +25,7 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Components.DownloadQueue
         [Fact]
         public void EnrichDownloadItem_WhenLocalMatchExists_ShouldPopulateData()
         {
-            // Arrange
+
             var steamId = "12345";
             var localMod = new ModItem 
             { 
@@ -39,10 +39,8 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Components.DownloadQueue
 
             var downloadItem = new DownloadItem { SteamId = steamId };
 
-            // Act
             _enricher.EnrichDownloadItem(downloadItem);
 
-            // Assert
             downloadItem.IsInstalled.Should().BeTrue();
             downloadItem.LocalDateStamp.Should().Be("2024-01-01");
             downloadItem.IsActive.Should().BeTrue();
@@ -53,18 +51,16 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Components.DownloadQueue
         [Fact]
         public void EnrichDownloadItem_WhenNoLocalMatch_ShouldClearInfo()
         {
-            // Arrange
+
             _mockModListManager.GetAllMods().Returns(new List<ModItem>());
             var downloadItem = new DownloadItem 
             { 
                 SteamId = "999", 
-                IsInstalled = true // Pretend it was set before
+                IsInstalled = true 
             };
 
-            // Act
             _enricher.EnrichDownloadItem(downloadItem);
 
-            // Assert
             downloadItem.IsInstalled.Should().BeFalse();
             downloadItem.LocalDateStamp.Should().BeNull();
         }
@@ -72,7 +68,7 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Components.DownloadQueue
         [Fact]
         public void EnrichAllDownloadItems_ShouldProcessAllItems()
         {
-            // Arrange
+
             var mod1 = new ModItem { SteamId = "1" };
             var mod2 = new ModItem { SteamId = "2" };
             _mockModListManager.GetAllMods().Returns(new List<ModItem> { mod1, mod2 });
@@ -84,13 +80,13 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Components.DownloadQueue
                 new DownloadItem { SteamId = "3" }
             };
 
-            // Act
             _enricher.EnrichAllDownloadItems(items);
 
-            // Assert
             items[0].IsInstalled.Should().BeTrue();
             items[1].IsInstalled.Should().BeTrue();
             items[2].IsInstalled.Should().BeFalse();
         }
     }
 }
+
+

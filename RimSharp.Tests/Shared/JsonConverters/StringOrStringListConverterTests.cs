@@ -19,13 +19,11 @@ namespace RimSharp.Tests.Shared.JsonConverters
         [Fact]
         public void Read_WhenJsonIsString_ShouldReturnListWithOneItem()
         {
-            // Arrange
+
             string json = "\"test-value\"";
 
-            // Act
             var result = JsonSerializer.Deserialize<List<string>>(json, _options);
 
-            // Assert
             result.Should().NotBeNull();
             result.Should().HaveCount(1);
             result.Should().Contain("test-value");
@@ -34,13 +32,11 @@ namespace RimSharp.Tests.Shared.JsonConverters
         [Fact]
         public void Read_WhenJsonIsArray_ShouldReturnListWithItems()
         {
-            // Arrange
+
             string json = "[\"item1\", \"item2\"]";
 
-            // Act
             var result = JsonSerializer.Deserialize<List<string>>(json, _options);
 
-            // Assert
             result.Should().NotBeNull();
             result.Should().HaveCount(2);
             result.Should().ContainInOrder("item1", "item2");
@@ -49,13 +45,11 @@ namespace RimSharp.Tests.Shared.JsonConverters
         [Fact]
         public void Read_WhenJsonIsNull_ShouldReturnEmptyList()
         {
-            // Arrange
+
             string json = "null";
 
-            // Act
             var result = JsonSerializer.Deserialize<List<string>>(json, _options);
 
-            // Assert
             result.Should().NotBeNull();
             result.Should().BeEmpty();
         }
@@ -63,14 +57,13 @@ namespace RimSharp.Tests.Shared.JsonConverters
         [Fact]
         public void Write_ShouldWriteAsArray()
         {
-            // Arrange
+
             var list = new List<string> { "val1", "val2" };
 
-            // Act
             var json = JsonSerializer.Serialize(list, _options);
 
-            // Assert
             json.Should().Be("[\"val1\",\"val2\"]");
         }
     }
 }
+

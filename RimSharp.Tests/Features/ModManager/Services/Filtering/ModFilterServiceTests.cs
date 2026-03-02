@@ -34,7 +34,7 @@ namespace RimSharp.Tests.Features.ModManager.Services.Filtering
             try
             {
                 action();
-                // Use a reasonable timeout for tests
+
                 bool signaled = await semaphore.WaitAsync(2000);
                 if (!signaled && eventsReceived < expectedEvents)
                 {
@@ -61,16 +61,14 @@ namespace RimSharp.Tests.Features.ModManager.Services.Filtering
         [Fact]
         public async Task UpdateCollections_ShouldPopulateAvailableOptions()
         {
-            // Arrange
+
             var mods = GetSampleMods();
 
-            // Act
             await WaitForFilteringAsync(() => 
                 _service.UpdateCollections(new (ModItem, int)[0], mods),
                 expectedEvents: 2 // One for active, one for inactive
             );
 
-            // Assert
             _service.AllAvailableTags.Should().Contain(new[] { "Library", "Performance" });
             _service.AllAvailableAuthors.Should().Contain(new[] { "pardeike", "UnlimitedHugs", "krkr" });
         }
@@ -78,7 +76,7 @@ namespace RimSharp.Tests.Features.ModManager.Services.Filtering
         [Fact]
         public async Task ApplyActiveFilter_WithText_ShouldFilterByName()
         {
-            // Arrange
+
             var mods = GetSampleMods();
             var activeMods = mods.Select((m, i) => (m, i)).ToList();
             await WaitForFilteringAsync(() => 
@@ -86,19 +84,17 @@ namespace RimSharp.Tests.Features.ModManager.Services.Filtering
                 expectedEvents: 2
             );
 
-            // Act
             await WaitForFilteringAsync(() => 
                 _service.ApplyActiveFilter("Harmony")
             );
 
-            // Assert
             _service.ActiveMods.Should().ContainSingle().Which.Name.Should().Be("Harmony");
         }
 
         [Fact]
         public async Task ApplyActiveFilter_WithPackageId_ShouldFilter()
         {
-            // Arrange
+
             var mods = GetSampleMods();
             var activeMods = mods.Select((m, i) => (m, i)).ToList();
             await WaitForFilteringAsync(() => 
@@ -106,92 +102,84 @@ namespace RimSharp.Tests.Features.ModManager.Services.Filtering
                 expectedEvents: 2
             );
 
-            // Act
             await WaitForFilteringAsync(() => 
                 _service.ApplyActiveFilter("unlimitedhugs")
             );
 
-            // Assert
             _service.ActiveMods.Should().ContainSingle().Which.Name.Should().Be("HugsLib");
         }
 
         [Fact]
         public async Task ApplyActiveFilterCriteria_WithModType_ShouldFilter()
         {
-            // Arrange
+
             var mods = GetSampleMods();
             await WaitForFilteringAsync(() => 
                 _service.UpdateCollections(new (ModItem, int)[0], mods),
                 expectedEvents: 2
             );
 
-            // Act
             var criteria = new ModFilterCriteria { SelectedModTypes = new List<ModType> { ModType.Core } };
             await WaitForFilteringAsync(() => 
                 _service.ApplyInactiveFilterCriteria(criteria)
             );
 
-            // Assert
             _service.InactiveMods.Should().ContainSingle().Which.ModType.Should().Be(ModType.Core);
         }
 
         [Fact]
         public async Task ApplyActiveFilterCriteria_WithTags_ShouldFilter()
         {
-            // Arrange
+
             var mods = GetSampleMods();
             await WaitForFilteringAsync(() => 
                 _service.UpdateCollections(new (ModItem, int)[0], mods),
                 expectedEvents: 2
             );
 
-            // Act
             var criteria = new ModFilterCriteria { SelectedTags = new List<string> { "Performance" } };
             await WaitForFilteringAsync(() => 
                 _service.ApplyInactiveFilterCriteria(criteria)
             );
 
-            // Assert
             _service.InactiveMods.Should().ContainSingle().Which.Name.Should().Be("RocketMan");
         }
 
         [Fact]
         public async Task ApplyActiveFilterCriteria_WithFavorite_ShouldFilter()
         {
-            // Arrange
+
             var mods = GetSampleMods();
             await WaitForFilteringAsync(() => 
                 _service.UpdateCollections(new (ModItem, int)[0], mods),
                 expectedEvents: 2
             );
 
-            // Act
             var criteria = new ModFilterCriteria { IsFavoriteFilter = true };
             await WaitForFilteringAsync(() => 
                 _service.ApplyInactiveFilterCriteria(criteria)
             );
 
-            // Assert
             _service.InactiveMods.Should().ContainSingle().Which.Name.Should().Be("RocketMan");
         }
 
         [Fact]
         public async Task FuzzySearch_ShouldMatchSimilarNames()
         {
-            // Arrange
+
             var mods = new List<ModItem> { new ModItem { Name = "Wall Light", PackageId = "walllight" } };
             await WaitForFilteringAsync(() => 
                 _service.UpdateCollections(new (ModItem, int)[0], mods),
                 expectedEvents: 2
             );
 
-            // Act
             await WaitForFilteringAsync(() => 
-                _service.ApplyInactiveFilter("Wal Light") // Typos
+                _service.ApplyInactiveFilter("Wal Light") 
             );
 
-            // Assert
             _service.InactiveMods.Should().ContainSingle().Which.Name.Should().Be("Wall Light");
         }
     }
 }
+
+

@@ -320,7 +320,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 if (actualDuplicateGroups.Any())
                 {
                     var dialogViewModel = new DuplicateModDialogViewModel(actualDuplicateGroups, pathsToDelete => DeleteDuplicateModsAsyncInternal(pathsToDelete), () => { });
-                    
+
                     // Only show if we actually have populated groups
                     if (dialogViewModel.DuplicateGroups.Any())
                     {
@@ -403,8 +403,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 });
                 if (progressViewModel == null || linkedCts == null) throw new InvalidOperationException("Progress dialog or CTS was not created.");
                 var combinedTokenPhase1 = linkedCts.Token;
-
-                // 2. Setup Progress Reporter for LoadModsAsync
                 var loadProgressReporter = new Progress<(int current, int total, string message)>(update =>
                 {
                     RunOnUIThread(() =>
@@ -416,8 +414,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                         }
                     });
                 });
-
-                // 3. Load Mods ASYNC with progress
                 await _modService.LoadModsAsync(loadProgressReporter);
                 combinedTokenPhase1.ThrowIfCancellationRequested();
                 var loadedMods = _modService.GetLoadedMods().ToList();
@@ -449,13 +445,12 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     {
                         // 1. Try lookup by Steam ID
                         var r = _replacementService.GetReplacementBySteamId(mod.SteamId ?? "");
-                        
-                        // 2. If not found, try lookup by Package ID
+
                         if (r == null && !string.IsNullOrEmpty(mod.PackageId))
                         {
                             r = _replacementService.GetReplacementByPackageId(mod.PackageId);
                         }
-                        
+
                         return new { Mod = mod, Replacement = r };
                     })
                     .Where(x => x.Replacement != null && 
@@ -575,8 +570,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 await RunOnUIThreadAsync(async () =>
                 {
                     var viewModel = new ModReplacementDialogViewModel(validReplacementsList, loadedMods);
-                    
-                    // SAFETY CHECK: Ensure we actually have items to show in either list
+
                     if ((viewModel.Replacements?.Any() ?? false) || viewModel.HasAlreadyInstalledReplacements)
                     {
                         dialogResult = await _dialogService.ShowModReplacementDialogAsync(viewModel);
@@ -714,7 +708,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             }
 
             IsLaunchingGame = true;
-            
+
             try
             {
                 var gamePath = _pathService.GetGamePath();
@@ -742,7 +736,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     UseShellExecute = true
                 });
 
-                // Wait a bit to allow process to start and be detected by timer
                 await Task.Delay(2000);
             }
             catch (Exception ex)
@@ -756,3 +749,5 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         }
     }
 }
+
+

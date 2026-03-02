@@ -27,11 +27,9 @@ namespace RimSharp.Infrastructure.Logging
         {
             var logMessage = FormatLogMessage(level, message, module);
 
-            // Write to console
             Console.WriteLine(logMessage);
             Debug.WriteLine(logMessage);
 
-            // Write to file
             WriteToLogFile(logMessage, module);
         }
 
@@ -65,15 +63,11 @@ namespace RimSharp.Infrastructure.Logging
                 var today = DateTime.Today;
                 var logFileName = $"RimSharp_{module}_{today:yyyyMMdd}.log";
                 var logFilePath = Path.Combine(logsDirectory, logFileName);
-
-                // Check if we need to clear previous day's logs
                 if (_currentLogDate != today)
                 {
                     _currentLogDate = today;
                     ClearOldLogs(logsDirectory, module);
                 }
-
-                // Ensure directory exists
                 Directory.CreateDirectory(logsDirectory);
 
                 // Append to log file
@@ -81,7 +75,7 @@ namespace RimSharp.Infrastructure.Logging
             }
             catch (Exception ex)
             {
-                // Fallback to console if file logging fails
+
                 Console.WriteLine($"Failed to write to log file: {ex.Message}");
             }
             finally
@@ -92,14 +86,13 @@ namespace RimSharp.Infrastructure.Logging
 
         private string GetLogsDirectory()
         {
-            // Get from config or use default
+
             var customLogPath = _configService.GetConfigValue("logs_directory");
             if (!string.IsNullOrEmpty(customLogPath))
             {
                 return customLogPath;
             }
 
-            // Default to application base directory + Logs
             return Path.Combine(_appBasePath, "Logs");
         }
 
@@ -110,7 +103,6 @@ namespace RimSharp.Infrastructure.Logging
                 var today = DateTime.Today;
                 var todayFileName = $"RimSharp_{module}_{today:yyyyMMdd}.log";
 
-                // Get all log files for this module
                 var moduleLogFiles = Directory.GetFiles(logsDirectory, $"RimSharp_{module}_*.log");
 
                 foreach (var file in moduleLogFiles)
@@ -127,3 +119,4 @@ namespace RimSharp.Infrastructure.Logging
         }
     }
 }
+

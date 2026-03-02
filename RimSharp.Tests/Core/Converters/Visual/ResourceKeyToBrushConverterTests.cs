@@ -19,28 +19,25 @@ namespace RimSharp.Tests.Core.Converters.Visual
         [AvaloniaFact]
         public void Convert_ShouldReturnBrushFromResource()
         {
-            // Arrange
+
             var converter = new ResourceKeyToBrushConverter();
             var expectedBrush = (IBrush)Avalonia.Application.Current!.Resources["RimworldRedBrush"]!;
 
-            // Act
             var result = converter.Convert("RimworldRedBrush", typeof(IBrush), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expectedBrush);
         }
 
         [AvaloniaFact]
         public void Convert_WithMissingKey_ShouldReturnTransparent()
         {
-            // Arrange
+
             var converter = new ResourceKeyToBrushConverter();
 
-            // Act
             var result = converter.Convert("NonExistentKey", typeof(IBrush), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(Brushes.Transparent);
         }
     }
 }
+

@@ -23,7 +23,6 @@ namespace RimSharp.Tests.Base
         {
             if (Current == null) return;
 
-            // Add common brushes used in converters
             Current.Resources["RimworldRedBrush"] = Brushes.Red;
             Current.Resources["RimworldDarkGreenBrush"] = Brushes.DarkGreen;
             Current.Resources["RimworldBrownBrush"] = Brushes.Brown;
@@ -38,3 +37,4 @@ namespace RimSharp.Tests.Base
         }
     }
 }
+

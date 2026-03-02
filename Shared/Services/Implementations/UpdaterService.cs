@@ -37,13 +37,9 @@ namespace RimSharp.Shared.Services.Implementations
             {
                 _logger.LogInfo("Checking for RimWorld updates from GOG API.", "UpdaterService");
                 using var responseStream = await _httpClient.GetStreamAsync(GogApiUrl);
-
-                // <<< CHANGE START: Deserialize to the new wrapper object <<<
                 var apiResponse = await JsonSerializer.DeserializeAsync<GogApiResponse>(responseStream);
 
-                // Now, access the list of builds from the 'Items' property
                 var latestPublicBuild = apiResponse?.Items?
-                // >>> CHANGE END >>>
                     .Where(b => b.IsPublic && !string.IsNullOrEmpty(b.VersionName))
                     .Select(b => new { Build = b, Version = ParseVersion(b.VersionName) })
                     .Where(x => x.Version != null)
@@ -101,3 +97,5 @@ namespace RimSharp.Shared.Services.Implementations
         }
     }
 }
+
+

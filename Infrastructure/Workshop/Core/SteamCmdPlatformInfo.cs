@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 namespace RimSharp.Infrastructure.Workshop.Core
 {
     /// <summary>
-    /// Holds platform-specific information related to SteamCMD installation and execution.
+
     /// </summary>
     public class SteamCmdPlatformInfo
     {
@@ -15,7 +15,7 @@ namespace RimSharp.Infrastructure.Workshop.Core
 
         public SteamCmdPlatformInfo()
         {
-            // Determine OS and Set Platform Specifics
+
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 Platform = OSPlatform.Windows;
@@ -64,3 +64,4 @@ namespace RimSharp.Infrastructure.Workshop.Core
         };
     }
 }
+

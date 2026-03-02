@@ -19,10 +19,9 @@ namespace RimSharp.Tests.Core.Converters.Utility
         [Fact]
         public void Convert_WithString_ShouldReturnCommand()
         {
-            // Act
+
             var result = _converter.Convert("https://google.com", typeof(ICommand), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().NotBeNull();
             result.Should().BeAssignableTo<ICommand>();
         }
@@ -30,11 +29,11 @@ namespace RimSharp.Tests.Core.Converters.Utility
         [Fact]
         public void Convert_WithNull_ShouldReturnNull()
         {
-            // Act
+
             var result = _converter.Convert(null, typeof(ICommand), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().BeNull();
         }
     }
 }
+

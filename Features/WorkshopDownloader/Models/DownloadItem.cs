@@ -52,7 +52,7 @@ namespace RimSharp.Features.WorkshopDownloader.Models
             get => _standardDate;
             set => SetProperty(ref _standardDate, value);
         }
-      public long FileSize // Added: Size in bytes
+      public long FileSize
         {
             get => _fileSize;
             set => SetProperty(ref _fileSize, value);
@@ -118,7 +118,7 @@ namespace RimSharp.Features.WorkshopDownloader.Models
         }
 
         /// <summary>
-        /// Calculated property to determine if the version information should be displayed.
+
         /// </summary>
         public bool ShouldShowVersionInfo
         {
@@ -130,19 +130,16 @@ namespace RimSharp.Features.WorkshopDownloader.Models
                     return true;
                 }
 
-                // Condition 2: If installed, show only if versions are different.
                 var latest = LatestVersions;
-                // Extract string versions from the more complex InstalledVersions list
+
                 var installed = InstalledVersions?.Select(v => v.Version).ToList();
 
-                // Handle cases where one or both lists are null/empty
                 bool latestHasItems = latest?.Any() ?? false;
                 bool installedHasItems = installed?.Any() ?? false;
 
                 if (!latestHasItems && !installedHasItems) return false; // Both empty, no info to show
                 if (latestHasItems != installedHasItems) return true; // One has items and the other doesn't, they are different
 
-                // Both lists have items, compare their contents ignoring order.
                 // HashSet.SetEquals is perfect for this as it's order-insensitive.
                 var latestSet = new HashSet<string>(latest!, System.StringComparer.OrdinalIgnoreCase);
                 var installedSet = new HashSet<string>(installed!, System.StringComparer.OrdinalIgnoreCase);
@@ -150,8 +147,6 @@ namespace RimSharp.Features.WorkshopDownloader.Models
                 return !latestSet.SetEquals(installedSet);
             }
         }
-
-        // --- Helper to reset local info ---
         public void ClearLocalInfo()
         {
             IsInstalled = false;
@@ -163,3 +158,5 @@ namespace RimSharp.Features.WorkshopDownloader.Models
         }
     }
 }
+
+

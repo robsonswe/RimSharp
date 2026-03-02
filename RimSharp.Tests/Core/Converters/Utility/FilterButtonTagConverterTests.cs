@@ -24,21 +24,20 @@ namespace RimSharp.Tests.Core.Converters.Utility
         [InlineData(null, true, true, "Unfiltered")]
         public void Convert_ShouldReturnCorrectTag(string? header, bool active, bool inactive, string expected)
         {
-            // Act
+
             var result = _converter.Convert(new object[] { header!, active, inactive }, typeof(string), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
 
         [Fact]
         public void Convert_WithInsufficientValues_ShouldReturnUnfiltered()
         {
-            // Act
+
             var result = _converter.Convert(new object[] { "Active" }, typeof(string), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be("Unfiltered");
         }
     }
 }
+

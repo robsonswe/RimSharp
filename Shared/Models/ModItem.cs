@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions; // Added for Regex
+using System.Text.RegularExpressions;
 
 namespace RimSharp.Shared.Models
 {
@@ -15,7 +15,6 @@ namespace RimSharp.Shared.Models
         Zipped = 5
     }
 
-    // --- ADDED NEW CLASS ---
     public class ModSizeInfo
     {
         /// <summary>
@@ -35,17 +34,13 @@ namespace RimSharp.Shared.Models
         /// </summary>
         public long MaxTextureSize { get; set; }
 
-        /// <summary>
-        /// A negligible difference in bytes to consider Min and Max texture sizes effectively equal.
-        /// </summary>
-        private const long SizeDifferenceThreshold = 1024; // 1 KB
+        private const long SizeDifferenceThreshold = 1024;
 
         /// <summary>
         /// Returns true if the difference between Min and Max texture size is significant enough to display both.
         /// </summary>
         public bool HasSignificantTextureSizeDifference => (MaxTextureSize - MinTextureSize) > SizeDifferenceThreshold;
     }
-
 
     public class ModItem
     {
@@ -69,14 +64,12 @@ namespace RimSharp.Shared.Models
             return InstanceId.GetHashCode();
         }
 
-        // Required fields from About.xml
         public string Name { get; set; } = string.Empty;
         public string PackageId { get; set; } = string.Empty;
         public string Authors { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public List<VersionSupport> SupportedVersions { get; set; } = new List<VersionSupport>();
 
-        // Optional fields from About.xml
         public string ModVersion { get; set; } = string.Empty;
         public string ModIconPath { get; set; } = string.Empty;
         public string Url { get; set; } = string.Empty;
@@ -91,7 +84,6 @@ namespace RimSharp.Shared.Models
         public Dictionary<string, ModIncompatibilityRule> IncompatibleWith { get; set; } = new Dictionary<string, ModIncompatibilityRule>(StringComparer.OrdinalIgnoreCase);
         public List<string> IncompatibleWithByVersion { get; set; } = new List<string>();
 
-        // Additional fields
         public string SteamId { get; set; } = string.Empty;
         public string SteamUrl { get; set; } = string.Empty;
         public string ExternalUrl { get; set; } = string.Empty;
@@ -100,7 +92,7 @@ namespace RimSharp.Shared.Models
         public ModType ModType { get; set; }
 
         /// <summary>
-        /// Gets a value indicating whether technical details (Assemblies, Textures, Size) 
+        /// Gets a value indicating whether technical details (Assemblies, Textures, Size)
         /// should be displayed for this mod.
         /// </summary>
         public bool IsTechnicalDetailsVisible => ModType != ModType.Core && ModType != ModType.Expansion;
@@ -153,34 +145,30 @@ namespace RimSharp.Shared.Models
         /// </summary>
         public bool IsFavorite { get; set; } = false;
 
-        // --- ADDED PROPERTY ---
         /// <summary>
         /// Gets or sets the calculated size information for the mod.
         /// </summary>
         public ModSizeInfo SizeInfo { get; set; } = new ModSizeInfo();
 
         public IEnumerable<string> SupportedVersionStrings => SupportedVersions.Select(v => v.Version);
-
-        // New: Efficiently parsed Author list
         private List<string>? _authorList;
         public List<string> AuthorList => _authorList ??= ParseCommaSeparatedString(Authors);
-
-        // New: Efficiently parsed Tag list
         private List<string>? _tagList;
         public List<string> TagList => _tagList ??= ParseCommaSeparatedString(Tags);
+
         /// <summary>
         /// Gets or sets a value indicating whether this mod instance has detected issues
         /// within the current active list context (e.g., missing dependencies, order violations).
         /// This property is managed externally (e.g., by ModListManager).
         /// </summary>
-        public bool HasIssues { get; set; } // We'll update this from ModListManager
+        public bool HasIssues { get; set; }
 
         /// <summary>
         /// Gets or sets the detailed tooltip text explaining the issues found for this mod
         /// in the current active list context.
         /// This property is managed externally (e.g., by ModListManager).
         /// </summary>
-        public string IssueTooltipText { get; set; } = string.Empty; // We'll update this from ModListManager
+        public string IssueTooltipText { get; set; } = string.Empty;
 
         /// <summary>
         /// Invalidates the cached tag list, forcing it to be reparsed on next access.
@@ -197,11 +185,10 @@ namespace RimSharp.Shared.Models
             {
                 return new List<string>();
             }
-            // Allow comma or semicolon, trim whitespace, remove empty results
             return input.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
                         .Select(s => s.Trim())
                         .Where(s => !string.IsNullOrEmpty(s))
-                        .Distinct(StringComparer.OrdinalIgnoreCase) // Ensure unique tags
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
                         .ToList();
         }
     }
@@ -211,16 +198,14 @@ namespace RimSharp.Shared.Models
         public string PackageId { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
         public string SteamWorkshopUrl { get; set; } = string.Empty;
-
-        // --- ADDED CALCULATED PROPERTY ---
         private string? _steamId;
         public string SteamId
         {
             get
             {
-                if (_steamId == null) // Calculate only once
+                if (_steamId == null)
                 {
-                    _steamId = ExtractSteamIdFromUrl(SteamWorkshopUrl) ?? string.Empty; // Store empty string if not found
+                    _steamId = ExtractSteamIdFromUrl(SteamWorkshopUrl) ?? string.Empty;
                 }
                 return _steamId;
             }
@@ -241,7 +226,7 @@ namespace RimSharp.Shared.Models
                 return match.Groups[1].Value;
             }
 
-            return null; // Return null if no ID found
+            return null;
         }
     }
 }

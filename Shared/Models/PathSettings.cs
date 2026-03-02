@@ -2,7 +2,6 @@ using RimSharp.AppDir.AppFiles;
 
 namespace RimSharp.Shared.Models
 {
-    // Inherit from ViewModelBase to get INotifyPropertyChanged implementation easily
     public class PathSettings : ViewModelBase
     {
         private string _gamePath = string.Empty;
@@ -13,7 +12,6 @@ namespace RimSharp.Shared.Models
         public string GamePath
         {
             get => _gamePath;
-            // Use SetProperty from ViewModelBase to automatically raise PropertyChanged
             set => SetProperty(ref _gamePath, value);
         }
 
@@ -34,19 +32,5 @@ namespace RimSharp.Shared.Models
             get => _gameVersion;
             set => SetProperty(ref _gameVersion, value);
         }
-
-        // If NOT inheriting from ViewModelBase, you would need this boilerplate:
-        // public event PropertyChangedEventHandler PropertyChanged;
-        // protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
-        // {
-        //     PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        // }
-        // protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
-        // {
-        //     if (EqualityComparer<T>.Default.Equals(field, value)) return false;
-        //     field = value;
-        //     OnPropertyChanged(propertyName);
-        //     return true;
-        // }
     }
 }

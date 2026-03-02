@@ -1,6 +1,6 @@
 using RimSharp.Core.Commands;
-using RimSharp.AppDir.AppFiles; // For ViewModelBase/RunOnUIThread if needed
-using RimSharp.AppDir.Dialogs; // For MessageDialogResult
+using RimSharp.AppDir.AppFiles;
+using RimSharp.AppDir.Dialogs;
 using RimSharp.Features.ModManager.Dialogs.ActiveIssues;
 using System;
 using System.Diagnostics;
@@ -43,23 +43,18 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 // OBSERVE BOTH IsParentLoading AND HasValidPaths
                 observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
 
-            // ExportListCommand's CanExecuteExport depends on list content, not HasValidPaths.
-            // It relies on CommandManager.InvalidateRequerySuggested triggered by ListChanged, which is fine.
+            // ExportListCommand's CanExecuteExport depends on list content, not HasValidPaths..
             ExportListCommand = CreateCancellableAsyncCommand(
                 ExecuteExport,
                 CanExecuteExport,
                 observedProperties: new[] { nameof(IsParentLoading) }); // Primarily depends on loading state and list content (handled by InvalidateRequerySuggested)
 
-            // CheckReplacementsCommand already observes HasValidPaths, keep as is or ensure it's correct:
             CheckReplacementsCommand = CreateCancellableAsyncCommand(
                 execute: ExecuteCheckReplacements,
                 canExecute: CanExecuteSimpleCommands, // Uses HasValidPaths
                 observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) }); // Already correctly observes both
         }
 
-
-        // --- CanExecute Predicates (used by command creation) ---
-        // private bool CanExecuteSimpleCommands() => !IsParentLoading; // Defined in InstallationCommands.cs
         private bool CanExecuteSaveMods()
         {
             bool canExecute = HasUnsavedChanges && !IsParentLoading;
@@ -67,20 +62,15 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             return canExecute;
         }
         private bool CanExecuteExport() => !IsParentLoading && _modListManager.VirtualActiveMods.Any();
-
-
-        // --- Execution Methods ---
-        // Signature changed for async commands to accept CancellationToken
         private async Task ExecuteClearActiveList(CancellationToken ct)
         {
             // CanExecute checked by framework
             IsLoadingRequest?.Invoke(this, true);
             try
             {
-                // Check token before long operation
                 ct.ThrowIfCancellationRequested();
                 await Task.Run(() => _modListManager.ClearActiveList(), ct); // Assume ClearActiveList respects token if possible
-                HasUnsavedChangesRequest?.Invoke(this, true); // Signal parent
+                HasUnsavedChangesRequest?.Invoke(this, true); 
             }
             catch (OperationCanceledException)
             {
@@ -125,8 +115,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 combinedToken.ThrowIfCancellationRequested(); // Check after sort completes
 
                 progressDialog.CompleteOperation("Sorting complete.");
-
-                // Show result dialog on UI thread
                 await RunOnUIThreadAsync(async () =>
                 {
                     if (orderChanged)
@@ -150,7 +138,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             finally { IsLoadingRequest?.Invoke(this, false); }
         }
 
-        private async Task ExecuteSaveMods(bool suppressWarnings = false) // Changed to async Task with suppression flag
+        private async Task ExecuteSaveMods(bool suppressWarnings = false)
         {
             if (!suppressWarnings && _modListManager.HasAnyActiveModIssues)
             {
@@ -179,9 +167,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                                         .Where(id => !string.IsNullOrEmpty(id))
                                         .ToList();
 
-                await Task.Run(() => _dataService.SaveActiveModIdsToConfig(activeIdsToSave)); // Assume background save is better
-
-                // Signal parent that changes are now saved
+                await Task.Run(() => _dataService.SaveActiveModIdsToConfig(activeIdsToSave)); 
                 HasUnsavedChangesRequest?.Invoke(this, false);
 
                 Debug.WriteLine("Mod list saved successfully.");
@@ -199,10 +185,10 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             try
             {
                 ct.ThrowIfCancellationRequested();
-                // Assuming ImportModListAsync now accepts and respects CancellationToken
+
                 await _ioService.ImportModListAsync(); // TODO: Update IModListIOService if cancellation needed
                 ct.ThrowIfCancellationRequested(); // Check after completion
-                                                   // Refresh is likely needed after import - parent VM handles refresh logic
+
                 RequestDataRefresh?.Invoke(this, EventArgs.Empty);
             }
             catch (OperationCanceledException)
@@ -228,12 +214,12 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 var activeModsToExport = _modListManager.VirtualActiveMods.Select(entry => entry.Mod).ToList();
                 if (!activeModsToExport.Any())
                 {
-                    // Use RunOnUIThread for dialog if CanExecute might race
+
                     await RunOnUIThreadAsync(async () => await _dialogService.ShowInformation("Export List", "There are no active mods to export."));
                     return;
                 }
                 ct.ThrowIfCancellationRequested();
-                // Assuming ExportModListAsync now accepts and respects CancellationToken
+
                 await _ioService.ExportModListAsync(activeModsToExport); // TODO: Update IModListIOService if cancellation needed
                 ct.ThrowIfCancellationRequested();
             }
@@ -251,3 +237,5 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         }
     }
 }
+
+

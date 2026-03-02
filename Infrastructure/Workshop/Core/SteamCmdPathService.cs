@@ -43,10 +43,10 @@ namespace RimSharp.Infrastructure.Workshop.Core
             _steamCmdPrefixPath = _configService.GetConfigValue(SteamCmdPrefixConfigKey);
             if (string.IsNullOrWhiteSpace(_steamCmdPrefixPath))
             {
-                // Default path (e.g., AppData or next to executable)
+
                 string basePath = AppDomain.CurrentDomain.BaseDirectory;
                 _steamCmdPrefixPath = Path.Combine(basePath, "SteamCMD_Data");
-                // Don't save default automatically, wait for explicit setup/config change
+
             }
 
             // Define core paths based on the prefix
@@ -70,3 +70,4 @@ namespace RimSharp.Infrastructure.Workshop.Core
 
     }
 }
+

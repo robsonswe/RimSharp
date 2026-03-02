@@ -10,21 +10,15 @@ using System.Runtime.CompilerServices;
 namespace RimSharp.Core.Commands.Base
 {
     /// <summary>
-    /// A command implementation that relays functionality to delegate methods.
+
     /// </summary>
-    public class RelayCommand : IDelegateCommand, IDisposable // Add IDisposable
+    public class RelayCommand : IDelegateCommand, IDisposable 
     {
         private readonly Action<object?> _execute;
         private readonly Func<object?, bool>? _canExecute;
-
-        // --- Observation Logic Fields ---
         private Dictionary<INotifyPropertyChanged, HashSet<string>>? _observedPropertiesPerOwner;
         private readonly object _observerLock = new object();
-        // --- End Observation Logic Fields ---
-
-        // --- IDisposable Fields ---
         private bool _disposed = false;
-        // --- End IDisposable Fields ---
 
         public event EventHandler? CanExecuteChanged;
 
@@ -68,7 +62,7 @@ namespace RimSharp.Core.Commands.Base
             {
                 if(!_disposed)
                 {
-                     //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] RaiseCanExecuteChanged invoked.");
+
                      CanExecuteChanged?.Invoke(this, EventArgs.Empty);
                 }
             });
@@ -77,17 +71,15 @@ namespace RimSharp.Core.Commands.Base
 
         #region Property Observation Logic (Unchanged Functionality, Added Disposal Check)
         /// <summary>
-        /// Sets up property change observation to automatically raise CanExecuteChanged when specific properties change.
-        /// Subscribes only once per owner object but tracks multiple properties per owner.
-        /// </summary>
-        /// <param name="owner">The INotifyPropertyChanged object that owns the property to observe.</param>
-        /// <param name="propertyName">The name of the property to observe on the owner.</param>
-        /// <returns>The command instance to allow for method chaining.</returns>
+
+/// </summary>
+
+/// <returns>The command instance to allow for method chaining.</returns>
         public RelayCommand ObservesProperty(INotifyPropertyChanged owner, string propertyName)
         {
             if (_disposed)
             {
-                 //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Attempted to observe property on disposed command.");
+
                  return this;
             }
 
@@ -108,36 +100,34 @@ namespace RimSharp.Core.Commands.Base
                     observedProperties = new HashSet<string>();
                     _observedPropertiesPerOwner.Add(owner, observedProperties);
                     owner.PropertyChanged += Owner_PropertyChanged;
-                    //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Subscribed to PropertyChanged on Owner {owner.GetHashCode()}");
+
                 }
 
                 if(observedProperties.Add(propertyName))
                 {
-                    //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Observing property '{propertyName}' on Owner {owner.GetHashCode()}");
+
                 }
             }
             return this;
         }
 
         /// <summary>
-        /// Convenience method to observe multiple properties on the same owner.
+
         /// </summary>
-        /// <param name="owner">The object that owns the properties to observe.</param>
+
         /// <param name="propertyNames">The names of the properties to observe.</param>
         /// <returns>The command instance to allow for method chaining.</returns>
         public RelayCommand ObservesProperties(INotifyPropertyChanged owner, params string[] propertyNames)
         {
-             // Check disposal state first
             if (_disposed)
             {
-                 //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Attempted to observe properties on disposed command.");
+
                  return this;
             }
 
             if (owner == null) throw new ArgumentNullException(nameof(owner));
             if (propertyNames == null || propertyNames.Length == 0) throw new ArgumentNullException(nameof(propertyNames));
 
-            // Reuse the single property logic within the lock for safety
             lock(_observerLock)
             {
                 if (_disposed) return this; // Re-check inside lock
@@ -154,10 +144,9 @@ namespace RimSharp.Core.Commands.Base
             return this;
         }
 
-        // Private helper to avoid repeated checks/locking in ObservesProperties loop
         private void ObservesPropertyInternal(INotifyPropertyChanged owner, string propertyName)
         {
-            // Assumes lock is already held and owner/propertyName are valid
+
              if (_observedPropertiesPerOwner == null)
             {
                 _observedPropertiesPerOwner = new Dictionary<INotifyPropertyChanged, HashSet<string>>();
@@ -168,17 +157,16 @@ namespace RimSharp.Core.Commands.Base
                 observedProperties = new HashSet<string>();
                 _observedPropertiesPerOwner.Add(owner, observedProperties);
                 owner.PropertyChanged += Owner_PropertyChanged;
-                //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Subscribed to PropertyChanged on Owner {owner.GetHashCode()}");
+
             }
 
             if(observedProperties.Add(propertyName))
             {
-                //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Observing property '{propertyName}' on Owner {owner.GetHashCode()}");
+
             }
         }
 
-
-        private void Owner_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+private void Owner_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
              if (_disposed) return;
 
@@ -197,7 +185,7 @@ namespace RimSharp.Core.Commands.Base
                      if (string.IsNullOrEmpty(e.PropertyName) || (relevantProperties != null && relevantProperties.Contains(e.PropertyName)))
                      {
                          shouldRaise = true;
-                          //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Property '{e.PropertyName ?? "null"}' changed on Owner {owner.GetHashCode()}. Will raise CanExecuteChanged.");
+
                      }
                  }
              }
@@ -226,7 +214,7 @@ namespace RimSharp.Core.Commands.Base
                     {
                         if (_observedPropertiesPerOwner != null)
                         {
-                             //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Disposing: Unsubscribing from {_observedPropertiesPerOwner.Count} owners.");
+
                             foreach (var owner in _observedPropertiesPerOwner.Keys)
                             {
                                 if (owner != null) owner.PropertyChanged -= Owner_PropertyChanged;
@@ -237,32 +225,25 @@ namespace RimSharp.Core.Commands.Base
                     }
                 }
                 _disposed = true;
-                //Debug.WriteLine($"[RelayCommand {this.GetHashCode()}] Disposed.");
+
             }
         }
         #endregion
     }
 
     /// <summary>
-    /// An asynchronous command implementation that relays functionality to delegate methods, supporting cancellation.
+
     /// </summary>
-    public class AsyncRelayCommand : IDelegateCommand, IDisposable // Add IDisposable
+    public class AsyncRelayCommand : IDelegateCommand, IDisposable 
     {
         private readonly Func<CancellationToken, Task> _execute;
         private readonly Func<bool>? _canExecute;
         private volatile bool _isExecuting;
-
-        // --- Observation Logic Fields ---
         private Dictionary<INotifyPropertyChanged, HashSet<string>>? _observedPropertiesPerOwner;
         private readonly object _observerLock = new object();
-        // --- End Observation Logic Fields ---
-
-        // --- IDisposable Fields ---
         private bool _disposed = false;
-        // --- End IDisposable Fields ---
 
-
-        public event EventHandler? CanExecuteChanged;
+public event EventHandler? CanExecuteChanged;
 
         public AsyncRelayCommand(Func<CancellationToken, Task> execute, Func<bool>? canExecute = null)
         {
@@ -319,7 +300,7 @@ namespace RimSharp.Core.Commands.Base
              {
                   if(!_disposed)
                   {
-                    //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] RaiseCanExecuteChanged invoked.");
+
                     CanExecuteChanged?.Invoke(this, EventArgs.Empty);
                   }
              });
@@ -328,17 +309,15 @@ namespace RimSharp.Core.Commands.Base
 
         #region Property Observation Logic (Unchanged Functionality, Added Disposal Check)
         /// <summary>
-        /// Sets up property change observation to automatically raise CanExecuteChanged when specific properties change.
-        /// Subscribes only once per owner object but tracks multiple properties per owner.
-        /// </summary>
-        /// <param name="owner">The INotifyPropertyChanged object that owns the property to observe.</param>
-        /// <param name="propertyName">The name of the property to observe on the owner.</param>
-        /// <returns>The command instance to allow for method chaining.</returns>
+
+/// </summary>
+
+/// <returns>The command instance to allow for method chaining.</returns>
         public AsyncRelayCommand ObservesProperty(INotifyPropertyChanged owner, string propertyName)
         {
              if (_disposed)
              {
-                 //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Attempted to observe property on disposed command.");
+
                  return this;
              }
 
@@ -359,35 +338,34 @@ namespace RimSharp.Core.Commands.Base
                      observedProperties = new HashSet<string>();
                      _observedPropertiesPerOwner.Add(owner, observedProperties);
                      owner.PropertyChanged += Owner_PropertyChanged;
-                     //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Subscribed to PropertyChanged on Owner {owner.GetHashCode()}");
+
                  }
 
                  if(observedProperties.Add(propertyName))
                  {
-                    //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Observing property '{propertyName}' on Owner {owner.GetHashCode()}");
+
                  }
              }
             return this;
         }
 
          /// <summary>
-        /// Convenience method to observe multiple properties on the same owner.
+
         /// </summary>
-        /// <param name="owner">The object that owns the properties to observe.</param>
+
         /// <param name="propertyNames">The names of the properties to observe.</param>
         /// <returns>The command instance to allow for method chaining.</returns>
         public AsyncRelayCommand ObservesProperties(INotifyPropertyChanged owner, params string[] propertyNames)
         {
              if (_disposed)
              {
-                 //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Attempted to observe properties on disposed command.");
+
                  return this;
              }
 
              if (owner == null) throw new ArgumentNullException(nameof(owner));
              if (propertyNames == null || propertyNames.Length == 0) throw new ArgumentNullException(nameof(propertyNames));
 
-            // Reuse the single property logic within the lock for safety
             lock(_observerLock)
             {
                  if (_disposed) return this;
@@ -403,10 +381,9 @@ namespace RimSharp.Core.Commands.Base
             return this;
         }
 
-        // Private helper to avoid repeated checks/locking in ObservesProperties loop
         private void ObservesPropertyInternal(INotifyPropertyChanged owner, string propertyName)
         {
-            // Assumes lock is already held and owner/propertyName are valid
+
             if (_observedPropertiesPerOwner == null)
             {
                 _observedPropertiesPerOwner = new Dictionary<INotifyPropertyChanged, HashSet<string>>();
@@ -417,17 +394,16 @@ namespace RimSharp.Core.Commands.Base
                 observedProperties = new HashSet<string>();
                 _observedPropertiesPerOwner.Add(owner, observedProperties);
                 owner.PropertyChanged += Owner_PropertyChanged;
-                //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Subscribed to PropertyChanged on Owner {owner.GetHashCode()}");
+
             }
 
             if(observedProperties.Add(propertyName))
             {
-                //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Observing property '{propertyName}' on Owner {owner.GetHashCode()}");
+
             }
         }
 
-
-        private void Owner_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+private void Owner_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
              if (_disposed) return;
 
@@ -446,7 +422,7 @@ namespace RimSharp.Core.Commands.Base
                      if (string.IsNullOrEmpty(e.PropertyName) || (relevantProperties != null && relevantProperties.Contains(e.PropertyName)))
                      {
                          shouldRaise = true;
-                          //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Property '{e.PropertyName ?? "null"}' changed on Owner {owner.GetHashCode()}. Will raise CanExecuteChanged.");
+
                      }
                  }
              }
@@ -475,7 +451,7 @@ namespace RimSharp.Core.Commands.Base
                     {
                         if (_observedPropertiesPerOwner != null)
                         {
-                             //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Disposing: Unsubscribing from {_observedPropertiesPerOwner.Count} owners.");
+
                             foreach (var owner in _observedPropertiesPerOwner.Keys)
                             {
                                 if (owner != null) owner.PropertyChanged -= Owner_PropertyChanged;
@@ -486,9 +462,11 @@ namespace RimSharp.Core.Commands.Base
                     }
                 }
                 _disposed = true;
-                 //Debug.WriteLine($"[AsyncRelayCommand {this.GetHashCode()}] Disposed.");
+
             }
         }
         #endregion
     }
 }
+
+

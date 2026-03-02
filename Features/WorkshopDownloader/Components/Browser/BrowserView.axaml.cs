@@ -34,13 +34,11 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 {
                     return _currentHandle;
                 }
-                
-                // Ensure handle is created
                 if (_webView.Handle == IntPtr.Zero)
                 {
                     _webView.CreateControl();
                 }
-                
+
                 _currentHandle = new PlatformHandle(_webView.Handle, "HWND");
                 return _currentHandle;
             }
@@ -73,10 +71,9 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         {
             AvaloniaXamlLoader.Load(this);
             _container = this.FindControl<ContentControl>("BrowserContainer");
-            
+
             if (_container == null) return;
 
-            // Set platform-specific content
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 _container.Content = CreatePlaceholderContent(
@@ -189,8 +186,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             {
                 Debug.WriteLine("[BrowserView] Starting WebView2 initialization...");
 
-                // Container should exist on Windows
-                if (_container == null)
+if (_container == null)
                 {
                     Debug.WriteLine("[BrowserView] ERROR: BrowserContainer is null!");
                     return;
@@ -224,8 +220,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
                 _wrappedControl = new WindowsBrowserControl(_webView);
                 Debug.WriteLine("[BrowserView] Created WindowsBrowserControl wrapper");
-
-                // Update placeholder message for navigation phase
                 if (_container != null)
                 {
                     _container.Content = CreatePlaceholderContent(
@@ -234,8 +228,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                         "The page will appear shortly.", 
                         true);
                 }
-
-                // Wait for navigation to actually start before swapping content to avoid white flashes
                 var navigationStartedTcs = new TaskCompletionSource<bool>();
                 void OnFirstNavigation(object? s, string url)
                 {
@@ -247,7 +239,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 // Create the host but don't show it yet
                 var host = new WebView2Host(_webView);
 
-                // Timeout after 5 seconds if navigation doesn't "start" (safeguard)
                 await Task.WhenAny(navigationStartedTcs.Task, Task.Delay(5000));
 
                 if (_container != null)
@@ -311,3 +302,5 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         }
     }
 }
+
+

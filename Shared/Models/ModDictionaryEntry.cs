@@ -4,7 +4,7 @@ using System.Text.Json.Serialization; // If you need JSON attributes later
 namespace RimSharp.Shared.Models // Adjust namespace as needed
 {
     /// <summary>
-    /// Represents a single mod entry loaded from the dictionary database (db.json).
+
     /// </summary>
     public class ModDictionaryEntry
     {
@@ -34,16 +34,15 @@ namespace RimSharp.Shared.Models // Adjust namespace as needed
         public string Authors { get; set; } = string.Empty;
 
         /// <summary>
-        /// Indicates whether the mod is currently published (e.g., on Steam Workshop).
-        /// Defaults to false if not specified in the source JSON.
-        /// </summary>
-        public bool Published { get; set; } // <-- ADDED PROPERTY
 
-        // Add any calculated properties or methods if needed later
+/// </summary>
+        public bool Published { get; set; }
+
         // Example:
         // [JsonIgnore]
         // public string SteamUrl => !string.IsNullOrEmpty(SteamId)
-        //                         ? $"https://steamcommunity.com/sharedfiles/filedetails/?id={SteamId}"
-        //                         : null;
-    }
+
 }
+}
+
+

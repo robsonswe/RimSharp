@@ -27,20 +27,18 @@ namespace RimSharp.Tests.Core.Converters.ViewVisibility
         [InlineData(null, true)]
         public void Convert_ShouldReturnCorrectVisibility(object? modType, bool expected)
         {
-            // Act
+
             var result = _converter.Convert(new List<object?> { modType }, typeof(bool), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
 
         [Fact]
         public void Convert_WithEmptyValues_ShouldReturnTrue()
         {
-            // Act
+
             var result = _converter.Convert(new List<object?>(), typeof(bool), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(true);
         }
     }
@@ -61,10 +59,9 @@ namespace RimSharp.Tests.Core.Converters.ViewVisibility
         [InlineData(null, false)]
         public void Convert_ShouldReturnTrueOnlyForWorkshopL(object? value, bool expected)
         {
-            // Act
+
             var result = _converter.Convert(value, typeof(bool), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
     }
@@ -88,11 +85,11 @@ namespace RimSharp.Tests.Core.Converters.ViewVisibility
         [InlineData(null, false)]
         public void Convert_ShouldReturnCorrectVisibility(object? value, bool expected)
         {
-            // Act
+
             var result = _converter.Convert(value, typeof(bool), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
     }
 }
+

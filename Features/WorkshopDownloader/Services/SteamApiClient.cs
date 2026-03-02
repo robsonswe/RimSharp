@@ -4,12 +4,11 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
-using System.Text.Json.Serialization; // Added for JsonNumberHandling
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Features.WorkshopDownloader.Models;
 using System.Diagnostics;
-
 
 namespace RimSharp.Features.WorkshopDownloader.Services
 {
@@ -57,16 +56,13 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
                 cancellationToken.ThrowIfCancellationRequested();
                 string jsonResponse = await response.Content.ReadAsStringAsync(cancellationToken);
-
-                // --- MODIFICATION START ---
                 // Configure JsonSerializerOptions to handle numbers represented as strings
                 var options = new JsonSerializerOptions
                 {
                      PropertyNameCaseInsensitive = true,
-                     // Allow deserializing JSON strings into C# number types (like long)
+
                      NumberHandling = JsonNumberHandling.AllowReadingFromString
                 };
-                // --- MODIFICATION END ---
 
                 // Deserialize using the configured options
                 SteamApiResponse? apiResponse = JsonSerializer.Deserialize<SteamApiResponse>(jsonResponse, options);
@@ -86,11 +82,10 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             }
             catch (JsonException jsonEx) // Catch deserialization errors
             {
-                // Log the specific error, which helps diagnose problems like the one you encountered
+
                 Debug.WriteLine($"[SteamApiClient] Error deserializing response for ID {steamId}: {jsonEx.Message}");
-                // Optionally log the problematic JSON snippet if needed for deeper debugging
-                // Debug.WriteLine($"[SteamApiClient] Problematic JSON snippet: {jsonResponse.Substring(Math.Max(0, jsonEx.BytePositionInLine - 50), 100)}");
-                return null;
+
+return null;
             }
             catch (HttpRequestException httpEx)
             {
@@ -105,3 +100,5 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         }
     }
 }
+
+

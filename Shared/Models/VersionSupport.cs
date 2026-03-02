@@ -7,7 +7,7 @@ namespace RimSharp.Shared.Models
     {
         public string Version { get; set; }
         public bool Unofficial { get; set; }
-        public VersionSource Source { get; set; } // <<< ADDED
+        public VersionSource Source { get; set; }
 
         // Modify constructor to accept source
         public VersionSupport(string version, VersionSource source, bool unofficial = false)
@@ -17,7 +17,6 @@ namespace RimSharp.Shared.Models
             Unofficial = unofficial;
         }
 
-        // Keep Equals and GetHashCode focused ONLY on the Version string for duplicate checking
         public override bool Equals(object? obj)
         {
             if (obj is not VersionSupport other)
@@ -29,15 +28,17 @@ namespace RimSharp.Shared.Models
 
         public override int GetHashCode()
         {
-            // Hash code based only on the version string, case-insensitively
+
             return Version?.ToLowerInvariant().GetHashCode() ?? 0;
         }
 
         public override string ToString()
         {
-            // Optional: Add source/unofficial info here if needed for debugging displays
+
             // return $"{Version} (Source: {Source}, Unofficial: {Unofficial})";
             return Version;
         }
     }
 }
+
+

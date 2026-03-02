@@ -24,10 +24,9 @@ namespace RimSharp.Tests.Core.Converters.Text
         [InlineData("not a bool", "No|Yes", "")]
         public void Convert_ShouldReturnCorrectText(object? value, string parameter, string expected)
         {
-            // Act
+
             var result = _converter.Convert(value, typeof(string), parameter, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
 
@@ -39,11 +38,11 @@ namespace RimSharp.Tests.Core.Converters.Text
         [InlineData("Unknown", "No|Yes", null)]
         public void ConvertBack_ShouldReturnCorrectBoolean(string value, string parameter, bool? expected)
         {
-            // Act
+
             var result = _converter.ConvertBack(value, typeof(bool), parameter, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
     }
 }
+

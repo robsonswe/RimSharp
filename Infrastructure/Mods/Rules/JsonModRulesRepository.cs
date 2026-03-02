@@ -23,7 +23,6 @@ namespace RimSharp.Infrastructure.Mods.Rules
             if (dataUpdateService == null)
                 throw new ArgumentNullException(nameof(dataUpdateService));
 
-            // Get the full path to the file from the service
             _rulesFilePath = dataUpdateService.GetDataFilePath(RulesFileName);
 
             _rulesDirectoryPath = Path.GetDirectoryName(_rulesFilePath);
@@ -37,13 +36,13 @@ namespace RimSharp.Infrastructure.Mods.Rules
             // Double-check locking for thread safety
             if (_rulesLoaded)
             {
-                // Console.WriteLine($"[DEBUG] Returning cached rules. Count: {_cachedRules.Count}");
+
                 return _cachedRules;
             }
 
             lock (_loadLock)
             {
-                // Check again inside the lock
+
                 if (_rulesLoaded)
                 {
                     return _cachedRules;
@@ -52,15 +51,12 @@ namespace RimSharp.Infrastructure.Mods.Rules
                 Console.WriteLine($"[DEBUG] JsonModRulesRepository.GetAllRules called. Attempting to load from: '{_rulesFilePath}'");
                 try
                 {
-                    // 1. Ensure the directory exists
                     if (!string.IsNullOrEmpty(_rulesDirectoryPath) && !Directory.Exists(_rulesDirectoryPath))
                     {
                         Console.WriteLine($"[DEBUG] Rules directory not found at '{_rulesDirectoryPath}'. Creating...");
                         Directory.CreateDirectory(_rulesDirectoryPath);
                         Console.WriteLine($"[DEBUG] Rules directory created.");
                     }
-
-                    // 2. Check if the file exists, create with default if not
                     if (!File.Exists(_rulesFilePath))
                     {
                         Console.WriteLine($"[WARNING] Rules file not found in cache at '{_rulesFilePath}'. Returning empty rules. App may need to restart or run update check.");
@@ -71,11 +67,9 @@ namespace RimSharp.Infrastructure.Mods.Rules
                     // 3. File exists, proceed with loading
                     Console.WriteLine($"[DEBUG] Rules file found. Reading content...");
                     var json = File.ReadAllText(_rulesFilePath);
-                    // Console.WriteLine($"[DEBUG] Rules file read successfully. Length: {json.Length} characters.");
 
                     var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
-                    // Console.WriteLine("[DEBUG] Deserializing root JSON object...");
                     // Directly deserialize the structure expected by ModRule
                     var root = JsonSerializer.Deserialize<RulesJsonRoot>(json, options);
                     if (root == null || root.Rules == null)
@@ -90,12 +84,11 @@ namespace RimSharp.Infrastructure.Mods.Rules
                         _cachedRules = new Dictionary<string, ModRule>(root.Rules, StringComparer.OrdinalIgnoreCase);
                         Console.WriteLine($"[DEBUG] Successfully deserialized rules. Found {_cachedRules.Count} rule entries.");
 
-                        // Optional: Normalize keys if needed, though comparer handles lookups
                         // var normalizedRules = new Dictionary<string, ModRule>(StringComparer.OrdinalIgnoreCase);
                         // foreach (var kvp in root.Rules)
                         // {
                         //     normalizedRules[kvp.Key.ToLowerInvariant()] = kvp.Value;
-                        // }
+
                         // _cachedRules = normalizedRules;
 
                     }
@@ -126,25 +119,23 @@ namespace RimSharp.Infrastructure.Mods.Rules
 
         public ModRule GetRulesForMod(string packageId)
         {
-            // Console.WriteLine($"[DEBUG] JsonModRulesRepository.GetRulesForMod called for packageId: '{packageId}'");
+
             var rules = GetAllRules(); // Ensures rules are loaded (uses caching)
 
             if (string.IsNullOrEmpty(packageId))
             {
-                // Console.WriteLine($"[DEBUG] packageId is null or empty. Returning default ModRule.");
+
                 return new ModRule();
             }
 
-            // Use case-insensitive lookup thanks to the dictionary's comparer
             if (rules.TryGetValue(packageId, out var rule)) // No need to ToLowerInvariant() here
             {
-                // Console.WriteLine($"[DEBUG] Found rules for packageId '{packageId}'.");
-                // if (rule.LoadBottom != null) Console.WriteLine($"[DEBUG] Found LoadBottom={rule.LoadBottom.Value} for packageId '{packageId}'");
+
                 return rule;
             }
             else
             {
-                // Console.WriteLine($"[DEBUG] No rules found for packageId '{packageId}'. Returning default ModRule.");
+
                 return new ModRule();
             }
         }
@@ -155,3 +146,5 @@ namespace RimSharp.Infrastructure.Mods.Rules
         }
     }
 }
+
+

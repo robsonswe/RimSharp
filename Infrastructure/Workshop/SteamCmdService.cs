@@ -5,20 +5,17 @@ using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Features.WorkshopDownloader.Models;
 using RimSharp.Shared.Services.Contracts;
-using RimSharp.Infrastructure.Workshop.Core; // <--- For Core interfaces
-using RimSharp.Infrastructure.Workshop.Download; // <--- For Downloader interface
-using RimSharp.Infrastructure.Workshop.Download.Models; // <--- For DownloadResult model
-
-// ---vvv--- Ensure Namespace is Correct ---vvv---
+using RimSharp.Infrastructure.Workshop.Core;
+using RimSharp.Infrastructure.Workshop.Download;
+using RimSharp.Infrastructure.Workshop.Download.Models;
 namespace RimSharp.Infrastructure.Workshop
-// ---^^^--- Ensure Namespace is Correct ---^^^---
 {
     public class SteamCmdService : ISteamCmdService
     {
-        private readonly ISteamCmdPathService _pathService;   // From Core
-        private readonly ISteamCmdInstaller _installer;     // From Core
-        private readonly ISteamCmdDownloader _downloader;    // From Download
-        private readonly ISteamCmdFileSystem _fileSystem;    // From Core
+        private readonly ISteamCmdPathService _pathService;
+        private readonly ISteamCmdInstaller _installer;
+        private readonly ISteamCmdDownloader _downloader;
+        private readonly ISteamCmdFileSystem _fileSystem;
 
         private bool _isSetupCompleteInternal;
         public event EventHandler<bool>? SetupStateChanged;
@@ -35,7 +32,7 @@ namespace RimSharp.Infrastructure.Workshop
             _downloader = downloader;
             _fileSystem = fileSystem;
             SetupStateChanged = delegate { };
-            _isSetupCompleteInternal = false; // Check on first call
+            _isSetupCompleteInternal = false;
         }
 
         // Properties using Core PathService
@@ -84,3 +81,5 @@ namespace RimSharp.Infrastructure.Workshop
         public Task<bool> ClearDepotCacheAsync() => _fileSystem.ClearDepotCacheAsync();
     }
 }
+
+

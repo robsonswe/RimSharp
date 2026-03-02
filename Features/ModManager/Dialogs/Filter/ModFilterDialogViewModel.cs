@@ -39,8 +39,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
 
         public ReadOnlyCollection<string> AllAvailableAuthors { get; }
 
-
-        public bool? IsSupportedFilter { get => _isSupportedFilter; set => SetProperty(ref _isSupportedFilter, value); }
+public bool? IsSupportedFilter { get => _isSupportedFilter; set => SetProperty(ref _isSupportedFilter, value); }
         public bool? HasAssembliesFilter { get => _hasAssembliesFilter; set => SetProperty(ref _hasAssembliesFilter, value); }
         public bool? HasTexturesFilter { get => _hasTexturesFilter; set => SetProperty(ref _hasTexturesFilter, value); }
         public bool? IsFavoriteFilter { get => _isFavoriteFilter; set => SetProperty(ref _isFavoriteFilter, value); }
@@ -49,7 +48,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
         public ICommand ApplyCommand { get; }
         public ICommand ClearCommand { get; }
         public ICommand CancelCommand { get; }
-        public ICommand SetFilterPropertyCommand { get; } // New command to fix RadioButton behavior
+        public ICommand SetFilterPropertyCommand { get; }
 
         public ModFilterDialogViewModel(
             ModFilterCriteria currentCriteria,
@@ -59,8 +58,6 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
             : base("Filter Mods")
         {
             _initialCriteria = currentCriteria ?? new ModFilterCriteria();
-
-            // Initialize properties from current criteria
             _searchText = _initialCriteria.SearchText;
             _authorFilterText = _initialCriteria.AuthorFilterText;
             _isSupportedFilter = _initialCriteria.IsSupportedFilter;
@@ -100,9 +97,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
             // Store all authors
             AllAvailableAuthors = new ReadOnlyCollection<string>((allAvailableAuthors ?? Enumerable.Empty<string>()).ToList());
 
-
-            // Initialize Commands
-            ApplyCommand = CreateCommand(ApplyFilters);
+ApplyCommand = CreateCommand(ApplyFilters);
             ClearCommand = CreateCommand(ClearFilters);
             CancelCommand = CloseCommand;
             SetFilterPropertyCommand = CreateCommand<string>(SetFilterProperty);
@@ -171,7 +166,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
 
         protected override void OnRequestCloseDialog()
         {
-            if (DialogResult == default) // default is Cancel (0)
+            if (DialogResult == default) 
             {
                 DialogResult = ModFilterDialogResult.Cancel;
             }
@@ -179,3 +174,5 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
         }
     }
 }
+
+

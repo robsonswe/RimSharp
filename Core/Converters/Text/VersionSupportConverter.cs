@@ -34,7 +34,6 @@ namespace RimSharp.Core.Converters.Text
                 return CreateDefaultTextBlock("None");
             }
 
-            // If target is string, return a simple comma-separated list
             if (targetType == typeof(string))
             {
                 return string.Join(", ", displayList.Select(v => v.Version));
@@ -46,15 +45,15 @@ namespace RimSharp.Core.Converters.Text
                 Orientation = Orientation.Horizontal,
                 VerticalAlignment = VerticalAlignment.Center
             };
-            
+
             IBrush? unofficialBrush = null;
             IBrush? defaultBrush = null;
-            
+
             if (Application.Current != null)
             {
                 Application.Current.TryGetResource("RimworldLightBrownBrush", out var unofficialObj);
                 unofficialBrush = unofficialObj as IBrush;
-                
+
                 Application.Current.TryGetResource("RimworldBrownBrush", out var defaultObj);
                 defaultBrush = defaultObj as IBrush;
             }
@@ -122,4 +121,5 @@ namespace RimSharp.Core.Converters.Text
         }
     }
 }
+
 

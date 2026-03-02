@@ -15,14 +15,12 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [InlineData("https://github.com/owner/repo/", "owner", "repo")]
         public void ParseGitHubUrl_ShouldParseCorrectly(string url, string expectedOwner, string expectedRepo)
         {
-            // Arrange
+
             var mockDialog = Substitute.For<IDialogService>();
             var service = new GitService(mockDialog);
 
-            // Act
             var result = service.ParseGitHubUrl(url);
 
-            // Assert
             result.Should().NotBeNull();
             result!.Value.owner.Should().Be(expectedOwner);
             result!.Value.repo.Should().Be(expectedRepo);
@@ -33,15 +31,14 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [InlineData("invalid")]
         public void ParseGitHubUrl_WithInvalidUrl_ShouldReturnNull(string url)
         {
-            // Arrange
+
             var mockDialog = Substitute.For<IDialogService>();
             var service = new GitService(mockDialog);
 
-            // Act
             var result = service.ParseGitHubUrl(url);
 
-            // Assert
             result.Should().BeNull();
         }
     }
 }
+

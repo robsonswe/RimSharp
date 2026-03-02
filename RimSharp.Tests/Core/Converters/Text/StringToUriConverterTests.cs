@@ -24,10 +24,9 @@ namespace RimSharp.Tests.Core.Converters.Text
         [InlineData(123, null)]
         public void Convert_ShouldReturnCorrectUri(object? value, string? expectedUri)
         {
-            // Act
+
             var result = _converter.Convert(value, typeof(Uri), null, CultureInfo.InvariantCulture);
 
-            // Assert
             if (expectedUri == null)
             {
                 result.Should().BeNull();
@@ -40,3 +39,4 @@ namespace RimSharp.Tests.Core.Converters.Text
         }
     }
 }
+

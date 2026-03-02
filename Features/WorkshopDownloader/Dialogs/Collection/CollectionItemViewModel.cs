@@ -1,5 +1,5 @@
 #nullable enable
-using RimSharp.AppDir.AppFiles; // For ViewModelBase
+using RimSharp.AppDir.AppFiles;
 
 namespace RimSharp.Features.WorkshopDownloader.Dialogs.Collection
 {
@@ -25,3 +25,4 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.Collection
         }
     }
 }
+

@@ -7,21 +7,17 @@ namespace RimSharp.Shared.Models
     {
         // Synced with the main search box
         public string SearchText { get; set; } = string.Empty;
-        public string AuthorFilterText { get; set; } = string.Empty; // New: Filter by Author
+        public string AuthorFilterText { get; set; } = string.Empty;
 
-        // Selected ModTypes (null or empty means no type filter)
         public List<ModType> SelectedModTypes { get; set; } = new List<ModType>();
 
-        // Selected Supported Versions (null or empty means no version filter)
         public List<string> SelectedSupportedVersions { get; set; } = new List<string>();
 
-        // Selected Tags (null or empty means no tag filter)
-        public List<string> SelectedTags { get; set; } = new List<string>(); // New: Filter by Tags
+        public List<string> SelectedTags { get; set; } = new List<string>();
 
-        // Tristate filters: null = Any, true = Yes, false = No
         public bool? IsSupportedFilter { get; set; } = null;
         public bool? HasAssembliesFilter { get; set; } = null;
-        public bool? HasTexturesFilter { get; set; } = null; // <<< NEW FILTER PROPERTY >>>
+        public bool? HasTexturesFilter { get; set; } = null;
         public bool? IsFavoriteFilter { get; set; } = null;
 
         public bool IsActive()
@@ -40,17 +36,16 @@ namespace RimSharp.Shared.Models
         public void Clear()
         {
             SearchText = string.Empty;
-            AuthorFilterText = string.Empty; // Clear Author
+            AuthorFilterText = string.Empty;
             SelectedModTypes?.Clear();
             SelectedSupportedVersions?.Clear();
-            SelectedTags?.Clear(); // Clear Tags
+            SelectedTags?.Clear(); 
             IsSupportedFilter = null;
             IsFavoriteFilter = null;
             HasAssembliesFilter = null;
             HasTexturesFilter = null;
         }
 
-        // Optional: Clone method for passing state without modifying original
         public ModFilterCriteria Clone()
         {
             return new ModFilterCriteria
@@ -68,3 +63,5 @@ namespace RimSharp.Shared.Models
         }
     }
 }
+
+

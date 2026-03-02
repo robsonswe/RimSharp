@@ -29,7 +29,7 @@ namespace RimSharp.Shared.Services.Contracts
         IReadOnlyList<ModItem> AllInactiveMods { get; }
         event EventHandler<ModListChangedEventArgs> ListChanged;
         /// <summary>
-        /// Gets a value indicating whether any mod in the current active list has detected issues
+
         /// (missing dependencies, incompatibilities, load order violations).
         /// </summary>
         bool HasAnyActiveModIssues { get; }
@@ -55,34 +55,32 @@ namespace RimSharp.Shared.Services.Contracts
 
         (List<ModItem> addedMods, List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)> missingDependencies)
         ResolveDependencies();
-
-        // --- ADD THESE NEW METHODS ---
         /// <summary>
-        /// Ensures the specified mods are active and attempts to place them starting at the given index.
-        /// Handles both activating inactive mods and moving already active mods.
-        /// </summary>
+
+/// </summary>
         void ActivateModsAt(IEnumerable<ModItem> mods, int index);
 
         /// <summary>
-        /// Deactivates the specified collection of mods. Core mods are skipped.
+
         /// </summary>
         void DeactivateMods(IEnumerable<ModItem> mods);
 
         /// <summary>
-        /// Reorders a collection of already active mods to a new target index.
-        /// Assumes all mods in the list are currently active.
-        /// </summary>
+
+/// </summary>
         void ReorderMods(IEnumerable<ModItem> modsToMove, int targetIndex);
 
         /// <summary>
-        /// Removes the specified mods from all internal lists (available, active, inactive).
+
         /// Returns result indicating impact on active list.
         /// </summary>
         ModRemovalResult RemoveMods(IEnumerable<ModItem> mods);
         
         /// <summary>
-        /// Returns a list of active mods that depend on the specified package ID.
+
         /// </summary>
         List<ModItem> GetActiveModsDependingOn(string packageId);
     }
 }
+
+

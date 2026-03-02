@@ -25,11 +25,11 @@ namespace RimSharp.Tests.Core.Converters.Text
         [InlineData(null, "False|True", null)]
         public void Convert_ShouldReturnCorrectText(object? value, string parameter, string? expected)
         {
-            // Act
+
             var result = _converter.Convert(value, typeof(string), parameter, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
     }
 }
+

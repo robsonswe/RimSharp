@@ -1,4 +1,4 @@
-// Core/Services/SystemInfoServiceFactory.cs
+
 #nullable enable
 using System.Runtime.InteropServices;
 
@@ -12,8 +12,7 @@ namespace RimSharp.Core.Services
             {
                 return new WindowsSystemInfoService();
             }
-            
-            // Placeholder for other platforms
+
             return new NullSystemInfoService();
         }
     }
@@ -23,3 +22,5 @@ namespace RimSharp.Core.Services
         public long GetPrimaryGpuVram() => 0;
     }
 }
+
+

@@ -19,7 +19,7 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.Strip
         [AvaloniaFact]
         public void SelectionPropagation_ShouldWorkBothWays()
         {
-            // Arrange
+
             var modVm = new StrippableModViewModel(new ModItem { Name = "Test Mod" });
             var item1 = new StrippableItemViewModel(modVm, "File1", "path1", "full1", 100, StrippableItemType.File);
             var item2 = new StrippableItemViewModel(modVm, "File2", "path2", "full2", 200, StrippableItemType.File);
@@ -52,7 +52,7 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.Strip
         [AvaloniaFact]
         public void TotalSelectedSize_ShouldUpdateCorrectly()
         {
-            // Arrange
+
             var mod1 = new StrippableModViewModel(new ModItem());
             mod1.Children.Add(new StrippableItemViewModel(mod1, "f1", "p1", "full1", 1000, StrippableItemType.File));
             
@@ -67,14 +67,13 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.Strip
             // Act - Deselect one mod
             mod1.IsSelected = false;
 
-            // Assert
             vm.TotalSelectedSize.Should().Be(2000);
         }
 
         [AvaloniaFact]
         public void ExecuteStrip_ShouldReturnAllSelectedPaths()
         {
-            // Arrange
+
             var mod1 = new StrippableModViewModel(new ModItem());
             mod1.Children.Add(new StrippableItemViewModel(mod1, "f1", "p1", "full1", 100, StrippableItemType.File));
             
@@ -83,13 +82,12 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.Strip
             (bool Strip, IEnumerable<string>? Paths) result = (false, null);
             vm.RequestCloseDialog += (s, e) => result = vm.DialogResult;
 
-            // Act
             vm.StripCommand.Execute(null);
 
-            // Assert
             result.Strip.Should().BeTrue();
             result.Paths.Should().NotBeNull();
             result.Paths!.Should().Contain("full1");
         }
     }
 }
+

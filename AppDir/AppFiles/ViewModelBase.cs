@@ -14,10 +14,6 @@ using ReactiveUI;
 
 namespace RimSharp.AppDir.AppFiles
 {
-    /// <summary>
-    /// Base class for all ViewModels in the application for Avalonia.
-    /// Uses ReactiveObject for better integration with Avalonia/ReactiveUI.
-    /// </summary>
     public abstract class ViewModelBase : ReactiveObject, IDisposable
     {
         private readonly IModCommandService? _commandService;
@@ -36,7 +32,6 @@ namespace RimSharp.AppDir.AppFiles
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             if (_disposed) return;
-            // ReactiveObject handles this via this.RaisePropertyChanged
             (this as IReactiveObject).RaisePropertyChanged(new PropertyChangedEventArgs(propertyName));
         }
 
@@ -63,7 +58,7 @@ namespace RimSharp.AppDir.AppFiles
 
         #endregion
 
-        #region Command Creation Methods (Adapted for Avalonia)
+        #region Command Creation Methods
 
         protected DelegateCommand CreateCommand(Action execute, Func<bool>? canExecute = null, params string[] observedProperties)
         {

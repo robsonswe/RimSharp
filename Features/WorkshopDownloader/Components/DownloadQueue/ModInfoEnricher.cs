@@ -5,7 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using RimSharp.Features.WorkshopDownloader.Models;
 using RimSharp.Shared.Models;
-using RimSharp.Shared.Services.Contracts; // For IModListManager
+using RimSharp.Shared.Services.Contracts;
 
 namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 {
@@ -21,14 +21,13 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
         public ModInfoEnricher(IModListManager modListManager)
         {
             _modListManager = modListManager ?? throw new ArgumentNullException(nameof(modListManager));
-            // Initial population can happen here or lazily on first use
+
             // RefreshLocalModLookup();
         }
 
         /// <summary>
-        /// Refreshes the internal lookup dictionary of local mods by their Steam ID.
-        /// Should be called when the local mod list might have changed.
-        /// </summary>
+
+/// </summary>
         public void RefreshLocalModLookup()
         {
             try
@@ -46,19 +45,17 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ModInfoEnricher] Error refreshing local mod lookup: {ex.Message}");
-                _localModLookupBySteamId.Clear(); // Ensure lookup is empty on error
+                _localModLookupBySteamId.Clear();
             }
         }
 
         /// <summary>
-        /// Enriches a single DownloadItem with information from the local mod lookup.
+
         /// </summary>
         /// <param name="item">The DownloadItem to enrich.</param>
         public void EnrichDownloadItem(DownloadItem item)
         {
             if (item == null || string.IsNullOrEmpty(item.SteamId)) return;
-
-            // Ensure the lookup is populated if it hasn't been already
             if (!_localModLookupBySteamId.Any())
             {
                  RefreshLocalModLookup();
@@ -70,14 +67,14 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 Debug.WriteLine($"  - IsInstalled: {item.IsInstalled} -> true");
                 Debug.WriteLine($"  - IsActive: {item.IsActive} -> {_modListManager.IsModActive(localMod)}");
                 Debug.WriteLine($"  - IsFavorite: {item.IsFavorite} -> {localMod.IsFavorite}");
-                
+
                 item.IsInstalled = true;
                 item.LocalDateStamp = localMod.DateStamp;
                 item.IsActive = _modListManager.IsModActive(localMod);
                 item.IsLocallySupportedRW = localMod.IsSupportedRW;
                 item.InstalledVersions = localMod.SupportedVersions;
                 item.IsFavorite = localMod.IsFavorite;
-                
+
                 Debug.WriteLine($"  - After set: IsInstalled={item.IsInstalled}, IsActive={item.IsActive}, IsFavorite={item.IsFavorite}");
             }
             else
@@ -88,12 +85,12 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
         }
 
         /// <summary>
-        /// Refreshes the local mod lookup and enriches all items in the provided collection.
+
         /// </summary>
         /// <param name="items">The collection of DownloadItems to enrich.</param>
         public void EnrichAllDownloadItems(IEnumerable<DownloadItem> items)
         {
-            RefreshLocalModLookup(); // Ensure lookup is fresh before enriching all
+            RefreshLocalModLookup();
             if (items == null) return;
 
             Debug.WriteLine($"[ModInfoEnricher] Enriching all {items.Count()} download items using refreshed lookup...");
@@ -105,3 +102,5 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
         }
     }
 }
+
+

@@ -34,8 +34,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             {
                 if (SetProperty(ref _isOperationInProgress, value))
                 {
-                    // Command CanExecute state will auto-update via observation
-                    // But we might need to manually update related properties like CanAddMod/CanDownload
                     RefreshDependentProperties();
                 }
             }
@@ -49,8 +47,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             {
                 if (SetProperty(ref _isSteamCmdReady, value))
                 {
-                    // Command CanExecute state will auto-update via observation
-                    // But we might need to manually update related properties like CanAddMod/CanDownload
                     RefreshDependentProperties();
                 }
             }
@@ -60,7 +56,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
         public bool CanDownload
         {
             get => _canDownload;
-            // Make setter private as it's calculated internally
             private set => SetProperty(ref _canDownload, value);
         }
 
@@ -70,8 +65,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             get => _canAddMod;
             private set => SetProperty(ref _canAddMod, value);
         }
-
-
 
         public ObservableCollection<DownloadItem> DownloadList => _queueService.Items;
 
@@ -91,8 +84,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
         private NotifyCollectionChangedEventHandler? _queueServiceItemsHandler;
         private EventHandler? _browserModInfoAvailabilityHandler;
         private PropertyChangedEventHandler? _browserPropertyChangedHandler;
-        // Remove the _steamCmdSetupStateHandler as CommandHandler handles the status update now
-        // private EventHandler<bool>? _steamCmdSetupStateHandler;
 
         public DownloadQueueViewModel(
             IDownloadQueueService queueService,
@@ -117,17 +108,14 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 queueService, modService, dialogService, updateCheckerService,
                 steamCmdService, browserViewModel, getCancellationToken, modListManager, _modInfoEnricher, steamWorkshopQueueProcessor, logger, steamApiClient
             );
-
-            // Initialize properties based on initial handler state
             _isSteamCmdReady = _commandHandler.IsSteamCmdReady;
-            // Calculate initial CanAddMod/CanDownload states
+
             CalculateCanDownload();
 
             _commandHandler.StatusChanged += (s, msg) => StatusChanged?.Invoke(this, msg);
-            _commandHandler.OperationStarted += (s, e) => OperationStarted?.Invoke(this, e); // DownloaderVM handles IsOperationInProgress
-            _commandHandler.OperationCompleted += (s, e) => OperationCompleted?.Invoke(this, e); // DownloaderVM handles IsOperationInProgress
+            _commandHandler.OperationStarted += (s, e) => OperationStarted?.Invoke(this, e); 
+            _commandHandler.OperationCompleted += (s, e) => OperationCompleted?.Invoke(this, e); 
             _commandHandler.DownloadCompletedAndRefreshNeeded += (s, e) => DownloadCompletedAndRefreshNeeded?.Invoke(this, e);
-            // Handler now directly updates IsSteamCmdReady property via SetProperty
             _commandHandler.SteamCmdReadyStatusChanged += (s, e) => RunOnUIThread(() => IsSteamCmdReady = _commandHandler.IsSteamCmdReady);
 
             _queueServiceItemsHandler = QueueService_ItemsChanged;
@@ -138,39 +126,30 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             _browserPropertyChangedHandler = BrowserViewModel_PropertyChanged;
             _browserViewModel.PropertyChanged += _browserPropertyChangedHandler;
 
-            // Removed: _steamCmdService.SetupStateChanged handler as _commandHandler manages this now.
-
-            // --- Command Creation using ViewModelBase helpers ---
-
-            // SetupSteamCmdCommand: Enabled only if SteamCMD is NOT ready and no operation is in progress
             SetupSteamCmdCommand = CreateCancellableAsyncCommand(
                 _commandHandler.ExecuteSetupSteamCmdAsync,
                 () => !IsSteamCmdReady && !IsOperationInProgress,
-                nameof(IsSteamCmdReady), nameof(IsOperationInProgress) // Observe these properties
+                nameof(IsSteamCmdReady), nameof(IsOperationInProgress)
             );
 
-            // CheckUpdatesCommand: Enabled only if SteamCMD IS ready, check is possible, and no operation is in progress
             CheckUpdatesCommand = CreateCancellableAsyncCommand(
                 _commandHandler.ExecuteCheckUpdatesAsync,
                 () => IsSteamCmdReady && _commandHandler.CanExecuteCheckUpdates() && !IsOperationInProgress,
-                 nameof(IsSteamCmdReady), nameof(IsOperationInProgress) // Observe these properties (CanExecuteCheckUpdates doesn't change often, so maybe not needed, but IsSteamCmdReady/IsOperationInProgress are key)
+                 nameof(IsSteamCmdReady), nameof(IsOperationInProgress) 
             );
 
-            // AddModCommand: Uses the CanAddMod property for CanExecute. Enabled only if requirements met AND SteamCMD is ready.
             AddModCommand = CreateCancellableAsyncCommand(
                 _commandHandler.ExecuteAddModAsync,
-                () => CanAddMod, // Use local CanAddMod property
-                nameof(CanAddMod) // Observe local CanAddMod property
+                () => CanAddMod, 
+                nameof(CanAddMod) 
             );
 
-            // DownloadCommand: Uses the CanDownload property for CanExecute. Enabled if list has items, SteamCMD is ready, and no operation.
             DownloadCommand = CreateCancellableAsyncCommand(
                 _commandHandler.ExecuteDownloadAsync,
-                () => CanDownload, // CanExecute depends solely on the CanDownload property now
-                nameof(CanDownload) // Observe the calculated property
+                () => CanDownload, 
+                nameof(CanDownload) 
             );
 
-            // Sync commands observe IsOperationInProgress to disable during operations
             RemoveItemCommand = CreateAsyncCommand<DownloadItem>(
                 _commandHandler.ExecuteRemoveItemAsync,
                 item => !IsOperationInProgress && item != null,
@@ -188,16 +167,11 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 items => !IsOperationInProgress && items != null && items.Count > 0,
                 nameof(IsOperationInProgress)
             );
-            // --- End Command Creation ---
-            _browserPropertyChangedHandler = BrowserViewModel_PropertyChanged; // Ensure handler exists
-            _browserViewModel.PropertyChanged += _browserPropertyChangedHandler; // Ensure subscribed
-
 
             RunOnUIThread(() => _modInfoEnricher.EnrichAllDownloadItems(DownloadList));
 
             CalculateCanAddMod();
             CalculateCanDownload();
-
         }
 
         private void CalculateCanDownload()
@@ -207,29 +181,23 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                           && !IsOperationInProgress;
         }
 
-        // Call this when IsOperationInProgress or IsSteamCmdReady changes, or list/browser state changes
         private void RefreshDependentProperties()
         {
             RunOnUIThread(() =>
             {
                 CalculateCanDownload();
-                // Note: Command CanExecute states that *directly* observe IsOperationInProgress/IsSteamCmdReady
-                // will update automatically via ViewModelBase's observation mechanism.
-                // We only need to recalculate properties like CanAddMod/CanDownload which are then observed by *their* commands.
+                CalculateCanAddMod();
             });
         }
 
-
         private void CalculateCanAddMod()
         {
-            // Check if the mod is already in the queue
             bool alreadyInQueue = false;
             if (BrowserViewModel != null && !string.IsNullOrEmpty(BrowserViewModel.CurrentPageSteamId))
             {
                 alreadyInQueue = DownloadList.Any(m => m.SteamId == BrowserViewModel.CurrentPageSteamId);
             }
 
-            // Use the public property now for consistency, or keep using _browserViewModel
             CanAddMod = IsSteamCmdReady
                         && !IsOperationInProgress
                         && BrowserViewModel != null
@@ -243,7 +211,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
         {
             RunOnUIThread(() =>
             {
-                // Enrichment logic (unchanged)
                 bool needsEnrichment = false;
                 if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems != null)
                 {
@@ -264,16 +231,13 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 {
                     _modInfoEnricher.EnrichAllDownloadItems(DownloadList);
                 }
-
-                // Recalculate states as list content changed
                 CalculateCanDownload();
-                CalculateCanAddMod(); // Recalculate duplicates
+                CalculateCanAddMod();
             });
         }
 
         private void BrowserViewModel_ModInfoAvailabilityChanged(object? sender, EventArgs e)
         {
-            // Recalculate CanAddMod when browser state changes
             RefreshDependentProperties();
         }
 
@@ -284,11 +248,9 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 e.PropertyName == nameof(BrowserViewModel.IsCollectionUrl) ||
                 e.PropertyName == nameof(BrowserViewModel.CurrentPageSteamId))
             {
-                RunOnUIThread(CalculateCanAddMod); // Recalculate when browser state changes
+                RunOnUIThread(CalculateCanAddMod); 
             }
-            // No need to handle BrowserViewModel.CanAddMod change anymore
         }
-
 
         public void RefreshLocalModInfo()
         {
@@ -296,7 +258,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             {
                 Debug.WriteLine("[QueueVM] External request to refresh local mod info.");
                 _modInfoEnricher.EnrichAllDownloadItems(DownloadList);
-                // Recalculate download state as local info might affect future logic (though not CanDownload directly now)
                 RefreshDependentProperties();
             });
         }
@@ -315,11 +276,9 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 if (_browserPropertyChangedHandler != null && _browserViewModel != null)
                     _browserViewModel.PropertyChanged -= _browserPropertyChangedHandler;
 
-
                 _queueServiceItemsHandler = null;
                 _browserModInfoAvailabilityHandler = null;
                 _browserPropertyChangedHandler = null;
-                // Removed: _steamCmdSetupStateHandler = null;
 
                 Debug.WriteLine("DownloadQueueViewModel cleaned up (derived resources).");
             }

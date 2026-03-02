@@ -96,8 +96,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         private readonly string? _originalExternalUrl;
         private readonly string? _originalTags;
 
-
-        // Original mod properties (display-only)
+// Original mod properties (display-only)
         public bool HasOriginalLoadBottom => _originalLoadBottom;
         public List<string> OriginalLoadBeforeItems => _originalLoadBefore;
         public List<string> OriginalDependenciesItems => _originalDependencies;
@@ -161,7 +160,6 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         public ObservableCollection<ModDependencyRuleViewModel> CustomLoadAfter { get; } = new();
         public ObservableCollection<ModIncompatibilityRuleViewModel> CustomIncompatibilities { get; } = new();
 
-        // Selected items for editing
         private ModDependencyRuleViewModel? _selectedLoadBeforeRule;
         public ModDependencyRuleViewModel? SelectedLoadBeforeRule
         {
@@ -208,12 +206,10 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
             _customInfo = customInfo ?? new ModCustomInfo();
 
-            // Determine original data by subtracting custom rules from the merged mod data
             _originalLoadBefore = mod.LoadBefore?
                 .Where(id => !_customInfo.LoadBefore?.ContainsKey(id) ?? true)
                 .ToList() ?? new List<string>();
 
-            // Dependencies are immutable for customization but used for validation
             _originalDependencies = mod.ModDependencies?.Select(d => d.PackageId).ToList() ?? new List<string>();
 
             _originalLoadAfter = mod.LoadAfter?
@@ -223,8 +219,6 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             _originalIncompatibilities = mod.IncompatibleWith?.Keys
                 .Where(id => !(_customInfo.IncompatibleWith?.ContainsKey(id) ?? false))
                  .ToList() ?? new List<string>();
-
-            // For simple properties, we consider them original if they match the mod's value
             // and aren't explicitly set in custom info
             _originalLoadBottom = mod.LoadBottom &&
                 (_customInfo.LoadBottom == null || !_customInfo.LoadBottom.Value);
@@ -239,7 +233,6 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             _originalTags = string.IsNullOrEmpty(_customInfo.Tags) ?
                 mod.Tags : null;
 
-            // Initialize basic properties
             IsFavorite = _customInfo.Favorite ?? false;
             ExternalUrl = _customInfo.ExternalUrl ?? mod.ExternalUrl ?? "";
             Tags = _customInfo.Tags ?? mod.Tags ?? "";
@@ -248,8 +241,6 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             // Setup LoadBottom
             LoadBottom = !HasOriginalLoadBottom && (_customInfo.LoadBottom?.Value ?? false);
             LoadBottomComment = string.Join(", ", _customInfo.LoadBottom?.Comment ?? Enumerable.Empty<string>());
-
-            // Initialize rule collections
             InitializeRuleCollections();
 
             // Setup commands
@@ -272,26 +263,24 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 
         private void InitializeRuleCollections()
         {
-            // Clear existing collections
+
             CustomLoadBefore.Clear();
             CustomLoadAfter.Clear();
             CustomIncompatibilities.Clear();
 
-            // Provide an empty list if the source list is null before joining
             var emptyList = new List<string>(); // Cache an empty list for efficiency
 
-            // LoadBefore rules - only add custom rules that aren't in original
             if (_customInfo.LoadBefore != null)
             {
                 foreach (var rule in _customInfo.LoadBefore)
                 {
-                    // Only add if this isn't actually an original rule
+
                     if (!_originalLoadBefore.Contains(rule.Key))
                     {
                         CustomLoadBefore.Add(new ModDependencyRuleViewModel
                         {
                             PackageId = rule.Key,
-                            // Use ?? to handle potential null lists
+
                             DisplayName = string.Join(", ", rule.Value.Name ?? emptyList),
                             Comment = string.Join(", ", rule.Value.Comment ?? emptyList),
                             IsOriginal = false
@@ -310,7 +299,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                         CustomLoadAfter.Add(new ModDependencyRuleViewModel
                         {
                             PackageId = rule.Key,
-                            // Use ?? to handle potential null lists
+
                             DisplayName = string.Join(", ", rule.Value.Name ?? emptyList),
                             Comment = string.Join(", ", rule.Value.Comment ?? emptyList),
                             IsOriginal = false
@@ -329,7 +318,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                         CustomIncompatibilities.Add(new ModIncompatibilityRuleViewModel
                         {
                             PackageId = rule.Key,
-                            // Use ?? to handle potential null lists
+
                             DisplayName = string.Join(", ", rule.Value.Name ?? emptyList),
                             Comment = string.Join(", ", rule.Value.Comment ?? emptyList),
                             HardIncompatibility = rule.Value.HardIncompatibility,
@@ -411,17 +400,16 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         #region Validation Methods
 
         /// <summary>
-        /// Checks if the package ID already exists in any of the lists (both original and custom)
+
         /// </summary>
         private bool IsPackageIdDuplicated(string packageId)
         {
-            // Check original lists
+
             if (_originalLoadBefore.Contains(packageId) ||
                 _originalLoadAfter.Contains(packageId) ||
                 _originalIncompatibilities.Contains(packageId))
                 return true;
 
-            // Check custom lists
             if (CustomLoadBefore.Any(x => x.PackageId == packageId) ||
                 CustomLoadAfter.Any(x => x.PackageId == packageId) ||
                 CustomIncompatibilities.Any(x => x.PackageId == packageId))
@@ -431,25 +419,18 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         }
 
         /// <summary>
-        /// Checks if the package ID exists in any list except the one specified
+
         /// </summary>
         private bool IsPackageIdInOtherLists(string packageId, string listType)
         {
-            // Check if in LoadBefore (original or custom)
             if (listType != "LoadBefore" &&
                 (_originalLoadBefore.Contains(packageId) || CustomLoadBefore.Any(x => x.PackageId == packageId)))
                 return true;
-
-            // Check if in Dependencies (original) - always treated as a LoadBefore
             if (listType != "LoadBefore" && _originalDependencies.Contains(packageId))
                 return true;
-
-            // Check if in LoadAfter (original or custom)
             if (listType != "LoadAfter" &&
                 (_originalLoadAfter.Contains(packageId) || CustomLoadAfter.Any(x => x.PackageId == packageId)))
                 return true;
-
-            // Check if in IncompatibleWith (original or custom)
             if (listType != "IncompatibleWith" &&
                 (_originalIncompatibilities.Contains(packageId) || CustomIncompatibilities.Any(x => x.PackageId == packageId)))
                 return true;
@@ -462,21 +443,16 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         /// </summary>
         private async Task<bool> ValidateLoadBeforeAsync(string packageId)
         {
-            // Check if already in LoadBefore
             if (_originalLoadBefore.Contains(packageId) || CustomLoadBefore.Any(x => x.PackageId == packageId))
             {
                 await _dialogService.ShowWarning("Duplicate Entry", $"Package ID '{packageId}' already exists in the Load Before list.");
                 return false;
             }
-
-            // Check if it's already a dependency (redundant but not an error)
             if (_originalDependencies.Contains(packageId))
             {
                 await _dialogService.ShowInformation("Redundant Rule", $"Package ID '{packageId}' is already a dependency. Dependencies are automatically loaded before this mod.");
                 return false;
             }
-
-            // Check if in other lists
             if (IsPackageIdInOtherLists(packageId, "LoadBefore"))
             {
                 await _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list (Load After or Incompatible). " +
@@ -492,21 +468,16 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         /// </summary>
         private async Task<bool> ValidateLoadAfterAsync(string packageId)
         {
-            // Check if already in LoadAfter
             if (_originalLoadAfter.Contains(packageId) || CustomLoadAfter.Any(x => x.PackageId == packageId))
             {
                 await _dialogService.ShowWarning("Duplicate Entry", $"Package ID '{packageId}' already exists in the Load After list.");
                 return false;
             }
-
-            // Check if it's a dependency (conflict: dependencies must be before)
             if (_originalDependencies.Contains(packageId))
             {
                 await _dialogService.ShowError("Rule Conflict", $"Package ID '{packageId}' is a dependency. Dependencies MUST be loaded before this mod, so they cannot be added to the Load After list.");
                 return false;
             }
-
-            // Check if in other lists
             if (IsPackageIdInOtherLists(packageId, "LoadAfter"))
             {
                 await _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list (Load Before or Incompatible). " +
@@ -522,21 +493,16 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         /// </summary>
         private async Task<bool> ValidateIncompatibilityAsync(string packageId)
         {
-            // Check if already in IncompatibleWith
             if (_originalIncompatibilities.Contains(packageId) || CustomIncompatibilities.Any(x => x.PackageId == packageId))
             {
                 await _dialogService.ShowWarning("Duplicate Entry", $"Package ID '{packageId}' already exists in the Incompatible With list.");
                 return false;
             }
-
-            // Check if it's a dependency (conflict)
             if (_originalDependencies.Contains(packageId))
             {
                 await _dialogService.ShowError("Rule Conflict", $"Package ID '{packageId}' is a dependency. A required dependency cannot also be marked as incompatible.");
                 return false;
             }
-
-            // Check if in other lists
             if (IsPackageIdInOtherLists(packageId, "IncompatibleWith"))
             {
                 await _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list (Load Before or Load After). " +
@@ -556,7 +522,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             var dialogViewModel = new DependencyRuleEditorDialogViewModel("Add Load Before Rule", _dialogService, _modService);
             if (await _dialogService.ShowDependencyRuleEditorAsync(dialogViewModel))
             {
-                // Validate the package ID before adding
+
                 if (!await ValidateLoadBeforeAsync(dialogViewModel.PackageId))
                     return;
 
@@ -585,7 +551,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             };
             if (await _dialogService.ShowDependencyRuleEditorAsync(dialogViewModel))
             {
-                // If the package ID changed, validate it
+
                 if (dialogViewModel.PackageId != SelectedLoadBeforeRule.PackageId)
                 {
                     if (!await ValidateLoadBeforeAsync(dialogViewModel.PackageId))
@@ -612,7 +578,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             var dialogViewModel = new DependencyRuleEditorDialogViewModel("Add Load After Rule", _dialogService, _modService);
             if (await _dialogService.ShowDependencyRuleEditorAsync(dialogViewModel))
             {
-                // Validate the package ID before adding
+
                 if (!await ValidateLoadAfterAsync(dialogViewModel.PackageId))
                     return;
 
@@ -641,7 +607,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             };
             if (await _dialogService.ShowDependencyRuleEditorAsync(dialogViewModel))
             {
-                // If the package ID changed, validate it
+
                 if (dialogViewModel.PackageId != SelectedLoadAfterRule.PackageId)
                 {
                     if (!await ValidateLoadAfterAsync(dialogViewModel.PackageId))
@@ -668,7 +634,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             var dialogViewModel = new IncompatibilityRuleEditorDialogViewModel("Add Incompatibility Rule", _dialogService, _modService);
             if (await _dialogService.ShowIncompatibilityRuleEditorAsync(dialogViewModel))
             {
-                // Validate the package ID before adding
+
                 if (!await ValidateIncompatibilityAsync(dialogViewModel.PackageId))
                     return;
 
@@ -699,7 +665,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             };
             if (await _dialogService.ShowIncompatibilityRuleEditorAsync(dialogViewModel))
             {
-                // If the package ID changed, validate it
+
                 if (dialogViewModel.PackageId != SelectedIncompatibilityRule.PackageId)
                 {
                     if (!await ValidateIncompatibilityAsync(dialogViewModel.PackageId))
@@ -724,3 +690,5 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         #endregion
     }
 }
+
+

@@ -40,15 +40,13 @@ namespace RimSharp.Tests.AppDir.AppFiles
         [Fact]
         public void SetProperty_ShouldNotifyChange()
         {
-            // Arrange
+
             var vm = new TestViewModel();
             string? changedProperty = null;
             vm.PropertyChanged += (s, e) => changedProperty = e.PropertyName;
 
-            // Act
             vm.Name = "New Name";
 
-            // Assert
             vm.Name.Should().Be("New Name");
             changedProperty.Should().Be(nameof(TestViewModel.Name));
         }
@@ -56,44 +54,38 @@ namespace RimSharp.Tests.AppDir.AppFiles
         [Fact]
         public void SetProperty_ShouldNotNotifyIfValueIsSame()
         {
-            // Arrange
+
             var vm = new TestViewModel { Name = "Same" };
             bool notified = false;
             vm.PropertyChanged += (s, e) => notified = true;
 
-            // Act
             vm.Name = "Same";
 
-            // Assert
             notified.Should().BeFalse();
         }
 
         [Fact]
         public void CreateCommand_ShouldReturnCommandAndAddToList()
         {
-            // Arrange
+
             var vm = new TestViewModel();
 
-            // Act
             var command = vm.CreateTestCommand<RimSharp.Core.Commands.Base.DelegateCommand>(() => { });
 
-            // Assert
             command.Should().NotBeNull();
         }
 
         [Fact]
         public void GetGlobalCommand_ShouldUseCommandService()
         {
-            // Arrange
+
             var mockService = Substitute.For<IModCommandService>();
             var mockCommand = Substitute.For<ICommand>();
             mockService.GetCommand("TestCommand").Returns(mockCommand);
             var vm = new TestViewModel(mockService);
 
-            // Act
             var result = vm.GetGlobalCommand("TestCommand");
 
-            // Assert
             result.Should().Be(mockCommand);
             mockService.Received(1).GetCommand("TestCommand");
         }
@@ -101,33 +93,30 @@ namespace RimSharp.Tests.AppDir.AppFiles
         [Fact]
         public async Task RunAsync_ShouldExecuteAndHandleException()
         {
-            // Arrange
+
             var vm = new TestViewModel();
             bool executed = false;
 
-            // Act
             await vm.RunAsync(async () => {
                 await Task.Yield();
                 executed = true;
             });
 
-            // Assert
             executed.Should().BeTrue();
         }
 
         [Fact]
         public void Dispose_ShouldClearCommands()
         {
-            // Arrange
+
             var vm = new TestViewModel();
             var command = vm.CreateTestCommand<RimSharp.Core.Commands.Base.DelegateCommand>(() => { });
 
-            // Act
             vm.Dispose();
 
-            // Assert
             Action act = () => vm.CreateTestCommand<RimSharp.Core.Commands.Base.DelegateCommand>(() => { });
             act.Should().Throw<ObjectDisposedException>();
         }
     }
 }
+

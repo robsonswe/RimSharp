@@ -33,13 +33,11 @@ namespace RimSharp.Tests.Features.VramAnalysis.Tools
         [Fact]
         public void Calculate_ShouldReturnEmptyResult_WhenDirectoryDoesNotExist()
         {
-            // Arrange
+
             var nonExistentPath = Path.Combine(_tempDirectory, "NonExistentMod");
 
-            // Act
             var result = VramEstimator.Calculate(nonExistentPath, "1.5", new HashSet<string>());
 
-            // Assert
             result.EstimatedVramUncompressed.Should().Be(0);
             result.TextureCount.Should().Be(0);
         }
@@ -47,13 +45,11 @@ namespace RimSharp.Tests.Features.VramAnalysis.Tools
         [Fact]
         public void Calculate_ShouldHandlePngFiles_Correctly()
         {
-            // Arrange
+
             CreatePngFile(Path.Combine(_texturesDirectory, "texture.png"), 1024, 1024);
 
-            // Act
             var result = VramEstimator.Calculate(_tempDirectory, "1.5", new HashSet<string>());
 
-            // Assert
             long baseSize = 1024 * 1024 * 4;
             long expectedVram = (long)(baseSize * 1.33333);
 
@@ -64,13 +60,11 @@ namespace RimSharp.Tests.Features.VramAnalysis.Tools
         [Fact]
         public void Calculate_ShouldHandleDdsFiles_DXT1_Correctly()
         {
-            // Arrange
+
             CreateDdsFile(Path.Combine(_texturesDirectory, "texture.dds"), 1024, 1024, "DXT1");
 
-            // Act
             var result = VramEstimator.Calculate(_tempDirectory, "1.5", new HashSet<string>());
 
-            // Assert
             long expectedSize = (long)(1024 * 1024 * 0.5);
             result.EstimatedVramCompressed.Should().Be(expectedSize);
             result.EstimatedVramUncompressed.Should().Be(expectedSize); 
@@ -80,13 +74,11 @@ namespace RimSharp.Tests.Features.VramAnalysis.Tools
         [Fact]
         public void Calculate_ShouldHandlePsdFiles_Correctly()
         {
-            // Arrange
+
             CreatePsdFile(Path.Combine(_texturesDirectory, "texture.psd"), 1024, 1024);
 
-            // Act
             var result = VramEstimator.Calculate(_tempDirectory, "1.5", new HashSet<string>());
 
-            // Assert
             long baseSize = 1024 * 1024 * 4;
             long expectedVram = (long)(baseSize * 1.33333);
             result.EstimatedVramUncompressed.Should().Be(expectedVram);
@@ -96,13 +88,11 @@ namespace RimSharp.Tests.Features.VramAnalysis.Tools
         [Fact]
         public void Calculate_ShouldHandleJpgFiles_Correctly()
         {
-            // Arrange
+
             CreateJpgFile(Path.Combine(_texturesDirectory, "texture.jpg"), 1024, 1024);
 
-            // Act
             var result = VramEstimator.Calculate(_tempDirectory, "1.5", new HashSet<string>());
 
-            // Assert
             long expectedSize = 1024 * 1024 * 3;
             long expectedVram = (long)(expectedSize * 1.33333);
             result.EstimatedVramUncompressed.Should().Be(expectedVram);
@@ -112,22 +102,20 @@ namespace RimSharp.Tests.Features.VramAnalysis.Tools
         [Fact]
         public void Calculate_ShouldIgnoreAboutFolder()
         {
-            // Arrange
+
             var aboutDir = Path.Combine(_tempDirectory, "About");
             Directory.CreateDirectory(aboutDir);
             CreatePngFile(Path.Combine(aboutDir, "preview.png"), 512, 512);
 
-            // Act
             var result = VramEstimator.Calculate(_tempDirectory, "1.5", new HashSet<string>());
 
-            // Assert
             result.TextureCount.Should().Be(0);
         }
 
         [Fact]
         public void Calculate_ShouldHandleLoadFolders_Exclusions()
         {
-            // Arrange
+
             var loadFoldersXml = @"<?xml version=""1.0"" encoding=""utf-8""?>
 <loadFolders>
   <v1.5>
@@ -140,10 +128,8 @@ namespace RimSharp.Tests.Features.VramAnalysis.Tools
             Directory.CreateDirectory(patchDir);
             CreatePngFile(Path.Combine(patchDir, "patch.png"), 256, 256);
 
-            // Act
             var result = VramEstimator.Calculate(_tempDirectory, "1.5", new HashSet<string>());
 
-            // Assert
             result.TextureCount.Should().Be(0);
             result.ConditionalDependencies.Should().Contain(d => d.PackageId == "othermod" && !d.IsActive);
         }
@@ -151,13 +137,11 @@ namespace RimSharp.Tests.Features.VramAnalysis.Tools
         [Fact]
         public void Calculate_ShouldIdentifyAtlasedTextures()
         {
-            // Arrange
+
             CreatePngFile(Path.Combine(_texturesDirectory, "small.png"), 256, 256);
 
-            // Act
             var result = VramEstimator.Calculate(_tempDirectory, "1.5", new HashSet<string>());
 
-            // Assert
             result.InAtlasCount.Should().Be(1);
             result.TextureCount.Should().Be(1);
         }
@@ -246,3 +230,4 @@ namespace RimSharp.Tests.Features.VramAnalysis.Tools
         }
     }
 }
+

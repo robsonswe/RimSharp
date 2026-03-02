@@ -47,7 +47,7 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
                 var selectedCount = _modsToCheck.Count(m => m.IsSelected);
                 if (selectedCount == 0) return false;
                 if (selectedCount == _modsToCheck.Count) return true;
-                return null; // Indeterminate
+                return null; 
             }
             set => SetSelectionAll(value ?? false);
         }
@@ -215,3 +215,4 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
         }
     }
 }
+

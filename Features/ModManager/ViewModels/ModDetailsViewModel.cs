@@ -1,7 +1,7 @@
 using RimSharp.Core.Commands;
 using RimSharp.AppDir.AppFiles;
 using RimSharp.Shared.Models;
-using RimSharp.Shared.Services.Contracts; // For IDialogService
+using RimSharp.Shared.Services.Contracts;
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Input;
@@ -20,7 +20,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             get => _currentMod;
             set
             {
-                // Use base SetProperty
+
                 if (SetProperty(ref _currentMod, value))
                 {
                     // Command observation handles CanExecute updates automatically
@@ -33,16 +33,12 @@ namespace RimSharp.Features.ModManager.ViewModels
         public bool HasValidUrlOrPath => CurrentMod != null &&
                                          (!string.IsNullOrWhiteSpace(CurrentMod.Url) ||
                                           (!string.IsNullOrWhiteSpace(CurrentMod.Path) && Directory.Exists(CurrentMod.Path)));
-
-
-        // --- Commands specific to the SINGLE selected mod ---
         public ICommand OpenUrlCommand { get; }
 
-
-        public ModDetailsViewModel(IDialogService dialogService)
+public ModDetailsViewModel(IDialogService dialogService)
         {
             _dialogService = dialogService;
-            // Use base helper CreateAsyncCommand and observe CurrentMod
+
             OpenUrlCommand = CreateAsyncCommand<string>(ExecuteOpenUrl, CanExecuteOpenUrl, nameof(CurrentMod));
         }
 
@@ -56,11 +52,11 @@ namespace RimSharp.Features.ModManager.ViewModels
             if (CurrentMod == null) return;
 
             // Priority:
-            // 1. targetPath if provided (e.g. from clicking the Path link)
+
             // 2. CurrentMod.Url (default mod link)
             // 3. CurrentMod.Path (fallback)
             string? target = targetPath;
-            
+
             if (string.IsNullOrWhiteSpace(target))
             {
                 target = CurrentMod.Url;
@@ -88,3 +84,5 @@ namespace RimSharp.Features.ModManager.ViewModels
         }
     }
 }
+
+

@@ -11,9 +11,8 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
         private string _authors = string.Empty;
         private string _versionsString = string.Empty;
         private string _steamId = string.Empty;
-        // private bool _isPublished = false; // No backing field needed if get-only
 
-        public string Name
+public string Name
         {
             get => _name;
             private set => SetProperty(ref _name, value); // Keep private set if needed internally
@@ -34,12 +33,12 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
         public string SteamId { get; } // Keep get-only
 
         /// <summary>
-        /// Indicates whether the mod variant is currently published on Steam Workshop.
+
         /// </summary>
         public bool IsPublished { get; } // Make this get-only, set in constructor
 
         /// <summary>
-        /// Helper property for XAML binding, indicates if this variant can be selected.
+
         /// </summary>
         public bool IsSelectable => IsPublished;
 
@@ -56,3 +55,4 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
         }
     }
 }
+

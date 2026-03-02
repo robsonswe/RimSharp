@@ -54,7 +54,6 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download
                 _mockPathService, _mockInstaller, _mockDialogService, _mockLogger, _mockGamePathService,
                 _mockScriptGenerator, _mockProcessRunner, _mockLogParser, _mockItemProcessor);
 
-            // Default setup for success
             string dummyExe = Path.Combine(_testTempDir, "steamcmd.exe");
             File.WriteAllText(dummyExe, "dummy");
 
@@ -77,9 +76,9 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download
         [Fact]
         public async Task DownloadModsAsync_WhenEverythingSucceeds_ShouldReturnOverallSuccess()
         {
-            // Arrange
+
             var items = new List<DownloadItem> { new DownloadItem { SteamId = "123", Name = "Mod 1" } };
-            
+
             _mockLogParser.ParseSteamCmdSessionLogsAsync(Arg.Any<SteamCmdLogFilePaths>(), Arg.Any<ISet<string>>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
                 .Returns(new SteamCmdSessionLogParseResult
                 {
@@ -89,10 +88,8 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download
             _mockItemProcessor.ProcessItemAsync(Arg.Any<DownloadItem>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
                 .Returns((true, "Processed"));
 
-            // Act
             var result = await _downloader.DownloadModsAsync(items, true, null);
 
-            // Assert
             result.OverallSuccess.Should().BeTrue();
             result.SucceededItems.Should().HaveCount(1);
             result.FailedItems.Should().BeEmpty();
@@ -101,20 +98,16 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download
         [Fact]
         public async Task DownloadModsAsync_WhenDownloadFailsAfterRetries_ShouldReturnOverallFailure()
         {
-            // Arrange
+
             var items = new List<DownloadItem> { new DownloadItem { SteamId = "123", Name = "Mod 1" } };
-            
-            // Log parser returns failure for all attempts
             _mockLogParser.ParseSteamCmdSessionLogsAsync(Arg.Any<SteamCmdLogFilePaths>(), Arg.Any<ISet<string>>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
                 .Returns(new SteamCmdSessionLogParseResult
                 {
                     WorkshopItemResults = { ["123"] = (false, DateTime.Now, "Timeout") }
                 });
 
-            // Act
             var result = await _downloader.DownloadModsAsync(items, true, null);
 
-            // Assert
             result.OverallSuccess.Should().BeFalse();
             result.FailedItems.Should().HaveCount(1);
             result.FailedItems[0].Item.SteamId.Should().Be("123");
@@ -122,3 +115,5 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download
         }
     }
 }
+
+

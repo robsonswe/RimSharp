@@ -16,15 +16,14 @@ namespace RimSharp.Tests.Core.Helpers
         [AvaloniaFact]
         public void DataProperty_ShouldStoreValue()
         {
-            // Arrange
+
             var proxy = new BindingProxy();
             var data = new { Name = "Test" };
 
-            // Act
             proxy.Data = data;
 
-            // Assert
             proxy.Data.Should().Be(data);
         }
     }
 }
+

@@ -76,12 +76,12 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
             _logger = logger; 
             _pathService = pathService; 
             _systemInfoService = systemInfoService;
-            
+
             CalculateVramCommand = CreateCancellableAsyncCommand(ExecuteVramCalculationAsync, () => !IsBusy, nameof(IsBusy));
             SortCommand = CreateCommand<string>(ExecuteSortCommand);
-            
+
             _modListManager.ListChanged += OnModListChanged; 
-            
+
             LoadSystemInfo(); 
             _ = Task.Run(LoadMods);
         }
@@ -89,48 +89,46 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
         private void LoadSystemInfo() { Task.Run(() => { UserVram = _systemInfoService.GetPrimaryGpuVram(); OnPropertyChanged(nameof(UserVram)); OnPropertyChanged(nameof(IsUserVramAvailable)); }); }
         private void LoadMods() { _allVramMods = _modListManager.GetAllMods().Where(m => m.ModType != ModType.Core && m.ModType != ModType.Expansion && m.Textures).Select(m => new VramModItemWrapper(m)).ToList(); ShowOnlyActive = false; ShowOnlyFavorites = false; ShowMaxVram = false; ApplyFiltersAndSort(); UpdateTotalVramEstimates(); }
         private void OnModListChanged(object? sender, EventArgs e) => RunOnUIThread(LoadMods);
-        
+
         private async Task ExecuteVramCalculationAsync(CancellationToken ct) 
         { 
             IsBusy = true; 
             StatusMessage = "Starting VRAM calculation..."; 
             ProgressDialogViewModel? progressVm = null; 
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct); 
-            
+
             try 
             { 
                 var modsToCalculate = _allVramMods.ToList(); 
                 if (!modsToCalculate.Any()) { StatusMessage = "No mods with textures found to analyze."; return; } 
-                
+
                 await RunOnUIThreadAsync(() => { progressVm = _dialogService.ShowProgressDialog("Calculating VRAM", "Preparing...", true, false, linkedCts); }); 
                 await Task.Delay(50, linkedCts.Token); 
-                
+
                 var activeModIds = _modListManager.VirtualActiveMods.Select(m => m.Mod.PackageId).ToHashSet(StringComparer.OrdinalIgnoreCase); 
                 var majorVersion = _pathService.GetMajorGameVersion(); 
                 int processedCount = 0; 
-                
+
                 await Task.Run(async () => 
                 { 
                     foreach (var modWrapper in modsToCalculate) 
                     { 
                         linkedCts.Token.ThrowIfCancellationRequested(); 
                         processedCount++; 
-                        
-                        RunOnUIThread(() => { progressVm?.UpdateProgress((int)((double)processedCount / modsToCalculate.Count * 100), $"Analyzing: {modWrapper.Mod.Name}"); }); 
-                        
-                        var result = VramEstimator.Calculate(modWrapper.Mod.Path, majorVersion, activeModIds); 
 
-                        // --- NEW: Logging for mods that return 0 VRAM ---
+                        RunOnUIThread(() => { progressVm?.UpdateProgress((int)((double)processedCount / modsToCalculate.Count * 100), $"Analyzing: {modWrapper.Mod.Name}"); }); 
+
+                        var result = VramEstimator.Calculate(modWrapper.Mod.Path, majorVersion, activeModIds);
                         if (result.EstimatedVramCompressed == 0 && !string.IsNullOrWhiteSpace(result.Logs))
                         {
                             System.Diagnostics.Debug.WriteLine(result.Logs); // Prints to Visual Studio Output Window
-                            
+
                             try {
-                                // IMPORTANT: Change 'LogMessage' to 'LogInfo' or whatever your ILoggerService uses
+
                                 // _logger.LogMessage(result.Logs); 
                             } catch { }
                         }
-                        
+
                         RunOnUIThread(() => { 
                             modWrapper.EstimatedVramUncompressed = result.EstimatedVramUncompressed; 
                             modWrapper.EstimatedVramCompressed = result.EstimatedVramCompressed; 
@@ -141,12 +139,12 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
                             modWrapper.MaxTextureCount = result.MaxTextureCount; 
                             modWrapper.InAtlasCount = result.InAtlasCount; 
                             modWrapper.MaxInAtlasCount = result.MaxInAtlasCount; 
-                            modWrapper.Logs = result.Logs; // Save logs to the wrapper
+                            modWrapper.Logs = result.Logs;
                         }); 
                         await Task.Delay(10, linkedCts.Token); 
                     } 
                 }, linkedCts.Token); 
-                
+
                 StatusMessage = "VRAM calculation complete."; 
                 progressVm?.CompleteOperation("Calculation complete."); 
             } 
@@ -194,3 +192,5 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
         protected override void Dispose(bool disposing) { if (!_disposed && disposing) _modListManager.ListChanged -= OnModListChanged; base.Dispose(disposing); }
     }
 }
+
+

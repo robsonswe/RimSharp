@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Xml.Linq;
-using RimSharp.Infrastructure.Logging; // Assuming ILoggerService is here
+using RimSharp.Infrastructure.Logging; 
 using RimSharp.Infrastructure.Data;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
@@ -16,16 +16,13 @@ namespace RimSharp.Shared.Services.Implementations
         private const string UseThisInsteadModFolderId = "3396308787";
         private const string UseThisInsteadReplacementsSubFolder = "Replacements";
         private const string DatabaseReplacementsFileName = "replacements.json";
-        // Updated: Relative path for the DB rules/replacements folder
         private readonly IDataUpdateService _dataUpdateService;
-
         private readonly IPathService _pathService;
         private readonly ILoggerService _logger;
         private Dictionary<string, ModReplacementInfo>? _replacementsCache;
         private bool _isInitialized = false;
         private readonly object _lock = new object();
 
-        // Constructor needs application base path in addition to others
         public ModReplacementService(IPathService pathService, IDataUpdateService dataUpdateService, ILoggerService logger)
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
@@ -35,7 +32,6 @@ namespace RimSharp.Shared.Services.Implementations
 
         public Dictionary<string, ModReplacementInfo> GetAllReplacements()
         {
-            // Double-check locking for thread safety
             if (_isInitialized && _replacementsCache != null)
             {
                 return _replacementsCache;
@@ -43,7 +39,7 @@ namespace RimSharp.Shared.Services.Implementations
 
             lock (_lock)
             {
-                if (_isInitialized && _replacementsCache != null) // Check again inside lock
+                if (_isInitialized && _replacementsCache != null)
                 {
                     return _replacementsCache;
                 }
@@ -60,36 +56,28 @@ namespace RimSharp.Shared.Services.Implementations
         {
             if (string.IsNullOrWhiteSpace(steamId)) return null;
 
-            var cache = GetAllReplacements(); // Ensures cache is loaded
+            var cache = GetAllReplacements(); 
             string normalizedId = steamId.ToLowerInvariant();
 
             cache.TryGetValue(normalizedId, out var replacement);
-            return replacement; // Returns null if not found
+            return replacement; 
         }
 
-        // --- MODIFIED METHOD ---
         public ModReplacementInfo? GetReplacementByPackageId(string packageId)
         {
             if (string.IsNullOrWhiteSpace(packageId)) return null;
 
-            var cache = GetAllReplacements(); // Ensures cache is loaded
-            string normalizedId = packageId.ToLowerInvariant(); // Normalize input
+            var cache = GetAllReplacements(); 
+            string normalizedId = packageId.ToLowerInvariant(); 
 
-            // To prevent ambiguity where a replacement mod shares a packageId with the original,
-            // this method will only find replacements for mods that are defined *without* a Steam ID in our database.
-            // If an original mod has a Steam ID in a replacement rule, it MUST be looked up via GetReplacementBySteamId.
-            // This makes packageId a true fallback identifier for local or non-workshop mods.
             return cache.Values.FirstOrDefault(r =>
-                string.IsNullOrEmpty(r.SteamId) && // CRITICAL: Only match rules where the original mod lacks a SteamID.
+                string.IsNullOrEmpty(r.SteamId) &&
                 !string.IsNullOrEmpty(r.ModId) &&
                 r.ModId.Equals(normalizedId, StringComparison.OrdinalIgnoreCase));
         }
-        // --- END OF MODIFICATION ---
-
 
         private Dictionary<string, ModReplacementInfo> LoadReplacements()
         {
-            // Use case-insensitive keys for SteamIDs
             var results = new Dictionary<string, ModReplacementInfo>(StringComparer.OrdinalIgnoreCase);
 
             int dbCount = LoadFromJson(results);
@@ -108,37 +96,31 @@ namespace RimSharp.Shared.Services.Implementations
         /// <returns>The number of items successfully loaded from JSON.</returns>
         private int LoadFromJson(Dictionary<string, ModReplacementInfo> targetDictionary)
         {
-            // Get the full file path from the data update service
             var jsonFilePath = _dataUpdateService.GetDataFilePath(DatabaseReplacementsFileName);
-            // Derive the directory path from the file path
             var dbDirectoryPath = Path.GetDirectoryName(jsonFilePath);
             int count = 0;
 
             try
             {
-                // 1. Ensure the directory exists
                 if (dbDirectoryPath != null && !Directory.Exists(dbDirectoryPath))
                 {
                     _logger.LogInfo($"Creating replacement database directory: '{dbDirectoryPath}'", nameof(ModReplacementService));
                     Directory.CreateDirectory(dbDirectoryPath);
                 }
-
-                // 2. Check if the file exists, create with default if not
                 if (!File.Exists(jsonFilePath))
                 {
                     _logger.LogWarning($"Replacement database file '{jsonFilePath}' not found. Creating with default content.", nameof(ModReplacementService));
-                    File.WriteAllText(jsonFilePath, "{\"mods\":{}}"); // Default content
+                    File.WriteAllText(jsonFilePath, "{\"mods\":{}}");
                     _logger.LogInfo($"Default replacement file created at '{jsonFilePath}'.", nameof(ModReplacementService));
-                    return 0; // Return 0 as no data was loaded from the (newly created) file
+                    return 0; 
                 }
 
-                // 3. File exists, proceed with loading
                 _logger.LogDebug($"Parsing replacement database: '{jsonFilePath}'", nameof(ModReplacementService));
                 string jsonContent = File.ReadAllText(jsonFilePath);
 
                 var options = new JsonSerializerOptions
                 {
-                    PropertyNameCaseInsensitive = true // Handle "mods" or "Mods" etc.
+                    PropertyNameCaseInsensitive = true
                 };
                 var jsonData = JsonSerializer.Deserialize<ReplacementJsonRoot>(jsonContent, options);
 
@@ -147,21 +129,15 @@ namespace RimSharp.Shared.Services.Implementations
                     foreach (var kvp in jsonData.Mods)
                     {
                         var info = kvp.Value;
-                        if (info == null) // Simplified check
+                        if (info == null)
                         {
                             _logger.LogWarning($"Skipping null entry in '{jsonFilePath}' for key '{kvp.Key}'.", nameof(ModReplacementService));
                             continue;
                         }
-                        
-                        var safeInfo = info!;
 
-                        // Use the original mod's SteamId as the primary key for the dictionary
                         string key = info.SteamId?.Trim().ToLowerInvariant()!;
                         if (string.IsNullOrEmpty(key))
                         {
-                            // This is a rule for a non-steam mod, so it can't be a primary key in our SteamId-keyed dictionary.
-                            // It will still be added to the dictionary values and can be found by GetReplacementByPackageId.
-                            // We'll use a unique key for it to store it.
                             key = $"packageid_{info.ModId?.Trim().ToLowerInvariant() ?? Guid.NewGuid().ToString()}";
                         }
 
@@ -174,7 +150,7 @@ namespace RimSharp.Shared.Services.Implementations
                         info.ReplacementModId = info.ReplacementModId?.Trim().ToLowerInvariant() ?? string.Empty;
                         info.Source = ReplacementSource.Database;
 
-                        targetDictionary[key] = info; // Add or overwrite
+                        targetDictionary[key] = info;
                         count++;
                     }
                 }
@@ -250,35 +226,30 @@ namespace RimSharp.Shared.Services.Implementations
                         var info = new ModReplacementInfo
                         {
                             Author = root.Element("Author")?.Value?.Trim() ?? string.Empty,
-                            ModId = root.Element("ModId")?.Value?.Trim().ToLowerInvariant() ?? string.Empty, // Normalize
+                            ModId = root.Element("ModId")?.Value?.Trim().ToLowerInvariant() ?? string.Empty, 
                             ModName = root.Element("ModName")?.Value?.Trim() ?? string.Empty,
                             SteamId = root.Element("SteamId")?.Value?.Trim() ?? string.Empty,
                             Versions = root.Element("Versions")?.Value?.Trim() ?? string.Empty,
                             ReplacementAuthor = root.Element("ReplacementAuthor")?.Value?.Trim() ?? string.Empty,
-                            ReplacementModId = root.Element("ReplacementModId")?.Value?.Trim().ToLowerInvariant() ?? string.Empty, // Normalize
+                            ReplacementModId = root.Element("ReplacementModId")?.Value?.Trim().ToLowerInvariant() ?? string.Empty, 
                             ReplacementName = root.Element("ReplacementName")?.Value?.Trim() ?? string.Empty,
                             ReplacementSteamId = root.Element("ReplacementSteamId")?.Value?.Trim() ?? string.Empty,
                             ReplacementVersions = root.Element("ReplacementVersions")?.Value?.Trim() ?? string.Empty,
-                            Source = ReplacementSource.UseThisInstead // Set source
+                            Source = ReplacementSource.UseThisInstead
                         };
 
                         string key = info.SteamId?.Trim().ToLowerInvariant()!;
 
-                        // Use a placeholder key if the original mod has no SteamID
                         if (string.IsNullOrEmpty(key))
                         {
                             key = $"packageid_{info.ModId ?? Guid.NewGuid().ToString()}";
                         }
 
-                        // --- PRIORITY CHECK ---
-                        // Only add if this key hasn't been loaded from the database (JSON) already.
-                        // Database source has priority over 'Use This Instead'.
                         if (!targetDictionary.ContainsKey(key))
                         {
                             targetDictionary.Add(key, info);
                             count++;
                         }
-
                     }
                     catch (System.Xml.XmlException xmlEx)
                     {
@@ -294,7 +265,7 @@ namespace RimSharp.Shared.Services.Implementations
             {
                 _logger.LogException(uaEx, $"Permission error accessing 'Use This Instead' mod directory '{replacementsPath}' or files within.", nameof(ModReplacementService));
             }
-            catch (Exception ex) // Catch-all for unexpected errors during directory traversal etc.
+            catch (Exception ex)
             {
                 _logger.LogException(ex, $"Unexpected error processing 'Use This Instead' replacements folder '{replacementsPath}'.", nameof(ModReplacementService));
             }
@@ -302,12 +273,9 @@ namespace RimSharp.Shared.Services.Implementations
             return count;
         }
 
-                // Helper class to match the JSON structure {"mods": {...}}
-                // Using original name from service file, assuming it matches replacements.json structure
-                private class ReplacementJsonRoot
-                {
-                    public Dictionary<string, ModReplacementInfo>? Mods { get; set; }
-                }
-            }
+        private class ReplacementJsonRoot
+        {
+            public Dictionary<string, ModReplacementInfo>? Mods { get; set; }
         }
-        
+    }
+}

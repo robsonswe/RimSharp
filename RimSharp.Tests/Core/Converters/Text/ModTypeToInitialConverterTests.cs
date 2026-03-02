@@ -27,11 +27,11 @@ namespace RimSharp.Tests.Core.Converters.Text
         [InlineData(null, "")]
         public void Convert_ShouldReturnCorrectInitial(object? value, string expected)
         {
-            // Act
+
             var result = _converter.Convert(value, typeof(string), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
     }
 }
+

@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Infrastructure.Workshop.Download.Parsing.Models;
-using RimSharp.Shared.Services.Contracts; // For ILoggerService
+using RimSharp.Shared.Services.Contracts;
 
 namespace RimSharp.Infrastructure.Workshop.Download.Parsing
 {
@@ -18,8 +18,6 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing
         private readonly ILoggerService _logger;
         private const string LogTimestampFormat = "yyyy-MM-dd HH:mm:ss";
         private const int LogSampleSize = 30; // Sample size per log file
-
-        // --- Regex Definitions ---
 
         // Workshop Log (Refined slightly for clarity)
         private static readonly Regex WorkshopLogSuccessRegex = new Regex(
@@ -32,8 +30,7 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing
             @"^\[(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})\]\s+\[AppID\s+294100\]\s+Workshop download job .* failed with error", // More general workshop error
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-
-        // Console Log (Primary Execution Log)
+// Console Log (Primary Execution Log)
         private static readonly Regex ConsoleLoginSuccessRegex = new Regex(
             @"^\s*Connecting\s+anonymously\s+to\s+Steam\s+Public\.\.\.\s*OK", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex ConsoleLoginFailureRegex = new Regex(
@@ -59,15 +56,13 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing
         private static readonly Regex ContentDiskSpaceRegex = new Regex(
             @"Not enough disk space", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-
-        // Bootstrap Log
+// Bootstrap Log
         private static readonly Regex BootstrapUpdateErrorRegex = new Regex(
             @"^Error:\s+Download\s+of\s+package\s+\((.+)\)\s+failed", RegexOptions.Compiled | RegexOptions.IgnoreCase);
          private static readonly Regex BootstrapFailedLoadHostRegex = new Regex(
             @"^Failed\s+to\s+load\s+cached\s+hosts\s+file", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-
-        public SteamCmdLogParser(ILoggerService logger)
+public SteamCmdLogParser(ILoggerService logger)
         {
             _logger = logger;
         }
@@ -80,38 +75,31 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing
         {
             _logger.LogDebug($"Starting comprehensive log parsing session. Filter time >= {filterTime:O}", "SteamCmdLogParser");
             var result = new SteamCmdSessionLogParseResult();
-
-            // --- Read all available logs ---
             var logData = new Dictionary<string, string[]>();
             await ReadLogFileAsync("Workshop", logPaths.WorkshopLogPath, result, logData, cancellationToken);
             await ReadLogFileAsync("Primary", logPaths.PrimaryExecutionLogPath, result, logData, cancellationToken);
             await ReadLogFileAsync("Content", logPaths.ContentLogPath, result, logData, cancellationToken);
             await ReadLogFileAsync("Bootstrap", logPaths.BootstrapLogPath, result, logData, cancellationToken);
-
-            // --- Parse each log ---
             ParseWorkshopLog(logData.GetValueOrDefault("Workshop"), idsToLookFor, filterTime, result, cancellationToken);
             ParsePrimaryLog(logData.GetValueOrDefault("Primary"), idsToLookFor, filterTime, result, cancellationToken);
             ParseContentLog(logData.GetValueOrDefault("Content"), idsToLookFor, filterTime, result, cancellationToken);
             ParseBootstrapLog(logData.GetValueOrDefault("Bootstrap"), filterTime, result, cancellationToken); // Bootstrap log isn't usually item-specific
-
-            // --- Final Consolidation (Example: if login failed, mark all attempts as failed) ---
             if (result.OverallStatus.HasLoginFailed)
             {
                 _logger.LogWarning("Login failure detected in logs. Marking all requested items as failed for this session.", "SteamCmdLogParser");
                 result.AddCriticalMessage("SteamCMD login failed during this session.");
                 foreach (var id in idsToLookFor)
                 {
-                    // Only update if not already definitively failed by a log entry
+
                     if (!result.WorkshopItemResults.TryGetValue(id, out var itemResult) || itemResult.Success)
                     {
-                         // Use a recent timestamp, maybe filterTime, as the failure time isn't precise
+
                         result.WorkshopItemResults[id] = (Success: false, Timestamp: filterTime, Reason: "Login Failure");
                     }
                 }
             }
-             // Add similar consolidation for critical errors like disk space if needed
 
-            _logger.LogInfo($"Log parsing finished. Found {result.WorkshopItemResults.Count} item results. Overall Status Flags: {result.OverallStatus.Flags}", "SteamCmdLogParser");
+_logger.LogInfo($"Log parsing finished. Found {result.WorkshopItemResults.Count} item results. Overall Status Flags: {result.OverallStatus.Flags}", "SteamCmdLogParser");
             if (result.CriticalMessages.Any())
             {
                  _logger.LogWarning($"Critical messages detected during parsing: {result.CriticalMessages.Count}", "SteamCmdLogParser");
@@ -132,7 +120,7 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing
             try
             {
                  _logger.LogDebug($"Reading log file '{logType}': {Path.GetFileName(logPath)}", "SteamCmdLogParser");
-                 // Use FileShare.ReadWrite to potentially handle SteamCMD still writing
+
                  using var fs = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                  using var sr = new StreamReader(fs, Encoding.UTF8); // Specify UTF8, common for logs
 
@@ -154,8 +142,6 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing
                  result.AddCriticalMessage($"Error reading {logType} log: {ex.Message}");
             }
         }
-
-        // --- Individual Log Parsing Methods ---
 
         private void ParseWorkshopLog(string[]? lines, ISet<string> idsToLookFor, DateTime filterTime, SteamCmdSessionLogParseResult result, CancellationToken cancellationToken)
         {
@@ -223,15 +209,12 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing
              foreach (var line in lines)
              {
                  cancellationToken.ThrowIfCancellationRequested();
-                 // Note: Primary log often lacks timestamps per line, so we can't reliably filter by time here.
-                 // We assume the entire log is relevant to the *last* attempt if multiple attempts share a log (which they shouldn't with unique names).
 
-                 // Login Status
+// Login Status
                  if (ConsoleLoginSuccessRegex.IsMatch(line))
                  {
                      result.OverallStatus.AddFlag(SteamCmdSessionStatusFlags.LoginAttempted);
                      result.OverallStatus.AddFlag(SteamCmdSessionStatusFlags.LoginSuccess);
-                     // Ensure LoginFailure is not set if success is found later
                      result.OverallStatus.Flags &= ~SteamCmdSessionStatusFlags.LoginFailure;
                      continue;
                  }
@@ -249,15 +232,14 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing
                      continue;
                  }
 
-
-                 // Item Timeout
+// Item Timeout
                  Match timeoutMatch = ConsoleTimeoutErrorRegex.Match(line);
                  if (timeoutMatch.Success)
                  {
                      string id = timeoutMatch.Groups[1].Value;
                       if (idsToLookFor.Contains(id))
                       {
-                          // Use filterTime as a proxy timestamp since console log lines often lack them
+
                           UpdateItemResult(id, false, filterTime, "Timeout", result);
                           result.OverallStatus.AddFlag(SteamCmdSessionStatusFlags.TimeoutDetected);
                           result.AddCriticalMessage($"Primary log timeout for {id}.");
@@ -292,7 +274,6 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing
                  if (cmdNotFoundMatch.Success)
                  {
                      string command = cmdNotFoundMatch.Groups[1].Value.Trim();
-                     // Check if it's one of the core commands we use
                      if (command.StartsWith("force_install_dir", StringComparison.OrdinalIgnoreCase) ||
                          command.StartsWith("login", StringComparison.OrdinalIgnoreCase) ||
                          command.StartsWith("workshop_download_item", StringComparison.OrdinalIgnoreCase) ||
@@ -302,9 +283,8 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing
                           result.OverallStatus.AddFlag(SteamCmdSessionStatusFlags.ScriptError);
                           result.AddCriticalMessage($"Primary log: Script error - Command not found: '{command}'");
                      }
-                     // Else: Could be noise or unexpected command in script, log maybe?
-                      // _logger.LogDebug($"Primary Log: Potential script issue - Command not found: '{command}'", "SteamCmdLogParser");
-                     continue;
+
+continue;
                  }
              }
              _logger.LogDebug("Primary log parsing finished.", "SteamCmdLogParser");
@@ -329,9 +309,8 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing
                      {
                          lastItemIdMentioned = missingFileMatch.Groups[1].Value;
                          result.OverallStatus.AddFlag(SteamCmdSessionStatusFlags.ValidationError);
-                         // Optionally add specific missing file? Could be very noisy.
-                         // result.AddCriticalMessage($"Content log: Validation missing file in item {lastItemIdMentioned}: {missingFileMatch.Groups[2].Value}");
-                         continue; // Prioritize this match
+
+continue; // Prioritize this match
                      }
 
                      if (ContentValidationFailedRegex.IsMatch(line))
@@ -380,14 +359,8 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing
              foreach (var line in lines)
              {
                  cancellationToken.ThrowIfCancellationRequested();
-                 // Bootstrap log entries often don't have consistent timestamps matching the main session,
-                 // but we can check if critical errors occurred recently (relative to filterTime).
-                 // A simpler approach might be to just check for *any* error in the log if it's recent.
 
-                 // For simplicity, just look for errors regardless of timestamp for now,
-                 // as bootstrap errors usually prevent the main session from running correctly anyway.
-
-                 Match updateErrorMatch = BootstrapUpdateErrorRegex.Match(line);
+Match updateErrorMatch = BootstrapUpdateErrorRegex.Match(line);
                  if (updateErrorMatch.Success)
                  {
                       result.OverallStatus.AddFlag(SteamCmdSessionStatusFlags.SteamCmdUpdateError);
@@ -405,30 +378,26 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing
              _logger.LogDebug("Bootstrap log parsing finished.", "SteamCmdLogParser");
         }
 
-
-        // --- Helper Methods ---
-
         /// <summary>
-        /// Updates the result dictionary, ensuring only the latest status (by timestamp)
-        /// or the first failure encountered for an ID is stored.
-        /// </summary>
+
+/// </summary>
         private void UpdateItemResult(string id, bool success, DateTime timestamp, string? reason, SteamCmdSessionLogParseResult result)
         {
              if (result.WorkshopItemResults.TryGetValue(id, out var existing))
              {
-                 // If current is success: Only update if new timestamp is later than existing AND existing wasn't already a failure.
+
                  if (success && existing.Success && timestamp > existing.Timestamp)
                  {
                      result.WorkshopItemResults[id] = (success, timestamp, reason);
                      _logger.LogDebug($"Updated item {id} result: Success at {timestamp:O} (was Success at {existing.Timestamp:O})", "SteamCmdLogParser");
                  }
-                 // If current is failure: Only update if new timestamp is later OR if existing was success. (Prioritize storing failure)
+
                  else if (!success && (timestamp > existing.Timestamp || existing.Success))
                  {
                      result.WorkshopItemResults[id] = (success, timestamp, reason);
                       _logger.LogDebug($"Updated item {id} result: Failure ('{reason}') at {timestamp:O} (was Success: {!existing.Success} at {existing.Timestamp:O})", "SteamCmdLogParser");
                  }
-                 // Otherwise, keep the existing entry (e.g., existing failure is newer than current success, or existing success is newer)
+
              }
              else
              {
@@ -438,9 +407,8 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing
              }
         }
 
+/// <summary>
 
-        /// <summary>
-        /// Tries to parse a timestamp from the beginning of a log line (common format).
         /// </summary>
         private bool TryParseTimestamp(string line, out DateTime timestamp, out string remainingContent)
         {
@@ -460,3 +428,5 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing
         }
     }
 }
+
+

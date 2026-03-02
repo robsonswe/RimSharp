@@ -189,7 +189,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
             if (browserControl == null)
             {
-                // Control was detached (tab switched away)
+                
                 _navigationService.SetBrowserControl(null);
                 IsModInfoAvailable = false;
                 CanGoBack = false;
@@ -197,8 +197,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 IsBrowserInitialized = false;
                 return;
             }
-
-            // New control attached
             IsBrowserInitialized = true;
             _extractorService = new ModExtractorService(browserControl);
             _extractorService.IsModInfoAvailableChanged += ExtractorService_IsModInfoAvailableChanged;
@@ -217,7 +215,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         {
             Debug.WriteLine($"[BrowserViewModel] DOMContentLoaded received for: {url}");
             RunOnUIThread(() => OnPropertyChanged(nameof(IsDomReady)));
-            // Trigger mod info extraction when DOM is ready
             _ = AnalyzePageContentAsync();
         }
 
@@ -232,7 +229,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             {
                 // Reset previous state
                 _extractorService.Reset();
-                
+
                 // Extract mod name, date, and Steam ID
                 var nameTask = _extractorService.ExtractModName();
                 var dateTask = _extractorService.ExtractModDateInfo();
@@ -297,10 +294,9 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
             try
             {
-                // Try to extract the Steam ID from the page using JavaScript
+
                 string script = @"(function() {
-                    // Try to find the Steam ID from various locations on the page
-                    // 1. Check the subscribe button or report link
+
                     const subscribeBtn = document.querySelector('[data-modalcontrol]');
                     if (subscribeBtn) {
                         const modalControl = subscribeBtn.getAttribute('data-modalcontrol');
@@ -309,8 +305,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                             if (match) return match[1];
                         }
                     }
-
-                    // 2. Check the page URL in any links
                     const links = document.querySelectorAll('a[href*=""filedetails""]');
                     for (const link of links) {
                         const href = link.href;
@@ -318,8 +312,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                         const id = urlParams.get('id');
                         if (id) return id;
                     }
-
-                    // 3. Check meta tags
                     const ogUrl = document.querySelector('meta[property=""og:url""]');
                     if (ogUrl) {
                         const content = ogUrl.getAttribute('content');
@@ -391,7 +383,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                                                (uri.AbsolutePath.Contains("/collections/", StringComparison.OrdinalIgnoreCase) || 
                                                 query.Get("section") == "collections");
 
-                        // Note: These might be refined later by content analysis
                         IsValidModUrl = isModPage && !string.IsNullOrEmpty(id);
                         IsCollectionUrl = isCollectionPage;
                     }
@@ -458,16 +449,18 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                     _navigationService.NavigationEnded -= NavigationService_NavigationEnded;
                     _navigationService.PotentialWorkshopPageLoaded -= NavigationService_PotentialWorkshopPageLoaded;
                     _parentViewModel.PropertyChanged -= ParentViewModel_PropertyChanged;
-                    
+
                     if (_extractorService != null)
                     {
                         _extractorService.IsModInfoAvailableChanged -= ExtractorService_IsModInfoAvailableChanged;
                         (_extractorService as IDisposable)?.Dispose();
                     }
                 }
-                
+
                 base.Dispose(disposing);
             }
         }
     }
 }
+
+

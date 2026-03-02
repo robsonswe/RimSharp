@@ -1,4 +1,4 @@
-using RimSharp.AppDir.AppFiles; // For ViewModelBase
+using RimSharp.AppDir.AppFiles;
 
 namespace RimSharp.Features.ModManager.Dialogs.Filter
 {
@@ -22,3 +22,4 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
         }
     }
 }
+

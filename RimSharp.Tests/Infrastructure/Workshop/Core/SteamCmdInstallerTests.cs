@@ -35,7 +35,6 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Core
             _httpHandler = new MockHttpMessageHandler();
             _mockHttpClientFactory.CreateClient().Returns(new HttpClient(_httpHandler));
 
-            // Default mock paths
             _mockPathService.SteamCmdInstallPath.Returns(Path.Combine(_testTempDir, "Install"));
             _mockPathService.SteamCmdSteamAppsPath.Returns(Path.Combine(_testTempDir, "SteamApps"));
             _mockPathService.SteamCmdExePath.Returns(Path.Combine(_testTempDir, "Install", "steamcmd.exe"));
@@ -54,9 +53,9 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Core
         [Fact]
         public async Task SetupAsync_WhenSuccessful_ShouldDownloadAndExtract()
         {
-            // Arrange
+
             _mockGamePathService.GetModsPath().Returns(@"C:\Mods");
-            
+
             // Create a dummy ZIP in memory
             var dummyZipStream = new MemoryStream();
             using (var archive = new ZipArchive(dummyZipStream, ZipArchiveMode.Create, true))
@@ -73,16 +72,11 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Core
             _httpHandler.OnRequest = req => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(dummyZipStream) };
 
             var platformInfo = new SteamCmdPlatformInfo();
-            // Force platform info to match our dummy zip (Windows style for test reliability)
-            // Note: If running on Linux, this might need more logic or just mock the platform too.
-            // But SteamCmdPlatformInfo is hardcoded to RuntimeInformation.
-            
-            var installer = new SteamCmdInstaller(_mockPathService, _mockGamePathService, _mockDialogService, _mockHttpClientFactory, platformInfo);
 
-            // Act
+var installer = new SteamCmdInstaller(_mockPathService, _mockGamePathService, _mockDialogService, _mockHttpClientFactory, platformInfo);
+
             var result = await installer.SetupAsync();
 
-            // Assert
             if (platformInfo.IsSupported)
             {
                 result.Should().BeTrue();
@@ -98,19 +92,17 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Core
         [Fact]
         public async Task CheckSetupAsync_WhenExeExists_ShouldReturnTrue()
         {
-            // Arrange
+
             var exePath = _mockPathService.SteamCmdExePath;
             if (exePath == null) throw new InvalidOperationException("ExePath is null");
             var dir = Path.GetDirectoryName(exePath);
             if (dir != null) Directory.CreateDirectory(dir);
             File.WriteAllText(exePath, "fake exe");
-            
+
             var installer = new SteamCmdInstaller(_mockPathService, _mockGamePathService, _mockDialogService, _mockHttpClientFactory, new SteamCmdPlatformInfo());
 
-            // Act
             var result = await installer.CheckSetupAsync();
 
-            // Assert
             result.Should().BeTrue();
         }
 
@@ -125,3 +117,5 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Core
         }
     }
 }
+
+

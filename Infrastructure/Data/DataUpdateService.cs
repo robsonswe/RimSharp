@@ -21,7 +21,7 @@ namespace RimSharp.Infrastructure.Data
         {
             _logger = logger;
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-            // User-Agent should be set by the caller or factory, but we'll ensure it here if missing
+
             if (!_httpClient.DefaultRequestHeaders.Contains("User-Agent"))
             {
                 _httpClient.DefaultRequestHeaders.Add("User-Agent", "RimSharp-App");
@@ -52,8 +52,6 @@ namespace RimSharp.Infrastructure.Data
                 var remoteManifest = JsonDocument.Parse(remoteManifestJson);
                 cancellationToken.ThrowIfCancellationRequested();
                 progress.Report(new DataUpdateProgress { Message = "Comparing versions...", Percentage = 20 });
-
-                // 2. Load the local manifest and compare
                 string localManifestPath = GetDataFilePath("manifest.json");
                 if (File.Exists(localManifestPath))
                 {
@@ -91,8 +89,6 @@ namespace RimSharp.Infrastructure.Data
                         .ConfigureAwait(false);
                     filesDownloaded++;
                 }
-
-                // 4. Save the new manifest locally
                 progress.Report(new DataUpdateProgress { Message = "Finalizing...", Percentage = 95 });
                 await File.WriteAllTextAsync(localManifestPath, remoteManifestJson, cancellationToken)
                     .ConfigureAwait(false);
@@ -114,3 +110,5 @@ namespace RimSharp.Infrastructure.Data
         }
     }
 }
+
+

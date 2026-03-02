@@ -11,17 +11,16 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Models
         [Fact]
         public void ShouldShowVersionInfo_WhenNotInstalled_ShouldBeTrue()
         {
-            // Arrange
+
             var item = new DownloadItem { IsInstalled = false };
 
-            // Assert
             item.ShouldShowVersionInfo.Should().BeTrue();
         }
 
         [Fact]
         public void ShouldShowVersionInfo_WhenInstalledAndVersionsMatch_ShouldBeFalse()
         {
-            // Arrange
+
             var item = new DownloadItem
             {
                 IsInstalled = true,
@@ -33,14 +32,13 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Models
                 }
             };
 
-            // Assert
             item.ShouldShowVersionInfo.Should().BeFalse();
         }
 
         [Fact]
         public void ShouldShowVersionInfo_WhenInstalledAndVersionsMismatch_ShouldBeTrue()
         {
-            // Arrange
+
             var item = new DownloadItem
             {
                 IsInstalled = true,
@@ -51,14 +49,13 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Models
                 }
             };
 
-            // Assert
             item.ShouldShowVersionInfo.Should().BeTrue();
         }
 
         [Fact]
         public void ClearLocalInfo_ShouldResetProperties()
         {
-            // Arrange
+
             var item = new DownloadItem
             {
                 IsInstalled = true,
@@ -67,10 +64,8 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Models
                 InstalledVersions = new List<VersionSupport> { new VersionSupport("1.4", VersionSource.Official) }
             };
 
-            // Act
             item.ClearLocalInfo();
 
-            // Assert
             item.IsInstalled.Should().BeFalse();
             item.IsActive.Should().BeFalse();
             item.IsFavorite.Should().BeFalse();
@@ -78,3 +73,4 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Models
         }
     }
 }
+

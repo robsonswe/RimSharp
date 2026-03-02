@@ -35,8 +35,6 @@ namespace RimSharp.Infrastructure.Dialog
                 Title = title,
                 AllowMultiple = false
             };
-
-            // Parse filter and add file type choices
             var fileTypes = ParseFilter(filter);
             if (fileTypes.Count > 0)
             {
@@ -44,7 +42,7 @@ namespace RimSharp.Infrastructure.Dialog
             }
 
             var files = await window.StorageProvider.OpenFilePickerAsync(options);
-            
+
             if (files.Count > 0)
             {
                 return (true, files[0].Path.LocalPath);
@@ -63,8 +61,6 @@ namespace RimSharp.Infrastructure.Dialog
                 DefaultExtension = defaultExtension,
                 SuggestedFileName = defaultFileName
             };
-
-            // Parse filter and add file type choices
             var fileTypes = ParseFilter(filter);
             if (fileTypes.Count > 0)
             {
@@ -72,7 +68,7 @@ namespace RimSharp.Infrastructure.Dialog
             }
 
             var file = await window.StorageProvider.SaveFilePickerAsync(options);
-            
+
             if (file != null)
             {
                 return (true, file.Path.LocalPath);
@@ -92,7 +88,7 @@ namespace RimSharp.Infrastructure.Dialog
             };
 
             var folders = await window.StorageProvider.OpenFolderPickerAsync(options);
-            
+
             if (folders.Count > 0)
             {
                 return (true, folders[0].Path.LocalPath);
@@ -101,12 +97,12 @@ namespace RimSharp.Infrastructure.Dialog
         }
 
         /// <summary>
-        /// Parses a filter string like "XML Files|*.xml|All Files|*.*" into FilePickerFileType list.
+
         /// </summary>
         private static System.Collections.Generic.List<FilePickerFileType> ParseFilter(string? filter)
         {
             var result = new System.Collections.Generic.List<FilePickerFileType>();
-            
+
             if (string.IsNullOrEmpty(filter)) return result;
 
             // Format: "Description1|Pattern1|Description2|Pattern2|..."
@@ -115,7 +111,7 @@ namespace RimSharp.Infrastructure.Dialog
             {
                 var description = parts[i];
                 var patterns = parts[i + 1].Split(';');
-                
+
                 var fileType = new FilePickerFileType(description)
                 {
                     Patterns = patterns.Select(p => p.Trim()).ToList()
@@ -127,3 +123,5 @@ namespace RimSharp.Infrastructure.Dialog
         }
     }
 }
+
+

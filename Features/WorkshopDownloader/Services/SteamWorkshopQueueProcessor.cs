@@ -73,8 +73,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                         {
                             cancellationToken.ThrowIfCancellationRequested();
                             int currentItemIndex = Interlocked.Increment(ref processedCount);
-
-                            // --- Report Initial Progress ---
                             progress?.Report(new QueueProcessProgress
                             {
                                 CurrentItem = currentItemIndex,
@@ -83,8 +81,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                                 CurrentItemName = modNameForProgress,
                                 Message = $"Checking {modIdentifier}..."
                             });
-
-                            // --- Check if Already in Queue ---
                             if (_downloadQueueService.IsInQueue(currentSteamId))
                             {
                                 Interlocked.Increment(ref alreadyQueuedCount);
@@ -92,8 +88,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                                 progress?.Report(new QueueProcessProgress { /*...*/ Message = $"{modIdentifier} already queued." });
                                 return; // Skip API call
                             }
-
-                            // --- Steam API Call ---
                             cancellationToken.ThrowIfCancellationRequested();
                             SteamApiResponse? apiResponse = null;
                             try
@@ -112,8 +106,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                             }
 
                             cancellationToken.ThrowIfCancellationRequested();
-
-                            // --- Validate API Response ---
                             if (apiResponse?.Response?.PublishedFileDetails == null || !apiResponse.Response.PublishedFileDetails.Any())
                             {
                                 var errorMsg = $"No details returned from Steam API for {modIdentifier}.";
@@ -125,8 +117,8 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                             }
 
                             var details = apiResponse.Response.PublishedFileDetails.First();
-                            modIdentifier = $"'{details.Title ?? currentSteamId}' ({currentSteamId})"; // Update identifier
-                            modNameForProgress = details.Title ?? "Unknown"; // Update name
+                            modIdentifier = $"'{details.Title ?? currentSteamId}' ({currentSteamId})";
+                            modNameForProgress = details.Title ?? "Unknown";
 
                             if (details.Result != 1) // 1 = OK
                             {
@@ -138,8 +130,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                                 progress?.Report(new QueueProcessProgress { /*...*/ CurrentItemName = modNameForProgress, Message = $"API Error ({details.Result}) for {modNameForProgress}" });
                                 return;
                             }
-
-                            // --- Create ModInfoDto ---
                             DateTimeOffset apiUpdateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(details.TimeUpdated);
                             DateTime apiUpdateTimeUtc = apiUpdateTimeOffset.UtcDateTime;
 
@@ -151,10 +141,8 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                                 PublishDate = apiUpdateTimeOffset.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture),
                                 StandardDate = apiUpdateTimeUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture),
                                 FileSize = details.FileSize,
-                                LatestVersions = SteamApiResultHelper.ExtractAndSortVersionTags(details.Tags) // <-- THIS LINE WAS MISSING
+                                LatestVersions = SteamApiResultHelper.ExtractAndSortVersionTags(details.Tags)
                             };
-
-                             // --- Report Before Queueing ---
                             progress?.Report(new QueueProcessProgress
                             {
                                 CurrentItem = currentItemIndex,
@@ -163,9 +151,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                                 CurrentItemName = modNameForProgress,
                                 Message = $"Queueing {modNameForProgress}..."
                             });
-
-
-                            // --- Add to Queue ---
                             if (_downloadQueueService.AddToQueue(modInfoDto))
                             {
                                 Interlocked.Increment(ref successfullyAddedCount);
@@ -175,12 +160,10 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                             }
                             else
                             {
-                                // AddToQueue likely returned false because it was added between the check and now (race condition)
-                                // OR because of an internal queue error. Assume it's likely a race condition handled by the earlier check.
-                                // We could re-check IsInQueue here, but for simplicity, treat AddToQueue false as a skip/already-queued for counts.
-                                Interlocked.Increment(ref alreadyQueuedCount);
+
+Interlocked.Increment(ref alreadyQueuedCount);
                                 _logger.LogWarning($"AddToQueue returned false for {modIdentifier}. Likely already added or internal issue.", nameof(SteamWorkshopQueueProcessor));
-                                // Optionally report this as a specific 'skipped' state in progress/results if needed
+
                                 progress?.Report(new QueueProcessProgress { /*...*/ CurrentItemName = modNameForProgress, Message = $"Skipped/Already Queued {modNameForProgress}" });
                             }
                         }
@@ -203,7 +186,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                             semaphore.Release();
                         }
                     }, cancellationToken)); // Pass token to Task.Run
-                } // --- End ForEach Loop ---
+                }
 
                 // Asynchronously wait for all tasks to complete
                 await Task.WhenAll(tasks);
@@ -213,7 +196,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             {
                 _logger.LogInfo("Steam API check and queue process was cancelled.", nameof(SteamWorkshopQueueProcessor));
                 result.WasCancelled = true;
-                // Add a generic cancellation message if desired, or let the caller handle it
+
                 // errorMessagesBag.Add("Operation cancelled by user.");
             }
             catch (Exception ex) // Catch unexpected errors during setup or Task.WhenAll itself
@@ -221,15 +204,15 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 _logger.LogException(ex, "Outer error during Steam API check/queue processing.", nameof(SteamWorkshopQueueProcessor));
                 // Record a general error
                 errorMessagesBag.Add($"An unexpected error occurred during processing: {ex.Message}");
-                // If this happens, counts might be inaccurate, but record what we have.
-                result.FailedProcessing = failedProcessingCount + (result.TotalAttempted - processedCount); // Estimate failures
+
+                result.FailedProcessing = failedProcessingCount + (result.TotalAttempted - processedCount); 
             }
             finally
             {
                 // Populate final results from counters and bags
                 result.SuccessfullyAdded = successfullyAddedCount;
                 result.AlreadyQueued = alreadyQueuedCount;
-                // Make sure failed count reflects reality if Task.WhenAll threw early
+
                 result.FailedProcessing = Math.Max(failedProcessingCount, result.TotalAttempted - successfullyAddedCount - alreadyQueuedCount);
                 result.ErrorMessages.AddRange(errorMessagesBag);
                 result.AddedModNames.AddRange(addedNamesBag);
@@ -241,3 +224,5 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         }
     }
 }
+
+

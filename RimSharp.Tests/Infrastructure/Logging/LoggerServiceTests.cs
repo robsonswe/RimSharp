@@ -33,7 +33,7 @@ namespace RimSharp.Tests.Infrastructure.Logging
         [Fact]
         public void Log_ShouldCreateLogFileAndWriteMessage()
         {
-            // Arrange
+
             var logger = new LoggerService(_mockConfigService, _testTempDir);
             string message = "Test log message";
             string module = "TestModule";
@@ -41,10 +41,8 @@ namespace RimSharp.Tests.Infrastructure.Logging
             var expectedFileName = $"RimSharp_{module}_{today}.log";
             var expectedDir = Path.Combine(_testTempDir, "Logs");
 
-            // Act
             logger.LogInfo(message, module);
 
-            // Assert
             var logFiles = Directory.GetFiles(expectedDir, "*.log");
             logFiles.Should().HaveCount(1);
             Path.GetFileName(logFiles[0]).Should().Be(expectedFileName);
@@ -58,7 +56,7 @@ namespace RimSharp.Tests.Infrastructure.Logging
         [Fact]
         public void ClearOldLogs_ShouldDeletePreviousLogsForSameModule()
         {
-            // Arrange
+
             var logsDir = Path.Combine(_testTempDir, "Logs");
             Directory.CreateDirectory(logsDir);
             string module = "Rotate";
@@ -69,12 +67,12 @@ namespace RimSharp.Tests.Infrastructure.Logging
 
             var logger = new LoggerService(_mockConfigService, _testTempDir);
 
-            // Act - Logging today should trigger cleanup of old files for this module
             logger.LogInfo("Today's log", module);
 
-            // Assert
             File.Exists(oldFile).Should().BeFalse();
             Directory.GetFiles(logsDir, $"RimSharp_{module}_*.log").Should().HaveCount(1);
         }
     }
 }
+
+

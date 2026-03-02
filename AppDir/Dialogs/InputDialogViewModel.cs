@@ -25,7 +25,6 @@ namespace RimSharp.AppDir.Dialogs
             Message = message;
             Input = defaultInput;
 
-            // Use ViewModelBase helper methods
             OkCommand = CreateCommand(
                 () => CloseDialog(MessageDialogResult.OK),
                 () => !string.IsNullOrWhiteSpace(Input),

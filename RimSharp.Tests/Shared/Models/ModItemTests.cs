@@ -15,7 +15,6 @@ namespace RimSharp.Tests.Shared.Models
             var mod1 = new ModItem();
             var mod2 = new ModItem();
 
-            // Assert
             mod1.InstanceId.Should().NotBe(Guid.Empty);
             mod2.InstanceId.Should().NotBe(Guid.Empty);
             mod1.InstanceId.Should().NotBe(mod2.InstanceId);
@@ -24,11 +23,10 @@ namespace RimSharp.Tests.Shared.Models
         [Fact]
         public void Equals_ShouldOnlyMatchSameInstance()
         {
-            // Arrange
+
             var mod1 = new ModItem { PackageId = "test" };
             var mod2 = new ModItem { PackageId = "test" }; // Same data, different instance
 
-            // Assert
             mod1.Equals(mod2).Should().BeFalse();
             (mod1 == mod2).Should().BeFalse(); // Reference check still works as expected
             mod1.Equals(mod1).Should().BeTrue();
@@ -37,11 +35,10 @@ namespace RimSharp.Tests.Shared.Models
         [Fact]
         public void GetHashCode_ShouldBeStableAndUniquePerInstance()
         {
-            // Arrange
+
             var mod1 = new ModItem { PackageId = "test" };
             var mod2 = new ModItem { PackageId = "test" };
 
-            // Assert
             mod1.GetHashCode().Should().Be(mod1.GetHashCode());
             mod1.GetHashCode().Should().NotBe(mod2.GetHashCode());
         }
@@ -57,13 +54,11 @@ namespace RimSharp.Tests.Shared.Models
         [InlineData(null, new string[0])]
         public void AuthorList_ShouldParseCorrectly(string? authors, string[] expected)
         {
-            // Arrange
+
             var mod = new ModItem { Authors = authors! };
 
-            // Act
             var result = mod.AuthorList;
 
-            // Assert
             result.Should().BeEquivalentTo(expected);
         }
 
@@ -72,29 +67,25 @@ namespace RimSharp.Tests.Shared.Models
         [InlineData("Tag1; Tag2", new[] { "Tag1", "Tag2" })]
         public void TagList_ShouldParseCorrectly(string? tags, string[] expected)
         {
-            // Arrange
+
             var mod = new ModItem { Tags = tags! };
 
-            // Act
             var result = mod.TagList;
 
-            // Assert
             result.Should().BeEquivalentTo(expected);
         }
 
         [Fact]
         public void InvalidateTagListCache_ShouldForceReparse()
         {
-            // Arrange
+
             var mod = new ModItem { Tags = "Tag1" };
             var firstAccess = mod.TagList; // Populate cache
 
-            // Act
             mod.Tags = "Tag2";
             mod.InvalidateTagListCache();
             var secondAccess = mod.TagList;
 
-            // Assert
             secondAccess.Should().ContainSingle().Which.Should().Be("Tag2");
         }
     }
@@ -110,14 +101,13 @@ namespace RimSharp.Tests.Shared.Models
         [InlineData(null, "")]
         public void SteamId_ShouldExtractFromUrl(string? url, string expectedId)
         {
-            // Arrange
+
             var dependency = new ModDependency { SteamWorkshopUrl = url! };
 
-            // Act
             var result = dependency.SteamId;
 
-            // Assert
             result.Should().Be(expectedId);
         }
     }
 }
+

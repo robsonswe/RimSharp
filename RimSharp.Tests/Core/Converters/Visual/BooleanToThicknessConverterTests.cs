@@ -24,10 +24,9 @@ namespace RimSharp.Tests.Core.Converters.Visual
         [InlineData(true, "invalid", 0, 0, 0, 0)]
         public void Convert_ShouldReturnCorrectThickness(bool value, string parameter, double left, double top, double right, double bottom)
         {
-            // Act
+
             var result = (Thickness)_converter.Convert(value, typeof(Thickness), parameter, CultureInfo.InvariantCulture)!;
 
-            // Assert
             result.Left.Should().Be(left);
             result.Top.Should().Be(top);
             result.Right.Should().Be(right);
@@ -35,3 +34,4 @@ namespace RimSharp.Tests.Core.Converters.Visual
         }
     }
 }
+

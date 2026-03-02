@@ -27,10 +27,9 @@ namespace RimSharp.Tests.Core.Converters.Logic
         [InlineData(false, "Null", false)]
         public void Convert_ShouldReturnExpectedBoolean(object? value, string parameter, bool expected)
         {
-            // Act
+
             var result = _converter.Convert(value!, typeof(bool), parameter, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
 
@@ -40,21 +39,20 @@ namespace RimSharp.Tests.Core.Converters.Logic
         [InlineData(true, "False", false)]
         public void ConvertBack_ShouldReturnExpectedValue(bool value, string parameter, bool? expected)
         {
-            // Act
+
             var result = _converter.ConvertBack(value, typeof(bool?), parameter, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
 
         [Fact]
         public void ConvertBack_WhenCheckedIsFalse_ShouldReturnUnsetValue()
         {
-            // Act
+
             var result = _converter.ConvertBack(false, typeof(bool?), "True", CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(AvaloniaProperty.UnsetValue);
         }
     }
 }
+

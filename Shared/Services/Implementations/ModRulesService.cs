@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
-using System.Diagnostics; // For Debug/Console WriteLine
+using System.Diagnostics;
 
 namespace RimSharp.Shared.Services.Implementations
 {
@@ -20,11 +20,9 @@ namespace RimSharp.Shared.Services.Implementations
 
         public Dictionary<string, ModRule> GetRules()
         {
-            // Consider thread safety if needed (using lock)
             if (!_rulesLoaded || _cachedRules == null)
             {
                 _cachedRules = _repository.GetAllRules()
-                    // Normalize keys to lowercase when loading
                     .ToDictionary(kvp => kvp.Key.ToLowerInvariant(), kvp => kvp.Value, StringComparer.OrdinalIgnoreCase);
                 _rulesLoaded = true;
             }
@@ -33,55 +31,43 @@ namespace RimSharp.Shared.Services.Implementations
 
         public ModRule GetRulesForMod(string packageId)
         {
-            if (string.IsNullOrEmpty(packageId)) return new ModRule(); // Return empty rule if no ID
+            if (string.IsNullOrEmpty(packageId)) return new ModRule();
 
-            var rules = GetRules(); // Ensures rules are loaded
-
-            // Use lowercase for lookup
+            var rules = GetRules(); 
             if (rules.TryGetValue(packageId.ToLowerInvariant(), out var rule))
             {
                 return rule;
             }
-            return new ModRule(); // Return empty rule if not found
+            return new ModRule();
         }
 
-        // ApplyRulesToMod is less efficient, ApplyRulesToMods is preferred
         public void ApplyRulesToMod(ModItem mod)
         {
             if (mod == null || string.IsNullOrEmpty(mod.PackageId))
                 return;
 
-            ApplyRulesToMods(new List<ModItem> { mod }); // Just call the batch version
+            ApplyRulesToMods(new List<ModItem> { mod });
         }
 
-        // Modified batch processing method
         public void ApplyRulesToMods(IEnumerable<ModItem> mods)
         {
-            var rules = GetRules(); // Load all rules once (uses lowercase keys now)
+            var rules = GetRules();
             if (rules == null || !rules.Any())
             {
-                Debug.WriteLine("[DEBUG] ApplyRulesToMods: No rules loaded or available.");
-                return; // Nothing to apply
+                return;
             }
-            // Debug.WriteLine($"[DEBUG] ApplyRulesToMods: Processing {rules.Count} rules for mods");
-
-            int versionsAdded = 0;
-            int rulesAppliedCount = 0;
 
             foreach (var mod in mods)
             {
                 if (mod == null || string.IsNullOrEmpty(mod.PackageId))
                     continue;
 
-                string packageIdLower = mod.PackageId.ToLowerInvariant(); // Use lowercase for lookup
+                string packageIdLower = mod.PackageId.ToLowerInvariant();
 
                 if (rules.TryGetValue(packageIdLower, out var rule))
                 {
-                    rulesAppliedCount++;
-                    // Apply supportedVersions from rules
                     if (rule.SupportedVersions != null && rule.SupportedVersions.Count > 0)
                     {
-                        // Use a HashSet for efficient duplicate checking (case-insensitive)
                         var existingVersions = mod.SupportedVersions
                                                 .Select(v => v.Version)
                                                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -89,18 +75,13 @@ namespace RimSharp.Shared.Services.Implementations
                         foreach (string ruleVersion in rule.SupportedVersions)
                         {
                             if (string.IsNullOrWhiteSpace(ruleVersion)) continue;
-
-                            // Add rule version only if it doesn't already exist
-                            if (existingVersions.Add(ruleVersion)) // Returns true if added
+                            if (existingVersions.Add(ruleVersion)) 
                             {
-                                mod.SupportedVersions.Add(new VersionSupport(ruleVersion, VersionSource.Database, unofficial: true)); // Mark as DB source and unofficial
-                                versionsAdded++;
-                                // Debug.WriteLine($"[DEBUG] Added DB support: {mod.PackageId} -> {ruleVersion}");
+                                mod.SupportedVersions.Add(new VersionSupport(ruleVersion, VersionSource.Database, unofficial: true));
                             }
                         }
                     }
 
-                    // Apply loadBefore rules
                     if (rule.LoadBefore != null)
                     {
                         foreach (var target in rule.LoadBefore.Keys)
@@ -112,7 +93,6 @@ namespace RimSharp.Shared.Services.Implementations
                         }
                     }
 
-                    // Apply loadAfter rules
                     if (rule.LoadAfter != null)
                     {
                         foreach (var target in rule.LoadAfter.Keys)
@@ -124,14 +104,11 @@ namespace RimSharp.Shared.Services.Implementations
                         }
                     }
 
-                    // Apply loadBottom
                     if (rule.LoadBottom != null)
                     {
-                        // Debug.WriteLine($"[DEBUG] Applying DB LoadBottom={rule.LoadBottom.Value} to mod {mod.PackageId}");
                         mod.LoadBottom = rule.LoadBottom.Value;
                     }
 
-                    // Apply incompatibilities
                     if (rule.Incompatibilities != null && rule.Incompatibilities.Count > 0)
                     {
                         foreach (var incompatibility in rule.Incompatibilities)
@@ -139,16 +116,11 @@ namespace RimSharp.Shared.Services.Implementations
                             if (!string.IsNullOrWhiteSpace(incompatibility.Key) && !mod.IncompatibleWith.ContainsKey(incompatibility.Key) && incompatibility.Value != null)
                             {
                                 mod.IncompatibleWith.Add(incompatibility.Key, incompatibility.Value);
-
-                                // Debug.WriteLine($"[DEBUG] Added DB Incompatibility: {mod.PackageId} -> {target}");
                             }
                         }
                     }
                 }
-                // else: No rule found for this mod, which is normal.
             }
-            // Debug.WriteLine($"[DEBUG] ApplyRulesToMods finished. Applied rules to {rulesAppliedCount} mods. Added {versionsAdded} DB version entries.");
         }
-
     }
 }

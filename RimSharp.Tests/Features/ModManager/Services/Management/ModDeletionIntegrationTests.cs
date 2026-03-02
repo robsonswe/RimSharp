@@ -36,8 +36,7 @@ namespace RimSharp.Tests.Features.ModManager.Services.Management
             _mockDataService = Substitute.For<IModDataService>();
             _mockDialogService = Substitute.For<IDialogService>();
             _deletionService = new ModDeletionService(); // Use actual robust deletion service
-            
-            // We'll use a real ModListManager to test the memory state transition
+
             var mockDict = Substitute.For<IModDictionaryService>();
             _modListManager = new ModListManager(mockDict);
 
@@ -72,7 +71,6 @@ namespace RimSharp.Tests.Features.ModManager.Services.Management
         [Fact]
         public async Task DeleteMod_WithDuplicates_ShouldOnlyDeleteTargetMod_AndNOTSaveConfig()
         {
-            // --- Arrange ---
             var path1 = Path.Combine(_testTempDir, "ModV1");
             var path2 = Path.Combine(_testTempDir, "ModV2");
             Directory.CreateDirectory(path1);
@@ -85,14 +83,12 @@ namespace RimSharp.Tests.Features.ModManager.Services.Management
 
             _modListManager.Initialize(new[] { mod1, mod2 }, new[] { "my.mod" });
 
-            // Ensure mod1 is active (it's first in init)
-            // If mod2 got activated by default logic, switch to mod1 for the test
             if (_modListManager.IsModActive(mod2))
             {
                 _modListManager.DeactivateMod(mod2);
                 _modListManager.ActivateMod(mod1);
             }
-            
+
             _modListManager.IsModActive(mod1).Should().BeTrue();
             _modListManager.IsModActive(mod2).Should().BeFalse();
 
@@ -100,28 +96,17 @@ namespace RimSharp.Tests.Features.ModManager.Services.Management
             _mockDialogService.ShowConfirmationAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>())
                 .Returns(Task.FromResult(MessageDialogResult.Yes));
 
-            // --- Act ---
-            // Delete mod1 (the active one)
             await ((AsyncDelegateCommand<ModItem>)_viewModel.DeleteModCommand).ExecuteAsync(mod1);
-
-            // --- Assert ---
-            // 1. Check File System
             Directory.Exists(path1).Should().BeFalse("Mod V1 directory should be deleted");
             Directory.Exists(path2).Should().BeTrue("Mod V2 directory should NOT be deleted");
-
-            // 2. Check ModListManager State (Memory)
             var allMods = _modListManager.GetAllMods().ToList();
             allMods.Should().NotContain(mod1, "Mod V1 should be removed from all lists");
             allMods.Should().Contain(mod2, "Mod V2 should still exist in memory");
-
-            // 3. Check Active List Integrity (Handover)
             _modListManager.IsModActive(mod2).Should().BeTrue("The duplicate mod (v2) should have automatically taken over as active");
-            
-            // 4. Verify data was NOT saved 
-            // Reason: The game loads mods by PackageId. Since we swapped to a duplicate with the same PackageId,
-            // the config file (which stores IDs) is still valid and points to the remaining mod implicitly.
-            // Saving is unnecessary and avoided to improve UX/Performance.
-            _mockDataService.DidNotReceive().SaveActiveModIdsToConfig(Arg.Any<IEnumerable<string>>());
+
+_mockDataService.DidNotReceive().SaveActiveModIdsToConfig(Arg.Any<IEnumerable<string>>());
         }
     }
 }
+
+

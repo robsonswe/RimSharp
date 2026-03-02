@@ -11,8 +11,9 @@ namespace RimSharp.Shared.Models
         Database,
 
         /// <summary>
-        /// Information loaded from the 'Use This Instead' mod XML files.
+
         /// </summary>
         UseThisInstead
     }
 }
+

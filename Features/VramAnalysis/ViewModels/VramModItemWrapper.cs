@@ -27,8 +27,6 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
         private int _inAtlasCount;
         public int MaxInAtlasCount { get => _maxInAtlasCount; set => SetProperty(ref _maxInAtlasCount, value); }
         private int _maxInAtlasCount;
-
-        // --- NEW: Holds the debug trace ---
         public string Logs { get => _logs; set => SetProperty(ref _logs, value); }
         private string _logs = string.Empty;
 

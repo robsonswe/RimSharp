@@ -42,7 +42,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         {
             _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
             _modService = modService ?? throw new ArgumentNullException(nameof(modService));
-            
+
             SaveCommand = CreateCommand(Save);
             CancelCommand = CreateCommand(Cancel);
             OpenModSelectorCommand = CreateAsyncCommand(OpenModSelectorAsync);
@@ -52,8 +52,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         {
             var allMods = _modService.GetLoadedMods();
             var viewModel = new ModSelectorDialogViewModel(allMods);
-            
-            // If user already typed something, use it as initial search
+
             if (!string.IsNullOrWhiteSpace(PackageId))
             {
                 viewModel.SearchText = PackageId;
@@ -74,7 +73,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                 _dialogService.ShowWarning("Validation Error", "Package ID cannot be empty.");
                 return;
             }
-            
+
             PackageId = PackageId.Trim();
             CloseDialog(true);
         }
@@ -85,3 +84,5 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         }
     }
 }
+
+

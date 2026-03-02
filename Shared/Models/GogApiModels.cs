@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 namespace RimSharp.Shared.Models
 {
     /// <summary>
-    /// Represents the top-level object returned by the GOG content system API.
+
     /// </summary>
     public class GogApiResponse
     {
@@ -14,7 +14,7 @@ namespace RimSharp.Shared.Models
     }
 
     /// <summary>
-    /// Represents a single build's information from the GOG.com content system API.
+
     /// </summary>
     public class GogBuildInfo
     {

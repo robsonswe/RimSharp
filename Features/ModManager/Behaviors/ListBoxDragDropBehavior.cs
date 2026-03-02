@@ -60,12 +60,10 @@ namespace RimSharp.Features.ModManager.Behaviors
                 AssociatedObject.AddHandler(InputElement.PointerPressedEvent, OnPointerPressed, RoutingStrategies.Tunnel);
                 AssociatedObject.AddHandler(InputElement.PointerMovedEvent, OnPointerMoved, RoutingStrategies.Tunnel);
                 AssociatedObject.AddHandler(InputElement.PointerReleasedEvent, OnPointerReleased, RoutingStrategies.Tunnel);
-                
+
                 AssociatedObject.AddHandler(DragDrop.DragOverEvent, OnDragOver);
                 AssociatedObject.AddHandler(DragDrop.DragLeaveEvent, OnDragLeave);
                 AssociatedObject.AddHandler(DragDrop.DropEvent, OnDrop);
-
-                // Initialize brush
                 if (Application.Current?.Resources.TryGetResource("RimworldHighlightBrush", null, out var res) == true)
                 {
                     _insertionBrush = res as IBrush;
@@ -82,7 +80,7 @@ namespace RimSharp.Features.ModManager.Behaviors
                 AssociatedObject.RemoveHandler(InputElement.PointerPressedEvent, OnPointerPressed);
                 AssociatedObject.RemoveHandler(InputElement.PointerMovedEvent, OnPointerMoved);
                 AssociatedObject.RemoveHandler(InputElement.PointerReleasedEvent, OnPointerReleased);
-                
+
                 AssociatedObject.RemoveHandler(DragDrop.DragOverEvent, OnDragOver);
                 AssociatedObject.RemoveHandler(DragDrop.DragLeaveEvent, OnDragLeave);
                 AssociatedObject.RemoveHandler(DragDrop.DropEvent, OnDrop);
@@ -94,8 +92,6 @@ namespace RimSharp.Features.ModManager.Behaviors
         {
             if (AssociatedObject == null || _isDragging) return;
 
-            // If we handled PointerPressed but didn't start a drag, 
-            // we should perform the standard selection (select ONLY this item) now.
             var properties = e.GetCurrentPoint(AssociatedObject).Properties;
             if (e.InitialPressMouseButton == MouseButton.Left)
             {
@@ -105,7 +101,6 @@ namespace RimSharp.Features.ModManager.Behaviors
 
                 if (listBoxItem != null)
                 {
-                    // Check if Shift/Ctrl are NOT held - this is when selection should be cleared
                     if (!e.KeyModifiers.HasFlag(KeyModifiers.Control) && 
                         !e.KeyModifiers.HasFlag(KeyModifiers.Shift))
                     {
@@ -131,11 +126,8 @@ namespace RimSharp.Features.ModManager.Behaviors
                 if (listBoxItem != null)
                 {
                     var clickedItem = listBoxItem.DataContext;
-                    
-                    // If clicking on an already selected item in a multi-selection, 
-                    // AND no modifiers are held, handle the event to prevent the ListBox 
-                    // from clearing other selections before we can start a drag.
-                    if (AssociatedObject.SelectedItems != null && 
+
+if (AssociatedObject.SelectedItems != null && 
                         AssociatedObject.SelectedItems.Count > 1 && 
                         AssociatedObject.SelectedItems.Contains(clickedItem) &&
                         e.KeyModifiers == KeyModifiers.None)
@@ -157,17 +149,15 @@ namespace RimSharp.Features.ModManager.Behaviors
                 var currentPos = e.GetPosition(AssociatedObject);
                 var delta = currentPos - _dragStartPoint;
 
-                // Use Avalonia's drag distance threshold if possible, or a reasonable default
                 if (Math.Abs(delta.X) > 3 || Math.Abs(delta.Y) > 3)
                 {
                     var visual = AssociatedObject.InputHitTest(_dragStartPoint) as Visual;
                     var listBoxItem = GetParentListBoxItem(visual);
 
-                    // Only start drag if we are over an item AND that item is part of the selection
                     if (listBoxItem != null && AssociatedObject.SelectedItems != null && 
                         AssociatedObject.SelectedItems.Contains(listBoxItem.DataContext))
                     {
-                        // Explicitly collect ALL selected items of the correct type
+
                         var selectedItems = AssociatedObject.SelectedItems.OfType<ModItem>().ToList();
 
                         System.Diagnostics.Debug.WriteLine($"[DragDrop] Selection contains {AssociatedObject.SelectedItems.Count} items. Filtered to {selectedItems.Count} ModItems.");
@@ -213,10 +203,10 @@ namespace RimSharp.Features.ModManager.Behaviors
             if (e.Data.Contains(DraggedItemsFormat))
             {
                 e.DragEffects = DragDropEffects.Move;
-                
+
                 var dropPos = e.GetPosition(AssociatedObject);
                 UpdateInsertionAdorner(dropPos);
-                
+
                 if (_dragAdorner != null)
                 {
                     _dragAdorner.SetPosition(dropPos);
@@ -246,13 +236,12 @@ namespace RimSharp.Features.ModManager.Behaviors
         private void OnDrop(object? sender, DragEventArgs e)
         {
             RemoveInsertionAdorner();
-            
+
             if (AssociatedObject == null || !e.Data.Contains(DraggedItemsFormat)) return;
 
             var rawData = e.Data.Get(DraggedItemsFormat);
             var droppedData = rawData as List<ModItem>;
-            
-            // If it's not a List<ModItem>, try to convert from IEnumerable
+
             if (droppedData == null && rawData is IEnumerable<ModItem> enumData)
             {
                 droppedData = enumData.ToList();
@@ -280,7 +269,7 @@ namespace RimSharp.Features.ModManager.Behaviors
             {
                 DropCommand.Execute(args);
             }
-            
+
             e.Handled = true;
         }
 
@@ -310,7 +299,6 @@ namespace RimSharp.Features.ModManager.Behaviors
                 }
             }
 
-            // If we didn't find a container (dropped at end), use the last one
             if (targetContainer == null && AssociatedObject.ItemCount > 0)
             {
                 targetContainer = AssociatedObject.ContainerFromIndex(AssociatedObject.ItemCount - 1) as Control;
@@ -330,8 +318,7 @@ namespace RimSharp.Features.ModManager.Behaviors
                     }
                     else
                     {
-                        // Just update the existing one if we were to add properties to it
-                        // For now we recreate if target changed
+
                         RemoveInsertionAdorner();
                         _insertionAdorner = new InsertionAdorner(targetContainer, isAbove, _insertionBrush!, 2.0);
                         AdornerLayer.SetAdorner(AssociatedObject, _insertionAdorner);
@@ -358,7 +345,7 @@ namespace RimSharp.Features.ModManager.Behaviors
             if (AssociatedObject == null) return 0;
 
             int index = 0;
-            // Iterate through the visible containers to find the insertion point
+
             var items = AssociatedObject.ItemsSource ?? AssociatedObject.Items;
             if (items == null) return 0;
 
@@ -367,10 +354,10 @@ namespace RimSharp.Features.ModManager.Behaviors
                 var container = AssociatedObject.ContainerFromItem(item);
                 if (container != null)
                 {
-                    // Get bounds relative to the ListBox
+
                     var bounds = container.Bounds;
                     double midPoint = bounds.Y + (bounds.Height / 2);
-                    
+
                     if (point.Y > midPoint)
                     {
                         index++;
@@ -396,3 +383,5 @@ namespace RimSharp.Features.ModManager.Behaviors
         }
     }
 }
+
+

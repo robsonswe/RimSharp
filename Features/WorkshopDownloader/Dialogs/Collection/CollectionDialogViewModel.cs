@@ -4,12 +4,12 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Input;
-using RimSharp.AppDir.Dialogs; // For DialogViewModelBase<T>
+using RimSharp.AppDir.Dialogs;
 using RimSharp.Features.WorkshopDownloader.Models;
 
 namespace RimSharp.Features.WorkshopDownloader.Dialogs.Collection
 {
-    // The result is a list of selected Steam IDs
+
     public class CollectionDialogViewModel : DialogViewModelBase<List<string>>
     {
         public ObservableCollection<CollectionItemViewModel> Items { get; }
@@ -31,13 +31,11 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.Collection
             SelectNoneCommand = CreateCommand(SelectNone);
 
             // AddSelectedCommand uses CloseWithResultCommand logic from base class
-            // The parameter passed to the command will be the list of selected IDs
+
             AddSelectedCommand = CreateCommand(AddSelected, CanAddSelected);
 
-            // Cancel uses the base CloseCommand, which will call CloseDialog with default(List<string>) == null
              CancelCommand = base.CloseCommand;
 
-            // Need to observe changes in IsSelected to update CanAddSelected
              foreach(var item in Items)
              {
                  item.PropertyChanged += (s, e) => { if (e.PropertyName == nameof(CollectionItemViewModel.IsSelected)) (AddSelectedCommand as Core.Commands.Base.DelegateCommand)?.RaiseCanExecuteChanged(); };
@@ -77,13 +75,13 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.Collection
             CloseDialog(selectedIds);
         }
 
-         // Override the default mapping if needed, although the base might be sufficient
         protected override void MapResultToWindowResult(List<string> result)
         {
-             // Treat closing with a non-null, non-empty list as "OK" (true)
-             // Treat closing with null or empty list (e.g., Cancel or Select None then Add) as "Cancel" (false)
-             DialogResultForWindow = result != null && result.Any();
+
+DialogResultForWindow = result != null && result.Any();
         }
 
     }
 }
+
+

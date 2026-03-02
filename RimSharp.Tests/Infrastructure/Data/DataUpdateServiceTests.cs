@@ -41,7 +41,7 @@ namespace RimSharp.Tests.Infrastructure.Data
         [Fact]
         public async Task CheckForAndApplyUpdatesAsync_WhenNoLocalManifest_ShouldDownloadAll()
         {
-            // Arrange
+
             var manifestJson = @"{ ""version"": ""1.0"", ""files"": { ""rules"": { ""path"": ""rules.json"" } } }";
             var rulesJson = @"{ ""rules"": [] }";
 
@@ -58,10 +58,8 @@ namespace RimSharp.Tests.Infrastructure.Data
             var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient);
             var progress = Substitute.For<IProgress<DataUpdateProgress>>();
 
-            // Act
             await service.CheckForAndApplyUpdatesAsync(progress, CancellationToken.None);
 
-            // Assert
             File.Exists(Path.Combine(_testTempDir, "Rules", "db", "manifest.json")).Should().BeTrue();
             File.Exists(Path.Combine(_testTempDir, "Rules", "db", "rules.json")).Should().BeTrue();
             File.ReadAllText(Path.Combine(_testTempDir, "Rules", "db", "rules.json")).Should().Be(rulesJson);
@@ -70,7 +68,7 @@ namespace RimSharp.Tests.Infrastructure.Data
         [Fact]
         public async Task CheckForAndApplyUpdatesAsync_WhenManifestMatches_ShouldSkipDownload()
         {
-            // Arrange
+
             var manifestJson = @"{ ""version"": ""1.0"", ""files"": {} }";
             
             // Setup local manifest
@@ -83,10 +81,8 @@ namespace RimSharp.Tests.Infrastructure.Data
             var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient);
             var progress = Substitute.For<IProgress<DataUpdateProgress>>();
 
-            // Act
             await service.CheckForAndApplyUpdatesAsync(progress, CancellationToken.None);
 
-            // Assert
             _mockLogger.Received(1).LogInfo(Arg.Is<string>(s => s != null && s.Contains("up to date")), Arg.Any<string>());
         }
 
@@ -102,3 +98,4 @@ namespace RimSharp.Tests.Infrastructure.Data
         }
     }
 }
+

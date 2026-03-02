@@ -11,7 +11,7 @@ namespace RimSharp.Core.Converters.Text
         {
             if (value is MessageDialogType type)
             {
-                // Using simple characters that look subtle when styled with Segoe UI Symbol
+
                 return type switch
                 {
                     MessageDialogType.Information => "fa-info",
@@ -29,4 +29,5 @@ namespace RimSharp.Core.Converters.Text
         }
     }
 }
+
 

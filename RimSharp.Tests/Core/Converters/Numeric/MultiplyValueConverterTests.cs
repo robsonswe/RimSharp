@@ -21,21 +21,20 @@ namespace RimSharp.Tests.Core.Converters.Numeric
         [InlineData(10.0, "invalid", 10.0)]
         public void Convert_ShouldMultiplyValue(double value, string parameter, double expected)
         {
-            // Act
+
             var result = _converter.Convert(value, typeof(double), parameter, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
 
         [Fact]
         public void Convert_WithNonDouble_ShouldReturnOriginalValue()
         {
-            // Act
+
             var result = _converter.Convert(123, typeof(double), "2", CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(123);
         }
     }
 }
+
