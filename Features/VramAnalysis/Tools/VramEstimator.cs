@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using RimSharp.Infrastructure.Mods.IO;
 
 namespace RimSharp.Features.VramAnalysis.Tools
 {
@@ -45,19 +46,20 @@ namespace RimSharp.Features.VramAnalysis.Tools
                 return new VramEstimationResult { Logs = sb.ToString() };
             }
 
-            var (currentFolders, maxFolders, dependencies) = ResolveRimworldLoadFolders(modPath, majorGameVersion, activeModPackageIds, sb);
+            var resolved = ModFolderResolver.Resolve(modPath, majorGameVersion, activeModPackageIds, sb);
+            var dependencies = resolved.Dependencies.Select(d => new ConditionalDependency(d, activeModPackageIds.Contains(d))).ToList();
             
-            sb.AppendLine($"[INFO] Final Active Folders: {(currentFolders.Count > 0 ? string.Join(", ", currentFolders) : "NONE")}");
+            sb.AppendLine($"[INFO] Final Active Folders: {(resolved.Current.Count > 0 ? string.Join(", ", resolved.Current) : "NONE")}");
 
             var currentAssets = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var maxAssets = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             try
             {
-                foreach (var folder in maxFolders)
+                foreach (var folder in resolved.Max)
                     AddTexturesFromResolvedPath(modPath, folder, maxAssets, sb);
 
-                foreach (var folder in currentFolders)
+                foreach (var folder in resolved.Current)
                     AddTexturesFromResolvedPath(modPath, folder, currentAssets, sb);
             }
             catch (Exception ex) 
@@ -160,195 +162,6 @@ namespace RimSharp.Features.VramAnalysis.Tools
                 InAtlasCount = currentInAtlasCount, MaxInAtlasCount = maxInAtlasCount,
                 Logs = sb.ToString()
             };
-        }
-
-        private static (List<string> Current, List<string> Max, List<ConditionalDependency> Dependencies) ResolveRimworldLoadFolders(string modPath, string majorGameVersion, IReadOnlySet<string> activeModPackageIds, StringBuilder sb)
-        {
-            var current = new List<string>();
-            var max = new List<string>();
-            var dependencies = new List<ConditionalDependency>();
-
-            var normalizedActiveMods = new HashSet<string>(activeModPackageIds.Select(id => id.ToLowerInvariant()));
-
-            string? xmlPath = null;
-            string[] possibleLocations = { modPath, Path.Combine(modPath, "About"), Path.Combine(modPath, "LoadFolders") };
-            foreach (var loc in possibleLocations)
-            {
-                if (!Directory.Exists(loc)) continue;
-                var files = Directory.GetFiles(loc, "*.xml");
-                var exactFile = files.FirstOrDefault(f => Path.GetFileName(f).Equals("loadfolders.xml", StringComparison.OrdinalIgnoreCase));
-                if (exactFile != null) { xmlPath = exactFile; break; }
-            }
-
-            if (xmlPath != null)
-            {
-                sb.AppendLine($"[XML] Found loadFolders.xml at: {Path.GetRelativePath(modPath, xmlPath)}");
-                try
-                {
-                    var doc = XDocument.Load(xmlPath);
-                    var root = doc.Root;
-
-                    if (root != null)
-                    {
-                        string exactTagName = "v" + majorGameVersion;
-                        var targetNodes = root.Elements().Where(e => e.Name.LocalName.Equals(exactTagName, StringComparison.OrdinalIgnoreCase)).ToList();
-                        
-                        if (targetNodes.Count == 0)
-                        {
-                            sb.AppendLine($"[XML] No <{exactTagName}> found. Checking for <default>.");
-                            targetNodes = root.Elements().Where(e => e.Name.LocalName.Equals("default", StringComparison.OrdinalIgnoreCase)).ToList();
-                        }
-                        
-                        if (targetNodes.Count == 0)
-                        {
-                            // RimWorld Version Fallback Logic
-                            var availableVersions = root.Elements()
-                                .Select(e => e.Name.LocalName.ToLowerInvariant())
-                                .Where(n => n.StartsWith("v") && Version.TryParse(n.Substring(1), out _))
-                                .Distinct()
-                                .ToList();
-
-                            if (availableVersions.Count > 0)
-                            {
-                                string bestVersion = GetBestFallbackVersion(availableVersions, majorGameVersion);
-                                sb.AppendLine($"[XML] No <default> found. Falling back to closest available version tag: <{bestVersion}>");
-                                targetNodes = root.Elements().Where(e => e.Name.LocalName.Equals(bestVersion, StringComparison.OrdinalIgnoreCase)).ToList();
-                            }
-                            else
-                            {
-                                sb.AppendLine($"[XML] Neither <{exactTagName}> nor <default> existed in the XML. Falling back to directory structure.");
-                            }
-                        }
-                        
-                        if (targetNodes.Count > 0)
-                        {
-                            foreach (var targetNode in targetNodes)
-                            {
-                                bool isNodeMet = EvaluateConditions(targetNode, normalizedActiveMods, dependencies, sb);
-
-                                foreach (var li in targetNode.Elements().Where(e => e.Name.LocalName.Equals("li", StringComparison.OrdinalIgnoreCase)))
-                                {
-                                    bool isLiMet = EvaluateConditions(li, normalizedActiveMods, dependencies, sb);
-                                    string folder = li.Value.Trim().Replace('/', Path.DirectorySeparatorChar);
-                                    
-                                    folder = folder.TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                                    if (string.IsNullOrEmpty(folder) || folder == ".") folder = ".";
-                                    
-                                    if (isNodeMet && isLiMet) current.Add(folder);
-                                    max.Add(folder);
-                                }
-                            }
-                            return (current, max, dependencies);
-                        }
-                    }
-                } 
-                catch (Exception ex) 
-                { 
-                    sb.AppendLine($"[XML ERROR] Parsing failed: {ex.Message}");
-                }
-            }
-            else
-            {
-                sb.AppendLine($"[INFO] No loadFolders.xml found. Proceeding with directory fallback logic.");
-            }
-
-            // Fallback Logic if XML missing or didn't provide results
-            current.Add(".");
-            if (Directory.Exists(Path.Combine(modPath, "Common"))) current.Add("Common");
-            
-            string ver = majorGameVersion;
-            if (Directory.Exists(Path.Combine(modPath, ver))) 
-            {
-                current.Add(ver);
-            }
-            else if (Directory.Exists(Path.Combine(modPath, "v" + ver))) 
-            {
-                current.Add("v" + ver);
-            }
-            else
-            {
-                var dirs = Directory.GetDirectories(modPath)
-                    .Select(Path.GetFileName)
-                    .Where(d => d != null && (Version.TryParse(d, out _) || (d.StartsWith("v", StringComparison.OrdinalIgnoreCase) && Version.TryParse(d.Substring(1), out _))))
-                    .Select(d => d!)
-                    .ToList();
-
-                if (dirs.Count > 0)
-                {
-                    string bestDir = GetBestFallbackVersion(dirs, majorGameVersion);
-                    sb.AppendLine($"[DIR FALLBACK] Exact folder '{ver}' not found. Falling back to best match: '{bestDir}'");
-                    current.Add(bestDir);
-                }
-            }
-
-            max.AddRange(current);
-            return (current, max, dependencies);
-        }
-
-        private static string GetBestFallbackVersion(IEnumerable<string> availableVersions, string targetVersionStr)
-        {
-            if (!Version.TryParse(targetVersionStr, out var targetVersion))
-                return availableVersions.OrderByDescending(v => v).FirstOrDefault() ?? targetVersionStr;
-
-            var parsedVersions = new List<(string original, Version version)>();
-            foreach (var vStr in availableVersions)
-            {
-                string clean = vStr.StartsWith("v", StringComparison.OrdinalIgnoreCase) ? vStr.Substring(1) : vStr;
-                if (Version.TryParse(clean, out var v))
-                    parsedVersions.Add((vStr, v));
-            }
-
-            if (!parsedVersions.Any()) return targetVersionStr;
-
-            var lessOrEqual = parsedVersions.Where(x => x.version <= targetVersion).OrderByDescending(x => x.version).FirstOrDefault();
-            if (lessOrEqual.original != null) return lessOrEqual.original;
-
-            var greater = parsedVersions.Where(x => x.version > targetVersion).OrderBy(x => x.version).FirstOrDefault();
-            return greater.original ?? targetVersionStr;
-        }
-
-        private static bool EvaluateConditions(XElement element, HashSet<string> activeMods, List<ConditionalDependency> dependencies, StringBuilder sb)
-        {
-            bool isMet = true;
-
-            foreach (var attr in element.Attributes())
-            {
-                string name = attr.Name.LocalName.ToLowerInvariant();
-                string val = attr.Value;
-                if (string.IsNullOrWhiteSpace(val)) continue;
-
-                var mods = val.Split(',').Select(m => m.Trim().ToLowerInvariant()).ToList();
-
-                if (name == "ifmodactive" || name == "mayrequire" || name == "ifmodactiveany")
-                {
-                    bool met = mods.Any(m => activeMods.Contains(m));
-                    isMet &= met;
-                    foreach(var m in mods) dependencies.Add(new ConditionalDependency(m, activeMods.Contains(m)));
-                    sb.AppendLine($"[COND] {name}=\"{val}\" -> Evaluated to {met}");
-                }
-                else if (name == "ifmodactiveall")
-                {
-                    bool met = mods.All(m => activeMods.Contains(m));
-                    isMet &= met;
-                    foreach (var m in mods) dependencies.Add(new ConditionalDependency(m, activeMods.Contains(m)));
-                    sb.AppendLine($"[COND] {name}=\"{val}\" -> Evaluated to {met}");
-                }
-                else if (name == "ifmodnotactive" || name == "ifmodnotactiveany")
-                {
-                    bool met = !mods.Any(m => activeMods.Contains(m));
-                    isMet &= met;
-                    foreach (var m in mods) dependencies.Add(new ConditionalDependency(m, activeMods.Contains(m)));
-                    sb.AppendLine($"[COND] {name}=\"{val}\" -> Evaluated to {met}");
-                }
-                else if (name == "ifmodnotactiveall")
-                {
-                    bool met = !mods.All(m => activeMods.Contains(m));
-                    isMet &= met;
-                    foreach (var m in mods) dependencies.Add(new ConditionalDependency(m, activeMods.Contains(m)));
-                    sb.AppendLine($"[COND] {name}=\"{val}\" -> Evaluated to {met}");
-                }
-            }
-            return isMet;
         }
 
         private static void AddTexturesFromResolvedPath(string modPath, string relativePath, Dictionary<string, string> assetMap, StringBuilder sb)

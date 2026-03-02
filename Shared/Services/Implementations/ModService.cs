@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Shared.Models;
+using RimSharp.Infrastructure.Mods.IO;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.RegularExpressions;
@@ -30,6 +31,11 @@ namespace RimSharp.Shared.Services.Implementations
         private static readonly HashSet<string> TextureExtensions = new(StringComparer.OrdinalIgnoreCase)
         {
             ".png", ".jpg", ".jpeg", ".psd", ".tga", ".dds", ".bmp", ".gif", ".psb"
+        };
+
+        private static readonly HashSet<string> JunkFolderNames = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Source", ".git", ".github", ".vs", ".vscode", "bin", "obj", "Properties"
         };
 
         public ModService(IPathService pathService, IModRulesService rulesService, IModCustomService customService, IMlieVersionService mlieVersionService, ILoggerService logger)
@@ -855,10 +861,19 @@ namespace RimSharp.Shared.Services.Implementations
         #endregion
 
         /// <summary>
-        /// Checks if a mod directory contains C# assemblies (.dll files) anywhere inside it.
+        /// Checks if a path contains any segments that are considered "junk" (non-game) folders.
+        /// </summary>
+        private bool IsJunkPath(string filePath)
+        {
+            var parts = filePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return parts.Any(p => JunkFolderNames.Contains(p));
+        }
+
+        /// <summary>
+        /// Checks if a mod directory contains C# assemblies (.dll files) anywhere inside its valid load folders.
         /// </summary>
         /// <param name="modDirectoryPath">The root path of the mod directory.</param>
-        /// <returns>True if any .dll files are found, false otherwise.</returns>
+        /// <returns>True if any .dll files are found in valid Assemblies folders, false otherwise.</returns>
         private bool CheckForAssemblies(string modDirectoryPath)
         {
             if (string.IsNullOrEmpty(modDirectoryPath) || !Directory.Exists(modDirectoryPath))
@@ -868,9 +883,24 @@ namespace RimSharp.Shared.Services.Implementations
 
             try
             {
-                // Search the entire mod directory recursively for any .dll file.
-                // Using EnumerateFiles and Any() is efficient as it stops on the first match.
-                return Directory.EnumerateFiles(modDirectoryPath, "*.dll", SearchOption.AllDirectories).Any();
+                var resolved = ModFolderResolver.Resolve(modDirectoryPath, _currentMajorVersion);
+                // We check 'Max' to see if it has assemblies in any potential configuration for this version
+                foreach (var folder in resolved.Max)
+                {
+                    string fullPath = Path.Combine(modDirectoryPath, folder);
+                    if (!Directory.Exists(fullPath)) continue;
+
+                    string assembliesDir = Path.Combine(fullPath, "Assemblies");
+                    if (Directory.Exists(assembliesDir))
+                    {
+                        if (Directory.EnumerateFiles(assembliesDir, "*.dll", SearchOption.AllDirectories)
+                                     .Any(f => !IsJunkPath(f)))
+                        {
+                            return true;
+                        }
+                    }
+                }
+                return false;
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is System.Security.SecurityException)
             {
@@ -882,10 +912,10 @@ namespace RimSharp.Shared.Services.Implementations
         }
 
         /// <summary>
-        /// Checks if a mod directory contains texture files, ignoring the 'About' folder.
+        /// Checks if a mod directory contains texture files in its valid load folders.
         /// </summary>
         /// <param name="modDirectoryPath">The root path of the mod directory.</param>
-        /// <returns>True if texture files are found, false otherwise.</returns>
+        /// <returns>True if texture files are found in valid Textures folders, false otherwise.</returns>
         private bool CheckForTextures(string modDirectoryPath)
         {
             if (string.IsNullOrEmpty(modDirectoryPath) || !Directory.Exists(modDirectoryPath))
@@ -895,21 +925,24 @@ namespace RimSharp.Shared.Services.Implementations
 
             try
             {
-                // We need to exclude the 'About' folder, which contains non-game preview images.
-                string aboutFolderPathWithSeparator = Path.Combine(modDirectoryPath, "About") + Path.DirectorySeparatorChar;
+                var resolved = ModFolderResolver.Resolve(modDirectoryPath, _currentMajorVersion);
+                // We check 'Max' to see if it has textures in any potential configuration for this version
+                foreach (var folder in resolved.Max)
+                {
+                    string fullPath = Path.Combine(modDirectoryPath, folder);
+                    if (!Directory.Exists(fullPath)) continue;
 
-                // Enumerate all files recursively
-                return Directory.EnumerateFiles(modDirectoryPath, "*.*", SearchOption.AllDirectories)
-                                .Any(filePath =>
-                                {
-                                    // Check if the file is NOT inside the 'About' folder.
-                                    if (filePath.StartsWith(aboutFolderPathWithSeparator, StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        return false; // It's in the About folder, so ignore it.
-                                    }
-                                    // Check if the file has a valid texture extension.
-                                    return TextureExtensions.Contains(Path.GetExtension(filePath));
-                                });
+                    string texturesDir = Path.Combine(fullPath, "Textures");
+                    if (Directory.Exists(texturesDir))
+                    {
+                        if (Directory.EnumerateFiles(texturesDir, "*.*", SearchOption.AllDirectories)
+                                     .Any(f => TextureExtensions.Contains(Path.GetExtension(f)) && !IsJunkPath(f)))
+                        {
+                            return true;
+                        }
+                    }
+                }
+                return false;
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is System.Security.SecurityException)
             {
