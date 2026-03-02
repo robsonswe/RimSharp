@@ -1,6 +1,7 @@
 using RimSharp.Core.Commands;
 using RimSharp.AppDir.AppFiles; // For ViewModelBase/RunOnUIThread if needed
 using RimSharp.AppDir.Dialogs; // For MessageDialogResult
+using RimSharp.Features.ModManager.Dialogs.ActiveIssues;
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -153,14 +154,15 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         {
             if (!suppressWarnings && _modListManager.HasAnyActiveModIssues)
             {
-                var confirmationResult = await _dialogService.ShowConfirmationAsync(
-                    "Save Warning",
-                    "The active mod list has potential issues (e.g., missing dependencies, load order conflicts, incompatibilities).\n\n" +
-                    "Saving the list in this state might cause problems when running the game.\n\n" +
-                    "Do you want to save anyway?",
-                    showCancel: true); // Show OK (Yes) and Cancel (No)
+                var issues = _modListManager.GetActiveModIssues();
+                var msg = "The active mod list has potential issues (e.g., missing dependencies, load order conflicts, incompatibilities).\n\n" +
+                          "Saving the list in this state might cause problems when running the game.\n\n" +
+                          "Do you want to save anyway?";
 
-                if (confirmationResult != MessageDialogResult.OK && confirmationResult != MessageDialogResult.Yes) // User chose not to save
+                var vm = new ActiveIssuesDialogViewModel(issues, msg);
+                bool confirmed = await _dialogService.ShowActiveIssuesDialogAsync(vm);
+
+                if (!confirmed) // User chose not to save
                 {
                     Debug.WriteLine("Save cancelled by user due to detected issues.");
                     return; // Exit without saving

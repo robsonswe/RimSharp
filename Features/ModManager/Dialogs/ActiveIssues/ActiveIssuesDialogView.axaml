@@ -13,8 +13,26 @@
                   Title="Active Mod List Issues">
 
     <dialogs:BaseDialog.MainContent>
-        <Grid RowDefinitions="Auto, *" Margin="10">
-            <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,10">
+        <Grid RowDefinitions="Auto, Auto, *" Margin="10">
+            <!-- Optional Confirmation Message -->
+            <Border Grid.Row="0" IsVisible="{Binding IsConfirmationMode}" 
+                    Background="{DynamicResource RimworldWhiteBrush}" 
+                    BorderBrush="{DynamicResource RimworldBrownBrush}"
+                    BorderThickness="2" CornerRadius="2" Padding="12" Margin="0,0,0,15">
+                <Grid ColumnDefinitions="Auto, *">
+                    <i:Icon Grid.Column="0" Value="fa-triangle-exclamation" 
+                               FontSize="28" Foreground="{DynamicResource RimworldErrorRedBrush}" 
+                               VerticalAlignment="Center" Margin="0,0,12,0"/>
+                    <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock Text="Warning / Confirmation:" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                        <TextBlock Text="{Binding ConfirmationMessage}" 
+                                   FontSize="12" TextWrapping="Wrap"
+                                   VerticalAlignment="Center" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="1" ColumnDefinitions="*, Auto" Margin="0,0,5,10">
                 <TextBlock Grid.Column="0" Text="Detected issues in your active mod list, grouped by mod:" 
                            FontSize="14" VerticalAlignment="Center" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
                 <Border Grid.Column="1" Background="{DynamicResource RimworldErrorRedBrush}" 
@@ -24,8 +42,8 @@
                 </Border>
             </Grid>
             
-            <ScrollViewer Grid.Row="1" AllowAutoHide="False">
-                <ItemsControl ItemsSource="{Binding IssueGroups}">
+            <ScrollViewer Grid.Row="2" AllowAutoHide="False">
+                <ItemsControl ItemsSource="{Binding IssueGroups}" Margin="0,0,12,0">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="local:ModIssueGroup">
                             <Border Classes="RimworldPanelBorder" Margin="0,0,0,15" Padding="0">
@@ -74,7 +92,15 @@
 
     <dialogs:BaseDialog.ButtonContent>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
-            <Button Content="Close" Command="{Binding CloseIssuesCommand}" Width="100" Classes="RimworldButtonStyle"/>
+            <!-- Normal Mode -->
+            <Button Content="Close" IsVisible="{Binding !IsConfirmationMode}" 
+                    Command="{Binding CloseIssuesCommand}" Width="100" Classes="RimworldButtonStyle"/>
+            
+            <!-- Confirmation Mode -->
+            <Button Content="OK" IsVisible="{Binding IsConfirmationMode}" 
+                    Command="{Binding ConfirmCommand}" Width="100" Classes="RimworldSaveButtonStyle"/>
+            <Button Content="Cancel" IsVisible="{Binding IsConfirmationMode}" 
+                    Command="{Binding CancelCommand}" Width="100" Classes="RimworldRunButtonStyle"/>
         </StackPanel>
     </dialogs:BaseDialog.ButtonContent>
 </dialogs:BaseDialog>

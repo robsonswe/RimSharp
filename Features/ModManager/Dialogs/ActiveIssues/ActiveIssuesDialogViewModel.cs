@@ -25,11 +25,17 @@ namespace RimSharp.Features.ModManager.Dialogs.ActiveIssues
     {
         public ObservableCollection<ModIssueGroup> IssueGroups { get; }
 
-        public ICommand CloseIssuesCommand { get; }
+        public string? ConfirmationMessage { get; }
+        public bool IsConfirmationMode => !string.IsNullOrEmpty(ConfirmationMessage);
 
-        public ActiveIssuesDialogViewModel(IEnumerable<ModIssue> issues) 
-            : base("Active Mod List Issues")
+        public ICommand CloseIssuesCommand { get; }
+        public ICommand ConfirmCommand { get; }
+        public ICommand CancelCommand { get; }
+
+        public ActiveIssuesDialogViewModel(IEnumerable<ModIssue> issues, string? confirmationMessage = null) 
+            : base(string.IsNullOrEmpty(confirmationMessage) ? "Active Mod List Issues" : "Confirm Save with Issues")
         {
+            ConfirmationMessage = confirmationMessage;
             var issueList = issues?.ToList() ?? new List<ModIssue>();
             
             var groups = issueList
@@ -40,6 +46,8 @@ namespace RimSharp.Features.ModManager.Dialogs.ActiveIssues
             IssueGroups = new ObservableCollection<ModIssueGroup>(groups);
 
             CloseIssuesCommand = CreateCommand(() => CloseDialog(true));
+            ConfirmCommand = CreateCommand(() => CloseDialog(true));
+            CancelCommand = CreateCommand(() => CloseDialog(false));
         }
     }
 }
