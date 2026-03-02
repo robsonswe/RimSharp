@@ -19,7 +19,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
         [Fact]
         public void Parse_ShouldReturnCorrectIds()
         {
-            // Arrange
+
             var xml = @"<ModsConfigData>
                 <activeMods>
                     <li>Ludeon.RimWorld</li>
@@ -28,10 +28,8 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
             </ModsConfigData>";
             var doc = XDocument.Parse(xml);
 
-            // Act
             var result = _parser.Parse(doc);
 
-            // Assert
             result.Should().HaveCount(2);
             result.Should().Contain("ludeon.rimworld");
             result.Should().Contain("brrainz.harmony");
@@ -40,13 +38,11 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
         [Fact]
         public void Generate_ShouldReturnCorrectXml()
         {
-            // Arrange
+
             var ids = new List<string> { "Ludeon.RimWorld", "brrainz.harmony" };
 
-            // Act
             var doc = _parser.Generate(ids);
 
-            // Assert
             var listItems = doc.Root?.Element("activeMods")?.Elements("li").ToList();
             listItems.Should().NotBeNull();
             listItems!.Should().HaveCount(2);
@@ -55,3 +51,4 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
         }
     }
 }
+

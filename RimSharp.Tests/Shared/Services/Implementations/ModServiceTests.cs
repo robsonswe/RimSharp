@@ -63,7 +63,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public async Task LoadModsAsync_ShouldParseValidMod()
         {
-            // Arrange
+
             var modDir = Path.Combine(_modsPath, "TestMod");
             var aboutDir = Path.Combine(modDir, "About");
             Directory.CreateDirectory(aboutDir);
@@ -81,11 +81,9 @@ namespace RimSharp.Tests.Shared.Services.Implementations
 
             var service = CreateService();
 
-            // Act
             await service.LoadModsAsync();
             var mods = service.GetLoadedMods().ToList();
 
-            // Assert
             mods.Should().HaveCount(1);
             mods[0].Name.Should().Be("Test Mod Name");
             mods[0].PackageId.Should().Be("test.mod.id");
@@ -95,7 +93,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public async Task LoadModsAsync_WhenNameMissingInXml_ShouldUseFolderName()
         {
-            // Arrange
+
             var modDir = Path.Combine(_modsPath, "MyFolderName");
             var aboutDir = Path.Combine(modDir, "About");
             Directory.CreateDirectory(aboutDir);
@@ -109,20 +107,18 @@ namespace RimSharp.Tests.Shared.Services.Implementations
 
             var service = CreateService();
 
-            // Act
             await service.LoadModsAsync();
             var mods = service.GetLoadedMods().ToList();
 
-            // Assert
             mods.Should().HaveCount(1);
-            // It should fall back to the folder name because of the ParseAboutXml logic
+
             mods[0].Name.Should().Be("MyFolderName");
         }
 
         [Fact]
         public async Task LoadModsAsync_WhenXmlIsMalformed_ShouldSkipMod()
         {
-            // Arrange
+
             var modDir = Path.Combine(_modsPath, "BadMod");
             var aboutDir = Path.Combine(modDir, "About");
             Directory.CreateDirectory(aboutDir);
@@ -131,12 +127,12 @@ namespace RimSharp.Tests.Shared.Services.Implementations
 
             var service = CreateService();
 
-            // Act
             await service.LoadModsAsync();
             var mods = service.GetLoadedMods().ToList();
 
-            // Assert
             mods.Should().BeEmpty();
         }
     }
 }
+
+

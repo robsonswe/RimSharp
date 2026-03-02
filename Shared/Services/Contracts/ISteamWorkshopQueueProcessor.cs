@@ -14,7 +14,7 @@ namespace RimSharp.Shared.Services.Contracts
         public int TotalItems { get; set; }
         public string CurrentSteamId { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
-        public string CurrentItemName { get; set; } = string.Empty; // Added for better messages
+        public string CurrentItemName { get; set; } = string.Empty;
     }
 
     /// <summary>
@@ -32,15 +32,14 @@ namespace RimSharp.Shared.Services.Contracts
     }
 
     /// <summary>
-    /// Service responsible for processing a list of Steam Workshop item IDs,
-    /// checking their validity via the Steam API, and adding valid items to the download queue.
-    /// </summary>
+
+/// </summary>
     public interface ISteamWorkshopQueueProcessor
     {
         /// <summary>
-        /// Processes a list of Steam IDs, checks them against the Steam API, and queues valid ones for download.
+
         /// </summary>
-        /// <param name="steamIds">The collection of Steam Workshop File IDs to process.</param>
+
         /// <param name="progress">Optional reporter for progress updates.</param>
         /// <param name="cancellationToken">Token to cancel the operation.</param>
         /// <returns>A summary of the processing results.</returns>
@@ -50,3 +49,5 @@ namespace RimSharp.Shared.Services.Contracts
             CancellationToken cancellationToken);
     }
 }
+
+

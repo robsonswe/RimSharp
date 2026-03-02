@@ -20,12 +20,10 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         public WindowsBrowserControl(WebView2 webView)
         {
             _webView = webView ?? throw new ArgumentNullException(nameof(webView));
-            
-            // Wire up navigation events
+
             _webView.NavigationStarting += OnWebViewNavigationStarting;
             _webView.NavigationCompleted += OnWebViewNavigationCompleted;
-            
-            // Wire up DOM content loaded event for mod extraction timing
+
             if (_webView.CoreWebView2 != null)
             {
                 _webView.CoreWebView2.DOMContentLoaded += OnWebViewDomContentLoaded;
@@ -54,7 +52,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         {
             _isDomReady = true;
             Debug.WriteLine($"[WindowsBrowserControl] DOMContentLoaded fired for: {_webView.Source}");
-            // Fire a special event for DOM ready - used by mod extraction
+
             DomContentLoaded?.Invoke(this, _webView.Source?.ToString() ?? string.Empty);
         }
 
@@ -93,3 +91,4 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         public event EventHandler<bool>? LoadingStateChanged;
     }
 }
+

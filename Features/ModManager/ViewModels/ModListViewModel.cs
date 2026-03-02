@@ -10,7 +10,7 @@ using System.Windows.Input;
 using System.Threading.Tasks;
 using RimSharp.Features.ModManager.Dialogs.Filter;
 using System.Linq;
-using System.Threading; // Added for CancellationTokenSource
+using System.Threading;
 
 namespace RimSharp.Features.ModManager.ViewModels
 {
@@ -21,13 +21,10 @@ namespace RimSharp.Features.ModManager.ViewModels
         private readonly IModCommandService _commandService;
         private readonly IDialogService _dialogService;
         private ModItem? _selectedMod;
-
-        // --- Backing fields and cancellation tokens for debounced search ---
         private string _activeSearchText = string.Empty;
         private string _inactiveSearchText = string.Empty;
         private CancellationTokenSource _activeSearchCts = new CancellationTokenSource();
         private CancellationTokenSource _inactiveSearchCts = new CancellationTokenSource();
-        // ---
 
         public bool IsActiveFilterApplied => _filterService.ActiveFilterCriteria.IsActive();
         public bool IsInactiveFilterApplied => _filterService.InactiveFilterCriteria.IsActive();
@@ -99,16 +96,13 @@ namespace RimSharp.Features.ModManager.ViewModels
             _commandService = commandService;
             _dialogService = dialogService;
 
-            // Initialize local search text from the service's state on creation
             _activeSearchText = _filterService.ActiveSearchText;
             _inactiveSearchText = _filterService.InactiveSearchText;
 
-            // Use named methods for event handlers to allow for proper unsubscription on Dispose
             _filterService.ActiveMods.CollectionChanged += OnActiveModsChanged;
             _filterService.InactiveMods.CollectionChanged += OnInactiveModsChanged;
             _modListManager.ListChanged += OnModListChanged;
 
-            // Use property observation syntax from ViewModelBase
             ActivateModCommand = CreateCommand<ModItem>(
                 mod => { 
                     System.Diagnostics.Debug.WriteLine($"ActivateModCommand executing for: {mod?.Name}");
@@ -162,7 +156,7 @@ namespace RimSharp.Features.ModManager.ViewModels
         }
 
         /// <summary>
-        /// Asynchronously applies the filter after a short delay, canceling previous requests.
+
         /// </summary>
         private async void DebounceFilter(bool isForActiveList)
         {
@@ -174,7 +168,6 @@ namespace RimSharp.Features.ModManager.ViewModels
                     _activeSearchCts = new CancellationTokenSource();
                     await RimSharp.Core.Extensions.ThreadHelper.DelayAsync(300, _activeSearchCts.Token);
 
-                    // Apply the filter using the current text from the backing field
                     _filterService.ApplyActiveFilter(_activeSearchText);
                 }
                 else
@@ -188,7 +181,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             }
             catch (TaskCanceledException)
             {
-                // This is expected if the user types quickly. Ignore.
+
                 Debug.WriteLine("[ModListViewModel] Search debounce cancelled.");
             }
         }
@@ -208,7 +201,7 @@ namespace RimSharp.Features.ModManager.ViewModels
         {
             OnPropertyChanged(nameof(TotalActiveMods));
             OnPropertyChanged(nameof(IsActiveFilterApplied));
-            
+
             // Re-evaluate issue counts when collection changes as well
             OnPropertyChanged(nameof(ActiveSortingIssuesCount));
             OnPropertyChanged(nameof(ActiveMissingDependenciesCount));
@@ -231,7 +224,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             OnPropertyChanged(nameof(TotalInactiveMods));
             OnPropertyChanged(nameof(IsActiveFilterApplied));
             OnPropertyChanged(nameof(IsInactiveFilterApplied));
-            
+
             OnPropertyChanged(nameof(ActiveSortingIssuesCount));
             OnPropertyChanged(nameof(ActiveMissingDependenciesCount));
             OnPropertyChanged(nameof(ActiveIncompatibilitiesCount));
@@ -252,8 +245,6 @@ namespace RimSharp.Features.ModManager.ViewModels
                 RequestSelectionChange?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedMod)));
             }
         }
-        
-        // --- Filter Dialog Logic ---
         private async Task ShowFilterDialogForActive()
         {
             await ShowFilterDialog(isForActiveList: true);
@@ -280,7 +271,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                     if (isForActiveList)
                     {
                         _filterService.ApplyActiveFilterCriteria(viewModel.CurrentCriteria!);
-                        // Sync our local backing field and notify the UI without re-triggering the debounce.
+
                         if (_activeSearchText != _filterService.ActiveSearchText)
                         {
                             _activeSearchText = _filterService.ActiveSearchText;
@@ -302,7 +293,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                     if (isForActiveList)
                     {
                         _filterService.ClearActiveFilters();
-                        // Sync our local backing field and notify the UI.
+
                         if (_activeSearchText != _filterService.ActiveSearchText)
                         {
                             _activeSearchText = _filterService.ActiveSearchText;
@@ -332,24 +323,24 @@ namespace RimSharp.Features.ModManager.ViewModels
             {
                 if (disposing)
                 {
-                    // --- Clean up managed resources ---
-                    
-                    // Unsubscribe from events to prevent memory leaks
+
                     if (_filterService != null)
                     {
                         _filterService.ActiveMods.CollectionChanged -= OnActiveModsChanged;
                         _filterService.InactiveMods.CollectionChanged -= OnInactiveModsChanged;
                     }
-                    
+
                     // Cancel any pending debounced searches and dispose tokens
                     _activeSearchCts?.Cancel();
                     _activeSearchCts?.Dispose();
                     _inactiveSearchCts?.Cancel();
                     _inactiveSearchCts?.Dispose();
                 }
-                
+
                 base.Dispose(disposing);
             }
         }
     }
 }
+
+

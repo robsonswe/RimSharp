@@ -5,8 +5,8 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
-using RimSharp.Features.WorkshopDownloader.Models; // For DownloadItem
-using RimSharp.Shared.Services.Contracts; // For ILoggerService, IModService
+using RimSharp.Features.WorkshopDownloader.Models;
+using RimSharp.Shared.Services.Contracts;
 
 namespace RimSharp.Infrastructure.Workshop.Download.Processing
 {
@@ -47,7 +47,6 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
 
             try
             {
-                // --- Step 1: Verify and Prepare Original Source ---
                 if (!Directory.Exists(sourcePath))
                 {
                     _logger.LogError($"Item {itemId}: Source directory '{sourcePath}' not found. Cannot process.", "DownloadedItemProcessor");
@@ -58,9 +57,6 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
                 await _modService.CreateTimestampFilesAsync(sourcePath, itemId, item.PublishDate ?? "", item.StandardDate ?? "");
                 _logger.LogInfo($"Item {itemId}: Timestamp files created in original source.", "DownloadedItemProcessor");
                 cancellationToken.ThrowIfCancellationRequested();
-
-
-                // --- Step 2: Handle Cross-Volume "Staging" to Guarantee Atomic Swap ---
                 if (!AreOnSameVolume(sourcePath, targetPath))
                 {
                     _logger.LogWarning($"Item {itemId}: Cross-volume operation detected. Staging files on target volume for atomic move.", "DownloadedItemProcessor");
@@ -77,9 +73,6 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
                     finalSourcePath = stagingPath;
                 }
                 cancellationToken.ThrowIfCancellationRequested();
-
-
-                // --- Step 3: Perform the Atomic "Backup and Swap" ---
                 if (Directory.Exists(targetPath))
                 {
                     backupPath = $"{targetPath}{backupSuffix}_{Guid.NewGuid():N}";
@@ -98,9 +91,6 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
                 Directory.Move(finalSourcePath, targetPath);
                 if (!Directory.Exists(targetPath) || Directory.Exists(finalSourcePath))
                     throw new IOException($"Verification failed after moving staged version to target path '{targetPath}'.");
-
-
-                // --- Step 4: Success! Preserve DDS files and then clean up the backup ---
                 if (backupCreated && !string.IsNullOrEmpty(backupPath))
                 {
                     _logger.LogInfo($"Item {itemId}: Scanning for custom DDS files to preserve from backup '{backupPath}'.", "DownloadedItemProcessor");
@@ -132,8 +122,7 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
             }
             finally
             {
-                // --- Guaranteed Cleanup ---
-                // This block ensures that if the process fails or is cancelled after staging, we don't leave junk on the user's disk.
+
                 if (stagingPath != null && Directory.Exists(stagingPath))
                 {
                     try
@@ -143,7 +132,7 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
                     }
                     catch (Exception cleanupEx)
                     {
-                        // Log this as a critical failure, as it means we've leaked files onto the disk.
+
                         _logger.LogCritical($"Item {itemId}: FAILED TO CLEANUP STAGING DIRECTORY '{stagingPath}'. Manual deletion may be required. Error: {cleanupEx.Message}", "DownloadedItemProcessor");
                     }
                 }
@@ -151,9 +140,8 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
         }
 
         /// <summary>
-        /// Preserves custom .dds files from a backup directory if their .png counterpart
-        /// exists and is unchanged in the new mod directory.
-        /// </summary>
+
+/// </summary>
         private async Task PreserveDdsFilesAsync(string backupPath, string newModPath, string itemId, CancellationToken cancellationToken)
         {
             int preservedCount = 0;
@@ -168,9 +156,6 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
                     string relativePath = Path.GetRelativePath(backupPath, backupDdsPath);
                     string newDdsPath = Path.Combine(newModPath, relativePath);
 
-                    // ---vvv---  RULE #0  ---vvv---
-                    // If a DDS file with this name already exists in the new version, it's an
-                    // official file from the mod author. We must not touch it.
                     if (File.Exists(newDdsPath))
                     {
                         _logger.LogDebug($"Item {itemId}: Skipping DDS '{relativePath}'. It is an official file included in the new version.", "DownloadedItemProcessor");
@@ -181,22 +166,17 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
 
                     string backupPngPath = Path.Combine(backupPath, pngRelativePath);
                     string newPngPath = Path.Combine(newModPath, pngRelativePath);
-
-                    // Rule 1: PNG counterpart must exist in the new mod folder.
                     if (!File.Exists(newPngPath))
                     {
                         _logger.LogDebug($"Item {itemId}: Skipping DDS '{relativePath}'. Its PNG counterpart was removed in the new version.", "DownloadedItemProcessor");
                         continue;
                     }
 
-                    // Sanity check: ensure the PNG also existed in the backup.
                     if (!File.Exists(backupPngPath))
                     {
                         _logger.LogWarning($"Item {itemId}: Skipping DDS '{relativePath}'. Found DDS in backup without its PNG counterpart.", "DownloadedItemProcessor");
                         continue;
                     }
-
-                    // Rule 2: Compare hashes of old and new PNGs to ensure it wasn't modified.
                     string oldPngHash = await ComputeFileHashAsync(backupPngPath, cancellationToken);
                     string newPngHash = await ComputeFileHashAsync(newPngPath, cancellationToken);
 
@@ -206,7 +186,6 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
                         continue;
                     }
 
-                    // All rules passed. This is a custom DDS file that can be safely moved.
                     string? destDir = Path.GetDirectoryName(newDdsPath);
                     if (destDir != null) Directory.CreateDirectory(destDir);
 
@@ -227,12 +206,11 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
             }
         }
 
-
-        private async Task<string> ComputeFileHashAsync(string filePath, CancellationToken cancellationToken)
+private async Task<string> ComputeFileHashAsync(string filePath, CancellationToken cancellationToken)
         {
             using (var sha256 = SHA256.Create())
             {
-                // Use an async-compatible file stream opening
+
                 using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
                 {
                     byte[] hash = await sha256.ComputeHashAsync(stream, cancellationToken);
@@ -278,11 +256,7 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
                 return false;
             }
 
-            // On Windows, roots are drive letters (C:\), comparison should be case-insensitive.
-            // On Linux/macOS, roots are usually just '/', and we'd need more complex logic 
-            // (checking mount points) to be 100% sure if they are the same physical volume.
-            // For now, simple comparison is a good "terrain" for future extension.
-            var comparison = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)
+var comparison = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)
                 ? StringComparison.OrdinalIgnoreCase
                 : StringComparison.Ordinal;
 
@@ -321,3 +295,5 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
         }
     }
 }
+
+

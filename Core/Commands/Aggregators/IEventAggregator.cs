@@ -3,7 +3,7 @@ using System;
 namespace RimSharp.Core.Commands.Aggregators
 {
     /// <summary>
-    /// Interface for an event aggregator that allows publishing and subscribing to events.
+
     /// </summary>
     public interface IEventAggregator
     {
@@ -18,7 +18,7 @@ namespace RimSharp.Core.Commands.Aggregators
         /// Subscribes to an event.
         /// </summary>
         /// <typeparam name="TEvent">The type of event to subscribe to.</typeparam>
-        /// <param name="action">The action to execute when the event is published.</param>
+
         /// <returns>A token that can be used to unsubscribe.</returns>
         SubscriptionToken Subscribe<TEvent>(Action<TEvent> action);
 
@@ -44,14 +44,14 @@ namespace RimSharp.Core.Commands.Aggregators
         public Guid Token => _token;
 
         /// <summary>
-        /// Gets the type of event the token is for.
+
         /// </summary>
         public Type EventType => _eventType;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="SubscriptionToken"/> class.
+
         /// </summary>
-        /// <param name="eventType">The type of event the token is for.</param>
+
         public SubscriptionToken(Type eventType)
         {
             _token = Guid.NewGuid();

@@ -19,39 +19,35 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.MissingMods
         [AvaloniaFact]
         public void DownloadCommand_WhenSelectionsMissing_ShouldBeDisabled()
         {
-            // Arrange
+
             var group = new MissingModGroupViewModel("mod.a");
             var variant = new MissingModVariantViewModel(new ModDictionaryEntry { Published = true, SteamId = "123" });
             group.Variants.Add(variant);
-            // SelectedVariant is null
 
-            var vm = new MissingModSelectionDialogViewModel(new List<MissingModGroupViewModel> { group }, new List<string>());
+var vm = new MissingModSelectionDialogViewModel(new List<MissingModGroupViewModel> { group }, new List<string>());
 
-            // Assert
             vm.DownloadCommand.CanExecute(null).Should().BeFalse();
         }
 
         [AvaloniaFact]
         public void DownloadCommand_WhenSelectionsMade_ShouldBeEnabled()
         {
-            // Arrange
+
             var group = new MissingModGroupViewModel("mod.a");
             var variant = new MissingModVariantViewModel(new ModDictionaryEntry { Published = true, SteamId = "123" });
             group.Variants.Add(variant);
             
             var vm = new MissingModSelectionDialogViewModel(new List<MissingModGroupViewModel> { group }, new List<string>());
 
-            // Act
             group.SelectedVariant = variant;
 
-            // Assert
             vm.DownloadCommand.CanExecute(null).Should().BeTrue();
         }
 
         [AvaloniaFact]
         public void ExecuteDownload_ShouldReturnCorrectOutput()
         {
-            // Arrange
+
             var group = new MissingModGroupViewModel("mod.a");
             var variant = new MissingModVariantViewModel(new ModDictionaryEntry { Published = true, SteamId = "123" });
             group.Variants.Add(variant);
@@ -62,10 +58,8 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.MissingMods
             bool closeRequested = false;
             vm.RequestCloseDialog += (s, e) => closeRequested = true;
 
-            // Act
             vm.DownloadCommand.Execute(null);
 
-            // Assert
             vm.DialogResult.Should().NotBeNull();
             vm.DialogResult.Result.Should().Be(MissingModSelectionResult.Download);
             vm.DialogResult.SelectedSteamIds.Should().Contain("123");
@@ -73,3 +67,5 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.MissingMods
         }
     }
 }
+
+

@@ -10,7 +10,6 @@ using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Tests.Base;
 using Xunit;
 
-// The ViewModel uses the Shared version for its constructor
 using IModCommandService = RimSharp.Shared.Services.Contracts.IModCommandService;
 
 namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
@@ -59,82 +58,76 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
         [AvaloniaFact]
         public void DeleteModCommand_WhenNoModSelected_ShouldBeDisabled()
         {
-            // Arrange
+
             var vm = CreateViewModel();
             vm.SelectedMod = null;
 
-            // Assert
             vm.DeleteModCommand.CanExecute(null).Should().BeFalse();
         }
 
         [AvaloniaFact]
         public void DeleteModCommand_WhenWorkshopModSelected_ShouldBeEnabled()
         {
-            // Arrange
+
             var vm = CreateViewModel();
             var mod = new ModItem { ModType = ModType.Workshop, Path = "C:\\Mods\\Mod1" };
-            
-            // Act
+
             vm.SelectedMod = mod;
 
-            // Assert
             vm.DeleteModCommand.CanExecute(null).Should().BeTrue();
         }
 
         [AvaloniaFact]
         public void InstallFromZipCommand_WhenPathsInvalid_ShouldBeDisabled()
         {
-            // Arrange
+
             _pathService.GetGamePath().Returns(""); // Make it invalid
             var vm = CreateViewModel();
 
-            // Assert
             vm.InstallFromZipCommand.CanExecute(null).Should().BeFalse();
         }
 
         [AvaloniaFact]
         public void TotalActiveIssues_ShouldSumCorrectly()
         {
-            // Arrange
+
             _modListManager.ActiveMissingDependenciesCount.Returns(2);
             _modListManager.ActiveIncompatibilitiesCount.Returns(3);
             _modListManager.ActiveDuplicateIssuesCount.Returns(1);
             var vm = CreateViewModel();
 
-            // Assert
             vm.TotalActiveIssues.Should().Be(6);
         }
 
         [AvaloniaFact]
         public void CheckIncompatibilitiesCommand_WhenNoActiveMods_ShouldBeDisabled()
         {
-            // Arrange
+
             _modListManager.VirtualActiveMods.Returns(new List<(ModItem Mod, int LoadOrder)>());
             var vm = CreateViewModel();
 
-            // Assert
             vm.CheckIncompatibilitiesCommand.CanExecute(null).Should().BeFalse();
         }
 
         [AvaloniaFact]
         public void CheckIncompatibilitiesCommand_WhenActiveModsExist_ShouldBeEnabled()
         {
-            // Arrange
+
             _modListManager.VirtualActiveMods.Returns(new List<(ModItem Mod, int LoadOrder)> { (new ModItem(), 1) });
             var vm = CreateViewModel();
 
-            // Assert
             vm.CheckIncompatibilitiesCommand.CanExecute(null).Should().BeTrue();
         }
 
         [AvaloniaFact]
         public void ResolveDependenciesCommand_WhenPathsValid_ShouldBeEnabled()
         {
-            // Arrange
+
             var vm = CreateViewModel();
 
-            // Assert
             vm.ResolveDependenciesCommand.CanExecute(null).Should().BeTrue();
         }
     }
 }
+
+

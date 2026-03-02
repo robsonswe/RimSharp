@@ -20,14 +20,12 @@ namespace RimSharp.Tests.Core.Converters.Visual
         [AvaloniaFact]
         public void Convert_WithWorkshopL_ShouldReturnBlack()
         {
-            // Arrange
+
             var converter = new ModTypeToForegroundConverter();
             var blackBrush = (IBrush)Avalonia.Application.Current!.Resources["RimworldBlackBrush"]!;
 
-            // Act
             var result = converter.Convert(ModType.WorkshopL, typeof(IBrush), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(blackBrush);
         }
 
@@ -39,15 +37,14 @@ namespace RimSharp.Tests.Core.Converters.Visual
         [InlineData(ModType.Zipped)]
         public void Convert_WithOtherModTypes_ShouldReturnWhite(ModType type)
         {
-            // Arrange
+
             var converter = new ModTypeToForegroundConverter();
             var whiteBrush = (IBrush)Avalonia.Application.Current!.Resources["RimworldWhiteBrush"]!;
 
-            // Act
             var result = converter.Convert(type, typeof(IBrush), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(whiteBrush);
         }
     }
 }
+

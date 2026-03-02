@@ -42,7 +42,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
 
             if (listBox.SelectedItems?.Count > 1)
             {
-                // Multi-item menu - only "Remove Selected"
+
                 contextMenu = new ContextMenu();
                 var removeSelectedMenuItem = new MenuItem
                 {
@@ -54,7 +54,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             }
             else if (listBox.SelectedItems?.Count == 1)
             {
-                // Single-item menu - "Open in Browser" and "Remove from Queue"
+
                 var selectedItem = listBox.SelectedItem as DownloadItem;
                 if (selectedItem == null) return;
 
@@ -86,3 +86,4 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
         }
     }
 }
+

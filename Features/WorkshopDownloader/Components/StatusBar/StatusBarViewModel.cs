@@ -37,7 +37,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.StatusBar
 
         public StatusBarViewModel()
         {
-            // Initialize with default empty status
+
         }
 
         public void SetStatus(string message)

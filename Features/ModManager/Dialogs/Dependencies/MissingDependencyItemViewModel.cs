@@ -1,5 +1,5 @@
 using RimSharp.AppDir.AppFiles;
-using RimSharp.Shared.Models; // Assuming ModDependency is here
+using RimSharp.Shared.Models; 
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -8,15 +8,15 @@ using System.Runtime.CompilerServices;
 
 namespace RimSharp.Features.ModManager.Dialogs.Dependencies
 {
-    public class MissingDependencyItemViewModel : ViewModelBase // Inherit from ViewModelBase for INPC
+    public class MissingDependencyItemViewModel : ViewModelBase
     {
         public string DisplayName { get; }
         public string PackageId { get; }
-        public string? SteamId { get; } // Store the extracted ID
+        public string? SteamId { get; }
         public string SteamWorkshopUrl { get; }
-        public List<string> RequiredByDisplay { get; } // Simple list for display
+        public List<string> RequiredByDisplay { get; }
 
-        public bool IsSelectable => !string.IsNullOrEmpty(SteamId); // Can only select if it has a Steam ID
+        public bool IsSelectable => !string.IsNullOrEmpty(SteamId);
 
         private bool _isSelected;
         public bool IsSelected
@@ -24,38 +24,28 @@ namespace RimSharp.Features.ModManager.Dialogs.Dependencies
             get => _isSelected;
             set
             {
-                // Only allow setting if it's selectable
                 if (IsSelectable && SetProperty(ref _isSelected, value))
                 {
-                    // Optionally raise an event if the parent VM needs immediate notification
-                    // SelectionChanged?.Invoke(this, EventArgs.Empty);
                 }
             }
         }
 
-        // Optional event
-        // public event EventHandler SelectionChanged;
-
-        // Constructor takes the raw data from ModListManager
         public MissingDependencyItemViewModel(
             string? displayName,
             string packageId,
             string? steamWorkshopUrl,
-            List<string>? requiredBy) // Pass simple list of names
+            List<string>? requiredBy)
         {
             DisplayName = displayName ?? packageId ?? "Unknown Dependency";
             PackageId = packageId ?? string.Empty;
             SteamWorkshopUrl = steamWorkshopUrl ?? string.Empty;
             RequiredByDisplay = requiredBy ?? new List<string>();
 
-            // Extract Steam ID using the logic from ModDependency (or re-implement safely)
             SteamId = ExtractSteamIdFromUrl(SteamWorkshopUrl);
 
-            // Default selection state (only if selectable)
             _isSelected = IsSelectable;
         }
 
-        // Helper to extract Steam ID (same as in ModDependency)
         private static readonly System.Text.RegularExpressions.Regex SteamIdRegex =
             new System.Text.RegularExpressions.Regex(@"id=(\d+)",
             System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);

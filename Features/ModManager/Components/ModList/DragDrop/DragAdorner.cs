@@ -44,7 +44,6 @@ namespace RimSharp.Features.ModManager.Components.ModList.DragDrop
                 IsHitTestVisible = false
             };
 
-            // Add the presenter as a logical and visual child
             VisualChildren.Add(_contentPresenter);
             LogicalChildren.Add(_contentPresenter);
             
@@ -71,3 +70,4 @@ namespace RimSharp.Features.ModManager.Components.ModList.DragDrop
         }
     }
 }
+

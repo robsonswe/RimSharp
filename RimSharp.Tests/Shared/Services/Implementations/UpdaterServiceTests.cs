@@ -36,10 +36,9 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [InlineData("1.5", 1, 5, 0, 0)]
         public async Task ParseVersion_ThroughUpdateCheck_ShouldWork(string currentVersion, int major, int minor, int build, int revision)
         {
-             // Arrange
+
             _mockPathService.GetGameVersion().Returns(currentVersion);
-            
-            // We want to see if it correctly compares against a slightly higher version
+
             var higherVersion = new Version(major, minor, build, revision + 1).ToString();
 
             var jsonResponse = $@"{{
@@ -51,10 +50,8 @@ namespace RimSharp.Tests.Shared.Services.Implementations
 
             var service = new UpdaterService(_mockHttpClientFactory, _mockPathService, _mockLogger);
 
-            // Act
             var (isUpdateAvailable, latestVersion) = await service.CheckForUpdateAsync();
 
-            // Assert
             isUpdateAvailable.Should().BeTrue();
             latestVersion.Should().Be(higherVersion);
         }
@@ -62,7 +59,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public async Task CheckForUpdateAsync_WhenUpdateAvailable_ShouldReturnTrue()
         {
-            // Arrange
+
             _mockPathService.GetGameVersion().Returns("1.4.3529");
             
             var jsonResponse = @"{
@@ -75,10 +72,8 @@ namespace RimSharp.Tests.Shared.Services.Implementations
 
             var service = new UpdaterService(_mockHttpClientFactory, _mockPathService, _mockLogger);
 
-            // Act
             var (isUpdateAvailable, latestVersion) = await service.CheckForUpdateAsync();
 
-            // Assert
             isUpdateAvailable.Should().BeTrue();
             latestVersion.Should().Be("1.5.1234");
         }
@@ -86,7 +81,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public async Task CheckForUpdateAsync_WhenUpToDate_ShouldReturnFalse()
         {
-            // Arrange
+
             _mockPathService.GetGameVersion().Returns("1.5.1234");
             
             var jsonResponse = @"{
@@ -98,10 +93,8 @@ namespace RimSharp.Tests.Shared.Services.Implementations
 
             var service = new UpdaterService(_mockHttpClientFactory, _mockPathService, _mockLogger);
 
-            // Act
             var (isUpdateAvailable, latestVersion) = await service.CheckForUpdateAsync();
 
-            // Assert
             isUpdateAvailable.Should().BeFalse();
             latestVersion.Should().BeNull();
         }
@@ -117,3 +110,5 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         }
     }
 }
+
+

@@ -18,7 +18,7 @@ namespace RimSharp.Tests.Core.Helpers
         [AvaloniaFact]
         public void SelectedItemsProperty_ShouldSyncWithListBoxSelection()
         {
-            // Arrange
+
             var listBox = new ListBox
             {
                 SelectionMode = SelectionMode.Multiple,
@@ -28,11 +28,9 @@ namespace RimSharp.Tests.Core.Helpers
             var targetList = new List<object>();
             ListBoxSelectionHelper.SetSelectedItems(listBox, targetList);
 
-            // Act
             listBox.SelectedItems!.Add("Item1");
             listBox.SelectedItems!.Add("Item3");
 
-            // Assert
             var selected = ListBoxSelectionHelper.GetSelectedItems(listBox) as IEnumerable<object>;
             selected.Should().NotBeNull();
             selected.Should().HaveCount(2);
@@ -41,3 +39,4 @@ namespace RimSharp.Tests.Core.Helpers
         }
     }
 }
+

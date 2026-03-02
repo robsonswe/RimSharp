@@ -27,11 +27,11 @@ namespace RimSharp.Tests.Core.Converters.Text
         [InlineData("not a mod type", "")]
         public void Convert_ShouldReturnCorrectDescription(object? value, string expected)
         {
-            // Act
+
             var result = _converter.Convert(value!, typeof(string), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
     }
 }
+

@@ -88,10 +88,9 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Components.DownloadQueue
         [Fact]
         public void Constructor_ShouldInitializeCorrectly()
         {
-            // Act
+
             var vm = CreateViewModel();
 
-            // Assert
             vm.DownloadList.Should().NotBeNull();
             vm.IsSteamCmdReady.Should().BeFalse();
             vm.IsOperationInProgress.Should().BeFalse();
@@ -100,13 +99,11 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Components.DownloadQueue
         [Fact]
         public async Task IsOperationInProgress_WhenChanged_ShouldRefreshDependentProperties()
         {
-            // Arrange
+
             var vm = CreateViewModel();
 
-            // Act
             vm.IsOperationInProgress = true;
 
-            // Assert
             await WaitUntil(() => !vm.CanDownload);
             vm.CanDownload.Should().BeFalse();
             vm.CanAddMod.Should().BeFalse();
@@ -115,14 +112,12 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Components.DownloadQueue
         [Fact]
         public async Task SteamCmdReady_WhenChanged_ShouldUpdateIsSteamCmdReady()
         {
-            // Arrange
+
             var vm = CreateViewModel();
             _mockSteamCmdService.IsSetupComplete.Returns(true);
 
-            // Act
             _mockSteamCmdService.SetupStateChanged += Raise.Event<EventHandler<bool>>(_mockSteamCmdService, true);
 
-            // Assert
             await WaitUntil(() => vm.IsSteamCmdReady);
             vm.IsSteamCmdReady.Should().BeTrue();
         }
@@ -137,3 +132,4 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Components.DownloadQueue
         }
     }
 }
+

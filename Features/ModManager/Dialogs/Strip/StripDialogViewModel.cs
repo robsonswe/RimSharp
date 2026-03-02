@@ -12,7 +12,6 @@ using System.Windows.Input;
 
 namespace RimSharp.Features.ModManager.Dialogs.Strip
 {
-    // --- Helper ViewModels for the dialog ---
 
     public enum StrippableItemType { Folder, File }
 
@@ -74,9 +73,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Strip
                     return;
                 }
 
-                // If user clicks, force a binary state (toggle)
                 bool targetValue = value ?? false;
-                
+
                 if (SetProperty(ref _isSelected, targetValue))
                 {
                     // Propagate change to children
@@ -139,9 +137,6 @@ namespace RimSharp.Features.ModManager.Dialogs.Strip
         }
     }
 
-    // --- Main Dialog ViewModel ---
-    
-    // The result is a tuple: (bool indicating if Strip was clicked, list of paths to delete)
     public class StripDialogViewModel : DialogViewModelBase<(bool, IEnumerable<string>?)>
     {
         public ObservableCollection<StrippableModViewModel> StrippableMods { get; }
@@ -156,7 +151,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Strip
         public StripDialogViewModel(IEnumerable<StrippableModViewModel> mods) : base("Mods Stripping Dialog")
         {
             StrippableMods = new ObservableCollection<StrippableModViewModel>(mods);
-            // Listen for property changes on each mod to update the total size
+
             foreach (var mod in StrippableMods)
             {
                 mod.PropertyChanged += (s, e) => 
@@ -182,7 +177,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Strip
                                               .Select(c => c.FullPath);
             CloseDialog((true, pathsToDelete));
         }
-        
+
         private void SetAllSelection(bool isSelected)
         {
             foreach (var mod in StrippableMods)
@@ -199,20 +194,20 @@ namespace RimSharp.Features.ModManager.Dialogs.Strip
             {
                 if (File.Exists(path))
                 {
-                    // For a file, open the containing folder and select the file
                     Process.Start("explorer.exe", $"/select,\"{path}\"");
                 }
                 else if (Directory.Exists(path))
                 {
-                    // For a directory, just open it
                     Process.Start("explorer.exe", $"\"{path}\"");
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[StripDialogViewModel] Failed to open path in explorer: {ex.Message}");
-                // Optionally show a dialog service error message to the user here
+
             }
         }
     }
 }
+
+

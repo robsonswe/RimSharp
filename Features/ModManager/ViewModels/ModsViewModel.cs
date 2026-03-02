@@ -6,9 +6,9 @@ using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using System;
-using System.Collections; // For potential SelectedItems binding
+using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel; // For PropertyChangedEventArgs
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -19,7 +19,6 @@ namespace RimSharp.Features.ModManager.ViewModels
 {
     public class ModsViewModel : ViewModelBase, IDisposable, IModsViewModel
     {
-        // --- Services ---
         private readonly IModDataService _dataService;
         private readonly IModFilterService _filterService;
         private readonly IModListManager _modListManager;
@@ -30,18 +29,16 @@ namespace RimSharp.Features.ModManager.ViewModels
         private readonly ISteamWorkshopQueueProcessor _steamWorkshopQueueProcessor;
         private readonly IGitService _gitService;
 
-        // --- Child ViewModels ---
         public ModListViewModel ModListViewModel { get; private set; }
         public ModDetailsViewModel ModDetailsViewModel { get; private set; }
         public ModActionsViewModel ModActionsViewModel { get; private set; }
 
         public ICommand RequestRefreshCommand { get; }
-
-        // --- State Properties (Managed by Parent) ---
         private bool _isLoading;
         private bool _hasUnsavedChanges;
         private ModItem? _selectedMod;
-        private IList? _selectedItems; // Property to bind ListBox.SelectedItems
+        private IList? _selectedItems; 
+
         public bool HasAnyActiveModIssues => _modListManager?.HasAnyActiveModIssues ?? false;
 
         private string _loadingMessage = string.Empty;
@@ -94,12 +91,9 @@ namespace RimSharp.Features.ModManager.ViewModels
             get => _hasUnsavedChanges;
             private set
             {
-                // Use base SetProperty
                 if (SetProperty(ref _hasUnsavedChanges, value))
                 {
-                    // Inform children
                     if (ModActionsViewModel != null) ModActionsViewModel.HasUnsavedChanges = value;
-                    // Command observation handles CanExecute updates for commands observing HasUnsavedChanges
                 }
             }
         }
@@ -132,37 +126,27 @@ namespace RimSharp.Features.ModManager.ViewModels
             get => _selectedMod;
             set
             {
-                // Use base SetProperty
                 if (SetProperty(ref _selectedMod, value))
                 {
-                    // Update children that care about the single selected mod
                     if (ModDetailsViewModel != null) ModDetailsViewModel.CurrentMod = value;
-                    if (ModActionsViewModel != null) ModActionsViewModel.SelectedMod = value; // Setter triggers CanExecute changes in child
+                    if (ModActionsViewModel != null) ModActionsViewModel.SelectedMod = value; 
                 }
             }
         }
 
-
-        // Bound from the ListBox's SelectedItems property in the View
         public IList? SelectedItems
         {
             get => _selectedItems;
             set
             {
-                // Use base SetProperty
                 if (SetProperty(ref _selectedItems, value))
                 {
-                    // Inform ModActionsViewModel about the change in multiple selection
-                    if (ModActionsViewModel != null) ModActionsViewModel.SelectedItems = value; // Setter triggers CanExecute changes in child
+                    if (ModActionsViewModel != null) ModActionsViewModel.SelectedItems = value; 
                 }
             }
         }
 
-
-
-        // Constructor
         public ModsViewModel(
-            // Inject all necessary services, even if passed down
             IModDataService dataService,
             IModFilterService filterService,
             IModCommandService commandService,
@@ -192,47 +176,33 @@ namespace RimSharp.Features.ModManager.ViewModels
             _steamWorkshopQueueProcessor = steamWorkshopQueueProcessor;
             _gitService = gitService;
 
-            // Initialize command using base helper, observing IsLoading
-            // Use CreateCancellableAsyncCommand as ExecuteRequestRefreshAsync accepts a CancellationToken
             RequestRefreshCommand = CreateCancellableAsyncCommand(ExecuteRequestRefreshAsync, CanExecuteRequestRefresh, nameof(IsLoading));
 
-            // Instantiate Child ViewModels, passing required dependencies
             ModListViewModel = new ModListViewModel(_filterService, _modListManager, commandService, _dialogService);
             ModDetailsViewModel = new ModDetailsViewModel(_dialogService);
             ModActionsViewModel = new ModActionsViewModel(
                 _dataService, commandService, ioService, _modListManager, incompatibilityService, duplicateService, _deletionService, _dialogService, _pathService, _modService,
                         replacementService, downloadQueueService, steamApiClient, navigationService, steamWorkshopQueueProcessor, _gitService
                         );
-
-            // --- Event Wiring ---
             _modListManager.ListChanged += OnModListManagerChanged;
-
-            // Wire events from children back to parent
             ModListViewModel.RequestSelectionChange += OnChildRequestSelectionChange;
             ModActionsViewModel.IsLoadingRequest += OnChildRequestLoading;
             ModActionsViewModel.RequestDataRefresh += OnChildRequestDataRefresh;
             ModActionsViewModel.HasUnsavedChangesRequest += OnChildRequestHasUnsavedChanges;
-
-
         }
+
         public async Task InitializeAsync(IProgress<(int current, int total, string message)>? progress = null)
         {
-            // This is the new entry point for the initial data load.
-            // It will be called by MainViewModel after the main window is visible.
             await LoadDataAsync(CancellationToken.None, true, progress);
         }
-        // --- Event Handlers from Children ---
 
         private bool CanExecuteRequestRefresh()
         {
-            // Can request refresh if not already loading (dependency observed by command)
             return !IsLoading;
         }
 
-        private async Task ExecuteRequestRefreshAsync(CancellationToken ct) // Add CT parameter
+        private async Task ExecuteRequestRefreshAsync(CancellationToken ct)
         {
-            // CanExecute check done by command framework.
-            // Double check loading state inside execute in case of race conditions is good practice though.
             if (IsLoading)
             {
                 Debug.WriteLine("[ModsViewModel] Refresh request ignored, already loading.");
@@ -240,53 +210,38 @@ namespace RimSharp.Features.ModManager.ViewModels
             }
 
             Debug.WriteLine("[ModsViewModel] Executing refresh request...");
-
-            // ---> ADD PATH REFRESH AND CHILD VM UPDATE HERE <---
             try
             {
-                // It's generally safe to call these service methods, but run on UI thread if there's any doubt
-                // about thread safety within the services or if they might trigger UI updates directly.
                 RunOnUIThread(() =>
                 {
                     Debug.WriteLine("[ModsViewModel] Refreshing PathService and ModActionsViewModel path validity...");
-                    _pathService.RefreshPaths(); // Tell PathService to re-read config/recache its values
-                    ModActionsViewModel?.RefreshPathValidity(); // Tell Actions VM to update its HasValidPaths property based on new service state
+                    _pathService.RefreshPaths(); 
+                    ModActionsViewModel?.RefreshPathValidity(); 
                 });
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ModsViewModel] Error during path refresh: {ex.Message}");
-                // Decide if you want to stop the refresh or continue despite path errors
-                // Maybe show an error message?
-                // await RunOnUIThreadAsync(() => _dialogService.ShowError("Path Refresh Error", $"Failed to refresh paths: {ex.Message}"));
-                // return; // Optional: stop the refresh if paths are critical and failed to update
             }
 
-
-            await RefreshDataAsync(ct); // Pass cancellation token down (This also sets IsLoading)
+            await RefreshDataAsync(ct); 
             Debug.WriteLine("[ModsViewModel] Refresh execution complete.");
         }
-
-
 
         private void OnChildRequestSelectionChange(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ModListViewModel.SelectedMod) && sender is ModListViewModel listVM)
             {
-                // Check prevents infinite loop if parent setting triggered the child change
                 if (SelectedMod != listVM.SelectedMod)
                 {
                     SelectedMod = listVM.SelectedMod;
                 }
             }
-            // Handle multi-selection change if needed (less common)
-            // else if (e.PropertyName == nameof(ModListViewModel.SelectedItems) && sender is ModListViewModel listVM) { ... }
         }
 
         private void OnChildRequestLoading(object? sender, bool isLoading)
         {
-            // A child VM (likely ModActionsViewModel) is performing a long operation
-            IsLoading = isLoading; // Setter handles notifications and command updates via observation
+            IsLoading = isLoading; 
         }
 
         private void OnChildRequestDataRefresh(object? sender, EventArgs e)
@@ -294,27 +249,21 @@ namespace RimSharp.Features.ModManager.ViewModels
             Debug.WriteLine("[ModsViewModel] Received request for data refresh from child. Executing RequestRefreshCommand.");
             if (RequestRefreshCommand.CanExecute(null))
             {
-                // Execute the command. AsyncRelayCommand handles the async execution.
-                // We don't typically await command execution directly unless needed.
-                RequestRefreshCommand.Execute(null); // Pass null/default CancellationToken if not provided by requester
+                RequestRefreshCommand.Execute(null); 
             }
             else
             {
                 Debug.WriteLine("[ModsViewModel] Cannot execute refresh command now (likely loading).");
             }
         }
+
         private void OnChildRequestHasUnsavedChanges(object? sender, bool hasChanges)
         {
-            // A child VM (ModActionsViewModel) has completed a save action
-            // Only expecting 'false' here now.
             Debug.WriteLine($"[ModsViewModel] Received HasUnsavedChangesRequest: {hasChanges}. Setting parent state.");
-            HasUnsavedChanges = hasChanges; // Setter handles notifications and command updates via observation
+            HasUnsavedChanges = hasChanges; 
         }
 
-
-        // --- Core Logic (Loading, Refresh, List Changes) ---
-
-        public async Task RefreshDataAsync(CancellationToken ct = default) // Accept cancellation token
+        public async Task RefreshDataAsync(CancellationToken ct = default)
         {
             Debug.WriteLine("[ModsViewModel - RefreshDataAsync] Starting refresh...");
             if (IsLoading)
@@ -322,13 +271,13 @@ namespace RimSharp.Features.ModManager.ViewModels
                 Debug.WriteLine("[ModsViewModel - RefreshDataAsync] Refresh aborted, already loading.");
                 return;
             }
-            await LoadDataAsync(ct); // Reuse the main loading logic, passing token
+            await LoadDataAsync(ct); 
             Debug.WriteLine("[ModsViewModel - RefreshDataAsync] Refresh complete.");
         }
 
         private async Task LoadDataAsync(CancellationToken ct = default, bool isInitialLoad = false, IProgress<(int current, int total, string message)>? externalProgress = null)
         {
-            if (IsLoading) return; // Prevent re-entrancy
+            if (IsLoading) return; 
 
             RunOnUIThread(() =>
             {
@@ -337,29 +286,24 @@ namespace RimSharp.Features.ModManager.ViewModels
                 ModActionsViewModel?.RefreshPathValidity();
             });
 
-            IsLoading = true; // Setter updates children and commands
+            IsLoading = true; 
             ProgressDialogViewModel? progressDialog = null;
 
             try
             {
-                // Check for cancellation before showing dialog
                 ct.ThrowIfCancellationRequested();
 
                 if (!isInitialLoad)
                 {
                     await RunOnUIThreadAsync(() =>
                     {
-                        // Pass a new CTS linked to the incoming token for the dialog
                         var dialogCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                        // Use determinate progress (isIndeterminate: false) for better feedback
                         progressDialog = _dialogService.ShowProgressDialog("Loading Mods", "Initializing...", false, false, dialogCts, false);
                     });
                 }
 
-                // Check for cancellation after showing dialog
                 ct.ThrowIfCancellationRequested();
 
-                // Setup Progress Reporter
                 var progressReporter = new Progress<(int current, int total, string message)>(update =>
                 {
                     RunOnUIThread(() =>
@@ -369,30 +313,24 @@ namespace RimSharp.Features.ModManager.ViewModels
                             progressDialog.Message = update.message;
                             progressDialog.Progress = (int)((double)update.current / update.total * 100);
                         }
-                        
-                        // Also report to external progress (splash screen) if available
+
                         externalProgress?.Report(update);
-                        
                         LoadingMessage = update.message;
                     });
                 });
 
-                // Load data (as before), passing token and progress
-                // Assuming services support cancellation or Task.Run respects it
                 var allMods = await _dataService.LoadAllModsAsync(progressReporter);
                 ct.ThrowIfCancellationRequested();
-                
+
                 string msg = "Syncing active mods...";
                 RunOnUIThread(() =>
                 {
                     if (progressDialog != null) progressDialog.Message = msg;
-                    // For splash screen during final phase
                     if (isInitialLoad) externalProgress?.Report((98, 100, msg));
                 });
-                
+
                 var activeIdsFromConfig = await Task.Run(() => _dataService.LoadActiveModIdsFromConfig(), ct);
                 ct.ThrowIfCancellationRequested();
-
 
                 RunOnUIThread(() =>
                 {
@@ -404,19 +342,15 @@ namespace RimSharp.Features.ModManager.ViewModels
                     if (isInitialLoad) externalProgress?.Report((99, 100, "Initializing UI..."));
                 });
 
-                // ModListManager initialization MUST happen before FilterService is updated.
-                // Assuming Initialize is synchronous or handles cancellation internally if async
                 _modListManager.Initialize(allMods, activeIdsFromConfig);
                 ct.ThrowIfCancellationRequested();
 
-                // Now explicitly tell the FilterService to update its views based on the manager's state
                 _filterService.UpdateCollections(
                     _modListManager.VirtualActiveMods,
                     _modListManager.AllInactiveMods
                 );
                 ct.ThrowIfCancellationRequested();
 
-                // Force UI update for counts in ModListViewModel
                 ModListViewModel.RefreshCounts();
 
                 msg = "Finalizing...";
@@ -424,56 +358,51 @@ namespace RimSharp.Features.ModManager.ViewModels
                 if (progressDialog != null) progressDialog.Message = msg;
 
                 ModItem? selectedModCandidate = null;
-                
+
                 if (_modListManager.VirtualActiveMods.Any())
                 {
                     selectedModCandidate = _modListManager.VirtualActiveMods.FirstOrDefault(vm => vm.Mod.ModType == ModType.Core).Mod ??
                                            _modListManager.VirtualActiveMods.FirstOrDefault().Mod;
                 }
-                
+
                 if (selectedModCandidate == null)
                 {
                     selectedModCandidate = _modListManager.AllInactiveMods.FirstOrDefault();
                 }
 
-                // Set the parent's selected mod, which will propagate to children
                 if (selectedModCandidate != null)
                 {
                     SelectedMod = selectedModCandidate;
                 }
 
-                // Reset unsaved changes flag AFTER successful load
-                HasUnsavedChanges = false; // Setter updates ModActionsViewModel and commands
+                HasUnsavedChanges = false; 
 
                 if (progressDialog != null) progressDialog.CompleteOperation("Mods loaded successfully");
-                // CommandManager.InvalidateRequerySuggested removed
             }
             catch (OperationCanceledException)
             {
-                if (progressDialog != null) progressDialog.ForceClose(); // Close dialog on cancellation
+                if (progressDialog != null) progressDialog.ForceClose(); 
                 Debug.WriteLine("[ModsViewModel] LoadDataAsync cancelled.");
-                // Optionally show a cancelled message, or just reset state
+
                 await RunOnUIThreadAsync(() => _dialogService.ShowWarning("Load Cancelled", "Mod loading was cancelled."));
-                HasUnsavedChanges = false; // Reset flag
+                HasUnsavedChanges = false;
             }
             catch (Exception ex)
             {
-                if (progressDialog != null) progressDialog.ForceClose(); // Ensure dialog closes on error
+                if (progressDialog != null) progressDialog.ForceClose();
                 Debug.WriteLine($"Error loading mods: {ex}");
                 await RunOnUIThreadAsync(() => _dialogService.ShowError("Loading Error", $"Error loading mods: {ex.Message}"));
-                HasUnsavedChanges = false; // Reset flag on error too
+                HasUnsavedChanges = false;
             }
             finally
             {
                 Debug.WriteLine($"[ModsViewModel] LoadDataAsync FINALLY block entered. Setting IsLoading = false.");
-                IsLoading = false; // Reset loading state, setter handles updates
+                IsLoading = false; 
                 LoadingMessage = string.Empty;
                 Debug.WriteLine($"[ModsViewModel] LoadDataAsync FINALLY block finished. IsLoading should be false.");
             }
         }
 
-
-        // Handles changes triggered by ModListManager (Activate, Deactivate, Sort, Clear, etc.)
         private void OnModListManagerChanged(object? sender, ModListChangedEventArgs e)
         {
             Debug.WriteLine($"[ModsViewModel] Handling ModListManager ListChanged event. ActiveModified: {e.ActiveListModified}");
@@ -481,54 +410,38 @@ namespace RimSharp.Features.ModManager.ViewModels
             RunOnUIThread(() =>
             {
                 Debug.WriteLine("[ModsViewModel] Marshalled to UI thread for updates.");
-
-                // 1. Update Filter Service
                 _filterService.UpdateCollections(
                     _modListManager.VirtualActiveMods,
                     _modListManager.AllInactiveMods
                 );
-
-                // 2. Refresh Counts in ModListViewModel
                 ModListViewModel.RefreshCounts();
-
-                // 3. Ensure selection is valid (if selected mod was deleted, it won't be in GetAllMods)
                 if (SelectedMod != null && !_modListManager.GetAllMods().Contains(SelectedMod))
                 {
                     Debug.WriteLine("[ModsViewModel] Selected mod was removed. Resetting selection to default (Core).");
                     SelectedMod = null;
                     EnsureSelection();
                 }
-
-                // 4. Set HasUnsavedChanges Flag only if active list changed
                 if (e.ActiveListModified)
                 {
-                    HasUnsavedChanges = true; // Setter triggers command updates via observation
+                    HasUnsavedChanges = true; 
                 }
-                
-                OnPropertyChanged(nameof(HasAnyActiveModIssues));
 
-                // 4. Invalidate Commands: Explicit call removed
+                OnPropertyChanged(nameof(HasAnyActiveModIssues));
                 Debug.WriteLine("[ModsViewModel] Finished handling ListChanged event on UI thread.");
             });
         }
 
-
-
-        // --- IDisposable Implementation ---
-
         protected override void Dispose(bool disposing)
         {
-            // Check the base class flag BEFORE doing anything
-            if (_disposed) // Use the inherited _disposed field
+            if (_disposed) 
             {
                 return;
             }
 
             if (disposing)
             {
-                // --- Derived Class Specific Cleanup ---
                 Debug.WriteLine("[ModsViewModel] Disposing derived resources...");
-                // Unsubscribe from events
+
                 if (_modListManager != null) _modListManager.ListChanged -= OnModListManagerChanged;
                 if (ModListViewModel != null) ModListViewModel.RequestSelectionChange -= OnChildRequestSelectionChange;
                 if (ModActionsViewModel != null)
@@ -538,22 +451,16 @@ namespace RimSharp.Features.ModManager.ViewModels
                     ModActionsViewModel.HasUnsavedChangesRequest -= OnChildRequestHasUnsavedChanges;
                 }
 
-                // Dispose child ViewModels if they implement IDisposable
-                // Use 'as' and null-conditional operator for safety
                 (ModListViewModel as IDisposable)?.Dispose();
                 (ModDetailsViewModel as IDisposable)?.Dispose();
                 (ModActionsViewModel as IDisposable)?.Dispose();
-                ModListViewModel = null!; // Optional: Clear references
+                ModListViewModel = null!; 
                 ModDetailsViewModel = null!;
                 ModActionsViewModel = null!;
 
                 Debug.WriteLine("[ModsViewModel] Disposed managed resources.");
-                // --- End Derived Class Specific Cleanup ---
             }
 
-            // Dispose unmanaged resources here if any (specific to ModsViewModel)
-
-            // IMPORTANT: Call the base class implementation LAST
             Debug.WriteLine($"[ModsViewModel] Calling base.Dispose({disposing}).");
             base.Dispose(disposing);
             Debug.WriteLine($"[ModsViewModel] Finished Dispose({disposing}). _disposed = {_disposed}");

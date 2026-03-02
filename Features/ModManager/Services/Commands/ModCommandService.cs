@@ -13,9 +13,8 @@ namespace RimSharp.Features.ModManager.Services.Commands
     {
         private readonly IModListManager _modListManager;
         private readonly IDialogService _dialogService;
-        private readonly IModFilterService _modFilterService; // Added field for ModFilterService
+        private readonly IModFilterService _modFilterService;
 
-        // Updated constructor to include IModFilterService
         public ModCommandService(
             IModListManager modListManager, 
             IDialogService dialogService,
@@ -28,7 +27,6 @@ namespace RimSharp.Features.ModManager.Services.Commands
 
         public Task HandleDropCommand(DropModArgs args)
         {
-            // Updated Check: Use DroppedItems list
             if (args?.DroppedItems == null || !args.DroppedItems.Any() || string.IsNullOrEmpty(args.TargetListName))
             {
                 Debug.WriteLine("HandleDropCommand: Invalid arguments (null/empty list or missing target).");
@@ -55,10 +53,8 @@ namespace RimSharp.Features.ModManager.Services.Commands
             return Task.CompletedTask;
         }
 
-        // Updated to handle List<ModItem>
         private void HandleDropOnActiveList(List<ModItem> draggedMods, int dropIndex)
         {
-            // First, translate filtered index to actual index if filtering is active
             int actualIndex = TranslateFilteredIndexToActualIndex(dropIndex);
 
             bool allDraggedModsAreActive = draggedMods.All(mod => _modListManager.IsModActive(mod));
@@ -83,21 +79,17 @@ namespace RimSharp.Features.ModManager.Services.Commands
             }
         }
 
-        // Properly implemented method using the injected ModFilterService
         private int TranslateFilteredIndexToActualIndex(int filteredIndex)
         {
-            // If filtering is not active, return the index as-is
             if (!_modFilterService.ActiveFilterCriteria.IsActive())
             {
                 return filteredIndex;
             }
 
-            // Get the actual item from the filtered list at filteredIndex
             if (filteredIndex >= 0 && filteredIndex < _modFilterService.ActiveMods.Count)
             {
                 var modAtFilteredIndex = _modFilterService.ActiveMods[filteredIndex];
 
-                // Find this mod's position in the full, unfiltered list from ModListManager
                 var allActiveMods = _modListManager.VirtualActiveMods;
 
                 for (int i = 0; i < allActiveMods.Count; i++)
@@ -108,21 +100,17 @@ namespace RimSharp.Features.ModManager.Services.Commands
                     }
                 }
 
-                // If past the end or not found in the unfiltered list
                 if (filteredIndex >= _modFilterService.ActiveMods.Count)
                 {
                     return allActiveMods.Count;
                 }
             }
 
-            // Default fallback
             return filteredIndex;
         }
 
-        // Updated to handle List<ModItem>
         private void HandleDropOnInactiveList(List<ModItem> draggedMods)
         {
-            // Deactivate any of the dragged mods that are currently active.
             var modsToDeactivate = draggedMods.Where(mod => _modListManager.IsModActive(mod)).ToList();
 
             if (modsToDeactivate.Any())

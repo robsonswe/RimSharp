@@ -2,9 +2,9 @@ using System;
 using System.Threading;
 using System.Windows.Input;
 using RimSharp.Core.Commands; // Keep specific command type if needed
-using RimSharp.Core.Commands.Base; // For DelegateCommand
+using RimSharp.Core.Commands.Base;
 using System.ComponentModel;
-using System.Diagnostics; // Added for IDisposable pattern (optional)
+using System.Diagnostics;
 
 namespace RimSharp.AppDir.Dialogs
 {
@@ -42,7 +42,7 @@ namespace RimSharp.AppDir.Dialogs
         public bool CanCancel
         {
             get => _canCancel;
-            // Use base SetProperty, command observation handles CanExecute updates
+
             private set => SetProperty(ref _canCancel, value);
         }
 
@@ -60,22 +60,17 @@ namespace RimSharp.AppDir.Dialogs
 
             _cts = externalCts ?? new CancellationTokenSource();
 
-            // Use standard DelegateCommand and observe CanCancel property
-            // Ensure command creation uses ViewModelBase helpers if possible for consistency,
-            // but the explicit DelegateCommand here is also fine.
-            CancelCommand = new DelegateCommand(
+CancelCommand = new DelegateCommand(
                 () => OnCancel(), // Execute lambda
                 () => CanCancel && !_cts.IsCancellationRequested // CanExecute lambda
-                ).ObservesProperty(this, nameof(CanCancel)); // Observe property
-
-            // Set initial state AFTER command is created
+                ).ObservesProperty(this, nameof(CanCancel)); 
              CanCancel = canCancel && !_cts.IsCancellationRequested;
-             Closeable = closeable; // Set property inherited from DialogViewModelBase
+             Closeable = closeable;
         }
 
         public void UpdateProgress(int value, string? message = null)
         {
-             // Use base class disposed flag
+
              if (_disposed || _cts.IsCancellationRequested) return;
 
              RunOnUIThread(() =>
@@ -90,7 +85,7 @@ namespace RimSharp.AppDir.Dialogs
 
         public void CompleteOperation(string? message = null)
         {
-             // Use base class disposed flag
+
              if (_disposed || _cts.IsCancellationRequested) return;
 
              RunOnUIThread(() =>
@@ -105,7 +100,7 @@ namespace RimSharp.AppDir.Dialogs
 
         private void OnCancel(string? message = null)
         {
-             // Use base class disposed flag
+
              if (_disposed || !CanCancel || _cts.IsCancellationRequested) return;
 
              RunOnUIThread(() =>
@@ -118,12 +113,12 @@ namespace RimSharp.AppDir.Dialogs
 
                  try
                  {
-                     // Check again before cancelling CTS
+
                      if(!_cts.IsCancellationRequested) _cts.Cancel();
                  }
                  catch (ObjectDisposedException) { /* Ignore */ }
 
-                 Cancelled?.Invoke(this, EventArgs.Empty); // Notify listeners
+                 Cancelled?.Invoke(this, EventArgs.Empty);
                  CloseDialog(false); // Indicate cancellation/failure
              });
         }
@@ -132,21 +127,18 @@ namespace RimSharp.AppDir.Dialogs
         {
              RunOnUIThread(() =>
              {
-                 // Use base class disposed flag
+
                  if (!_disposed)
                  {
                      // Optionally cancel CTS if forcing closed implies cancellation
-                     // try { if (!_cts.IsCancellationRequested) _cts.Cancel(); } catch (ObjectDisposedException) { /* ignore */ } catch (Exception ex) { Debug.WriteLine($"Error cancelling CTS on force close: {ex}");}
+
                      CloseDialog(false); // Indicate failure/external closure
                  }
              });
         }
 
-        // --- IDisposable Implementation ---
-
         protected override void Dispose(bool disposing)
         {
-            // Check the base class flag FIRST
             if (_disposed) // Use the flag from ViewModelBase
             {
                 Debug.WriteLine($"[ProgressDialogViewModel] Already disposed or disposing.");
@@ -156,12 +148,9 @@ namespace RimSharp.AppDir.Dialogs
 
             if (disposing)
             {
-                // --- Derived Class Specific Managed Cleanup ---
                 Debug.WriteLine("[ProgressDialogViewModel] Disposing derived managed resources (CTS)...");
-                // Removed redundant event nulling as base.Dispose or garbage collection handles it, 
-                // but if we do it, it must be safe.
-                
-                try
+
+try
                 {
                     if (!_cts.IsCancellationRequested)
                     {
@@ -176,25 +165,21 @@ namespace RimSharp.AppDir.Dialogs
                     _cts?.Dispose();
                     Debug.WriteLine("[ProgressDialogViewModel] CTS Disposed.");
                 }
-                 // --- End Derived Class Specific Cleanup ---
             }
 
-            // Clean up unmanaged resources owned *specifically* by ProgressDialogViewModel here (if any)
-
-            // IMPORTANT: Call the base class implementation LAST
+// IMPORTANT: Call the base class implementation LAST
             Debug.WriteLine($"[ProgressDialogViewModel] Calling base.Dispose({disposing}). Current base._disposed = {_disposed}");
             base.Dispose(disposing); // This sets the base._disposed flag
-            // NOTE: base.Dispose will handle clearing _ownedCommands from ViewModelBase
+
             Debug.WriteLine($"[ProgressDialogViewModel] Finished Dispose({disposing}). Final base._disposed = {_disposed}");
         }
 
-         // Optional Finalizer: Only keep if ProgressDialogViewModel DIRECTLY owns UNMANAGED resources.
-         // If CTS is the only "complex" resource, the Dispose(true) path handles it.
-         // Keep it for now as good practice, though CTS is managed.
-         ~ProgressDialogViewModel()
+~ProgressDialogViewModel()
          {
              Debug.WriteLine($"[ProgressDialogViewModel] Finalizer called.");
              Dispose(false);
          }
     }
 }
+
+

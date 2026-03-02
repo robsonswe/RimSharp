@@ -76,9 +76,8 @@ namespace RimSharp.Infrastructure.Dialog
             IncrementDialogCount();
             try
             {
-                // Ensure the dialog template is applied before showing
-                // dialog.ApplyTemplate(); // REMOVED: Causes interactivity issues
-                
+                // dialog.ApplyTemplate();
+
                 var owner = GetActiveWindow();
                 if (owner != null && owner != dialog) // Don't set self as owner
                 {
@@ -233,8 +232,7 @@ namespace RimSharp.Infrastructure.Dialog
             {
                 return await _fileDialogService.ShowOpenFileDialogAsync(title, filter, string.IsNullOrEmpty(initialDirectory) ? null : initialDirectory);
             }
-            
-            // Fallback to direct implementation
+
             var window = GetActiveWindow();
             if (window == null) return (false, null);
 
@@ -257,8 +255,7 @@ namespace RimSharp.Infrastructure.Dialog
             {
                 return _fileDialogService.ShowOpenFileDialogAsync(title, filter, string.IsNullOrEmpty(initialDirectory) ? null : initialDirectory).GetAwaiter().GetResult();
             }
-            
-            // Fallback to direct implementation
+
             var window = GetActiveWindow();
             if (window == null) return (false, null);
 
@@ -285,7 +282,6 @@ namespace RimSharp.Infrastructure.Dialog
                     string.IsNullOrEmpty(defaultFileName) ? null : defaultFileName).GetAwaiter().GetResult();
             }
 
-            // Fallback to direct implementation
             var window = GetActiveWindow();
             if (window == null) return (false, null);
 
@@ -313,7 +309,6 @@ namespace RimSharp.Infrastructure.Dialog
                     string.IsNullOrEmpty(defaultFileName) ? null : defaultFileName);
             }
 
-            // Fallback to direct implementation
             var window = GetActiveWindow();
             if (window == null) return (false, null);
 
@@ -337,8 +332,7 @@ namespace RimSharp.Infrastructure.Dialog
             {
                 return await _fileDialogService.ShowOpenFolderDialogAsync(title, string.IsNullOrEmpty(initialDirectory) ? null : initialDirectory);
             }
-            
-            // Fallback to direct implementation
+
             var window = GetActiveWindow();
             if (window == null) return (false, null);
 
@@ -470,3 +464,5 @@ namespace RimSharp.Infrastructure.Dialog
         }
     }
 }
+
+

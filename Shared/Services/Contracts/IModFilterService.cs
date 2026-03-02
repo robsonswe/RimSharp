@@ -12,14 +12,13 @@ namespace RimSharp.Shared.Services.Contracts
         string ActiveSearchText { get; }
         string InactiveSearchText { get; }
 
-        // Expose the current criteria objects (consider returning clones if mutation is a concern)
         ModFilterCriteria ActiveFilterCriteria { get; }
         ModFilterCriteria InactiveFilterCriteria { get; }
 
         // Expose available options for the dialog
         IEnumerable<string> AllAvailableSupportedVersions { get; }
-        IEnumerable<string> AllAvailableTags { get; } // New
-        IEnumerable<string> AllAvailableAuthors { get; } // New
+        IEnumerable<string> AllAvailableTags { get; }
+        IEnumerable<string> AllAvailableAuthors { get; }
 
         ObservableCollection<ModItem> ActiveMods { get; }
         ObservableCollection<ModItem> InactiveMods { get; }
@@ -28,11 +27,9 @@ namespace RimSharp.Shared.Services.Contracts
         void ApplyActiveFilter(string searchText);
         void ApplyInactiveFilter(string searchText);
 
-        // Add new methods for applying full criteria
         void ApplyActiveFilterCriteria(ModFilterCriteria criteria);
         void ApplyInactiveFilterCriteria(ModFilterCriteria criteria);
 
-        // Method to update source data and extract filter options
         void UpdateCollections(IEnumerable<(ModItem Mod, int LoadOrder)> activeMods, IEnumerable<ModItem> inactiveMods);
 
         // Method to clear filters
@@ -40,3 +37,5 @@ namespace RimSharp.Shared.Services.Contracts
         void ClearInactiveFilters();
     }
 }
+
+

@@ -16,7 +16,7 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
         [InlineData("https://google.com", false)]
         public void SetBrowserControl_WhenNavigationCompletes_ShouldIdentifyWorkshopPage(string url, bool expected)
         {
-            // Arrange
+
             var service = new WebNavigationService();
             var mockBrowser = Substitute.For<IBrowserControl>();
             service.SetBrowserControl(mockBrowser);
@@ -24,26 +24,23 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
             bool identified = false;
             service.PotentialWorkshopPageLoaded += (s, e) => identified = true;
 
-            // Act
             mockBrowser.NavigationCompleted += Raise.Event<EventHandler<string>>(mockBrowser, url);
 
-            // Assert
             identified.Should().Be(expected);
         }
 
         [Fact]
         public void GoHome_ShouldNavigateToWorkshop()
         {
-            // Arrange
+
             var service = new WebNavigationService();
             var mockBrowser = Substitute.For<IBrowserControl>();
             service.SetBrowserControl(mockBrowser);
 
-            // Act
             service.GoHome();
 
-            // Assert
             mockBrowser.Received(1).Navigate(Arg.Is<string>(s => s.Contains("workshop")));
         }
     }
 }
+

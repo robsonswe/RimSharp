@@ -19,7 +19,7 @@ namespace RimSharp.Infrastructure.Workshop.Core
         private readonly IPathService _gamePathService; // Keep game path service for checks
         private readonly IDialogService _dialogService;
         private readonly IHttpClientFactory _httpClientFactory;
-        // Remove ISteamCmdFileSystem dependency
+
         // private readonly ISteamCmdFileSystem _fileSystem; 
         private readonly SteamCmdPlatformInfo _platformInfo;
 
@@ -28,14 +28,14 @@ namespace RimSharp.Infrastructure.Workshop.Core
             IPathService gamePathService,
             IDialogService dialogService,
             IHttpClientFactory httpClientFactory,
-            // ISteamCmdFileSystem fileSystem, // Removed
+            // ISteamCmdFileSystem fileSystem, 
             SteamCmdPlatformInfo platformInfo)
         {
             _pathService = pathService;
             _gamePathService = gamePathService; // Keep this
             _dialogService = dialogService;
             _httpClientFactory = httpClientFactory;
-            // _fileSystem = fileSystem; // Removed
+            // _fileSystem = fileSystem; 
             _platformInfo = platformInfo;
         }
 
@@ -44,11 +44,9 @@ namespace RimSharp.Infrastructure.Workshop.Core
             string? exePath = _pathService.SteamCmdExePath;
             if (string.IsNullOrEmpty(exePath))
                 return false;
-
-            // Add check for essential directories if needed, but exe check is primary
             if (!Directory.Exists(_pathService.SteamCmdSteamAppsPath))
             {
-                // Maybe log a warning, but allow setup if exe exists
+
                  Console.WriteLine($"Warning: SteamCMD steamapps path does not exist: {_pathService.SteamCmdSteamAppsPath}");
             }
 
@@ -64,7 +62,6 @@ namespace RimSharp.Infrastructure.Workshop.Core
                 return false;
             }
 
-            // Keep check for mods path, as it's needed later for moving files
             if (string.IsNullOrWhiteSpace(_gamePathService.GetModsPath()))
             {
                 progress?.Report("Setup failed: RimWorld Mods Path is not configured.");
@@ -74,17 +71,13 @@ namespace RimSharp.Infrastructure.Workshop.Core
 
             try
             {
-                // --- 0. Report Platform Requirements ---
                 if (!string.IsNullOrEmpty(_platformInfo.SetupRequirements))
                 {
                     progress?.Report(_platformInfo.SetupRequirements);
                 }
-
-                // --- 1. Ensure Directories Exist ---
                 progress?.Report($"Ensuring SteamCMD directories exist in: {_pathService.SteamCmdPrefixPath}");
                 Directory.CreateDirectory(_pathService.SteamCmdInstallPath);
                 Directory.CreateDirectory(_pathService.SteamCmdSteamAppsPath); // Base 'steam' dir
-                 // Ensure the specific workshop content parent exists for SteamCMD downloads
                 string workshopContentParent = Path.GetDirectoryName(_pathService.SteamCmdWorkshopContentPath) ?? string.Empty;
                 if (!string.IsNullOrEmpty(workshopContentParent))
                 {
@@ -96,10 +89,7 @@ namespace RimSharp.Infrastructure.Workshop.Core
                      progress?.Report($"Warning: Could not determine SteamCMD workshop content parent path from '{_pathService.SteamCmdWorkshopContentPath}'. Downloads might fail.");
                 }
 
-
-                cancellationToken.ThrowIfCancellationRequested();
-
-                // --- 2. Download ---
+cancellationToken.ThrowIfCancellationRequested();
                 progress?.Report($"Downloading SteamCMD from {_platformInfo.SteamCmdUrl}...");
                 string tempArchivePath = Path.Combine(Path.GetTempPath(), Path.GetFileName(_platformInfo.SteamCmdUrl));
 
@@ -115,22 +105,12 @@ namespace RimSharp.Infrastructure.Workshop.Core
                 }
                 progress?.Report("Download complete.");
                 cancellationToken.ThrowIfCancellationRequested();
-
-                // --- 3. Extract ---
                 progress?.Report($"Extracting {Path.GetFileName(tempArchivePath)} to {_pathService.SteamCmdInstallPath}...");
                 await ExtractArchiveAsync(tempArchivePath, _pathService.SteamCmdInstallPath, progress, cancellationToken);
                 progress?.Report("Extraction complete.");
                 cancellationToken.ThrowIfCancellationRequested();
-
-                // --- 4. Delete Archive ---
                 try { File.Delete(tempArchivePath); } catch { /* Ignore */ }
 
-
-                // --- 5. Symlink Setup --- REMOVED ---
-                // No longer creating a symlink. Downloads will go to the actual SteamCMD path.
-
-
-                // --- 6. Final Check ---
                 bool setupComplete = await CheckSetupAsync();
                 if (setupComplete)
                 {
@@ -166,7 +146,7 @@ namespace RimSharp.Infrastructure.Workshop.Core
             }
             finally
             {
-                // Clean up temp file if it still exists due to error
+
                 string tempArchivePath = Path.Combine(Path.GetTempPath(), Path.GetFileName(_platformInfo.SteamCmdUrl));
                 if (File.Exists(tempArchivePath))
                 {
@@ -182,24 +162,16 @@ namespace RimSharp.Infrastructure.Workshop.Core
             IProgress<string>? progress,
             CancellationToken cancellationToken)
         {
-             // Ensure destination exists, clear if necessary
             if (!Directory.Exists(destinationPath))
             {
                 Directory.CreateDirectory(destinationPath);
             }
-            // Optional: Clear existing content if a clean slate is desired
+
             // else {
-            //     progress?.Report($"Clearing existing content in {destinationPath}...");
+
             //     try {
-            //         foreach (var file in Directory.GetFiles(destinationPath)) File.Delete(file);
-            //         foreach (var dir in Directory.GetDirectories(destinationPath)) Directory.Delete(dir, true);
-            //     } catch (Exception ex) {
-            //          progress?.Report($"Warning: Failed to clear existing content: {ex.Message}");
-            //     }
-            // }
 
-
-            if (_platformInfo.IsArchiveZip)
+if (_platformInfo.IsArchiveZip)
             {
                 try
                 {
@@ -235,7 +207,6 @@ namespace RimSharp.Infrastructure.Workshop.Core
 
         private async Task MakeExecutableAsync(string filePath, IProgress<string>? progress, CancellationToken cancellationToken)
         {
-            // Check if chmod exists first? Maybe not necessary, assume standard POSIX environment.
             var psi = new ProcessStartInfo("chmod", $"+x \"{filePath}\"")
             {
                 UseShellExecute = false,
@@ -264,3 +235,5 @@ namespace RimSharp.Infrastructure.Workshop.Core
         }
     }
 }
+
+

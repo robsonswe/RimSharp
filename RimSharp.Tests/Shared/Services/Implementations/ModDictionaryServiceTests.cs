@@ -47,7 +47,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public void GetEntryByPackageId_WhenMultipleMatches_ShouldPrioritizeByVersion()
         {
-            // Arrange
+
             WriteDbFile(@"{
                 ""mods"": {
                     ""test.mod"": {
@@ -58,10 +58,8 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             }");
             _mockPathService.GetMajorGameVersion().Returns("1.5");
 
-            // Act
             var result = _service.GetEntryByPackageId("test.mod");
 
-            // Assert
             result.Should().NotBeNull();
             result!.SteamId.Should().Be("222");
         }
@@ -69,7 +67,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public void GetEntryByPackageId_WhenMultipleMatches_ShouldPrioritizeByPublished()
         {
-            // Arrange
+
             WriteDbFile(@"{
                 ""mods"": {
                     ""test.mod"": {
@@ -80,10 +78,8 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             }");
             _mockPathService.GetMajorGameVersion().Returns("1.5");
 
-            // Act
             var result = _service.GetEntryByPackageId("test.mod");
 
-            // Assert
             result.Should().NotBeNull();
             result!.SteamId.Should().Be("222");
         }
@@ -91,7 +87,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public void GetEntryByPackageId_CaseInsensitiveLookup()
         {
-            // Arrange
+
             WriteDbFile(@"{
                 ""mods"": {
                     ""Test.Mod"": {
@@ -100,10 +96,8 @@ namespace RimSharp.Tests.Shared.Services.Implementations
                 }
             }");
 
-            // Act
             var result = _service.GetEntryByPackageId("test.mod");
 
-            // Assert
             result.Should().NotBeNull();
             result!.PackageId.Should().Be("test.mod"); // Service normalizes to lowercase
         }
@@ -111,7 +105,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public void GetEntryBySteamId_ShouldReturnCorrectEntry()
         {
-            // Arrange
+
             WriteDbFile(@"{
                 ""mods"": {
                     ""mod1"": { ""123"": { ""name"": ""Mod 123"", ""published"": true } },
@@ -119,12 +113,11 @@ namespace RimSharp.Tests.Shared.Services.Implementations
                 }
             }");
 
-            // Act
             var result = _service.GetEntryBySteamId("456");
 
-            // Assert
             result.Should().NotBeNull();
             result!.Name.Should().Be("Mod 456");
         }
     }
 }
+

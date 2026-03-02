@@ -23,21 +23,20 @@ namespace RimSharp.Tests.Core.Converters.Numeric
         [InlineData(-100.0, "10,100", 10.0)] // Clamped to min
         public void Convert_ShouldScaleAndClampCorrectly(double value, string parameter, double expected)
         {
-            // Act
+
             var result = _converter.Convert(value, typeof(double), parameter, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
 
         [Fact]
         public void Convert_WithInvalidParameter_ShouldReturnOriginalValue()
         {
-            // Act
+
             var result = _converter.Convert(123.45, typeof(double), "invalid", CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(123.45);
         }
     }
 }
+

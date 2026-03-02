@@ -95,7 +95,6 @@ namespace RimSharp.Infrastructure.Mods.IO
                 log?.AppendLine($"[INFO] No loadFolders.xml found. Proceeding with directory fallback logic.");
             }
 
-            // Fallback Logic if XML missing or didn't provide results
             current.Add(".");
             if (Directory.Exists(Path.Combine(modPath, "Common"))) current.Add("Common");
             
@@ -208,3 +207,4 @@ namespace RimSharp.Infrastructure.Mods.IO
         }
     }
 }
+

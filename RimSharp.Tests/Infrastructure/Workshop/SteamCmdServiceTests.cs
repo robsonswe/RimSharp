@@ -33,15 +33,13 @@ namespace RimSharp.Tests.Infrastructure.Workshop
         [Fact]
         public async Task CheckSetupAsync_WhenStateChanges_ShouldRaiseEvent()
         {
-            // Arrange
+
             _mockInstaller.CheckSetupAsync().Returns(true);
             bool? eventResult = null;
             _service.SetupStateChanged += (s, e) => eventResult = e;
 
-            // Act
             var result = await _service.CheckSetupAsync();
 
-            // Assert
             result.Should().BeTrue();
             _service.IsSetupComplete.Should().BeTrue();
             eventResult.Should().BeTrue();
@@ -50,29 +48,25 @@ namespace RimSharp.Tests.Infrastructure.Workshop
         [Fact]
         public async Task CheckSetupAsync_WhenStateDoesNotChange_ShouldNotRaiseEvent()
         {
-            // Arrange
-            _mockInstaller.CheckSetupAsync().Returns(false); // Initial state is false
+
+            _mockInstaller.CheckSetupAsync().Returns(false); 
             int eventCount = 0;
             _service.SetupStateChanged += (s, e) => eventCount++;
 
-            // Act
             await _service.CheckSetupAsync();
 
-            // Assert
             eventCount.Should().Be(0);
         }
 
         [Fact]
         public async Task SetupAsync_ShouldCallInstallerAndRefreshStatus()
         {
-            // Arrange
+
             _mockInstaller.SetupAsync(null, Arg.Any<CancellationToken>()).Returns(true);
             _mockInstaller.CheckSetupAsync().Returns(true);
 
-            // Act
             var result = await _service.SetupAsync();
 
-            // Assert
             result.Should().BeTrue();
             await _mockInstaller.Received(1).SetupAsync(null, Arg.Any<CancellationToken>());
             await _mockInstaller.Received(1).CheckSetupAsync();
@@ -82,13 +76,11 @@ namespace RimSharp.Tests.Infrastructure.Workshop
         [Fact]
         public void GetSteamCmdPrefixPath_ShouldCallPathService()
         {
-            // Arrange
+
             _mockPathService.GetSteamCmdPrefixPath().Returns(@"C:\SteamCMD");
 
-            // Act
             var result = _service.GetSteamCmdPrefixPath();
 
-            // Assert
             result.Should().Be(@"C:\SteamCMD");
             _mockPathService.Received(1).GetSteamCmdPrefixPath();
         }
@@ -96,17 +88,17 @@ namespace RimSharp.Tests.Infrastructure.Workshop
         [Fact]
         public async Task DownloadModsAsync_ShouldDelegateToDownloader()
         {
-            // Arrange
+
             var items = new List<RimSharp.Features.WorkshopDownloader.Models.DownloadItem>();
             var expectedResult = new SteamCmdDownloadResult();
             _mockDownloader.DownloadModsAsync(items, true, null, Arg.Any<CancellationToken>()).Returns(expectedResult);
 
-            // Act
             var result = await _service.DownloadModsAsync(items, true);
 
-            // Assert
             result.Should().Be(expectedResult);
             await _mockDownloader.Received(1).DownloadModsAsync(items, true, null, Arg.Any<CancellationToken>());
         }
     }
 }
+
+

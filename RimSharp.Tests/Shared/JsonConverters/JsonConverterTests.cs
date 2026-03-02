@@ -27,13 +27,11 @@ namespace RimSharp.Tests.Shared.JsonConverters
         [Fact]
         public void StringOrStringListConverter_WhenInputIsSingleString_ShouldReturnListWithOneItem()
         {
-            // Arrange
+
             string json = "{\"Items\": \"Value1\"}";
 
-            // Act
             var result = JsonSerializer.Deserialize<TestWrapper>(json, _options);
 
-            // Assert
             result.Should().NotBeNull();
             result!.Items.Should().NotBeNull();
             result.Items.Should().HaveCount(1);
@@ -43,13 +41,11 @@ namespace RimSharp.Tests.Shared.JsonConverters
         [Fact]
         public void StringOrStringListConverter_WhenInputIsArray_ShouldReturnFullList()
         {
-            // Arrange
+
             string json = "{\"Items\": [\"Value1\", \"Value2\"]}";
 
-            // Act
             var result = JsonSerializer.Deserialize<TestWrapper>(json, _options);
 
-            // Assert
             result.Should().NotBeNull();
             result!.Items.Should().NotBeNull();
             result.Items.Should().HaveCount(2);
@@ -59,13 +55,11 @@ namespace RimSharp.Tests.Shared.JsonConverters
         [Fact]
         public void StringOrStringListConverter_WhenInputIsNull_ShouldReturnEmptyList()
         {
-            // Arrange
+
             string json = "{\"Items\": null}";
 
-            // Act
             var result = JsonSerializer.Deserialize<TestWrapper>(json, _options);
 
-            // Assert
             result.Should().NotBeNull();
             // StringOrStringListConverter returns new List<string>() for null token
             result!.Items.Should().NotBeNull();
@@ -73,3 +67,4 @@ namespace RimSharp.Tests.Shared.JsonConverters
         }
     }
 }
+

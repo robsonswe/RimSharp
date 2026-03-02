@@ -24,11 +24,11 @@ namespace RimSharp.Tests.Core.Converters.Visual
         [InlineData(null, "3|0", 0.0)]
         public void Convert_ShouldReturnCorrectDouble(object? value, string parameter, double expected)
         {
-            // Act
+
             var result = _converter.Convert(value, typeof(double), parameter, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
     }
 }
+

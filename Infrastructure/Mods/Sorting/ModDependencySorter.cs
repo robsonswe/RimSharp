@@ -106,7 +106,6 @@ namespace RimSharp.Infrastructure.Mods.Sorting
 
                 _logger.LogDebug($"Partition complete. Tier 1: {tierOneMods.Count}, Tier 2: {tierTwoMods.Count}, Tier 3: {tierThreeMods.Count}");
 
-                // OPTIMIZATION 1: Pass the master lookup to avoid regenerating it.
                 ct.ThrowIfCancellationRequested();
                 var sortResultTier1 = SortTier(tierOneMods.ToList(), "Tier 1", modLookup, ct);
                 
@@ -159,7 +158,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
 
             while (queue.Count > 0)
             {
-                // Check cancellation in the loop
+
                 ct.ThrowIfCancellationRequested();
 
                 var current = queue.Dequeue();
@@ -196,7 +195,6 @@ namespace RimSharp.Infrastructure.Mods.Sorting
 
             _logger.LogDebug($"Sorting {tierName} with {tierMods.Count} mods...");
 
-            // Build a graph for this tier, but use the master lookup to resolve dependencies.
             // This prevents generating redundant "missing from tier" warnings.
             var (graph, _) = BuildGraph(tierMods, fullModLookup, false, ct);
 
@@ -248,8 +246,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
                 ct.ThrowIfCancellationRequested();
 
                 if (string.IsNullOrEmpty(mod.PackageId)) continue;
-                
-                // OPTIMIZATION 3: Iterate directly instead of using Concat to reduce allocations.
+
                 void ProcessBeforeDeps(IEnumerable<string> depIds)
                 {
                     foreach (var depId in depIds)
@@ -257,7 +254,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
                         if (string.IsNullOrEmpty(depId)) continue;
                         if (modLookup.TryGetValue(depId, out var otherMod) && otherMod != mod)
                         {
-                            // Only add edge if the target is also in the current set of mods being processed.
+
                             if(tierModSet.Contains(otherMod))
                                 graph.AddEdge(new Edge<ModItem>(mod, otherMod));
                         }
@@ -289,7 +286,6 @@ namespace RimSharp.Infrastructure.Mods.Sorting
                 ProcessAfterDeps(mod.ModDependencies.Select(d => d.PackageId));
             }
 
-            // Implicit dependencies are only added on the initial full graph build.
             if (generateWarnings)
             {
                 AddImplicitDependencies(mods, graph, ct);
@@ -309,7 +305,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
                 {
                     ct.ThrowIfCancellationRequested();
                     if (mod == coreMod) continue;
-                    // OPTIMIZATION 2: Remove the expensive redundant path check. Keep the essential cycle prevention check.
+
                     if (!HasPath(graph, mod, coreMod))
                     {
                         graph.AddEdge(new Edge<ModItem>(coreMod, mod));
@@ -406,7 +402,7 @@ namespace RimSharp.Infrastructure.Mods.Sorting
 
             while (queue.TryDequeue(out var currentMod, out _))
             {
-                // Check cancellation in the loop
+
                 ct.ThrowIfCancellationRequested();
 
                 sortedList.Add(currentMod);
@@ -439,3 +435,5 @@ namespace RimSharp.Infrastructure.Mods.Sorting
         }
     }
 }
+
+

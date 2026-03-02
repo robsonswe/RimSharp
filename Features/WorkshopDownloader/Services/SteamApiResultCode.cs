@@ -12,7 +12,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         /// <summary>
         /// Code not explicitly handled or recognized.
         /// </summary>
-        Unknown = 0, // Assuming 0 isn't a used success/fail code here, otherwise use -1
+        Unknown = 0,
 
         /// <summary>
         /// Success. (k_EResultOK)
@@ -30,7 +30,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         NoConnection = 3,
 
         /// <summary>
-        /// A parameter was incorrect (e.g., invalid ID format, though pre-checked). (k_EResultInvalidParam)
+        /// A parameter was incorrect. (k_EResultInvalidParam)
         /// </summary>
         InvalidParam = 8,
 
@@ -72,7 +72,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         /// <summary>
         /// The user is not logged on (might be relevant for non-public items). (k_EResultNotLoggedOn)
         /// </summary>
-        NotLoggedOn = 21, // Less common for anonymous GetPublishedFileDetails
+        NotLoggedOn = 21,
 
         /// <summary>
         /// Rate limit exceeded, or too many items requested. (k_EResultLimitExceeded)

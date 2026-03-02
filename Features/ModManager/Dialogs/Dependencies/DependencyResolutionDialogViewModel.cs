@@ -1,4 +1,4 @@
-using RimSharp.AppDir.Dialogs; // For DialogViewModelBase
+using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
 using System;
 using System.Collections.Generic;
@@ -17,7 +17,6 @@ namespace RimSharp.Features.ModManager.Dialogs.Dependencies
             get => _missingDependencies;
             set
             {
-                // Unsubscribe from old collection items if necessary
                 if (_missingDependencies != null)
                 {
                     foreach (var item in _missingDependencies)
@@ -29,16 +28,14 @@ namespace RimSharp.Features.ModManager.Dialogs.Dependencies
 
                 if (SetProperty(ref _missingDependencies, value))
                 {
-                    // Subscribe to new collection items
                     if (_missingDependencies != null)
                     {
                         foreach (var item in _missingDependencies)
                         {
-                            // Only subscribe if the item can actually change selection state
                             if(item != null && item.IsSelectable)
                                 item.PropertyChanged += DependencyItem_PropertyChanged;
                         }
-                        UpdateSelectedCount(); // Initial count
+                        UpdateSelectedCount();
                     }
                 }
             }
@@ -54,28 +51,19 @@ namespace RimSharp.Features.ModManager.Dialogs.Dependencies
         public ICommand SelectAllCommand { get; }
         public ICommand SelectNoneCommand { get; }
 
-        // Constructor takes the raw list from ModListManager
         public DependencyResolutionDialogViewModel(
             IEnumerable<(string displayName, string packageId, string steamUrl, List<string> requiredBy)> missingDepsData)
-            : base("Missing Dependencies") // Set Dialog Title
+            : base("Missing Dependencies")
         {
             var viewModels = missingDepsData
                 .Select(dep => new MissingDependencyItemViewModel(
                     dep.displayName, dep.packageId, dep.steamUrl, dep.requiredBy))
-                .OrderBy(vm => vm.DisplayName) // Optionally sort
+                .OrderBy(vm => vm.DisplayName)
                 .ToList();
-
-            // Initialize commands using base class helpers
             SelectAllCommand = CreateCommand(SelectAll, CanSelectAll);
             SelectNoneCommand = CreateCommand(SelectNone, CanSelectNone);
 
-            // Assign to the property to trigger subscription logic
             MissingDependencies = new ObservableCollection<MissingDependencyItemViewModel>(viewModels);
-            // Initial count update happens in the setter
-
-            // Observe the collection itself for changes that might affect SelectAll/None CanExecute
-             // (Though adding/removing items isn't expected in this dialog)
-            // If needed: MissingDependencies.CollectionChanged += (s, e) => RaiseCanExecuteChangedForAllCommands();
         }
 
         private void DependencyItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -83,7 +71,6 @@ namespace RimSharp.Features.ModManager.Dialogs.Dependencies
             if (e.PropertyName == nameof(MissingDependencyItemViewModel.IsSelected))
             {
                 UpdateSelectedCount();
-                // Re-evaluate CanExecute for SelectAll/None
                 (SelectAllCommand as Core.Commands.Base.DelegateCommand)?.RaiseCanExecuteChanged();
                 (SelectNoneCommand as Core.Commands.Base.DelegateCommand)?.RaiseCanExecuteChanged();
             }
@@ -100,7 +87,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Dependencies
             if (MissingDependencies == null) return;
             foreach (var item in MissingDependencies.Where(i => i.IsSelectable))
             {
-                item.IsSelected = true; // Setter triggers PropertyChanged -> UpdateSelectedCount
+                item.IsSelected = true;
             }
         }
 
@@ -108,30 +95,18 @@ namespace RimSharp.Features.ModManager.Dialogs.Dependencies
         private void SelectNone()
         {
             if (MissingDependencies == null) return;
-            foreach (var item in MissingDependencies.Where(i => i.IsSelected)) // Only iterate selectable ones
+            foreach (var item in MissingDependencies.Where(i => i.IsSelected))
             {
-                item.IsSelected = false; // Setter triggers PropertyChanged -> UpdateSelectedCount
+                item.IsSelected = false;
             }
         }
 
-        /// <summary>
-        /// Gets the Steam IDs of the currently selected, downloadable dependencies.
-        /// </summary>
         public List<string> GetSelectedSteamIds()
         {
             return MissingDependencies?
-                .Where(item => item.IsSelected && item.IsSelectable && item.SteamId != null) // Ensure it's selected AND selectable (has ID)
+                .Where(item => item.IsSelected && item.IsSelectable && item.SteamId != null)
                 .Select(item => item.SteamId!)
                 .ToList() ?? new List<string>();
         }
-
-         // Helper method to raise CanExecuteChanged for relevant commands
-         // Might not be strictly necessary if observing properties correctly
-        // private void RaiseCanExecuteChangedForAllCommands()
-        // {
-        //     (SelectAllCommand as Core.Commands.Base.DelegateCommand)?.RaiseCanExecuteChanged();
-        //     (SelectNoneCommand as Core.Commands.Base.DelegateCommand)?.RaiseCanExecuteChanged();
-        //     // Add other commands if needed
-        // }
     }
 }

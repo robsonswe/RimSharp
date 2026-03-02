@@ -24,28 +24,25 @@ namespace RimSharp.Tests.Core.Converters.Visual
         [InlineData("Unknown status", "RimworldGrayBrush")]
         public void Convert_ShouldReturnCorrectBrushBasedOnStatus(string status, string expectedKey)
         {
-            // Arrange
+
             var converter = new UpdateStatusToColorConverter();
             var expectedBrush = (IBrush)Avalonia.Application.Current!.Resources[expectedKey]!;
 
-            // Act
             var result = converter.Convert(status, typeof(IBrush), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expectedBrush);
         }
 
         [AvaloniaFact]
         public void Convert_WithNullStatus_ShouldReturnGray()
         {
-            // Arrange
+
             var converter = new UpdateStatusToColorConverter();
 
-            // Act
             var result = converter.Convert(null, typeof(IBrush), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(Brushes.Gray);
         }
     }
 }
+

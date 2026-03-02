@@ -15,7 +15,6 @@ namespace RimSharp.Tests.Features.ModManager.Services.Commands
             // Arrange & Act
             var args = new DropModArgs();
 
-            // Assert
             args.DroppedItems.Should().BeEmpty();
             args.TargetListName.Should().BeEmpty();
             args.DropIndex.Should().Be(0);
@@ -24,14 +23,13 @@ namespace RimSharp.Tests.Features.ModManager.Services.Commands
         [Fact]
         public void DropModArgs_ShouldAllowSettingProperties()
         {
-            // Arrange
+
             var items = new List<ModItem>
             {
                 new ModItem { PackageId = "mod1", Name = "Mod 1" },
                 new ModItem { PackageId = "mod2", Name = "Mod 2" }
             };
 
-            // Act
             var args = new DropModArgs
             {
                 DroppedItems = items,
@@ -39,7 +37,6 @@ namespace RimSharp.Tests.Features.ModManager.Services.Commands
                 DropIndex = 5
             };
 
-            // Assert
             args.DroppedItems.Should().HaveCount(2);
             args.TargetListName.Should().Be("ActiveMods");
             args.DropIndex.Should().Be(5);
@@ -56,7 +53,6 @@ namespace RimSharp.Tests.Features.ModManager.Services.Commands
                 DropIndex = 0
             };
 
-            // Assert
             args.DroppedItems.Should().BeEmpty();
         }
 
@@ -71,7 +67,6 @@ namespace RimSharp.Tests.Features.ModManager.Services.Commands
                 DropIndex = 0
             };
 
-            // Assert
             args.TargetListName.Should().BeNull();
         }
 
@@ -86,8 +81,8 @@ namespace RimSharp.Tests.Features.ModManager.Services.Commands
                 DropIndex = -1
             };
 
-            // Assert
             args.DropIndex.Should().Be(-1);
         }
     }
 }
+

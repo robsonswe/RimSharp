@@ -1,4 +1,4 @@
-// Core/Services/WindowsSystemInfoService.cs
+
 #nullable enable
 using System;
 using System.Linq;
@@ -7,7 +7,7 @@ using System.Management;
 namespace RimSharp.Core.Services
 {
     /// <summary>
-    /// Provides system hardware information by querying WMI on Windows.
+
     /// </summary>
     public class WindowsSystemInfoService : ISystemInfoService
     {
@@ -32,3 +32,5 @@ namespace RimSharp.Core.Services
         }
     }
 }
+
+

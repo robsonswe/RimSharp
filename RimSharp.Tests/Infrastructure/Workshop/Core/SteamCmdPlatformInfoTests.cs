@@ -10,10 +10,9 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Core
         [Fact]
         public void Constructor_ShouldInitializePlatformCorrectly()
         {
-            // Act
+
             var info = new SteamCmdPlatformInfo();
 
-            // Assert
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 info.Platform.Should().Be(OSPlatform.Windows);
@@ -31,3 +30,4 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Core
         }
     }
 }
+

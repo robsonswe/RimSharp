@@ -1,4 +1,4 @@
-using RimSharp.AppDir.AppFiles; // For RunOnUIThread
+using RimSharp.AppDir.AppFiles;
 using RimSharp.Shared.Models;
 using System;
 using System.Collections;
@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text; // For StringBuilder
+using System.Text;
 using System.Threading.Tasks;
 
 namespace RimSharp.Features.ModManager.ViewModels.Actions
@@ -14,7 +14,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
     // Partial class definition starts here
     public partial class ModActionsViewModel
     {
-        // Helper method called by Open... commands
+
         private async Task OpenItemsAsync(IList? selectedItems, Func<ModItem, string?> targetSelector, string itemTypeDescription, Func<string, bool>? validator = null)
         {
             var mods = selectedItems?.Cast<ModItem>().ToList();
@@ -98,3 +98,4 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
     }
 
 }
+

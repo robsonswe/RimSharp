@@ -3,24 +3,23 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using RimSharp.Infrastructure.Logging; // Assuming ILoggerService is here
+using RimSharp.Infrastructure.Logging; 
 using RimSharp.Infrastructure.Data;
-using RimSharp.Shared.Models;        // For ModDictionaryEntry
-using RimSharp.Shared.Services.Contracts; // For IPathService, ILoggerService, IModDictionaryService
+using RimSharp.Shared.Models;
+using RimSharp.Shared.Services.Contracts;
 
-namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
+namespace RimSharp.Shared.Services.Implementations
 {
     public class ModDictionaryService : IModDictionaryService
     {
         private const string DatabaseDictionaryFileName = "db.json";
-        private readonly IPathService _pathService; // Now needed for GetEntryByPackageId logic
+        private readonly IPathService _pathService;
         private readonly ILoggerService _logger;
         private readonly IDataUpdateService _dataUpdateService; 
-        private Dictionary<string, ModDictionaryEntry>? _dictionaryCache; // Cache keyed by lowercase SteamId
+        private Dictionary<string, ModDictionaryEntry>? _dictionaryCache;
         private bool _isInitialized = false;
         private readonly object _lock = new object();
 
-        // Constructor remains the same - IPathService is already injected
         public ModDictionaryService(IPathService pathService, IDataUpdateService dataUpdateService, ILoggerService logger)
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
@@ -30,7 +29,6 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
 
         public Dictionary<string, ModDictionaryEntry> GetAllEntries()
         {
-            // Double-check locking for thread safety
             if (_isInitialized && _dictionaryCache != null)
             {
                 return _dictionaryCache;
@@ -38,13 +36,13 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
 
             lock (_lock)
             {
-                if (_isInitialized && _dictionaryCache != null) // Check again inside lock
+                if (_isInitialized && _dictionaryCache != null)
                 {
                     return _dictionaryCache;
                 }
 
                 _logger.LogInfo("Initializing ModDictionaryService cache.", nameof(ModDictionaryService));
-                _dictionaryCache = LoadEntries(); // Load from db.json
+                _dictionaryCache = LoadEntries();
                 _isInitialized = true;
                 _logger.LogInfo($"ModDictionaryService cache initialized. Found {_dictionaryCache.Count} unique mod dictionary entries.", nameof(ModDictionaryService));
                 return _dictionaryCache;
@@ -55,27 +53,25 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
         {
             if (string.IsNullOrWhiteSpace(steamId)) return null;
 
-            var cache = GetAllEntries(); // Ensures cache is loaded
+            var cache = GetAllEntries(); 
             string normalizedId = steamId.ToLowerInvariant();
 
             cache.TryGetValue(normalizedId, out var entry);
-            return entry; // Returns null if not found
+            return entry; 
         }
 
         public ModDictionaryEntry? GetEntryByPackageId(string packageId)
         {
             if (string.IsNullOrWhiteSpace(packageId)) return null;
 
-            var cache = GetAllEntries(); // Ensures cache is loaded
+            var cache = GetAllEntries(); 
             string normalizedId = packageId.ToLowerInvariant();
 
-            // 1. Find all potential candidates matching the packageId (case-insensitive)
             var candidates = cache.Values.Where(entry =>
                 !string.IsNullOrEmpty(entry.PackageId) &&
                 entry.PackageId.Equals(normalizedId, StringComparison.OrdinalIgnoreCase))
-                .ToList(); // Materialize the list
+                .ToList(); 
 
-            // 2. Handle simple cases: no matches or only one match
             if (candidates.Count == 0)
             {
                 return null;
@@ -85,10 +81,8 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
                 return candidates[0];
             }
 
-            // 3. Multiple candidates exist - apply prioritization logic
             _logger.LogDebug($"Found {candidates.Count} potential dictionary entries for packageId '{packageId}'. Applying prioritization.", nameof(ModDictionaryService));
 
-            // 3a. Get the current major game version
             string majorGameVersion = _pathService.GetMajorGameVersion();
             bool isVersionValid = !string.IsNullOrEmpty(majorGameVersion) && !majorGameVersion.StartsWith("N/A");
 
@@ -101,17 +95,13 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
                  _logger.LogDebug($"Cannot prioritize based on game version (Version: '{majorGameVersion}'). Proceeding with Published status.", nameof(ModDictionaryService));
             }
 
-            // 3b. Sort the candidates based on the rules
-            //    - Rule 1: Prioritize matching major game version (if version is valid)
-            //    - Rule 2: Prioritize Published = true
-            //    - Rule 3: FirstOrDefault handles the final tie-break if still needed
             var prioritizedEntry = candidates
                 .OrderByDescending(entry =>
                     isVersionValid &&
-                    entry.Versions != null && // Safety check
+                    entry.Versions != null &&
                     entry.Versions.Contains(majorGameVersion))
                 .ThenByDescending(entry => entry.Published)
-                .FirstOrDefault(); // Select the highest priority entry
+                .FirstOrDefault();
 
             if (prioritizedEntry != null)
             {
@@ -119,8 +109,6 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
             }
             else
             {
-                 // This case should theoretically not happen if candidates.Count > 0,
-                 // but log just in case.
                  _logger.LogWarning($"Prioritization resulted in null for packageId '{packageId}' despite having {candidates.Count} candidates.", nameof(ModDictionaryService));
             }
 
@@ -131,10 +119,9 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
         {
             if (string.IsNullOrWhiteSpace(packageId)) return new List<ModDictionaryEntry>();
 
-            var cache = GetAllEntries(); // Ensures cache is loaded
+            var cache = GetAllEntries(); 
             string normalizedId = packageId.ToLowerInvariant();
 
-            // Find all matches based on the PackageId (case-insensitive)
             return cache.Values.Where(entry =>
                 !string.IsNullOrEmpty(entry.PackageId) &&
                 entry.PackageId.Equals(normalizedId, StringComparison.OrdinalIgnoreCase))
@@ -143,40 +130,33 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
 
         private Dictionary<string, ModDictionaryEntry> LoadEntries()
         {
-            // Use case-insensitive keys for SteamIDs in the dictionary
             var results = new Dictionary<string, ModDictionaryEntry>(StringComparer.OrdinalIgnoreCase);
             int loadedCount = LoadFromJson(results);
             _logger.LogDebug($"Loaded {loadedCount} entries from dictionary JSON database.", nameof(ModDictionaryService));
             return results;
         }
 
-                // --- MODIFIED METHOD ---
         private int LoadFromJson(Dictionary<string, ModDictionaryEntry> targetDictionary)
         {
-            // Get the full file path from the data update service
             var jsonFilePath = _dataUpdateService.GetDataFilePath(DatabaseDictionaryFileName);
             var dbDirectoryPath = Path.GetDirectoryName(jsonFilePath);
             int count = 0;
 
             try
             {
-                // 1. Ensure the directory exists
                 if (dbDirectoryPath != null && !Directory.Exists(dbDirectoryPath))
                 {
                     _logger.LogInfo($"Creating dictionary database directory: '{dbDirectoryPath}'", nameof(ModDictionaryService));
                     Directory.CreateDirectory(dbDirectoryPath);
                 }
-
-                // 2. Check if the file exists, create with default if not
                 if (!File.Exists(jsonFilePath))
                 {
                     _logger.LogWarning($"Dictionary database file '{jsonFilePath}' not found. Creating with default content.", nameof(ModDictionaryService));
-                    File.WriteAllText(jsonFilePath, "{\"mods\":{}}"); // Default content
+                    File.WriteAllText(jsonFilePath, "{\"mods\":{}}");
                     _logger.LogInfo($"Default dictionary file created at '{jsonFilePath}'.", nameof(ModDictionaryService));
                     return 0;
                 }
 
-                // 3. File exists, proceed with loading
                 _logger.LogDebug($"Parsing dictionary database: '{jsonFilePath}'", nameof(ModDictionaryService));
                 string jsonContent = File.ReadAllText(jsonFilePath);
 
@@ -246,16 +226,11 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
             return count;
         }
 
-
-        // --- Helper classes for JSON deserialization ---
-
         /// <summary>
         /// Matches the root structure of db.json: { "mods": { ... } }
         /// </summary>
         private class ModDictionaryJsonRoot
         {
-            // Key: packageId (string)
-            // Value: Dictionary where Key is steamId (string) and Value is ModDetails
             public Dictionary<string, Dictionary<string, ModDetails>>? Mods { get; set; }
         }
 
@@ -267,7 +242,6 @@ namespace RimSharp.Shared.Services.Implementations // Adjust namespace as needed
             public string Name { get; set; } = string.Empty;
             public List<string> Versions { get; set; } = new();
             public string Authors { get; set; } = string.Empty;
-            // Ensure this matches the case in your JSON or use [JsonPropertyName("published")] if needed
             public bool Published { get; set; }
         }
     }

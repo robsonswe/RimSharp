@@ -24,10 +24,8 @@ namespace RimSharp.Infrastructure.Configuration
 
             if (!File.Exists(_configPath))
             {
-                // Create default config file (without mods_folder)
                 SetConfigValue("game_folder", string.Empty);
                 SetConfigValue("config_folder", string.Empty);
-                // SetConfigValue("mods_folder", string.Empty); // REMOVED
                 SaveConfig();
                 return;
             }
@@ -45,18 +43,15 @@ namespace RimSharp.Infrastructure.Configuration
                         var key = parts[0].Trim();
                         var value = parts[1].Trim();
 
-                        // Only load relevant keys (optional, but cleaner)
                         if (key == "game_folder" || key == "config_folder")
                         {
                              _configValues[key] = value;
                         }
-                        // Ignore "mods_folder" if found in an old config
                     }
                 }
             }
             catch (IOException)
             {
-                // If file can't be read, use empty values
                 _configValues.Clear();
             }
         }
@@ -65,7 +60,6 @@ namespace RimSharp.Infrastructure.Configuration
         {
             try
             {
-                // Only save the keys we actually manage now
                 var linesToSave = new List<string>();
                 if (_configValues.TryGetValue("game_folder", out var gameFolder))
                 {
@@ -75,14 +69,12 @@ namespace RimSharp.Infrastructure.Configuration
                 {
                     linesToSave.Add($"config_folder={configFolder}");
                 }
-                // Do not save "mods_folder"
 
                 File.WriteAllLines(_configPath, linesToSave);
             }
             catch (IOException)
             {
-                // Handle file write errors gracefully
-                Console.WriteLine($"Error saving config file: {_configPath}"); // Basic error logging
+                Console.WriteLine($"Error saving config file: {_configPath}");
             }
         }
 
@@ -91,10 +83,9 @@ namespace RimSharp.Infrastructure.Configuration
 
         public void SetConfigValue(string key, string value)
         {
-             // Only allow setting relevant keys (prevents mods_folder being re-added accidentally)
             if (key == "game_folder" || key == "config_folder")
             {
-                 _configValues[key] = value ?? string.Empty; // Ensure value is not null
+                 _configValues[key] = value ?? string.Empty;
             }
         }
     }

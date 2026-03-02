@@ -19,18 +19,17 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
 using RimSharp.Features.WorkshopDownloader.Services;
-using RimSharp.Features.WorkshopDownloader.Models; // For ModInfoDto
+using RimSharp.Features.WorkshopDownloader.Models;
 using System.Globalization;
 using System.Collections.Concurrent;
-using RimSharp.Features.ModManager.Dialogs.Strip; // For CultureInfo
+using RimSharp.Features.ModManager.Dialogs.Strip;
 using System.Xml.Linq;
 
 namespace RimSharp.Features.ModManager.ViewModels.Actions
 {
     // Mark the class as partial
-    public partial class ModActionsViewModel : ViewModelBase // Ensure inherits from ViewModelBase
+    public partial class ModActionsViewModel : ViewModelBase
     {
-        // Dependencies (Remain here)
         private readonly IModDataService _dataService;
         private readonly IModCommandService _commandService;
         private readonly IModListIOService _ioService;
@@ -49,24 +48,20 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private readonly IApplicationNavigationService _navigationService;
         private readonly ISteamWorkshopQueueProcessor _steamWorkshopQueueProcessor;
         private readonly IGitService _gitService;
-        // State properties (Remain here)
         private bool _isParentLoading;
         private bool _hasUnsavedChanges;
-        // FIX: Changed to a nullable type to represent the state where nothing is selected.
-        private ModItem? _selectedMod; // For single-item actions
-        // FIX: Changed to a nullable type to represent the state where nothing is selected.
-        private IList? _selectedItems; // For multi-item actions
+        private ModItem? _selectedMod;
+        private IList? _selectedItems;
         protected bool CanExecuteSimpleCommands() => !IsParentLoading && HasValidPaths;
         private const int MaxParallelRedownloadOperations = 10;
 
-
-        public bool IsParentLoading
+public bool IsParentLoading
         {
             get => _isParentLoading;
             set
             {
                 Debug.WriteLine($"[ModActionsViewModel] IsParentLoading SETTER: Current = {_isParentLoading}, New = {value}");
-                // Use base SetProperty, command observation handles updates
+
                 if (SetProperty(ref _isParentLoading, value))
                 {
                     Debug.WriteLine($"[ModActionsViewModel] IsParentLoading Changed to {value}.");
@@ -79,39 +74,31 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             get => _hasUnsavedChanges;
             set
             {
-                // Use base SetProperty, command observation handles updates
-                // REMOVE THE EVENT INVOCATION FROM HERE
+
                 // if (SetProperty(ref _hasUnsavedChanges, value))
                 // {
-                //     // Request update in parent VM if needed (handled by event)
-                //     // HasUnsavedChangesRequest?.Invoke(this, value); // <<< REMOVE THIS LINE
-                // }
-                // Setter still needs to raise PropertyChanged for command observation:
+
+                //     // HasUnsavedChangesRequest?.Invoke(this, value);
+
                 SetProperty(ref _hasUnsavedChanges, value);
             }
         }
-
-        // FIX: Property is now nullable to match its backing field.
         public ModItem? SelectedMod
         {
             get => _selectedMod;
             set
             {
-                // Use base SetProperty, command observation handles updates
+
                 SetProperty(ref _selectedMod, value);
-                // Manual RaiseCanExecuteChangedForAllCommands() removed
             }
         }
-
-        // FIX: Property is now nullable to match its backing field.
         public IList? SelectedItems // Bound from ListBox typically
         {
             get => _selectedItems;
             set
             {
-                // Use base SetProperty, command observation handles updates
+
                 SetProperty(ref _selectedItems, value);
-                // Manual RaiseCanExecuteChangedForAllCommands() removed
             }
         }
 
@@ -161,10 +148,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
         private readonly Avalonia.Threading.DispatcherTimer _gameCheckTimer;
 
-
-        // Command Properties (Declarations remain here)
-        // FIX: Initialized with null-forgiving operator (!) because the compiler can't verify
-        // that the InitializeCommands() method (called from ctor) assigns them.
         // List Management
         public ICommand ClearActiveListCommand { get; private set; } = null!;
         public ICommand SortActiveListCommand { get; private set; } = null!;
@@ -174,19 +157,17 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         public ICommand CheckReplacementsCommand { get; private set; } = null!;
 
         // Mod Actions (Single/Multi)
-        public ICommand DeleteModCommand { get; private set; } = null!; // Single
-        public ICommand DeleteModsCommand { get; private set; } = null!; // Multi
-        public ICommand OpenModFoldersCommand { get; private set; } = null!; // Multi
-        public ICommand OpenUrlsCommand { get; private set; } = null!; // Multi
-        public ICommand OpenWorkshopPagesCommand { get; private set; } = null!; // Multi
-        public ICommand OpenOtherUrlsCommand { get; private set; } = null!; // Multi
-
+        public ICommand DeleteModCommand { get; private set; } = null!; 
+        public ICommand DeleteModsCommand { get; private set; } = null!; 
+        public ICommand OpenModFoldersCommand { get; private set; } = null!; 
+        public ICommand OpenUrlsCommand { get; private set; } = null!; 
+        public ICommand OpenWorkshopPagesCommand { get; private set; } = null!; 
+        public ICommand OpenOtherUrlsCommand { get; private set; } = null!; 
         // Tools & Analysis
         public ICommand ResolveDependenciesCommand { get; private set; } = null!;
         public ICommand CheckIncompatibilitiesCommand { get; private set; } = null!;
         public ICommand CheckDuplicatesCommand { get; private set; } = null!;
 
-        // Placeholders
         public ICommand StripModsCommand { get; private set; } = null!;
         public ICommand FixIntegrityCommand { get; private set; } = null!;
         public ICommand RunGameCommand { get; private set; } = null!;
@@ -196,18 +177,12 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         public ICommand InstallFromZipCommand { get; private set; } = null!;
         public ICommand InstallFromGithubCommand { get; private set; } = null!;
         public ICommand RedownloadModsCommand { get; private set; } = null!;
-
-        // Events (Remain here)
-        // FIX: Initialized with null-forgiving operator. Events should be handled carefully.
-        // If no subscribers are expected, they can be left as is, but this silences the warning.
         public event EventHandler<bool>? IsLoadingRequest;
         public event EventHandler? RequestDataRefresh;
         public event EventHandler<bool>? HasUnsavedChangesRequest;
 
-        // Helper state (Example, might be better encapsulated if complex)
         private bool _installSuccess = false;
 
-        // Constructor (Remains here)
         public ModActionsViewModel(
             IModDataService dataService,
             IModCommandService commandService,
@@ -247,12 +222,10 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
             _modListManager.ListChanged += OnModListChanged;
 
-            // Initialize game check timer (every 2 seconds)
             _gameCheckTimer = new Avalonia.Threading.DispatcherTimer();
             _gameCheckTimer.Interval = TimeSpan.FromSeconds(2);
             _gameCheckTimer.Tick += (s, e) => CheckIfGameIsRunning();
-            // Start will be managed by IsViewActive property
-
+            
             InitializeCommands(); // Calls partial initialization methods
         }
 
@@ -270,13 +243,12 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         {
             try
             {
-                // Targeted search is much faster than fetching the whole process list
+
                 var p64 = Process.GetProcessesByName("RimWorldWin64");
                 var p32 = Process.GetProcessesByName("RimWorld");
 
                 bool isRunning = p64.Length > 0 || p32.Length > 0;
 
-                // Cleanup: Dispose all process objects immediately to save memory/handles
                 foreach (var p in p64) p.Dispose();
                 foreach (var p in p32) p.Dispose();
 
@@ -321,7 +293,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             RedownloadModsCommand = CreateCancellableAsyncCommand( // Use the NON-GENERIC version
                 execute: async (ct) => // Lambda takes CancellationToken
                 {
-                    // Get the selected items from the ViewModel property *at execution time*
+
                     var itemsToProcess = SelectedItems;
                     if (itemsToProcess != null && itemsToProcess.Count > 0) // Add a null/empty check for safety
                     {
@@ -334,9 +306,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 },
                 canExecute: () => // Lambda takes no parameters
                 {
-                    // Get the selected items from the ViewModel property *at evaluation time*
+
                     var currentSelection = SelectedItems;
-                    // Call the original CanExecute logic using the retrieved items
                     return CanExecuteRedownloadMods(currentSelection);
                 },
                 // Observation still works correctly on the ViewModel's properties
@@ -344,7 +315,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         }
         private bool CanExecuteRedownloadMods(IList? selectedItems)
         {
-            // FIX: The parameter is now correctly nullable.
             var currentSelection = selectedItems ?? this.SelectedItems;
 
             bool isLoading = IsParentLoading;
@@ -358,19 +328,14 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 Debug.WriteLine($"[CanExecuteRedownloadMods] Result: false (Loading or No Selection)");
                 return false;
             }
-
-            // FIX: Safely cast after verifying the list is not null to resolve CS8604.
             if (currentSelection is null)
             {
                 return false;
             }
-
-            // --- CHANGE HERE: Use Any() instead of All() ---
-            // Check if AT LEAST ONE selected item is a valid WorkshopL mod with a Steam ID
             bool anyValid = false;
             try
             {
-                anyValid = currentSelection.Cast<ModItem>().ToList().Any(mod => // <-- Changed from All to Any
+                anyValid = currentSelection.Cast<ModItem>().ToList().Any(mod =>
                     mod != null &&
                     mod.ModType == ModType.WorkshopL &&
                     !string.IsNullOrEmpty(mod.SteamId) &&
@@ -382,10 +347,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 Debug.WriteLine($"[CanExecuteRedownloadMods] Error during Any() check: {ex.Message}");
                 anyValid = false; // Treat error as invalid
             }
-            // --- END CHANGE ---
 
             Debug.WriteLine($"[CanExecuteRedownloadMods] AnyValid Check Result: {anyValid}. Final CanExecute: {anyValid}");
-            return anyValid; // Command is executable if at least one valid item exists
+            return anyValid; 
         }
 
         private async Task ExecuteRedownloadModsAsync(IList? selectedItems, CancellationToken ct)
@@ -416,8 +380,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 Debug.WriteLine("[ExecuteRedownloadModsAsync] User cancelled redownload confirmation.");
                 return;
             }
-
-            // ---- NEW LOGIC USING THE SERVICE ----
             IsLoadingRequest?.Invoke(this, true);
             ProgressDialogViewModel? progressDialog = null;
             CancellationTokenSource? linkedCts = null;
@@ -444,7 +406,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 // Setup Progress Reporter
                 var progressReporter = new Progress<QueueProcessProgress>(update =>
                 {
-                    // Run progress updates on UI thread
                     RunOnUIThread(() =>
                     {
                         if (progressDialog != null && !progressDialog.CancellationToken.IsCancellationRequested)
@@ -454,11 +415,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                         }
                     });
                 });
-
-                // Call the central service
                 queueResult = await _steamWorkshopQueueProcessor.ProcessAndEnqueueModsAsync(modsToProcess, progressReporter, combinedToken);
-
-                // --- Show Summary ---
                 await RunOnUIThreadAsync(async () =>
                 {
                     if (queueResult.WasCancelled)
@@ -493,8 +450,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                         await _dialogService.ShowError("Redownload Queue Failed", sb.ToString().Trim());
                     else // All succeeded or skipped (already queued)
                         await _dialogService.ShowInformation("Redownload Queued", sb.ToString().Trim());
-
-                    // Navigate if items were added
                     if (queueResult.SuccessfullyAdded > 0)
                     {
                         _navigationService.RequestTabSwitch("Downloader");
@@ -503,7 +458,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             }
             catch (OperationCanceledException) // Catch cancellation from WaitAsync or linked CTS propagation
             {
-                // Logged and handled by the UI thread check above if queueResult.WasCancelled is true
+
                 Debug.WriteLine("[ExecuteRedownloadModsAsync] Operation cancelled (caught top level).", nameof(ModActionsViewModel));
                 await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
             }
@@ -515,17 +470,14 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             }
             finally
             {
-                await RunOnUIThreadAsync(() => progressDialog?.ForceClose()); // Ensure closed
+                await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
                 linkedCts?.Dispose();
                 IsLoadingRequest?.Invoke(this, false);
             }
-            // ---- END OF NEW LOGIC ----
         }
 
-
-        private bool CanExecutizeMod(ModItem? mod)
+private bool CanExecutizeMod(ModItem? mod)
         {
-            // FIX: Parameter is now nullable.
             return !IsParentLoading && mod != null && mod.ModType != ModType.Core && mod.ModType != ModType.Expansion;
         }
 
@@ -540,8 +492,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             try
             {
                 Debug.WriteLine($"Attempting to customize mod: {mod.PackageId}");
-
-                // Load data in the background
                 customInfo = await Task.Run(() => _modService.GetCustomModInfo(mod.PackageId));
 
                 // Create ViewModel and show dialog on UI thread
@@ -583,7 +533,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
             try
             {
-                // --- Scanning Phase ---
                 await RunOnUIThreadAsync(() =>
                 {
                     progressDialog = _dialogService.ShowProgressDialog("Scanning Mods", "Starting scan...", true, false);
@@ -621,8 +570,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 }, combinedToken);
 
                 await RunOnUIThreadAsync(() => progressDialog.ForceClose());
-
-                // --- Dialog Phase ---
                 if (!strippableModsVms.Any())
                 {
                     await _dialogService.ShowInformation("Strip Mods", "Scan complete. No unnecessary files or folders found.");
@@ -632,18 +579,15 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 (bool shouldStrip, IEnumerable<string>? pathsToDelete) = (false, null);
                 await RunOnUIThreadAsync(async () =>
                 {
-                    // <<< UPDATED: Now instantiates the external ViewModel >>>
                     var dialogViewModel = new StripDialogViewModel(strippableModsVms);
                     (shouldStrip, pathsToDelete) = await _dialogService.ShowStripModsDialogAsync(dialogViewModel);
                 });
 
                 if (!shouldStrip || pathsToDelete == null || !pathsToDelete.Any())
                 {
-                    // Silent return if user cancelled or didn't select anything
+
                     return;
                 }
-
-                // --- Deletion Phase ---
                 await RunOnUIThreadAsync(() =>
                 {
                     progressDialog = _dialogService.ShowProgressDialog("Stripping Mods", "Deleting selected items...", false, false);
@@ -711,28 +655,21 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             CancellationToken ct,
             IDictionary<string, (string Name, string RelativePath, string FullPath, long Size, StrippableItemType Type)>? potentialDeletions = null)
         {
-            // Initialize the shared dictionary on the first, top-level call.
             potentialDeletions ??= new Dictionary<string, (string, string, string, long, StrippableItemType)>(StringComparer.OrdinalIgnoreCase);
 
-            // Abort if cancellation is requested.
             ct.ThrowIfCancellationRequested();
 
-            // Do not process a directory that has already been marked for deletion by a parent call.
             if (potentialDeletions.ContainsKey(currentDir.FullName)) return;
-
-            // --- Define all junk item rules for clarity ---
             var junkNameComponents = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Source", ".git", ".github", ".vs", ".vscode" };
             var exactJunkFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "bin", "obj", "Properties" };
             var junkFileExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".csproj", ".csproj.user", ".sln" };
             char[] nameDelimiters = { '-', '_', ' ' };
-
-            // --- Step 1: Categorize all subdirectories in the current path ---
             var versionFolders = new List<(string VersionString, DirectoryInfo Dir)>();
             var otherFolders = new List<DirectoryInfo>();
 
             foreach (var dir in currentDir.EnumerateDirectories())
             {
-                // Normalize folder name to a potential version string (e.g., "v1.5" -> "1.5")
+                
                 var potentialVersionString = dir.Name.StartsWith("v", StringComparison.OrdinalIgnoreCase) ? dir.Name.Substring(1) : dir.Name;
                 var versionString = new string(potentialVersionString.TakeWhile(c => char.IsDigit(c) || c == '.').ToArray()).TrimEnd('.');
 
@@ -745,8 +682,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     otherFolders.Add(dir);
                 }
             }
-
-            // --- Step 2: Apply version stripping logic if versioned folders were found ---
             if (versionFolders.Any())
             {
                 var essentialVersions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -756,7 +691,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     // Full, nuanced logic for the mod's root directory.
                     var supportedVersions = strippableModVm.Mod.SupportedVersionStrings.ToHashSet();
 
-                    // Find the latest version among folders that are BOTH existing AND officially supported.
                     var latestAvailableSupported = versionFolders
                         .Where(vf => supportedVersions.Contains(vf.VersionString))
                         .Select(vf => Version.TryParse(vf.VersionString, out var v) ? v : null)
@@ -764,7 +698,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
                     if (latestAvailableSupported != null) essentialVersions.Add($"{latestAvailableSupported.Major}.{latestAvailableSupported.Minor}");
 
-                    // Also keep the user's current game version, but ONLY if a folder for it exists and it's supported.
                     if (supportedVersions.Contains(majorGameVersion) && versionFolders.Any(vf => vf.VersionString.Equals(majorGameVersion)))
                     {
                         essentialVersions.Add(majorGameVersion);
@@ -772,7 +705,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 }
                 else
                 {
-                    // Simpler "keep only the latest available" logic for subdirectories (e.g., a bundled library).
+
                     var latestAvailable = versionFolders
                         .Select(vf => Version.TryParse(vf.VersionString, out var v) ? v : null)
                         .Where(v => v != null).OrderByDescending(v => v).FirstOrDefault();
@@ -780,7 +713,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     if (latestAvailable != null) essentialVersions.Add($"{latestAvailable.Major}.{latestAvailable.Minor}");
                 }
 
-                // Mark any version folder that is not in our essential set for deletion.
                 foreach (var (versionString, dir) in versionFolders)
                 {
                     if (!essentialVersions.Contains(versionString))
@@ -790,8 +722,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     }
                 }
             }
-
-            // --- Step 3: Process other (non-versioned) folders for junk names and recursion ---
             foreach (var otherDir in otherFolders)
             {
                 bool isJunkByNameComponent = otherDir.Name.StartsWith(".git", StringComparison.OrdinalIgnoreCase) ||
@@ -805,12 +735,10 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 }
                 else
                 {
-                    // It's a normal folder, so we recurse into it.
+
                     await ScanDirectoryRecursively(otherDir, modRootPath, strippableModVm, majorGameVersion, isModRoot: false, ct, potentialDeletions);
                 }
             }
-
-            // --- Step 4: Find junk files in the current directory ---
             foreach (var file in currentDir.EnumerateFiles())
             {
                 bool isGitFile = file.Name.StartsWith(".git", StringComparison.OrdinalIgnoreCase);
@@ -821,8 +749,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     potentialDeletions[file.FullName] = (file.Name, Path.GetRelativePath(modRootPath, file.FullName), file.FullName, file.Length, StrippableItemType.File);
                 }
             }
-
-            // --- Step 5: On the final return (back at the mod root), handle loadFolders.xml and populate the UI ---
             if (isModRoot)
             {
                 var loadFoldersFile = new DirectoryInfo(modRootPath).GetFiles("loadFolders.xml", SearchOption.TopDirectoryOnly).FirstOrDefault();
@@ -833,7 +759,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                         var doc = XDocument.Load(loadFoldersFile.FullName);
                         var pathsToKeep = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                        // Re-calculate essential versions for the root to check against loadFolders.xml
                         var rootEssentialVersions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                         var supported = strippableModVm.Mod.SupportedVersionStrings.ToHashSet();
                         if (supported.Contains(majorGameVersion)) rootEssentialVersions.Add(majorGameVersion);
@@ -843,7 +768,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                             .Where(v => v != null).OrderByDescending(v => v).FirstOrDefault();
                         if (latestSupported != null) rootEssentialVersions.Add($"{latestSupported.Major}.{latestSupported.Minor}");
 
-                        // Find all paths required by any of the essential versions.
                         foreach (var version in rootEssentialVersions)
                         {
                             var versionNode = doc.Root?.Elements().FirstOrDefault(e => e.Name.LocalName.Equals("v" + version, StringComparison.OrdinalIgnoreCase));
@@ -855,7 +779,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                             }
                         }
 
-                        // "Rescue" any path that is, or is inside of, a path we must keep.
                         var pathsToRescue = potentialDeletions.Keys
                             .Where(path => pathsToKeep.Any(keepPath => path.Equals(keepPath, StringComparison.OrdinalIgnoreCase) || path.StartsWith(keepPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)))
                             .ToList();
@@ -871,7 +794,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     }
                 }
 
-                // Now that all checks are complete, populate the UI view model with the final list.
                 foreach (var item in potentialDeletions.Values.OrderBy(i => i.RelativePath))
                 {
                     var vm = new StrippableItemViewModel(strippableModVm, item.Name, item.RelativePath, item.FullPath, item.Size, item.Type);
@@ -885,8 +807,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             }
         }
 
-
-        public void RefreshPathValidity()
+public void RefreshPathValidity()
         {
             var gamePath = _pathService.GetGamePath();
             var modsPath = _pathService.GetModsPath();
@@ -898,3 +819,5 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         }
     }
 }
+
+

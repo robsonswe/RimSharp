@@ -16,7 +16,6 @@ using System.Text.RegularExpressions;
 
 namespace RimSharp.Shared.Services.Implementations
 {
-
     public class ModService : IModService
     {
         private readonly IPathService _pathService;
@@ -25,8 +24,8 @@ namespace RimSharp.Shared.Services.Implementations
 
         private readonly IModRulesService _rulesService;
         private readonly IModCustomService _customService;
-        private readonly IMlieVersionService _mlieVersionService; // <<< ADDED
-        private readonly ILoggerService _logger; // <<< ADDED
+        private readonly IMlieVersionService _mlieVersionService;
+        private readonly ILoggerService _logger;
 
         private static readonly HashSet<string> TextureExtensions = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -66,39 +65,29 @@ namespace RimSharp.Shared.Services.Implementations
                 return;
             }
 
-            // 1. Load Base Mod Info (About.xml) - Includes Official Versions
             _logger.LogDebug("Loading core mods...", nameof(ModService));
-            LoadCoreMods(gamePath); // Already adds to _allMods
+            LoadCoreMods(gamePath);
             _logger.LogDebug("Loading workshop/local mods...", nameof(ModService));
-            LoadWorkshopMods(modsPath); // Already adds to _allMods
+            LoadWorkshopMods(modsPath);
 
-            // 2. Get Mlie Data (Do this early before applying rules/custom)
             _logger.LogDebug("Retrieving Mlie version data...", nameof(ModService));
             var mlieVersions = _mlieVersionService.GetMlieVersions();
 
-            // 3. Apply Mlie Versions (Priority: Official -> Mlie)
             _logger.LogDebug("Applying Mlie version data...", nameof(ModService));
             ApplyMlieVersions(_allMods, mlieVersions);
 
-            // 4. Apply Rules Service Info (Versions + Other Rules)
             _logger.LogDebug("Applying ModRulesService data...", nameof(ModService));
-            // ModRulesService.ApplyRulesToMods needs modification (see Step 7)
             _rulesService.ApplyRulesToMods(_allMods);
 
-            // 5. Apply Custom Service Info (Versions + Other Customizations)
             _logger.LogDebug("Applying ModCustomService data...", nameof(ModService));
-            // ModCustomService.ApplyCustomInfoToMods needs modification (see Step 8)
             _customService.ApplyCustomInfoToMods(_allMods);
 
-            // 6. Final Checks (Version Support Status)
             _logger.LogDebug("Calculating version support status...", nameof(ModService));
             foreach (var mod in _allMods)
             {
-                // Use the comprehensive SupportedVersions list now
                 mod.IsSupportedRW = IsVersionSupported(_currentMajorVersion, mod.SupportedVersions) || !mod.SupportedVersions.Any();
             }
 
-            // 7. Set Active Status
             _logger.LogDebug("Setting active mod status from ModsConfig.xml...", nameof(ModService));
             SetActiveMods(configPath);
             _logger.LogInfo($"Synchronous mod loading complete. Loaded {_allMods.Count} mods.", nameof(ModService));
@@ -121,24 +110,20 @@ namespace RimSharp.Shared.Services.Implementations
             {
                 if (string.IsNullOrEmpty(mod.PackageId)) continue;
 
-                // Mlie data uses lowercase keys
                 if (mlieVersions.TryGetValue(mod.PackageId.ToLowerInvariant(), out var supportedMlieVersions))
                 {
                     if (supportedMlieVersions != null)
                     {
-                        // Create a HashSet of existing versions for quick lookups (case-insensitive)
                         var existingVersions = mod.SupportedVersions
                                                   .Select(v => v.Version)
                                                   .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
                         foreach (var mlieVersion in supportedMlieVersions)
                         {
-                            // Add Mlie version only if it doesn't already exist
-                            if (existingVersions.Add(mlieVersion)) // .Add returns true if item was added (i.e., not present)
+                            if (existingVersions.Add(mlieVersion))
                             {
-                                mod.SupportedVersions.Add(new VersionSupport(mlieVersion, VersionSource.Mlie, unofficial: true)); // Mlie versions are considered unofficial overrides
+                                mod.SupportedVersions.Add(new VersionSupport(mlieVersion, VersionSource.Mlie, unofficial: true));
                                 versionsAdded++;
-                                //_logger.LogTrace($"Added Mlie support: {mod.PackageId} -> {mlieVersion}", nameof(ModService));
                             }
                         }
                     }
@@ -147,47 +132,36 @@ namespace RimSharp.Shared.Services.Implementations
             _logger.LogDebug($"Applied Mlie versions. Added {versionsAdded} new version entries.", nameof(ModService));
         }
 
-
-
-
-
         #region Timestamp File Creation
 
         /// <summary>
         /// Creates the DateStamp and timestamp.txt files for a successfully downloaded mod
         /// within the specified directory.
         /// </summary>
-        /// <param name="modDirectoryPath">The full path to the directory containing the downloaded mod files (e.g., the temporary SteamCMD location).</param>
-        /// <param name="steamId">The Steam Workshop ID of the mod (used for context/logging).</param>
-        /// <param name="publishDate">The publish date in Steam's format (d MMM yyyy @ h:mmtt).</param>
-        /// <param name="standardDate">The publish date in standard format (dd/MM/yyyy HH:mm:ss).</param>
-        /// <returns>A <see cref="Task"/> representing the asynchronous file creation operation.</returns>
+        /// <param name="modDirectoryPath">The full path to the directory containing the downloaded mod files.</param>
+        /// <param name="steamId">The Steam Workshop ID of the mod.</param>
+        /// <param name="publishDate">The publish date in Steam's format.</param>
+        /// <param name="standardDate">The publish date in standard format.</param>
         public async Task CreateTimestampFilesAsync(string modDirectoryPath, string steamId, string publishDate, string standardDate)
         {
-            // Validate inputs
             if (string.IsNullOrWhiteSpace(modDirectoryPath))
             {
                 _logger.LogError($"[CreateTimestampFilesAsync] Invalid modDirectoryPath provided: null or whitespace", nameof(ModService));
-                throw new ArgumentNullException(nameof(modDirectoryPath)); // Or handle differently if needed
+                throw new ArgumentNullException(nameof(modDirectoryPath));
             }
             if (string.IsNullOrWhiteSpace(steamId) || !long.TryParse(steamId, out _))
             {
                 _logger.LogError($"[CreateTimestampFilesAsync] Invalid SteamId provided: '{steamId}' for path '{modDirectoryPath}'", nameof(ModService));
-                // Don't throw here, maybe log and return? Or let caller handle? Let's log and return for now.
-                // Caller (SteamCmdDownloader) should handle this failure if it's critical.
                 return;
             }
             if (string.IsNullOrWhiteSpace(publishDate) || string.IsNullOrWhiteSpace(standardDate))
             {
                 _logger.LogWarning($"[CreateTimestampFilesAsync] Missing publishDate ('{publishDate}') or standardDate ('{standardDate}') for mod {steamId} at '{modDirectoryPath}'. Timestamp files will not be created.", nameof(ModService));
-                // Throw an exception because the caller expects these files to be created
                 throw new ArgumentException("PublishDate and StandardDate cannot be null or empty for timestamp creation.");
             }
 
-
             try
             {
-                // Use the provided modDirectoryPath directly
                 if (!Directory.Exists(modDirectoryPath))
                 {
                     _logger.LogError($"[CreateTimestampFilesAsync] Target mod directory does not exist: '{modDirectoryPath}' for SteamID {steamId}", nameof(ModService));
@@ -195,17 +169,13 @@ namespace RimSharp.Shared.Services.Implementations
                 }
 
                 var aboutDir = Path.Combine(modDirectoryPath, "About");
-                var dateStampPath = Path.Combine(modDirectoryPath, "DateStamp"); // Stays in root of mod folder
-                var timestampPath = Path.Combine(aboutDir, "timestamp.txt"); // Goes inside About folder
+                var dateStampPath = Path.Combine(modDirectoryPath, "DateStamp");
+                var timestampPath = Path.Combine(aboutDir, "timestamp.txt");
 
                 _logger.LogDebug($"[CreateTimestampFilesAsync] Preparing to write timestamps for mod {steamId} in '{modDirectoryPath}'", nameof(ModService));
-
-                // Ensure the 'About' subdirectory exists
                 Directory.CreateDirectory(aboutDir);
                 _logger.LogDebug($"[CreateTimestampFilesAsync] Ensured 'About' directory exists: '{aboutDir}'", nameof(ModService));
 
-                // Write the files asynchronously
-                // Trim dates just in case
                 string finalPublishDate = publishDate.Trim();
                 string finalStandardDate = standardDate.Trim();
 
@@ -220,17 +190,17 @@ namespace RimSharp.Shared.Services.Implementations
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogError($"[CreateTimestampFilesAsync] Permission error writing timestamp files for mod {steamId} at '{modDirectoryPath}': {ex.Message}", nameof(ModService));
-                throw; // Re-throw so the caller knows the operation failed
+                throw;
             }
             catch (IOException ex)
             {
                 _logger.LogError($"[CreateTimestampFilesAsync] IO error writing timestamp files for mod {steamId} at '{modDirectoryPath}': {ex.Message}", nameof(ModService));
-                throw; // Re-throw
+                throw;
             }
-            catch (Exception ex) // Catch unexpected errors
+            catch (Exception ex)
             {
                 _logger.LogError($"[CreateTimestampFilesAsync] Unexpected error writing timestamp files for mod {steamId} at '{modDirectoryPath}': {ex.Message}\n{ex.StackTrace}", nameof(ModService));
-                throw; // Re-throw
+                throw;
             }
         }
 
@@ -245,7 +215,6 @@ namespace RimSharp.Shared.Services.Implementations
             _currentMajorVersion = _pathService.GetMajorGameVersion();
             _logger.LogDebug($"Current Major Game Version: {_currentMajorVersion}", nameof(ModService));
 
-
             if (string.IsNullOrEmpty(gamePath) || string.IsNullOrEmpty(configPath) || string.IsNullOrEmpty(modsPath))
             {
                 _logger.LogWarning("One or more required paths (Game, Config, Mods) are not set. Mod loading aborted.", nameof(ModService));
@@ -255,10 +224,8 @@ namespace RimSharp.Shared.Services.Implementations
             }
 
             var mods = new ConcurrentBag<ModItem>();
-
-            // 1. Load Base Mod Info (About.xml) - Includes Official Versions
             _logger.LogDebug("Loading core and workshop/local mods concurrently...", nameof(ModService));
-            
+
             progress?.Report((0, 100, "Scanning directories..."));
 
             await Task.WhenAll(
@@ -272,48 +239,33 @@ namespace RimSharp.Shared.Services.Implementations
                 })
             );
 
-            // Update the main collection - do this before applying other sources
             _allMods.Clear();
             _allMods.AddRange(mods);
             _logger.LogDebug($"Initial parsing complete. Found {_allMods.Count} mods.", nameof(ModService));
 
-            // --- Apply information in priority order ---
-
-            // 2. Get Mlie Data (Do this early before applying rules/custom)
             _logger.LogDebug("Retrieving Mlie version data...", nameof(ModService));
             progress?.Report((75, 100, "Retrieving compatibility data (Mlie)..."));
-            var mlieVersions = _mlieVersionService.GetMlieVersions(); // Sync call ok, as it caches
+            var mlieVersions = _mlieVersionService.GetMlieVersions();
 
-            // 3. Apply Mlie Versions (Priority: Official -> Mlie)
             _logger.LogDebug("Applying Mlie version data...", nameof(ModService));
             progress?.Report((80, 100, "Applying compatibility data (Mlie)..."));
-            ApplyMlieVersions(_allMods, mlieVersions); // Apply to the list directly
+            ApplyMlieVersions(_allMods, mlieVersions);
 
-            // 4. Apply Rules Service Info (Versions + Other Rules)
             _logger.LogDebug("Applying ModRulesService data...", nameof(ModService));
             progress?.Report((85, 100, "Applying community rules..."));
-            // ModRulesService.ApplyRulesToMods needs modification (see Step 7)
             await Task.Run(() => _rulesService.ApplyRulesToMods(_allMods));
 
-            // 5. Apply Custom Service Info (Versions + Other Customizations)
             _logger.LogDebug("Applying ModCustomService data...", nameof(ModService));
             progress?.Report((90, 100, "Applying local customizations..."));
-            // ModCustomService.ApplyCustomInfoToMods needs modification (see Step 8)
-            // Note: ApplyCustomInfoToMods uses EnsureInitializedAsync().Wait() internally, which isn't ideal.
-            // If ModCustomService becomes truly async, await it here. For now, Task.Run is fine.
             await Task.Run(() => _customService.ApplyCustomInfoToMods(_allMods));
 
-
-            // 6. Final Checks (Version Support Status)
             _logger.LogDebug("Calculating version support status...", nameof(ModService));
             progress?.Report((95, 100, "Finalizing metadata..."));
             foreach (var mod in _allMods)
             {
-                // Use the comprehensive SupportedVersions list now
                 mod.IsSupportedRW = IsVersionSupported(_currentMajorVersion, mod.SupportedVersions) || !mod.SupportedVersions.Any();
             }
 
-            // 7. Set Active Status
             _logger.LogDebug("Setting active mod status from ModsConfig.xml...", nameof(ModService));
             progress?.Report((98, 100, "Syncing active status..."));
             await Task.Run(() => SetActiveMods(configPath));
@@ -321,7 +273,6 @@ namespace RimSharp.Shared.Services.Implementations
             progress?.Report((100, 100, "Mod loading complete."));
             _logger.LogInfo($"Asynchronous mod loading complete. Loaded {_allMods.Count} mods.", nameof(ModService));
         }
-
 
         private void LoadCoreMods(string gamePath)
         {
@@ -340,18 +291,16 @@ namespace RimSharp.Shared.Services.Implementations
                 mod.Path = dir;
                 mod.Assemblies = CheckForAssemblies(mod.Path);
                 mod.Textures = CheckForTextures(mod.Path);
-                mod.SizeInfo = CalculateModSize(mod); // <-- ADDED
+                mod.SizeInfo = CalculateModSize(mod);
 
-                // Set core/expansion flags
                 bool isCoreMod = mod.PackageId == "Ludeon.RimWorld";
                 mod.ModType = isCoreMod ? ModType.Core : ModType.Expansion;
-                // Append "[DLC]" to name if it's an expansion
-                if (mod.ModType == ModType.Expansion && !string.IsNullOrEmpty(mod.Name)) // Check ModType
+
+                if (mod.ModType == ModType.Expansion && !string.IsNullOrEmpty(mod.Name)) 
                 {
                     mod.Name = $"{mod.Name} [DLC]";
                 }
-                // If it's a Core or Expansion mod, its supported version is the current game version.
-                // Only add as a fallback if the About.xml list was empty.
+
                 if ((mod.ModType == ModType.Core || mod.ModType == ModType.Expansion) && !mod.SupportedVersions.Any())
                 {
                     if (!string.IsNullOrEmpty(_currentMajorVersion) && !_currentMajorVersion.StartsWith("N/A"))
@@ -359,7 +308,6 @@ namespace RimSharp.Shared.Services.Implementations
                         mod.SupportedVersions.Add(new VersionSupport(_currentMajorVersion, VersionSource.Official, unofficial: false));
                     }
                 }
-
 
                 _allMods.Add(mod);
             }
@@ -403,7 +351,7 @@ namespace RimSharp.Shared.Services.Implementations
                     {
                         mod.Name = $"{mod.Name} [DLC]";
                     }
-                    
+
                     if ((mod.ModType == ModType.Core || mod.ModType == ModType.Expansion) && !mod.SupportedVersions.Any())
                     {
                         if (!string.IsNullOrEmpty(_currentMajorVersion) && !_currentMajorVersion.StartsWith("N/A"))
@@ -417,10 +365,10 @@ namespace RimSharp.Shared.Services.Implementations
                 finally
                 {
                     int c = Interlocked.Increment(ref current);
-                    if (total > 0)
+                    if (total > 0 && (total < 100 || c % 5 == 0 || c == total)) 
                     {
                         int p = startPercent + (int)(range * ((double)c / total));
-                        progress?.Report((p, 100, $"Scanning core mods: {modNameForProgress}"));
+                        progress?.Report((p, 100, $"Scanning: {modNameForProgress}"));
                     }
                 }
             }));
@@ -612,7 +560,6 @@ namespace RimSharp.Shared.Services.Implementations
                 finally
                 {
                     int c = Interlocked.Increment(ref current);
-                    // Reduce spam by reporting every N items if total is large
                     if (total > 0 && (total < 100 || c % 5 == 0 || c == total)) 
                     {
                         int p = startPercent + (int)(range * ((double)c / total));
@@ -679,8 +626,7 @@ namespace RimSharp.Shared.Services.Implementations
                 {
                     TotalSize = totalSize,
                     MinTextureSize = minTextureSize,
-                    MaxTextureSize = maxTextureSize,
-                    // VRAM properties are no longer set here
+                    MaxTextureSize = maxTextureSize
                 };
             }
             catch (Exception ex)
@@ -744,7 +690,6 @@ namespace RimSharp.Shared.Services.Implementations
                 _logger.LogWarning($"Could not enumerate directories in '{currentDir.FullName}' for size calculation: {ex.Message}", nameof(ModService));
                 return;
             }
-
 
             if (versionFolders.Any())
             {
@@ -832,7 +777,7 @@ namespace RimSharp.Shared.Services.Implementations
 
                         foreach (var version in rootEssentialVersions)
                         {
-                            var versionNode = doc.Root?.Elements().FirstOrDefault(e => e.Name.LocalName.Equals("v" + version, StringComparison.OrdinalIgnoreCase));
+                            var versionNode = doc.Root?.Elements().FirstOrDefault(e => e.Name.LocalName.Equals("v" + version, StringComparison.OrdinalIgnoreCase));    
                             if (versionNode != null)
                             {
                                 foreach (var path in versionNode.Elements("li").Select(li => Path.GetFullPath(Path.Combine(modRootPath, li.Value.Trim().Replace('/', Path.DirectorySeparatorChar)))))
@@ -858,6 +803,7 @@ namespace RimSharp.Shared.Services.Implementations
                 }
             }
         }
+
         #endregion
 
         /// <summary>
@@ -884,7 +830,6 @@ namespace RimSharp.Shared.Services.Implementations
             try
             {
                 var resolved = ModFolderResolver.Resolve(modDirectoryPath, _currentMajorVersion);
-                // We check 'Max' to see if it has assemblies in any potential configuration for this version
                 foreach (var folder in resolved.Max)
                 {
                     string fullPath = Path.Combine(modDirectoryPath, folder);
@@ -904,9 +849,7 @@ namespace RimSharp.Shared.Services.Implementations
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is System.Security.SecurityException)
             {
-                // Log the error but don't crash the loading process. Assume no assemblies if we can't check.
                 _logger.LogWarning($"Could not check for assemblies in '{modDirectoryPath}' due to an error: {ex.Message}", nameof(ModService));
-                Debug.WriteLine($"Could not check for assemblies in '{modDirectoryPath}' due to an error: {ex.Message}");
                 return false;
             }
         }
@@ -926,7 +869,6 @@ namespace RimSharp.Shared.Services.Implementations
             try
             {
                 var resolved = ModFolderResolver.Resolve(modDirectoryPath, _currentMajorVersion);
-                // We check 'Max' to see if it has textures in any potential configuration for this version
                 foreach (var folder in resolved.Max)
                 {
                     string fullPath = Path.Combine(modDirectoryPath, folder);
@@ -947,7 +889,6 @@ namespace RimSharp.Shared.Services.Implementations
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is System.Security.SecurityException)
             {
                 _logger.LogWarning($"Could not check for textures in '{modDirectoryPath}' due to an error: {ex.Message}", nameof(ModService));
-                Debug.WriteLine($"Could not check for textures in '{modDirectoryPath}' due to an error: {ex.Message}");
                 return false;
             }
         }
@@ -975,26 +916,21 @@ namespace RimSharp.Shared.Services.Implementations
                     .Select(x => new VersionSupport(x.Value, VersionSource.Official, unofficial: false))
                     .ToList() ?? new List<VersionSupport>();
 
-
-                string? urlFromXml = root.Element("url")?.Value?.Trim(); // Trim whitespace from the input.
+                string? urlFromXml = root.Element("url")?.Value?.Trim();
                 string? validatedUrl = null;
 
                 if (!string.IsNullOrWhiteSpace(urlFromXml))
                 {
-                    // First, check if the string is already a well-formed absolute URI with a web scheme.
                     if (Uri.TryCreate(urlFromXml, UriKind.Absolute, out Uri? uriResult) &&
                         (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps))
                     {
-                        validatedUrl = urlFromXml; // The URL is valid as-is.
+                        validatedUrl = urlFromXml; 
                     }
-                    // Otherwise, check if it is a valid schemaless domain. To be valid,
-                    // it must not contain a scheme and MUST contain a dot.
-                    // This correctly rejects single-word strings like "none".
                     else if (!urlFromXml.Contains("://") && urlFromXml.Contains("."))
                     {
                         if (Uri.TryCreate("http://" + urlFromXml, UriKind.Absolute, out Uri? tempUri) && tempUri.Host.Equals(urlFromXml, StringComparison.OrdinalIgnoreCase))
                         {
-                            validatedUrl = "http://" + urlFromXml; // Prepend scheme to make it navigable.
+                            validatedUrl = "http://" + urlFromXml;
                         }
                     }
                 }
@@ -1053,10 +989,10 @@ namespace RimSharp.Shared.Services.Implementations
                         cleaned = Regex.Replace(cleaned, @"\b(am|pm)\b", m => m.Value.ToUpperInvariant());
 
                         string[] formats = {
-                    "dd MMM, yyyy h:mmtt",
-                    "dd MMM, yyyy hh:mmtt",
-                    "d MMM, yyyy h:mmtt",
-                };
+                            "dd MMM, yyyy h:mmtt",
+                            "dd MMM, yyyy hh:mmtt",
+                            "d MMM, yyyy h:mmtt",
+                        };
 
                         if (DateTime.TryParseExact(cleaned, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
                         {
@@ -1082,9 +1018,9 @@ namespace RimSharp.Shared.Services.Implementations
                 return null;
             }
         }
+
         private static void ParseLoadOrderRules(XElement root, ModItem mod)
         {
-            // Load all load order rules at once to minimize XML traversal
             mod.LoadBefore = root.Element("loadBefore")?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>();
             mod.LoadAfter = root.Element("loadAfter")?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>();
             mod.ForceLoadBefore = root.Element("forceLoadBefore")?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>();
@@ -1099,7 +1035,6 @@ namespace RimSharp.Shared.Services.Implementations
             foreach (var packageId in incompatibleIds)
             {
                 var reason = $"Incompatible according to '{mod.Name}' authors";
-
                 mod.IncompatibleWith.Add(packageId, new ModIncompatibilityRule { HardIncompatibility = true, Comment = new List<string> { reason } });
             }
         }
@@ -1121,9 +1056,6 @@ namespace RimSharp.Shared.Services.Implementations
             try
             {
                 var doc = XDocument.Load(configPath);
-
-                // Create a lookup dictionary for faster mod searches
-                // Handle duplicate PackageIds safely by taking the first one found (usually priority is handled elsewhere)
                 var packageIdLookup = new Dictionary<string, ModItem>(StringComparer.OrdinalIgnoreCase);
                 foreach (var mod in _allMods)
                 {
@@ -1135,7 +1067,6 @@ namespace RimSharp.Shared.Services.Implementations
                     }
                 }
 
-                // Get active mod IDs and set IsActive efficiently
                 var activeMods = doc.Root?.Element("activeMods")?.Elements("li")
                     .Select(x => x.Value.ToLowerInvariant())
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -1153,9 +1084,9 @@ namespace RimSharp.Shared.Services.Implementations
             }
             catch
             {
-                // Ignore errors parsing ModsConfig.xml
             }
         }
+
         public async Task SaveCustomModInfoAsync(string packageId, ModCustomInfo customInfo)
         {
             if (string.IsNullOrEmpty(packageId))
@@ -1165,25 +1096,18 @@ namespace RimSharp.Shared.Services.Implementations
                 throw new ArgumentNullException(nameof(customInfo));
 
             await _customService.SaveCustomModInfoAsync(packageId, customInfo);
-
-            // After saving, reload the custom info into the mods
             _customService.ApplyCustomInfoToMods(_allMods);
         }
 
-        // Add method for removing custom mod info
         public async Task RemoveCustomModInfoAsync(string packageId)
         {
             if (string.IsNullOrEmpty(packageId))
                 throw new ArgumentNullException(nameof(packageId));
 
             await _customService.RemoveCustomModInfoAsync(packageId);
-
-            // Reload mods to reflect the removal
             await LoadModsAsync();
         }
 
-
-        // Add method to get custom mod info
         public ModCustomInfo? GetCustomModInfo(string packageId)
         {
             if (string.IsNullOrEmpty(packageId))
@@ -1194,6 +1118,5 @@ namespace RimSharp.Shared.Services.Implementations
 
             return _customService.GetCustomModInfo(packageId);
         }
-
     }
 }

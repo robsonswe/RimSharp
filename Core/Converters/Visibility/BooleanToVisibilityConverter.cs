@@ -8,7 +8,7 @@ namespace RimSharp.Core.Converters.ViewVisibility
     public class BooleanToVisibilityConverter : IValueConverter
     {
         /// <summary>
-        /// Gets or sets a value indicating whether the conversion should be inverted
+
         /// (true -> false, false -> true).
         /// </summary>
         public bool Inverse { get; set; }
@@ -43,3 +43,4 @@ namespace RimSharp.Core.Converters.ViewVisibility
         }
     }
 }
+

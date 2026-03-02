@@ -56,7 +56,6 @@ namespace RimSharp.Shared.Services.Implementations
                     .FirstOrDefault(a => a.BrowserDownloadUrl != null && a.BrowserDownloadUrl.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))?
                     .BrowserDownloadUrl;
 
-                // Fallback to HtmlUrl if no zip found (though updater needs zip)
                 string? releaseUrl = zipUrl ?? releaseInfo.HtmlUrl;
 
                 string latestTagName = releaseInfo.TagName;
@@ -69,7 +68,6 @@ namespace RimSharp.Shared.Services.Implementations
                     return (false, latestTagName, releaseUrl);
                 }
 
-                // Standard Version comparison: 1.11.0 > 1.9.0
                 if (latestVersion > currentVersion)
                 {
                     _logger.LogInfo($"App update available. Current: {currentVersion}, Latest: {latestVersion}", "AppUpdaterService");
@@ -90,10 +88,8 @@ namespace RimSharp.Shared.Services.Implementations
         {
             if (string.IsNullOrEmpty(versionString)) return null;
 
-            // Remove 'v' prefix if present
             string cleanVersion = versionString.TrimStart('v', 'V');
-            
-            // Handle pre-release tags (e.g., 1.2.3-beta) by taking only the numeric part
+
             int dashIndex = cleanVersion.IndexOf('-');
             if (dashIndex > -1)
             {
@@ -126,3 +122,4 @@ namespace RimSharp.Shared.Services.Implementations
         }
     }
 }
+

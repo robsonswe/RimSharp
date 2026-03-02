@@ -32,14 +32,12 @@ namespace RimSharp.Tests.AppDir.MainPage
 
         public MainViewModelTests()
         {
-            // Initialize thread helper for command support if needed by ViewModelBase
             RimSharp.Core.Extensions.ThreadHelper.Initialize();
 
             // Create unique temp directory for tests
             _testTempDir = Path.Combine(Path.GetTempPath(), "RimSharpTests_" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_testTempDir);
 
-            // Initialize core mocks
             _mockPathService = Substitute.For<IPathService>();
             _mockConfigService = Substitute.For<IConfigService>();
             _mockDialogService = Substitute.For<IDialogService>();
@@ -52,7 +50,6 @@ namespace RimSharp.Tests.AppDir.MainPage
             _mockPathService.GetModsPath().Returns(Path.Combine(_testTempDir, "Mods"));
             _mockPathService.GetGameVersion().Returns("1.6.0");
 
-            // Initialize Child ViewModel Mocks
             _mockModsVM = Substitute.For<IModsViewModel>();
             _mockDownloaderVM = Substitute.For<IDownloaderViewModel>();
             _mockGitModsVM = Substitute.For<IGitModsViewModel>();
@@ -85,10 +82,9 @@ namespace RimSharp.Tests.AppDir.MainPage
         [Fact]
         public void Constructor_ShouldInitializeProperties()
         {
-            // Act
+
             var vm = CreateViewModel();
 
-            // Assert
             vm.SelectedTab.Should().Be("Mods");
             vm.CurrentViewModel.Should().Be(_mockModsVM);
             vm.PathSettings.Should().NotBeNull();
@@ -105,13 +101,11 @@ namespace RimSharp.Tests.AppDir.MainPage
         [InlineData("VRAM", "VRAM")]
         public void SwitchTabCommand_ShouldChangeSelectedTab(string tabName, string expectedTab)
         {
-            // Arrange
+
             var vm = CreateViewModel();
 
-            // Act
             vm.SwitchTabCommand.Execute(tabName);
 
-            // Assert
             vm.SelectedTab.Should().Be(expectedTab);
             if (tabName == "Downloader") vm.CurrentViewModel.Should().Be(_mockDownloaderVM);
             if (tabName == "GitMods") vm.CurrentViewModel.Should().Be(_mockGitModsVM);
@@ -122,15 +116,13 @@ namespace RimSharp.Tests.AppDir.MainPage
         [Fact]
         public void PathSettings_GamePathChanged_ShouldSaveToConfig()
         {
-            // Arrange
+
             var vm = CreateViewModel();
             var newPath = Path.Combine(_testTempDir, "NewGamePath");
             Directory.CreateDirectory(newPath);
 
-            // Act
             vm.PathSettings.GamePath = newPath;
 
-            // Assert
             _mockConfigService.Received().SetConfigValue("game_folder", newPath);
             _mockConfigService.Received().SaveConfig();
         }
@@ -138,15 +130,13 @@ namespace RimSharp.Tests.AppDir.MainPage
         [Fact]
         public void PathSettings_ConfigPathChanged_ShouldSaveToConfig()
         {
-            // Arrange
+
             var vm = CreateViewModel();
             var newPath = Path.Combine(_testTempDir, "NewConfigPath");
             Directory.CreateDirectory(newPath);
 
-            // Act
             vm.PathSettings.ConfigPath = newPath;
 
-            // Assert
             _mockConfigService.Received().SetConfigValue("config_folder", newPath);
             _mockConfigService.Received().SaveConfig();
         }
@@ -154,13 +144,11 @@ namespace RimSharp.Tests.AppDir.MainPage
         [Fact]
         public void AppVersion_ShouldReturnFormattedVersion()
         {
-            // Arrange
+
             var vm = CreateViewModel();
 
-            // Act
             var version = vm.AppVersion;
 
-            // Assert
             version.Should().StartWith("v");
             // Basic regex check for version format vX.Y.Z
             version.Should().MatchRegex(@"v\d+\.\d+\.\d+");
@@ -172,21 +160,18 @@ namespace RimSharp.Tests.AppDir.MainPage
             // Arrange & Act
             var vm = CreateViewModel();
 
-            // Assert
             vm.IsInitialLoading.Should().BeTrue();
         }
 
         [Fact]
         public void StatusMessage_ShouldBeSettable()
         {
-            // Arrange
+
             var vm = CreateViewModel();
             var expectedMessage = "Test Status";
 
-            // Act
             vm.StatusMessage = expectedMessage;
 
-            // Assert
             vm.StatusMessage.Should().Be(expectedMessage);
         }
 
@@ -196,7 +181,6 @@ namespace RimSharp.Tests.AppDir.MainPage
             // Arrange & Act
             var vm = CreateViewModel();
 
-            // Assert
             vm.SwitchTabCommand.Should().NotBeNull();
             vm.BrowsePathCommand.Should().NotBeNull();
             vm.SettingsCommand.Should().NotBeNull();
@@ -208,7 +192,7 @@ namespace RimSharp.Tests.AppDir.MainPage
         [Fact]
         public void SwitchTabCommand_ShouldNotifyPropertyChange()
         {
-            // Arrange
+
             var vm = CreateViewModel();
             var propertyChanged = false;
             vm.PropertyChanged += (s, e) =>
@@ -217,10 +201,8 @@ namespace RimSharp.Tests.AppDir.MainPage
                     propertyChanged = true;
             };
 
-            // Act
             vm.SwitchTabCommand.Execute("Downloader");
 
-            // Assert
             propertyChanged.Should().BeTrue();
             vm.CurrentViewModel.Should().Be(_mockDownloaderVM);
         }
@@ -228,22 +210,14 @@ namespace RimSharp.Tests.AppDir.MainPage
         [Fact]
         public void CheckAndWarnDifferentDrives_ShouldShowWarning_WhenDrivesDiffer()
         {
-             // This test is tricky because Path.GetPathRoot behavior depends on the OS and drives available.
-             // We can try to simulate it if we control the input paths, but since the logic uses Path.GetPathRoot
-             // on the *running* system, we might need to skip strict validation of the *Warning* call unless we can fake the drive.
-             // However, we can at least ensure it doesn't crash.
-             
-             // Arrange
-             var vm = CreateViewModel();
-             
-             // Act
-             // Pass a path that is definitely valid but maybe different drive if possible.
-             // If we are on C:, try D:?
-             // Since we can't guarantee D: exists or is valid for GetPathRoot without exception on some systems,
-             // we'll stick to a basic sanity check that it runs.
-             vm.PathSettings.GamePath = _testTempDir; 
-             
+
+var vm = CreateViewModel();
+
+vm.PathSettings.GamePath = _testTempDir; 
+
              // Assert - mostly that no exception occurred.
         }
     }
 }
+
+

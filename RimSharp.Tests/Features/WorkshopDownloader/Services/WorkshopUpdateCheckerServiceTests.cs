@@ -28,7 +28,7 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
         [Fact]
         public async Task CheckForUpdatesAsync_WhenUpdateFound_ShouldAddToQueue()
         {
-            // Arrange
+
             // 18/02/2026 12:00:00 UTC
             var localDate = "18/02/2026 12:00:00"; 
             var mod = new ModItem { Name = "Test Mod", SteamId = "123", UpdateDate = localDate };
@@ -57,10 +57,8 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
             _mockSteamApiClient.GetFileDetailsAsync("123", Arg.Any<CancellationToken>())
                 .Returns(apiResponse);
 
-            // Act
             var result = await _service.CheckForUpdatesAsync(new[] { mod });
 
-            // Assert
             result.UpdatesFound.Should().Be(1);
             _mockDownloadQueueService.Received(1).AddToQueue(Arg.Is<ModInfoDto>(m => m.SteamId == "123"));
         }
@@ -68,7 +66,7 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
         [Fact]
         public async Task CheckForUpdatesAsync_WhenUpToDate_ShouldNotAddToQueue()
         {
-            // Arrange
+
             var localDate = "18/02/2026 12:00:00";
             var mod = new ModItem { Name = "Test Mod", SteamId = "123", UpdateDate = localDate };
             
@@ -95,10 +93,8 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
             _mockSteamApiClient.GetFileDetailsAsync("123", Arg.Any<CancellationToken>())
                 .Returns(apiResponse);
 
-            // Act
             var result = await _service.CheckForUpdatesAsync(new[] { mod });
 
-            // Assert
             result.UpdatesFound.Should().Be(0);
             _mockDownloadQueueService.DidNotReceive().AddToQueue(Arg.Any<ModInfoDto>());
         }
@@ -106,11 +102,10 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
         [Fact]
         public async Task CheckForUpdatesAsync_WhenTimezoneArtifact_ShouldNotAddToQueue()
         {
-            // Arrange
+
             var localDate = "18/02/2026 12:00:00";
             var mod = new ModItem { Name = "Test Mod", SteamId = "123", UpdateDate = localDate };
-            
-            // API reports 1 minute later (within 2 min threshold)
+
             var apiUpdateDate = new DateTimeOffset(2026, 2, 18, 12, 1, 0, TimeSpan.Zero);
             var apiUnix = apiUpdateDate.ToUnixTimeSeconds();
 
@@ -133,11 +128,11 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
             _mockSteamApiClient.GetFileDetailsAsync("123", Arg.Any<CancellationToken>())
                 .Returns(apiResponse);
 
-            // Act
             var result = await _service.CheckForUpdatesAsync(new[] { mod });
 
-            // Assert
             result.UpdatesFound.Should().Be(0);
         }
     }
 }
+
+

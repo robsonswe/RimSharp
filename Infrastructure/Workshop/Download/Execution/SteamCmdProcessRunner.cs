@@ -5,7 +5,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Infrastructure.Workshop.Core;
-using RimSharp.Shared.Services.Contracts; // For ILoggerService, ISteamCmdPathService
+using RimSharp.Shared.Services.Contracts;
 
 namespace RimSharp.Infrastructure.Workshop.Download.Execution
 {
@@ -44,8 +44,6 @@ namespace RimSharp.Infrastructure.Workshop.Download.Execution
                 throw new DirectoryNotFoundException($"SteamCMD working directory not found: {workingDirectory}");
             }
 
-
-            // Attempt to delete previous primary log if it exists
             try
             {
                 if (File.Exists(primaryLogPath))
@@ -60,8 +58,7 @@ namespace RimSharp.Infrastructure.Workshop.Download.Execution
                 // Continue anyway
             }
 
-
-            var processStartInfo = new ProcessStartInfo
+var processStartInfo = new ProcessStartInfo
             {
                 FileName = _pathService.SteamCmdExePath,
                 Arguments = $"+runscript \"{scriptPath}\" +log_file \"{primaryLogPath}\"",
@@ -76,8 +73,7 @@ namespace RimSharp.Infrastructure.Workshop.Download.Execution
             _logger.LogDebug($"Working Directory: {processStartInfo.WorkingDirectory}", "SteamCmdProcessRunner");
             _logger.LogDebug($"Primary Log Target: {primaryLogPath}", "SteamCmdProcessRunner");
 
-
-            using var process = new Process { StartInfo = processStartInfo };
+using var process = new Process { StartInfo = processStartInfo };
 
             try
             {
@@ -113,3 +109,4 @@ namespace RimSharp.Infrastructure.Workshop.Download.Execution
         }
     }
 }
+

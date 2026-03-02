@@ -37,8 +37,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
         }
     }
 
-
-    public class ModReplacementDialogViewModel : DialogViewModelBase<ModReplacementDialogResult>
+public class ModReplacementDialogViewModel : DialogViewModelBase<ModReplacementDialogResult>
     {
         private ObservableCollection<ModReplacementItem>? _replacements = new ObservableCollection<ModReplacementItem>();
         public ObservableCollection<ModReplacementItem>? Replacements
@@ -46,7 +45,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
             get => _replacements;
             set
             {
-                // Unsubscribe from old collection if necessary
+
                 if (_replacements != null)
                 {
                     foreach (var item in _replacements)
@@ -71,9 +70,6 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
                 }
             }
         }
-
-
-        // New properties for the already installed replacements
         private ObservableCollection<ModReplacementItem> _alreadyInstalledReplacements = new ObservableCollection<ModReplacementItem>();
         public ObservableCollection<ModReplacementItem> AlreadyInstalledReplacements
         {
@@ -81,7 +77,6 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
             set => SetProperty(ref _alreadyInstalledReplacements, value);
         }
 
-        // Flag to determine if we show the Already Installed section
         private bool _hasAlreadyInstalledReplacements;
         public bool HasAlreadyInstalledReplacements
         {
@@ -116,22 +111,18 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
             IEnumerable<ModItem> allInstalledMods)
             : base("Mod Replacements Available")
         {
-            // --- FIXED LOOKUP LOGIC ---
-            // Create a lookup for all installed mods by their unique Steam ID.
+
             var installedModsBySteamId = new HashSet<string>(
                 allInstalledMods
                     .Where(m => !string.IsNullOrEmpty(m.SteamId))
                     .Select(m => m.SteamId),
                 StringComparer.OrdinalIgnoreCase);
 
-            // Create a separate lookup for installed mods that DO NOT have a Steam ID, keyed by their PackageID.
-            // This explicitly prevents a Steam mod's PackageID from causing a false positive match.
-            var installedLocalModsByPackageId = new HashSet<string>(
+var installedLocalModsByPackageId = new HashSet<string>(
                 allInstalledMods
                     .Where(m => string.IsNullOrEmpty(m.SteamId) && !string.IsNullOrEmpty(m.PackageId))
                     .Select(m => m.PackageId),
                 StringComparer.OrdinalIgnoreCase);
-            // --- END FIXED LOOKUP LOGIC ---
 
             var itemGroups = replacements
                 .Select(r =>
@@ -139,19 +130,15 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
                     var replacementInfo = r.Replacement;
                     bool alreadyInstalled = false;
 
-                    // --- ACCURATE INSTALLED CHECK ---
-                    // 1. Prioritize check by the replacement's Steam ID. This is the unique identifier.
                     if (!string.IsNullOrEmpty(replacementInfo.ReplacementSteamId))
                     {
                         alreadyInstalled = installedModsBySteamId.Contains(replacementInfo.ReplacementSteamId);
                     }
-                    // 2. If the replacement has NO Steam ID, it might be a local mod.
-                    //    Check against our list of installed *local* mods using its Package ID.
-                    else if (!string.IsNullOrEmpty(replacementInfo.ReplacementModId))
+
+else if (!string.IsNullOrEmpty(replacementInfo.ReplacementModId))
                     {
                         alreadyInstalled = installedLocalModsByPackageId.Contains(replacementInfo.ReplacementModId);
                     }
-                    // --- END ACCURATE INSTALLED CHECK ---
 
                     return new ModReplacementItem(r.Original, r.Replacement)
                     {
@@ -173,16 +160,13 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
 
             Debug.WriteLine($"[ModReplacementVM] Found {regularItems.Count} regular and {alreadyInstalledItems.Count} already installed replacements.");
 
-            // Subscribe to property change events for the regular items that can be selected/deselected
             foreach (var item in regularItems)
             {
                 item.PropertyChanged += ReplacementItem_PropertyChanged;
             }
-
-            // Set the collections
             Replacements = new ObservableCollection<ModReplacementItem>(regularItems);
             AlreadyInstalledReplacements = new ObservableCollection<ModReplacementItem>(alreadyInstalledItems);
-            
+
             HasRegularReplacements = regularItems.Count > 0;
             HasAlreadyInstalledReplacements = alreadyInstalledItems.Count > 0;
         }
@@ -227,3 +211,5 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
         }
     }
 }
+
+

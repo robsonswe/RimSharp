@@ -25,10 +25,9 @@ namespace RimSharp.Tests.Core.Converters.Utility
         [InlineData("not a long", "N/A")]
         public void Convert_ShouldReturnCorrectString(object? value, string expected)
         {
-            // Act
+
             var result = _converter.Convert(value, typeof(string), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
 
@@ -38,11 +37,11 @@ namespace RimSharp.Tests.Core.Converters.Utility
         [InlineData(1024L * 1024L * 1024L * 1.5, "1.50 GB")]
         public void Convert_WithFractionalValues_ShouldReturnCorrectString(double value, string expected)
         {
-             // Act
+
             var result = _converter.Convert((long)value, typeof(string), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
     }
 }
+

@@ -87,7 +87,7 @@ namespace RimSharp.Features.ModManager.Services.Management
             _orderService.Initialize(initialActiveModsForOrder);
             RecalculateActiveModIssues();
 
-            RaiseListChanged(false); // Initial load is not a user modification
+            RaiseListChanged(false); 
             Debug.WriteLine($"ModListManager Initialized: {_orderService.VirtualActiveMods.Count} active, {_stateTracker.AllInactiveMods.Count} inactive.");
         }
 
@@ -212,8 +212,7 @@ namespace RimSharp.Features.ModManager.Services.Management
                 bool wasActive = _stateTracker.IsModActive(mod);
                 if (wasActive) result.InstanceRemoved = true;
 
-                // Find if there is a duplicate (same PackageId)
-                ModItem? alternative = null;
+ModItem? alternative = null;
                 if (!string.IsNullOrEmpty(mod.PackageId))
                 {
                     alternative = _allAvailableMods.FirstOrDefault(m => 
@@ -221,51 +220,47 @@ namespace RimSharp.Features.ModManager.Services.Management
                         string.Equals(m.PackageId, mod.PackageId, StringComparison.OrdinalIgnoreCase));
                 }
 
-                // Remove from all core lists
                 bool removedFromAvailable = _allAvailableMods.Remove(mod);
                 _lookupService.Remove(mod);
-                
+
                 if (removedFromAvailable) anyListChanged = true;
-                
+
                 if (wasActive)
                 {
                     if (alternative != null)
                     {
-                        // SWAP Logic: Replace the removed active mod with its duplicate in-place
+
                         var currentEntry = _orderService.VirtualActiveMods.FirstOrDefault(x => x.Mod == mod);
                         int index = _orderService.VirtualActiveMods.ToList().IndexOf(currentEntry);
-                        
+
                         _stateTracker.Remove(mod); 
                         _orderService.RemoveMods(new[] { mod });
                         _stateTracker.Activate(alternative);
-                        
+
                         if (index >= 0) _orderService.AddModsAt(new[] { alternative }, index);
                         else _orderService.AddMod(alternative, _orderService.VirtualActiveMods.Count);
 
                         _lookupService.Register(alternative);
-                        // SWAP is NOT considered a modification of the active list IDs, 
-                        // but it technically changed the instances. 
+
                         // However, per requirements, we don't save. 
-                        // Should we set activeModified = true? 
-                        // If we do, Save button lights up. 
-                        // If we don't, Save button stays as is.
-                        // Let's set it to false for Swap.
+
+// Let's set it to false for Swap.
                     }
                     else
                     {
                         // No alternative: Remove normally
                         _stateTracker.Remove(mod);
                         _orderService.RemoveMods(new[] { mod });
-                        
+
                         result.ActivePackageIdLost = true; // Lost the ID entirely
-                        activeModified = true; // Definitely modified IDs
+                        activeModified = true;
                     }
                 }
                 else
                 {
                     // Was not active, just remove from inactive list
                     _stateTracker.Remove(mod);
-                    
+
                     if (alternative != null && !_lookupService.TryGetMod(mod.PackageId, out _))
                     {
                         _lookupService.Register(alternative);
@@ -285,7 +280,7 @@ namespace RimSharp.Features.ModManager.Services.Management
         {
             if (string.IsNullOrEmpty(packageId)) return new List<ModItem>();
             var targetId = packageId.ToLowerInvariant();
-            
+
             var dependents = new List<ModItem>();
             foreach (var entry in _orderService.VirtualActiveMods)
             {
@@ -304,7 +299,7 @@ namespace RimSharp.Features.ModManager.Services.Management
             bool listChanged = false;
 
             var activeModsForCheck = _orderService.VirtualActiveMods.Select(x => x.Mod).ToList();
-            
+
             // Build inactive lookup robustly
             var inactiveModsLookup = new Dictionary<string, ModItem>(StringComparer.OrdinalIgnoreCase);
             foreach (var mod in _stateTracker.AllInactiveMods)
@@ -365,7 +360,7 @@ namespace RimSharp.Features.ModManager.Services.Management
                         {
                             if (!existing.requiredBy.Contains(currentMod.Name ?? "Unknown Mod"))
                                 existing.requiredBy.Add(currentMod.Name ?? "Unknown Mod");
-                            
+
                             if (string.IsNullOrWhiteSpace(existing.steamUrl) && !string.IsNullOrWhiteSpace(finalSteamUrl))
                                 existing.steamUrl = finalSteamUrl;
                         }
@@ -443,7 +438,7 @@ namespace RimSharp.Features.ModManager.Services.Management
                             currentMod.IncompatibleWith.TryGetValue(incompatibleId, out var rule);
                             string name = activeModLookup.TryGetValue(incompatibleId, out var incEntry) ? incEntry.Mod?.Name ?? incompatibleId : incompatibleId;
                             var comment = rule?.Comment?.FirstOrDefault();
-                            
+
                             bool isHard = rule?.HardIncompatibility ?? false;
                             var typeLabel = isHard ? "Hard Incompatibility" : "Soft Incompatibility";
                             var issueType = isHard ? ModIssueType.HardIncompatibility : ModIssueType.SoftIncompatibility;
@@ -494,7 +489,7 @@ namespace RimSharp.Features.ModManager.Services.Management
                     var duplicates = _allAvailableMods.Where(m => 
                         m != currentMod && 
                         string.Equals(m.PackageId, currentMod.PackageId, StringComparison.OrdinalIgnoreCase)).ToList();
-                    
+
                     if (duplicates.Any())
                     {
                         var duplicateDetails = duplicates.Select(d => 
@@ -522,3 +517,5 @@ namespace RimSharp.Features.ModManager.Services.Management
         }
     }
 }
+
+

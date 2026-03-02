@@ -6,22 +6,16 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
-
-// --- Framework & App Structure ---
 using RimSharp.AppDir.MainPage;
 using RimSharp.AppDir.AppFiles;
 using RimSharp.Infrastructure.Configuration;
 using RimSharp.Infrastructure.Dialog;
 using RimSharp.Infrastructure.Logging;
 using RimSharp.Infrastructure.Data;
-using RimSharp.Core.Extensions; // For ThreadHelper
-
-// --- Shared Contracts & Models ---
+using RimSharp.Core.Extensions;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Shared.Services.Implementations;
-
-// --- Mod Manager Feature ---
 using RimSharp.Features.ModManager.Services.Commands;
 using RimSharp.Features.ModManager.Services.Data;
 using RimSharp.Features.ModManager.Services.Filtering;
@@ -31,19 +25,11 @@ using RimSharp.Infrastructure.Mods.IO;
 using RimSharp.Infrastructure.Mods.Rules;
 using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
 using RimSharp.Infrastructure.Mods.Validation.Duplicates;
-
-// --- Git Mod Manager Feature ---
 using RimSharp.Features.GitModManager.ViewModels;
-
-// --- VRAM Usage Feature ---
 using RimSharp.Features.VramAnalysis.ViewModels;
-
-// --- Workshop Downloader Feature ---
 using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Features.WorkshopDownloader.ViewModels;
 using RimSharp.Features.WorkshopDownloader.Components.DownloadQueue;
-
-// --- Workshop Infrastructure ---
 using RimSharp.Infrastructure.Workshop;
 using RimSharp.Infrastructure.Workshop.Core;
 using RimSharp.Infrastructure.Workshop.Download;
@@ -57,8 +43,6 @@ using RimSharp.AppDir.Dialogs;
 using System.Diagnostics;
 using System.Linq;
 using PInvoke;
-
-// --- Core Services ---
 using RimSharp.Core.Services;
 using Avalonia.Threading;
 
@@ -82,7 +66,6 @@ namespace RimSharp.AppDir.AppFiles
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                // --- Single Instance Check ---
                 bool isNewInstance;
                 _instanceMutex = new Mutex(true, AppUniqueId, out isNewInstance);
                 _ownsMutex = isNewInstance;
@@ -90,7 +73,7 @@ namespace RimSharp.AppDir.AppFiles
                 if (!isNewInstance)
                 {
                     Debug.WriteLine("App is already running. Activating existing instance.");
-                    // App is already running. 
+                    
                     if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
                     {
                         Process current = Process.GetCurrentProcess();
@@ -107,8 +90,6 @@ namespace RimSharp.AppDir.AppFiles
                     desktop.Shutdown();
                     return;
                 }
-
-                // Initialize services
                 var services = new ServiceCollection();
                 ConfigureServices(services);
                 ServiceProvider = services.BuildServiceProvider();
@@ -125,8 +106,6 @@ namespace RimSharp.AppDir.AppFiles
                 desktop.MainWindow = mainWindow;
                 mainWindow.Show();
                 desktop.Exit += OnExit;
-
-                // Trigger data load on UI thread to ensure we see any errors
                 _ = Dispatcher.UIThread.InvokeAsync(async () => 
                 {
                     try 
@@ -161,7 +140,6 @@ namespace RimSharp.AppDir.AppFiles
 
         private void ConfigureServices(IServiceCollection services)
         {
-            // --- Base Infrastructure & Configuration ---
             services.AddSingleton<ILoggerService, LoggerService>();
             services.AddSingleton<IConfigService, ConfigService>(provider => new ConfigService());
             services.AddSingleton<IFileDialogService, AvaloniaFileDialogService>();
@@ -197,8 +175,6 @@ namespace RimSharp.AppDir.AppFiles
                 };
                 return pathSettings;
             });
-
-            // --- Mod Rules ---
             services.AddSingleton<IModRulesRepository>(provider =>
                 new JsonModRulesRepository(provider.GetRequiredService<IDataUpdateService>()));
 
@@ -222,8 +198,6 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IDataUpdateService>(),
                     provider.GetRequiredService<ILoggerService>()
                 ));
-
-            // --- Core Mod Services ---
             services.AddSingleton<IModService>(provider =>
                 new ModService(
                     provider.GetRequiredService<IPathService>(),
@@ -239,8 +213,6 @@ namespace RimSharp.AppDir.AppFiles
                 );
             });
             services.AddSingleton<ModLookupService>();
-
-            // --- Mod Manager Feature Services ---
             services.AddSingleton<IModDataService>(provider =>
                 new ModDataService(
                     provider.GetRequiredService<IModService>(),
@@ -248,9 +220,7 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IDialogService>()
                 ));
             services.AddSingleton<IModFilterService, ModFilterService>();
-            services.AddSingleton<IModCommandService, ModCommandService>(); 
-
-            // --- Workshop Downloader Feature Services ---
+            services.AddSingleton<IModCommandService, ModCommandService>();
             services.AddSingleton<IWebNavigationService, WebNavigationService>();
             services.AddSingleton<IDownloadQueueService, DownloadQueueService>();
             services.AddSingleton<IUpdaterService, UpdaterService>(); 
@@ -265,12 +235,12 @@ namespace RimSharp.AppDir.AppFiles
                    provider.GetRequiredService<IPathService>(),
                    provider.GetRequiredService<IModListManager>(),
                    provider.GetRequiredService<IDialogService>(),
-                   provider.GetRequiredService<IModListFileParser>(),          
-                   provider.GetRequiredService<IModDictionaryService>(),       
-                   provider.GetRequiredService<ISteamApiClient>(),           
-                   provider.GetRequiredService<IDownloadQueueService>(),     
+                   provider.GetRequiredService<IModListFileParser>(),
+                   provider.GetRequiredService<IModDictionaryService>(),
+                   provider.GetRequiredService<ISteamApiClient>(),
+                   provider.GetRequiredService<IDownloadQueueService>(),
                    provider.GetRequiredService<IApplicationNavigationService>(),
-                   provider.GetRequiredService<ILoggerService>(),             
+                   provider.GetRequiredService<ILoggerService>(),
                    provider.GetRequiredService<ISteamWorkshopQueueProcessor>()
                );
             });
@@ -279,8 +249,6 @@ namespace RimSharp.AppDir.AppFiles
             services.AddSingleton<IModDuplicateService, ModDuplicateService>();
             services.AddSingleton<IModListFileParser, ModListFileParser>();
             services.AddSingleton<IModDeletionService, ModDeletionService>();
-
-            // --- SteamCMD Infrastructure ---
             services.AddSingleton<SteamCmdPlatformInfo>();
             services.AddSingleton<ISteamCmdPathService>(provider =>
             {
@@ -309,8 +277,6 @@ namespace RimSharp.AppDir.AppFiles
                 ));
 
             services.AddSingleton<ISteamCmdService, SteamCmdService>();
-
-            // --- ViewModels ---
             services.AddSingleton<ModInfoEnricher>(); 
 
             services.AddTransient<ModsViewModel>(provider =>
@@ -344,9 +310,9 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IWorkshopUpdateCheckerService>(),
                     provider.GetRequiredService<ISteamCmdService>(),
                     provider.GetRequiredService<IModListManager>(),
-                    provider.GetRequiredService<ModInfoEnricher>(),             
+                    provider.GetRequiredService<ModInfoEnricher>(),
                     provider.GetRequiredService<ISteamWorkshopQueueProcessor>(),
-                    provider.GetRequiredService<ILoggerService>(),              
+                    provider.GetRequiredService<ILoggerService>(),
                     provider.GetRequiredService<ISteamApiClient>()
                 ));
 
@@ -373,10 +339,10 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IConfigService>(),
                     provider.GetRequiredService<IDialogService>(),
                     provider.GetRequiredService<IApplicationNavigationService>(),
-                    provider.GetRequiredService<IUpdaterService>(),       
-                    provider.GetRequiredService<ModsViewModel>(),       
+                    provider.GetRequiredService<IUpdaterService>(),
+                    provider.GetRequiredService<ModsViewModel>(),
                     provider.GetRequiredService<DownloaderViewModel>(), 
-                    provider.GetRequiredService<GitModsViewModel>(),     
+                    provider.GetRequiredService<GitModsViewModel>(),
                     provider.GetRequiredService<VramAnalysisViewModel>()
                 ));
 
@@ -397,3 +363,5 @@ namespace RimSharp.AppDir.AppFiles
         }
     }
 }
+
+

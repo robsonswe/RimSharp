@@ -48,7 +48,7 @@ namespace RimSharp.Features.VramAnalysis.Tools
 
             var resolved = ModFolderResolver.Resolve(modPath, majorGameVersion, activeModPackageIds, sb);
             var dependencies = resolved.Dependencies.Select(d => new ConditionalDependency(d, activeModPackageIds.Contains(d))).ToList();
-            
+
             sb.AppendLine($"[INFO] Final Active Folders: {(resolved.Current.Count > 0 ? string.Join(", ", resolved.Current) : "NONE")}");
 
             var currentAssets = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -67,13 +67,10 @@ namespace RimSharp.Features.VramAnalysis.Tools
                 sb.AppendLine($"[ERROR] Exception mapping textures: {ex.Message}");
             }
 
-            // --- BRUTE FORCE FALLBACK ---
-            // If the modder made a typo in their loadFolders.xml (e.g. mapped "Assets" but folder is "LegacyAssets"),
-            // RimWorld will fail to load it. For estimation purposes, we will brute-force scan the whole mod.
             if (maxAssets.Count == 0)
             {
                 sb.AppendLine($"[WARN] Strict XML parsing found 0 textures. The modder likely made a folder typo. Initiating brute-force scan...");
-                
+
                 int fallbackCount = 0;
                 var allTextureDirs = Directory.GetDirectories(modPath, "Textures", SearchOption.AllDirectories);
                 foreach (var tDir in allTextureDirs)
@@ -115,14 +112,13 @@ namespace RimSharp.Features.VramAnalysis.Tools
             int currentTextureCount = 0, maxTextureCount = 0;
             int currentInAtlasCount = 0, maxInAtlasCount = 0;
             int parseFailures = 0;
-            
+
             const double mipmapFactor = 1.33333;
 
             Parallel.ForEach(uniqueMaxFiles, file =>
             {
                 var (width, height, format, hasMips) = GetTextureInfo(file);
-                
-                // FALLBACK for 0-byte, heavily crushed, or locked images (Fixes 'Bionic Icons' mod)
+
                 if (width <= 0 || height <= 0 || format == SimpleTextureFormat.Unknown)
                 {
                     Interlocked.Increment(ref parseFailures);
@@ -197,10 +193,10 @@ namespace RimSharp.Features.VramAnalysis.Tools
                         assetMap[assetName] = file;
                 }
                 else assetMap[assetName] = file;
-                
+
                 count++;
             }
-            
+
             sb.AppendLine($"[DIR] SUCCESS: Discovered {count} image files in {relativePath}/Textures");
         }
 
@@ -233,7 +229,7 @@ namespace RimSharp.Features.VramAnalysis.Tools
             r.ReadBytes(4); r.ReadBytes(4); byte[] wB = r.ReadBytes(4); byte[] hB = r.ReadBytes(4);
             if (BitConverter.IsLittleEndian) { Array.Reverse(wB); Array.Reverse(hB); }
             int w = BitConverter.ToInt32(wB, 0); int h = BitConverter.ToInt32(hB, 0);
-            
+
             if (w <= 0 || h <= 0 || w > 16384 || h > 16384) return (64, 64, SimpleTextureFormat.RGBA32, false);
 
             return (w, h, SimpleTextureFormat.RGBA32, (w % 4 == 0) && (h % 4 == 0));
@@ -248,7 +244,7 @@ namespace RimSharp.Features.VramAnalysis.Tools
             r.BaseStream.Seek(8, SeekOrigin.Current); int mips = r.ReadInt32();
             bool hasMips = (fl & 0x20000) != 0 || mips > 1;
             r.BaseStream.Seek(44, SeekOrigin.Current); r.ReadUInt32(); uint pfFl = r.ReadUInt32();
-            
+
             if ((pfFl & 0x4) != 0) {
                 var fourCC = new string(r.ReadChars(4)).TrimEnd('\0');
                 if (fourCC.Equals("DXT1", StringComparison.OrdinalIgnoreCase)) return (w, h, SimpleTextureFormat.DXT1, hasMips);
@@ -256,7 +252,7 @@ namespace RimSharp.Features.VramAnalysis.Tools
                 if (fourCC.Equals("DXT5", StringComparison.OrdinalIgnoreCase)) return (w, h, SimpleTextureFormat.DXT5, hasMips);
                 if (fourCC.Equals("DX10", StringComparison.OrdinalIgnoreCase)) return (w, h, SimpleTextureFormat.BC7, hasMips);
             }
-            
+
             return (w, h, SimpleTextureFormat.RGBA32, hasMips); 
         }
 
@@ -291,3 +287,5 @@ namespace RimSharp.Features.VramAnalysis.Tools
         }
     }
 }
+
+

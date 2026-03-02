@@ -23,22 +23,20 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public void ApplyRulesToMods_ShouldAddSupportedVersions()
         {
-            // Arrange
+
             var mod = new ModItem { PackageId = "mod1", SupportedVersions = new List<VersionSupport>() };
             var rule = new ModRule { SupportedVersions = new List<string> { "1.5" } };
             _mockRepository.GetAllRules().Returns(new Dictionary<string, ModRule> { { "mod1", rule } });
 
-            // Act
             _service.ApplyRulesToMods(new[] { mod });
 
-            // Assert
             mod.SupportedVersions.Should().ContainSingle(v => v.Version == "1.5" && v.Source == VersionSource.Database);
         }
 
         [Fact]
         public void ApplyRulesToMods_ShouldNotAddDuplicateVersions()
         {
-            // Arrange
+
             var mod = new ModItem 
             { 
                 PackageId = "mod1", 
@@ -47,10 +45,8 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             var rule = new ModRule { SupportedVersions = new List<string> { "1.5" } };
             _mockRepository.GetAllRules().Returns(new Dictionary<string, ModRule> { { "mod1", rule } });
 
-            // Act
             _service.ApplyRulesToMods(new[] { mod });
 
-            // Assert
             mod.SupportedVersions.Should().HaveCount(1);
             mod.SupportedVersions.First().Source.Should().Be(VersionSource.Official);
         }
@@ -58,22 +54,20 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public void ApplyRulesToMods_ShouldBeCaseInsensitive()
         {
-            // Arrange
+
             var mod = new ModItem { PackageId = "MOD1" };
             var rule = new ModRule { SupportedVersions = new List<string> { "1.5" } };
             _mockRepository.GetAllRules().Returns(new Dictionary<string, ModRule> { { "mod1", rule } });
 
-            // Act
             _service.ApplyRulesToMods(new[] { mod });
 
-            // Assert
             mod.SupportedVersions.Should().NotBeEmpty();
         }
 
         [Fact]
         public void ApplyRulesToMods_ShouldApplyLoadOrderRules()
         {
-            // Arrange
+
             var mod = new ModItem { PackageId = "mod1" };
             var rule = new ModRule 
             { 
@@ -83,10 +77,8 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             };
             _mockRepository.GetAllRules().Returns(new Dictionary<string, ModRule> { { "mod1", rule } });
 
-            // Act
             _service.ApplyRulesToMods(new[] { mod });
 
-            // Assert
             mod.LoadBefore.Should().Contain("otherMod");
             mod.LoadAfter.Should().Contain("baseMod");
             mod.LoadBottom.Should().BeTrue();
@@ -95,7 +87,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public void ApplyRulesToMods_ShouldApplyIncompatibilities()
         {
-            // Arrange
+
             var mod = new ModItem { PackageId = "mod1" };
             var incompatibility = new ModIncompatibilityRule { HardIncompatibility = true };
             var rule = new ModRule 
@@ -104,10 +96,8 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             };
             _mockRepository.GetAllRules().Returns(new Dictionary<string, ModRule> { { "mod1", rule } });
 
-            // Act
             _service.ApplyRulesToMods(new[] { mod });
 
-            // Assert
             mod.IncompatibleWith.Should().ContainKey("badMod");
             mod.IncompatibleWith["badMod"].HardIncompatibility.Should().BeTrue();
         }
@@ -115,16 +105,15 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public void GetRulesForMod_WhenNotFound_ShouldReturnEmptyRule()
         {
-             // Arrange
+
             _mockRepository.GetAllRules().Returns(new Dictionary<string, ModRule>());
 
-            // Act
             var result = _service.GetRulesForMod("nonexistent");
 
-            // Assert
             result.Should().NotBeNull();
             result.SupportedVersions.Should().BeEmpty();
             result.LoadBefore.Should().BeEmpty();
         }
     }
 }
+

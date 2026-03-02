@@ -4,7 +4,7 @@ using RimSharp.Shared.Models;
 namespace RimSharp.Infrastructure.Mods.Validation.Incompatibilities
 {
     /// <summary>
-    /// Represents a relation between two mods that are incompatible,
+
     /// with a reason for the incompatibility
     /// </summary>
     public class ModIncompatibilityRelation

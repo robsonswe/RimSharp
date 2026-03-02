@@ -7,7 +7,7 @@ using System.Linq;
 namespace RimSharp.Core.ObservableCollections
 {
     /// <summary>
-    /// An ObservableCollection that supports adding multiple items more efficiently
+
     /// by raising only a single CollectionChanged event (Reset).
     /// </summary>
     /// <typeparam name="T">The type of elements in the collection.</typeparam>
@@ -19,8 +19,7 @@ namespace RimSharp.Core.ObservableCollections
         public BulkObservableCollection(IEnumerable<T> collection) : base(collection) { }
         public BulkObservableCollection(List<T> list) : base(list) { }
 
-
-        protected override void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
+protected override void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
         {
             if (!_suppressNotification)
                 base.OnCollectionChanged(e);
@@ -33,7 +32,7 @@ namespace RimSharp.Core.ObservableCollections
         }
 
         /// <summary>
-        /// Adds the elements of the specified collection to the end of the ObservableCollection<T>.
+
         /// Raises a single CollectionChanged event with Reset action.
         /// </summary>
         public void AddRange(IEnumerable<T> items)
@@ -54,20 +53,19 @@ namespace RimSharp.Core.ObservableCollections
                 _suppressNotification = false;
             }
 
-            // Raise notifications (Count, Indexer, Reset event)
             OnPropertyChanged(new PropertyChangedEventArgs("Count"));
             OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
             OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
         }
 
         /// <summary>
-        /// Clears the collection and adds the elements of the specified collection.
+
         /// Raises a single CollectionChanged event with Reset action.
         /// </summary>
         /// <param name="items"></param>
         public void ReplaceAll(IEnumerable<T> items)
         {
-            items ??= Enumerable.Empty<T>(); // Ensure items is not null
+            items ??= Enumerable.Empty<T>();
 
              _suppressNotification = true;
             try
@@ -84,8 +82,7 @@ namespace RimSharp.Core.ObservableCollections
                 _suppressNotification = false;
             }
 
-            // Raise notifications
-            OnPropertyChanged(new PropertyChangedEventArgs("Count"));
+OnPropertyChanged(new PropertyChangedEventArgs("Count"));
             OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
             OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
         }
@@ -94,3 +91,5 @@ namespace RimSharp.Core.ObservableCollections
         // public void RemoveRange(IEnumerable<T> items) { ... }
     }
 }
+
+

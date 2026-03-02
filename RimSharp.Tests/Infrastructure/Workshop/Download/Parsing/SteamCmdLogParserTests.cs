@@ -45,7 +45,7 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download.Parsing
         [Fact]
         public async Task ParseSteamCmdSessionLogsAsync_ShouldDetectWorkshopSuccess()
         {
-            // Arrange
+
             var workshopContent = "[2024-02-18 12:00:00] [AppID 294100] Download item 123 result: OK";
             var workshopPath = CreateLogFile("workshop.log", workshopContent);
             
@@ -56,10 +56,8 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download.Parsing
             var ids = new HashSet<string> { "123" };
             var filterTime = new DateTime(2024, 02, 18, 11, 0, 0);
 
-            // Act
             var result = await _parser.ParseSteamCmdSessionLogsAsync(logPaths, ids, filterTime, CancellationToken.None);
 
-            // Assert
             result.WorkshopItemResults.Should().ContainKey("123");
             result.WorkshopItemResults["123"].Success.Should().BeTrue();
         }
@@ -67,7 +65,7 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download.Parsing
         [Fact]
         public async Task ParseSteamCmdSessionLogsAsync_ShouldFilterByTime()
         {
-            // Arrange
+
             var workshopContent = @"
 [2024-02-18 10:00:00] [AppID 294100] Download item 123 result: OK
 [2024-02-18 12:00:00] [AppID 294100] Download item 456 result: OK";
@@ -77,10 +75,8 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download.Parsing
             var ids = new HashSet<string> { "123", "456" };
             var filterTime = new DateTime(2024, 02, 18, 11, 0, 0);
 
-            // Act
             var result = await _parser.ParseSteamCmdSessionLogsAsync(logPaths, ids, filterTime, CancellationToken.None);
 
-            // Assert
             result.WorkshopItemResults.Should().ContainKey("456");
             result.WorkshopItemResults.Should().NotContainKey("123");
         }
@@ -88,7 +84,7 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download.Parsing
         [Fact]
         public async Task ParseSteamCmdSessionLogsAsync_ShouldDetectLoginFailure()
         {
-            // Arrange
+
             var primaryContent = "FAILED to log in";
             var primaryPath = CreateLogFile("primary.log", primaryContent);
             
@@ -96,10 +92,8 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download.Parsing
             var ids = new HashSet<string> { "123" };
             var filterTime = DateTime.Now;
 
-            // Act
             var result = await _parser.ParseSteamCmdSessionLogsAsync(logPaths, ids, filterTime, CancellationToken.None);
 
-            // Assert
             result.OverallStatus.HasLoginFailed.Should().BeTrue();
             result.WorkshopItemResults.Should().ContainKey("123");
             result.WorkshopItemResults["123"].Success.Should().BeFalse();
@@ -109,7 +103,7 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download.Parsing
         [Fact]
         public async Task ParseSteamCmdSessionLogsAsync_ShouldDetectDiskSpaceIssue()
         {
-            // Arrange
+
             var contentLog = "[2024-02-18 12:00:00] Not enough disk space";
             var contentPath = CreateLogFile("content.log", contentLog);
             
@@ -117,11 +111,10 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download.Parsing
             var ids = new HashSet<string> { "123" };
             var filterTime = new DateTime(2024, 02, 18, 11, 0, 0);
 
-            // Act
             var result = await _parser.ParseSteamCmdSessionLogsAsync(logPaths, ids, filterTime, CancellationToken.None);
 
-            // Assert
             result.OverallStatus.HasDiskSpaceIssue.Should().BeTrue();
         }
     }
 }
+

@@ -5,13 +5,13 @@ using System.Collections.Generic;
 namespace RimSharp.Infrastructure.Workshop.Download.Parsing.Models
 {
     /// <summary>
-    /// Represents the consolidated results from parsing multiple SteamCMD log files
+
     /// for a specific execution session.
     /// </summary>
     public class SteamCmdSessionLogParseResult
     {
         /// <summary>
-        /// Contains the latest status found *across all parsed logs* for each relevant ID
+
         /// within the specified timeframe.
         /// Key: Steam Workshop Item ID (string)
         /// Value: Tuple (bool Success, DateTime Timestamp, string? FailureReason)
@@ -19,25 +19,23 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing.Models
         public Dictionary<string, (bool Success, DateTime Timestamp, string? Reason)> WorkshopItemResults { get; }
 
         /// <summary>
-        /// Indicates the overall health and status detected during the SteamCMD session.
+
         /// </summary>
         public SteamCmdSessionStatus OverallStatus { get; }
 
         /// <summary>
-        /// A collection of significant error or warning messages extracted from any of the parsed logs.
-        /// Useful for diagnosing failures when item-specific results are unclear.
-        /// </summary>
+
+/// </summary>
         public List<string> CriticalMessages { get; }
 
         /// <summary>
-        /// Samples of the last N lines read from each parsed log file for debugging.
-        /// Key: Log file type identifier (e.g., "Workshop", "Console", "Content")
-        /// Value: List of log lines.
+
+/// Value: List of log lines.
         /// </summary>
         public Dictionary<string, List<string>> LogSamples { get; }
 
         /// <summary>
-        /// The number of workshop log entries that were successfully parsed and matched the criteria (ID + timestamp).
+
         /// </summary>
         public int ProcessedWorkshopEntryCount { get; internal set; } // Allow internal modification
 
@@ -50,7 +48,6 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing.Models
             ProcessedWorkshopEntryCount = 0;
         }
 
-        // Convenience method to add a critical message, avoiding duplicates maybe?
         public void AddCriticalMessage(string message)
         {
             if (!string.IsNullOrWhiteSpace(message) && !CriticalMessages.Contains(message.Trim()))
@@ -61,7 +58,7 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing.Models
     }
 
     /// <summary>
-    /// Flags indicating the general status detected during a SteamCMD session based on log analysis.
+
     /// </summary>
     [Flags]
     public enum SteamCmdSessionStatusFlags
@@ -82,7 +79,7 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing.Models
     }
 
     /// <summary>
-    /// Holds the overall status flags detected during the SteamCMD session.
+
     /// </summary>
     public class SteamCmdSessionStatus
     {
@@ -111,3 +108,5 @@ namespace RimSharp.Infrastructure.Workshop.Download.Parsing.Models
                                    || HasFlag(SteamCmdSessionStatusFlags.GeneralError);
     }
 }
+
+

@@ -22,14 +22,12 @@ namespace RimSharp.Tests.Core.ObservableCollections
         [Fact]
         public void AddRange_ShouldAddAllItems()
         {
-            // Arrange
+
             var collection = new BulkObservableCollection<int>();
             var itemsToAdd = new List<int> { 1, 2, 3 };
 
-            // Act
             collection.AddRange(itemsToAdd);
 
-            // Assert
             collection.Should().HaveCount(3);
             collection.Should().ContainInOrder(itemsToAdd);
         }
@@ -37,7 +35,7 @@ namespace RimSharp.Tests.Core.ObservableCollections
         [Fact]
         public void AddRange_ShouldRaiseSingleCollectionChangedEvent()
         {
-            // Arrange
+
             var collection = new BulkObservableCollection<int>();
             var itemsToAdd = new List<int> { 1, 2, 3 };
             int eventCount = 0;
@@ -47,24 +45,20 @@ namespace RimSharp.Tests.Core.ObservableCollections
                 e.Action.Should().Be(NotifyCollectionChangedAction.Reset);
             };
 
-            // Act
             collection.AddRange(itemsToAdd);
 
-            // Assert
             eventCount.Should().Be(1);
         }
 
         [Fact]
         public void ReplaceAll_ShouldClearAndAddItems()
         {
-            // Arrange
+
             var collection = new BulkObservableCollection<int> { 10, 20 };
             var newItems = new List<int> { 1, 2, 3 };
 
-            // Act
             collection.ReplaceAll(newItems);
 
-            // Assert
             collection.Should().HaveCount(3);
             collection.Should().NotContain(10);
             collection.Should().ContainInOrder(newItems);
@@ -73,17 +67,16 @@ namespace RimSharp.Tests.Core.ObservableCollections
         [Fact]
         public void AddRange_ShouldRaisePropertyChangedForCountAndIndexer()
         {
-             // Arrange
+
             var collection = new TestableBulkObservableCollection<int>();
             var raisedProperties = new List<string>();
             collection.PropertyChanged += (s, e) => raisedProperties.Add(e.PropertyName!);
 
-            // Act
             collection.AddRange(new[] { 1 });
 
-            // Assert
             raisedProperties.Should().Contain("Count");
             raisedProperties.Should().Contain("Item[]");
         }
     }
 }
+

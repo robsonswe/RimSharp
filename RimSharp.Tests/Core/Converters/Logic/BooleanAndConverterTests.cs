@@ -23,34 +23,32 @@ namespace RimSharp.Tests.Core.Converters.Logic
         [InlineData(new object[] { true, true, true }, true)]
         public void Convert_ShouldReturnCorrectBooleanAnd(object[] values, bool expected)
         {
-            // Act
+
             var result = _converter.Convert(values, typeof(bool), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
 
         [Fact]
         public void Convert_WithNonBooleanValues_ShouldReturnFalse()
         {
-            // Arrange
+
             var values = new object[] { true, "not a bool" };
 
-            // Act
             var result = _converter.Convert(values, typeof(bool), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(false);
         }
 
         [Fact]
         public void Convert_WithEmptyList_ShouldReturnTrue()
         {
-            // Act
+
             var result = _converter.Convert(new List<object?>(), typeof(bool), null, CultureInfo.InvariantCulture);
 
-            // Assert
-            result.Should().Be(true); // .All() on empty collection returns true
+            result.Should().Be(true);
         }
     }
 }
+
+

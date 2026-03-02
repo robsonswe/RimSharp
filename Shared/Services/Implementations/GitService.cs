@@ -141,16 +141,12 @@ namespace RimSharp.Shared.Services.Implementations
                 string apiRoot = $"https://api.github.com/repos/{repoInfo.Value.owner}/{repoInfo.Value.repo}/contents";
                 var rootResponse = await client.GetFromJsonAsync<List<GitHubContentItem>>(apiRoot, ct);
                 if (rootResponse == null) return null;
-
-                // 1. Check About/About.xml
                 var aboutDir = rootResponse.FirstOrDefault(i => i.Type == "dir" && "About".Equals(i.Name, StringComparison.OrdinalIgnoreCase));
                 if (aboutDir != null)
                 {
                     var mod = await TryLoadModMetadata(client, $"{apiRoot}/About/About.xml", ct);
                     if (mod != null) return mod;
                 }
-
-                // 2. Check single subfolder
                 var rootDirs = rootResponse.Where(i => i.Type == "dir" && i.Name != null && !i.Name.StartsWith(".")).ToList();
                 if (rootDirs.Count == 1)
                 {
@@ -163,8 +159,6 @@ namespace RimSharp.Shared.Services.Implementations
                         if (mod != null) return mod;
                     }
                 }
-
-                // 3. Check About.xml in root
                 if (rootResponse.Any(i => i.Type == "file" && "About.xml".Equals(i.Name, StringComparison.OrdinalIgnoreCase)))
                 {
                     return await TryLoadModMetadata(client, $"{apiRoot}/About.xml", ct);
@@ -226,3 +220,4 @@ namespace RimSharp.Shared.Services.Implementations
         }
     }
 }
+

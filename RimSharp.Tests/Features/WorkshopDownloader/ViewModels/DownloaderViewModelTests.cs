@@ -72,10 +72,9 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.ViewModels
         [Fact]
         public void Constructor_ShouldInitializeCorrectly()
         {
-            // Act
+
             var vm = CreateViewModel();
 
-            // Assert
             vm.BrowserViewModel.Should().NotBeNull();
             vm.QueueViewModel.Should().NotBeNull();
             vm.StatusBarViewModel.Should().NotBeNull();
@@ -87,10 +86,9 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.ViewModels
         [Fact]
         public void Constructor_ShouldCreateChildViewModels()
         {
-            // Act
+
             var vm = CreateViewModel();
 
-            // Assert
             vm.BrowserViewModel.Should().BeOfType<BrowserViewModel>();
             vm.QueueViewModel.Should().BeOfType<DownloadQueueViewModel>();
             vm.StatusBarViewModel.Should().BeOfType<StatusBarViewModel>();
@@ -99,33 +97,29 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.ViewModels
         [Fact]
         public void CancelOperationCommand_CanExecute_ShouldReturnFalse_WhenNoOperationInProgress()
         {
-            // Arrange
+
             var vm = CreateViewModel();
 
-            // Act
             var canExecute = vm.CancelOperationCommand.CanExecute(null);
 
-            // Assert
             canExecute.Should().BeFalse();
         }
 
         [Fact]
         public void GetCancellationToken_ShouldReturnNone_WhenNoOperation()
         {
-            // Arrange
+
             var vm = CreateViewModel();
 
-            // Act
             var token = vm.GetCancellationToken();
 
-            // Assert
             token.Should().Be(CancellationToken.None);
         }
 
         [Fact]
         public void SetBrowserControl_ShouldNotThrow()
         {
-            // Arrange
+
             var vm = CreateViewModel();
 
             // Act & Assert
@@ -135,10 +129,9 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.ViewModels
         [Fact]
         public void Dispose_ShouldBeIdempotent()
         {
-            // Arrange
+
             var vm = CreateViewModel();
 
-            // Act & Assert - Second dispose should not throw
             vm.Invoking(v => v.Dispose()).Should().NotThrow();
             vm.Invoking(v => v.Dispose()).Should().NotThrow();
         }
@@ -146,10 +139,9 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.ViewModels
         [Fact]
         public void Constructor_ShouldSetupEventHandlers()
         {
-            // Act
+
             var vm = CreateViewModel();
 
-            // Assert - If event handlers weren't set up correctly, these would be null
             vm.BrowserViewModel.Should().NotBeNull();
             vm.QueueViewModel.Should().NotBeNull();
         }
@@ -157,97 +149,89 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.ViewModels
         [Fact]
         public void StatusBarViewModel_ShouldBeAccessible()
         {
-            // Arrange
+
             var vm = CreateViewModel();
 
-            // Assert
             vm.StatusBarViewModel.Should().NotBeNull();
         }
 
         [Fact]
         public void IsOperationInProgress_ShouldBeFalseInitially()
         {
-            // Arrange
+
             var vm = CreateViewModel();
 
-            // Assert
             vm.IsOperationInProgress.Should().BeFalse();
         }
 
         [Fact]
         public void IsSteamCmdReady_ShouldBeFalseInitially()
         {
-            // Arrange
+
             var vm = CreateViewModel();
 
-            // Assert
             vm.IsSteamCmdReady.Should().BeFalse();
         }
 
         [Fact]
         public void QueueViewModel_ShouldHaveCorrectInitialStatus()
         {
-            // Arrange
+
             var vm = CreateViewModel();
 
-            // Assert
             vm.QueueViewModel.IsOperationInProgress.Should().BeFalse();
         }
 
         [Fact]
         public void BrowserViewModel_ShouldHaveCorrectInitialStatus()
         {
-            // Arrange
+
             var vm = CreateViewModel();
 
-            // Assert
             vm.BrowserViewModel.Should().NotBeNull();
         }
 
         [Fact]
         public void Constructor_ShouldCallCheckSetupAsync()
         {
-            // Act
+
             var vm = CreateViewModel();
 
             // Allow async operation to complete
             Thread.Sleep(100);
 
-            // Assert
             _mockSteamCmdService.Received().CheckSetupAsync();
         }
 
         [Fact]
         public void CancelOperationCommand_ShouldExist()
         {
-            // Arrange
+
             var vm = CreateViewModel();
 
-            // Assert
             vm.CancelOperationCommand.Should().NotBeNull();
         }
 
         [Fact]
         public void DownloadCompletedAndRefreshNeeded_Event_ShouldExist()
         {
-            // Arrange
+
             var vm = CreateViewModel();
 
-            // Act & Assert - Should be able to subscribe without throwing
             vm.Invoking(v => v.DownloadCompletedAndRefreshNeeded += (s, e) => { }).Should().NotThrow();
         }
 
         [Fact]
         public void GetCancellationToken_ShouldReturnValidToken()
         {
-            // Arrange
+
             var vm = CreateViewModel();
 
-            // Act
             var token = vm.GetCancellationToken();
 
-            // Assert
             token.CanBeCanceled.Should().BeFalse(); // CancellationToken.None
         }
     }
 }
+
+

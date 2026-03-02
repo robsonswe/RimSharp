@@ -15,7 +15,7 @@ namespace RimSharp.Features.ModManager.Components.ModList
     public partial class ModListView : UserControl
     {
         private ListBox? _internalListBox;
-        
+
         public ModListView()
         {
             InitializeComponent();
@@ -27,7 +27,7 @@ namespace RimSharp.Features.ModManager.Components.ModList
 
             this.GetObservable(ItemsSourceProperty).Subscribe(_ =>
             {
-                // When ItemsSource changes (filtering/reset), we want to re-sync selection.
+
                 _isHandlingFiltering = true;
                 Dispatcher.UIThread.Post(() => {
                     try {
@@ -72,13 +72,13 @@ namespace RimSharp.Features.ModManager.Components.ModList
         private void SyncInternalSelection()
         {
             if (_internalListBox == null || _isUpdatingToDP) return;
-            
+
             _isUpdatingFromDP = true;
             try
             {
                 var targetValue = this.SelectedItem;
                 object? itemInList = null;
-                
+
                 if (targetValue != null)
                 {
                     foreach (var item in _internalListBox.Items)
@@ -112,18 +112,16 @@ namespace RimSharp.Features.ModManager.Components.ModList
                 _isUpdatingFromDP = false;
             }
         }
-        
+
         private void InternalListBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
             if (_internalListBox == null || _isUpdatingFromDP) return;
-            
-            // If we are currently handling a filter change, ignore the ListBox's automatic selection clearing.
+
             if (_isHandlingFiltering) return;
 
             var newSelection = _internalListBox.SelectedItem;
             var currentGlobalSelection = this.SelectedItem;
 
-            // If the ListBox cleared its selection, but we had one.
             if (newSelection == null && currentGlobalSelection != null)
             {
                 bool itemIsStillInList = false;
@@ -136,7 +134,6 @@ namespace RimSharp.Features.ModManager.Components.ModList
                     }
                 }
 
-                // If the item disappeared from the list, we return early to "remember" it globally.
                 if (!itemIsStillInList)
                 {
                     UpdateSelectedItems(new List<object>());
@@ -144,9 +141,8 @@ namespace RimSharp.Features.ModManager.Components.ModList
                 }
                 else
                 {
-                    // Item IS in the list, but ListBox cleared selection.
-                    // This can happen during internal ListBox updates.
-                    // We re-apply the selection.
+
+// We re-apply the selection.
                     SyncInternalSelection();
                     return;
                 }
@@ -405,3 +401,5 @@ namespace RimSharp.Features.ModManager.Components.ModList
         }
     }
 }
+
+

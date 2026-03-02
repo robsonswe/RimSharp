@@ -17,7 +17,7 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
         [Fact]
         public void SelectAllCommand_ShouldSelectAllSelectableItems()
         {
-            // Arrange
+
             var data = new List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)>
             {
                 ("M1", "id1", "https://steamcommunity.com/sharedfiles/filedetails/?id=1", new List<string>()),
@@ -26,10 +26,8 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
             };
             var vm = new DependencyResolutionDialogViewModel(data);
 
-            // Act
             vm.SelectAllCommand.Execute(null);
 
-            // Assert
             vm.MissingDependencies!.Count(i => i.IsSelected).Should().Be(2);
             vm.SelectedCount.Should().Be(2);
         }
@@ -37,7 +35,7 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
         [Fact]
         public void SelectNoneCommand_ShouldClearSelection()
         {
-            // Arrange
+
             var data = new List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)>
             {
                 ("M1", "id1", "https://steamcommunity.com/sharedfiles/filedetails/?id=1", new List<string>())
@@ -45,10 +43,8 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
             var vm = new DependencyResolutionDialogViewModel(data);
             vm.MissingDependencies![0].IsSelected = true;
 
-            // Act
             vm.SelectNoneCommand.Execute(null);
 
-            // Assert
             vm.MissingDependencies[0].IsSelected.Should().BeFalse();
             vm.SelectedCount.Should().Be(0);
         }
@@ -56,7 +52,7 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
         [Fact]
         public void GetSelectedSteamIds_ShouldOnlyReturnIdsOfSelectedAndSelectableItems()
         {
-            // Arrange
+
             var data = new List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)>
             {
                 ("M1", "id1", "https://steamcommunity.com/sharedfiles/filedetails/?id=1", new List<string>()),
@@ -66,12 +62,11 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
             vm.MissingDependencies![0].IsSelected = true;
             vm.MissingDependencies![1].IsSelected = false;
 
-            // Act
             var ids = vm.GetSelectedSteamIds();
 
-            // Assert
             ids.Should().HaveCount(1);
             ids.Should().Contain("1");
         }
     }
 }
+

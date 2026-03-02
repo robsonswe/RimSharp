@@ -11,8 +11,7 @@ namespace RimSharp.Shared.Models
         public Dictionary<string, ModDependencyRule> LoadAfter { get; set; } = new();
         public LoadBottomRule? LoadBottom { get; set; }
         public Dictionary<string, ModIncompatibilityRule> Incompatibilities { get; set; } = new();
-        
-        // Add SupportedVersions property
+
         [JsonConverter(typeof(StringOrStringListConverter))]
         public List<string> SupportedVersions { get; set; } = new();
     }

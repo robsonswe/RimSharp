@@ -51,17 +51,15 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public void GetAllReplacements_ShouldLoadFromJson()
         {
-            // Arrange
+
             WriteJsonDb(@"{
                 ""mods"": {
                     ""rule1"": { ""steamId"": ""123"", ""modId"": ""old.mod"", ""replacementModId"": ""new.mod"" }
                 }
             }");
 
-            // Act
             var result = _service.GetAllReplacements();
 
-            // Assert
             result.Should().ContainKey("123");
             result["123"].ModId.Should().Be("old.mod");
         }
@@ -69,7 +67,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public void GetReplacementByPackageId_ShouldOnlyMatchNonSteamRules()
         {
-            // Arrange
+
             WriteJsonDb(@"{
                 ""mods"": {
                     ""steamRule"": { ""steamId"": ""123"", ""modId"": ""steam.mod"", ""replacementModId"": ""rep1"" },
@@ -77,11 +75,9 @@ namespace RimSharp.Tests.Shared.Services.Implementations
                 }
             }");
 
-            // Act
             var resultSteam = _service.GetReplacementByPackageId("steam.mod");
             var resultNonSteam = _service.GetReplacementByPackageId("nonsteam.mod");
 
-            // Assert
             resultSteam.Should().BeNull();
             resultNonSteam.Should().NotBeNull();
             resultNonSteam!.ReplacementModId.Should().Be("rep2");
@@ -90,7 +86,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public void LoadFromUseThisInsteadXml_ShouldLoadValidXmls()
         {
-            // Arrange
+
             var modsPath = Path.Combine(_testTempDir, "Mods");
             Directory.CreateDirectory(modsPath);
             _mockPathService.GetModsPath().Returns(modsPath);
@@ -109,10 +105,8 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             File.WriteAllText(Path.Combine(replacementsPath, "test.xml"), xmlContent);
             WriteJsonDb(@"{ ""mods"": {} }"); // Empty DB
 
-            // Act
             var result = _service.GetAllReplacements();
 
-            // Assert
             result.Should().ContainKey("999");
             result["999"].ModId.Should().Be("old.xml.mod");
             result["999"].Source.Should().Be(ReplacementSource.UseThisInstead);
@@ -121,7 +115,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public void JsonDb_ShouldHavePriorityOverXml()
         {
-             // Arrange
+
             var modsPath = Path.Combine(_testTempDir, "Mods");
             Directory.CreateDirectory(modsPath);
             _mockPathService.GetModsPath().Returns(modsPath);
@@ -142,13 +136,12 @@ namespace RimSharp.Tests.Shared.Services.Implementations
                 }
             }");
 
-            // Act
             var result = _service.GetAllReplacements();
 
-            // Assert
             result.Should().ContainKey("123");
             result["123"].ReplacementModId.Should().Be("json-replacement");
             result["123"].Source.Should().Be(ReplacementSource.Database);
         }
     }
 }
+

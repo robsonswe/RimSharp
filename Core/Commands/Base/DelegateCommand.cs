@@ -9,22 +9,16 @@ using System.Windows.Input;
 namespace RimSharp.Core.Commands.Base
 {
     /// <summary>
-    /// A generic command implementation that provides type safety for its parameters.
+
     /// </summary>
     /// <typeparam name="T">The type of parameter the command accepts.</typeparam>
-    public class DelegateCommand<T> : IDelegateCommand<T>, IDisposable // Add IDisposable
+    public class DelegateCommand<T> : IDelegateCommand<T>, IDisposable 
     {
         private readonly Action<T> _execute;
         private readonly Predicate<T>? _canExecute;
-
-        // --- Observation Logic Fields ---
         private Dictionary<INotifyPropertyChanged, HashSet<string>>? _observedPropertiesPerOwner;
         private readonly object _observerLock = new object();
-        // --- End Observation Logic Fields ---
-
-        // --- IDisposable Fields ---
         private bool _disposed = false;
-        // --- End IDisposable Fields ---
 
         public event EventHandler? CanExecuteChanged;
 
@@ -42,7 +36,6 @@ namespace RimSharp.Core.Commands.Base
 
             if (_canExecute == null) return true;
 
-            // Handle potential null parameters if T is a reference type or Nullable<T>
             if (parameter == null)
             {
                 if (typeof(T).IsValueType && Nullable.GetUnderlyingType(typeof(T)) == null)
@@ -50,7 +43,6 @@ namespace RimSharp.Core.Commands.Base
                 return _canExecute(default(T)!);
             }
 
-            // If parameter is not null, ensure it's assignable to T
             return parameter is T typedParameter && _canExecute(typedParameter);
         }
 
@@ -71,7 +63,7 @@ namespace RimSharp.Core.Commands.Base
             {
                 // Basic error logging or handling
                 Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Exception during execution: {ex}");
-                // Depending on requirements, you might want to re-throw or handle differently
+
                 // throw;
             }
         }
@@ -83,10 +75,10 @@ namespace RimSharp.Core.Commands.Base
 
             RimSharp.Core.Extensions.ThreadHelper.EnsureUiThread(() =>
             {
-                // Double check disposal on UI thread in case of race condition
+
                 if (!_disposed)
                 {
-                    //Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] RaiseCanExecuteChanged invoked.");
+
                     CanExecuteChanged?.Invoke(this, EventArgs.Empty);
                 }
             });
@@ -95,18 +87,16 @@ namespace RimSharp.Core.Commands.Base
 
         #region Property Observation Logic (Unchanged Functionality, Added Disposal Check)
         /// <summary>
-        /// Sets up property change observation to automatically raise CanExecuteChanged when specific properties change.
-        /// Subscribes only once per owner object but tracks multiple properties per owner.
-        /// </summary>
-        /// <param name="owner">The INotifyPropertyChanged object that owns the property to observe.</param>
-        /// <param name="propertyName">The name of the property to observe on the owner.</param>
-        /// <returns>The command instance to allow for method chaining.</returns>
+
+/// </summary>
+
+/// <returns>The command instance to allow for method chaining.</returns>
         public DelegateCommand<T> ObservesProperty(INotifyPropertyChanged owner, string propertyName)
         {
             // Prevent observation if already disposed
             if (_disposed)
             {
-                 //Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Attempted to observe property on disposed command.");
+
                  return this; // Or throw ObjectDisposedException
             }
 
@@ -128,12 +118,12 @@ namespace RimSharp.Core.Commands.Base
                     observedProperties = new HashSet<string>();
                     _observedPropertiesPerOwner.Add(owner, observedProperties);
                     owner.PropertyChanged += Owner_PropertyChanged;
-                    //Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Subscribed to PropertyChanged on Owner {owner.GetHashCode()}");
+
                 }
 
                 if (observedProperties.Add(propertyName))
                 {
-                     //Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Observing property '{propertyName}' on Owner {owner.GetHashCode()}");
+
                 }
             }
             return this;
@@ -141,7 +131,7 @@ namespace RimSharp.Core.Commands.Base
 
         private void Owner_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            // If command is disposed, don't process property changes
+
             if (_disposed) return;
 
             var owner = sender as INotifyPropertyChanged;
@@ -160,7 +150,7 @@ namespace RimSharp.Core.Commands.Base
                     if (string.IsNullOrEmpty(e.PropertyName) || (relevantProperties != null && relevantProperties.Contains(e.PropertyName)))
                     {
                         shouldRaise = true;
-                         //Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Property '{e.PropertyName ?? "null"}' changed on Owner {owner.GetHashCode()}. Will raise CanExecuteChanged.");
+
                     }
                 }
             }
@@ -174,7 +164,7 @@ namespace RimSharp.Core.Commands.Base
 
         #region IDisposable Implementation
         /// <summary>
-        /// Releases resources used by the command, particularly PropertyChanged event subscriptions.
+
         /// </summary>
         public void Dispose()
         {
@@ -185,19 +175,18 @@ namespace RimSharp.Core.Commands.Base
         /// <summary>
         /// Performs the actual resource cleanup.
         /// </summary>
-        /// <param name="disposing">True if called from Dispose(), false if called from the finalizer.</param>
+
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed)
             {
                 if (disposing)
                 {
-                    // --- Clean up managed resources (event subscriptions) ---
                     lock (_observerLock)
                     {
                         if (_observedPropertiesPerOwner != null)
                         {
-                             //Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Disposing: Unsubscribing from {_observedPropertiesPerOwner.Count} owners.");
+
                             foreach (var owner in _observedPropertiesPerOwner.Keys)
                             {
                                 if (owner != null) // Safety check
@@ -209,45 +198,35 @@ namespace RimSharp.Core.Commands.Base
                             _observedPropertiesPerOwner = null; // Help GC
                         }
                     }
-                    // --- End clean up managed resources ---
                 }
 
                 // Clean up unmanaged resources (if any) here
 
                 _disposed = true;
-                 //Debug.WriteLine($"[DelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Disposed.");
+
             }
         }
 
-        // Optional Finalizer (only needed if you have unmanaged resources)
         // ~DelegateCommand()
         // {
-        //     Dispose(false);
-        // }
+
         #endregion
     }
 
     /// <summary>
-    /// A generic asynchronous command implementation that provides type safety for its parameters.
+
     /// </summary>
     /// <typeparam name="T">The type of parameter the command accepts.</typeparam>
-    public class AsyncDelegateCommand<T> : IDelegateCommand<T>, IDisposable // Add IDisposable
+    public class AsyncDelegateCommand<T> : IDelegateCommand<T>, IDisposable 
     {
         private readonly Func<T, CancellationToken, Task> _execute;
         private readonly Predicate<T>? _canExecute;
         private volatile bool _isExecuting;
-
-        // --- Observation Logic Fields ---
         private Dictionary<INotifyPropertyChanged, HashSet<string>>? _observedPropertiesPerOwner;
         private readonly object _observerLock = new object();
-        // --- End Observation Logic Fields ---
-
-        // --- IDisposable Fields ---
         private bool _disposed = false;
-        // --- End IDisposable Fields ---
 
-
-        public event EventHandler? CanExecuteChanged;
+public event EventHandler? CanExecuteChanged;
 
         public AsyncDelegateCommand(Func<T, CancellationToken, Task> execute, Predicate<T>? canExecute = null)
         {
@@ -305,7 +284,6 @@ namespace RimSharp.Core.Commands.Base
             finally
             {
                 _isExecuting = false;
-                // Check disposal state before raising event in finally block
                 if (!_disposed) RaiseCanExecuteChanged();
             }
         }
@@ -318,7 +296,7 @@ namespace RimSharp.Core.Commands.Base
              {
                  if(!_disposed)
                  {
-                    //Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] RaiseCanExecuteChanged invoked.");
+
                     CanExecuteChanged?.Invoke(this, EventArgs.Empty);
                  }
              });
@@ -327,17 +305,15 @@ namespace RimSharp.Core.Commands.Base
 
         #region Property Observation Logic (Unchanged Functionality, Added Disposal Check)
         /// <summary>
-        /// Sets up property change observation to automatically raise CanExecuteChanged when specific properties change.
-        /// Subscribes only once per owner object but tracks multiple properties per owner.
-        /// </summary>
-        /// <param name="owner">The INotifyPropertyChanged object that owns the property to observe.</param>
-        /// <param name="propertyName">The name of the property to observe on the owner.</param>
-        /// <returns>The command instance to allow for method chaining.</returns>
+
+/// </summary>
+
+/// <returns>The command instance to allow for method chaining.</returns>
         public AsyncDelegateCommand<T> ObservesProperty(INotifyPropertyChanged owner, string propertyName)
         {
              if (_disposed)
              {
-                 //Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Attempted to observe property on disposed command.");
+
                  return this;
              }
 
@@ -358,12 +334,12 @@ namespace RimSharp.Core.Commands.Base
                      observedProperties = new HashSet<string>();
                      _observedPropertiesPerOwner.Add(owner, observedProperties);
                      owner.PropertyChanged += Owner_PropertyChanged;
-                     //Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Subscribed to PropertyChanged on Owner {owner.GetHashCode()}");
+
                  }
 
                  if (observedProperties.Add(propertyName))
                  {
-                     //Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Observing property '{propertyName}' on Owner {owner.GetHashCode()}");
+
                  }
              }
             return this;
@@ -388,7 +364,7 @@ namespace RimSharp.Core.Commands.Base
                      if (string.IsNullOrEmpty(e.PropertyName) || (relevantProperties != null && relevantProperties.Contains(e.PropertyName)))
                      {
                          shouldRaise = true;
-                          //Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Property '{e.PropertyName ?? "null"}' changed on Owner {owner.GetHashCode()}. Will raise CanExecuteChanged.");
+
                      }
                  }
              }
@@ -417,7 +393,7 @@ namespace RimSharp.Core.Commands.Base
                     {
                         if (_observedPropertiesPerOwner != null)
                         {
-                             //Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Disposing: Unsubscribing from {_observedPropertiesPerOwner.Count} owners.");
+
                             foreach (var owner in _observedPropertiesPerOwner.Keys)
                             {
                                 if (owner != null) owner.PropertyChanged -= Owner_PropertyChanged;
@@ -428,16 +404,14 @@ namespace RimSharp.Core.Commands.Base
                     }
                 }
                 _disposed = true;
-                 //Debug.WriteLine($"[AsyncDelegateCommand<{typeof(T).Name}> {this.GetHashCode()}] Disposed.");
+
             }
         }
         #endregion
     }
 
-    // --- Non-Generic Classes Inherit IDisposable ---
-
     /// <summary>
-    /// Non-generic delegate command to simplify command creation. Inherits IDisposable from base class.
+
     /// </summary>
     public class DelegateCommand : DelegateCommand<object>
     {
@@ -459,7 +433,7 @@ namespace RimSharp.Core.Commands.Base
     }
 
     /// <summary>
-    /// Non-generic asynchronous delegate command to simplify async command creation. Inherits IDisposable from base class.
+
     /// </summary>
     public class AsyncDelegateCommand : AsyncDelegateCommand<object>
     {
@@ -482,3 +456,5 @@ namespace RimSharp.Core.Commands.Base
         }
     }
 }
+
+

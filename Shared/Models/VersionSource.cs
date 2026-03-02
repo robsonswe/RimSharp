@@ -1,7 +1,7 @@
 namespace RimSharp.Shared.Models
 {
     /// <summary>
-    /// Indicates the origin of a supported version entry for a mod.
+
     /// </summary>
     public enum VersionSource
     {
@@ -10,7 +10,7 @@ namespace RimSharp.Shared.Models
         /// </summary>
         Official,
         /// <summary>
-        /// Version derived from the Mlie's Forcing Mod XML files.
+
         /// </summary>
         Mlie,
         /// <summary>
@@ -23,3 +23,4 @@ namespace RimSharp.Shared.Models
         Custom
     }
 }
+

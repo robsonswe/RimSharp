@@ -50,7 +50,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public void GetMlieVersions_ShouldLoadVersionsFromXml()
         {
-            // Arrange
+
             var xml14 = @"
 <ModIds>
     <li>test.mod.one</li>
@@ -67,10 +67,8 @@ namespace RimSharp.Tests.Shared.Services.Implementations
 
             var service = new MlieVersionService(_mockPathService, _mockLogger);
 
-            // Act
             var result = service.GetMlieVersions();
 
-            // Assert
             result.Should().ContainKey("test.mod.one");
             result["test.mod.one"].Should().HaveCount(2).And.Contain(new[] { "1.4", "1.5" });
             
@@ -84,31 +82,28 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         [Fact]
         public void GetMlieVersions_CaseInsensitivePackageId()
         {
-            // Arrange
+
             var xml = @"<ModIds><li>Test.Mod.One</li></ModIds>";
             CreateMlieVersionFile("1.5", xml);
 
             var service = new MlieVersionService(_mockPathService, _mockLogger);
 
-            // Act
             var result = service.GetMlieVersions();
 
-            // Assert
             result.Should().ContainKey("test.mod.one");
         }
 
         [Fact]
         public void GetMlieVersions_WhenModFolderMissing_ShouldReturnEmpty()
         {
-            // Arrange
+
             Directory.Delete(_mlieModPath);
             var service = new MlieVersionService(_mockPathService, _mockLogger);
 
-            // Act
             var result = service.GetMlieVersions();
 
-            // Assert
             result.Should().BeEmpty();
         }
     }
 }
+

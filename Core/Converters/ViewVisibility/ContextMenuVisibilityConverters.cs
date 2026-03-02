@@ -8,7 +8,7 @@ using RimSharp.Shared.Models;
 namespace RimSharp.Core.Converters.ViewVisibility
 {
     /// <summary>
-    /// Hides context menu for Core and Expansion mods (they can't be modified/deleted)
+
     /// </summary>
     public class ContextMenuVisibilityConverter : IMultiValueConverter
     {
@@ -25,7 +25,7 @@ namespace RimSharp.Core.Converters.ViewVisibility
     }
 
     /// <summary>
-    /// Shows Redownload option only for WorkshopL (locally installed Workshop mods)
+
     /// </summary>
     public class ModTypeToRedownloadVisibilityConverter : IValueConverter
     {
@@ -45,7 +45,7 @@ namespace RimSharp.Core.Converters.ViewVisibility
     }
 
     /// <summary>
-    /// Shows Delete option for all mods EXCEPT Core, Expansion, and Workshop (not WorkshopL)
+
     /// WorkshopL, Git, and Zipped mods can be deleted
     /// </summary>
     public class ModTypeToDeleteVisibilityConverter : IValueConverter
@@ -66,4 +66,5 @@ namespace RimSharp.Core.Converters.ViewVisibility
         }
     }
 }
+
 

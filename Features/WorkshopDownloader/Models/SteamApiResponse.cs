@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace RimSharp.Features.WorkshopDownloader.Models
 {
-    // Represents the overall JSON structure from the Steam API
+
     public class SteamApiResponse
     {
         [JsonPropertyName("response")]
@@ -39,12 +39,12 @@ namespace RimSharp.Features.WorkshopDownloader.Models
         [JsonPropertyName("time_updated")]
         public long TimeUpdated { get; set; } // Unix timestamp (seconds since epoch)
 
-        [JsonPropertyName("file_size")] // Added
-        public long FileSize { get; set; } // Added: Size in bytes
+        [JsonPropertyName("file_size")]
+        public long FileSize { get; set; }
 
         [JsonPropertyName("tags")]
         public List<SteamTag> Tags { get; set; } = new();
-        // Add other fields if needed later, like description, preview_url etc.
+
         // [JsonPropertyName("description")]
         // public string Description { get; set; }
     }
@@ -55,3 +55,5 @@ namespace RimSharp.Features.WorkshopDownloader.Models
         public string Tag { get; set; } = string.Empty;
     }
 }
+
+

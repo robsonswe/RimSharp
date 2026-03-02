@@ -24,10 +24,9 @@ namespace RimSharp.Tests.Core.Converters.Logic
         [InlineData(null, "test", false)]
         public void Convert_ShouldReturnCorrectEquality(object? value, object? parameter, bool expected)
         {
-            // Act
+
             var result = _converter.Convert(value, typeof(bool), parameter, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
 
@@ -37,11 +36,11 @@ namespace RimSharp.Tests.Core.Converters.Logic
         [InlineData(null, "param", null)]
         public void ConvertBack_ShouldReturnParameterIfTrue(object? value, object? parameter, object? expected)
         {
-            // Act
+
             var result = _converter.ConvertBack(value, typeof(object), parameter, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
     }
 }
+

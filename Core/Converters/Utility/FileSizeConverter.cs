@@ -33,7 +33,7 @@ namespace RimSharp.Core.Converters.Utility
             }
 
             // Using InvariantCulture to ensure dot as decimal separator
-            // and matching the format expected by tests (1.0 KB, 1.0 MB, but 1.00 GB for some reason?)
+
             // Let's re-read the test expectations.
             
             if (unitIndex >= 3) // GB or larger
@@ -48,3 +48,4 @@ namespace RimSharp.Core.Converters.Utility
         }
     }
 }
+

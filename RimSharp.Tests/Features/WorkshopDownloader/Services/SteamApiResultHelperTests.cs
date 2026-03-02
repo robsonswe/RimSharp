@@ -15,17 +15,16 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
         [InlineData(999, "Unknown or unhandled Steam API result code (999).")]
         public void GetDescription_ShouldReturnCorrectString(int code, string expected)
         {
-            // Act
+
             var result = SteamApiResultHelper.GetDescription(code);
 
-            // Assert
             result.Should().Be(expected);
         }
 
         [Fact]
         public void ExtractAndSortVersionTags_ShouldSortNumerically()
         {
-            // Arrange
+
             var tags = new List<SteamTag>
             {
                 new SteamTag { Tag = "1.10" },
@@ -34,10 +33,8 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
                 new SteamTag { Tag = "1.5" }
             };
 
-            // Act
             var result = SteamApiResultHelper.ExtractAndSortVersionTags(tags);
 
-            // Assert
             result.Should().HaveCount(3);
             result.Should().ContainInOrder("1.2", "1.5", "1.10");
         }
@@ -45,11 +42,11 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
         [Fact]
         public void ExtractAndSortVersionTags_WhenEmpty_ShouldReturnEmpty()
         {
-            // Act
+
             var result = SteamApiResultHelper.ExtractAndSortVersionTags(null);
 
-            // Assert
             result.Should().BeEmpty();
         }
     }
 }
+

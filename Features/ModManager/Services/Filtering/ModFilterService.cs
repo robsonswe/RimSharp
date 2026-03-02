@@ -148,7 +148,6 @@ namespace RimSharp.Features.ModManager.Services.Filtering
         {
             IEnumerable<ModItem> filtered = source;
 
-            // 1. Text Search (Name/PackageId) - Now with improved Fuzzy Matching
             if (!string.IsNullOrWhiteSpace(criteria.SearchText))
             {
                 string searchLower = criteria.SearchText.ToLowerInvariant();
@@ -196,3 +195,4 @@ namespace RimSharp.Features.ModManager.Services.Filtering
         }
     }
 }
+

@@ -38,7 +38,7 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
         public ModsViewModelTests()
         {
             RimSharp.Core.Extensions.ThreadHelper.Initialize();
-            
+
             _mockDataService = Substitute.For<IModDataService>();
             _mockFilterService = Substitute.For<IModFilterService>();
             _mockModListManager = Substitute.For<IModListManager>();
@@ -94,7 +94,7 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
         [Fact]
         public async Task InitializeAsync_ShouldLoadDataAndInitializeManager()
         {
-            // Arrange
+
             var vm = CreateViewModel();
             var mods = new List<ModItem> { new ModItem { Name = "Mod 1", PackageId = "mod1" } };
             var activeIds = new List<string> { "mod1" };
@@ -102,10 +102,8 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
             _mockDataService.LoadAllModsAsync(Arg.Any<IProgress<(int current, int total, string message)>>()).Returns(mods);
             _mockDataService.LoadActiveModIdsFromConfig().Returns(activeIds);
 
-            // Act
             await vm.InitializeAsync();
 
-            // Assert
             await _mockDataService.Received(1).LoadAllModsAsync(Arg.Any<IProgress<(int current, int total, string message)>>());
             _mockDataService.Received(1).LoadActiveModIdsFromConfig();
             _mockModListManager.Received(1).Initialize(mods, activeIds);
@@ -115,19 +113,15 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
         [Fact]
         public async Task RequestRefreshCommand_ShouldReloadData()
         {
-            // Arrange
+
             var vm = CreateViewModel();
             _mockDataService.LoadAllModsAsync(Arg.Any<IProgress<(int current, int total, string message)>>()).Returns(new List<ModItem>());
             _mockDataService.LoadActiveModIdsFromConfig().Returns(new List<string>());
 
-            // Act
             vm.RequestRefreshCommand.Execute(null);
-            
-            // Wait for async command
             for (int i = 0; i < 100 && !vm.IsLoading; i++) await Task.Delay(10);
             for (int i = 0; i < 500 && vm.IsLoading; i++) await Task.Delay(10);
 
-            // Assert
             await _mockDataService.Received(1).LoadAllModsAsync(Arg.Any<IProgress<(int current, int total, string message)>>());
             _mockModListManager.Received(1).Initialize(Arg.Any<List<ModItem>>(), Arg.Any<List<string>>());
         }
@@ -135,14 +129,12 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
         [Fact]
         public void SelectedMod_WhenChanged_ShouldUpdateChildViewModels()
         {
-            // Arrange
+
             var vm = CreateViewModel();
             var mod = new ModItem { Name = "Test Mod" };
 
-            // Act
             vm.SelectedMod = mod;
 
-            // Assert
             vm.SelectedMod.Should().Be(mod);
             vm.ModDetailsViewModel.CurrentMod.Should().Be(mod);
             vm.ModActionsViewModel.SelectedMod.Should().Be(mod);
@@ -151,7 +143,7 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
         [Fact]
         public void OnModListManagerChanged_WhenSelectedModRemoved_ShouldResetSelectionToCore()
         {
-            // Arrange
+
             var vm = CreateViewModel();
             var coreMod = new ModItem { Name = "Core", PackageId = "Ludeon.RimWorld", ModType = ModType.Core };
             var otherMod = new ModItem { Name = "Other", PackageId = "other" };
@@ -167,30 +159,25 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
             _mockModListManager.GetAllMods().Returns(allMods);
             _mockModListManager.VirtualActiveMods.Returns(new List<(ModItem Mod, int LoadOrder)> { (coreMod, 0) });
 
-            // Act
-            // Raise the event manually using NSubstitute's helper if we could, but here we just call the handler directly if it were accessible, 
-            // or trigger it through the mock if it was a real class.
-            // Since it's a private handler, we trigger it via the mock's event.
-            _mockModListManager.ListChanged += Raise.Event<EventHandler<ModListChangedEventArgs>>(_mockModListManager, new ModListChangedEventArgs(true));
+_mockModListManager.ListChanged += Raise.Event<EventHandler<ModListChangedEventArgs>>(_mockModListManager, new ModListChangedEventArgs(true));
 
-            // Assert
             vm.SelectedMod.Should().Be(coreMod, "Because the previously selected mod was deleted, it should fall back to Core.");
         }
 
         [Fact]
         public async Task LoadDataAsync_WhenExceptionOccurs_ShouldShowErrorAndStopLoading()
         {
-            // Arrange
+
             var vm = CreateViewModel();
             _mockDataService.LoadAllModsAsync(Arg.Any<IProgress<(int current, int total, string message)>>())
                 .Returns(Task.FromException<List<ModItem>>(new Exception("Test Error")));
 
-            // Act
             await vm.InitializeAsync();
 
-            // Assert
             vm.IsLoading.Should().BeFalse();
             await _mockDialogService.Received(1).ShowError(Arg.Any<string>(), Arg.Is<string>(s => s.Contains("Test Error")));
         }
     }
 }
+
+

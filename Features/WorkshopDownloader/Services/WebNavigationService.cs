@@ -123,9 +123,8 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                     SourceUrlChanged?.Invoke(this, CurrentUrl);
                 }
             }
-    
 
-        private void OnNavigationStarting(object? sender, string url)
+private void OnNavigationStarting(object? sender, string url)
         {
             IntendedUrl = url;
             StatusChanged?.Invoke(this, $"Loading: {url}");
@@ -150,13 +149,11 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         private void OnDomContentLoaded(object? sender, string url)
         {
             Debug.WriteLine($"[WebNavigationService] DOMContentLoaded for: {url}");
-            
-            // Signal that navigation has reached a usable state early (perf: 3a2287e)
+
             NavigationEnded?.Invoke(this, EventArgs.Empty);
 
             DomContentLoaded?.Invoke(this, url);
-            
-            // Also check if this is a workshop page when DOM is ready
+
             if (IsPotentiallyWorkshopPage(url))
             {
                 PotentialWorkshopPageLoaded?.Invoke(this, url);
@@ -223,3 +220,5 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         }
     }
 }
+
+

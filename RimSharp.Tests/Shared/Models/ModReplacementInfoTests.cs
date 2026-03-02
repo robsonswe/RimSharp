@@ -9,7 +9,7 @@ namespace RimSharp.Tests.Shared.Models
         [Fact]
         public void OriginalVersionList_ShouldParseCorrectly()
         {
-            // Arrange
+
             var info = new ModReplacementInfo { Versions = "1.4, 1.5, " };
 
             // Act & Assert
@@ -21,7 +21,7 @@ namespace RimSharp.Tests.Shared.Models
         [Fact]
         public void ReplacementSteamUrl_ShouldReturnCorrectUrl()
         {
-            // Arrange
+
             var info = new ModReplacementInfo { ReplacementSteamId = "12345" };
 
             // Act & Assert
@@ -31,7 +31,7 @@ namespace RimSharp.Tests.Shared.Models
         [Fact]
         public void ReplacementSteamUrl_WithEmptyId_ShouldReturnNull()
         {
-            // Arrange
+
             var info = new ModReplacementInfo { ReplacementSteamId = "" };
 
             // Act & Assert
@@ -39,3 +39,4 @@ namespace RimSharp.Tests.Shared.Models
         }
     }
 }
+

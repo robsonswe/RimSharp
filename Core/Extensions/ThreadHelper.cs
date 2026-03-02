@@ -1,4 +1,4 @@
-// Core/Extensions/ThreadHelper.cs
+
 #nullable enable
 using System;
 using System.Linq;
@@ -15,7 +15,7 @@ namespace RimSharp.Core.Extensions
 
         static ThreadHelper()
         {
-            // Simple detection: entry assembly is null or name contains "test" or "nunit" or "xunit"
+
             var entryAssembly = System.Reflection.Assembly.GetEntryAssembly();
             var name = entryAssembly?.GetName().Name?.ToLowerInvariant() ?? "";
             
@@ -119,3 +119,5 @@ namespace RimSharp.Core.Extensions
         public static Task<T> RunOnBackgroundThreadAsync<T>(Func<Task<T>> asyncFunc) => asyncFunc == null ? Task.FromResult<T>(default!) : Task.Run(asyncFunc);
     }
 }
+
+

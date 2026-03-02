@@ -25,27 +25,25 @@ namespace RimSharp.Tests.Core.Converters.Visibility
         [InlineData("not a number", false)]
         public void Convert_WithNumericValues_ShouldReturnCorrectVisibility(object? value, bool expected)
         {
-            // Act
+
             var result = _converter.Convert(value!, typeof(bool), null, CultureInfo.InvariantCulture);
 
-            // Assert
             result.Should().Be(expected);
         }
 
         [Fact]
         public void Convert_WithCollection_ShouldReturnCorrectVisibility()
         {
-            // Arrange
+
             var emptyList = new List<string>();
             var nonEmptyList = new List<string> { "item" };
 
-            // Act
             var resultEmpty = _converter.Convert(emptyList, typeof(bool), null, CultureInfo.InvariantCulture);
             var resultNonEmpty = _converter.Convert(nonEmptyList, typeof(bool), null, CultureInfo.InvariantCulture);
 
-            // Assert
             resultEmpty.Should().Be(false);
             resultNonEmpty.Should().Be(true);
         }
     }
 }
+

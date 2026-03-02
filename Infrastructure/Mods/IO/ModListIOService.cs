@@ -31,10 +31,8 @@ namespace RimSharp.Infrastructure.Mods.IO
         private readonly IDownloadQueueService _downloadQueueService;
         private readonly IApplicationNavigationService _navigationService;
         private readonly ISteamWorkshopQueueProcessor _steamWorkshopQueueProcessor;
-        private readonly ILoggerService _logger; // Assuming logging is desired
+        private readonly ILoggerService _logger; 
         private const int MaxParallelApiOperations = 10; // Max parallel downloads/API checks
-
-        // Updated Constructor
         public ModListIOService(
             IPathService pathService,
             IModListManager modListManager,
@@ -64,10 +62,7 @@ namespace RimSharp.Infrastructure.Mods.IO
         {
             try
             {
-                // Ensure Lists directory exists
                 var listsDirectory = await EnsureListsDirectoryAsync();
-
-                // Show file dialog (async)
                 var (result, filePath) = await _dialogService.ShowOpenFileDialogAsync(
                     "Import Mod List",
                     "XML Files (*.xml)|*.xml|All Files (*.*)|*.*",
@@ -78,15 +73,11 @@ namespace RimSharp.Infrastructure.Mods.IO
 
                 Debug.WriteLine($"Importing mod list from: {filePath}");
 
-                // Load and parse XML file
                 var activeModIds = await ParseModListFileAsync(filePath);
                 if (activeModIds is null || !activeModIds.Any())
                     return;
-
-                // Update mods
                 var allMods = _modListManager.GetAllMods().ToList();
 
-                // Check which mods are missing
                 var availableModIds = allMods
                     .Where(m => !string.IsNullOrEmpty(m.PackageId))
                     .Select(m => m.PackageId!.ToLowerInvariant())
@@ -118,10 +109,7 @@ namespace RimSharp.Infrastructure.Mods.IO
 
             try
             {
-                // Ensure Lists directory exists
                 var listsDirectory = await EnsureListsDirectoryAsync();
-
-                // Show file dialog (async)
                 var (result, filePath) = await _dialogService.ShowSaveFileDialogAsync(
                     "Export Mod List",
                     "XML Files (*.xml)|*.xml|All Files (*.*)|*.*",
@@ -134,10 +122,7 @@ namespace RimSharp.Infrastructure.Mods.IO
 
                 Debug.WriteLine($"Exporting mod list to: {filePath}");
 
-                // Filter out mods without package IDs before saving
                 var validActiveMods = activeMods.Where(m => !string.IsNullOrEmpty(m.PackageId)).ToList();
-
-                // Create XML document with active mods
                 await SaveModListFileAsync(filePath, validActiveMods);
 
                 await _dialogService.ShowInformation("Export Successful", $"Mod list exported successfully to {Path.GetFileName(filePath)}!");
@@ -167,8 +152,6 @@ namespace RimSharp.Infrastructure.Mods.IO
 
             return listsDirectory;
         }
-
-        // FIX: Changed return type to Task<List<string>?> to indicate the result can be null.
         private async Task<List<string>?> ParseModListFileAsync(string filePath)
         {
             XDocument doc;
@@ -181,7 +164,7 @@ namespace RimSharp.Infrastructure.Mods.IO
                 await _dialogService.ShowError("Import Error", $"Error loading XML file: {ex.Message}");
                 return null;
             }
-            
+
             var activeModIds = _fileParser.Parse(doc);
 
             if (!activeModIds.Any())
@@ -245,14 +228,13 @@ namespace RimSharp.Infrastructure.Mods.IO
                     $"Successfully imported mod list from {fileName} with {importedCount} active mods.");
             }
         }
-        
+
         private async Task HandleMissingModDownloadRequestAsync(List<string> missingModIds)
         {
             if (missingModIds == null || !missingModIds.Any()) return;
 
             List<MissingModGroupViewModel> groups = new List<MissingModGroupViewModel>();
             List<string> unknownIds = new List<string>();
-            // FIX: Declare as nullable, as the service method might return null.
             Dictionary<string, ModDictionaryEntry>? allEntries = null;
 
             ProgressDialogViewModel? prepProgressDialog = null;
@@ -274,22 +256,19 @@ namespace RimSharp.Infrastructure.Mods.IO
                 if (prepProgressDialog == null) throw new InvalidOperationException("Preparation progress dialog not created");
                 if (prepCts == null) throw new InvalidOperationException("Preparation CTS not created");
 
-
-                await Task.Run(() =>
+await Task.Run(() =>
                 {
                     allEntries = _modDictionaryService.GetAllEntries();
                 }, prepCts.Token);
 
-                prepCts.Token.ThrowIfCancellationRequested(); 
-
-                // FIX: Add a null check before trying to use allEntries.
+                prepCts.Token.ThrowIfCancellationRequested();
                 if (allEntries is null)
                 {
                     _logger.LogWarning("Mod dictionary was null, cannot match missing mods.", nameof(ModListIOService));
                     await _dialogService.ShowWarning("Dictionary Missing", "Could not load the mod dictionary to find missing mods.");
                     return; // Exit early
                 }
-                
+
                 await ThreadHelper.RunOnUIThreadAsync(() => prepProgressDialog.Message = "Matching missing mods...");
 
                 await Task.Run(() =>
@@ -332,8 +311,6 @@ namespace RimSharp.Infrastructure.Mods.IO
                     var selectionViewModel = new MissingModSelectionDialogViewModel(groups, unknownIds);
                     selectionResult = await _dialogService.ShowMissingModSelectionDialogAsync(selectionViewModel);
                 });
-
-                // FIX: Add a null check on selectionResult before accessing its properties.
                 if (selectionResult != null && selectionResult.Result == MissingModSelectionResult.Download && selectionResult.SelectedSteamIds.Any())
                 {
                     _logger.LogInfo($"User selected {selectionResult.SelectedSteamIds.Count} published mod variants to download.", nameof(ModListIOService));
@@ -467,3 +444,5 @@ namespace RimSharp.Infrastructure.Mods.IO
         #endregion
     }
 }
+
+

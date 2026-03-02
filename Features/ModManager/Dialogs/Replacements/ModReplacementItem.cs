@@ -21,12 +21,8 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
             OriginalMod = originalMod ?? throw new ArgumentNullException(nameof(originalMod));
             ReplacementInfo = replacementInfo ?? throw new ArgumentNullException(nameof(replacementInfo));
         }
-
-        // --- NEW PROPERTIES TO STORE UPDATE TIMESTAMPS ---
         public long OriginalLastUpdate { get; set; }
         public long ReplacementLastUpdate { get; set; }
-
-        // --- NEW FORMATTED PROPERTIES FOR THE VIEW ---
         public string FormattedOriginalLastUpdate => 
             OriginalLastUpdate > 0 
             ? DateTimeOffset.FromUnixTimeSeconds(OriginalLastUpdate).ToString("dd MMM yyyy", CultureInfo.InvariantCulture)
@@ -85,3 +81,4 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
         }
     }
 }
+
