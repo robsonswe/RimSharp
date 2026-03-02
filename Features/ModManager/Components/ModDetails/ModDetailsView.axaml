@@ -179,16 +179,22 @@
                       RowDefinitions="Auto,Auto,Auto,Auto,Auto">
 
                     <!-- Content -->
-                    <i:Icon Grid.Row="0" Grid.Column="0" Value="fa-file-code" Classes="InfoIcon" Margin="0,0,8,8"/>
-                    <TextBlock Grid.Row="0" Grid.Column="1" Classes="InfoLabel" Text="Content:" Margin="0,0,5,8"/>
+                    <i:Icon Grid.Row="0" Grid.Column="0" Value="fa-file-code" Classes="InfoIcon" Margin="0,0,8,8"
+                            IsVisible="{Binding IsTechnicalDetailsVisible}"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Classes="InfoLabel" Text="Content:" Margin="0,0,5,8"
+                               IsVisible="{Binding IsTechnicalDetailsVisible}"/>
                     <SelectableTextBlock Grid.Row="0" Grid.Column="2" Classes="SelectableValue" Margin="0,0,0,8"
-                                         Text="{Binding Assemblies, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='XML-Only|C# Code', Mode=OneWay}"/>
+                                         Text="{Binding Assemblies, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='XML-Only|C# Code', Mode=OneWay}"
+                                         IsVisible="{Binding IsTechnicalDetailsVisible}"/>
 
                     <!-- Textures -->
-                    <i:Icon Grid.Row="1" Grid.Column="0" Value="fa-image" Classes="InfoIcon" Margin="0,0,8,8"/>
-                    <TextBlock Grid.Row="1" Grid.Column="1" Classes="InfoLabel" Text="Textures:" Margin="0,0,5,8"/>
+                    <i:Icon Grid.Row="1" Grid.Column="0" Value="fa-image" Classes="InfoIcon" Margin="0,0,8,8"
+                            IsVisible="{Binding IsTechnicalDetailsVisible}"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Classes="InfoLabel" Text="Textures:" Margin="0,0,5,8"
+                               IsVisible="{Binding IsTechnicalDetailsVisible}"/>
                     <SelectableTextBlock Grid.Row="1" Grid.Column="2" Classes="SelectableValue" Margin="0,0,0,8"
-                                         Text="{Binding Textures, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='None|Contains Textures', Mode=OneWay}"/>
+                                         Text="{Binding Textures, Converter={StaticResource BooleanToTextConverter}, ConverterParameter='None|Contains Textures', Mode=OneWay}"
+                                         IsVisible="{Binding IsTechnicalDetailsVisible}"/>
 
                     <!-- Size (hidden when zero) -->
                     <i:Icon Grid.Row="2" Grid.Column="0" Value="fa-weight-hanging" Classes="InfoIcon" Margin="0,0,8,8"
