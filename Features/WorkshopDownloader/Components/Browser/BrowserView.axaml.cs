@@ -1,61 +1,25 @@
+// Features/WorkshopDownloader/Components/Browser/BrowserView.axaml.cs
+#nullable enable
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Platform;
-using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.VisualTree;
-using Microsoft.Web.WebView2.WinForms;
-using Microsoft.Web.WebView2.Core;
+using Microsoft.Extensions.DependencyInjection;
 using Projektanker.Icons.Avalonia;
+using RimSharp.AppDir.AppFiles;
+using Avalonia.Layout;
 
 namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 {
-    public class WebView2Host : NativeControlHost
-    {
-        private readonly WebView2 _webView;
-        private IPlatformHandle? _currentHandle;
-
-        public WebView2Host(WebView2 webView)
-        {
-            _webView = webView;
-        }
-
-        protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
-        {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                if (_currentHandle != null)
-                {
-                    return _currentHandle;
-                }
-                if (_webView.Handle == IntPtr.Zero)
-                {
-                    _webView.CreateControl();
-                }
-
-                _currentHandle = new PlatformHandle(_webView.Handle, "HWND");
-                return _currentHandle;
-            }
-            return base.CreateNativeControlCore(parent);
-        }
-
-        protected override void DestroyNativeControlCore(IPlatformHandle control)
-        {
-            _currentHandle = null;
-            // Don't call base - avoids InvalidCastException
-        }
-    }
-
     public partial class BrowserView : UserControl
     {
-        private WebView2? _webView;
-        private WindowsBrowserControl? _wrappedControl;
+        private IBrowserControl? _wrappedControl;
         private ContentControl? _container;
         private bool _isInitialized;
 
@@ -74,12 +38,15 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
             if (_container == null) return;
 
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            var factory = (Application.Current as App)?.ServiceProvider?.GetService<IBrowserFactory>();
+            bool isSupported = factory?.IsSupported ?? false;
+
+            if (!isSupported)
             {
                 _container.Content = CreatePlaceholderContent(
                     "Web Browser", 
-                    "The embedded web browser is only available on Windows.", 
-                    "Please use the Steam Workshop website directly or run on Windows to use the integrated browser.", 
+                    "The embedded web browser is not available on this platform.", 
+                    "Please use the Steam Workshop website directly to browse mods.", 
                     false);
             }
             else
@@ -169,82 +136,51 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
         private async void BrowserView_DataContextChanged(object? sender, EventArgs e)
         {
-            Debug.WriteLine($"[BrowserView] DataContextChanged fired. IsInitialized={_isInitialized}, IsWindows={RuntimeInformation.IsOSPlatform(OSPlatform.Windows)}");
-            if (_isInitialized || !RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return;
+            if (_isInitialized) return;
+
+            var factory = (Application.Current as App)?.ServiceProvider?.GetService<IBrowserFactory>();
+            if (factory == null || !factory.IsSupported) return;
 
             if (DataContext is BrowserViewModel viewModel)
             {
                 Debug.WriteLine("[BrowserView] DataContext is BrowserViewModel, starting initialization...");
                 _isInitialized = true;
-                await InitializeWebViewAsync(viewModel);
+                await InitializeBrowserAsync(viewModel, factory);
             }
         }
 
-        private async Task InitializeWebViewAsync(BrowserViewModel viewModel)
+        private async Task InitializeBrowserAsync(BrowserViewModel viewModel, IBrowserFactory factory)
         {
             try
             {
-                Debug.WriteLine("[BrowserView] Starting WebView2 initialization...");
+                Debug.WriteLine("[BrowserView] Starting browser initialization via factory...");
 
-if (_container == null)
+                if (_container == null)
                 {
                     Debug.WriteLine("[BrowserView] ERROR: BrowserContainer is null!");
                     return;
                 }
 
-                string defaultUrl = "https://steamcommunity.com/app/294100/workshop/";
+                var (view, controller) = await factory.CreateBrowserAsync();
+                _wrappedControl = controller;
 
-                _webView = new WebView2
-                {
-                    Dock = System.Windows.Forms.DockStyle.Fill,
-                    Visible = true,
-                    Source = new Uri(defaultUrl)
-                };
-
-                Debug.WriteLine("[BrowserView] Calling EnsureCoreWebView2Async...");
-                await _webView.EnsureCoreWebView2Async();
-                Debug.WriteLine("[BrowserView] EnsureCoreWebView2Async completed.");
-
-                if (_webView.CoreWebView2 != null)
-                {
-                    Debug.WriteLine("[BrowserView] Configuring CoreWebView2 settings...");
-                    _webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
-                    _webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
-                    _webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
-                }
-                else
-                {
-                    Debug.WriteLine("[BrowserView] ERROR: CoreWebView2 is null!");
-                    return;
-                }
-
-                _wrappedControl = new WindowsBrowserControl(_webView);
-                Debug.WriteLine("[BrowserView] Created WindowsBrowserControl wrapper");
-                if (_container != null)
-                {
-                    _container.Content = CreatePlaceholderContent(
-                        "Loading Workshop", 
-                        "Connecting to Steam Workshop...", 
-                        "The page will appear shortly.", 
-                        true);
-                }
+                Debug.WriteLine("[BrowserView] Created browser control wrapper");
+                
                 var navigationStartedTcs = new TaskCompletionSource<bool>();
-                void OnFirstNavigation(object? s, string url)
+                void OnFirstNavigation(object? s, NavigationStartingEventArgs e)
                 {
-                    _wrappedControl.NavigationStarting -= OnFirstNavigation;
+                    if (_wrappedControl != null)
+                        _wrappedControl.NavigationStarting -= OnFirstNavigation;
                     navigationStartedTcs.TrySetResult(true);
                 }
                 _wrappedControl.NavigationStarting += OnFirstNavigation;
-
-                // Create the host but don't show it yet
-                var host = new WebView2Host(_webView);
 
                 await Task.WhenAny(navigationStartedTcs.Task, Task.Delay(5000));
 
                 if (_container != null)
                 {
-                    _container.Content = host;
-                    Debug.WriteLine("[BrowserView] Swapped placeholder for WebView2Host");
+                    _container.Content = view;
+                    Debug.WriteLine("[BrowserView] Swapped placeholder for browser view");
                 }
 
                 if (this.IsAttachedToVisualTree())
@@ -256,6 +192,14 @@ if (_container == null)
             catch (Exception ex)
             {
                 Debug.WriteLine($"[BrowserView] Initialization failed: {ex}");
+                if (_container != null)
+                {
+                    _container.Content = CreatePlaceholderContent(
+                        "Initialization Failed", 
+                        "The Workshop browser failed to start.", 
+                        ex.Message, 
+                        false);
+                }
             }
         }
 
@@ -302,5 +246,3 @@ if (_container == null)
         }
     }
 }
-
-

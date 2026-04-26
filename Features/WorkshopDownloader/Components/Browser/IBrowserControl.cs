@@ -5,6 +5,17 @@ using System.Threading.Tasks;
 
 namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 {
+    public class NavigationStartingEventArgs : EventArgs
+    {
+        public string Url { get; }
+        public bool Cancel { get; set; }
+
+        public NavigationStartingEventArgs(string url)
+        {
+            Url = url;
+        }
+    }
+
     public interface IBrowserControl
     {
         string? Source { get; set; }
@@ -20,7 +31,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
         Task<string> ExecuteScriptAsync(string script);
 
-        event EventHandler<string>? NavigationStarting;
+        event EventHandler<NavigationStartingEventArgs>? NavigationStarting;
         event EventHandler<string>? NavigationCompleted;
         event EventHandler<string>? DomContentLoaded;
         event EventHandler<bool>? LoadingStateChanged;

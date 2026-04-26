@@ -65,7 +65,7 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Components.DownloadQueue
                 _mockSteamApiClient
             );
 
-            _browserViewModel = new BrowserViewModel(mockNavigation, mockDownloaderParent);
+            _browserViewModel = new BrowserViewModel(mockNavigation, mockDownloaderParent, _mockDialogService);
         }
 
         private DownloadQueueViewModel CreateViewModel()

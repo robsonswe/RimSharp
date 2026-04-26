@@ -23,6 +23,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
     {
         private readonly IWebNavigationService _navigationService;
         private readonly DownloaderViewModel _parentViewModel;
+        private readonly IDialogService _dialogService;
         private IBrowserControl? _browserControl;
         private IModExtractorService? _extractorService;
         private bool _isAnalyzingContent = false;
@@ -99,10 +100,11 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
         public event EventHandler<string>? StatusChanged;
 
-        public BrowserViewModel(IWebNavigationService navigationService, DownloaderViewModel parentViewModel)
+        public BrowserViewModel(IWebNavigationService navigationService, DownloaderViewModel parentViewModel, IDialogService dialogService)
         {
             _navigationService = navigationService;
             _parentViewModel = parentViewModel;
+            _dialogService = dialogService;
 
             _navigationService.SourceUrlChanged += NavigationService_SourceUrlChanged;
             _navigationService.StatusChanged += NavigationService_StatusChanged;
@@ -178,6 +180,11 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             if (_disposed) return;
 
             // Clean up existing control
+            if (_browserControl != null)
+            {
+                _browserControl.NavigationStarting -= BrowserControl_NavigationStarting;
+            }
+
             if (_extractorService != null)
             {
                 _extractorService.IsModInfoAvailableChanged -= ExtractorService_IsModInfoAvailableChanged;
@@ -189,7 +196,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
             if (browserControl == null)
             {
-                
                 _navigationService.SetBrowserControl(null);
                 IsModInfoAvailable = false;
                 CanGoBack = false;
@@ -197,6 +203,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 IsBrowserInitialized = false;
                 return;
             }
+
+            browserControl.NavigationStarting += BrowserControl_NavigationStarting;
             IsBrowserInitialized = true;
             _extractorService = new ModExtractorService(browserControl);
             _extractorService.IsModInfoAvailableChanged += ExtractorService_IsModInfoAvailableChanged;
@@ -209,6 +217,30 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 CanGoBack = _navigationService.CanGoBack;
                 CanGoForward = _navigationService.CanGoForward;
             });
+        }
+
+        private void BrowserControl_NavigationStarting(object? sender, NavigationStartingEventArgs e)
+        {
+            if (string.IsNullOrEmpty(e.Url) || e.Url == "about:blank") return;
+
+            if (Uri.TryCreate(e.Url, UriKind.Absolute, out var uri))
+            {
+                bool isSteamLink = uri.Host.EndsWith("steamcommunity.com", StringComparison.OrdinalIgnoreCase) ||
+                                 uri.Host.EndsWith("steampowered.com", StringComparison.OrdinalIgnoreCase);
+
+                if (!isSteamLink)
+                {
+                    var result = _dialogService.ShowConfirmation(
+                        "Leaving Steam Workshop",
+                        $"You are about to navigate to an external website:\n\n{e.Url}\n\nDo you want to continue?",
+                        true);
+
+                    if (result != RimSharp.AppDir.Dialogs.MessageDialogResult.Yes)
+                    {
+                        e.Cancel = true;
+                    }
+                }
+            }
         }
 
         private void NavigationService_DomContentLoaded(object? sender, string url)
