@@ -47,8 +47,10 @@ namespace RimSharp.Tests.Core.Converters.Logic
         }
 
         [Fact]
-        public void Convert_WhenBothAreNull_ShouldReturnTrue()
+        public void Convert_WhenBothAreNull_ShouldReturnTrue_BecauseNullCheckShortCircuits()
         {
+            // The converter checks `if (value == null || parameter == null) return true` first,
+            // so even when both are null the null guard triggers and returns true before any equality check.
             var result = _converter.Convert(null, typeof(bool), null, CultureInfo.InvariantCulture);
 
             result.Should().Be(true);
