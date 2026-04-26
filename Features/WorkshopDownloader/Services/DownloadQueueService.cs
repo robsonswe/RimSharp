@@ -21,7 +21,8 @@ namespace RimSharp.Features.WorkshopDownloader.Services
     public class DownloadQueueService : IDownloadQueueService
     {
         private readonly ObservableCollection<DownloadItem> _items;
-        private readonly object _collectionLock = new object();
+        private readonly System.Collections.Generic.HashSet<string> _enqueuedSteamIds = new();
+        private readonly object _collectionLock = new();
 
         public ObservableCollection<DownloadItem> Items => _items;
 
@@ -37,11 +38,17 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             if (modInfo == null || string.IsNullOrEmpty(modInfo.SteamId))
                 return false;
 
-            if (IsInQueue(modInfo.SteamId))
+            lock (_collectionLock)
             {
-                NotifyStatusChanged($"Mod '{modInfo.Name}' is already in the download queue");
-                return false;
+                if (_enqueuedSteamIds.Contains(modInfo.SteamId))
+                {
+                    NotifyStatusChanged($"Mod '{modInfo.Name}' is already in the download queue");
+                    return false;
+                }
+                
+                _enqueuedSteamIds.Add(modInfo.SteamId);
             }
+
             var downloadItem = new DownloadItem
             {
                 Name = modInfo.Name,
@@ -67,29 +74,29 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             if (item == null)
                 return false;
 
-            bool removed = false;
+            lock (_collectionLock)
+            {
+                if (!string.IsNullOrEmpty(item.SteamId))
+                {
+                    _enqueuedSteamIds.Remove(item.SteamId);
+                }
+            }
+
             if (ThreadHelper.IsUiThread)
             {
-                removed = _items.Remove(item);
+                bool removed = _items.Remove(item);
                 if (removed)
                 {
                     NotifyStatusChanged($"Removed {item.Name} from download queue");
-                }
-                else
-                {
-                    Debug.WriteLine($"[DownloadQueueService] Failed to remove item {item.SteamId} - not found in collection.");
                 }
                 return removed;
             }
             else
             {
-
                 ThreadHelper.BeginInvokeOnUiThread(() =>
                 {
-                    if (_items.Remove(item))
-                    {
-                        NotifyStatusChanged($"Removed {item.Name} from download queue");
-                    }
+                    _items.Remove(item);
+                    NotifyStatusChanged($"Removed {item.Name} from download queue");
                 });
                 return true; 
             }
@@ -99,12 +106,10 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         {
             if (string.IsNullOrEmpty(steamId)) return false;
 
-            bool exists = false;
-            ThreadHelper.EnsureUiThread(() =>
+            lock (_collectionLock)
             {
-                exists = _items.Any(item => item.SteamId == steamId);
-            });
-            return exists;
+                return _enqueuedSteamIds.Contains(steamId);
+            }
         }
 
         private void NotifyStatusChanged(string message)
