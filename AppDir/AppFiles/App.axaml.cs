@@ -44,6 +44,7 @@ using System.Diagnostics;
 using System.Linq;
 using PInvoke;
 using RimSharp.Core.Services;
+using RimSharp.Features.WorkshopDownloader.Components.Browser;
 using Avalonia.Threading;
 
 namespace RimSharp.AppDir.AppFiles
@@ -147,6 +148,15 @@ namespace RimSharp.AppDir.AppFiles
             services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
             services.AddSingleton<ISystemInfoService>(provider => SystemInfoServiceFactory.Create());
             services.AddSingleton<IGitService, GitService>();
+
+            if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+            {
+                services.AddSingleton<IBrowserFactory, WindowsBrowserFactory>();
+            }
+            else
+            {
+                services.AddSingleton<IBrowserFactory, GenericBrowserFactory>();
+            }
 
             services.AddSingleton<string>(provider => AppDomain.CurrentDomain.BaseDirectory);
 

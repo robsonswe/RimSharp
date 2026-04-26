@@ -124,11 +124,11 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 }
             }
 
-private void OnNavigationStarting(object? sender, string url)
+        private void OnNavigationStarting(object? sender, RimSharp.Features.WorkshopDownloader.Components.Browser.NavigationStartingEventArgs e)
         {
-            IntendedUrl = url;
-            StatusChanged?.Invoke(this, $"Loading: {url}");
-            NavigationStarted?.Invoke(this, url);
+            IntendedUrl = e.Url;
+            StatusChanged?.Invoke(this, $"Loading: {e.Url}");
+            NavigationStarted?.Invoke(this, e.Url);
         }
 
         private void OnNavigationCompleted(object? sender, string url)

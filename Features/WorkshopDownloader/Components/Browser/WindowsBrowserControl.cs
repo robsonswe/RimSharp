@@ -27,6 +27,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             if (_webView.CoreWebView2 != null)
             {
                 _webView.CoreWebView2.DOMContentLoaded += OnWebViewDomContentLoaded;
+                _webView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
             }
             else
             {
@@ -35,17 +36,36 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                     if (e.IsSuccess && _webView.CoreWebView2 != null)
                     {
                         _webView.CoreWebView2.DOMContentLoaded += OnWebViewDomContentLoaded;
+                        _webView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
                     }
                 };
             }
+        }
+
+        private void OnNewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs e)
+        {
+            e.Handled = true;
+            _webView.CoreWebView2.Navigate(e.Uri);
         }
 
         private void OnWebViewNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
         {
             _isNavigating = true;
             _isDomReady = false;
-            NavigationStarting?.Invoke(this, e.Uri);
-            LoadingStateChanged?.Invoke(this, true);
+
+            var args = new NavigationStartingEventArgs(e.Uri);
+            NavigationStarting?.Invoke(this, args);
+
+            if (args.Cancel)
+            {
+                e.Cancel = true;
+                _isNavigating = false;
+                LoadingStateChanged?.Invoke(this, false);
+            }
+            else
+            {
+                LoadingStateChanged?.Invoke(this, true);
+            }
         }
 
         private void OnWebViewDomContentLoaded(object? sender, CoreWebView2DOMContentLoadedEventArgs e)
@@ -85,10 +105,9 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             return await _webView.CoreWebView2.ExecuteScriptAsync(script);
         }
 
-        public event EventHandler<string>? NavigationStarting;
+        public event EventHandler<NavigationStartingEventArgs>? NavigationStarting;
         public event EventHandler<string>? NavigationCompleted;
         public event EventHandler<string>? DomContentLoaded;
         public event EventHandler<bool>? LoadingStateChanged;
     }
 }
-
