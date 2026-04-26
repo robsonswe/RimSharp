@@ -27,6 +27,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         private IBrowserControl? _browserControl;
         private IModExtractorService? _extractorService;
         private bool _isAnalyzingContent = false;
+        private CancellationTokenSource? _analysisCts;
 
         private bool _canGoBack;
         public bool CanGoBack { get => _canGoBack; private set => this.RaiseAndSetIfChanged(ref _canGoBack, value); }
@@ -151,6 +152,10 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         {
             if (url == "about:blank") return;
             Debug.WriteLine($"[BrowserVM] NavigationStarted: {url}");
+            
+            // Cancel any ongoing analysis
+            _analysisCts?.Cancel();
+            
             RunOnUIThread(() =>
             {
                 IsLoading = true;
@@ -170,8 +175,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             RunOnUIThread(() =>
             {
                 IsLoading = false;
-                if (_isAnalyzingContent)
-                    _isAnalyzingContent = false;
             });
         }
 
@@ -247,50 +250,90 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         {
             Debug.WriteLine($"[BrowserViewModel] DOMContentLoaded received for: {url}");
             RunOnUIThread(() => OnPropertyChanged(nameof(IsDomReady)));
-            _ = AnalyzePageContentAsync();
+            
+            // Start aggressive analysis as soon as DOM is ready
+            _analysisCts?.Cancel();
+            _analysisCts = new CancellationTokenSource();
+            _ = AnalyzePageContentAsync(_analysisCts.Token);
         }
 
-        private async Task AnalyzePageContentAsync()
+        private async Task AnalyzePageContentAsync(CancellationToken token)
         {
-            if (_isAnalyzingContent || _extractorService == null) return;
+            if (_extractorService == null) return;
 
             _isAnalyzingContent = true;
-            Debug.WriteLine("[BrowserViewModel] Starting page content analysis...");
+            Debug.WriteLine("[BrowserViewModel] Starting aggressive page content analysis...");
 
             try
             {
-                // Reset previous state
-                _extractorService.Reset();
+                int maxAttempts = 12; // ~6 seconds total if it takes long
+                int attempt = 0;
+                bool foundInfo = false;
 
-                // Extract mod name, date, and Steam ID
-                var nameTask = _extractorService.ExtractModName();
-                var dateTask = _extractorService.ExtractModDateInfo();
-                var idTask = ExtractSteamIdFromPageAsync();
-
-                await Task.WhenAll(nameTask, dateTask, idTask);
-
-                var name = nameTask.Result;
-                var date = dateTask.Result;
-                var id = idTask.Result;
-
-                if (!string.IsNullOrEmpty(id))
+                while (attempt < maxAttempts && !token.IsCancellationRequested)
                 {
-                    CurrentPageSteamId = id;
+                    attempt++;
+                    
+                    // Initial wait is short, then increases slightly
+                    if (attempt > 1) await Task.Delay(500, token);
+
+                    // Reset previous state for this extraction attempt
+                    _extractorService.Reset();
+
+                    // Extract Steam ID
+                    var id = await ExtractSteamIdFromPageAsync(token);
+                    if (!string.IsNullOrEmpty(id))
+                    {
+                        CurrentPageSteamId = id;
+                    }
+
+                    // Check if it's a collection page (faster than full mod info)
+                    var collectionItems = await _extractorService.ExtractCollectionItemsAsync();
+                    if (collectionItems != null && collectionItems.Any())
+                    {
+                        IsCollectionUrl = true;
+                        IsValidModUrl = false;
+                        IsModInfoAvailable = false;
+                        foundInfo = true;
+                        StatusChanged?.Invoke(this, $"Collection detected ({collectionItems.Count} items).");
+                        break;
+                    }
+
+                    // Extract mod name and date in parallel
+                    var nameTask = _extractorService.ExtractModName();
+                    var dateTask = _extractorService.ExtractModDateInfo();
+
+                    await Task.WhenAll(nameTask, dateTask);
+
+                    var name = nameTask.Result;
+                    var date = dateTask.Result;
+
+                    if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(date))
+                    {
+                        IsValidModUrl = true;
+                        IsCollectionUrl = false;
+                        IsModInfoAvailable = true;
+                        foundInfo = true;
+                        Debug.WriteLine($"[BrowserViewModel] Mod info found on attempt {attempt}!");
+                        StatusChanged?.Invoke(this, "Mod details detected.");
+                        break;
+                    }
+
+                    // If we have an ID but not name after several attempts, we might be on a page where it's not possible to extract more info
+                    if (!string.IsNullOrEmpty(id) && attempt > 5 && string.IsNullOrEmpty(name))
+                    {
+                        break; 
+                    }
                 }
 
-                Debug.WriteLine($"[BrowserViewModel] Extraction complete - Name: '{name ?? "NULL"}', Date: '{date ?? "NULL"}', ID: '{id ?? "NULL"}'");
-                Debug.WriteLine($"[BrowserViewModel] IsModInfoAvailable = {_extractorService.IsModInfoAvailable}");
-
-                if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(date))
+                if (!foundInfo && !token.IsCancellationRequested)
                 {
-                    Debug.WriteLine("[BrowserViewModel] Mod info is available!");
+                    Debug.WriteLine("[BrowserViewModel] Analysis finished without finding complete mod info.");
                 }
-                else
-                {
-                    Debug.WriteLine("[BrowserViewModel] Mod info not available - not a valid mod page?");
-                    Debug.WriteLine($"[BrowserViewModel] Name is null/empty: {string.IsNullOrEmpty(name)}");
-                    Debug.WriteLine($"[BrowserViewModel] Date is null/empty: {string.IsNullOrEmpty(date)}");
-                }
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine("[BrowserViewModel] Page analysis cancelled.");
             }
             catch (Exception ex)
             {
@@ -298,7 +341,10 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             }
             finally
             {
-                _isAnalyzingContent = false;
+                if (!token.IsCancellationRequested)
+                {
+                    _isAnalyzingContent = false;
+                }
             }
         }
 
@@ -381,6 +427,17 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             if (e.PropertyName == nameof(DownloaderViewModel.IsOperationInProgress))
             {
                 IsOperationInProgress = _parentViewModel.IsOperationInProgress;
+
+                // Problem 2 fix: If a blocking operation (like Check Updates) finished 
+                // and we still don't have mod info, trigger one more aggressive check.
+                if (!IsOperationInProgress && !IsModInfoAvailable && 
+                    (IsValidModUrl || IsCollectionUrl) && !string.IsNullOrEmpty(ActualCurrentUrl))
+                {
+                    Debug.WriteLine("[BrowserViewModel] Operation finished, re-triggering analysis to ensure button enablement.");
+                    _analysisCts?.Cancel();
+                    _analysisCts = new CancellationTokenSource();
+                    _ = AnalyzePageContentAsync(_analysisCts.Token);
+                }
             }
         }
 
@@ -436,36 +493,20 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             if (_extractorService != null) IsModInfoAvailable = _extractorService.IsModInfoAvailable;
         }
 
-        private async void NavigationService_PotentialWorkshopPageLoaded(object? sender, string url)
+        private void NavigationService_PotentialWorkshopPageLoaded(object? sender, string url)
         {
-            if (_disposed || _extractorService == null || _isAnalyzingContent) return;
+            if (_disposed || _extractorService == null) return;
+            
+            // If already have info, no need to re-analyze
             if ((IsValidModUrl && IsModInfoAvailable) || IsCollectionUrl) return;
 
-            _isAnalyzingContent = true;
-            StatusChanged?.Invoke(this, "Analyzing page content...");
-
-            var collectionItems = await _extractorService.ExtractCollectionItemsAsync();
-            bool isCollection = collectionItems != null && collectionItems.Any();
-
-            if (isCollection)
+            // Trigger analysis if not already running or if it hasn't succeeded yet
+            if (!_isAnalyzingContent || !IsModInfoAvailable)
             {
-                IsCollectionUrl = true;
-                IsValidModUrl = false;
-                IsModInfoAvailable = false;
-                StatusChanged?.Invoke(this, $"Collection detected ({collectionItems!.Count} items).");
+                 _analysisCts?.Cancel();
+                 _analysisCts = new CancellationTokenSource();
+                 _ = AnalyzePageContentAsync(_analysisCts.Token);
             }
-            else
-            {
-                var modInfo = await _extractorService.ExtractFullModInfo();
-                if (modInfo != null)
-                {
-                    IsValidModUrl = true;
-                    IsCollectionUrl = false;
-                    IsModInfoAvailable = true;
-                    StatusChanged?.Invoke(this, "Mod details detected.");
-                }
-            }
-            _isAnalyzingContent = false;
         }
 
         protected override void Dispose(bool disposing)
@@ -474,6 +515,9 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             {
                 if (disposing)
                 {
+                    _analysisCts?.Cancel();
+                    _analysisCts?.Dispose();
+
                     _navigationService.SourceUrlChanged -= NavigationService_SourceUrlChanged;
                     _navigationService.StatusChanged -= NavigationService_StatusChanged;
                     _navigationService.NavigationStateChanged -= NavigationService_NavigationStateChanged;
@@ -494,5 +538,3 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         }
     }
 }
-
-

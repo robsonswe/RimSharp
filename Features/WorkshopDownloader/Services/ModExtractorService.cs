@@ -304,12 +304,21 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
             if (string.IsNullOrEmpty(id)) return null;
 
-            string? modName = await ExtractModName();
-            string? dateInfo = await ExtractModDateInfo();
+            // Start all extraction tasks in parallel
+            var modNameTask = ExtractModName();
+            var dateInfoTask = ExtractModDateInfo();
+            var fileSizeRawTask = ExtractFileSizeRawString();
+            var latestVersionsTask = ExtractVersionTagsAsync();
+
+            await Task.WhenAll(modNameTask, dateInfoTask, fileSizeRawTask, latestVersionsTask);
+
+            string? modName = modNameTask.Result;
+            string? dateInfo = dateInfoTask.Result;
+            string? fileSizeRaw = fileSizeRawTask.Result;
+            List<string> latestVersions = latestVersionsTask.Result;
+
             string standardDate = await ConvertToStandardDate(dateInfo ?? string.Empty);
-            string? fileSizeRaw = await ExtractFileSizeRawString();
             long fileSize = await ParseFileSizeAsync(fileSizeRaw ?? string.Empty);
-            List<string> latestVersions = await ExtractVersionTagsAsync();
 
             if (string.IsNullOrEmpty(modName)) modName = $"Mod {id}";
 
