@@ -18,11 +18,21 @@
         <Setter Property="Padding" Value="5"/>
     </Style>
 
+    <!-- Global TextBox Selection Styles -->
+    <Style Selector="TextBox">
+        <Setter Property="SelectionBrush" Value="{DynamicResource RimworldLightBrownBrush}"/>
+        <Setter Property="SelectionForegroundBrush" Value="{DynamicResource RimworldWhiteBrush}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+    </Style>
+
     <!-- RimWorld-style TextBox -->
     <Style Selector="TextBox.RimworldTextBox">
         <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="SelectionBrush" Value="{DynamicResource RimworldLightBrownBrush}"/>
+        <Setter Property="SelectionForegroundBrush" Value="{DynamicResource RimworldWhiteBrush}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource RimworldBrownBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="6,0,6,0"/>
         <Setter Property="MinHeight" Value="26"/>
@@ -47,9 +57,12 @@
                                        CaretIndex="{TemplateBinding CaretIndex}"
                                        SelectionStart="{TemplateBinding SelectionStart}"
                                        SelectionEnd="{TemplateBinding SelectionEnd}"
+                                       SelectionBrush="{TemplateBinding SelectionBrush}"
+                                       SelectionForegroundBrush="{TemplateBinding SelectionForegroundBrush}"
+                                       CaretBrush="{TemplateBinding CaretBrush}"
                                        TextAlignment="{TemplateBinding TextAlignment}"
                                        TextWrapping="{TemplateBinding TextWrapping}"
-                                       IsHitTestVisible="False"/>
+                                       IsHitTestVisible="True"/>
                     </ScrollViewer>
                 </Border>
             </ControlTemplate>
@@ -61,6 +74,9 @@
         <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="SelectionBrush" Value="{DynamicResource RimworldLightBrownBrush}"/>
+        <Setter Property="SelectionForegroundBrush" Value="{DynamicResource RimworldWhiteBrush}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource RimworldBrownBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="6,0,6,0"/>
         <Setter Property="MinHeight" Value="26"/>
@@ -84,9 +100,12 @@
                                            CaretIndex="{TemplateBinding CaretIndex}"
                                            SelectionStart="{TemplateBinding SelectionStart}"
                                            SelectionEnd="{TemplateBinding SelectionEnd}"
+                                           SelectionBrush="{TemplateBinding SelectionBrush}"
+                                           SelectionForegroundBrush="{TemplateBinding SelectionForegroundBrush}"
+                                           CaretBrush="{TemplateBinding CaretBrush}"
                                            TextAlignment="{TemplateBinding TextAlignment}"
                                            TextWrapping="{TemplateBinding TextWrapping}"
-                                           IsHitTestVisible="False"/>
+                                           IsHitTestVisible="True"/>
                         </ScrollViewer>
                         <TextBlock x:Name="PART_Watermark"
                                    Text="{TemplateBinding Watermark}"
