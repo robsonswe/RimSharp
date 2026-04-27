@@ -30,6 +30,35 @@ namespace RimSharp.Tests.Shared.Models
 
             act.Should().Throw<ArgumentNullException>();
         }
+
+        [Fact]
+        public void Constructor_WithNullDescription_ShouldDefaultToEmptyString()
+        {
+
+            var mod = new ModItem { Name = "Test Mod" };
+
+            var issue = new ModIssue(mod, ModIssueType.Sorting, null!);
+
+            issue.Description.Should().BeEmpty();
+        }
+
+        [Theory]
+        [InlineData(ModIssueType.Sorting)]
+        [InlineData(ModIssueType.Dependency)]
+        [InlineData(ModIssueType.Incompatibility)]
+        [InlineData(ModIssueType.SoftIncompatibility)]
+        [InlineData(ModIssueType.HardIncompatibility)]
+        [InlineData(ModIssueType.VersionMismatch)]
+        [InlineData(ModIssueType.Duplicate)]
+        public void Constructor_ShouldPreserveAllIssueTypes(ModIssueType type)
+        {
+
+            var mod = new ModItem { Name = "Test Mod" };
+
+            var issue = new ModIssue(mod, type, "desc");
+
+            issue.Type.Should().Be(type);
+        }
     }
 }
 
