@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -117,7 +118,7 @@ namespace RimSharp.Tests.Core.Converters.Logic
         [Fact]
         public void Convert_WithUnsupportedType_ShouldReturnFalse()
         {
-            var result = _converter.Convert("a string", typeof(bool), null, CultureInfo.InvariantCulture);
+            var result = _converter.Convert(DateTime.Now, typeof(bool), null, CultureInfo.InvariantCulture);
 
             result.Should().Be(false);
         }
