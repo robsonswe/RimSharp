@@ -36,6 +36,44 @@ namespace RimSharp.Tests.Shared.Models
 
             act.Should().Throw<ArgumentNullException>();
         }
+
+        [Fact]
+        public void Equals_WhenVersionsDiffer_ShouldBeFalse()
+        {
+
+            var v1 = new VersionSupport("1.4", VersionSource.Official);
+            var v2 = new VersionSupport("1.5", VersionSource.Official);
+
+            v1.Equals(v2).Should().BeFalse();
+        }
+
+        [Fact]
+        public void Equals_WhenComparedWithNull_ShouldBeFalse()
+        {
+
+            var v1 = new VersionSupport("1.4", VersionSource.Official);
+
+            v1.Equals(null).Should().BeFalse();
+        }
+
+        [Fact]
+        public void GetHashCode_WhenVersionsDiffer_ShouldDiffer()
+        {
+
+            var v1 = new VersionSupport("1.4", VersionSource.Official);
+            var v2 = new VersionSupport("1.5", VersionSource.Official);
+
+            v1.GetHashCode().Should().NotBe(v2.GetHashCode());
+        }
+
+        [Fact]
+        public void Version_ShouldBeTrimmed()
+        {
+
+            var v = new VersionSupport("  1.4  ", VersionSource.Official);
+
+            v.Version.Should().Be("1.4");
+        }
     }
 }
 

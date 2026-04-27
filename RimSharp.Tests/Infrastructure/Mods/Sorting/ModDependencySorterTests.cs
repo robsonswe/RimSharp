@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
@@ -122,6 +123,102 @@ namespace RimSharp.Tests.Infrastructure.Mods.Sorting
 
             result.IsSuccess.Should().BeTrue();
             result.SortedMods.Last().Should().Be(rocketman);
+        }
+
+        [Fact]
+        public void TopologicalSort_ChainDependencies_ShouldRespectFullChain()
+        {
+            // A must come before B, B must come before C
+            var modA = new ModItem { Name = "Mod A", PackageId = "modA" };
+            var modB = new ModItem { Name = "Mod B", PackageId = "modB", LoadAfter = new List<string> { "modA" } };
+            var modC = new ModItem { Name = "Mod C", PackageId = "modC", LoadAfter = new List<string> { "modB" } };
+            var mods = new List<ModItem> { modC, modB, modA };
+
+            var result = _sorter.TopologicalSort(mods);
+
+            result.IsSuccess.Should().BeTrue();
+            var sorted = result.SortedMods;
+            sorted.IndexOf(modA).Should().BeLessThan(sorted.IndexOf(modB));
+            sorted.IndexOf(modB).Should().BeLessThan(sorted.IndexOf(modC));
+        }
+
+        [Fact]
+        public void TopologicalSort_LoadBeforeConstraint_ShouldBeRespected()
+        {
+            // modA declares it should load before modB
+            var modA = new ModItem { Name = "Mod A", PackageId = "modA", LoadBefore = new List<string> { "modB" } };
+            var modB = new ModItem { Name = "Mod B", PackageId = "modB" };
+            var mods = new List<ModItem> { modB, modA };
+
+            var result = _sorter.TopologicalSort(mods);
+
+            result.IsSuccess.Should().BeTrue();
+            result.SortedMods.IndexOf(modA).Should().BeLessThan(result.SortedMods.IndexOf(modB));
+        }
+
+        [Fact]
+        public void TopologicalSort_MultipleTierOneMods_ShouldAllPrecedeCore()
+        {
+            var harmony = new ModItem { Name = "Harmony", PackageId = "brrainz.harmony", ModType = ModType.Workshop, LoadBefore = new List<string> { "Ludeon.RimWorld" } };
+            var hugsLib = new ModItem { Name = "HugsLib", PackageId = "unlimitedhugs.hugslib", ModType = ModType.Workshop, LoadBefore = new List<string> { "Ludeon.RimWorld" } };
+            var core = new ModItem { Name = "Core", PackageId = "Ludeon.RimWorld", ModType = ModType.Core };
+            var mods = new List<ModItem> { core, hugsLib, harmony };
+
+            var result = _sorter.TopologicalSort(mods);
+
+            result.IsSuccess.Should().BeTrue();
+            var coreIndex = result.SortedMods.IndexOf(core);
+            result.SortedMods.IndexOf(harmony).Should().BeLessThan(coreIndex);
+            result.SortedMods.IndexOf(hugsLib).Should().BeLessThan(coreIndex);
+        }
+
+        [Fact]
+        public void TopologicalSort_LoadAfterAndLoadBeforeCombined_ShouldProduceCorrectOrder()
+        {
+            // modB loads after modA AND before modC
+            var modA = new ModItem { Name = "Mod A", PackageId = "modA" };
+            var modB = new ModItem { Name = "Mod B", PackageId = "modB", LoadAfter = new List<string> { "modA" }, LoadBefore = new List<string> { "modC" } };
+            var modC = new ModItem { Name = "Mod C", PackageId = "modC" };
+            var mods = new List<ModItem> { modC, modA, modB };
+
+            var result = _sorter.TopologicalSort(mods);
+
+            result.IsSuccess.Should().BeTrue();
+            var sorted = result.SortedMods;
+            sorted.IndexOf(modA).Should().BeLessThan(sorted.IndexOf(modB));
+            sorted.IndexOf(modB).Should().BeLessThan(sorted.IndexOf(modC));
+        }
+
+        [Fact]
+        public void TopologicalSort_WhenCancelled_ShouldThrowOrReturnEarly()
+        {
+            using var cts = new System.Threading.CancellationTokenSource();
+            cts.Cancel();
+
+            var mods = new List<ModItem>
+            {
+                new ModItem { Name = "Mod A", PackageId = "modA" },
+                new ModItem { Name = "Mod B", PackageId = "modB" }
+            };
+
+            Action act = () => _sorter.TopologicalSort(mods, cts.Token);
+
+            act.Should().Throw<OperationCanceledException>();
+        }
+
+        [Fact]
+        public void TopologicalSort_UnrelatedMods_ShouldAllAppearInResult()
+        {
+            var modA = new ModItem { Name = "Mod A", PackageId = "modA" };
+            var modB = new ModItem { Name = "Mod B", PackageId = "modB" };
+            var modC = new ModItem { Name = "Mod C", PackageId = "modC" };
+            var mods = new List<ModItem> { modA, modB, modC };
+
+            var result = _sorter.TopologicalSort(mods);
+
+            result.IsSuccess.Should().BeTrue();
+            result.SortedMods.Should().HaveCount(3);
+            result.SortedMods.Should().Contain(new[] { modA, modB, modC });
         }
     }
 }
