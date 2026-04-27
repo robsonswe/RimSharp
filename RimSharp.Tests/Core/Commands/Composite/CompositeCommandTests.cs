@@ -124,6 +124,65 @@ namespace RimSharp.Tests.Core.Commands.Composite
 
             raised.Should().BeTrue();
         }
+
+        [Fact]
+        public void RegisterCommand_WhenSameCommandRegisteredTwice_ShouldOnlyAddOnce()
+        {
+
+            var composite = new CompositeCommand();
+            var command = Substitute.For<ICommand>();
+
+            composite.RegisterCommand(command);
+            composite.RegisterCommand(command);
+
+            composite.RegisteredCommands.Should().HaveCount(1);
+        }
+
+        [Fact]
+        public void UnregisterCommand_WhenCommandNotRegistered_ShouldNotThrow()
+        {
+
+            var composite = new CompositeCommand();
+            var command = Substitute.For<ICommand>();
+
+            Action act = () => composite.UnregisterCommand(command);
+
+            act.Should().NotThrow();
+        }
+
+        [Fact]
+        public void RegisterCommand_WithNull_ShouldThrowArgumentNullException()
+        {
+
+            var composite = new CompositeCommand();
+
+            Action act = () => composite.RegisterCommand(null!);
+
+            act.Should().Throw<ArgumentNullException>();
+        }
+
+        [Fact]
+        public void CanExecute_WithMonitoringDisabled_ShouldStillEvaluateCommands()
+        {
+
+            var composite = new CompositeCommand(monitorCommandActivity: false);
+            var cmd = Substitute.For<ICommand>();
+            cmd.CanExecute(null).Returns(true);
+            composite.RegisterCommand(cmd);
+
+            composite.CanExecute(null).Should().BeTrue();
+        }
+
+        [Fact]
+        public void Execute_WhenNoCommands_ShouldNotThrow()
+        {
+
+            var composite = new CompositeCommand();
+
+            Action act = () => composite.Execute(null);
+
+            act.Should().NotThrow();
+        }
     }
 }
 

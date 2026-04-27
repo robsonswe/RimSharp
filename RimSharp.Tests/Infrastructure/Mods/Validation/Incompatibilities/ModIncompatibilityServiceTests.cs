@@ -82,6 +82,59 @@ namespace RimSharp.Tests.Infrastructure.Mods.Validation.Incompatibilities
             groups[0].InvolvedMods.Should().HaveCount(3);
             groups[0].InvolvedMods.Should().Contain(new[] { modA, modB, modC });
         }
+
+        [Fact]
+        public void FindIncompatibilities_WhenNoIncompatibilities_ShouldReturnEmpty()
+        {
+
+            var modA = new ModItem { Name = "Mod A", PackageId = "modA" };
+            var modB = new ModItem { Name = "Mod B", PackageId = "modB" };
+
+            var result = _service.FindIncompatibilities(new List<ModItem> { modA, modB });
+
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void FindIncompatibilities_WhenListIsEmpty_ShouldReturnEmpty()
+        {
+
+            var result = _service.FindIncompatibilities(new List<ModItem>());
+
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void FindIncompatibilities_MutualRuleDeclaration_ShouldNotDuplicatePair()
+        {
+            // Both A and B declare each other as incompatible — still only one conflict pair
+            var modA = new ModItem { Name = "Mod A", PackageId = "modA" };
+            var modB = new ModItem { Name = "Mod B", PackageId = "modB" };
+            modA.IncompatibleWith.Add("modB", new ModIncompatibilityRule { Comment = new List<string> { "Conflict" } });
+            modB.IncompatibleWith.Add("modA", new ModIncompatibilityRule { Comment = new List<string> { "Conflict" } });
+
+            var result = _service.FindIncompatibilities(new List<ModItem> { modA, modB });
+
+            // Should still be 2 relations (A→B and B→A), not 4
+            result.Should().HaveCount(2);
+        }
+
+        [Fact]
+        public void GroupIncompatibilities_TwoIsolatedPairs_ShouldFormTwoGroups()
+        {
+            // A conflicts with B; C conflicts with D — two separate groups
+            var modA = new ModItem { Name = "Mod A", PackageId = "modA" };
+            var modB = new ModItem { Name = "Mod B", PackageId = "modB" };
+            var modC = new ModItem { Name = "Mod C", PackageId = "modC" };
+            var modD = new ModItem { Name = "Mod D", PackageId = "modD" };
+            modA.IncompatibleWith.Add("modB", new ModIncompatibilityRule { Comment = new List<string> { "AB" } });
+            modC.IncompatibleWith.Add("modD", new ModIncompatibilityRule { Comment = new List<string> { "CD" } });
+
+            var incompatibilities = _service.FindIncompatibilities(new List<ModItem> { modA, modB, modC, modD });
+            var groups = _service.GroupIncompatibilities(incompatibilities);
+
+            groups.Should().HaveCount(2);
+        }
     }
 }
 

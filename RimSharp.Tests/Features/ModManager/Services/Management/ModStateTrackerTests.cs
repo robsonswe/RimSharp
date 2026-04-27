@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using FluentAssertions;
 using RimSharp.Features.ModManager.Services.Management;
@@ -66,6 +67,60 @@ namespace RimSharp.Tests.Features.ModManager.Services.Management
 
             _tracker.IsModActive(mod).Should().BeTrue();
             _tracker.AllInactiveMods.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Activate_WhenAlreadyActive_ShouldNotAddDuplicate()
+        {
+
+            var mod = new ModItem { Name = "Mod", PackageId = "mod" };
+            var lookup = new Dictionary<string, ModItem> { ["mod"] = mod };
+            _tracker.Initialize(new[] { mod }, lookup, new[] { "mod" });
+
+            // Activate again — should be a no-op
+            _tracker.Activate(mod);
+
+            _tracker.IsModActive(mod).Should().BeTrue();
+            _tracker.AllInactiveMods.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Deactivate_WhenModNotActive_ShouldNotThrow()
+        {
+
+            var mod = new ModItem { Name = "Mod", PackageId = "mod" };
+            _tracker.Initialize(new[] { mod }, new Dictionary<string, ModItem> { ["mod"] = mod }, new string[0]);
+
+            Action act = () => _tracker.Deactivate(mod);
+
+            act.Should().NotThrow();
+        }
+
+        [Fact]
+        public void Remove_ShouldClearModFromBothLists()
+        {
+
+            var mod = new ModItem { Name = "Mod", PackageId = "mod" };
+            _tracker.Initialize(new[] { mod }, new Dictionary<string, ModItem> { ["mod"] = mod }, new string[0]);
+
+            _tracker.Remove(mod);
+
+            _tracker.IsModActive(mod).Should().BeFalse();
+            _tracker.AllInactiveMods.Should().NotContain(mod);
+        }
+
+        [Fact]
+        public void Initialize_InactiveModsShouldBeSortedAlphabetically()
+        {
+
+            var modZ = new ModItem { Name = "Zephyr Mod", PackageId = "mod.z" };
+            var modA = new ModItem { Name = "Alpha Mod", PackageId = "mod.a" };
+            var modM = new ModItem { Name = "Middle Mod", PackageId = "mod.m" };
+            _tracker.Initialize(new[] { modZ, modA, modM }, new Dictionary<string, ModItem>(), new string[0]);
+
+            _tracker.AllInactiveMods[0].Name.Should().Be("Alpha Mod");
+            _tracker.AllInactiveMods[1].Name.Should().Be("Middle Mod");
+            _tracker.AllInactiveMods[2].Name.Should().Be("Zephyr Mod");
         }
     }
 }

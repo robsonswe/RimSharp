@@ -60,6 +60,58 @@ namespace RimSharp.Tests.Core.Commands.Base
 
             raised.Should().BeFalse();
         }
+
+        [Fact]
+        public void Execute_WhenCanExecuteIsFalse_ShouldNotCallAction()
+        {
+
+            bool executed = false;
+            var command = new DelegateCommand(() => executed = true, () => false);
+
+            command.Execute(null);
+
+            executed.Should().BeFalse();
+        }
+
+        [Fact]
+        public void CanExecute_WhenNoPredicate_ShouldAlwaysReturnTrue()
+        {
+
+            var command = new DelegateCommand(() => { });
+
+            command.CanExecute(null).Should().BeTrue();
+        }
+
+        [Fact]
+        public void ObservesProperty_UnrelatedPropertyChange_ShouldNotFireEvent()
+        {
+
+            var owner = Substitute.For<INotifyPropertyChanged>();
+            var command = new DelegateCommand(() => { }).ObservesProperty(owner, "WatchedProperty");
+            bool raised = false;
+            command.CanExecuteChanged += (s, e) => raised = true;
+
+            owner.PropertyChanged += Raise.Event<PropertyChangedEventHandler>(owner, new PropertyChangedEventArgs("OtherProperty"));
+
+            raised.Should().BeFalse();
+        }
+
+        [Fact]
+        public void ObservesProperty_MultipleProperties_ShouldFireOnEither()
+        {
+
+            var owner = Substitute.For<INotifyPropertyChanged>();
+            var command = new DelegateCommand(() => { })
+                .ObservesProperty(owner, "PropA")
+                .ObservesProperty(owner, "PropB");
+            int raiseCount = 0;
+            command.CanExecuteChanged += (s, e) => raiseCount++;
+
+            owner.PropertyChanged += Raise.Event<PropertyChangedEventHandler>(owner, new PropertyChangedEventArgs("PropA"));
+            owner.PropertyChanged += Raise.Event<PropertyChangedEventHandler>(owner, new PropertyChangedEventArgs("PropB"));
+
+            raiseCount.Should().Be(2);
+        }
     }
 }
 
