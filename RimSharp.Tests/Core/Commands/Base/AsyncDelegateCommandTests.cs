@@ -54,6 +54,48 @@ namespace RimSharp.Tests.Core.Commands.Base
 
             raised.Should().BeTrue();
         }
+
+        [Fact]
+        public void CanExecute_WhenNoPredicate_ShouldReturnTrue()
+        {
+
+            var command = new AsyncDelegateCommand(async () => await Task.CompletedTask);
+
+            command.CanExecute(null).Should().BeTrue();
+        }
+
+        [Fact]
+        public void Execute_WhenCanExecuteIsFalse_ShouldNotInvokeAction()
+        {
+
+            bool executed = false;
+            var command = new AsyncDelegateCommand(async () =>
+            {
+                await Task.CompletedTask;
+                executed = true;
+            }, () => false);
+
+            command.Execute(null);
+
+            executed.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task Execute_WhenComplete_ShouldRaiseCanExecuteChangedAgain()
+        {
+
+            var tcs = new TaskCompletionSource<bool>();
+            int changeCount = 0;
+            var command = new AsyncDelegateCommand(async () => await tcs.Task);
+            command.CanExecuteChanged += (s, e) => changeCount++;
+
+            command.Execute(null); // starts execution — fires one CanExecuteChanged (false)
+            tcs.SetResult(true);
+            await Task.Delay(50); // let the async completion propagate
+
+            // At least two changes: false when starting, true when done
+            changeCount.Should().BeGreaterThanOrEqualTo(2);
+        }
     }
 }
 

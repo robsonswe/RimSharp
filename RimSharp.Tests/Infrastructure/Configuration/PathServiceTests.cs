@@ -107,6 +107,65 @@ namespace RimSharp.Tests.Infrastructure.Configuration
 
             result.Should().Be(newPath);
         }
+
+        [Fact]
+        public void GetModsPath_WhenGamePathDoesNotExist_ShouldReturnEmpty()
+        {
+
+            _mockConfigService.GetConfigValue("game_folder").Returns(@"C:\NonExistent_XYZ_123");
+
+            var result = _service.GetModsPath();
+
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void GetModsPath_WhenModsDirDoesNotExist_ShouldReturnEmpty()
+        {
+
+            // Game dir exists but has no Mods subdirectory
+            _mockConfigService.GetConfigValue("game_folder").Returns(_testTempDir);
+
+            var result = _service.GetModsPath();
+
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void GetConfigPath_WhenConfigValueIsValid_ShouldReturnPath()
+        {
+
+            var configPath = Path.Combine(_testTempDir, "Config");
+            Directory.CreateDirectory(configPath);
+            _mockConfigService.GetConfigValue("config_folder").Returns(configPath);
+
+            var result = _service.GetConfigPath();
+
+            result.Should().Be(configPath);
+        }
+
+        [Fact]
+        public void GetConfigPath_WhenConfigValueDoesNotExist_ShouldReturnEmpty()
+        {
+
+            _mockConfigService.GetConfigValue("config_folder").Returns(@"C:\NonExistent_XYZ_789");
+
+            var result = _service.GetConfigPath();
+
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void GetGameVersion_WhenVersionFileDoesNotExist_ShouldReturnEmpty()
+        {
+
+            _mockConfigService.GetConfigValue("game_folder").Returns(_testTempDir);
+            // No Version.txt created
+
+            var result = _service.GetGameVersion();
+
+            result.Should().BeEmpty();
+        }
     }
 }
 
