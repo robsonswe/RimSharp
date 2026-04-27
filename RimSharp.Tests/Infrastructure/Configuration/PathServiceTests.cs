@@ -156,7 +156,7 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         }
 
         [Fact]
-        public void GetGameVersion_WhenVersionFileDoesNotExist_ShouldReturnEmpty()
+        public void GetGameVersion_WhenVersionFileDoesNotExist_ShouldReturnErrorMessage()
         {
 
             _mockConfigService.GetConfigValue("game_folder").Returns(_testTempDir);
@@ -164,7 +164,7 @@ namespace RimSharp.Tests.Infrastructure.Configuration
 
             var result = _service.GetGameVersion();
 
-            result.Should().BeEmpty();
+            result.Should().Be("N/A - Version.txt not found");
         }
     }
 }
