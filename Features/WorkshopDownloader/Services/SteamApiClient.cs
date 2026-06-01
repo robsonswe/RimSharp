@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -95,6 +96,76 @@ return null;
             catch (Exception ex)
             {
                 Debug.WriteLine($"[SteamApiClient] Unexpected error calling Steam API for ID {steamId}: {ex}");
+                return null;
+            }
+        }
+
+        public async Task<SteamCollectionDetailsResponse?> GetCollectionDetailsAsync(string collectionId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(collectionId) || !long.TryParse(collectionId, out _))
+            {
+                Debug.WriteLine($"[SteamApiClient] Invalid Collection ID provided: '{collectionId}'");
+                return null;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                const string url = "https://api.steampowered.com/ISteamRemoteStorage/GetCollectionDetails/v1/";
+                using var request = new HttpRequestMessage(HttpMethod.Post, url);
+                var formData = new Dictionary<string, string>
+                {
+                    { "collectioncount", "1" },
+                    { $"publishedfileids[0]", collectionId }
+                };
+                using var formContent = new FormUrlEncodedContent(formData);
+                request.Content = formContent;
+
+                using HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken);
+                if (!response.IsSuccessStatusCode) return null;
+
+                string jsonResponse = await response.Content.ReadAsStringAsync(cancellationToken);
+                return JsonSerializer.Deserialize<SteamCollectionDetailsResponse>(jsonResponse, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[SteamApiClient] Error fetching collection {collectionId}: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<SteamApiResponse?> GetPublishedFileDetailsBatchAsync(IEnumerable<string> fileIds, CancellationToken cancellationToken = default)
+        {
+            var idList = fileIds.ToList();
+            if (!idList.Any()) return null;
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, ApiBaseUrl);
+                var formData = new Dictionary<string, string>
+                {
+                    { "itemcount", idList.Count.ToString() }
+                };
+                for (int i = 0; i < idList.Count; i++)
+                {
+                    formData.Add($"publishedfileids[{i}]", idList[i]);
+                }
+                using var formContent = new FormUrlEncodedContent(formData);
+                request.Content = formContent;
+
+                using HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken);
+                if (!response.IsSuccessStatusCode) return null;
+
+                string jsonResponse = await response.Content.ReadAsStringAsync(cancellationToken);
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, NumberHandling = JsonNumberHandling.AllowReadingFromString };
+                return JsonSerializer.Deserialize<SteamApiResponse>(jsonResponse, options);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[SteamApiClient] Error fetching batch published file details: {ex.Message}");
                 return null;
             }
         }

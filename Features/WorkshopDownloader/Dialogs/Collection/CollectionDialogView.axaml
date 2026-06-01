@@ -8,7 +8,7 @@
                     x:DataType="vm:CollectionDialogViewModel"
                     mc:Ignorable="d"
                     Title="{Binding Title}"
-                    Width="600" Height="500" MinWidth="450" MinHeight="350">
+                    Width="800" Height="600" MinWidth="450" MinHeight="350">
 
     <dialogs:BaseDialog.MainContent>
         <DockPanel Margin="5">
@@ -37,9 +37,9 @@
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
 
-                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="250"/>
+                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="450"/>
                     <DataGridTextColumn Header="Author" Binding="{Binding Author}" Width="150"/>
-                    <DataGridTextColumn Header="Steam ID" Binding="{Binding SteamId}" Width="100"/>
+                    <DataGridTextColumn Header="Steam ID" Binding="{Binding SteamId}" Width="150"/>
                 </DataGrid.Columns>
             </DataGrid>
         </DockPanel>
