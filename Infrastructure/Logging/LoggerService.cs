@@ -66,7 +66,7 @@ namespace RimSharp.Infrastructure.Logging
                 if (_currentLogDate != today)
                 {
                     _currentLogDate = today;
-                    ClearOldLogs(logsDirectory, module);
+                    ClearOldLogs(logsDirectory);
                 }
                 Directory.CreateDirectory(logsDirectory);
 
@@ -96,19 +96,22 @@ namespace RimSharp.Infrastructure.Logging
             return Path.Combine(_appBasePath, "Logs");
         }
 
-        private void ClearOldLogs(string logsDirectory, string module)
+        private void ClearOldLogs(string logsDirectory)
         {
             try
             {
                 var today = DateTime.Today;
-                var todayFileName = $"RimSharp_{module}_{today:yyyyMMdd}.log";
+                var todayDateString = today.ToString("yyyyMMdd");
 
-                var moduleLogFiles = Directory.GetFiles(logsDirectory, $"RimSharp_{module}_*.log");
+                // Get ALL log files in the directory
+                var allLogFiles = Directory.GetFiles(logsDirectory, "RimSharp_*.log");
 
-                foreach (var file in moduleLogFiles)
+                foreach (var file in allLogFiles)
                 {
-                    var fileName = Path.GetFileName(file);
-                    if (fileName != todayFileName)
+                    var fileName = Path.GetFileNameWithoutExtension(file);
+                    
+                    // Check if the file name contains today's date
+                    if (!fileName.EndsWith(todayDateString))
                     {
                         try { File.Delete(file); }
                         catch { /* Ignore deletion errors */ }

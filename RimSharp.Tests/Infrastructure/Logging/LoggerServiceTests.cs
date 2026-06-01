@@ -54,23 +54,30 @@ namespace RimSharp.Tests.Infrastructure.Logging
         }
 
         [Fact]
-        public void ClearOldLogs_ShouldDeletePreviousLogsForSameModule()
+        public void ClearOldLogs_ShouldDeletePreviousLogsForAllModules()
         {
-
             var logsDir = Path.Combine(_testTempDir, "Logs");
             Directory.CreateDirectory(logsDir);
-            string module = "Rotate";
             
-            // Create a "yesterday" log
-            var oldFile = Path.Combine(logsDir, $"RimSharp_{module}_20000101.log");
-            File.WriteAllText(oldFile, "old logs");
+            // Create old logs for multiple modules
+            var fileA = Path.Combine(logsDir, "RimSharp_ModuleA_20000101.log");
+            var fileB = Path.Combine(logsDir, "RimSharp_ModuleB_20000101.log");
+            File.WriteAllText(fileA, "old");
+            File.WriteAllText(fileB, "old");
+
+            // Verify they exist before triggering cleanup
+            File.Exists(fileA).Should().BeTrue("old file A should exist before cleanup");
+            File.Exists(fileB).Should().BeTrue("old file B should exist before cleanup");
 
             var logger = new LoggerService(_mockConfigService, _testTempDir);
 
-            logger.LogInfo("Today's log", module);
+            // Log a new message for ModuleA - this should trigger cleanup of ALL old logs
+            logger.LogInfo("Today's log", "ModuleA");
 
-            File.Exists(oldFile).Should().BeFalse();
-            Directory.GetFiles(logsDir, $"RimSharp_{module}_*.log").Should().HaveCount(1);
+            Directory.GetFiles(logsDir, "RimSharp_*.log").Should().HaveCount(1);
+            File.Exists(Path.Combine(logsDir, $"RimSharp_ModuleA_{DateTime.Today:yyyyMMdd}.log")).Should().BeTrue();
+            File.Exists(fileA).Should().BeFalse("old file A should be deleted");
+            File.Exists(fileB).Should().BeFalse("old file B should be deleted");
         }
     }
 }
