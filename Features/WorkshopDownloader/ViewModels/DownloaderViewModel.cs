@@ -70,7 +70,7 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
 
             Func<CancellationToken> getCancellationTokenFunc = GetCancellationToken;
 
-            BrowserViewModel = new BrowserViewModel(navigationService, this, dialogService);
+            BrowserViewModel = new BrowserViewModel(navigationService, this, dialogService, steamApiClient);
             QueueViewModel = new DownloadQueueViewModel(
                             queueService, modService, dialogService, updateCheckerService,
                             steamCmdService, BrowserViewModel, getCancellationTokenFunc, modListManager,

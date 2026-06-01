@@ -24,6 +24,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         private readonly IWebNavigationService _navigationService;
         private readonly DownloaderViewModel _parentViewModel;
         private readonly IDialogService _dialogService;
+        private readonly ISteamApiClient _steamApiClient;
         private IBrowserControl? _browserControl;
         private IModExtractorService? _extractorService;
         private bool _isAnalyzingContent = false;
@@ -101,11 +102,12 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
         public event EventHandler<string>? StatusChanged;
 
-        public BrowserViewModel(IWebNavigationService navigationService, DownloaderViewModel parentViewModel, IDialogService dialogService)
+        public BrowserViewModel(IWebNavigationService navigationService, DownloaderViewModel parentViewModel, IDialogService dialogService, ISteamApiClient steamApiClient)
         {
             _navigationService = navigationService;
             _parentViewModel = parentViewModel;
             _dialogService = dialogService;
+            _steamApiClient = steamApiClient;
 
             _navigationService.SourceUrlChanged += NavigationService_SourceUrlChanged;
             _navigationService.StatusChanged += NavigationService_StatusChanged;
@@ -266,7 +268,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
             try
             {
-                int maxAttempts = 12; // ~6 seconds total if it takes long
+                int maxAttempts = 6; // Reduced for faster response
                 int attempt = 0;
                 bool foundInfo = false;
 
@@ -275,7 +277,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                     attempt++;
                     
                     // Initial wait is short, then increases slightly
-                    if (attempt > 1) await Task.Delay(500, token);
+                    if (attempt > 1) await Task.Delay(250, token); // Reduced for faster response
 
                     // Reset previous state for this extraction attempt
                     _extractorService.Reset();
@@ -298,6 +300,12 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                         StatusChanged?.Invoke(this, $"Collection detected ({collectionItems.Count} items).");
                         break;
                     }
+                    
+                    // Fallback for collections if HTML extraction fails
+                    if (IsCollectionUrl && !string.IsNullOrEmpty(CurrentPageSteamId))
+                    {
+                        // ... (keep this block)
+                    }
 
                     // Extract mod name and date in parallel
                     var nameTask = _extractorService.ExtractModName();
@@ -317,6 +325,33 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                         Debug.WriteLine($"[BrowserViewModel] Mod info found on attempt {attempt}!");
                         StatusChanged?.Invoke(this, "Mod details detected.");
                         break;
+                    }
+                    else if (!string.IsNullOrEmpty(CurrentPageSteamId) && ActualCurrentUrl.Contains("/filedetails/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Proactive API Fallback if HTML extraction is still failing after a few attempts
+                        if (attempt >= 2) 
+                        {
+                            Debug.WriteLine($"[BrowserViewModel] Proactive API fallback for ID: {CurrentPageSteamId}");
+                            try
+                            {
+                                var apiResult = await _steamApiClient.GetFileDetailsAsync(CurrentPageSteamId, token);
+                                if (apiResult?.Response?.PublishedFileDetails?.Count > 0)
+                                {
+                                    IsValidModUrl = true;
+                                    IsCollectionUrl = false;
+                                    IsModInfoAvailable = true;
+                                    foundInfo = true;
+                                    
+                                    Debug.WriteLine("[BrowserViewModel] Mod info found via Proactive API fallback!");
+                                    StatusChanged?.Invoke(this, "Mod details detected (API).");
+                                    break;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.WriteLine($"[BrowserViewModel] Error during Proactive API fallback: {ex.Message}");
+                            }
+                        }
                     }
 
                     // If we have an ID but not name after several attempts, we might be on a page where it's not possible to extract more info
@@ -467,13 +502,11 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                         string? id = query.Get("id");
                         CurrentPageSteamId = id;
 
-                        bool isModPage = uri.AbsolutePath.Contains("/filedetails/", StringComparison.OrdinalIgnoreCase);
-                        bool isCollectionPage = uri.AbsolutePath.Contains("/workshop/browse/", StringComparison.OrdinalIgnoreCase) && 
-                                               (uri.AbsolutePath.Contains("/collections/", StringComparison.OrdinalIgnoreCase) || 
-                                                query.Get("section") == "collections");
+                        bool isWorkshopItem = uri.AbsolutePath.Contains("/filedetails/", StringComparison.OrdinalIgnoreCase);
 
-                        IsValidModUrl = isModPage && !string.IsNullOrEmpty(id);
-                        IsCollectionUrl = isCollectionPage;
+                        // Since both mods and collections now use the same URL pattern,
+                        // we rely entirely on page analysis (AnalyzePageContentAsync)
+                        // to determine the type based on content.
                     }
                 }
             });

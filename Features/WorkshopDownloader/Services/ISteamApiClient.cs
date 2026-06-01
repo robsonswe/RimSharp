@@ -1,4 +1,5 @@
-using System.Threading; // Add this using
+using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Features.WorkshopDownloader.Models;
 
@@ -8,13 +9,9 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 {
     public interface ISteamApiClient
     {
-        /// <summary>
-
-        /// </summary>
-        /// <param name="steamId">The Steam Workshop File ID.</param>
-        /// <param name="cancellationToken">Token to cancel the operation.</param>
-
         Task<SteamApiResponse?> GetFileDetailsAsync(string steamId, CancellationToken cancellationToken = default);
+        Task<SteamCollectionDetailsResponse?> GetCollectionDetailsAsync(string collectionId, CancellationToken cancellationToken = default);
+        Task<SteamApiResponse?> GetPublishedFileDetailsBatchAsync(IEnumerable<string> fileIds, CancellationToken cancellationToken = default);
     }
 }
 
