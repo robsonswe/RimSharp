@@ -9,6 +9,7 @@
     <SolidColorBrush x:Key="RimworldHighlightBrush" Color="{StaticResource RimworldHighlight}"/>
     <SolidColorBrush x:Key="RimworldDarkGreenBrush" Color="{StaticResource RimworldDarkGreen}"/>
     <SolidColorBrush x:Key="RimworldRedBrush" Color="{StaticResource RimworldRed}"/>
+    <SolidColorBrush x:Key="RimworldRedLightBrush" Color="{StaticResource RimworldRedLight}"/>
     <SolidColorBrush x:Key="RimworldErrorRedBrush" Color="{StaticResource RimworldErrorRed}"/>
     <SolidColorBrush x:Key="RimworldOrangeBrush" Color="{StaticResource RimworldOrange}"/>
     <SolidColorBrush x:Key="RimworldWhiteBrush" Color="{StaticResource RimworldWhite}"/>
