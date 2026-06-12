@@ -80,7 +80,7 @@
                                          Classes.update-available="{Binding IsUpdateAvailable}">
                                 </Ellipse>
 
-                                <TextBlock Text="{Binding PathSettings.GameVersion, StringFormat='v\{0\}'}" 
+                                <TextBlock Text="{Binding PathSettings.GameVersion, StringFormat='RW v\{0\}'}" 
                                            FontSize="12" 
                                            FontWeight="Bold" 
                                            Foreground="{DynamicResource RimworldBrownBrush}"
