@@ -217,6 +217,36 @@ vm.PathSettings.GamePath = _testTempDir;
 
              // Assert - mostly that no exception occurred.
         }
+
+        [Fact]
+        public async Task CheckForUpdateAsync_WhenUpdateAvailable_ShouldSetProperties()
+        {
+            // Arrange
+            _mockUpdaterService.CheckForUpdateAsync().Returns((true, "1.5.0"));
+            var vm = CreateViewModel();
+
+            // Act
+            await vm.OnMainWindowLoadedAsync();
+
+            // Assert
+            vm.IsUpdateAvailable.Should().BeTrue();
+            vm.UpdateTooltipText.Should().Be("Version 1.5.0 is now available.");
+        }
+
+        [Fact]
+        public async Task CheckForUpdateAsync_WhenNoUpdate_ShouldSetProperties()
+        {
+            // Arrange
+            _mockUpdaterService.CheckForUpdateAsync().Returns((false, null));
+            var vm = CreateViewModel();
+
+            // Act
+            await vm.OnMainWindowLoadedAsync();
+
+            // Assert
+            vm.IsUpdateAvailable.Should().BeFalse();
+            vm.UpdateTooltipText.Should().BeEmpty();
+        }
     }
 }
 

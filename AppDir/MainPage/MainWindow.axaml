@@ -18,6 +18,19 @@
         </Style>
         <Style Selector="Ellipse.StatusBall.update-available">
             <Setter Property="Fill" Value="{DynamicResource RimworldRedBrush}"/>
+            <Style.Animations>
+                <Animation Duration="0:0:2" IterationCount="Infinite">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Fill" Value="{DynamicResource RimworldRedBrush}"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="50%">
+                        <Setter Property="Fill" Value="{DynamicResource RimworldRedLightBrush}"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Fill" Value="{DynamicResource RimworldRedBrush}"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
         </Style>
     </Window.Styles>
 
@@ -59,7 +72,8 @@
                                 BorderThickness="1" 
                                 CornerRadius="3" 
                                 Padding="12,4" 
-                                VerticalAlignment="Center">
+                                VerticalAlignment="Center"
+                                ToolTip.Tip="{Binding UpdateTooltipText}">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center" 
                                          Classes="StatusBall"
