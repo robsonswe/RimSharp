@@ -34,9 +34,26 @@ namespace RimSharp.Tests.Features.VramAnalysis.ViewModels
         }
 
         [Fact]
-        public void SetProperty_ShouldNotifyChange()
+        public void NewWrapper_ShouldHaveNullValues_UntilCalculated()
         {
 
+            var mod = new ModItem { Name = "Test Mod" };
+            var wrapper = new VramModItemWrapper(mod);
+
+            wrapper.EstimatedVramCompressed.Should().BeNull();
+            wrapper.EstimatedVramUncompressed.Should().BeNull();
+            wrapper.MaxEstimatedVramCompressed.Should().BeNull();
+            wrapper.MaxEstimatedVramUncompressed.Should().BeNull();
+            wrapper.TextureCount.Should().BeNull();
+            wrapper.MaxTextureCount.Should().BeNull();
+            wrapper.InAtlasCount.Should().BeNull();
+            wrapper.MaxInAtlasCount.Should().BeNull();
+            wrapper.HasConditionalContent.Should().BeFalse();
+        }
+
+        [Fact]
+        public void SetProperty_ShouldNotifyChange()
+        {
             var mod = new ModItem { Name = "Test Mod" };
             var wrapper = new VramModItemWrapper(mod);
             string? changedProp = null;

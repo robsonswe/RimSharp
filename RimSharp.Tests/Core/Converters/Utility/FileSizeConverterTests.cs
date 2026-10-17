@@ -15,20 +15,44 @@ namespace RimSharp.Tests.Core.Converters.Utility
         }
 
         [Theory]
-        [InlineData(0L, "Not Calculated")]
+        [InlineData(0L, "0 Bytes")]
         [InlineData(500L, "500 Bytes")]
         [InlineData(1024L, "1.0 KB")]
         [InlineData(1024L * 1024L, "1.0 MB")]
         [InlineData(1024L * 1024L * 1024L, "1.00 GB")]
         [InlineData(-1L, "N/A")]
-        [InlineData(null, "N/A")]
-        [InlineData("not a long", "N/A")]
         public void Convert_ShouldReturnCorrectString(object? value, string expected)
         {
 
             var result = _converter.Convert(value, typeof(string), null, CultureInfo.InvariantCulture);
 
             result.Should().Be(expected);
+        }
+
+        [Fact]
+        public void Convert_ShouldReturnNotCalculated_ForNull()
+        {
+            var result = _converter.Convert(null, typeof(string), null, CultureInfo.InvariantCulture);
+
+            result.Should().Be("Not Calculated");
+        }
+
+        [Fact]
+        public void Convert_ShouldReturnNotCalculated_ForNullableNull()
+        {
+            long? value = null;
+
+            var result = _converter.Convert(value, typeof(string), null, CultureInfo.InvariantCulture);
+
+            result.Should().Be("Not Calculated");
+        }
+
+        [Fact]
+        public void Convert_ShouldReturnNa_ForNonNumeric()
+        {
+            var result = _converter.Convert("not a long", typeof(string), null, CultureInfo.InvariantCulture);
+
+            result.Should().Be("N/A");
         }
 
         [Theory]
@@ -44,4 +68,3 @@ namespace RimSharp.Tests.Core.Converters.Utility
         }
     }
 }
-

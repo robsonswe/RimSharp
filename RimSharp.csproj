@@ -14,9 +14,14 @@
 
   <ItemGroup>
     <AvaloniaResource Include="icon.ico" />
+    <Content Include="Resources\classdata.tpk">
+      <Link>classdata.tpk</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AssetsTools.NET" Version="3.0.5" />
     <PackageReference Include="Avalonia" Version="11.2.8" />
     <PackageReference Include="Avalonia.Desktop" Version="11.2.8" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.8" />
