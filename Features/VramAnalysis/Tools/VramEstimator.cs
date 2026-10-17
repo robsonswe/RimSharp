@@ -128,8 +128,14 @@ namespace RimSharp.Features.VramAnalysis.Tools
                 }
 
                 long baseSizeUncompressed = (long)(width * height * GetBytesPerPixel(format, isCompressed: false));
-                long vramUncompressed = (hasMips && (format == SimpleTextureFormat.RGBA32 || format == SimpleTextureFormat.RGB24)) ? (long)(baseSizeUncompressed * mipmapFactor) : baseSizeUncompressed;
-                long vramCompressed = (long)(width * height * GetBytesPerPixel(format, isCompressed: true));
+                // Both engines store compressed textures with their mip chain: Unity 1.6
+                // compresses mipChain-enabled textures to DXT5 retaining every level
+                // (ModContentLoader.LoadTexture / StaticTextureAtlas.FastCompressDXT), and
+                // Waylith 1.7's baked atlas pages carry 2-3 mip levels. The mip factor
+                // therefore applies to both columns whenever the source has a mip chain.
+                long vramUncompressed = hasMips ? (long)(baseSizeUncompressed * mipmapFactor) : baseSizeUncompressed;
+                long baseSizeCompressed = (long)(width * height * GetBytesPerPixel(format, isCompressed: true));
+                long vramCompressed = hasMips ? (long)(baseSizeCompressed * mipmapFactor) : baseSizeCompressed;
                 bool isInAtlas = width < 512 && height < 512;
 
                 Interlocked.Increment(ref maxTextureCount);
