@@ -205,19 +205,6 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 _browserControl.NavigationCompleted -= OnNavigationCompleted;
             }
         }
-
-        // Backward compatibility
-        public void SetWebView(Microsoft.Web.WebView2.WinForms.WebView2? webView) 
-        {
-            if (webView == null)
-            {
-                SetBrowserControl(null);
-            }
-            else
-            {
-                SetBrowserControl(new RimSharp.Features.WorkshopDownloader.Components.Browser.WindowsBrowserControl(webView));
-            }
-        }
     }
 }
 

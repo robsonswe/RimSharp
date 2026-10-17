@@ -42,7 +42,9 @@ using System.Threading.Tasks;
 using RimSharp.AppDir.Dialogs;
 using System.Diagnostics;
 using System.Linq;
+#if WINDOWS
 using PInvoke;
+#endif
 using RimSharp.Core.Services;
 using RimSharp.Features.WorkshopDownloader.Components.Browser;
 using Avalonia.Threading;
@@ -75,6 +77,7 @@ namespace RimSharp.AppDir.AppFiles
                 {
                     Debug.WriteLine("App is already running. Activating existing instance.");
                     
+#if WINDOWS
                     if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
                     {
                         Process current = Process.GetCurrentProcess();
@@ -88,6 +91,7 @@ namespace RimSharp.AppDir.AppFiles
                             }
                         }
                     }
+#endif
                     desktop.Shutdown();
                     return;
                 }
@@ -149,6 +153,7 @@ namespace RimSharp.AppDir.AppFiles
             services.AddSingleton<ISystemInfoService>(provider => SystemInfoServiceFactory.Create());
             services.AddSingleton<IGitService, GitService>();
 
+#if WINDOWS
             if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
             {
                 services.AddSingleton<IBrowserFactory, WindowsBrowserFactory>();
@@ -157,6 +162,9 @@ namespace RimSharp.AppDir.AppFiles
             {
                 services.AddSingleton<IBrowserFactory, GenericBrowserFactory>();
             }
+#else
+            services.AddSingleton<IBrowserFactory, GenericBrowserFactory>();
+#endif
 
             services.AddSingleton<string>(provider => AppDomain.CurrentDomain.BaseDirectory);
 

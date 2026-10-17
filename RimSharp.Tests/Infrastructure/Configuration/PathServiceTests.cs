@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using FluentAssertions;
 using NSubstitute;
@@ -224,6 +225,47 @@ namespace RimSharp.Tests.Infrastructure.Configuration
             var result = service.GetGameVersion();
 
             result.Should().Be("N/A - No version source found");
+        }
+
+        [Fact]
+        public void GetGameVersion_ShouldUseRimWorldLinuxDataAssemblyCSharpCandidate()
+        {
+            var managedDirectory = Path.Combine(_testTempDir, "RimWorldLinux_Data", "Managed");
+            Directory.CreateDirectory(managedDirectory);
+            File.WriteAllBytes(Path.Combine(managedDirectory, "Assembly-CSharp.dll"), new byte[] { 0x00 });
+
+            var probedPaths = new List<string>();
+            var service = new PathService(_mockConfigService, path =>
+            {
+                probedPaths.Add(path);
+                return path.Contains("RimWorldLinux_Data") ? "1.6.9676.18020" : null;
+            });
+            _mockConfigService.GetConfigValue("game_folder").Returns(_testTempDir);
+
+            var result = service.GetGameVersion();
+
+            result.Should().Be("1.6.9676.18020");
+            probedPaths.Should().Contain(p => p.Contains(Path.Combine("RimWorldLinux_Data", "Managed", "Assembly-CSharp.dll")));
+        }
+
+        /// <summary>
+        /// Opt-in real-install test. Set <c>RIMSHARP_TEST_GAME_16</c> to a RimWorld 1.6 install
+        /// root (Windows or Linux player-data layout). Skipped when the variable is unset, empty,
+        /// or points to a missing directory.
+        /// </summary>
+        [Fact]
+        public void GetGameVersion_Game16RealInstall_ShouldDetectMajorVersion()
+        {
+            var gameRoot = Environment.GetEnvironmentVariable("RIMSHARP_TEST_GAME_16");
+            if (string.IsNullOrEmpty(gameRoot) || !Directory.Exists(gameRoot)) return;
+
+            _mockConfigService.GetConfigValue("game_folder").Returns(gameRoot);
+
+            var version = _service.GetGameVersion();
+            var major = _service.GetMajorGameVersion();
+
+            version.Should().StartWith("1.");
+            major.Should().StartWith("1");
         }
     }
 }

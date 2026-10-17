@@ -72,7 +72,8 @@ namespace RimSharp.Features.VramAnalysis.Tools
                 sb.AppendLine($"[WARN] Strict XML parsing found 0 textures. The modder likely made a folder typo. Initiating brute-force scan...");
 
                 int fallbackCount = 0;
-                var allTextureDirs = Directory.GetDirectories(modPath, "Textures", SearchOption.AllDirectories);
+                var allTextureDirs = Directory.GetDirectories(modPath, "*", SearchOption.AllDirectories)
+                    .Where(d => Path.GetFileName(d).Equals("Textures", StringComparison.OrdinalIgnoreCase));
                 foreach (var tDir in allTextureDirs)
                 {
                     foreach (var file in Directory.EnumerateFiles(tDir, "*.*", SearchOption.AllDirectories))

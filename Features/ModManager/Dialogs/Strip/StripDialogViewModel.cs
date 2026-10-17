@@ -8,6 +8,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows.Input;
 
 namespace RimSharp.Features.ModManager.Dialogs.Strip
@@ -194,11 +195,17 @@ namespace RimSharp.Features.ModManager.Dialogs.Strip
             {
                 if (File.Exists(path))
                 {
-                    Process.Start("explorer.exe", $"/select,\"{path}\"");
+                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                        Process.Start(new ProcessStartInfo("xdg-open", $"\"{Path.GetDirectoryName(path) ?? path}\""));
+                    else
+                        Process.Start("explorer.exe", $"/select,\"{path}\"");
                 }
                 else if (Directory.Exists(path))
                 {
-                    Process.Start("explorer.exe", $"\"{path}\"");
+                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                        Process.Start(new ProcessStartInfo("xdg-open", $"\"{path}\""));
+                    else
+                        Process.Start("explorer.exe", $"\"{path}\"");
                 }
             }
             catch (Exception ex)

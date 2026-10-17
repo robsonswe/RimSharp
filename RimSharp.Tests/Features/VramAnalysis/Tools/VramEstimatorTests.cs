@@ -179,6 +179,22 @@ namespace RimSharp.Tests.Features.VramAnalysis.Tools
             result.TextureCount.Should().Be(1);
         }
 
+        [Fact]
+        public void Calculate_ShouldMatchLowercaseTexturesFolder_DuringBruteForceScan()
+        {
+            // Strict resolution finds no 'Textures' child, so the brute-force scan runs.
+            // A nested lowercase 'textures' folder must still be matched on case-sensitive
+            // file systems.
+            var modDirectory = Path.Combine(_tempDirectory, "LowercaseMod");
+            var nestedTextures = Path.Combine(modDirectory, "Sub", "textures");
+            Directory.CreateDirectory(nestedTextures);
+            CreatePngFile(Path.Combine(nestedTextures, "icon.png"), 256, 256);
+
+            var result = VramEstimator.Calculate(modDirectory, "1.5", new HashSet<string>());
+
+            result.TextureCount.Should().Be(1);
+        }
+
         private void CreatePngFile(string path, int width, int height)
         {
             using var fs = File.Create(path);

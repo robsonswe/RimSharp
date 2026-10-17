@@ -9,7 +9,6 @@ using RimSharp.AppDir.AppFiles;
 using RimSharp.Shared.Services.Contracts;
 using System.Threading;
 using System.Diagnostics;
-using Microsoft.Web.WebView2.Wpf;
 using System.Windows.Input;
 using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Features.WorkshopDownloader.ViewModels;

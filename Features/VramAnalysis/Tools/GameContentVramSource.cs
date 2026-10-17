@@ -21,7 +21,7 @@ namespace RimSharp.Features.VramAnalysis.Tools
 
         // Player-data folder names, checked in order via directory enumeration so the
         // matching stays case-correct on case-sensitive file systems.
-        private static readonly string[] PlayerDataFolderNames = { "RimWorldWin64_Data", "RimWorld_Data" };
+        private static readonly string[] PlayerDataFolderNames = { "RimWorldWin64_Data", "RimWorld_Data", "RimWorldLinux_Data" };
 
         private const double MipFactor = 1.33333;
         private const int PlayerDataSearchLevels = 3;
