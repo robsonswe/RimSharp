@@ -8,14 +8,16 @@ namespace RimSharp.Core.Converters.Utility
     {
         public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            long bytes = 0;
+            if (value is null) return "Not Calculated";
+
+            long bytes;
             if (value is long l) bytes = l;
             else if (value is int i) bytes = i;
             else if (value is double d) bytes = (long)d;
             else return "N/A";
 
             if (bytes < 0) return "N/A";
-            if (bytes == 0) return "Not Calculated";
+            if (bytes == 0) return "0 Bytes";
 
             string[] units = { "Bytes", "KB", "MB", "GB", "TB" };
             int unitIndex = 0;

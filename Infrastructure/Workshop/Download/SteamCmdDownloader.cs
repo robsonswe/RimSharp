@@ -91,7 +91,7 @@ namespace RimSharp.Infrastructure.Workshop.Download
                 return result;
             }
 
-            if (validItems.Any(i => i.FileSize <= 0))
+            if (validItems.Any(i => (i.FileSize ?? 0) <= 0))
             {
                 _logger.LogWarning("Some items have missing or zero file size, sorting might place them first.", "SteamCmdDownloader");
             }

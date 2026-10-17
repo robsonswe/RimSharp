@@ -20,26 +20,26 @@ namespace RimSharp.Shared.Models
         /// <summary>
         /// The total size in bytes of the mod after excluding non-essential files (like source code, git folders, etc.).
         /// </summary>
-        public long TotalSize { get; set; }
+        public long? TotalSize { get; set; }
 
         /// <summary>
         /// The size in bytes of all texture files, prioritizing DDS over PNG where both exist.
         /// This represents the smallest possible texture footprint on disk if PNGs with DDS counterparts are removed.
         /// </summary>
-        public long MinTextureSize { get; set; }
+        public long? MinTextureSize { get; set; }
 
         /// <summary>
         /// The size in bytes of all texture files, prioritizing PNG over DDS where both exist.
-        /// This represents the largest texture footprint on disk if both formats are kept.
+        /// This represents the largest possible texture footprint on disk if both formats are kept.
         /// </summary>
-        public long MaxTextureSize { get; set; }
+        public long? MaxTextureSize { get; set; }
 
         private const long SizeDifferenceThreshold = 1024;
 
         /// <summary>
         /// Returns true if the difference between Min and Max texture size is significant enough to display both.
         /// </summary>
-        public bool HasSignificantTextureSizeDifference => (MaxTextureSize - MinTextureSize) > SizeDifferenceThreshold;
+        public bool HasSignificantTextureSizeDifference => ((MaxTextureSize ?? 0) - (MinTextureSize ?? 0)) > SizeDifferenceThreshold;
     }
 
     public class ModItem

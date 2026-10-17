@@ -13,7 +13,7 @@ namespace RimSharp.Features.WorkshopDownloader.Models
         private string? _steamId;
         private string? _publishDate; // Date from Workshop
         private string? _standardDate; // Parsed Workshop Date
-        private long _fileSize;
+        private long? _fileSize;
         private List<string>? _latestVersions;
         private List<VersionSupport>? _installedVersions;
 
@@ -52,7 +52,7 @@ namespace RimSharp.Features.WorkshopDownloader.Models
             get => _standardDate;
             set => SetProperty(ref _standardDate, value);
         }
-      public long FileSize
+      public long? FileSize
         {
             get => _fileSize;
             set => SetProperty(ref _fileSize, value);
