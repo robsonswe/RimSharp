@@ -65,7 +65,7 @@ namespace RimSharp.Tests.Features.VramAnalysis.Tools
 
             var result = VramEstimator.Calculate(_tempDirectory, "1.5", new HashSet<string>());
 
-            long expectedSize = (long)(1024 * 1024 * 0.5);
+            long expectedSize = (long)(1024 * 1024 * 0.5 * 1.33333);
             result.EstimatedVramCompressed.Should().Be(expectedSize);
             result.EstimatedVramUncompressed.Should().Be(expectedSize);
             result.TextureCount.Should().Be(1);
@@ -83,7 +83,7 @@ namespace RimSharp.Tests.Features.VramAnalysis.Tools
 
             var result = VramEstimator.Calculate(_tempDirectory, "1.5", new HashSet<string>());
 
-            long expectedSize = (long)(1024 * 1024 * bpp);
+            long expectedSize = (long)(1024 * 1024 * bpp * 1.33333);
             result.EstimatedVramCompressed.Should().Be(expectedSize);
             result.TextureCount.Should().Be(1);
         }
@@ -100,7 +100,7 @@ namespace RimSharp.Tests.Features.VramAnalysis.Tools
 
             long baseSize = 1024L * 1024 * 4;
             result.EstimatedVramUncompressed.Should().Be((long)(baseSize * 1.33333));
-            result.EstimatedVramCompressed.Should().Be(1024L * 1024);
+            result.EstimatedVramCompressed.Should().Be((long)(1024L * 1024 * 1.33333));
             result.TextureCount.Should().Be(1);
         }
 
