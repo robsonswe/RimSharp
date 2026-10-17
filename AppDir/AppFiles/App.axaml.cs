@@ -181,7 +181,7 @@ namespace RimSharp.AppDir.AppFiles
                     GamePath = configService.GetConfigValue("game_folder"),
                     ModsPath = configService.GetConfigValue("mods_folder"),
                     ConfigPath = configService.GetConfigValue("config_folder"),
-                    GameVersion = "1.5"
+                    GameVersion = "N/A"
                 };
                 return pathSettings;
             });

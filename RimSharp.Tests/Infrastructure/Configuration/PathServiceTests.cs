@@ -156,15 +156,74 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         }
 
         [Fact]
-        public void GetGameVersion_WhenVersionFileDoesNotExist_ShouldReturnErrorMessage()
+        public void GetGameVersion_WhenNoVersionSourceExists_ShouldReturnErrorMessage()
         {
 
             _mockConfigService.GetConfigValue("game_folder").Returns(_testTempDir);
-            // No Version.txt created
+            // No Version.txt and no version-bearing game binaries created
 
             var result = _service.GetGameVersion();
 
-            result.Should().Be("N/A - Version.txt not found");
+            result.Should().Be("N/A - No version source found");
+        }
+
+        [Fact]
+        public void GetGameVersion_WhenVersionTxtMissing_ButBinaryMetadataHasGameVersion_ShouldReturnFallbackVersion()
+        {
+            var service = new PathService(_mockConfigService, _ => "1.7.4979.109+3371aa813f09");
+            _mockConfigService.GetConfigValue("game_folder").Returns(_testTempDir);
+            // No Version.txt created
+
+            var result = service.GetGameVersion();
+
+            result.Should().Be("1.7.4979.109");
+        }
+
+        [Fact]
+        public void GetGameVersion_WhenBinaryMetadataIsEngineVersion_ShouldRejectAndReturnNA()
+        {
+            // Unity builds: RimWorldWin64.exe metadata holds the engine version, not the game version.
+            var service = new PathService(_mockConfigService, _ => "2022.3.35f1 (011206c7a712)");
+            _mockConfigService.GetConfigValue("game_folder").Returns(_testTempDir);
+
+            var result = service.GetGameVersion();
+
+            result.Should().Be("N/A - No version source found");
+        }
+
+        [Fact]
+        public void GetGameVersion_WhenVersionTxtExists_ShouldPreferVersionTxtOverBinaryMetadata()
+        {
+            var versionFile = Path.Combine(_testTempDir, "Version.txt");
+            File.WriteAllText(versionFile, "1.5.4321");
+            var service = new PathService(_mockConfigService, _ => "9.9.9");
+            _mockConfigService.GetConfigValue("game_folder").Returns(_testTempDir);
+
+            var result = service.GetGameVersion();
+
+            result.Should().Be("1.5.4321");
+        }
+
+        [Fact]
+        public void GetMajorGameVersion_FromBinaryMetadataFallback_ShouldExtractMajorVersion()
+        {
+            var service = new PathService(_mockConfigService, _ => "1.6.9438.37837");
+            _mockConfigService.GetConfigValue("game_folder").Returns(_testTempDir);
+
+            var result = service.GetMajorGameVersion();
+
+            result.Should().Be("1.6");
+        }
+
+        [Fact]
+        public void GetGameVersion_WhenBinaryMetadataIsUnparseable_ShouldReturnNA()
+        {
+            var service = new PathService(_mockConfigService, _ => "not-a-version");
+            _mockConfigService.GetConfigValue("game_folder").Returns(_testTempDir);
+
+            var result = service.GetGameVersion();
+
+            result.Should().Be("N/A - No version source found");
         }
     }
 }
