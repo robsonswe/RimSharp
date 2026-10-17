@@ -27,9 +27,12 @@ namespace RimSharp.Shared.Services.Implementations
         private readonly IMlieVersionService _mlieVersionService;
         private readonly ILoggerService _logger;
 
+        // Mirrors the game's actual texture allow-list (Verse.ModContentLoader.AcceptableExtensionsTexture):
+        // .png/.jpg/.jpeg/.psd + .dds (added in 1.6.4566). TGA/BMP/GIF/PSB are silently
+        // ignored by the game's loader, so they must not count as loadable textures.
         private static readonly HashSet<string> TextureExtensions = new(StringComparer.OrdinalIgnoreCase)
         {
-            ".png", ".jpg", ".jpeg", ".psd", ".tga", ".dds", ".bmp", ".gif", ".psb"
+            ".png", ".jpg", ".jpeg", ".psd", ".dds"
         };
 
         private static readonly HashSet<string> JunkFolderNames = new(StringComparer.OrdinalIgnoreCase)
