@@ -67,7 +67,40 @@ namespace RimSharp.Tests.Features.VramAnalysis.Tools
 
             long expectedSize = (long)(1024 * 1024 * 0.5);
             result.EstimatedVramCompressed.Should().Be(expectedSize);
-            result.EstimatedVramUncompressed.Should().Be(expectedSize); 
+            result.EstimatedVramUncompressed.Should().Be(expectedSize);
+            result.TextureCount.Should().Be(1);
+        }
+
+        [Theory]
+        [InlineData(77, 1.0)]  // BC3_UNORM -> 1.0 bpp
+        [InlineData(80, 0.5)]  // BC4_UNORM -> single-channel, 0.5 bpp
+        [InlineData(83, 1.0)]  // BC5_UNORM -> two-channel, 1.0 bpp
+        [InlineData(98, 1.0)]  // BC7_UNORM -> 1.0 bpp
+        public void Calculate_ShouldHandleDdsFiles_Dx10Header_UsesRealDxgiFormat(uint dxgiFormat, double bpp)
+        {
+
+            CreateDx10DdsFile(Path.Combine(_texturesDirectory, "texture.dds"), 1024, 1024, dxgiFormat);
+
+            var result = VramEstimator.Calculate(_tempDirectory, "1.5", new HashSet<string>());
+
+            long expectedSize = (long)(1024 * 1024 * bpp);
+            result.EstimatedVramCompressed.Should().Be(expectedSize);
+            result.TextureCount.Should().Be(1);
+        }
+
+        [Fact]
+        public void Calculate_ShouldHandleDdsFiles_Dx10Header_UncompressedR8G8B8A8()
+        {
+            // DXGI 28 = R8G8B8A8_UNORM: uncompressed source, so the compressed column
+            // models hypothetical BC compression (1.0 bpp) while the uncompressed
+            // column uses 4 bpp plus the mip factor (helper sets the mip flag).
+            CreateDx10DdsFile(Path.Combine(_texturesDirectory, "texture.dds"), 1024, 1024, 28);
+
+            var result = VramEstimator.Calculate(_tempDirectory, "1.5", new HashSet<string>());
+
+            long baseSize = 1024L * 1024 * 4;
+            result.EstimatedVramUncompressed.Should().Be((long)(baseSize * 1.33333));
+            result.EstimatedVramCompressed.Should().Be(1024L * 1024);
             result.TextureCount.Should().Be(1);
         }
 
@@ -171,10 +204,10 @@ namespace RimSharp.Tests.Features.VramAnalysis.Tools
             using var writer = new BinaryWriter(fs);
             writer.Write(Encoding.ASCII.GetBytes("DDS "));
             writer.Write((uint)124);
-            writer.Write((uint)0xA1007); 
+            writer.Write((uint)0xA1007);
             writer.Write((uint)height);
             writer.Write((uint)width);
-            writer.Write((uint)(width * height)); 
+            writer.Write((uint)(width * height));
             writer.Write((uint)0);
             writer.Write((uint)1);
             writer.Write(new byte[44]);
@@ -184,6 +217,33 @@ namespace RimSharp.Tests.Features.VramAnalysis.Tools
             writer.Write(new byte[20]);
             writer.Write((uint)0x1000);
             writer.Write(new byte[16]);
+        }
+
+        private void CreateDx10DdsFile(string path, int width, int height, uint dxgiFormat)
+        {
+            using var fs = File.Create(path);
+            using var writer = new BinaryWriter(fs);
+            writer.Write(Encoding.ASCII.GetBytes("DDS "));
+            writer.Write((uint)124);
+            writer.Write((uint)0xA1007);
+            writer.Write((uint)height);
+            writer.Write((uint)width);
+            writer.Write((uint)(width * height));
+            writer.Write((uint)0);
+            writer.Write((uint)1);
+            writer.Write(new byte[44]);
+            writer.Write((uint)32);
+            writer.Write((uint)0x4);
+            writer.Write(Encoding.ASCII.GetBytes("DX10"));
+            writer.Write(new byte[20]);
+            writer.Write((uint)0x1000);
+            writer.Write(new byte[16]);
+            // DDS_HEADER_DXT10 extension: dxgiFormat, resourceDimension, miscFlag, arraySize, miscFlags2
+            writer.Write(dxgiFormat);
+            writer.Write((uint)2); // DDS_DIMENSION_TEXTURE2D
+            writer.Write((uint)0);
+            writer.Write((uint)1);
+            writer.Write((uint)0);
         }
 
         private void CreatePsdFile(string path, int width, int height)

@@ -31,7 +31,7 @@ namespace RimSharp.Features.VramAnalysis.Tools
 
     public static class VramEstimator
     {
-        private enum SimpleTextureFormat { Unknown, RGBA32, RGB24, DXT1, DXT3, DXT5, BC7 }
+        private enum SimpleTextureFormat { Unknown, RGBA32, RGB24, DXT1, DXT3, DXT5, BC4, BC5, BC6H, BC7 }
         private static readonly HashSet<string> TextureExtensions = new(StringComparer.OrdinalIgnoreCase) { ".png", ".dds", ".jpg", ".jpeg", ".psd" };
 
         public static VramEstimationResult Calculate(string modPath, string majorGameVersion, IReadOnlySet<string> activeModPackageIds)
@@ -210,8 +210,8 @@ namespace RimSharp.Features.VramAnalysis.Tools
         }
 
         private static double GetBytesPerPixel(SimpleTextureFormat format, bool isCompressed) {
-            if (isCompressed) return format switch { SimpleTextureFormat.DXT1 => 0.5, SimpleTextureFormat.DXT3 => 1.0, SimpleTextureFormat.DXT5 => 1.0, SimpleTextureFormat.BC7 => 1.0, _ => 1.0 };
-            return format switch { SimpleTextureFormat.RGBA32 => 4.0, SimpleTextureFormat.RGB24 => 3.0, SimpleTextureFormat.DXT1 => 0.5, SimpleTextureFormat.DXT3 => 1.0, SimpleTextureFormat.DXT5 => 1.0, SimpleTextureFormat.BC7 => 1.0, _ => 0 };
+            if (isCompressed) return format switch { SimpleTextureFormat.DXT1 => 0.5, SimpleTextureFormat.BC4 => 0.5, SimpleTextureFormat.DXT3 => 1.0, SimpleTextureFormat.DXT5 => 1.0, SimpleTextureFormat.BC5 => 1.0, SimpleTextureFormat.BC6H => 1.0, SimpleTextureFormat.BC7 => 1.0, _ => 1.0 };
+            return format switch { SimpleTextureFormat.RGBA32 => 4.0, SimpleTextureFormat.RGB24 => 3.0, SimpleTextureFormat.DXT1 => 0.5, SimpleTextureFormat.BC4 => 0.5, SimpleTextureFormat.DXT3 => 1.0, SimpleTextureFormat.DXT5 => 1.0, SimpleTextureFormat.BC5 => 1.0, SimpleTextureFormat.BC6H => 1.0, SimpleTextureFormat.BC7 => 1.0, _ => 0 };
         }
 
         private static (int Width, int Height, SimpleTextureFormat Format, bool HasMips) GetTextureInfo(string filePath) {
@@ -250,10 +250,32 @@ namespace RimSharp.Features.VramAnalysis.Tools
                 if (fourCC.Equals("DXT1", StringComparison.OrdinalIgnoreCase)) return (w, h, SimpleTextureFormat.DXT1, hasMips);
                 if (fourCC.Equals("DXT3", StringComparison.OrdinalIgnoreCase)) return (w, h, SimpleTextureFormat.DXT3, hasMips);
                 if (fourCC.Equals("DXT5", StringComparison.OrdinalIgnoreCase)) return (w, h, SimpleTextureFormat.DXT5, hasMips);
-                if (fourCC.Equals("DX10", StringComparison.OrdinalIgnoreCase)) return (w, h, SimpleTextureFormat.BC7, hasMips);
+                if (fourCC.Equals("DX10", StringComparison.OrdinalIgnoreCase)) return (w, h, GetDx10Format(r), hasMips);
             }
 
-            return (w, h, SimpleTextureFormat.RGBA32, hasMips); 
+            return (w, h, SimpleTextureFormat.RGBA32, hasMips);
+        }
+
+        // Parses the DDS_HEADER_DXT10 extension that follows a "DX10" FourCC.
+        // The header is 124 bytes starting at file offset 4, so the extension
+        // (whose first field is the DXGI format id) begins at absolute offset 128.
+        // Values per the DXGI_FORMAT enum (learn.microsoft.com dxgiformat.h).
+        private static SimpleTextureFormat GetDx10Format(BinaryReader r) {
+            if (r.BaseStream.Length < 132) return SimpleTextureFormat.BC7; // Truncated extension - default to BC7.
+            r.BaseStream.Seek(128, SeekOrigin.Begin);
+            var dxgi = r.ReadUInt32();
+            return dxgi switch
+            {
+                70 or 71 or 72 => SimpleTextureFormat.DXT1,  // BC1 typeless/unorm/srgb
+                73 or 74 or 75 => SimpleTextureFormat.DXT3,  // BC2
+                76 or 77 or 78 => SimpleTextureFormat.DXT5,  // BC3
+                79 or 80 or 81 => SimpleTextureFormat.BC4,   // single-channel, 0.5 bpp
+                82 or 83 or 84 => SimpleTextureFormat.BC5,   // two-channel, 1.0 bpp
+                94 or 95 or 96 => SimpleTextureFormat.BC6H,  // HDR, 1.0 bpp
+                97 or 98 or 99 => SimpleTextureFormat.BC7,
+                28 or 29 or 87 or 90 or 91 => SimpleTextureFormat.RGBA32, // R8G8B8A8/B8G8R8A8 variants
+                _ => SimpleTextureFormat.BC7 // Unrecognized - default to BC7.
+            };
         }
 
         private static (int, int, SimpleTextureFormat, bool) GetPsdInfo(string filePath) {
