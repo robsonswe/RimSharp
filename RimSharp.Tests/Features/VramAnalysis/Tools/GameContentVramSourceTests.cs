@@ -164,10 +164,17 @@ namespace RimSharp.Tests.Features.VramAnalysis.Tools
             }
         }
 
+        /// <summary>
+        /// Opt-in real-install test. Set <c>RIMSHARP_TEST_GAME_16</c> to a RimWorld 1.6 install
+        /// root (Windows or Linux player-data layout). Skipped when the variable is unset, empty,
+        /// or points to a missing directory, or when the install has no Royalty asset bundles.
+        /// </summary>
         [Fact]
         public void Estimate_ShouldProduceNumbers_WhenUnityContainersPresent()
         {
-            const string gameRoot = @"C:\Games\RimWorld";
+            var gameRoot = Environment.GetEnvironmentVariable("RIMSHARP_TEST_GAME_16");
+            if (string.IsNullOrEmpty(gameRoot) || !Directory.Exists(gameRoot)) return;
+
             var royaltyBundles = Path.Combine(gameRoot, "Data", "Royalty", "AssetBundles");
             if (!Directory.Exists(royaltyBundles)) return;
 
@@ -184,6 +191,48 @@ namespace RimSharp.Tests.Features.VramAnalysis.Tools
             _output.WriteLine("--- Royalty log ---");
             _output.WriteLine(royalty.Logs);
             _output.WriteLine("--- Core log ---");
+            _output.WriteLine(core.Logs);
+        }
+
+        /// <summary>
+        /// Opt-in real-install test. Set <c>RIMSHARP_TEST_GAME_17</c> to a RimWorld 1.7 install
+        /// root (Assets.zip at the root). Skipped when the variable is unset, empty, or points to
+        /// a missing directory.
+        /// </summary>
+        [Fact]
+        public void Estimate_Game17RealInstall_ShouldResolveRootAssetsZip()
+        {
+            var gameRoot = Environment.GetEnvironmentVariable("RIMSHARP_TEST_GAME_17");
+            if (string.IsNullOrEmpty(gameRoot) || !Directory.Exists(gameRoot)) return;
+
+            var core = GameContentVramSource.Estimate(Path.Combine(gameRoot, "Data", "Core"));
+
+            core.VramCompressed.Should().BeGreaterThan(0);
+            core.TextureCount.Should().BeGreaterThan(0);
+
+            _output.WriteLine($"[REAL-GAME17] Core: compressed={core.VramCompressed} uncompressed={core.VramUncompressed} textures={core.TextureCount} inAtlas={core.InAtlasCount}");
+            _output.WriteLine("--- Game17 Core log ---");
+            _output.WriteLine(core.Logs);
+        }
+
+        /// <summary>
+        /// Opt-in real-install test. Set <c>RIMSHARP_TEST_GAME_16</c> to a RimWorld 1.6 install
+        /// root (Windows or Linux player-data layout). Skipped when the variable is unset, empty,
+        /// or points to a missing directory.
+        /// </summary>
+        [Fact]
+        public void Estimate_Game16RealInstall_ShouldResolvePlayerDataAssets()
+        {
+            var gameRoot = Environment.GetEnvironmentVariable("RIMSHARP_TEST_GAME_16");
+            if (string.IsNullOrEmpty(gameRoot) || !Directory.Exists(gameRoot)) return;
+
+            var core = GameContentVramSource.Estimate(Path.Combine(gameRoot, "Data", "Core"));
+
+            core.VramCompressed.Should().BeGreaterThan(0);
+            core.TextureCount.Should().BeGreaterThan(0);
+
+            _output.WriteLine($"[REAL-GAME16] Core: compressed={core.VramCompressed} uncompressed={core.VramUncompressed} textures={core.TextureCount} inAtlas={core.InAtlasCount}");
+            _output.WriteLine("--- Game16 Core log ---");
             _output.WriteLine(core.Logs);
         }
 

@@ -1,16 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFrameworks>net8.0-windows;net8.0</TargetFrameworks>
     <Nullable>enable</Nullable>
-    <UseWindowsForms>true</UseWindowsForms>
-    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <UseWindowsForms Condition="'$(TargetFramework)'=='net8.0-windows'">true</UseWindowsForms>
+    <BuiltInComInteropSupport Condition="'$(TargetFramework)'=='net8.0-windows'">true</BuiltInComInteropSupport>
     <ApplicationIcon>icon.ico</ApplicationIcon>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationManifest Condition="'$(TargetFramework)'=='net8.0-windows'">app.manifest</ApplicationManifest>
+    <ApplicationHighDpiMode Condition="'$(TargetFramework)'=='net8.0-windows'">PerMonitorV2</ApplicationHighDpiMode>
     <RootNamespace>RimSharp</RootNamespace>
     <DefaultItemExcludes>$(DefaultItemExcludes);RimSharp.Tests\**</DefaultItemExcludes>
   </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="RimSharp.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <AvaloniaResource Include="icon.ico" />
@@ -33,14 +37,19 @@
     <PackageReference Include="LibGit2Sharp" Version="0.31.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.3" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.3" />
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2365.46" />
-    <PackageReference Include="PInvoke.Shell32" Version="0.7.124" />
-    <PackageReference Include="PInvoke.User32" Version="0.7.124" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2365.46" Condition="'$(TargetFramework)'=='net8.0-windows'" />
+    <PackageReference Include="PInvoke.User32" Version="0.7.124" Condition="'$(TargetFramework)'=='net8.0-windows'" />
     <PackageReference Include="Projektanker.Icons.Avalonia" Version="9.6.2" />
     <PackageReference Include="Projektanker.Icons.Avalonia.FontAwesome" Version="9.6.2" />
     <PackageReference Include="Projektanker.Icons.Avalonia.MaterialDesign" Version="9.6.2" />
     <PackageReference Include="QuikGraph" Version="2.5.0" />
-    <PackageReference Include="System.Management" Version="8.0.0" />
+    <PackageReference Include="System.Management" Version="8.0.0" Condition="'$(TargetFramework)'=='net8.0-windows'" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)'=='net8.0'">
+    <Compile Remove="Features\WorkshopDownloader\Components\Browser\WindowsBrowserFactory.cs" />
+    <Compile Remove="Features\WorkshopDownloader\Components\Browser\WindowsBrowserControl.cs" />
+    <Compile Remove="Core\Services\WindowsSystemInfoService.cs" />
   </ItemGroup>
 
   <ItemGroup>

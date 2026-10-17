@@ -718,15 +718,21 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     return;
                 }
 
-                string exePath = Path.Combine(gamePath, "RimWorldWin64.exe");
-                if (!File.Exists(exePath))
+                string? exePath = null;
+                foreach (var candidate in GameExecutableNames.GetLaunchCandidates())
                 {
-                    exePath = Path.Combine(gamePath, "RimWorld.exe");
-                    if (!File.Exists(exePath))
+                    var candidatePath = Path.Combine(gamePath, candidate);
+                    if (File.Exists(candidatePath))
                     {
-                        await _dialogService.ShowError("Game Not Found", "Could not find RimWorld executable in the specified game path.");
-                        return;
+                        exePath = candidatePath;
+                        break;
                     }
+                }
+
+                if (exePath == null)
+                {
+                    await _dialogService.ShowError("Game Not Found", "Could not find RimWorld executable in the specified game path.");
+                    return;
                 }
 
                 Process.Start(new ProcessStartInfo

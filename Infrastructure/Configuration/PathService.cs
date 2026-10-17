@@ -91,8 +91,9 @@ public string GetConfigPath()
         // Ordered fallback chain for game-version detection, covering both engine generations:
         //   - Waylith (.NET-native, 1.7+): RimWorld.exe / RimWorld.dll carry the game version
         //     in their file-version metadata (e.g. "1.7.4979.109").
-        //   - Unity (1.6 and earlier): RimWorldWin64_Data/Managed/Assembly-CSharp.dll carries it
-        //     (e.g. "1.6.9438.37837").
+        //   - Unity (1.6 and earlier): <player-data>/Managed/Assembly-CSharp.dll carries it
+        //     (e.g. "1.6.9438.37837"). The player-data folder name differs per platform
+        //     (RimWorldWin64_Data on Windows, RimWorld_Data / RimWorldLinux_Data elsewhere).
         // RimWorldWin64.exe is deliberately NOT a candidate: its metadata holds the Unity
         // engine version (e.g. "2022.3.35f1"), not the game version. The sanity guard in
         // NormalizeGameVersion would reject it anyway.
@@ -101,6 +102,8 @@ public string GetConfigPath()
             "RimWorld.exe",
             "RimWorld.dll",
             Path.Combine("RimWorldWin64_Data", "Managed", "Assembly-CSharp.dll"),
+            Path.Combine("RimWorld_Data", "Managed", "Assembly-CSharp.dll"),
+            Path.Combine("RimWorldLinux_Data", "Managed", "Assembly-CSharp.dll"),
         };
 
         // Overload remains the same

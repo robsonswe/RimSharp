@@ -243,14 +243,19 @@ public bool IsParentLoading
         {
             try
             {
+                bool isRunning = false;
 
-                var p64 = Process.GetProcessesByName("RimWorldWin64");
-                var p32 = Process.GetProcessesByName("RimWorld");
+                foreach (var processName in GameExecutableNames.GetProcessNames())
+                {
+                    var processes = Process.GetProcessesByName(processName);
 
-                bool isRunning = p64.Length > 0 || p32.Length > 0;
+                    if (processes.Length > 0)
+                    {
+                        isRunning = true;
+                    }
 
-                foreach (var p in p64) p.Dispose();
-                foreach (var p in p32) p.Dispose();
+                    foreach (var p in processes) p.Dispose();
+                }
 
                 IsGameRunning = isRunning;
             }

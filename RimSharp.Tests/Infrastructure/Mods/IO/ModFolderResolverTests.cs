@@ -106,6 +106,25 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
         }
 
         [Fact]
+        public void Resolve_WithUppercaseXmlExtension_ShouldStillFindLoadFolders()
+        {
+            // 'LoadFolders.XML' is a valid filename on case-sensitive file systems;
+            // the extension match must be case-insensitive.
+            var modPath = CreateModDir("UppercaseXmlMod");
+            File.WriteAllText(Path.Combine(modPath, "LoadFolders.XML"), @"
+<loadFolders>
+  <v1.5>
+    <li>1.5</li>
+  </v1.5>
+</loadFolders>");
+
+            var result = ModFolderResolver.Resolve(modPath, "1.5");
+
+            result.Current.Should().Contain("1.5");
+            result.Current.Should().NotContain(".");
+        }
+
+        [Fact]
         public void Resolve_WithXmlAndIfModActiveCondition_WhenModIsActive_ShouldIncludeFolder()
         {
             var modPath = CreateModDir("ConditionalMod");

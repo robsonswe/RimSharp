@@ -133,7 +133,8 @@ namespace RimSharp.Infrastructure.Mods.IO
             foreach (var loc in possibleLocations)
             {
                 if (!Directory.Exists(loc)) continue;
-                var files = Directory.GetFiles(loc, "*.xml");
+                var files = Directory.GetFiles(loc)
+                    .Where(f => Path.GetExtension(f).Equals(".xml", StringComparison.OrdinalIgnoreCase));
                 var exactFile = files.FirstOrDefault(f => Path.GetFileName(f).Equals("loadfolders.xml", StringComparison.OrdinalIgnoreCase));
                 if (exactFile != null) return exactFile;
             }

@@ -54,6 +54,7 @@ jobs:
       run: |
         # Publish step
         dotnet publish $env:Project_Path `
+          -f net8.0-windows `
           -r win-x64 `
           -c Release `
           --self-contained true `

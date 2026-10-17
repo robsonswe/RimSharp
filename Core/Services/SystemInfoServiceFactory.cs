@@ -8,9 +8,16 @@ namespace RimSharp.Core.Services
     {
         public static ISystemInfoService Create()
         {
+#if WINDOWS
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 return new WindowsSystemInfoService();
+            }
+#endif
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                return new LinuxSystemInfoService();
             }
 
             return new NullSystemInfoService();
