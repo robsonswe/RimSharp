@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using FluentAssertions;
 using NSubstitute;
+using RimSharp.Infrastructure.Configuration;
 using RimSharp.Infrastructure.Workshop.Core;
 using RimSharp.Shared.Services.Contracts;
 using Xunit;
@@ -24,6 +25,17 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Core
             service.SteamCmdPrefixPath.Should().Contain("SteamCMD_Data");
             service.SteamCmdInstallPath.Should().Contain("steamcmd");
             service.SteamCmdExePath.Should().EndWith(ExeName);
+        }
+
+        [Fact]
+        public void InitializePaths_WhenConfigEmpty_ShouldDefaultToAppDataPathsDataDirectory()
+        {
+
+            _configService.GetConfigValue("steamcmd_prefix").Returns("");
+
+            var service = new SteamCmdPathService(_configService, ExeName);
+
+            service.SteamCmdPrefixPath.Should().Be(Path.Combine(AppDataPaths.DataDirectory, "SteamCMD_Data"));
         }
 
         [Fact]

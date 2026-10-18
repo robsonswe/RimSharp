@@ -4,6 +4,7 @@ using RimSharp.Core.Extensions;
 using RimSharp.Features.ModManager.Dialogs.MissingMods;
 using RimSharp.Features.WorkshopDownloader.Models;
 using RimSharp.Features.WorkshopDownloader.Services;
+using RimSharp.Infrastructure.Configuration;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using System;
@@ -141,8 +142,9 @@ namespace RimSharp.Infrastructure.Mods.IO
 
         private async Task<string> EnsureListsDirectoryAsync()
         {
-            string appDirectory = AppDomain.CurrentDomain.BaseDirectory;
-            string listsDirectory = Path.Combine(appDirectory, "Lists");
+            // App-managed data root: Windows -> next to the exe (unchanged),
+            // Linux -> XDG data dir.
+            string listsDirectory = Path.Combine(AppDataPaths.DataDirectory, "Lists");
 
             if (!Directory.Exists(listsDirectory))
             {

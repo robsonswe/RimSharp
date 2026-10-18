@@ -20,7 +20,7 @@ namespace RimSharp.Infrastructure.Logging
         public LoggerService(IConfigService configService, string? appBasePath = null)
         {
             _configService = configService;
-            _appBasePath = appBasePath ?? AppDomain.CurrentDomain.BaseDirectory;
+            _appBasePath = appBasePath ?? AppDataPaths.DataDirectory;
         }
 
         public void Log(LogLevel level, string message, string module = "General")
