@@ -1,4 +1,4 @@
-name: .NET Core WPF Build and Release - RimSharp
+name: .NET Desktop Build and Release - RimSharp
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write # Needed for softprops/action-gh-release
 
 jobs:
-  build-and-release: # Combined job
+  build-windows:
     runs-on: windows-latest
     env:
       Project_Path: RimSharp.csproj
@@ -82,7 +82,59 @@ jobs:
         # tag_name: ${{ steps.extract_tag.outputs.tag_name }}
         name: RimSharp Release ${{ steps.extract_tag.outputs.tag_name }}
         body: |
-          RimSharp WPF Application
+          RimSharp Desktop Application (Avalonia UI)
           Tag: ${{ steps.extract_tag.outputs.tag_name }}
         prerelease: ${{ steps.check_prerelease.outputs.is_prerelease == 'true' }}
         files: ${{ steps.package.outputs.zip_name }}
+
+  build-linux:
+    needs: build-windows # The Windows job creates the release; this job appends the Linux artifact to it
+    runs-on: ubuntu-24.04
+    env:
+      Project_Path: RimSharp.csproj
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Needed by softprops/action-gh-release to find the tag
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore $env:Project_Path
+
+    - name: Run unit tests (Linux)
+      run: dotnet test --project RimSharp.Tests --framework net8.0 -c Release
+
+    - name: Publish and Package
+      id: package
+      run: |
+        # Publish step (self-contained single-file, same flags as the Windows job)
+        dotnet publish $env:Project_Path \
+          -f net8.0 \
+          -r linux-x64 \
+          -c Release \
+          --self-contained true \
+          -p:PublishSingleFile=true \
+          -p:PublishReadyToRun=true \
+          -p:EnableCompressionInSingleFile=true \
+          --output ./publish-linux
+
+        # Packaging step (content files are NOT embedded by single-file publish,
+        # so the whole publish output folder ships in the tarball)
+        mkdir RimSharp
+        cp -r ./publish-linux/* RimSharp/
+        tarName="RimSharp_linux-x64_${{ github.ref_name }}.tar.gz"
+        tar -czf "$tarName" RimSharp
+
+        echo "tar_name=$tarName" >> "$GITHUB_OUTPUT"
+
+    - name: Upload Linux artifact to Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.ref_name }}
+        files: ${{ steps.package.outputs.tar_name }}
