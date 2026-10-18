@@ -6,7 +6,7 @@ namespace RimSharp.Infrastructure.Workshop.Download.Execution
 {
     public interface ISteamCmdProcessRunner
     {
-        Task<int> RunSteamCmdAsync(
+        Task<SteamCmdRunResult> RunSteamCmdAsync(
             string scriptPath,
             string primaryLogPath,
             string workingDirectory,
