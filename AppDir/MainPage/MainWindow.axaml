@@ -9,7 +9,7 @@
         x:Class="RimSharp.AppDir.MainPage.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="RimSharp - RimWorld Mod Manager" Height="900" Width="1200"
-        MinHeight="900" MinWidth="1200"
+        MinHeight="700" MinWidth="1200"
         Background="{DynamicResource RimworldBeigeBrush}">
 
     <Window.Styles>
