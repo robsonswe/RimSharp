@@ -42,6 +42,7 @@ namespace RimSharp.AppDir.MainPage
         public PathSettings PathSettings { get; }
 
         private Task? _pathInitializationTask;
+        private bool _isInitializingPaths;
 
         public ICommand SwitchTabCommand { get; }
         public ICommand BrowsePathCommand { get; }
@@ -140,12 +141,22 @@ namespace RimSharp.AppDir.MainPage
 
                 RunOnUIThread(() =>
                 {
-                    PathSettings.PropertyChanged -= PathSettings_PropertyChanged;
-                    PathSettings.GamePath = gamePath;
-                    PathSettings.ConfigPath = configPath;
-                    PathSettings.ModsPath = modsPath;
-                    PathSettings.GameVersion = gameVersion;
-                    PathSettings.PropertyChanged += PathSettings_PropertyChanged;
+                    // Suppresses persistence while the initial path values are
+                    // applied, so initialization does not rewrite the config
+                    // it just read. The flag is only held for this synchronous
+                    // block; changes made outside it are always persisted.
+                    _isInitializingPaths = true;
+                    try
+                    {
+                        PathSettings.GamePath = gamePath;
+                        PathSettings.ConfigPath = configPath;
+                        PathSettings.ModsPath = modsPath;
+                        PathSettings.GameVersion = gameVersion;
+                    }
+                    finally
+                    {
+                        _isInitializingPaths = false;
+                    }
 
                     this.RaisePropertyChanged(nameof(PathSettings));
                     _ = Task.Run(() => CheckAndWarnDifferentDrives(PathSettings.GamePath));
@@ -166,9 +177,15 @@ namespace RimSharp.AppDir.MainPage
             _navigationService.TabSwitchRequested += OnTabSwitchRequested;
         }
 
+        /// <summary>
+        /// Completes when the initial game/config paths have been applied to
+        /// <see cref="PathSettings"/>.
+        /// </summary>
+        public Task WaitForPathInitializationAsync() => _pathInitializationTask ?? Task.CompletedTask;
+
         public async Task OnMainWindowLoadedAsync()
         {
-            if (_pathInitializationTask != null) await _pathInitializationTask;
+            await WaitForPathInitializationAsync();
 
             if (string.IsNullOrEmpty(PathSettings.GamePath) || string.IsNullOrEmpty(PathSettings.ConfigPath))
             {
@@ -246,6 +263,8 @@ namespace RimSharp.AppDir.MainPage
 
         private void PathSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
+            if (_isInitializingPaths) return;
+
             this.RaisePropertyChanged(nameof(PathSettings));
 
             string? key = null;
@@ -370,9 +389,16 @@ namespace RimSharp.AppDir.MainPage
 
         private async Task BrowsePathAsync(string pathType)
         {
+            string? initialDirectory = pathType switch
+            {
+                "GamePath" => RimWorldDefaultPaths.GetGameFolderHint(),
+                "ConfigPath" => RimWorldDefaultPaths.GetConfigFolder(),
+                _ => null
+            };
+
             var (result, selectedPath) = await _dialogService.ShowOpenFolderDialogAsync(
-                $"Select RimWorld {pathType.Replace("Path", "")} Folder");
-            
+                $"Select RimWorld {pathType.Replace("Path", "")} Folder", initialDirectory ?? string.Empty);
+
             if (result && !string.IsNullOrEmpty(selectedPath))
             {
                 if (pathType == "GamePath") PathSettings.GamePath = selectedPath;
