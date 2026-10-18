@@ -65,10 +65,14 @@
 
 ### Linux (x64)
 
-1. **Download:** Get `RimSharp_linux-x64_<tag>.tar.gz` from the [Releases page](https://github.com/robsonswe/RimSharp/releases).
-2. **Extract:** `tar xzf RimSharp_linux-x64_<tag>.tar.gz` — creates a `RimSharp/` folder. Extract it anywhere **writable** (e.g. your home directory); the app keeps its data (config, SteamCMD, logs) next to the executable.
-3. **Run:** `cd RimSharp && ./RimSharp`
-4. **Set Paths:** On first launch, configure your RimWorld installation, Mods folder, and Config folder.
+Choose the installation format that best fits your distribution and workflow from the [Releases page](https://github.com/robsonswe/RimSharp/releases):
+
+- **Debian / Ubuntu:** Download `RimSharp_linux-x64_<tag>_amd64.deb` and open it with the distribution's graphical package installer, or run `sudo apt install ./RimSharp_linux-x64_<tag>_amd64.deb`. Required native packages are declared by the package manager.
+- **Fedora / RPM-based distributions:** Download `RimSharp_linux-x64_<tag>_x86_64.rpm` and open it with the graphical package installer, or run `sudo dnf install ./RimSharp_linux-x64_<tag>_x86_64.rpm`. Required native packages are declared by the package manager.
+- **AppImage:** Download `RimSharp_linux-x64_<tag>.AppImage`, make it executable in the file properties if necessary, and double-click it. You may also run `./RimSharp_linux-x64_<tag>.AppImage` from a terminal.
+- **Portable tarball:** Download `RimSharp_linux-x64_<tag>.tar.gz`, extract it with the file manager, open the `RimSharp/` folder, and double-click `RimSharp`. If required, enable **Allow executing the file as a program** in the executable's file properties.
+
+After installation, start RimSharp and configure your RimWorld installation, Mods folder, and Config folder. The application stores its own configuration, logs, and downloaded SteamCMD files in the Linux XDG data directories; the RimWorld paths remain wherever you configure them.
 
 **Required native dependencies:**
 
