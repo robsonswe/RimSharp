@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using FluentAssertions;
 using NSubstitute;
 using RimSharp.Infrastructure.Workshop.Core;
@@ -28,12 +30,15 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Core
         public void InitializePaths_WhenConfigSet_ShouldUseConfigPath()
         {
 
-            _configService.GetConfigValue("steamcmd_prefix").Returns(@"C:\CustomPath");
+            // Build the configured prefix with Path.Combine so the expected
+            // values match the platform directory separator.
+            var customPrefix = Path.Combine(Path.GetTempPath(), "CustomPath");
+            _configService.GetConfigValue("steamcmd_prefix").Returns(customPrefix);
 
             var service = new SteamCmdPathService(_configService, ExeName);
 
-            service.SteamCmdPrefixPath.Should().Be(@"C:\CustomPath");
-            service.SteamCmdInstallPath.Should().Be(@"C:\CustomPath\steamcmd");
+            service.SteamCmdPrefixPath.Should().Be(customPrefix);
+            service.SteamCmdInstallPath.Should().Be(Path.Combine(customPrefix, "steamcmd"));
             service.SteamCmdWorkshopContentPath.Should().Contain("294100");
         }
     }

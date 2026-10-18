@@ -31,6 +31,17 @@ namespace RimSharp.Infrastructure.Workshop.Core
         public string SteamCmdDepotCachePath => _steamCmdDepotCachePath;
         public string SteamCmdSteamAppsPath => _steamCmdSteamAppsPath;
 
+        /// <summary>
+        /// Directory where SteamCMD writes its log files. On Windows the Steam
+        /// dir is the steamcmd executable's own directory, so logs land in
+        /// "<steamcmd>/logs". On Linux/macOS SteamCMD resolves the Steam dir
+        /// from $HOME; the process runner overrides $HOME to an app-managed
+        /// "steam-home" directory, so logs land in "<prefix>/steam-home/Steam/logs".
+        /// </summary>
+        public string SteamCmdLogDirectory => OperatingSystem.IsWindows()
+            ? Path.Combine(_steamCmdInstallPath, "logs")
+            : Path.Combine(_steamCmdPrefixPath, "steam-home", "Steam", "logs");
+
         public SteamCmdPathService(IConfigService configService, string steamCmdExeName)
         {
             _configService = configService;

@@ -111,6 +111,14 @@ cancellationToken.ThrowIfCancellationRequested();
                 cancellationToken.ThrowIfCancellationRequested();
                 try { File.Delete(tempArchivePath); } catch { /* Ignore */ }
 
+                string? runtimeProblem = _platformInfo.GetRuntimePrerequisiteProblem();
+                if (runtimeProblem != null)
+                {
+                    progress?.Report($"Setup failed: {runtimeProblem}");
+                    await _dialogService.ShowError("Setup Failed", runtimeProblem);
+                    return false;
+                }
+
                 bool setupComplete = await CheckSetupAsync();
                 if (setupComplete)
                 {
