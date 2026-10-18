@@ -114,10 +114,11 @@ namespace RimSharp.Tests.AppDir.MainPage
         }
 
         [Fact]
-        public void PathSettings_GamePathChanged_ShouldSaveToConfig()
+        public async Task PathSettings_GamePathChanged_ShouldSaveToConfig()
         {
 
             var vm = CreateViewModel();
+            await vm.WaitForPathInitializationAsync();
             var newPath = Path.Combine(_testTempDir, "NewGamePath");
             Directory.CreateDirectory(newPath);
 
@@ -128,10 +129,11 @@ namespace RimSharp.Tests.AppDir.MainPage
         }
 
         [Fact]
-        public void PathSettings_ConfigPathChanged_ShouldSaveToConfig()
+        public async Task PathSettings_ConfigPathChanged_ShouldSaveToConfig()
         {
 
             var vm = CreateViewModel();
+            await vm.WaitForPathInitializationAsync();
             var newPath = Path.Combine(_testTempDir, "NewConfigPath");
             Directory.CreateDirectory(newPath);
 
@@ -208,14 +210,15 @@ namespace RimSharp.Tests.AppDir.MainPage
         }
 
         [Fact]
-        public void CheckAndWarnDifferentDrives_ShouldShowWarning_WhenDrivesDiffer()
+        public async Task CheckAndWarnDifferentDrives_ShouldShowWarning_WhenDrivesDiffer()
         {
 
-var vm = CreateViewModel();
+            var vm = CreateViewModel();
+            await vm.WaitForPathInitializationAsync();
 
-vm.PathSettings.GamePath = _testTempDir; 
+            vm.PathSettings.GamePath = _testTempDir;
 
-             // Assert - mostly that no exception occurred.
+            // Assert - mostly that no exception occurred.
         }
 
         [Fact]

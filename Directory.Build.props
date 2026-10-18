@@ -1,0 +1,8 @@
+<Project>
+  <!-- Allows building the net8.0-windows leg on non-Windows hosts (SDK
+       requires this to resolve the Windows reference packs). On Windows the
+       property is already implied and has no effect. -->
+  <PropertyGroup>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+</Project>

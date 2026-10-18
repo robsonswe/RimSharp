@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
@@ -53,6 +54,28 @@ namespace RimSharp.Infrastructure.Dialog
         {
             _openDialogCount--;
             if (_openDialogCount == 0) OnPropertyChanged(nameof(IsAnyDialogOpen));
+        }
+
+        /// <summary>
+        /// Resolves a start location for storage pickers. Only existing
+        /// directories are used; otherwise the picker opens at its default.
+        /// </summary>
+        private static async Task<Avalonia.Platform.Storage.IStorageFolder?> GetStorageFolderAsync(
+            Avalonia.Platform.Storage.IStorageProvider storageProvider, string? initialDirectory)
+        {
+            if (string.IsNullOrEmpty(initialDirectory) || !Directory.Exists(initialDirectory))
+            {
+                return null;
+            }
+
+            try
+            {
+                return await storageProvider.TryGetFolderFromPathAsync(new Uri(initialDirectory));
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private Window? GetActiveWindow()
@@ -339,7 +362,8 @@ namespace RimSharp.Infrastructure.Dialog
             var folders = await window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             {
                 Title = title,
-                AllowMultiple = false
+                AllowMultiple = false,
+                SuggestedStartLocation = await GetStorageFolderAsync(window.StorageProvider, initialDirectory)
             });
 
             if (folders.Count > 0)
