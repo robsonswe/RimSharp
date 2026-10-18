@@ -88,7 +88,7 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
 
                 _logger.LogInfo($"Item {itemId}: Performing atomic move from '{finalSourcePath}' to '{targetPath}'.", "DownloadedItemProcessor");
                 AddLogMessage($"Item {itemId}: Activating new version...");
-                Directory.Move(finalSourcePath, targetPath);
+                await MoveDirectoryWithCopyFallbackAsync(finalSourcePath, targetPath, itemId, cancellationToken);
                 if (!Directory.Exists(targetPath) || Directory.Exists(finalSourcePath))
                     throw new IOException($"Verification failed after moving staged version to target path '{targetPath}'.");
                 if (backupCreated && !string.IsNullOrEmpty(backupPath))
@@ -245,6 +245,33 @@ private async Task<string> ComputeFileHashAsync(string filePath, CancellationTok
             }, cancellationToken);
         }
 
+        /// <summary>
+        /// Moves a directory, falling back to a recursive copy + source delete
+        /// when the atomic move fails with an IOException. This handles
+        /// cross-filesystem installs on Unix: AreOnSameVolume cannot detect
+        /// them there (Path.GetPathRoot returns "/" for every path), so the
+        /// staging branch above is skipped and Directory.Move throws
+        /// "Invalid cross-device link" (EXDEV). On Windows the staging branch
+        /// already handles cross-drive installs, and the fallback is a no-op
+        /// safety net. The source is only deleted after the copy succeeds.
+        /// </summary>
+        private async Task MoveDirectoryWithCopyFallbackAsync(string sourceDir, string destDir, string itemId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                Directory.Move(sourceDir, destDir);
+                return;
+            }
+            catch (IOException ex)
+            {
+                _logger.LogWarning($"Item {itemId}: Directory.Move failed ('{ex.Message}'). Falling back to recursive copy (different disk/filesystem).", "DownloadedItemProcessor");
+                AddLogMessage($"Item {itemId}: Direct move not possible (different disk). Copying instead (this may take a moment)...");
+            }
+
+            await CopyDirectoryRecursivelyAsync(sourceDir, destDir, cancellationToken);
+            Directory.Delete(sourceDir, true);
+        }
+
         private bool AreOnSameVolume(string path1, string path2)
         {
             string? root1 = Path.GetPathRoot(Path.GetFullPath(path1));
@@ -292,6 +319,9 @@ var comparison = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
                 try { sourceFile.CopyTo(destFileName, true); return; }
                 catch (IOException) when (i < maxRetries) { await Task.Delay(retryDelayMs, cancellationToken); }
             }
+            // All retries exhausted: propagate so the caller can roll back
+            // instead of silently continuing with a partial copy.
+            sourceFile.CopyTo(destFileName, true);
         }
     }
 }

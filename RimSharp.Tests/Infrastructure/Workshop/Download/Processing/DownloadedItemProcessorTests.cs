@@ -113,6 +113,76 @@ Directory.GetDirectories(_testTempDir).Any(d => d.Contains("_backup")).Should().
 
             File.Exists(Path.Combine(_targetPath, "old.xml")).Should().BeTrue();
         }
+
+        [Fact]
+        public async Task ProcessItemAsync_CrossDeviceSource_ShouldFallBackToCopy()
+        {
+            // Cross-filesystem validation (Unix): /dev/shm is a tmpfs instance
+            // distinct from the default temp location on most Linux systems.
+            // Directory.Move across devices throws EXDEV ("Invalid cross-device
+            // link") and the processor must fall back to a recursive copy.
+            // Skipped when no distinct filesystem is available (e.g. Windows).
+            string? crossDeviceBase = FindCrossDeviceBase();
+            if (crossDeviceBase == null)
+            {
+                Assert.Skip("No cross-device filesystem available to exercise the copy fallback.");
+            }
+
+            var item = new DownloadItem { SteamId = "123", Name = "Test Mod" };
+            string crossTestRoot = Path.Combine(crossDeviceBase!, "RimSharp_CrossDevTest_" + Guid.NewGuid().ToString("N"));
+            string crossSourcePath = Path.Combine(crossTestRoot, "123");
+            string crossTargetPath = Path.Combine(_testTempDir, "CrossTarget");
+            try
+            {
+                Directory.CreateDirectory(crossSourcePath);
+                File.WriteAllText(Path.Combine(crossSourcePath, "About.xml"), "content");
+
+                var result = await _processor.ProcessItemAsync(item, crossSourcePath, crossTargetPath, "_backup", CancellationToken.None);
+
+                result.Success.Should().BeTrue();
+                Directory.Exists(crossTargetPath).Should().BeTrue();
+                File.Exists(Path.Combine(crossTargetPath, "About.xml")).Should().BeTrue();
+                Directory.Exists(crossSourcePath).Should().BeFalse();
+                Directory.GetDirectories(_testTempDir).Any(d => d.Contains("_staging_")).Should().BeFalse();
+            }
+            finally
+            {
+                if (Directory.Exists(crossTestRoot)) Directory.Delete(crossTestRoot, true);
+            }
+        }
+
+        /// <summary>
+        /// Returns a base directory on a filesystem different from the default
+        /// temp path, or null when none is available. Probed by attempting a
+        /// real Directory.Move between the two locations.
+        /// </summary>
+        private static string? FindCrossDeviceBase()
+        {
+            string tempProbeParent = Path.Combine(Path.GetTempPath(), "RimSharp_CrossDevProbe_" + Guid.NewGuid().ToString("N"));
+            foreach (string candidate in new[] { "/dev/shm" })
+            {
+                if (!Directory.Exists(candidate)) continue;
+                string candidateProbe = Path.Combine(candidate, "RimSharp_CrossDevProbe_" + Guid.NewGuid().ToString("N"));
+                try
+                {
+                    Directory.CreateDirectory(candidateProbe);
+                    Directory.CreateDirectory(tempProbeParent);
+                    Directory.Move(candidateProbe, Path.Combine(tempProbeParent, "probe"));
+                    // Move succeeded: same filesystem, not usable for this test.
+                    return null;
+                }
+                catch (IOException)
+                {
+                    return candidate;
+                }
+                finally
+                {
+                    try { if (Directory.Exists(candidateProbe)) Directory.Delete(candidateProbe, true); } catch { }
+                    try { if (Directory.Exists(tempProbeParent)) Directory.Delete(tempProbeParent, true); } catch { }
+                }
+            }
+            return null;
+        }
     }
 }
 
