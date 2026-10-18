@@ -71,6 +71,57 @@ namespace RimSharp.Tests.Core.Services
         }
 
         [Fact]
+        public void ParseSysFsResource_WithVmwareSvgaResource_ReturnsLargestMemoryBar()
+        {
+            // Real content of a VMware SVGA II adapter: 16-byte I/O region,
+            // 256 MiB prefetchable 64-bit memory BAR, 2 MiB MMIO region.
+            const string vmwareResource =
+                "0x000000000000d000 0x000000000000d00f 0x0000000000040101\n" +
+                "0x00000000e0000000 0x00000000efffffff 0x0000000000042208\n" +
+                "0x00000000f0000000 0x00000000f01fffff 0x0000000000040200\n" +
+                "0x0000000000000000 0x0000000000000000 0x0000000000000000\n" +
+                "0x00000000000c0000 0x00000000000dffff 0x0000000000000212\n";
+
+            LinuxSystemInfoService.ParseSysFsResource(vmwareResource)
+                .Should().Be(256UL * Mebibyte);
+        }
+
+        [Fact]
+        public void ParseSysFsResource_WithOnlyIoRegions_ReturnsZero()
+        {
+            const string content =
+                "0x000000000000d000 0x000000000000d00f 0x0000000000040101\n" +
+                "0x0000000000000000 0x0000000000000000 0x0000000000000000\n";
+
+            LinuxSystemInfoService.ParseSysFsResource(content).Should().Be(0UL);
+        }
+
+        [Fact]
+        public void ParseSysFsResource_WithEmptyRegions_ReturnsZero()
+        {
+            const string content =
+                "0x0000000000000000 0x0000000000000000 0x0000000000000000\n" +
+                "0x0000000000000000 0x0000000000000000 0x0000000000000000\n";
+
+            LinuxSystemInfoService.ParseSysFsResource(content).Should().Be(0UL);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        [InlineData("garbage")]
+        public void ParseSysFsResource_WithInvalidContent_ReturnsZero(string content)
+        {
+            LinuxSystemInfoService.ParseSysFsResource(content).Should().Be(0UL);
+        }
+
+        [Fact]
+        public void ParseSysFsResource_WithNull_ReturnsZero()
+        {
+            LinuxSystemInfoService.ParseSysFsResource(null).Should().Be(0UL);
+        }
+
+        [Fact]
         public void Factory_OnWindows_ReturnsWindowsSystemInfoService()
         {
             ISystemInfoService service = SystemInfoServiceFactory.Create();

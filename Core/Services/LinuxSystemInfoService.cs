@@ -26,6 +26,14 @@ namespace RimSharp.Core.Services
             "/sys/class/drm/card3/device/mem_info_vram_total"
         };
 
+        private static readonly string[] DrmCardResourcePaths =
+        {
+            "/sys/class/drm/card0/device/resource",
+            "/sys/class/drm/card1/device/resource",
+            "/sys/class/drm/card2/device/resource",
+            "/sys/class/drm/card3/device/resource"
+        };
+
         public long GetPrimaryGpuVram()
         {
             ulong nvidiaVram = TryGetNvidiaVram();
@@ -34,10 +42,19 @@ namespace RimSharp.Core.Services
                 return ToLongBytes(nvidiaVram);
             }
 
-            ulong amdVram = TryGetAmdVram();
-            if (amdVram > 0)
+            ulong sysFsVram = TryGetSysFsVram();
+            if (sysFsVram > 0)
             {
-                return ToLongBytes(amdVram);
+                return ToLongBytes(sysFsVram);
+            }
+
+            // Last resort: the largest PCI memory BAR of the DRM device is a
+            // good VRAM approximation for GPUs whose driver does not expose
+            // mem_info_vram_total (Intel, virtual GPUs, older drivers).
+            ulong barVram = TryGetPciBarVram();
+            if (barVram > 0)
+            {
+                return ToLongBytes(barVram);
             }
 
             return 0;
@@ -88,7 +105,7 @@ namespace RimSharp.Core.Services
             }
         }
 
-        private static ulong TryGetAmdVram()
+        private static ulong TryGetSysFsVram()
         {
             foreach (string path in DrmCardPaths)
             {
@@ -103,6 +120,32 @@ namespace RimSharp.Core.Services
                     if (vram > 0)
                     {
                         return vram;
+                    }
+                }
+                catch (Exception)
+                {
+                    // Card not readable, try the next candidate
+                }
+            }
+
+            return 0;
+        }
+
+        private static ulong TryGetPciBarVram()
+        {
+            foreach (string path in DrmCardResourcePaths)
+            {
+                try
+                {
+                    if (!File.Exists(path))
+                    {
+                        continue;
+                    }
+
+                    ulong barSize = ParseSysFsResource(File.ReadAllText(path));
+                    if (barSize > 0)
+                    {
+                        return barSize;
                     }
                 }
                 catch (Exception)
@@ -160,6 +203,67 @@ namespace RimSharp.Core.Services
             return ulong.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out ulong bytes)
                 ? bytes
                 : 0;
+        }
+
+        /// <summary>
+        /// Parses a PCI sysfs resource file (lines of "start end flags" in
+        /// hexadecimal) and returns the size of the largest memory region,
+        /// which approximates the GPU VRAM. I/O port regions are ignored.
+        /// </summary>
+        internal static ulong ParseSysFsResource(string? content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return 0;
+            }
+
+            const ulong IoResourceFlag = 0x100;
+            const ulong MemoryResourceFlag = 0x200;
+
+            ulong largestRegion = 0;
+
+            foreach (string line in content.Split('\n'))
+            {
+                string[] parts = line.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < 3)
+                {
+                    continue;
+                }
+
+                if (!TryParseHex(parts[0], out ulong start) ||
+                    !TryParseHex(parts[1], out ulong end) ||
+                    !TryParseHex(parts[2], out ulong flags))
+                {
+                    continue;
+                }
+
+                if (start == 0 && end == 0)
+                {
+                    continue;
+                }
+
+                if ((flags & MemoryResourceFlag) == 0 || (flags & IoResourceFlag) != 0)
+                {
+                    continue;
+                }
+
+                ulong size = end - start + 1;
+                if (size > largestRegion)
+                {
+                    largestRegion = size;
+                }
+            }
+
+            return largestRegion;
+        }
+
+        private static bool TryParseHex(string value, out ulong result)
+        {
+            string normalized = value.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                ? value[2..]
+                : value;
+
+            return ulong.TryParse(normalized, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out result);
         }
 
         private static long ToLongBytes(ulong bytes)
