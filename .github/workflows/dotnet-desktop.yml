@@ -187,6 +187,7 @@ jobs:
         Summary: RimWorld mod manager
         License: AGPL-3.0
         BuildArch: x86_64
+        Source0: rimsharp.tar.gz
         Requires: webkit2gtk4.1
         Requires: glibc.i686
         Requires: libstdc++.i686
@@ -251,7 +252,8 @@ jobs:
           test -s "$artifact"
         done
 
-        tar -tzf "RimSharp_linux-x64_${GITHUB_REF_NAME}.tar.gz" | grep -q '^RimSharp/RimSharp$'
+        tar -tzf "RimSharp_linux-x64_${GITHUB_REF_NAME}.tar.gz" > tar-contents.txt
+        grep -q '^RimSharp/RimSharp$' tar-contents.txt
         dpkg-deb --info "RimSharp_linux-x64_${GITHUB_REF_NAME}_amd64.deb" >/dev/null
         rpm -qip "RimSharp_linux-x64_${GITHUB_REF_NAME}_x86_64.rpm" >/dev/null
         file "RimSharp_linux-x64_${GITHUB_REF_NAME}.AppImage" | grep -qi 'appimage\|executable'
