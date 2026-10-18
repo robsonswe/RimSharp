@@ -60,6 +60,7 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download
             _mockInstaller.CheckSetupAsync().Returns(true);
             _mockPathService.SteamCmdExePath.Returns(dummyExe);
             _mockPathService.SteamCmdInstallPath.Returns(_testTempDir);
+            _mockPathService.SteamCmdLogDirectory.Returns(Path.Combine(_testTempDir, "logs"));
             _mockPathService.SteamCmdSteamAppsPath.Returns(_testTempDir);
             _mockGamePathService.GetModsPath().Returns(Path.Combine(_testTempDir, "Mods"));
             Directory.CreateDirectory(_mockGamePathService.GetModsPath());
