@@ -144,7 +144,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             if (sender is NativeWebView wv)
             {
                 var info = wv.AdapterInfo;
-                _logger?.LogInfo($"AdapterCreated: type={info.Type}, engine={info.Engine}, version={info.Version}", Module);
+                _logger?.LogInfo($"AdapterCreated: type={info?.Type}, engine={info?.Engine}, version={info?.Version}", Module);
             }
             else
             {

@@ -40,21 +40,27 @@ namespace RimSharp.Infrastructure.Configuration
 
         internal static string[] GetConfigFolderCandidates()
         {
-            return new string?[]
-            {
-                // Unity persistent data path on Linux.
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "unity3d", CompanyFolder, ProductFolder, ConfigSubFolder),
-                // Unity persistent data path on Windows (LocalLow).
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                    "AppData", "LocalLow", CompanyFolder, ProductFolder, ConfigSubFolder),
-                // Unity persistent data path on macOS.
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "RimWorld", ConfigSubFolder),
-            }
-            .Where(path => !string.IsNullOrEmpty(path))
-            .Select(path => path!)
-            .ToArray();
+            var linuxPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "unity3d", CompanyFolder, ProductFolder, ConfigSubFolder);
+            var windowsPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "AppData", "LocalLow", CompanyFolder, ProductFolder, ConfigSubFolder);
+            var macOsPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "RimWorld", ConfigSubFolder);
+
+            string[] candidates = OperatingSystem.IsWindows()
+                ? new[] { windowsPath, linuxPath, macOsPath }
+                : OperatingSystem.IsLinux()
+                    ? new[] { linuxPath, windowsPath, macOsPath }
+                    : OperatingSystem.IsMacOS()
+                        ? new[] { macOsPath, linuxPath, windowsPath }
+                        : new[] { linuxPath, windowsPath, macOsPath };
+
+            return candidates
+                .Where(path => !string.IsNullOrEmpty(path))
+                .ToArray();
         }
 
         internal static string[] GetGameFolderHintCandidates()
