@@ -6,12 +6,13 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
-using Projektanker.Icons.Avalonia;
+using Optris.Icons.Avalonia;
 using RimSharp.AppDir.AppFiles;
 using Avalonia.Layout;
 
@@ -43,11 +44,20 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
             if (!isSupported)
             {
-                _container.Content = CreatePlaceholderContent(
-                    "Web Browser", 
-                    "The embedded web browser is not available on this platform.", 
-                    "Please use the Steam Workshop website directly to browse mods.", 
-                    false);
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                {
+                    // Missing WebKit backend on Linux: tell the user how to fix
+                    // it (SteamCMD-setup-style guidance) instead of a dead end.
+                    _container.Content = CreateLinuxBackendMissingContent();
+                }
+                else
+                {
+                    _container.Content = CreatePlaceholderContent(
+                        "Web Browser",
+                        "The embedded web browser is not available on this platform.",
+                        "Please use the Steam Workshop website directly to browse mods.",
+                        false);
+                }
             }
             else
             {
@@ -57,6 +67,22 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                     "This may take a few moments on the first run.", 
                     true);
             }
+        }
+
+        /// <summary>
+        /// Panel shown on Linux when no WebKit backend library is available
+        /// (mirrors the SteamCMD "not installed - run setup" guidance UX).
+        /// </summary>
+        private Control CreateLinuxBackendMissingContent()
+        {
+            return CreatePlaceholderContent(
+                "Web Browser Not Available",
+                "RimSharp's embedded Workshop browser needs a WebKit runtime library, which was not found on this system.",
+                "Install one of the following, then restart RimSharp:\n\n"
+                + "sudo apt install libwpewebkit-2.0-1 libwpebackend-fdo-1.0-1\n\n"
+                + "or\n\n"
+                + "sudo apt install libwebkit2gtk-4.1-0",
+                false);
         }
 
         private Control CreatePlaceholderContent(string title, string mainText, string subText, bool showProgress)
@@ -194,11 +220,19 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                 Debug.WriteLine($"[BrowserView] Initialization failed: {ex}");
                 if (_container != null)
                 {
-                    _container.Content = CreatePlaceholderContent(
-                        "Initialization Failed", 
-                        "The Workshop browser failed to start.", 
-                        ex.Message, 
-                        false);
+                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && ex is PlatformNotSupportedException)
+                    {
+                        // Backend libraries disappeared/missing at creation time.
+                        _container.Content = CreateLinuxBackendMissingContent();
+                    }
+                    else
+                    {
+                        _container.Content = CreatePlaceholderContent(
+                            "Initialization Failed",
+                            "The Workshop browser failed to start.",
+                            ex.Message,
+                            false);
+                    }
                 }
             }
         }
@@ -242,7 +276,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         private void ClearAllFocus()
         {
             var topLevel = TopLevel.GetTopLevel(this);
-            topLevel?.FocusManager?.ClearFocus();
+            // Avalonia 12: ClearFocus() was removed (PR #20854); Focus(null) clears.
+            topLevel?.FocusManager?.Focus(null, NavigationMethod.Unspecified, KeyModifiers.None);
         }
     }
 }
