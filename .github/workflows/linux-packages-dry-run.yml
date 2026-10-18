@@ -163,7 +163,8 @@ jobs:
           "RimSharp_linux-x64_${Release_Ref}.AppImage"; do
           test -s "$artifact"
         done
-        tar -tzf "RimSharp_linux-x64_${Release_Ref}.tar.gz" | grep -q '^RimSharp/RimSharp$'
+        tar -tzf "RimSharp_linux-x64_${Release_Ref}.tar.gz" > tar-contents.txt
+        grep -q '^RimSharp/RimSharp$' tar-contents.txt
         dpkg-deb --info "RimSharp_linux-x64_${Release_Ref}_amd64.deb" >/dev/null
         rpm -qip "RimSharp_linux-x64_${Release_Ref}_x86_64.rpm" >/dev/null
         file "RimSharp_linux-x64_${Release_Ref}.AppImage" | grep -qi 'appimage\|executable'
