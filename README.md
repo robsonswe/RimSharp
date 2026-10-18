@@ -70,17 +70,17 @@
 3. **Run:** `cd RimSharp && ./RimSharp`
 4. **Set Paths:** On first launch, configure your RimWorld installation, Mods folder, and Config folder.
 
-**Optional native dependencies:**
+**Required native dependencies:**
 
-- **Embedded Workshop browser** (the app works without it — only the browser panel is unavailable):
-  - Debian / Ubuntu: `sudo apt install libwpewebkit-2.0-1 libwpebackend-fdo-1.0-1` (or `libwebkit2gtk-4.1-0`)
+- **Embedded Workshop browser:**
+  - Debian / Ubuntu: `sudo apt install libwebkit2gtk-4.1-0`
   - Fedora: `sudo dnf install webkit2gtk4.1`
-  - Arch: `sudo pacman -S wpewebkit wpebackend-fdo` (or `webkit2gtk-4.1`)
-- **SteamCMD** (Workshop downloads) is a 32-bit binary and needs multilib support:
+  - Arch: `sudo pacman -S webkit2gtk-4.1`
+- **SteamCMD** (required for Workshop downloads) is a 32-bit binary and needs multilib support:
   - Debian / Ubuntu: `sudo apt install lib32gcc-s1`
   - Fedora: `sudo dnf install glibc.i686 libstdc++.i686`
-  - Arch: enable the `[multilib]` repository, then `sudo pacman -S lib32-gcc-libs`
-- **ICU** (internationalization, usually preinstalled): `libicu` on Debian/Ubuntu/Fedora/Arch.
+  - Arch: enable the `[multilib]` repository, then `sudo pacman -S lib32-glibc lib32-gcc-libs`
+- **ICU** (internationalization): usually preinstalled; if missing, install `libicu70` on Ubuntu 22.04, `libicu74` on Ubuntu 24.04, `libicu72` on Debian 12, `libicu` on Fedora, or `icu` on Arch.
 
 ---
 

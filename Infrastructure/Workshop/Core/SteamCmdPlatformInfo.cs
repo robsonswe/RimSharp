@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using RimSharp.Core.Services;
 
 namespace RimSharp.Infrastructure.Workshop.Core
 {
@@ -78,8 +79,7 @@ namespace RimSharp.Infrastructure.Workshop.Core
             if (Platform == OSPlatform.Linux && !LinuxLoaderPaths.Any(exists))
             {
                 return "SteamCMD is a 32-bit application and this 64-bit Linux system is missing the 32-bit runtime loader (ld-linux.so.2). " +
-                       "Install the 32-bit libraries with your package manager (Debian/Ubuntu: sudo apt install lib32gcc-s1; " +
-                       "Fedora: sudo dnf install glibc.i686; Arch: sudo pacman -S lib32-glibc) and run the setup again.";
+                       $"Install the 32-bit libraries with your package manager ({GetLinuxRuntimeInstallCommand()}) and run the setup again.";
             }
 
             return null;
@@ -88,13 +88,24 @@ namespace RimSharp.Infrastructure.Workshop.Core
         public string? SetupRequirements => Platform switch
         {
             var p when p == OSPlatform.Linux => 
-                "Note: On 64-bit Linux, SteamCMD requires 32-bit libraries (e.g., lib32gcc-s1 or lib32gcc1). " +
-                "Please ensure these are installed via your package manager (e.g., sudo apt install lib32gcc-s1).",
+                "Note: On 64-bit Linux, SteamCMD requires 32-bit libraries. " +
+                $"Install them via your package manager ({GetLinuxRuntimeInstallCommand()}).",
             var p when p == OSPlatform.OSX => 
                 "Note: macOS may block 'Breakpad.framework' on first run. " +
                 "If SteamCMD fails to start, go to System Settings > Security & Privacy and allow the framework.",
             _ => null
         };
+
+        private static string GetLinuxRuntimeInstallCommand()
+        {
+            return LinuxDistributionDetector.Detect() switch
+            {
+                LinuxDistributionFamily.Debian => "Debian/Ubuntu: sudo apt install lib32gcc-s1",
+                LinuxDistributionFamily.Fedora => "Fedora: sudo dnf install glibc.i686 libstdc++.i686",
+                LinuxDistributionFamily.Arch => "Arch: enable the [multilib] repository, then sudo pacman -S lib32-glibc lib32-gcc-libs",
+                _ => "install the 32-bit glibc and libstdc++ runtime packages for your distribution"
+            };
+        }
     }
 }
 
