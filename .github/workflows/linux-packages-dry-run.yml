@@ -108,6 +108,7 @@ jobs:
         Summary: RimWorld mod manager
         License: AGPL-3.0
         BuildArch: x86_64
+        Source0: rimsharp.tar.gz
         Requires: webkit2gtk4.1
         Requires: glibc.i686
         Requires: libstdc++.i686
