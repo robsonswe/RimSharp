@@ -2,6 +2,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using RimSharp.Infrastructure.Configuration;
 using RimSharp.Shared.Services.Contracts;
 
 namespace RimSharp.Infrastructure.Workshop.Core
@@ -55,7 +56,8 @@ namespace RimSharp.Infrastructure.Workshop.Core
             if (string.IsNullOrWhiteSpace(_steamCmdPrefixPath))
             {
 
-                string basePath = AppDomain.CurrentDomain.BaseDirectory;
+                // Windows: next to the exe (unchanged). Linux: XDG data dir.
+                string basePath = AppDataPaths.DataDirectory;
                 _steamCmdPrefixPath = Path.Combine(basePath, "SteamCMD_Data");
 
             }

@@ -86,6 +86,52 @@ namespace RimSharp.Tests.Infrastructure.Data
             _mockLogger.Received(1).LogInfo(Arg.Is<string>(s => s != null && s.Contains("up to date")), Arg.Any<string>());
         }
 
+        [Fact]
+        public void Constructor_WhenRulesDbMissingAndBundledExists_ShouldSeedFromBundledPlaceholders()
+        {
+
+            var bundledDir = Path.Combine(_testTempDir, "bundled", "Rules", "db");
+            Directory.CreateDirectory(bundledDir);
+            File.WriteAllText(Path.Combine(bundledDir, "manifest.json"), "{}");
+            File.WriteAllText(Path.Combine(bundledDir, "rules.json"), @"{ ""rules"": [] }");
+
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient, bundledDir);
+
+            var seededDir = Path.Combine(_testTempDir, "Rules", "db");
+            Directory.Exists(seededDir).Should().BeTrue();
+            File.Exists(Path.Combine(seededDir, "manifest.json")).Should().BeTrue();
+            File.Exists(Path.Combine(seededDir, "rules.json")).Should().BeTrue();
+            File.ReadAllText(Path.Combine(seededDir, "rules.json")).Should().Be(@"{ ""rules"": [] }");
+        }
+
+        [Fact]
+        public void Constructor_WhenRulesDbAlreadyPopulated_ShouldNotOverwriteFromBundled()
+        {
+
+            var bundledDir = Path.Combine(_testTempDir, "bundled", "Rules", "db");
+            Directory.CreateDirectory(bundledDir);
+            File.WriteAllText(Path.Combine(bundledDir, "rules.json"), @"{ ""rules"": [] }");
+
+            var existingDbDir = Path.Combine(_testTempDir, "Rules", "db");
+            Directory.CreateDirectory(existingDbDir);
+            File.WriteAllText(Path.Combine(existingDbDir, "rules.json"), @"{ ""rules"": [""existing""] }");
+
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient, bundledDir);
+
+            File.ReadAllText(Path.Combine(existingDbDir, "rules.json")).Should().Be(@"{ ""rules"": [""existing""] }");
+        }
+
+        [Fact]
+        public void Constructor_WhenBundledMissing_ShouldStillCreateEmptyRulesDb()
+        {
+
+            var missingBundled = Path.Combine(_testTempDir, "does-not-exist", "Rules", "db");
+
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient, missingBundled);
+
+            Directory.Exists(Path.Combine(_testTempDir, "Rules", "db")).Should().BeTrue();
+        }
+
         private class MockHttpMessageHandler : HttpMessageHandler
         {
             public Func<HttpRequestMessage, HttpResponseMessage>? OnRequest { get; set; }
