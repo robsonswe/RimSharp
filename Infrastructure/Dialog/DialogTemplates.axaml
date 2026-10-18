@@ -4,7 +4,7 @@
         xmlns:local="clr-namespace:RimSharp.Infrastructure.Dialog">
 
     <Style Selector="Window.base-dialog">
-        <Setter Property="SystemDecorations" Value="None"/>
+        <Setter Property="WindowDecorations" Value="None"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="TransparencyLevelHint" Value="Transparent"/>
         <Setter Property="CanResize" Value="False"/>

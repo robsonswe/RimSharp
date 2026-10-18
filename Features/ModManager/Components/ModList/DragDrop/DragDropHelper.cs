@@ -10,17 +10,19 @@ namespace RimSharp.Features.ModManager.Components.ModList.DragDrop
 {
     public static class DragDropHelper
     {
-        private const string DraggedItemsFormat = "RimSharpModItemList";
+        // Avalonia 12: DataObject/string formats replaced by DataFormat + DataTransfer (PR #20521).
+        private static readonly DataFormat<List<ModItem>> DraggedItemsDataFormat =
+            DataFormat.CreateInProcessFormat<List<ModItem>>("rimsharp-mod-item-list");
 
-        public static async Task StartDragAsync(PointerEventArgs e, IEnumerable<ModItem> draggedItems)
+        public static async Task StartDragAsync(PointerPressedEventArgs e, IEnumerable<ModItem> draggedItems)
         {
             var itemsList = draggedItems.ToList();
             if (!itemsList.Any()) return;
 
-            var data = new DataObject();
-            data.Set(DraggedItemsFormat, itemsList);
+            var data = new DataTransfer();
+            data.Add(DataTransferItem.Create(DraggedItemsDataFormat, itemsList));
 
-            await Avalonia.Input.DragDrop.DoDragDrop(e, data, DragDropEffects.Move);
+            await Avalonia.Input.DragDrop.DoDragDropAsync(e, data, DragDropEffects.Move);
         }
     }
 }

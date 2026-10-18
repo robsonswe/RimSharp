@@ -5,7 +5,6 @@ using System.IO.Compression;
 using FluentAssertions;
 using RimSharp.Features.VramAnalysis.Tools;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace RimSharp.Tests.Features.VramAnalysis.Tools
 {

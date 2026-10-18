@@ -21,6 +21,13 @@ namespace RimSharp.Features.ModManager.Behaviors
         private Point _dragStartPoint;
         private bool _isDragging = false;
         private const string DraggedItemsFormat = "RimSharpModItemList";
+        // Avalonia 12: DataObject/string formats replaced by DataFormat + DataTransfer (PR #20521).
+        // In-process format carries live .NET objects for in-app drags.
+        private static readonly DataFormat<List<ModItem>> DraggedItemsDataFormat =
+            DataFormat.CreateInProcessFormat<List<ModItem>>("rimsharp-mod-item-list");
+        // Avalonia 12: DoDragDropAsync requires the original PointerPressedEventArgs,
+        // even when the drag is initiated from PointerMoved after a threshold.
+        private PointerPressedEventArgs? _pressedArgs;
         private InsertionAdorner? _insertionAdorner;
         private IBrush? _insertionBrush;
 
@@ -118,6 +125,7 @@ namespace RimSharp.Features.ModManager.Behaviors
             if (properties.IsLeftButtonPressed)
             {
                 _dragStartPoint = e.GetPosition(AssociatedObject);
+                _pressedArgs = e;
 
                 // IDENTIFY the clicked item
                 var visual = AssociatedObject.InputHitTest(_dragStartPoint) as Visual;
@@ -165,8 +173,9 @@ if (AssociatedObject.SelectedItems != null &&
                         if (selectedItems.Count > 0)
                         {
                             _isDragging = true;
-                            var data = new DataObject();
-                            data.Set(DraggedItemsFormat, selectedItems);
+                            // Avalonia 12: DataObject replaced by DataTransfer + DataTransferItem.
+                            var data = new DataTransfer();
+                            data.Add(DataTransferItem.Create(DraggedItemsDataFormat, selectedItems));
 
                             // Setup Drag Adorner
                             var layer = AdornerLayer.GetAdornerLayer(AssociatedObject);
@@ -181,7 +190,9 @@ if (AssociatedObject.SelectedItems != null &&
 
                             try
                             {
-                                var result = await DragDrop.DoDragDrop(e, data, DragDropEffects.Move);
+                                // Avalonia 12: DoDragDrop renamed DoDragDropAsync and requires
+                                // the original PointerPressedEventArgs (not the move event).
+                                var result = await DragDrop.DoDragDropAsync(_pressedArgs ?? throw new InvalidOperationException("Drag started without press args."), data, DragDropEffects.Move);
                                 System.Diagnostics.Debug.WriteLine($"[DragDrop] Completed with result: {result}");
                             }
                             finally
@@ -200,7 +211,7 @@ if (AssociatedObject.SelectedItems != null &&
         {
             if (AssociatedObject == null) return;
 
-            if (e.Data.Contains(DraggedItemsFormat))
+            if (e.DataTransfer.Contains(DraggedItemsDataFormat))
             {
                 e.DragEffects = DragDropEffects.Move;
 
@@ -237,19 +248,14 @@ if (AssociatedObject.SelectedItems != null &&
         {
             RemoveInsertionAdorner();
 
-            if (AssociatedObject == null || !e.Data.Contains(DraggedItemsFormat)) return;
+            if (AssociatedObject == null || !e.DataTransfer.Contains(DraggedItemsDataFormat)) return;
 
-            var rawData = e.Data.Get(DraggedItemsFormat);
-            var droppedData = rawData as List<ModItem>;
-
-            if (droppedData == null && rawData is IEnumerable<ModItem> enumData)
-            {
-                droppedData = enumData.ToList();
-            }
+            // Avalonia 12: synchronous typed retrieval from DataTransfer.
+            var droppedData = e.DataTransfer.TryGetValue(DraggedItemsDataFormat);
 
             if (droppedData == null || !droppedData.Any())
             {
-                System.Diagnostics.Debug.WriteLine($"[DragDrop] Drop failed: Data is null or empty. Type: {rawData?.GetType().Name}");
+                System.Diagnostics.Debug.WriteLine($"[DragDrop] Drop failed: Data is null or empty. Type: {droppedData?.GetType().Name ?? "null"}");
                 return;
             }
 

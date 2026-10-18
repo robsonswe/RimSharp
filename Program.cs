@@ -1,9 +1,9 @@
 using System;
 using Avalonia;
-using Avalonia.ReactiveUI;
-using Projektanker.Icons.Avalonia;
-using Projektanker.Icons.Avalonia.FontAwesome;
-using Projektanker.Icons.Avalonia.MaterialDesign;
+using ReactiveUI.Avalonia;
+using Optris.Icons.Avalonia;
+using Optris.Icons.Avalonia.FontAwesome;
+using Optris.Icons.Avalonia.MaterialDesign;
 using RimSharp.AppDir.AppFiles;
 
 namespace RimSharp
@@ -36,7 +36,7 @@ namespace RimSharp
             return AppBuilder.Configure<App>()
                 .UsePlatformDetect()
                 .LogToTrace()
-                .UseReactiveUI();
+                .UseReactiveUI(_ => { });
         }
     }
 }

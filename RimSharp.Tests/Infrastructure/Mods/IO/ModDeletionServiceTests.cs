@@ -50,10 +50,11 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
 
             var subDir = Path.Combine(_testTempDir, "ReadOnlyDir");
             Directory.CreateDirectory(subDir);
-            File.SetAttributes(subDir, FileAttributes.ReadOnly);
-            
             var normalFile = Path.Combine(subDir, "normal.txt");
             File.WriteAllText(normalFile, "I am normal");
+            // On Unix, the ReadOnly attribute removes the write bit, so the file
+            // must exist before the directory is marked read-only.
+            File.SetAttributes(subDir, FileAttributes.ReadOnly);
 
             await _service.DeleteDirectoryRobustAsync(_testTempDir);
 
