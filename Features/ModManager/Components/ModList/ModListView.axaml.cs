@@ -26,7 +26,7 @@ namespace RimSharp.Features.ModManager.Components.ModList
                 FilterToolTip = $"Filter {header} mods";
             }));
 
-            this.GetObservable(ItemsSourceProperty).Subscribe(new AnonymousObserver<IEnumerable>(_ =>
+            this.GetObservable(ItemsSourceProperty).Subscribe(new AnonymousObserver<IEnumerable?>(_ =>
             {
 
                 _isHandlingFiltering = true;

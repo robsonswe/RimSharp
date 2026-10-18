@@ -13,17 +13,17 @@
                 <!-- Package ID -->
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Package ID:" VerticalAlignment="Center" FontWeight="SemiBold"/>
                 <Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="*,Auto">
-                    <TextBox Grid.Column="0" Text="{Binding PackageId}" Classes="RimworldTextBox" Watermark="e.g. brrainz.harmony"/>
+                    <TextBox Grid.Column="0" Text="{Binding PackageId}" Classes="RimworldTextBox" PlaceholderText="e.g. brrainz.harmony"/>
                     <Button Grid.Column="1" Content="Search" Command="{Binding OpenModSelectorCommand}" Margin="8,0,0,0" Classes="RimworldButtonStyle"/>
                 </Grid>
 
                 <!-- Display Name -->
                 <TextBlock Grid.Row="2" Grid.Column="0" Text="Display Name:" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding DisplayName}" Classes="RimworldTextBox" Watermark="Optional display name"/>
+                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding DisplayName}" Classes="RimworldTextBox" PlaceholderText="Optional display name"/>
 
                 <!-- Comment -->
                 <TextBlock Grid.Row="4" Grid.Column="0" Text="Comment:" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Comment}" Classes="RimworldTextBox" Watermark="Optional reasoning for this rule"/>
+                <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Comment}" Classes="RimworldTextBox" PlaceholderText="Optional reasoning for this rule"/>
             </Grid>
         </Border>
     </dialogs:BaseDialog.MainContent>
