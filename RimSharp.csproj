@@ -20,6 +20,12 @@
 
   <ItemGroup>
     <AvaloniaResource Include="icon.ico" />
+    <AvaloniaResource Include="Resources\Fonts\Noto_Sans\static\NotoSans-Regular.ttf" />
+    <AvaloniaResource Include="Resources\Fonts\Noto_Sans\static\NotoSans-SemiBold.ttf" />
+    <AvaloniaResource Include="Resources\Fonts\Noto_Sans\static\NotoSans-Bold.ttf" />
+    <AvaloniaResource Include="Resources\Fonts\IBM_Plex_Mono\IBMPlexMono-Regular.ttf" />
+    <AvaloniaResource Include="Resources\Fonts\IBM_Plex_Mono\IBMPlexMono-SemiBold.ttf" />
+    <AvaloniaResource Include="Resources\Fonts\IBM_Plex_Mono\IBMPlexMono-Bold.ttf" />
     <Content Include="Resources\classdata.tpk">
       <Link>classdata.tpk</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

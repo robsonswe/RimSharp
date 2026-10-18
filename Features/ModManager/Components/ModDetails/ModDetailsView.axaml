@@ -83,7 +83,7 @@
         </Style>
 
         <Style Selector="SelectableTextBlock.CodeBoxText, TextBlock.CodeBoxText">
-            <Setter Property="FontFamily" Value="Consolas, Monospace"/>
+            <Setter Property="FontFamily" Value="{DynamicResource RimSharpMonoFontFamily}"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
             <Setter Property="Padding" Value="0"/>
@@ -92,7 +92,7 @@
         </Style>
 
         <Style Selector="SelectableTextBlock.CodeBoxHyperlink, TextBlock.CodeBoxHyperlink">
-            <Setter Property="FontFamily" Value="Consolas, Monospace"/>
+            <Setter Property="FontFamily" Value="{DynamicResource RimSharpMonoFontFamily}"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="Foreground" Value="{DynamicResource RimworldDarkGreenBrush}"/>
             <Setter Property="Padding" Value="0"/>

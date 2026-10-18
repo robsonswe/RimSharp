@@ -1,0 +1,8 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <FontFamily x:Key="RimSharpNotoSans">avares://RimSharp/Resources/Fonts/Noto_Sans/static#Noto Sans</FontFamily>
+    <FontFamily x:Key="RimSharpIBMPlexMono">avares://RimSharp/Resources/Fonts/IBM_Plex_Mono#IBM Plex Mono</FontFamily>
+
+    <FontFamily x:Key="RimSharpFontFamily">avares://RimSharp/Resources/Fonts/Noto_Sans/static#Noto Sans</FontFamily>
+    <FontFamily x:Key="RimSharpMonoFontFamily">avares://RimSharp/Resources/Fonts/IBM_Plex_Mono#IBM Plex Mono</FontFamily>
+</ResourceDictionary>

@@ -29,12 +29,16 @@
                 <ResourceInclude Source="avares://RimSharp/Shared/Resources/Colors.axaml"/>
                 <ResourceInclude Source="avares://RimSharp/Shared/Resources/Brushes.axaml"/>
                 <ResourceInclude Source="avares://RimSharp/Shared/Resources/Converters.axaml"/>
+                <ResourceInclude Source="avares://RimSharp/Shared/Resources/Fonts.axaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>
 
     <Application.Styles>
         <FluentTheme />
+        <Style Selector="Window">
+            <Setter Property="FontFamily" Value="{DynamicResource RimSharpFontFamily}"/>
+        </Style>
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
         <StyleInclude Source="avares://RimSharp/Shared/Resources/BaseStyles.axaml"/>
         <StyleInclude Source="avares://RimSharp/Shared/Resources/ButtonStyles.axaml"/>
