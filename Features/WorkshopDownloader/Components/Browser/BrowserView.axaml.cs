@@ -14,6 +14,7 @@ using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
 using Optris.Icons.Avalonia;
 using RimSharp.AppDir.AppFiles;
+using RimSharp.Core.Services;
 using Avalonia.Layout;
 
 namespace RimSharp.Features.WorkshopDownloader.Components.Browser
@@ -75,13 +76,18 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         /// </summary>
         private Control CreateLinuxBackendMissingContent()
         {
+            var installInstructions = LinuxDistributionDetector.Detect() switch
+            {
+                LinuxDistributionFamily.Debian => "Debian/Ubuntu: sudo apt install libwebkit2gtk-4.1-0",
+                LinuxDistributionFamily.Fedora => "Fedora: sudo dnf install webkit2gtk4.1",
+                LinuxDistributionFamily.Arch => "Arch: sudo pacman -S webkit2gtk-4.1",
+                _ => "Install the WebKitGTK 4.1 package using your distribution's package manager"
+            };
+
             return CreatePlaceholderContent(
                 "Web Browser Not Available",
                 "RimSharp's embedded Workshop browser needs a WebKit runtime library, which was not found on this system.",
-                "Install one of the following, then restart RimSharp:\n\n"
-                + "sudo apt install libwpewebkit-2.0-1 libwpebackend-fdo-1.0-1\n\n"
-                + "or\n\n"
-                + "sudo apt install libwebkit2gtk-4.1-0",
+                $"Install the required package, then restart RimSharp:\n\n{installInstructions}",
                 false);
         }
 
