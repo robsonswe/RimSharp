@@ -163,7 +163,13 @@ namespace RimSharp.AppDir.AppFiles
                 services.AddSingleton<IBrowserFactory, GenericBrowserFactory>();
             }
 #else
-            services.AddSingleton<IBrowserFactory, GenericBrowserFactory>();
+            // Probe inside the provider so the capability check is logged via
+            // ILoggerService (the static cache ensures it runs only once).
+            services.AddSingleton<IBrowserFactory>(provider =>
+            {
+                var linuxFactory = new LinuxBrowserFactory(provider.GetRequiredService<ILoggerService>());
+                return linuxFactory.IsSupported ? linuxFactory : (IBrowserFactory)new GenericBrowserFactory();
+            });
 #endif
 
             services.AddSingleton<string>(provider => AppDomain.CurrentDomain.BaseDirectory);
