@@ -73,7 +73,7 @@ var processStartInfo = new ProcessStartInfo
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                CreateNoWindow = true,
+                CreateNoWindow = false,
                 WorkingDirectory = workingDirectory,
             };
 
