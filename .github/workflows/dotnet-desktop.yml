@@ -6,9 +6,12 @@ on:
       - 'v*'
 
 permissions:
-  contents: write # Needed for softprops/action-gh-release
+  contents: write # Permissão necessária para o gh-release publicar
 
 jobs:
+  # ==========================================
+  # JOB 1: BUILD WINDOWS
+  # ==========================================
   build-windows:
     runs-on: windows-latest
     env:
@@ -26,7 +29,6 @@ jobs:
       with:
         dotnet-version: 8.0.x
 
-    # Restore and build the solution so both the app and test projects are compiled
     - name: Restore dependencies
       run: dotnet restore $env:Solution_Path
 
@@ -37,9 +39,8 @@ jobs:
       run: dotnet test RimSharp.Tests/RimSharp.Tests.csproj --configuration Release --no-build
 
     - name: Publish and Package
-      id: package
+      shell: pwsh
       run: |
-        # Publish step
         dotnet publish $env:Project_Path `
           -f net8.0-windows `
           -r win-x64 `
@@ -50,31 +51,29 @@ jobs:
           -p:EnableCompressionInSingleFile=true `
           --output ./publish
 
-        # Packaging step
         $folderName = "RimSharp_Win"
         $zipName = "RimSharp_${env:GITHUB_REF_NAME}.zip"
 
         New-Item -ItemType Directory -Path $folderName -Force
         Copy-Item -Path ./publish/* -Destination $folderName -Recurse -Force
-
         Compress-Archive -Path $folderName -DestinationPath $zipName -Force
 
-        # Output the zip name for the release step
-        echo "zip_name=$zipName" >> $env:GITHUB_OUTPUT
-      shell: pwsh
+        # Cria uma pasta para centralizar o artefato gerado
+        New-Item -ItemType Directory -Path ./win-artifacts -Force
+        Move-Item -Path $zipName -Destination ./win-artifacts/
 
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v2
+    # Salva o arquivo temporariamente no GitHub Actions
+    - name: Upload Windows Artifact
+      uses: actions/upload-artifact@v4
       with:
-        name: RimSharp Release ${{ github.ref_name }}
-        body: |
-          RimSharp Desktop Application (Avalonia UI)
-          Tag: ${{ github.ref_name }}
-        prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
-        files: ${{ steps.package.outputs.zip_name }}
+        name: windows-artifacts
+        path: ./win-artifacts/*
+        retention-days: 1
 
+  # ==========================================
+  # JOB 2: BUILD LINUX
+  # ==========================================
   build-linux:
-    needs: build-windows # The Windows job creates the release; this job appends the Linux artifacts to it
     runs-on: ubuntu-24.04
     env:
       Project_Path: RimSharp.csproj
@@ -105,7 +104,6 @@ jobs:
         sudo apt-get install --yes imagemagick rpm
 
     - name: Publish and Package
-      id: package
       shell: bash
       run: |
         set -euo pipefail
@@ -113,7 +111,6 @@ jobs:
         version="${GITHUB_REF_NAME#v}"
         package_version="${version//-/.}"
 
-        # Publish step (self-contained single-file, matching Windows flags)
         dotnet publish "$Project_Path" \
           -f net8.0 \
           -r linux-x64 \
@@ -129,7 +126,6 @@ jobs:
         ln -s /opt/rimsharp/RimSharp package-root/usr/bin/rimsharp
 
         mkdir -p package-root/usr/share/applications package-root/usr/share/icons/hicolor/256x256/apps
-        # icon.ico[0] ensures a single frame is extracted even if the .ico has multiple sizes
         convert -background none "icon.ico[0]" -resize 256x256 package-root/usr/share/icons/hicolor/256x256/apps/rimsharp.png
         cat > package-root/usr/share/applications/rimsharp.desktop <<'EOF'
         [Desktop Entry]
@@ -142,12 +138,15 @@ jobs:
         Categories=Game;Utility;
         EOF
 
-        # Portable tarball
+        # Cria pasta de saída para os pacotes do Linux
+        mkdir -p ./linux-artifacts
+
+        # 1. Tarball
         mkdir -p tar-root/RimSharp
         cp -a ./publish-linux/. tar-root/RimSharp/
-        tar -czf "RimSharp_linux-x64_${GITHUB_REF_NAME}.tar.gz" -C tar-root RimSharp
+        tar -czf "./linux-artifacts/RimSharp_linux-x64_${GITHUB_REF_NAME}.tar.gz" -C tar-root RimSharp
 
-        # Debian package
+        # 2. Deb
         mkdir -p deb-root/DEBIAN
         cp -a package-root/. deb-root/
         cat > deb-root/DEBIAN/control <<EOF
@@ -161,9 +160,9 @@ jobs:
         Description: RimWorld mod manager
          A desktop mod manager for RimWorld.
         EOF
-        dpkg-deb --build --root-owner-group deb-root "RimSharp_linux-x64_${GITHUB_REF_NAME}_amd64.deb"
+        dpkg-deb --build --root-owner-group deb-root "./linux-artifacts/RimSharp_linux-x64_${GITHUB_REF_NAME}_amd64.deb"
 
-        # RPM package
+        # 3. RPM
         mkdir -p rpm-root/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
         tar -czf rpm-root/SOURCES/rimsharp.tar.gz -C package-root .
         cat > rpm-root/SPECS/rimsharp.spec <<EOF
@@ -197,9 +196,9 @@ jobs:
         /usr/share/icons/hicolor/256x256/apps/rimsharp.png
         EOF
         rpmbuild --define "_topdir $(pwd)/rpm-root" -bb rpm-root/SPECS/rimsharp.spec
-        cp rpm-root/RPMS/x86_64/*.rpm "RimSharp_linux-x64_${GITHUB_REF_NAME}_x86_64.rpm"
+        cp rpm-root/RPMS/x86_64/*.rpm "./linux-artifacts/RimSharp_linux-x64_${GITHUB_REF_NAME}_x86_64.rpm"
 
-        # AppImage package
+        # 4. AppImage
         mkdir -p appimage-root/usr/bin appimage-root/usr/share/applications appimage-root/usr/share/icons/hicolor/256x256/apps
         cp -a ./publish-linux/. appimage-root/usr/bin/
         cp package-root/usr/share/applications/rimsharp.desktop appimage-root/usr/share/applications/
@@ -216,36 +215,54 @@ jobs:
           https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
         chmod +x appimagetool.AppImage
         ARCH=x86_64 ./appimagetool.AppImage --appimage-extract-and-run appimage-root \
-          "RimSharp_linux-x64_${GITHUB_REF_NAME}.AppImage"
-
-        echo "artifacts<<EOF" >> "$GITHUB_OUTPUT"
-        printf '%s\n' \
-          "RimSharp_linux-x64_${GITHUB_REF_NAME}.tar.gz" \
-          "RimSharp_linux-x64_${GITHUB_REF_NAME}_amd64.deb" \
-          "RimSharp_linux-x64_${GITHUB_REF_NAME}_x86_64.rpm" \
-          "RimSharp_linux-x64_${GITHUB_REF_NAME}.AppImage" >> "$GITHUB_OUTPUT"
-        echo "EOF" >> "$GITHUB_OUTPUT"
+          "./linux-artifacts/RimSharp_linux-x64_${GITHUB_REF_NAME}.AppImage"
 
     - name: Validate Linux packages
       shell: bash
       run: |
         set -euo pipefail
         for artifact in \
-          "RimSharp_linux-x64_${GITHUB_REF_NAME}.tar.gz" \
-          "RimSharp_linux-x64_${GITHUB_REF_NAME}_amd64.deb" \
-          "RimSharp_linux-x64_${GITHUB_REF_NAME}_x86_64.rpm" \
-          "RimSharp_linux-x64_${GITHUB_REF_NAME}.AppImage"; do
+          "./linux-artifacts/RimSharp_linux-x64_${GITHUB_REF_NAME}.tar.gz" \
+          "./linux-artifacts/RimSharp_linux-x64_${GITHUB_REF_NAME}_amd64.deb" \
+          "./linux-artifacts/RimSharp_linux-x64_${GITHUB_REF_NAME}_x86_64.rpm" \
+          "./linux-artifacts/RimSharp_linux-x64_${GITHUB_REF_NAME}.AppImage"; do
           test -s "$artifact"
         done
 
-        tar -tzf "RimSharp_linux-x64_${GITHUB_REF_NAME}.tar.gz" > tar-contents.txt
+        tar -tzf "./linux-artifacts/RimSharp_linux-x64_${GITHUB_REF_NAME}.tar.gz" > tar-contents.txt
         grep -q '^RimSharp/RimSharp$' tar-contents.txt
-        dpkg-deb --info "RimSharp_linux-x64_${GITHUB_REF_NAME}_amd64.deb" >/dev/null
-        rpm -qip "RimSharp_linux-x64_${GITHUB_REF_NAME}_x86_64.rpm" >/dev/null
-        file "RimSharp_linux-x64_${GITHUB_REF_NAME}.AppImage" | grep -qi 'appimage\|executable'
+        dpkg-deb --info "./linux-artifacts/RimSharp_linux-x64_${GITHUB_REF_NAME}_amd64.deb" >/dev/null
+        rpm -qip "./linux-artifacts/RimSharp_linux-x64_${GITHUB_REF_NAME}_x86_64.rpm" >/dev/null
+        file "./linux-artifacts/RimSharp_linux-x64_${GITHUB_REF_NAME}.AppImage" | grep -qi 'appimage\|executable'
 
-    - name: Upload Linux artifact to Release
+    # Salva os arquivos temporariamente no GitHub Actions
+    - name: Upload Linux Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-artifacts
+        path: ./linux-artifacts/*
+        retention-days: 1
+
+  # ==========================================
+  # JOB 3: RELEASE
+  # ==========================================
+  release:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+    # Baixa todos os artefatos de ambos os jobs para a mesma pasta
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./release-assets
+        merge-multiple: true
+
+    - name: Create Consolidated GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ github.ref_name }}
-        files: ${{ steps.package.outputs.artifacts }}
+        name: RimSharp Release ${{ github.ref_name }}
+        body: |
+          RimSharp Desktop Application (Avalonia UI)
+          Tag: ${{ github.ref_name }}
+        prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
+        files: ./release-assets/*
