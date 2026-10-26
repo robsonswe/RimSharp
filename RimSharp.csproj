@@ -3,9 +3,9 @@
     <OutputType>WinExe</OutputType>
     <TargetFrameworks>net8.0-windows;net8.0</TargetFrameworks>
     <Nullable>enable</Nullable>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
     <UseWindowsForms Condition="'$(TargetFramework)'=='net8.0-windows'">true</UseWindowsForms>
     <BuiltInComInteropSupport Condition="'$(TargetFramework)'=='net8.0-windows'">true</BuiltInComInteropSupport>
-    <ApplicationIcon>icon.ico</ApplicationIcon>
     <ApplicationManifest Condition="'$(TargetFramework)'=='net8.0-windows'">app.manifest</ApplicationManifest>
     <ApplicationHighDpiMode Condition="'$(TargetFramework)'=='net8.0-windows'">PerMonitorV2</ApplicationHighDpiMode>
     <RootNamespace>RimSharp</RootNamespace>

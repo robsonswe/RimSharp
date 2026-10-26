@@ -92,7 +92,7 @@ namespace RimSharp.AppDir.AppFiles
                     }
 #endif
                     desktop.Shutdown();
-                    return;
+                    System.Environment.Exit(0);
                 }
                 // One-time migration of legacy exe-side data into XDG
                 // directories (no-op on Windows). Must run before services are
