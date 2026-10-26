@@ -12,39 +12,26 @@ jobs:
   build-windows:
     runs-on: windows-latest
     env:
+      Solution_Path: RimSharp.sln
       Project_Path: RimSharp.csproj
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0 # Needed by softprops/action-gh-release to find the tag
+        fetch-depth: 0
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
 
-    - name: Extract Tag Name
-      id: extract_tag
-      run: echo "tag_name=${{ github.ref_name }}" >> $env:GITHUB_OUTPUT
-      shell: pwsh
-
-    - name: Check for Pre-release
-      id: check_prerelease
-      run: |
-        if ("${{ github.ref_name }}" -match "-(alpha|beta|rc)") {
-          echo "is_prerelease=true" >> $env:GITHUB_OUTPUT
-        } else {
-          echo "is_prerelease=false" >> $env:GITHUB_OUTPUT
-        }
-      shell: pwsh
-
+    # Restore and build the solution so both the app and test projects are compiled
     - name: Restore dependencies
-      run: dotnet restore $env:Project_Path
+      run: dotnet restore $env:Solution_Path
 
     - name: Build solution
-      run: dotnet build $env:Project_Path --configuration Release --no-restore
+      run: dotnet build $env:Solution_Path --configuration Release --no-restore
 
     - name: Execute unit tests
       run: dotnet test RimSharp.Tests/RimSharp.Tests.csproj --configuration Release --no-build
@@ -64,32 +51,30 @@ jobs:
           --output ./publish
 
         # Packaging step
-        $folderName = "RimSharp"
-        $zipName = "RimSharp_${{ steps.extract_tag.outputs.tag_name }}.zip"
+        $folderName = "RimSharp_Win"
+        $zipName = "RimSharp_${env:GITHUB_REF_NAME}.zip"
 
-        New-Item -ItemType Directory -Path $folderName
-        Copy-Item -Path ./publish/* -Destination $folderName -Recurse
+        New-Item -ItemType Directory -Path $folderName -Force
+        Copy-Item -Path ./publish/* -Destination $folderName -Recurse -Force
 
-        Compress-Archive -Path $folderName -DestinationPath $zipName
+        Compress-Archive -Path $folderName -DestinationPath $zipName -Force
 
         # Output the zip name for the release step
         echo "zip_name=$zipName" >> $env:GITHUB_OUTPUT
       shell: pwsh
 
     - name: Create GitHub Release
-      if: github.event_name == 'push'
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
-        # tag_name: ${{ steps.extract_tag.outputs.tag_name }}
-        name: RimSharp Release ${{ steps.extract_tag.outputs.tag_name }}
+        name: RimSharp Release ${{ github.ref_name }}
         body: |
           RimSharp Desktop Application (Avalonia UI)
-          Tag: ${{ steps.extract_tag.outputs.tag_name }}
-        prerelease: ${{ steps.check_prerelease.outputs.is_prerelease == 'true' }}
+          Tag: ${{ github.ref_name }}
+        prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
         files: ${{ steps.package.outputs.zip_name }}
 
   build-linux:
-    needs: build-windows # The Windows job creates the release; this job appends the Linux artifact to it
+    needs: build-windows # The Windows job creates the release; this job appends the Linux artifacts to it
     runs-on: ubuntu-24.04
     env:
       Project_Path: RimSharp.csproj
@@ -98,7 +83,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0 # Needed by softprops/action-gh-release to find the tag
+        fetch-depth: 0
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
@@ -128,7 +113,7 @@ jobs:
         version="${GITHUB_REF_NAME#v}"
         package_version="${version//-/.}"
 
-        # Publish step (self-contained single-file, same flags as the Windows job)
+        # Publish step (self-contained single-file, matching Windows flags)
         dotnet publish "$Project_Path" \
           -f net8.0 \
           -r linux-x64 \
@@ -144,7 +129,8 @@ jobs:
         ln -s /opt/rimsharp/RimSharp package-root/usr/bin/rimsharp
 
         mkdir -p package-root/usr/share/applications package-root/usr/share/icons/hicolor/256x256/apps
-        convert -background none icon.ico -resize 256x256 package-root/usr/share/icons/hicolor/256x256/apps/rimsharp.png
+        # icon.ico[0] ensures a single frame is extracted even if the .ico has multiple sizes
+        convert -background none "icon.ico[0]" -resize 256x256 package-root/usr/share/icons/hicolor/256x256/apps/rimsharp.png
         cat > package-root/usr/share/applications/rimsharp.desktop <<'EOF'
         [Desktop Entry]
         Name=RimSharp
@@ -156,12 +142,12 @@ jobs:
         Categories=Game;Utility;
         EOF
 
-        # Portable tarball, preserving the documented top-level RimSharp folder.
+        # Portable tarball
         mkdir -p tar-root/RimSharp
         cp -a ./publish-linux/. tar-root/RimSharp/
         tar -czf "RimSharp_linux-x64_${GITHUB_REF_NAME}.tar.gz" -C tar-root RimSharp
 
-        # Debian package.
+        # Debian package
         mkdir -p deb-root/DEBIAN
         cp -a package-root/. deb-root/
         cat > deb-root/DEBIAN/control <<EOF
@@ -177,7 +163,7 @@ jobs:
         EOF
         dpkg-deb --build --root-owner-group deb-root "RimSharp_linux-x64_${GITHUB_REF_NAME}_amd64.deb"
 
-        # RPM package.
+        # RPM package
         mkdir -p rpm-root/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
         tar -czf rpm-root/SOURCES/rimsharp.tar.gz -C package-root .
         cat > rpm-root/SPECS/rimsharp.spec <<EOF
@@ -213,7 +199,7 @@ jobs:
         rpmbuild --define "_topdir $(pwd)/rpm-root" -bb rpm-root/SPECS/rimsharp.spec
         cp rpm-root/RPMS/x86_64/*.rpm "RimSharp_linux-x64_${GITHUB_REF_NAME}_x86_64.rpm"
 
-        # AppImage package.
+        # AppImage package
         mkdir -p appimage-root/usr/bin appimage-root/usr/share/applications appimage-root/usr/share/icons/hicolor/256x256/apps
         cp -a ./publish-linux/. appimage-root/usr/bin/
         cp package-root/usr/share/applications/rimsharp.desktop appimage-root/usr/share/applications/
@@ -259,8 +245,7 @@ jobs:
         file "RimSharp_linux-x64_${GITHUB_REF_NAME}.AppImage" | grep -qi 'appimage\|executable'
 
     - name: Upload Linux artifact to Release
-      if: github.event_name == 'push'
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ github.ref_name }}
         files: ${{ steps.package.outputs.artifacts }}
