@@ -198,7 +198,7 @@
                 <Border Grid.Column="4" Background="{DynamicResource RimworldBeigeBrush}" BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="1" CornerRadius="3" VerticalAlignment="Center" Height="26" Margin="0,0,5,0">
                     <Grid ColumnDefinitions="*,Auto">
                          
-                         <TextBox x:Name="SearchTextBox" Grid.Column="0" Classes="BrowserTextBox" Text="{Binding SearchText}" Watermark="Search Workshop..." KeyDown="SearchTextBox_KeyDown"/>
+                         <TextBox x:Name="SearchTextBox" Grid.Column="0" Classes="BrowserTextBox" Text="{Binding SearchText}" PlaceholderText="Search Workshop..." KeyDown="SearchTextBox_KeyDown"/>
                          
                          <!-- Search Button -->
                          <Button x:Name="SearchButton" Grid.Column="1" Command="{Binding SearchCommand}" Classes="SearchIconButton" ToolTip.Tip="Search Steam Workshop" Click="SearchButton_Click" Margin="0">

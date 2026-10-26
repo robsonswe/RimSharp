@@ -11,6 +11,7 @@ using RimSharp.Shared.Models;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -735,6 +736,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     return;
                 }
 
+                EnsureExecutable(exePath);
+
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = exePath,
@@ -751,6 +754,36 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             finally
             {
                 IsLaunchingGame = false;
+            }
+        }
+
+        /// <summary>
+        /// Archives extracted on Unix may lose the executable bit; restore it
+        /// so the game can be launched. On Windows this is a no-op.
+        /// </summary>
+        private static void EnsureExecutable(string exePath)
+        {
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux) &&
+                !RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                return;
+            }
+
+            try
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "chmod",
+                    Arguments = $"+x \"{exePath}\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                using var process = Process.Start(startInfo);
+                process?.WaitForExit(5000);
+            }
+            catch (Exception)
+            {
+                // Launch will surface the permission error if chmod fails.
             }
         }
     }

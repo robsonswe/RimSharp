@@ -1,5 +1,8 @@
+using System;
+using System.IO;
 using FluentAssertions;
 using NSubstitute;
+using RimSharp.Infrastructure.Configuration;
 using RimSharp.Infrastructure.Workshop.Core;
 using RimSharp.Shared.Services.Contracts;
 using Xunit;
@@ -25,15 +28,29 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Core
         }
 
         [Fact]
-        public void InitializePaths_WhenConfigSet_ShouldUseConfigPath()
+        public void InitializePaths_WhenConfigEmpty_ShouldDefaultToAppDataPathsDataDirectory()
         {
 
-            _configService.GetConfigValue("steamcmd_prefix").Returns(@"C:\CustomPath");
+            _configService.GetConfigValue("steamcmd_prefix").Returns("");
 
             var service = new SteamCmdPathService(_configService, ExeName);
 
-            service.SteamCmdPrefixPath.Should().Be(@"C:\CustomPath");
-            service.SteamCmdInstallPath.Should().Be(@"C:\CustomPath\steamcmd");
+            service.SteamCmdPrefixPath.Should().Be(Path.Combine(AppDataPaths.DataDirectory, "SteamCMD_Data"));
+        }
+
+        [Fact]
+        public void InitializePaths_WhenConfigSet_ShouldUseConfigPath()
+        {
+
+            // Build the configured prefix with Path.Combine so the expected
+            // values match the platform directory separator.
+            var customPrefix = Path.Combine(Path.GetTempPath(), "CustomPath");
+            _configService.GetConfigValue("steamcmd_prefix").Returns(customPrefix);
+
+            var service = new SteamCmdPathService(_configService, ExeName);
+
+            service.SteamCmdPrefixPath.Should().Be(customPrefix);
+            service.SteamCmdInstallPath.Should().Be(Path.Combine(customPrefix, "steamcmd"));
             service.SteamCmdWorkshopContentPath.Should().Contain("294100");
         }
     }

@@ -5,7 +5,7 @@
              xmlns:local="clr-namespace:RimSharp.Features.ModManager.Components.ModList"
              xmlns:models="clr-namespace:RimSharp.Shared.Models"
              xmlns:vm="clr-namespace:RimSharp.Features.ModManager.ViewModels"
-             xmlns:interactivity="clr-namespace:Avalonia.Xaml.Interactivity;assembly=Avalonia.Xaml.Interactivity"
+             xmlns:interactivity="clr-namespace:Avalonia.Xaml.Interactivity;assembly=Xaml.Behaviors.Interactivity"
              xmlns:i="https://github.com/projektanker/icons.avalonia"
              xmlns:behaviors="clr-namespace:RimSharp.Features.ModManager.Behaviors"
              x:Class="RimSharp.Features.ModManager.Components.ModList.ModListView"
@@ -206,7 +206,7 @@
                         </TextBlock.Text>
                     </TextBlock>
                     <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="4,0,4,4">
-                        <TextBox Grid.Column="0" Watermark="{Binding #RootModListView.SearchPlaceholder}" Classes="RimworldTextBoxWatermark" VerticalAlignment="Center" Text="{Binding #RootModListView.SearchText, Mode=TwoWay}"
+                        <TextBox Grid.Column="0" PlaceholderText="{Binding #RootModListView.SearchPlaceholder}" Classes="RimworldTextBoxWatermark" VerticalAlignment="Center" Text="{Binding #RootModListView.SearchText, Mode=TwoWay}"
                                  KeyDown="SearchTextBox_KeyDown"/>
                         <Button Grid.Column="1" Content="Filters" Command="{Binding #RootModListView.FilterCommand}"
                                 ToolTip.Tip="{Binding #RootModListView.FilterToolTip}"

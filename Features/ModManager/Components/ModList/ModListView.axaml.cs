@@ -8,6 +8,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Reactive;
 using Avalonia.Threading;
 
 namespace RimSharp.Features.ModManager.Components.ModList
@@ -19,13 +20,13 @@ namespace RimSharp.Features.ModManager.Components.ModList
         public ModListView()
         {
             InitializeComponent();
-            this.GetObservable(HeaderTextProperty).Subscribe(header =>
+            this.GetObservable(HeaderTextProperty).Subscribe(new AnonymousObserver<string>(header =>
             {
                 SearchPlaceholder = $"Search {header}...";
                 FilterToolTip = $"Filter {header} mods";
-            });
+            }));
 
-            this.GetObservable(ItemsSourceProperty).Subscribe(_ =>
+            this.GetObservable(ItemsSourceProperty).Subscribe(new AnonymousObserver<IEnumerable?>(_ =>
             {
 
                 _isHandlingFiltering = true;
@@ -36,7 +37,7 @@ namespace RimSharp.Features.ModManager.Components.ModList
                         _isHandlingFiltering = false;
                     }
                 }, DispatcherPriority.Loaded);
-            });
+            }));
 
             // Attach event handlers
             _internalListBox = this.FindControl<ListBox>("InternalListBox");
@@ -397,7 +398,8 @@ namespace RimSharp.Features.ModManager.Components.ModList
         private void ClearAllFocus()
         {
             var topLevel = TopLevel.GetTopLevel(this);
-            topLevel?.FocusManager?.ClearFocus();
+            // Avalonia 12: ClearFocus() was removed (PR #20854); Focus(null) clears.
+            topLevel?.FocusManager?.Focus(null, NavigationMethod.Unspecified, KeyModifiers.None);
         }
     }
 }

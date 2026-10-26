@@ -104,9 +104,10 @@ namespace RimSharp.Infrastructure.Workshop.Download
             string steamCmdExeDir = Path.GetDirectoryName(_pathService.SteamCmdExePath) ?? steamCmdInstallDir;
             string steamCmdSteamAppsActualPath = _pathService.SteamCmdSteamAppsPath;
             string steamCmdWorkshopContentPath = _pathService.SteamCmdWorkshopContentPath;
-            string workshopLogPath = Path.Combine(steamCmdInstallDir, "logs", "workshop_log.txt");
-            string contentLogPath = Path.Combine(steamCmdInstallDir, "logs", "content_log.txt"); 
-            string bootstrapLogPath = Path.Combine(steamCmdInstallDir, "logs", "bootstrap_log.txt"); 
+            string steamCmdLogDir = _pathService.SteamCmdLogDirectory;
+            string workshopLogPath = Path.Combine(steamCmdLogDir, "workshop_log.txt");
+            string contentLogPath = Path.Combine(steamCmdLogDir, "content_log.txt");
+            string bootstrapLogPath = Path.Combine(steamCmdLogDir, "bootstrap_log.txt");
             _logger.LogDebug($"SteamCMD Working Directory (for execution): {steamCmdExeDir}", "SteamCmdDownloader");
             _logger.LogDebug($"Workshop Log Path: {workshopLogPath}", "SteamCmdDownloader");
             _logger.LogDebug($"Content Log Path: {contentLogPath}", "SteamCmdDownloader");
@@ -119,6 +120,7 @@ namespace RimSharp.Infrastructure.Workshop.Download
             var finalFailedItemsInfo = new List<FailedDownloadInfo>();
             int lastExitCode = -1;
             string lastAttemptPrimaryLogPath = string.Empty;
+            string? lastCapturedOutput = null;
 
             try
             {
@@ -189,11 +191,13 @@ namespace RimSharp.Infrastructure.Workshop.Download
 
                     try
                     {
-                        lastExitCode = await _processRunner.RunSteamCmdAsync(
+                        var runResult = await _processRunner.RunSteamCmdAsync(
                             scriptPath,
                             primaryLogPath,
                             steamCmdExeDir,
                             cancellationToken);
+                        lastExitCode = runResult.ExitCode;
+                        lastCapturedOutput = runResult.CapturedOutput;
                         result.ExitCode = lastExitCode;
                         _logger.LogInfo($"Attempt {attempt}: SteamCMD process exited with code: {lastExitCode}", "SteamCmdDownloader");
                         result.LogMessages.Add($"Attempt {attempt}: SteamCMD exited ({lastExitCode}).");
@@ -335,9 +339,13 @@ EndProcessing:
                 var provisionallySucceededIds = new HashSet<string>();
                 if (!finalSessionResults.Any() && requestedIds.Any() && !File.Exists(workshopLogPath) && !File.Exists(lastAttemptPrimaryLogPath))
                 {
-                    _logger.LogError($"Neither Workshop log '{workshopLogPath}' nor last primary log '{lastAttemptPrimaryLogPath}' found or usable. Assuming all {requestedIds.Count} items failed.", "SteamCmdDownloader");
-                    result.LogMessages.Add($"Error: Key log files unusable after all attempts. Assuming all items failed.");
-                    finalFailedItemsInfo.AddRange(requestedIds.Select(id => new FailedDownloadInfo(itemLookup[id], "Key log files were missing or unreadable.")));
+                    // SteamCMD died before writing any logs (e.g. fatal error during
+                    // self-update). Surface the real cause from its captured output
+                    // instead of a generic "key log files missing" message.
+                    string missingLogsReason = ExtractSteamCmdFailureReason(lastCapturedOutput);
+                    _logger.LogError($"Neither Workshop log '{workshopLogPath}' nor last primary log '{lastAttemptPrimaryLogPath}' found or usable. Assuming all {requestedIds.Count} items failed. Cause: {missingLogsReason}", "SteamCmdDownloader");
+                    result.LogMessages.Add($"Error: Key log files unusable after all attempts. {missingLogsReason}");
+                    finalFailedItemsInfo.AddRange(requestedIds.Select(id => new FailedDownloadInfo(itemLookup[id], missingLogsReason)));
                 }
                 else
                 {
@@ -584,6 +592,40 @@ EndProcessing:
                 result.OverallSuccess = false;
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Builds a user-facing failure reason from SteamCMD's captured console
+        /// output, for the case where SteamCMD died before writing any of its
+        /// log files (e.g. "Fatal Error: Steamcmd needs 250MB of free disk
+        /// space to update."). Falls back to the generic message when no
+        /// recognizable error line is found.
+        /// </summary>
+        private static string ExtractSteamCmdFailureReason(string? capturedOutput)
+        {
+            if (string.IsNullOrWhiteSpace(capturedOutput))
+            {
+                return "Key log files were missing or unreadable.";
+            }
+
+            var errorLines = capturedOutput
+                .Split('\n')
+                .Select(line => line.Trim())
+                .Where(line => line.Length > 0)
+                .Where(line =>
+                    line.Contains("Fatal Error", StringComparison.OrdinalIgnoreCase) ||
+                    line.Contains("Error!", StringComparison.OrdinalIgnoreCase) ||
+                    line.Contains("Assertion Failed", StringComparison.OrdinalIgnoreCase))
+                .Distinct()
+                .Take(3)
+                .ToList();
+
+            if (errorLines.Count == 0)
+            {
+                return "Key log files were missing or unreadable (SteamCMD output contained no recognizable error).";
+            }
+
+            return $"SteamCMD error: {string.Join(" | ", errorLines)}";
         }
 
         private void CleanupScriptFile(string scriptPath)

@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using RimSharp.Infrastructure.Configuration;
 using RimSharp.Shared.Services.Contracts;
 
 namespace RimSharp.Infrastructure.Data
@@ -14,13 +15,20 @@ namespace RimSharp.Infrastructure.Data
         private readonly ILoggerService _logger;
         private readonly HttpClient _httpClient;
         private readonly string _localRulesPath;
+        private readonly string _bundledRulesSource;
         private readonly string _remoteManifestUrl = "https://raw.githubusercontent.com/robsonswe/RimSharpDB/main/manifest.json";
         private readonly string _remoteBaseUrl = "https://raw.githubusercontent.com/robsonswe/RimSharpDB/main/";
 
         public DataUpdateService(ILoggerService logger, string appBasePath, HttpClient httpClient)
+            : this(logger, appBasePath, httpClient, Path.Combine(AppDataPaths.BaseDirectory, "Rules", "db"))
+        {
+        }
+
+        internal DataUpdateService(ILoggerService logger, string appBasePath, HttpClient httpClient, string bundledRulesSource)
         {
             _logger = logger;
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            _bundledRulesSource = bundledRulesSource;
 
             if (!_httpClient.DefaultRequestHeaders.Contains("User-Agent"))
             {
@@ -30,7 +38,55 @@ namespace RimSharp.Infrastructure.Data
             // Store data in a reliable, user-specific location
             _localRulesPath = Path.Combine(appBasePath, "Rules", "db");
 
+            SeedFromBundledPlaceholders();
+
             Directory.CreateDirectory(_localRulesPath);
+        }
+
+        /// <summary>
+        /// First-run seeding: when the writable Rules/db does not exist yet
+        /// (e.g. fresh XDG data directory on Linux), copy the bundled
+        /// placeholder files that ship next to the executable
+        /// ("&lt;BaseDirectory&gt;/Rules/db") into the writable location.
+        /// On Windows the writable location IS the exe-side directory, so
+        /// this is a no-op there.
+        /// </summary>
+        private void SeedFromBundledPlaceholders()
+        {
+            try
+            {
+                if (Directory.Exists(_localRulesPath) && Directory.EnumerateFiles(_localRulesPath).Any())
+                {
+                    return; // Already populated.
+                }
+
+                var bundledDir = _bundledRulesSource;
+                if (!Directory.Exists(bundledDir))
+                {
+                    return;
+                }
+
+                // Never copy a directory onto itself (Windows case).
+                if (string.Equals(
+                        Path.GetFullPath(bundledDir),
+                        Path.GetFullPath(_localRulesPath),
+                        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                Directory.CreateDirectory(_localRulesPath);
+                foreach (var file in Directory.GetFiles(bundledDir))
+                {
+                    File.Copy(file, Path.Combine(_localRulesPath, Path.GetFileName(file)), overwrite: false);
+                }
+
+                _logger.LogInfo($"Seeded Rules/db from bundled placeholders: {bundledDir} -> {_localRulesPath}", nameof(DataUpdateService));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Failed to seed Rules/db from bundled placeholders: {ex.Message}", nameof(DataUpdateService));
+            }
         }
 
         public string GetDataFilePath(string fileName)

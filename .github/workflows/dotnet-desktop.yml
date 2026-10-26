@@ -1,4 +1,4 @@
-name: .NET Core WPF Build and Release - RimSharp
+name: .NET Desktop Build and Release - RimSharp
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write # Needed for softprops/action-gh-release
 
 jobs:
-  build-and-release: # Combined job
+  build-windows:
     runs-on: windows-latest
     env:
       Project_Path: RimSharp.csproj
@@ -77,12 +77,190 @@ jobs:
       shell: pwsh
 
     - name: Create GitHub Release
+      if: github.event_name == 'push'
       uses: softprops/action-gh-release@v1
       with:
         # tag_name: ${{ steps.extract_tag.outputs.tag_name }}
         name: RimSharp Release ${{ steps.extract_tag.outputs.tag_name }}
         body: |
-          RimSharp WPF Application
+          RimSharp Desktop Application (Avalonia UI)
           Tag: ${{ steps.extract_tag.outputs.tag_name }}
         prerelease: ${{ steps.check_prerelease.outputs.is_prerelease == 'true' }}
         files: ${{ steps.package.outputs.zip_name }}
+
+  build-linux:
+    needs: build-windows # The Windows job creates the release; this job appends the Linux artifact to it
+    runs-on: ubuntu-24.04
+    env:
+      Project_Path: RimSharp.csproj
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Needed by softprops/action-gh-release to find the tag
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Restore dependencies
+      shell: bash
+      run: dotnet restore RimSharp.sln
+
+    - name: Run unit tests (Linux)
+      shell: bash
+      run: dotnet test RimSharp.Tests/RimSharp.Tests.csproj --framework net8.0 --configuration Release --no-restore
+
+    - name: Install packaging tools
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install --yes imagemagick rpm
+
+    - name: Publish and Package
+      id: package
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        version="${GITHUB_REF_NAME#v}"
+        package_version="${version//-/.}"
+
+        # Publish step (self-contained single-file, same flags as the Windows job)
+        dotnet publish "$Project_Path" \
+          -f net8.0 \
+          -r linux-x64 \
+          -c Release \
+          --self-contained true \
+          -p:PublishSingleFile=true \
+          -p:PublishReadyToRun=true \
+          -p:EnableCompressionInSingleFile=true \
+          --output ./publish-linux
+
+        mkdir -p package-root/opt/rimsharp package-root/usr/bin
+        cp -a ./publish-linux/. package-root/opt/rimsharp/
+        ln -s /opt/rimsharp/RimSharp package-root/usr/bin/rimsharp
+
+        mkdir -p package-root/usr/share/applications package-root/usr/share/icons/hicolor/256x256/apps
+        convert -background none icon.ico -resize 256x256 package-root/usr/share/icons/hicolor/256x256/apps/rimsharp.png
+        cat > package-root/usr/share/applications/rimsharp.desktop <<'EOF'
+        [Desktop Entry]
+        Name=RimSharp
+        Comment=RimWorld mod manager
+        Exec=rimsharp
+        Icon=rimsharp
+        Terminal=false
+        Type=Application
+        Categories=Game;Utility;
+        EOF
+
+        # Portable tarball, preserving the documented top-level RimSharp folder.
+        mkdir -p tar-root/RimSharp
+        cp -a ./publish-linux/. tar-root/RimSharp/
+        tar -czf "RimSharp_linux-x64_${GITHUB_REF_NAME}.tar.gz" -C tar-root RimSharp
+
+        # Debian package.
+        mkdir -p deb-root/DEBIAN
+        cp -a package-root/. deb-root/
+        cat > deb-root/DEBIAN/control <<EOF
+        Package: rimsharp
+        Version: ${package_version}
+        Section: games
+        Priority: optional
+        Architecture: amd64
+        Depends: libwebkit2gtk-4.1-0, lib32gcc-s1, libstdc++6, libicu70 | libicu72 | libicu74
+        Maintainer: RimSharp contributors
+        Description: RimWorld mod manager
+         A desktop mod manager for RimWorld.
+        EOF
+        dpkg-deb --build --root-owner-group deb-root "RimSharp_linux-x64_${GITHUB_REF_NAME}_amd64.deb"
+
+        # RPM package.
+        mkdir -p rpm-root/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+        tar -czf rpm-root/SOURCES/rimsharp.tar.gz -C package-root .
+        cat > rpm-root/SPECS/rimsharp.spec <<EOF
+        Name: rimsharp
+        Version: ${package_version}
+        Release: 1
+        Summary: RimWorld mod manager
+        License: AGPL-3.0
+        BuildArch: x86_64
+        Source0: rimsharp.tar.gz
+        Requires: webkit2gtk4.1
+        Requires: glibc.i686
+        Requires: libstdc++.i686
+        Requires: libicu
+
+        %description
+        A desktop mod manager for RimWorld.
+
+        %prep
+        mkdir source
+        tar -xzf %{SOURCE0} -C source
+
+        %install
+        mkdir -p %{buildroot}
+        cp -a source/. %{buildroot}/
+
+        %files
+        /opt/rimsharp
+        /usr/bin/rimsharp
+        /usr/share/applications/rimsharp.desktop
+        /usr/share/icons/hicolor/256x256/apps/rimsharp.png
+        EOF
+        rpmbuild --define "_topdir $(pwd)/rpm-root" -bb rpm-root/SPECS/rimsharp.spec
+        cp rpm-root/RPMS/x86_64/*.rpm "RimSharp_linux-x64_${GITHUB_REF_NAME}_x86_64.rpm"
+
+        # AppImage package.
+        mkdir -p appimage-root/usr/bin appimage-root/usr/share/applications appimage-root/usr/share/icons/hicolor/256x256/apps
+        cp -a ./publish-linux/. appimage-root/usr/bin/
+        cp package-root/usr/share/applications/rimsharp.desktop appimage-root/usr/share/applications/
+        cp package-root/usr/share/applications/rimsharp.desktop appimage-root/rimsharp.desktop
+        cp package-root/usr/share/icons/hicolor/256x256/apps/rimsharp.png appimage-root/usr/share/icons/hicolor/256x256/apps/
+        cp package-root/usr/share/icons/hicolor/256x256/apps/rimsharp.png appimage-root/rimsharp.png
+        cat > appimage-root/AppRun <<'EOF'
+        #!/usr/bin/env bash
+        exec "$(dirname "$(readlink -f "$0")")/usr/bin/RimSharp" "$@"
+        EOF
+        chmod +x appimage-root/AppRun
+        curl --fail --location --retry 3 \
+          --output appimagetool.AppImage \
+          https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+        chmod +x appimagetool.AppImage
+        ARCH=x86_64 ./appimagetool.AppImage --appimage-extract-and-run appimage-root \
+          "RimSharp_linux-x64_${GITHUB_REF_NAME}.AppImage"
+
+        echo "artifacts<<EOF" >> "$GITHUB_OUTPUT"
+        printf '%s\n' \
+          "RimSharp_linux-x64_${GITHUB_REF_NAME}.tar.gz" \
+          "RimSharp_linux-x64_${GITHUB_REF_NAME}_amd64.deb" \
+          "RimSharp_linux-x64_${GITHUB_REF_NAME}_x86_64.rpm" \
+          "RimSharp_linux-x64_${GITHUB_REF_NAME}.AppImage" >> "$GITHUB_OUTPUT"
+        echo "EOF" >> "$GITHUB_OUTPUT"
+
+    - name: Validate Linux packages
+      shell: bash
+      run: |
+        set -euo pipefail
+        for artifact in \
+          "RimSharp_linux-x64_${GITHUB_REF_NAME}.tar.gz" \
+          "RimSharp_linux-x64_${GITHUB_REF_NAME}_amd64.deb" \
+          "RimSharp_linux-x64_${GITHUB_REF_NAME}_x86_64.rpm" \
+          "RimSharp_linux-x64_${GITHUB_REF_NAME}.AppImage"; do
+          test -s "$artifact"
+        done
+
+        tar -tzf "RimSharp_linux-x64_${GITHUB_REF_NAME}.tar.gz" > tar-contents.txt
+        grep -q '^RimSharp/RimSharp$' tar-contents.txt
+        dpkg-deb --info "RimSharp_linux-x64_${GITHUB_REF_NAME}_amd64.deb" >/dev/null
+        rpm -qip "RimSharp_linux-x64_${GITHUB_REF_NAME}_x86_64.rpm" >/dev/null
+        file "RimSharp_linux-x64_${GITHUB_REF_NAME}.AppImage" | grep -qi 'appimage\|executable'
+
+    - name: Upload Linux artifact to Release
+      if: github.event_name == 'push'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.ref_name }}
+        files: ${{ steps.package.outputs.artifacts }}

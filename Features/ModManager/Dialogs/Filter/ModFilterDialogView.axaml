@@ -23,12 +23,12 @@
                                                         <!-- Search Inputs -->
                                                         <Grid Grid.Row="0" ColumnDefinitions="140, *">
                                                             <TextBlock Grid.Column="0" Text="Name / PackageId:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
-                                                            <TextBox Grid.Column="1" Text="{Binding SearchText, Mode=TwoWay}" Classes="RimworldTextBox" Watermark="e.g. Harmony"/>
+                                                            <TextBox Grid.Column="1" Text="{Binding SearchText, Mode=TwoWay}" Classes="RimworldTextBox" PlaceholderText="e.g. Harmony"/>
                                                         </Grid>
                             
                                                         <Grid Grid.Row="2" ColumnDefinitions="140, *">
                                                             <TextBlock Grid.Column="0" Text="Author:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
-                                                            <TextBox Grid.Column="1" Text="{Binding AuthorFilterText, Mode=TwoWay}" Classes="RimworldTextBox" Watermark="e.g. Brrainz"/>
+                                                            <TextBox Grid.Column="1" Text="{Binding AuthorFilterText, Mode=TwoWay}" Classes="RimworldTextBox" PlaceholderText="e.g. Brrainz"/>
                                                         </Grid>
                             
                                                         <!-- Properties Table -->

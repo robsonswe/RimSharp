@@ -25,6 +25,28 @@
         <Setter Property="CaretBrush" Value="{DynamicResource RimworldBrownBrush}"/>
     </Style>
 
+    <!-- Keep context menus on the app palette instead of the platform default. -->
+    <Style Selector="ContextMenu">
+        <Setter Property="FontFamily" Value="{DynamicResource RimSharpFontFamily}"/>
+        <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="4"/>
+    </Style>
+
+    <Style Selector="MenuItem">
+        <Setter Property="FontFamily" Value="{DynamicResource RimSharpFontFamily}"/>
+    </Style>
+
+    <Style Selector="ContextMenu > MenuItem">
+        <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="Padding" Value="8,5"/>
+    </Style>
+
+    <Style Selector="ContextMenu > MenuItem:pointerover">
+        <Setter Property="Background" Value="{DynamicResource RimworldDarkBeigeBrush}"/>
+    </Style>
+
     <!-- RimWorld-style TextBox -->
     <Style Selector="TextBox.RimworldTextBox">
         <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>

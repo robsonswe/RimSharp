@@ -76,7 +76,6 @@ namespace RimSharp.AppDir.AppFiles
                 if (!isNewInstance)
                 {
                     Debug.WriteLine("App is already running. Activating existing instance.");
-                    
 #if WINDOWS
                     if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
                     {
@@ -95,6 +94,11 @@ namespace RimSharp.AppDir.AppFiles
                     desktop.Shutdown();
                     return;
                 }
+                // One-time migration of legacy exe-side data into XDG
+                // directories (no-op on Windows). Must run before services are
+                // built so ConfigService reads the migrated config.cfg.
+                AppDataPaths.MigrateLegacyLocations();
+
                 var services = new ServiceCollection();
                 ConfigureServices(services);
                 ServiceProvider = services.BuildServiceProvider();
@@ -146,7 +150,7 @@ namespace RimSharp.AppDir.AppFiles
         private void ConfigureServices(IServiceCollection services)
         {
             services.AddSingleton<ILoggerService, LoggerService>();
-            services.AddSingleton<IConfigService, ConfigService>(provider => new ConfigService());
+            services.AddSingleton<IConfigService, ConfigService>(provider => new ConfigService(AppDataPaths.GetConfigFilePath()));
             services.AddSingleton<IFileDialogService, AvaloniaFileDialogService>();
             services.AddSingleton<IDialogService, DialogService>();
             services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
@@ -163,10 +167,19 @@ namespace RimSharp.AppDir.AppFiles
                 services.AddSingleton<IBrowserFactory, GenericBrowserFactory>();
             }
 #else
-            services.AddSingleton<IBrowserFactory, GenericBrowserFactory>();
+            // Probe inside the provider so the capability check is logged via
+            // ILoggerService (the static cache ensures it runs only once).
+            services.AddSingleton<IBrowserFactory>(provider =>
+            {
+                var linuxFactory = new LinuxBrowserFactory(provider.GetRequiredService<ILoggerService>());
+                return linuxFactory.IsSupported ? linuxFactory : (IBrowserFactory)new GenericBrowserFactory();
+            });
 #endif
 
-            services.AddSingleton<string>(provider => AppDomain.CurrentDomain.BaseDirectory);
+            // App-managed data root: Windows -> next to the exe (unchanged),
+            // Linux -> XDG data dir. Consumed by DataUpdateService,
+            // ModCustomService and LoggerService.
+            services.AddSingleton<string>(provider => AppDataPaths.DataDirectory);
 
             services.AddHttpClient(); 
 

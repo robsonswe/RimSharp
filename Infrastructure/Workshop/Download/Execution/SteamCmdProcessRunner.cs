@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Infrastructure.Workshop.Core;
@@ -20,7 +21,7 @@ namespace RimSharp.Infrastructure.Workshop.Download.Execution
             _logger = logger;
         }
 
-        public async Task<int> RunSteamCmdAsync(
+        public async Task<SteamCmdRunResult> RunSteamCmdAsync(
             string scriptPath,
             string primaryLogPath,
             string workingDirectory,
@@ -58,41 +59,81 @@ namespace RimSharp.Infrastructure.Workshop.Download.Execution
                 // Continue anyway
             }
 
+// Capture SteamCMD output on all platforms so fatal errors (e.g. missing
+// disk space) can be surfaced to the user instead of a generic
+// "key log files missing" message. This replaces the old visible console
+// window: output now goes to the app log and, on failure, to the UI.
 var processStartInfo = new ProcessStartInfo
             {
                 FileName = _pathService.SteamCmdExePath,
-                Arguments = $"+runscript \"{scriptPath}\" +log_file \"{primaryLogPath}\"",
-                UseShellExecute = true, // Keep true for visibility or set false for more control (if needed)
-                RedirectStandardOutput = false, // Depends on UseShellExecute
-                RedirectStandardError = false,  // Depends on UseShellExecute
-                CreateNoWindow = false, // Show window (as was original)
+                // NOTE: no "+log_file" argument — it is not a SteamCMD command
+                // ("Command not found: log_file"); SteamCMD's real logs go to
+                // its Steam dir "logs" folder (see SteamCmdLogDirectory).
+                Arguments = $"+runscript \"{scriptPath}\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
                 WorkingDirectory = workingDirectory,
             };
+
+            if (!OperatingSystem.IsWindows())
+            {
+                // On Linux/macOS SteamCMD resolves its logging directory from
+                // the HOME environment variable (writes to "$HOME/Steam/logs").
+                // Override it so logs land in an app-managed directory next to
+                // the SteamCMD data instead of the user's home directory.
+                string steamHomeDir = Path.Combine(_pathService.SteamCmdPrefixPath, "steam-home");
+                Directory.CreateDirectory(steamHomeDir);
+                processStartInfo.EnvironmentVariables["HOME"] = steamHomeDir;
+                _logger.LogDebug($"SteamCMD HOME override (log redirection): {steamHomeDir}", "SteamCmdProcessRunner");
+            }
 
             _logger.LogInfo($"Executing SteamCMD: \"{processStartInfo.FileName}\" {processStartInfo.Arguments}", "SteamCmdProcessRunner");
             _logger.LogDebug($"Working Directory: {processStartInfo.WorkingDirectory}", "SteamCmdProcessRunner");
             _logger.LogDebug($"Primary Log Target: {primaryLogPath}", "SteamCmdProcessRunner");
 
 using var process = new Process { StartInfo = processStartInfo };
+var outputBuilder = new StringBuilder();
 
             try
             {
                 if (!process.Start())
                 {
                      _logger.LogError("Failed to start SteamCMD process.", "SteamCmdProcessRunner");
-                     return -999; // Indicate process start failure
+                     return new SteamCmdRunResult(-999, string.Empty); // Indicate process start failure
                 }
                 _logger.LogDebug($"SteamCMD process started (PID: {process.Id})", "SteamCmdProcessRunner");
+
+                // Capture stdout/stderr: log each line and buffer it so the
+                // downloader can extract fatal errors when SteamCMD dies
+                // before writing its own log files.
+                process.OutputDataReceived += (_, e) =>
+                {
+                    if (e.Data == null) return;
+                    lock (outputBuilder) { outputBuilder.AppendLine(e.Data); }
+                    _logger.LogDebug($"[steamcmd] {e.Data}", "SteamCmdProcessRunner");
+                };
+                process.ErrorDataReceived += (_, e) =>
+                {
+                    if (e.Data == null) return;
+                    lock (outputBuilder) { outputBuilder.AppendLine(e.Data); }
+                    _logger.LogDebug($"[steamcmd-err] {e.Data}", "SteamCmdProcessRunner");
+                };
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
 
                 await process.WaitForExitAsync(cancellationToken);
 
                 _logger.LogInfo($"SteamCMD process exited with code: {process.ExitCode}", "SteamCmdProcessRunner");
-                return process.ExitCode;
+                string captured;
+                lock (outputBuilder) { captured = outputBuilder.ToString(); }
+                return new SteamCmdRunResult(process.ExitCode, captured);
             }
             catch (System.ComponentModel.Win32Exception ex) // More specific exception for start failure
             {
                  _logger.LogError($"Failed to start SteamCMD process: {ex.Message} (NativeErrorCode: {ex.NativeErrorCode})", "SteamCmdProcessRunner");
-                 return -998; // Indicate Win32 exception on start
+                 return new SteamCmdRunResult(-998, string.Empty); // Indicate Win32 exception on start
             }
             catch (OperationCanceledException)
             {
@@ -104,7 +145,9 @@ using var process = new Process { StartInfo = processStartInfo };
             {
                 _logger.LogError($"Unexpected error running SteamCMD process: {ex.Message}", "SteamCmdProcessRunner");
                  try { if (!process.HasExited) process.Kill(true); } catch { /* Ignore kill errors */ }
-                return -997; // Indicate unexpected error during execution
+                 string captured;
+                 lock (outputBuilder) { captured = outputBuilder.ToString(); }
+                 return new SteamCmdRunResult(-997, captured); // Indicate unexpected error during execution
             }
         }
     }

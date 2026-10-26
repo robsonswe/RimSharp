@@ -3,6 +3,7 @@ using System.Windows.Input;
 using RimSharp.AppDir.AppFiles;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Input.Platform;
 
 namespace RimSharp.AppDir.Dialogs
 {

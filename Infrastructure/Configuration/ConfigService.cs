@@ -9,13 +9,41 @@ namespace RimSharp.Infrastructure.Configuration
 {
     public class ConfigService : IConfigService
     {
+        // Keys that are persisted to config.cfg. game_folder/config_folder are
+        // user-selected game paths; steamcmd_prefix and logs_directory let
+        // users redirect SteamCMD data and log output.
+        private static readonly string[] PersistedKeys =
+        {
+            "game_folder",
+            "config_folder",
+            "steamcmd_prefix",
+            "logs_directory",
+        };
+
         private readonly string _configPath;
         private readonly Dictionary<string, string> _configValues = new();
 
         public ConfigService(string? configPath = null)
         {
-            _configPath = configPath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.cfg");
+            _configPath = configPath ?? AppDataPaths.GetConfigFilePath();
+            EnsureConfigDirectoryExists();
             LoadConfig();
+        }
+
+        private void EnsureConfigDirectoryExists()
+        {
+            try
+            {
+                var directory = Path.GetDirectoryName(_configPath);
+                if (!string.IsNullOrEmpty(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+            }
+            catch
+            {
+                // Best effort; SaveConfig reports write failures.
+            }
         }
 
         public void LoadConfig()
@@ -43,7 +71,7 @@ namespace RimSharp.Infrastructure.Configuration
                         var key = parts[0].Trim();
                         var value = parts[1].Trim();
 
-                        if (key == "game_folder" || key == "config_folder")
+                        if (IsPersistedKey(key))
                         {
                              _configValues[key] = value;
                         }
@@ -61,13 +89,12 @@ namespace RimSharp.Infrastructure.Configuration
             try
             {
                 var linesToSave = new List<string>();
-                if (_configValues.TryGetValue("game_folder", out var gameFolder))
+                foreach (var key in PersistedKeys)
                 {
-                    linesToSave.Add($"game_folder={gameFolder}");
-                }
-                 if (_configValues.TryGetValue("config_folder", out var configFolder))
-                {
-                    linesToSave.Add($"config_folder={configFolder}");
+                    if (_configValues.TryGetValue(key, out var value))
+                    {
+                        linesToSave.Add($"{key}={value}");
+                    }
                 }
 
                 File.WriteAllLines(_configPath, linesToSave);
@@ -83,10 +110,13 @@ namespace RimSharp.Infrastructure.Configuration
 
         public void SetConfigValue(string key, string value)
         {
-            if (key == "game_folder" || key == "config_folder")
+            if (IsPersistedKey(key))
             {
                  _configValues[key] = value ?? string.Empty;
             }
         }
+
+        private static bool IsPersistedKey(string key) =>
+            Array.IndexOf(PersistedKeys, key) >= 0;
     }
 }

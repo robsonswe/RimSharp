@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
@@ -25,6 +26,27 @@ namespace RimSharp.Infrastructure.Dialog
             return null;
         }
 
+        /// <summary>
+        /// Resolves a start location for storage pickers. Only existing
+        /// directories are used; otherwise the picker opens at its default.
+        /// </summary>
+        private static async Task<IStorageFolder?> GetStartLocationAsync(IStorageProvider storageProvider, string? initialDirectory)
+        {
+            if (string.IsNullOrEmpty(initialDirectory) || !Directory.Exists(initialDirectory))
+            {
+                return null;
+            }
+
+            try
+            {
+                return await storageProvider.TryGetFolderFromPathAsync(new Uri(initialDirectory));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public async Task<(bool Success, string? FilePath)> ShowOpenFileDialogAsync(string title, string filter, string? initialDirectory = null)
         {
             var window = GetMainWindow();
@@ -33,7 +55,8 @@ namespace RimSharp.Infrastructure.Dialog
             var options = new FilePickerOpenOptions
             {
                 Title = title,
-                AllowMultiple = false
+                AllowMultiple = false,
+                SuggestedStartLocation = await GetStartLocationAsync(window.StorageProvider, initialDirectory)
             };
             var fileTypes = ParseFilter(filter);
             if (fileTypes.Count > 0)
@@ -84,7 +107,8 @@ namespace RimSharp.Infrastructure.Dialog
             var options = new FolderPickerOpenOptions
             {
                 Title = title,
-                AllowMultiple = false
+                AllowMultiple = false,
+                SuggestedStartLocation = await GetStartLocationAsync(window.StorageProvider, initialDirectory)
             };
 
             var folders = await window.StorageProvider.OpenFolderPickerAsync(options);

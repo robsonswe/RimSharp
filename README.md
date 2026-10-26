@@ -1,6 +1,6 @@
 # RimSharp – A Smarter RimWorld Mod Manager
 
-**RimSharp** is a standalone, full-featured mod manager for **RimWorld**, built in C# with WPF. It goes far beyond the built-in manager — giving you better control over mod load order, versioning, dependencies, updates, and even Git integration. Designed for heavy modders, power users, and anyone tired of XML-wrangling and broken save games.
+**RimSharp** is a standalone, full-featured mod manager for **RimWorld**, built in C# with Avalonia UI (cross-platform: Windows and Linux). It goes far beyond the built-in manager — giving you better control over mod load order, versioning, dependencies, updates, and even Git integration. Designed for heavy modders, power users, and anyone tired of XML-wrangling and broken save games.
 
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen)](https://github.com/robsonswe/RimSharp)  
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://github.com/robsonswe/RimSharp#AGPL-3.0-1-ov-file)
@@ -56,10 +56,35 @@
 
 ## Installation
 
+### Windows
+
 1. **Download:** Get the latest release from the [Releases page](https://github.com/robsonswe/RimSharp/releases).
 2. **Extract:** Unzip it anywhere (e.g. `C:\Games\RimSharp`).
 3. **Run:** Start the app via `RimSharp.exe`.
 4. **Set Paths:** On first launch, configure your RimWorld installation, Mods folder, and Config folder.
+
+### Linux (x64)
+
+Choose the installation format that best fits your distribution and workflow from the [Releases page](https://github.com/robsonswe/RimSharp/releases):
+
+- **Debian / Ubuntu:** Download `RimSharp_linux-x64_<tag>_amd64.deb` and open it with the distribution's graphical package installer, or run `sudo apt install ./RimSharp_linux-x64_<tag>_amd64.deb`. Required native packages are declared by the package manager.
+- **Fedora / RPM-based distributions:** Download `RimSharp_linux-x64_<tag>_x86_64.rpm` and open it with the graphical package installer, or run `sudo dnf install ./RimSharp_linux-x64_<tag>_x86_64.rpm`. Required native packages are declared by the package manager.
+- **AppImage:** Download `RimSharp_linux-x64_<tag>.AppImage`, make it executable in the file properties if necessary, and double-click it. You may also run `./RimSharp_linux-x64_<tag>.AppImage` from a terminal.
+- **Portable tarball:** Download `RimSharp_linux-x64_<tag>.tar.gz`, extract it with the file manager, open the `RimSharp/` folder, and double-click `RimSharp`. If required, enable **Allow executing the file as a program** in the executable's file properties.
+
+After installation, start RimSharp and configure your RimWorld installation, Mods folder, and Config folder. The application stores its own configuration, logs, and downloaded SteamCMD files in the Linux XDG data directories; the RimWorld paths remain wherever you configure them.
+
+**Required native dependencies:**
+
+- **Embedded Workshop browser:**
+  - Debian / Ubuntu: `sudo apt install libwebkit2gtk-4.1-0`
+  - Fedora: `sudo dnf install webkit2gtk4.1`
+  - Arch: `sudo pacman -S webkit2gtk-4.1`
+- **SteamCMD** (required for Workshop downloads) is a 32-bit binary and needs multilib support:
+  - Debian / Ubuntu: `sudo apt install lib32gcc-s1`
+  - Fedora: `sudo dnf install glibc.i686 libstdc++.i686`
+  - Arch: enable the `[multilib]` repository, then `sudo pacman -S lib32-glibc lib32-gcc-libs`
+- **ICU** (internationalization): usually preinstalled; if missing, install `libicu70` on Ubuntu 22.04, `libicu74` on Ubuntu 24.04, `libicu72` on Debian 12, `libicu` on Fedora, or `icu` on Arch.
 
 ---
 
@@ -78,7 +103,7 @@ cd RimSharp
 dotnet build RimSharp.sln -c Release
 ```
 
-Executable will be in `RimSharp.AppDir/bin/Release/netX.Y-windows/`.
+Executable will be in `bin/Release/net8.0-windows/` (Windows) or `bin/Release/net8.0/` (Linux).
 
 You can also build via Visual Studio by opening `RimSharp.sln`.
 
@@ -97,10 +122,10 @@ You can also build via Visual Studio by opening `RimSharp.sln`.
 
 ## System Requirements
 
-- **OS:** Windows 10 / 11
-- **Runtime:** .NET 6/7/8 (depending on your build)
-- **RimWorld:** Installed and working copy
-- **SteamCMD:** Required for downloading Workshop mods
+- **OS:** Windows 10 / 11, or Linux x64 (glibc 2.23+ — Ubuntu 22.04+, Debian 12+, Fedora, Arch, SteamOS)
+- **Runtime:** None needed — releases are self-contained
+- **RimWorld:** Installed and working copy (native Linux build officially supported, including Steam Deck)
+- **SteamCMD:** Required for downloading Workshop mods (downloaded automatically by the app on first use)
 
 ---
 
