@@ -47,7 +47,7 @@ jobs:
       run: dotnet build $env:Project_Path --configuration Release --no-restore
 
     - name: Execute unit tests
-      run: dotnet test $env:Project_Path --configuration Release --no-build
+      run: dotnet test RimSharp.Tests/RimSharp.Tests.csproj --configuration Release --no-build
 
     - name: Publish and Package
       id: package
