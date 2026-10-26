@@ -70,9 +70,9 @@ var processStartInfo = new ProcessStartInfo
                 // ("Command not found: log_file"); SteamCMD's real logs go to
                 // its Steam dir "logs" folder (see SteamCmdLogDirectory).
                 Arguments = $"+runscript \"{scriptPath}\"",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
+                UseShellExecute = true,
+                RedirectStandardOutput = false,
+                RedirectStandardError = false,
                 CreateNoWindow = false,
                 WorkingDirectory = workingDirectory,
             };
@@ -94,7 +94,6 @@ var processStartInfo = new ProcessStartInfo
             _logger.LogDebug($"Primary Log Target: {primaryLogPath}", "SteamCmdProcessRunner");
 
 using var process = new Process { StartInfo = processStartInfo };
-var outputBuilder = new StringBuilder();
 
             try
             {
@@ -105,30 +104,10 @@ var outputBuilder = new StringBuilder();
                 }
                 _logger.LogDebug($"SteamCMD process started (PID: {process.Id})", "SteamCmdProcessRunner");
 
-                // Capture stdout/stderr: log each line and buffer it so the
-                // downloader can extract fatal errors when SteamCMD dies
-                // before writing its own log files.
-                process.OutputDataReceived += (_, e) =>
-                {
-                    if (e.Data == null) return;
-                    lock (outputBuilder) { outputBuilder.AppendLine(e.Data); }
-                    _logger.LogDebug($"[steamcmd] {e.Data}", "SteamCmdProcessRunner");
-                };
-                process.ErrorDataReceived += (_, e) =>
-                {
-                    if (e.Data == null) return;
-                    lock (outputBuilder) { outputBuilder.AppendLine(e.Data); }
-                    _logger.LogDebug($"[steamcmd-err] {e.Data}", "SteamCmdProcessRunner");
-                };
-                process.BeginOutputReadLine();
-                process.BeginErrorReadLine();
-
                 await process.WaitForExitAsync(cancellationToken);
 
                 _logger.LogInfo($"SteamCMD process exited with code: {process.ExitCode}", "SteamCmdProcessRunner");
-                string captured;
-                lock (outputBuilder) { captured = outputBuilder.ToString(); }
-                return new SteamCmdRunResult(process.ExitCode, captured);
+                return new SteamCmdRunResult(process.ExitCode, string.Empty);
             }
             catch (System.ComponentModel.Win32Exception ex) // More specific exception for start failure
             {
@@ -145,9 +124,7 @@ var outputBuilder = new StringBuilder();
             {
                 _logger.LogError($"Unexpected error running SteamCMD process: {ex.Message}", "SteamCmdProcessRunner");
                  try { if (!process.HasExited) process.Kill(true); } catch { /* Ignore kill errors */ }
-                 string captured;
-                 lock (outputBuilder) { captured = outputBuilder.ToString(); }
-                 return new SteamCmdRunResult(-997, captured); // Indicate unexpected error during execution
+                 return new SteamCmdRunResult(-997, string.Empty); // Indicate unexpected error during execution
             }
         }
     }
