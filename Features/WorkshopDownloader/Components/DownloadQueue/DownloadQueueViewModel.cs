@@ -95,6 +95,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             Func<CancellationToken> getCancellationToken,
             IModListManager modListManager,
             ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor,
+            IWorkshopDescriptionService descriptionService,
             ILoggerService logger,
             ISteamApiClient steamApiClient
             )
@@ -106,7 +107,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             _modInfoEnricher = new ModInfoEnricher(modListManager);
             _commandHandler = new DownloadQueueCommandHandler(
                 queueService, modService, dialogService, updateCheckerService,
-                steamCmdService, browserViewModel, getCancellationToken, modListManager, _modInfoEnricher, steamWorkshopQueueProcessor, logger, steamApiClient
+                steamCmdService, browserViewModel, getCancellationToken, modListManager, _modInfoEnricher, steamWorkshopQueueProcessor, descriptionService, logger, steamApiClient
             );
             _isSteamCmdReady = _commandHandler.IsSteamCmdReady;
 

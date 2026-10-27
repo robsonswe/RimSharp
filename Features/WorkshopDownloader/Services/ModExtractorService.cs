@@ -17,6 +17,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
     {
         Task<string?> ExtractModName();
         Task<string?> ExtractModDateInfo();
+        Task<string?> ExtractModDescription();
         Task<string?> ExtractFileSizeRawString();
         Task<List<CollectionItemInfo>> ExtractCollectionItemsAsync();
         Task<long> ParseFileSizeAsync(string sizeString);
@@ -117,6 +118,32 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 _isModDateAvailable = false;
                 CheckAndNotifyModInfoAvailability();
                 Debug.WriteLine($"Error extracting mod date info: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<string?> ExtractModDescription()
+        {
+            try
+            {
+                // The Workshop description block ('Description' title) sits in a
+                // div with the stable id 'highlightContent' (#highlightContent),
+                // same element the HTML fallback scraper uses. innerText of the
+                // RENDERED DOM gives clean plain text (bb_h1 headers, <br>, etc.
+                // resolved by the layout engine) — no markup parsing needed —
+                // and the id is locale-independent (only the surrounding label
+                // texts like 'Updated' vary by language).
+                string script = @"(function() {
+                    const descElement = document.getElementById('highlightContent');
+                    return descElement ? descElement.innerText.trim() : '';
+                })();";
+
+                string result = await _browserControl.ExecuteScriptAsync(script);
+                return UnwrapJsonString(result);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error extracting mod description: {ex.Message}");
                 return null;
             }
         }
@@ -309,13 +336,15 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             var dateInfoTask = ExtractModDateInfo();
             var fileSizeRawTask = ExtractFileSizeRawString();
             var latestVersionsTask = ExtractVersionTagsAsync();
+            var descriptionTask = ExtractModDescription();
 
-            await Task.WhenAll(modNameTask, dateInfoTask, fileSizeRawTask, latestVersionsTask);
+            await Task.WhenAll(modNameTask, dateInfoTask, fileSizeRawTask, latestVersionsTask, descriptionTask);
 
             string? modName = modNameTask.Result;
             string? dateInfo = dateInfoTask.Result;
             string? fileSizeRaw = fileSizeRawTask.Result;
             List<string> latestVersions = latestVersionsTask.Result;
+            string? description = descriptionTask.Result;
 
             string standardDate = await ConvertToStandardDate(dateInfo ?? string.Empty);
             long fileSize = await ParseFileSizeAsync(fileSizeRaw ?? string.Empty);
@@ -336,7 +365,8 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 PublishDate = finalPublishDate,
                 StandardDate = standardDate,
                 FileSize = fileSize,
-                LatestVersions = latestVersions
+                LatestVersions = latestVersions,
+                SteamDescription = description ?? string.Empty
             };
         }
 

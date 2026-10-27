@@ -52,7 +52,9 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
                 _incompatibilityService, _duplicateService, _deletionService,
                 _dialogService, _pathService, _modService, _replacementService,
                 _downloadQueueService, _steamApiClient, _navigationService,
-                _steamWorkshopQueueProcessor, _gitService);
+                _steamWorkshopQueueProcessor, _gitService,
+                Substitute.For<IAIncompatibilityAgentService>(),
+                Substitute.For<IModCustomService>());
         }
 
         [AvaloniaFact]

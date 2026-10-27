@@ -48,6 +48,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private readonly IApplicationNavigationService _navigationService;
         private readonly ISteamWorkshopQueueProcessor _steamWorkshopQueueProcessor;
         private readonly IGitService _gitService;
+        private readonly IAIncompatibilityAgentService _aiAgentService;
+        private readonly IModCustomService _customService;
         private bool _isParentLoading;
         private bool _hasUnsavedChanges;
         private ModItem? _selectedMod;
@@ -167,6 +169,7 @@ public bool IsParentLoading
         public ICommand ResolveDependenciesCommand { get; private set; } = null!;
         public ICommand CheckIncompatibilitiesCommand { get; private set; } = null!;
         public ICommand CheckDuplicatesCommand { get; private set; } = null!;
+        public ICommand CheckAIIncompatibilitiesCommand { get; private set; } = null!;
 
         public ICommand StripModsCommand { get; private set; } = null!;
         public ICommand FixIntegrityCommand { get; private set; } = null!;
@@ -199,7 +202,9 @@ public bool IsParentLoading
             ISteamApiClient steamApiClient,
             IApplicationNavigationService navigationService,
             ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor,
-            IGitService gitService)
+            IGitService gitService,
+            IAIncompatibilityAgentService aiAgentService,
+            IModCustomService customService)
         {
             _dataService = dataService;
             _commandService = commandService;
@@ -218,6 +223,8 @@ public bool IsParentLoading
             _navigationService = navigationService;
             _steamWorkshopQueueProcessor = steamWorkshopQueueProcessor;
             _gitService = gitService;
+            _aiAgentService = aiAgentService;
+            _customService = customService;
             RefreshPathValidity();
 
             _modListManager.ListChanged += OnModListChanged;

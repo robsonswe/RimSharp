@@ -87,6 +87,9 @@
                             </MenuItem.IsVisible>
                         </MenuItem>
                         <Separator/>
+                        <MenuItem Header="AI Conflict Scan" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.CheckAIIncompatibilitiesCommand}" CommandParameter="{Binding}">
+                            <MenuItem.Icon><i:Icon Value="fa-robot" FontSize="14"/></MenuItem.Icon>
+                        </MenuItem>
                         <MenuItem Header="Customize Mod" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.CustomizeModCommand}" CommandParameter="{Binding}">
                             <MenuItem.Icon><i:Icon Value="fa-gear" FontSize="14"/></MenuItem.Icon>
                         </MenuItem>

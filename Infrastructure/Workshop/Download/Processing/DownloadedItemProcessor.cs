@@ -14,12 +14,17 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
     {
         private readonly ILoggerService _logger;
         private readonly IModService _modService;
+        private readonly IWorkshopDescriptionService _descriptionService;
         private readonly List<string> _logMessages = new List<string>();
 
-        public DownloadedItemProcessor(ILoggerService logger, IModService modService)
+        public DownloadedItemProcessor(
+            ILoggerService logger,
+            IModService modService,
+            IWorkshopDescriptionService descriptionService)
         {
             _logger = logger;
             _modService = modService;
+            _descriptionService = descriptionService;
         }
 
         public List<string> GetLogMessages() => new List<string>(_logMessages);
@@ -103,6 +108,25 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
 
                 _logger.LogInfo($"Item {itemId} ('{itemName}') processing SUCCEEDED.", "DownloadedItemProcessor");
                 AddLogMessage($"Item {itemId} ({itemName}) successfully updated/installed.");
+
+                // Cache the full Workshop description into the freshly
+                // installed mod folder (RimSharp.json) — non-fatal on failure.
+                // The queue item may already carry the text captured from the
+                // embedded browser at "Add Mod" time (no extra API call); the
+                // Steam API/HTML extractors are only used as fallback.
+                if (!string.IsNullOrWhiteSpace(item.SteamId))
+                {
+                    AddLogMessage($"Item {itemId}: Caching Workshop description...");
+                    var description = !string.IsNullOrWhiteSpace(item.SteamDescription)
+                        ? (await _descriptionService.SaveCacheAsync(item.SteamId, targetPath, item.SteamDescription, "browser", cancellationToken)
+                            ? item.SteamDescription
+                            : null)
+                        : await _descriptionService.EnrichModAsync(item.SteamId, targetPath, cancellationToken);
+                    AddLogMessage(description != null
+                        ? $"Item {itemId}: Workshop description cached."
+                        : $"Item {itemId}: No Workshop description available (mod will use About.xml text).");
+                }
+
                 return (true, "Processed successfully.");
             }
             catch (Exception ex) when (ex is not OperationCanceledException)

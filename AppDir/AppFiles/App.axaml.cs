@@ -25,6 +25,8 @@ using RimSharp.Infrastructure.Mods.IO;
 using RimSharp.Infrastructure.Mods.Rules;
 using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
 using RimSharp.Infrastructure.Mods.Validation.Duplicates;
+using RimSharp.Infrastructure.Mods.Validation.AI;
+using RimSharp.Infrastructure.AI;
 using RimSharp.Features.GitModManager.ViewModels;
 using RimSharp.Features.VramAnalysis.ViewModels;
 using RimSharp.Features.WorkshopDownloader.Services;
@@ -181,7 +183,16 @@ namespace RimSharp.AppDir.AppFiles
             // ModCustomService and LoggerService.
             services.AddSingleton<string>(provider => AppDataPaths.DataDirectory);
 
-            services.AddHttpClient(); 
+            services.AddHttpClient();
+
+            // Workshop HTML-description extractor: Steam serves the item page
+            // only to browser-like User-Agents.
+            services.AddHttpClient("WorkshopHtml", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; RimSharp)");
+            });
+
 
             services.AddSingleton<IDataUpdateService>(provider =>
                    new DataUpdateService(
@@ -277,6 +288,10 @@ namespace RimSharp.AppDir.AppFiles
             });
 
             services.AddSingleton<IModIncompatibilityService, ModIncompatibilityService>();
+            services.AddSingleton<IAIProviderClient, OpenRouterProviderClient>();
+            services.AddSingleton<AIProviderFactory>();
+            services.AddSingleton<IAIncompatibilityAgentService, AIIncompatibilityAgentService>();
+            services.AddSingleton<IAIncompatibilityAgentService, AIIncompatibilityAgentService>();
             services.AddSingleton<IModDuplicateService, ModDuplicateService>();
             services.AddSingleton<IModListFileParser, ModListFileParser>();
             services.AddSingleton<IModDeletionService, ModDeletionService>();
@@ -292,6 +307,10 @@ namespace RimSharp.AppDir.AppFiles
             services.AddSingleton<ISteamCmdScriptGenerator, SteamCmdScriptGenerator>();
             services.AddSingleton<ISteamCmdProcessRunner, SteamCmdProcessRunner>();
             services.AddSingleton<ISteamCmdLogParser, SteamCmdLogParser>();
+
+            // Fetches/caches full Workshop descriptions (RimSharp.json per mod
+            // folder). Used by the downloader post-install hook below.
+            services.AddSingleton<IWorkshopDescriptionService, WorkshopDescriptionService>();
             services.AddSingleton<IDownloadedItemProcessor, DownloadedItemProcessor>();
 
             services.AddSingleton<ISteamCmdDownloader>(provider =>
@@ -329,7 +348,9 @@ namespace RimSharp.AppDir.AppFiles
                    provider.GetRequiredService<ISteamApiClient>(),
                    provider.GetRequiredService<IApplicationNavigationService>(),
                    provider.GetRequiredService<ISteamWorkshopQueueProcessor>(),
-                   provider.GetRequiredService<IGitService>()
+                   provider.GetRequiredService<IGitService>(),
+                   provider.GetRequiredService<IAIncompatibilityAgentService>(),
+                   provider.GetRequiredService<IModCustomService>()
                ));
 
             services.AddTransient<DownloaderViewModel>(provider =>
@@ -344,7 +365,8 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<ModInfoEnricher>(),
                     provider.GetRequiredService<ISteamWorkshopQueueProcessor>(),
                     provider.GetRequiredService<ILoggerService>(),
-                    provider.GetRequiredService<ISteamApiClient>()
+                    provider.GetRequiredService<ISteamApiClient>(),
+                    provider.GetRequiredService<IWorkshopDescriptionService>()
                 ));
 
             services.AddTransient<GitModsViewModel>(provider =>

@@ -249,6 +249,12 @@ namespace RimSharp.Infrastructure.Dialog
             _ = ShowDialogInternalAsync<bool>(viewModel, dialog);
         }
 
+        public async Task<bool> ShowAIAcausalIncompatibilityReviewAsync(RimSharp.Features.ModManager.Dialogs.AIIncompatibilityReview.AIIncompatibilityReviewDialogViewModel viewModel)
+        {
+            var dialog = new RimSharp.Features.ModManager.Dialogs.AIIncompatibilityReview.AIIncompatibilityReviewDialogView(viewModel);
+            return await ShowDialogInternalAsync(viewModel, dialog);
+        }
+
         public async Task<(bool Result, string? FilePath)> ShowOpenFileDialogAsync(string title, string filter, string initialDirectory = "")
         {
             if (_fileDialogService != null)

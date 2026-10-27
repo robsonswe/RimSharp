@@ -6,6 +6,7 @@
              xmlns:models="clr-namespace:RimSharp.Shared.Models"
              xmlns:convViewVisibility="clr-namespace:RimSharp.Core.Converters.ViewVisibility"
              xmlns:i="https://github.com/projektanker/icons.avalonia"
+             xmlns:local="clr-namespace:RimSharp.Features.ModManager.Components.ModDetails"
              x:Class="RimSharp.Features.ModManager.Components.ModDetails.ModDetailsView"
              mc:Ignorable="d"
              x:DataType="vm:ModDetailsViewModel"
@@ -103,6 +104,123 @@
         <Style Selector="SelectableTextBlock.CodeBoxHyperlink:pointerover, TextBlock.CodeBoxHyperlink:pointerover">
             <Setter Property="TextDecorations" Value="Underline"/>
             <Setter Property="Foreground" Value="{DynamicResource RimworldDarkGreenHoverBrush}"/>
+        </Style>
+
+        <!-- Compact tab strip for the description tabs (default RimworldTabControl
+             tabs are too large for the narrow details panel) -->
+        <Style Selector="TabControl.DescTabs TabItem">
+            <Setter Property="Padding" Value="10,3"/>
+            <Setter Property="Margin" Value="0,0,4,3"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <!-- Steam BBCode viewer styles -->
+        <Style Selector="TextBlock.BbParagraph">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+        <Style Selector="TextBlock.BbParagraph.h1">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="0,4,0,6"/>
+        </Style>
+        <Style Selector="TextBlock.BbParagraph.h2">
+            <Setter Property="FontSize" Value="15.5"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="0,4,0,6"/>
+        </Style>
+        <Style Selector="TextBlock.BbParagraph.h3">
+            <Setter Property="FontSize" Value="13.5"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="0,4,0,6"/>
+        </Style>
+        <Style Selector="TextBlock.BbLink">
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkGreenBrush}"/>
+            <Setter Property="TextDecorations" Value="Underline"/>
+            <Setter Property="TextWrapping" Value="NoWrap"/>
+        </Style>
+        <Style Selector="TextBlock.BbLink:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkGreenHoverBrush}"/>
+        </Style>
+
+        <!-- BBCode links are REAL Buttons (Click is reliable where Tapped was
+             swallowed); the flat template renders only the inline content. -->
+        <Style Selector="Button.BbLink">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkGreenBrush}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Foreground="{TemplateBinding Foreground}"
+                                      Background="Transparent"
+                                      Padding="{TemplateBinding Padding}"
+                                      HorizontalAlignment="Left"
+                                      VerticalAlignment="Center"/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Button.BbLink:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkGreenHoverBrush}"/>
+        </Style>
+        <Style Selector="Border.BbQuote">
+            <Setter Property="BorderBrush" Value="{DynamicResource RimworldLightBrownBrush}"/>
+            <Setter Property="BorderThickness" Value="3,0,0,0"/>
+            <Setter Property="CornerRadius" Value="2"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="Margin" Value="0,2,0,8"/>
+        </Style>
+        <Style Selector="TextBlock.BbQuoteAuthor">
+            <Setter Property="FontStyle" Value="Italic"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,3"/>
+        </Style>
+        <Style Selector="Border.BbCodeBlock">
+            <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
+            <Setter Property="CornerRadius" Value="2"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Margin" Value="0,2,0,8"/>
+        </Style>
+        <Style Selector="SelectableTextBlock.BbCode, TextBlock.BbCode">
+            <Setter Property="FontFamily" Value="{DynamicResource RimSharpMonoFontFamily}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style Selector="Expander.BbSpoiler">
+            <Setter Property="Margin" Value="0,2,0,8"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+        </Style>
+        <Style Selector="Separator.BbHr">
+            <Setter Property="Margin" Value="0,2,0,8"/>
+        </Style>
+        <Style Selector="Grid.BbTable">
+            <Setter Property="Margin" Value="0,2,0,8"/>
+        </Style>
+        <Style Selector="TextBlock.BbBullet">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="Margin" Value="0,0,8,6"/>
+        </Style>
+        <Style Selector="TextBlock.BbImagePlaceholder">
+            <Setter Property="FontStyle" Value="Italic"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
         </Style>
 
     </UserControl.Styles>
@@ -306,23 +424,48 @@
             </Grid>
         </StackPanel>
 
-        <!-- Separator and Description Header -->
+        <!-- Separator and Description Header (plain label only when there is
+             no cached Steam description; tabs handle labels otherwise) -->
         <StackPanel Grid.Row="2" Margin="10,15,10,0">
             <Separator Classes="RimworldSeparatorStyle" Margin="0,0,0,10"/>
-            <TextBlock Text="Description" Classes="InfoLabel" FontSize="16" Margin="0,0,0,5"/>
+            <TextBlock Text="Description" Classes="InfoLabel" FontSize="16" Margin="0,0,0,5"
+                       IsVisible="{Binding SteamDescription, Converter={StaticResource IsNullOrEmptyConverter}}"/>
         </StackPanel>
 
-                        <!-- Description field -->
-                        <ScrollViewer Grid.Row="3" Margin="10,0,10,10" 
-                                      HorizontalScrollBarVisibility="Disabled"
-                                      VerticalScrollBarVisibility="Auto"
-                                      AllowAutoHide="False">
-                
-                            <SelectableTextBlock Text="{Binding Description, Mode=OneWay}"
-                                                 TextWrapping="Wrap"
-                                                 FontSize="13"
-                                                 Foreground="{DynamicResource RimworldBrownBrush}"/>
-                        </ScrollViewer>
+        <!-- No cached Steam description: single About.xml view (unchanged behavior) -->
+        <ScrollViewer Grid.Row="3" Margin="10,0,10,10"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto"
+                      AllowAutoHide="False"
+                      IsVisible="{Binding SteamDescription, Converter={StaticResource IsNullOrEmptyConverter}}">
+            <SelectableTextBlock Text="{Binding Description, Mode=OneWay}"
+                                 TextWrapping="Wrap"
+                                 FontSize="13"
+                                 Foreground="{DynamicResource RimworldBrownBrush}"/>
+        </ScrollViewer>
+
+        <!-- Cached Steam description: tabs, Steam first (default view).
+             Steam tab renders Steam-flavored BBCode via SteamBBCodeViewer. -->
+        <TabControl Grid.Row="3" Classes="RimworldTabControl DescTabs" Margin="10,0,10,10"
+                    IsVisible="{Binding SteamDescription, Converter={StaticResource IsNotNullOrEmptyConverter}}">
+            <TabItem Header="Steam">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto"
+                              AllowAutoHide="False">
+                    <local:SteamBBCodeViewer Text="{Binding SteamDescription, Mode=OneWay}"/>
+                </ScrollViewer>
+            </TabItem>
+            <TabItem Header="About.xml">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto"
+                              AllowAutoHide="False">
+                    <SelectableTextBlock Text="{Binding Description, Mode=OneWay}"
+                                         TextWrapping="Wrap"
+                                         FontSize="13"
+                                         Foreground="{DynamicResource RimworldBrownBrush}"/>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
                     </Grid>
                 </DataTemplate>
             </ContentControl.ContentTemplate>

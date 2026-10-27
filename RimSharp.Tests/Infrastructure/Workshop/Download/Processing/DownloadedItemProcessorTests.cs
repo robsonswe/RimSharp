@@ -25,7 +25,7 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download.Processing
         {
             _mockLogger = Substitute.For<ILoggerService>();
             _mockModService = Substitute.For<IModService>();
-            _processor = new DownloadedItemProcessor(_mockLogger, _mockModService);
+            _processor = new DownloadedItemProcessor(_mockLogger, _mockModService, Substitute.For<IWorkshopDescriptionService>());
 
             _testTempDir = Path.Combine(Path.GetTempPath(), "RimSharp_ProcessorTest_" + Guid.NewGuid().ToString("N"));
             _sourcePath = Path.Combine(_testTempDir, "Source");

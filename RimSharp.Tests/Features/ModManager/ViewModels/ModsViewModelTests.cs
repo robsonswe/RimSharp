@@ -87,7 +87,9 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
                 _mockSteamApiClient,
                 _mockNavigationService,
                 _mockSteamWorkshopQueueProcessor,
-                _mockGitService
+                _mockGitService,
+                Substitute.For<IAIncompatibilityAgentService>(),
+                Substitute.For<IModCustomService>()
             );
         }
 

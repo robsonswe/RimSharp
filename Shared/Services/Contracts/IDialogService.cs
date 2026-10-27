@@ -56,6 +56,8 @@ namespace RimSharp.Shared.Services.Contracts
         void ShowIncompatibilityDialog(RimSharp.Features.ModManager.Dialogs.Incompatibilities.ModIncompatibilityDialogViewModel viewModel);
         Task<bool> ShowDuplicateModsDialogAsync(RimSharp.Features.ModManager.Dialogs.DuplicateMods.DuplicateModDialogViewModel viewModel);
         void ShowDuplicateModsDialog(RimSharp.Features.ModManager.Dialogs.DuplicateMods.DuplicateModDialogViewModel viewModel);
+
+        Task<bool> ShowAIAcausalIncompatibilityReviewAsync(RimSharp.Features.ModManager.Dialogs.AIIncompatibilityReview.AIIncompatibilityReviewDialogViewModel viewModel);
         
         Task<RimSharp.Shared.Models.ModItem?> ShowModSelectorDialogAsync(ModSelectorDialogViewModel viewModel);
         RimSharp.Shared.Models.ModItem? ShowModSelectorDialog(ModSelectorDialogViewModel viewModel);

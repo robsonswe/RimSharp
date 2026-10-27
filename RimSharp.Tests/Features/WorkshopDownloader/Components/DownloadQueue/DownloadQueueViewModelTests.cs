@@ -51,6 +51,7 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Components.DownloadQueue
             _enricher = new ModInfoEnricher(_mockModListManager);
 
             var mockNavigation = Substitute.For<IWebNavigationService>();
+            var mockDescriptionService = Substitute.For<IWorkshopDescriptionService>();
             var mockDownloaderParent = Substitute.For<RimSharp.Features.WorkshopDownloader.ViewModels.DownloaderViewModel>(
                 mockNavigation,
                 _mockQueueService,
@@ -62,7 +63,8 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Components.DownloadQueue
                 _enricher,
                 _mockQueueProcessor,
                 _mockLogger,
-                _mockSteamApiClient
+                _mockSteamApiClient,
+                mockDescriptionService
             );
 
             _browserViewModel = new BrowserViewModel(mockNavigation, mockDownloaderParent, _mockDialogService, _mockSteamApiClient);
@@ -80,6 +82,7 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Components.DownloadQueue
                 () => CancellationToken.None,
                 _mockModListManager,
                 _mockQueueProcessor,
+                Substitute.For<IWorkshopDescriptionService>(),
                 _mockLogger,
                 _mockSteamApiClient
             );

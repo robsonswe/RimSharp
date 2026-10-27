@@ -141,7 +141,11 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                                 PublishDate = apiUpdateTimeOffset.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture),
                                 StandardDate = apiUpdateTimeUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture),
                                 FileSize = details.FileSize,
-                                LatestVersions = SteamApiResultHelper.ExtractAndSortVersionTags(details.Tags)
+                                LatestVersions = SteamApiResultHelper.ExtractAndSortVersionTags(details.Tags),
+                                SteamDescription = WorkshopDescriptionService.CleanHtml(
+                                    details.DetailedDescription?.Length > details.Description?.Length
+                                        ? details.DetailedDescription
+                                        : details.Description)
                             };
                             progress?.Report(new QueueProcessProgress
                             {

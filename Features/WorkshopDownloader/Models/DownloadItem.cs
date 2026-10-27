@@ -58,6 +58,17 @@ namespace RimSharp.Features.WorkshopDownloader.Models
             set => SetProperty(ref _fileSize, value);
         }
 
+        /// <summary>
+        /// Full Workshop description captured at browse time (embedded browser
+        /// DOM or Steam API fallback). Cached next to About.xml on install.
+        /// </summary>
+        private string? _steamDescription;
+        public string? SteamDescription
+        {
+            get => _steamDescription;
+            set => SetProperty(ref _steamDescription, value);
+        }
+
         public List<string>? LatestVersions
         {
             get => _latestVersions;

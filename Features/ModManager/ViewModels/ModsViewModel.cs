@@ -164,7 +164,9 @@ namespace RimSharp.Features.ModManager.ViewModels
             ISteamApiClient steamApiClient,
             IApplicationNavigationService navigationService,
             ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor,
-            IGitService gitService)
+            IGitService gitService,
+            IAIncompatibilityAgentService aiAgentService,
+            IModCustomService customService)
         {
             _dataService = dataService;
             _filterService = filterService;
@@ -182,7 +184,8 @@ namespace RimSharp.Features.ModManager.ViewModels
             ModDetailsViewModel = new ModDetailsViewModel(_dialogService);
             ModActionsViewModel = new ModActionsViewModel(
                 _dataService, commandService, ioService, _modListManager, incompatibilityService, duplicateService, _deletionService, _dialogService, _pathService, _modService,
-                        replacementService, downloadQueueService, steamApiClient, navigationService, steamWorkshopQueueProcessor, _gitService
+                        replacementService, downloadQueueService, steamApiClient, navigationService, steamWorkshopQueueProcessor, _gitService,
+                        aiAgentService, customService
                         );
             _modListManager.ListChanged += OnModListManagerChanged;
             ModListViewModel.RequestSelectionChange += OnChildRequestSelectionChange;

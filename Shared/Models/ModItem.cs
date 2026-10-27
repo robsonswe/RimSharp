@@ -68,6 +68,12 @@ namespace RimSharp.Shared.Models
         public string PackageId { get; set; } = string.Empty;
         public string Authors { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Full plain-text Workshop description, cached in the mod folder as
+        /// RimSharp.json by WorkshopDescriptionService (empty when uncached).
+        /// </summary>
+        public string SteamDescription { get; set; } = string.Empty;
         public List<VersionSupport> SupportedVersions { get; set; } = new List<VersionSupport>();
 
         public string ModVersion { get; set; } = string.Empty;

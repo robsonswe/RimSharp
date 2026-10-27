@@ -44,6 +44,11 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 CanExecuteSimpleCommands,
                 observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
 
+            CheckAIIncompatibilitiesCommand = CreateAsyncCommand<ModItem>(
+                ExecuteCheckAIIncompatibilities,
+                canExecute: mod => mod != null,
+                observedProperties: new[] { nameof(IsParentLoading) });
+
             CheckReplacementsCommand = CreateCancellableAsyncCommand(
                 ExecuteCheckReplacements,
                 CanExecuteSimpleCommands,
@@ -755,6 +760,105 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             {
                 IsLaunchingGame = false;
             }
+        }
+
+        /// <summary>
+        /// AI suspect analysis for the clicked mod: keywords → full-library
+        /// suspect search → provider verdicts → decision dialog.
+        /// </summary>
+        private async Task ExecuteCheckAIIncompatibilities(ModItem mod)
+        {
+            if (mod == null) return;
+
+            if (!_aiAgentService.IsConfigured)
+            {
+                await RunOnUIThreadAsync(() => _dialogService.ShowInformation(
+                    "AI Conflict Scan",
+                    "AI analysis is not configured yet. Please set an OpenRouter API key in the config (openrouter_api_key)."));
+                return;
+            }
+
+            IsLoadingRequest?.Invoke(this, true);
+            ProgressDialogViewModel? progressDialog = null;
+            CancellationTokenSource? analysisCts = null;
+            try
+            {
+                analysisCts = new CancellationTokenSource();
+                await RunOnUIThreadAsync(() =>
+                {
+                    progressDialog = _dialogService.ShowProgressDialog(
+                        $"AI Conflict Scan — {mod.Name}", "Loading installed mods...", canCancel: true,
+                        isIndeterminate: false, cts: analysisCts, closeable: true);
+                });
+                if (progressDialog == null) throw new InvalidOperationException("Progress dialog was not created.");
+
+                // Load the FULL installed library from disk (active or not).
+                var allMods = await _dataService.LoadAllModsAsync();
+                await RunOnUIThreadAsync(() => progressDialog?.UpdateProgress(
+                    8, $"Loaded {allMods.Count} installed mods."));
+
+                var candidates = await Task.Run(
+                    () => _aiAgentService.AnalyzeSuspectsForModAsync(
+                        mod,
+                        allMods,
+                        (message, percent) => progressDialog?.UpdateProgress(
+                            Math.Clamp((int)Math.Round(percent), 0, 100), message),
+                        analysisCts.Token),
+                    analysisCts.Token);
+
+                await RunOnUIThreadAsync(() => progressDialog?.CompleteOperation("AI conflict scan complete."));
+                if (candidates.Count == 0)
+                {
+                    await RunOnUIThreadAsync(async () => await _dialogService.ShowInformation(
+                        "AI Conflict Scan",
+                        $"No indirect incompatibilities found for \"{mod.Name}\"." +
+                        $"\n\n{_aiAgentService.LastRunSummary}"));
+                    return;
+                }
+
+                await RunOnUIThreadAsync(async () =>
+                {
+                    var vm = new RimSharp.Features.ModManager.Dialogs.AIIncompatibilityReview.AIIncompatibilityReviewDialogViewModel(
+                        candidates, ApplyAICandidateAsync);
+                    await _dialogService.ShowAIAcausalIncompatibilityReviewAsync(vm);
+                });
+            }
+            catch (Exception ex)
+            {
+                try { System.IO.File.AppendAllText(@"D:\temp\opencode\ai_retry_diag.txt", $"[{DateTime.Now:HH:mm:ss}] ANALYSIS FAILED — {ex.GetType().Name}: {ex.Message}\n"); } catch { }
+                await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowError("AI Conflict Scan Error", $"Error during AI analysis: {ex.Message}"));
+            }
+            finally
+            {
+                analysisCts?.Cancel();
+                await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
+                IsLoadingRequest?.Invoke(this, false);
+            }
+        }
+
+        /// <summary>
+        /// Persists one AI-confirmed pair as a custom incompatibility rule,
+        /// bidirectionally (A→B and B→A), via IModCustomService.
+        /// </summary>
+        private async Task ApplyAICandidateAsync(RimSharp.Shared.Services.Contracts.AIIncompatibilityCandidate candidate)
+        {
+            var a = candidate.SourceMod;
+            var b = candidate.TargetMod;
+            var rule = new RimSharp.Shared.Models.ModIncompatibilityRule
+            {
+                HardIncompatibility = candidate.Type == RimSharp.Shared.Services.Contracts.AIIncompatibilityType.Hard,
+                Comment = { candidate.Reason }
+            };
+
+            var infoA = _customService.GetCustomModInfo(a.PackageId) ?? new RimSharp.Shared.Models.ModCustomInfo();
+            var infoB = _customService.GetCustomModInfo(b.PackageId) ?? new RimSharp.Shared.Models.ModCustomInfo();
+
+            infoA.IncompatibleWith[b.PackageId] = rule;
+            infoB.IncompatibleWith[a.PackageId] = rule;
+
+            await _customService.SaveCustomModInfoAsync(a.PackageId, infoA);
+            await _customService.SaveCustomModInfoAsync(b.PackageId, infoB);
         }
 
         /// <summary>

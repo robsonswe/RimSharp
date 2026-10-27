@@ -12,6 +12,7 @@ using RimSharp.Shared.Models;
 using RimSharp.Infrastructure.Mods.IO;
 using System.Diagnostics;
 using System.Globalization;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace RimSharp.Shared.Services.Implementations
@@ -21,6 +22,22 @@ namespace RimSharp.Shared.Services.Implementations
         private readonly IPathService _pathService;
         private readonly List<ModItem> _allMods = new();
         private string _currentMajorVersion = string.Empty;
+
+        // --- Incremental scan cache (targeted refresh) -----------------------
+        // Maps a mod folder path to its last scan result. The stamp combines
+        // the folder's and About.xml's LastWriteTimeUtc, so a NEW or
+        // RE-DOWNLOADED/UPDATED mod (fresh/rewritten folder) changes the stamp
+        // and gets fully re-scanned, while every UNCHANGED mod is reused as-is
+        // — skipping the expensive About.xml parse, Assemblies/Textures probes
+        // and CalculateModSize file enumeration. This makes the post-download
+        // full refresh cost ~O(new mods) instead of O(all mods).
+        private sealed class FolderScanCacheEntry
+        {
+            public required string Stamp { get; init; }
+            public required ModItem Mod { get; init; }
+        }
+        private readonly Dictionary<string, FolderScanCacheEntry> _folderScanCache =
+            new(StringComparer.OrdinalIgnoreCase);
 
         private readonly IModRulesService _rulesService;
         private readonly IModCustomService _customService;
@@ -284,22 +301,13 @@ namespace RimSharp.Shared.Services.Implementations
 
             foreach (var dir in Directory.GetDirectories(coreModsPath))
             {
-                var aboutPath = Path.Combine(dir, "About", "About.xml");
-                if (!File.Exists(aboutPath)) continue;
-
-                var folderName = Path.GetFileName(dir);
-                var mod = ParseAboutXml(aboutPath, folderName);
+                var mod = BuildOrReuseModFromFolder(dir, out _);
                 if (mod == null) continue;
-
-                mod.Path = dir;
-                mod.Assemblies = CheckForAssemblies(mod.Path);
-                mod.Textures = CheckForTextures(mod.Path);
-                mod.SizeInfo = CalculateModSize(mod);
 
                 bool isCoreMod = mod.PackageId == "Ludeon.RimWorld";
                 mod.ModType = isCoreMod ? ModType.Core : ModType.Expansion;
 
-                if (mod.ModType == ModType.Expansion && !string.IsNullOrEmpty(mod.Name)) 
+                if (mod.ModType == ModType.Expansion && !string.IsNullOrEmpty(mod.Name) && !mod.Name.EndsWith(" [DLC]"))
                 {
                     mod.Name = $"{mod.Name} [DLC]";
                 }
@@ -331,11 +339,7 @@ namespace RimSharp.Shared.Services.Implementations
                 string modNameForProgress = Path.GetFileName(dir) ?? "Unknown";
                 try
                 {
-                    var aboutPath = Path.Combine(dir, "About", "About.xml");
-                    if (!File.Exists(aboutPath)) return;
-
-                    var folderName = Path.GetFileName(dir);
-                    var mod = await Task.Run(() => ParseAboutXml(aboutPath, folderName));
+                    var mod = await Task.Run(() => BuildOrReuseModFromFolder(dir, out _));
                     if (mod == null) return;
 
                     if (!string.IsNullOrEmpty(mod.Name))
@@ -343,14 +347,9 @@ namespace RimSharp.Shared.Services.Implementations
                         modNameForProgress = mod.Name;
                     }
 
-                    mod.Path = dir;
-                    mod.Assemblies = CheckForAssemblies(mod.Path);
-                    mod.Textures = CheckForTextures(mod.Path);
-                    mod.SizeInfo = await Task.Run(() => CalculateModSize(mod));
-
                     bool isCoreMod = mod.PackageId == "Ludeon.RimWorld";
                     mod.ModType = isCoreMod ? ModType.Core : ModType.Expansion;
-                    if (mod.ModType == ModType.Expansion && !string.IsNullOrEmpty(mod.Name))
+                    if (mod.ModType == ModType.Expansion && !string.IsNullOrEmpty(mod.Name) && !mod.Name.EndsWith(" [DLC]"))
                     {
                         mod.Name = $"{mod.Name} [DLC]";
                     }
@@ -383,18 +382,10 @@ namespace RimSharp.Shared.Services.Implementations
 
             foreach (var dir in Directory.GetDirectories(modsPath))
             {
-                var aboutPath = Path.Combine(dir, "About", "About.xml");
-                if (!File.Exists(aboutPath)) continue;
-
-                var folderName = Path.GetFileName(dir);
-                var mod = ParseAboutXml(aboutPath, folderName);
+                var mod = BuildOrReuseModFromFolder(dir, out _);
                 if (mod == null) continue;
 
-                mod.Path = dir;
-                mod.Assemblies = CheckForAssemblies(mod.Path);
-                mod.Textures = CheckForTextures(mod.Path);
-                mod.SizeInfo = CalculateModSize(mod);
-
+                var folderName = Path.GetFileName(dir);
                 if (long.TryParse(folderName, out _))
                 {
                     mod.SteamId = folderName;
@@ -477,11 +468,7 @@ namespace RimSharp.Shared.Services.Implementations
                 string modNameForProgress = Path.GetFileName(dir) ?? "Unknown";
                 try
                 {
-                    var aboutPath = Path.Combine(dir, "About", "About.xml");
-                    if (!File.Exists(aboutPath)) return;
-
-                    var folderName = Path.GetFileName(dir);
-                    var mod = await Task.Run(() => ParseAboutXml(aboutPath, folderName));
+                    var mod = await Task.Run(() => BuildOrReuseModFromFolder(dir, out _));
                     if (mod == null) return;
 
                     if (!string.IsNullOrEmpty(mod.Name))
@@ -489,11 +476,7 @@ namespace RimSharp.Shared.Services.Implementations
                         modNameForProgress = mod.Name;
                     }
 
-                    mod.Path = dir;
-                    mod.Assemblies = CheckForAssemblies(mod.Path);
-                    mod.Textures = CheckForTextures(mod.Path);
-                    mod.SizeInfo = await Task.Run(() => CalculateModSize(mod));
-
+                    var folderName = Path.GetFileName(dir);
                     if (long.TryParse(folderName, out _))
                     {
                         mod.SteamId = folderName;
@@ -896,6 +879,54 @@ namespace RimSharp.Shared.Services.Implementations
             }
         }
 
+        /// <summary>Stamp combining folder + About.xml LastWriteTimeUtc.</summary>
+        private static string GetFolderScanStamp(string dir)
+        {
+            var stamp = File.GetLastWriteTimeUtc(dir).Ticks.ToString();
+            var aboutPath = Path.Combine(dir, "About", "About.xml");
+            if (File.Exists(aboutPath))
+            {
+                stamp += "|" + File.GetLastWriteTimeUtc(aboutPath).Ticks.ToString();
+            }
+            return stamp;
+        }
+
+        /// <summary>
+        /// Scans a single mod folder, reusing the previous scan result when
+        /// neither the folder nor its About.xml changed. New / re-downloaded /
+        /// updated mods (fresh or rewritten folder = new stamp) go through the
+        /// heavy About parse, Assemblies/Textures probes and size calculation;
+        /// everything else comes straight from cache.
+        /// </summary>
+        private ModItem? BuildOrReuseModFromFolder(string dir, out bool fromCache)
+        {
+            var aboutPath = Path.Combine(dir, "About", "About.xml");
+            if (!File.Exists(aboutPath))
+            {
+                fromCache = false;
+                _folderScanCache.Remove(dir);
+                return null;
+            }
+
+            var stamp = GetFolderScanStamp(dir);
+            if (_folderScanCache.TryGetValue(dir, out var cached) && cached.Stamp == stamp)
+            {
+                fromCache = true;
+                return cached.Mod;
+            }
+
+            fromCache = false;
+            var mod = ParseAboutXml(aboutPath, Path.GetFileName(dir));
+            if (mod == null) return null;
+
+            mod.Path = dir;
+            mod.Assemblies = CheckForAssemblies(mod.Path);
+            mod.Textures = CheckForTextures(mod.Path);
+            mod.SizeInfo = CalculateModSize(mod);
+            _folderScanCache[dir] = new FolderScanCacheEntry { Stamp = stamp, Mod = mod };
+            return mod;
+        }
+
         private ModItem? ParseAboutXml(string aboutPath, string? folderName = null)
         {
             try
@@ -959,6 +990,29 @@ namespace RimSharp.Shared.Services.Implementations
                         DisplayName = x.Element("displayName")?.Value ?? string.Empty,
                         SteamWorkshopUrl = x.Element("steamWorkshopUrl")?.Value ?? string.Empty
                     }).ToList() ?? new List<ModDependency>();
+
+                // Cached Workshop description (RimSharp.json in the mod root,
+                // written by WorkshopDescriptionService after a download/update).
+                if (!string.IsNullOrEmpty(modRootFolder))
+                {
+                    var cachePath = Path.Combine(modRootFolder, WorkshopDescriptionCache.FileName);
+                    if (File.Exists(cachePath))
+                    {
+                        try
+                        {
+                            using var cacheDoc = JsonDocument.Parse(File.ReadAllText(cachePath));
+                            if (cacheDoc.RootElement.TryGetProperty("SteamDescription", out var steamDescNode) &&
+                                steamDescNode.ValueKind == JsonValueKind.String)
+                            {
+                                mod.SteamDescription = steamDescNode.GetString() ?? string.Empty;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning($"Could not read Workshop description cache '{cachePath}': {ex.Message}", nameof(ModService));
+                        }
+                    }
+                }
 
                 if (!string.IsNullOrEmpty(modRootFolder))
                 {

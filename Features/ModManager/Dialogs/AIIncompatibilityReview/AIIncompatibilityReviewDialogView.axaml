@@ -1,0 +1,59 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                  xmlns:local="clr-namespace:RimSharp.Features.ModManager.Dialogs.AIIncompatibilityReview"
+                  xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+                  x:Class="RimSharp.Features.ModManager.Dialogs.AIIncompatibilityReview.AIIncompatibilityReviewDialogView"
+                  mc:Ignorable="d" d:DesignWidth="760">
+    <dialogs:BaseDialog.MainContent>
+        <StackPanel Spacing="10" Margin="12">
+            <TextBlock Text="AI Indirect Incompatibility Review" FontSize="18" FontWeight="Bold"
+                       Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+            <TextBlock Text="Both mods will have the rule saved bi-directionally (A→B and B→A) once you confirm." FontSize="11"
+                       TextWrapping="Wrap" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+
+            <TextBlock Text="{Binding PairHeading}" FontSize="13" FontWeight="SemiBold"/>
+            <TextBlock Text="{Binding SummaryLine}" FontSize="12" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+
+            <Grid ColumnDefinitions="*,*" Margin="0,8,0,0">
+                <Border Grid.Column="0" Classes="RimworldPanelBorder" Padding="10" Margin="0,0,6,0">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Mod A" FontWeight="Bold" FontSize="12"/>
+                        <ScrollViewer MaxHeight="180" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                            <TextBlock Text="{Binding SourceModLine}" FontSize="10" TextWrapping="Wrap"/>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="1" Classes="RimworldPanelBorder" Padding="10" Margin="6,0,0,0">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Mod B" FontWeight="Bold" FontSize="12"/>
+                        <ScrollViewer MaxHeight="180" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                            <TextBlock Text="{Binding TargetModLine}" FontSize="10" TextWrapping="Wrap"/>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <TextBlock Text="{Binding ReasonLine}" FontSize="11" FontStyle="Italic" TextWrapping="Wrap"
+                       Foreground="{DynamicResource RimworldBrownBrush}"/>
+
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,10,0,0">
+                <Button Content="Previous" Command="{Binding PreviousCommand}" Width="110" Classes="RimworldButtonStyle"/>
+                <Button Content="Skip (Next)" Command="{Binding NextCommand}" Width="110" Classes="RimworldButtonStyle"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                <Button Content="Confirm Hard" Command="{Binding ConfirmHardCommand}" Width="130" Classes="RimworldSaveButtonStyle"/>
+                <Button Content="Confirm Soft" Command="{Binding ConfirmSoftCommand}" Width="130" Classes="RimworldButtonStyle"/>
+                <Button Content="Decline" Command="{Binding DeclineCommand}" Width="110" Classes="RimworldButtonStyle"/>
+            </StackPanel>
+        </StackPanel>
+    </dialogs:BaseDialog.MainContent>
+
+    <dialogs:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Content="Close" Command="{Binding CancelCommand}" Width="100" Classes="RimworldButtonStyle"/>
+        </StackPanel>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

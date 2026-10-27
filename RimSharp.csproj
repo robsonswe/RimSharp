@@ -39,6 +39,7 @@
     <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
     <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.0" Condition="'$(Configuration)'=='Debug'" />
+    <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.17" />
     <PackageReference Include="Xaml.Behaviors.Avalonia" Version="12.0.7" />
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
     <PackageReference Include="ReactiveUI.Avalonia" Version="12.1.6" />

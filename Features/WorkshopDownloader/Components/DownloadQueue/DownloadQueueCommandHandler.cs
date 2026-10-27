@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -35,6 +36,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
         private readonly IModListManager _modListManager;
         private readonly ModInfoEnricher _modInfoEnricher;
         private readonly ISteamWorkshopQueueProcessor _steamWorkshopQueueProcessor;
+        private readonly IWorkshopDescriptionService _descriptionService;
         private readonly ILoggerService _logger;
         private readonly ISteamApiClient _steamApiClient;
 
@@ -60,6 +62,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             IModListManager modListManager,
             ModInfoEnricher modInfoEnricher,
             ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor,
+            IWorkshopDescriptionService descriptionService,
             ILoggerService logger,
             ISteamApiClient steamApiClient)
         {
@@ -73,6 +76,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             _modListManager = modListManager ?? throw new ArgumentNullException(nameof(modListManager));
             _modInfoEnricher = modInfoEnricher ?? throw new ArgumentNullException(nameof(modInfoEnricher));
             _steamWorkshopQueueProcessor = steamWorkshopQueueProcessor ?? throw new ArgumentNullException(nameof(steamWorkshopQueueProcessor));
+            _descriptionService = descriptionService ?? throw new ArgumentNullException(nameof(descriptionService));
             _steamApiClient = steamApiClient ?? throw new ArgumentNullException(nameof(steamApiClient));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
@@ -503,6 +507,9 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                     if (apiResponse?.Response?.PublishedFileDetails?.FirstOrDefault() is SteamPublishedFileDetails details && details.Result == 1)
                     {
                         DateTimeOffset apiUpdateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(details.TimeUpdated);
+                        var apiRawDescription = details.DetailedDescription?.Length > details.Description?.Length
+                            ? details.DetailedDescription
+                            : details.Description;
                         modInfo = new ModInfoDto
                         {
                             Name = details.Title ?? $"Unknown Mod {steamId}",
@@ -511,7 +518,8 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                             PublishDate = apiUpdateTimeOffset.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture),
                             StandardDate = apiUpdateTimeOffset.UtcDateTime.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture),
                             FileSize = details.FileSize,
-                            LatestVersions = SteamApiResultHelper.ExtractAndSortVersionTags(details.Tags)
+                            LatestVersions = SteamApiResultHelper.ExtractAndSortVersionTags(details.Tags),
+                            SteamDescription = WorkshopDescriptionService.CleanHtml(apiRawDescription)
                         };
                         Debug.WriteLine($"[CommandHandler] Successfully obtained mod info via Steam API: {modInfo.Name}");
                         StatusChanged?.Invoke(this, "Successfully obtained mod info via Steam API.");
@@ -540,6 +548,11 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             }
             if (modInfo != null)
             {
+                // If the mod is ALREADY installed locally, persist the rich
+                // Workshop description right now (RimSharp.json next to
+                // About.xml) — same moment the name/date extraction happens.
+                await CacheDescriptionForInstalledModAsync(modInfo, token);
+
                 if (_queueService.AddToQueue(modInfo))
                 {
                     Debug.WriteLine($"[CommandHandler] Added '{modInfo.Name}' to queue.");
@@ -550,6 +563,34 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 failedReason ??= "Could not retrieve mod information using browser extraction or Steam API.";
                 await _dialogService.ShowError("Add Mod Failed", failedReason);
                 StatusChanged?.Invoke(this, failedReason);
+            }
+        }
+
+        private async Task CacheDescriptionForInstalledModAsync(ModInfoDto modInfo, CancellationToken token)
+        {
+            var steamId = modInfo.SteamId;
+            if (string.IsNullOrEmpty(steamId) || string.IsNullOrWhiteSpace(modInfo.SteamDescription)) return;
+
+            try
+            {
+                ModItem? localMod = _modListManager.GetAllMods()
+                    .FirstOrDefault(m => string.Equals(m.SteamId, steamId, StringComparison.OrdinalIgnoreCase));
+                if (localMod == null || string.IsNullOrEmpty(localMod.Path) || !Directory.Exists(localMod.Path))
+                {
+                    return; // Not installed locally — the post-install hook caches it instead.
+                }
+
+                var written = await _descriptionService.SaveCacheAsync(
+                    steamId, localMod.Path, modInfo.SteamDescription, "browser", token);
+                if (written)
+                {
+                    StatusChanged?.Invoke(this, $"Workshop description cached for installed mod '{modInfo.Name}'.");
+                }
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[CommandHandler] Description cache write failed for {steamId}: {ex.Message}");
             }
         }
 

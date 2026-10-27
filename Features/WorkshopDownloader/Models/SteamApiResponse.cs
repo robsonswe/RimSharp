@@ -45,8 +45,11 @@ namespace RimSharp.Features.WorkshopDownloader.Models
         [JsonPropertyName("tags")]
         public List<SteamTag> Tags { get; set; } = new();
 
-        // [JsonPropertyName("description")]
-        // public string Description { get; set; }
+        [JsonPropertyName("description")]
+        public string Description { get; set; } = string.Empty;
+
+        [JsonPropertyName("detailed_description")]
+        public string DetailedDescription { get; set; } = string.Empty;
     }
 
     public class SteamTag

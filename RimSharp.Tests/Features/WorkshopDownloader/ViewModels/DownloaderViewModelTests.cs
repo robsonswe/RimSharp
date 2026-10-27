@@ -65,7 +65,8 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.ViewModels
                 _enricher,
                 _mockQueueProcessor,
                 _mockLogger,
-                _mockSteamApiClient
+                _mockSteamApiClient,
+                Substitute.For<IWorkshopDescriptionService>()
             );
         }
 

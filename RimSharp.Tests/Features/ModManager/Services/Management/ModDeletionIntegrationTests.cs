@@ -56,7 +56,9 @@ namespace RimSharp.Tests.Features.ModManager.Services.Management
                 Substitute.For<ISteamApiClient>(),
                 Substitute.For<IApplicationNavigationService>(),
                 Substitute.For<ISteamWorkshopQueueProcessor>(),
-                Substitute.For<IGitService>()
+                Substitute.For<IGitService>(),
+                Substitute.For<IAIncompatibilityAgentService>(),
+                Substitute.For<IModCustomService>()
             );
         }
 

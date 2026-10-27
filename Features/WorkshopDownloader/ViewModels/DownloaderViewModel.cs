@@ -62,7 +62,8 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
             ModInfoEnricher modInfoEnricher,
             ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor,
             ILoggerService loggerService,
-            ISteamApiClient steamApiClient)
+            ISteamApiClient steamApiClient,
+            IWorkshopDescriptionService descriptionService)
         {
             _dialogService = dialogService;
             _steamCmdService = steamCmdService;
@@ -74,6 +75,7 @@ namespace RimSharp.Features.WorkshopDownloader.ViewModels
                             queueService, modService, dialogService, updateCheckerService,
                             steamCmdService, BrowserViewModel, getCancellationTokenFunc, modListManager,
                             steamWorkshopQueueProcessor,
+                            descriptionService,
                             loggerService,
                             steamApiClient
                         );
