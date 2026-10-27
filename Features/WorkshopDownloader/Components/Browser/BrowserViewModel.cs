@@ -227,25 +227,6 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         private void BrowserControl_NavigationStarting(object? sender, NavigationStartingEventArgs e)
         {
             if (string.IsNullOrEmpty(e.Url) || e.Url == "about:blank") return;
-
-            if (Uri.TryCreate(e.Url, UriKind.Absolute, out var uri))
-            {
-                bool isSteamLink = uri.Host.EndsWith("steamcommunity.com", StringComparison.OrdinalIgnoreCase) ||
-                                 uri.Host.EndsWith("steampowered.com", StringComparison.OrdinalIgnoreCase);
-
-                if (!isSteamLink)
-                {
-                    var result = _dialogService.ShowConfirmation(
-                        "Leaving Steam Workshop",
-                        $"You are about to navigate to an external website:\n\n{e.Url}\n\nDo you want to continue?",
-                        true);
-
-                    if (result != RimSharp.AppDir.Dialogs.MessageDialogResult.Yes)
-                    {
-                        e.Cancel = true;
-                    }
-                }
-            }
         }
 
         private void NavigationService_DomContentLoaded(object? sender, string url)
