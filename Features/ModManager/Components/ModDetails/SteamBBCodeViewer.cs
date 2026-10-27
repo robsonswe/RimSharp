@@ -1,11 +1,14 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -17,15 +20,6 @@ using Avalonia.Threading;
 
 namespace RimSharp.Features.ModManager.Components.ModDetails
 {
-    /// <summary>
-    /// Renders Steam Workshop description text (Steam-flavored BBCode:
-    /// [h1..h3], [b], [i], [u], [s]/[strike], [list]/[olist] with [*],
-    /// [quote=author], [url=...], [img], [spoiler], [code]/[pre], [hr],
-    /// [table], [previewyoutube]) as native Avalonia controls. Plain text
-    /// without tags renders as simple wrapped paragraphs — descriptions
-    /// cached without BB markup keep working unchanged. Unknown tags stay
-    /// literal so nothing is silently dropped.
-    /// </summary>
     public class SteamBBCodeViewer : StackPanel
     {
         public static readonly StyledProperty<string?> TextProperty =
@@ -42,21 +36,29 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             TextProperty.Changed.AddClassHandler<SteamBBCodeViewer>((sender, _) => sender.Rebuild());
         }
 
-        // Steam tag names only (letters/digits/underscore) — plain text like
-        // "[Dotgae's mod]" does not match and stays literal text.
+        // Suporta tanto [tag=param] quanto [tag param=val]
         private static readonly Regex s_tagRegex =
-            new(@"\[(/?)([A-Za-z0-9_]+)(=[^\]]*)?\s*\]", RegexOptions.Compiled);
+            new(@"\[(/?)([A-Za-z0-9_*]+)(?:=([^\]]*)|(\s+[^\]]*))?\]", RegexOptions.Compiled);
 
         private static readonly HashSet<string> KnownInlineTags = new(StringComparer.OrdinalIgnoreCase)
-            { "b", "i", "u", "s", "strike", "url", "img", "emoticon" };
+            { "b", "i", "u", "s", "strike", "url", "img", "previewimg", "previewicon", "emoticon" };
 
-        private static readonly HttpClient s_http = new() { Timeout = TimeSpan.FromSeconds(30) };
+        private static readonly HttpClient s_http = new()
+        {
+            Timeout = TimeSpan.FromSeconds(30),
+            DefaultRequestHeaders = { { "User-Agent", "RimSharp-ModManager/1.0 (AvaloniaUI; +https://github.com)" } }
+        };
 
         private string _src = string.Empty;
         private int _pos;
+        private CancellationTokenSource? _imageCts;
 
         private void Rebuild()
         {
+            _imageCts?.Cancel();
+            _imageCts?.Dispose();
+            _imageCts = new CancellationTokenSource();
+
             Children.Clear();
             _src = Text ?? string.Empty;
             _pos = 0;
@@ -64,10 +66,6 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             RenderBlocks(Children, stopTag: null, align: TextAlignment.Left);
         }
 
-        /// <summary>
-        /// Consumes _src until the matching close of <paramref name="stopTag"/>
-        /// (stopped content NOT consumed) or end of text, appending controls.
-        /// </summary>
         private void RenderBlocks(Controls target, string? stopTag, TextAlignment align)
         {
             var literal = new StringBuilder();
@@ -84,16 +82,19 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                 var posAfterTag = m.Index + m.Length;
                 var isClose = m.Groups[1].Value == "/";
                 var tag = m.Groups[2].Value.ToLowerInvariant();
-                var param = m.Groups[3].Value;
+                var param = m.Groups[3].Success ? m.Groups[3].Value : m.Groups[4].Value;
 
                 if (isClose)
                 {
-                    // Include the text since the last consumed position — the
-                    // gap before a close tag. Without this, stray closes (like
-                    // the [/url] of an inline link flowing at block scope)
-                    // silently DROPPED the text in between (the anchor label).
                     if (m.Index > _pos) literal.Append(_src, _pos, m.Index - _pos);
                     _pos = m.Index;
+
+                    // Tags vazias ou opcionais de fechamento (ex: [/hr] e [/*]) são ignoradas silenciosamente
+                    if (tag is "hr" or "*")
+                    {
+                        _pos = posAfterTag;
+                        continue;
+                    }
 
                     if (stopTag != null && tag.Equals(stopTag, StringComparison.OrdinalIgnoreCase))
                     {
@@ -101,7 +102,8 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                         _pos = posAfterTag;
                         return;
                     }
-                    literal.Append(m.Value); // stray close → literal text
+
+                    literal.Append(m.Value); // Fechamento órfão vira texto
                     _pos = posAfterTag;
                     continue;
                 }
@@ -120,7 +122,7 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                         var heading = BuildParagraph(content, new BBStyle(), align);
                         if (heading != null)
                         {
-                            heading.Classes.Add(tag); // styled as TextBlock.h1/.h2/.h3
+                            heading.Classes.Add(tag);
                             target.Add(heading);
                         }
                         break;
@@ -147,8 +149,7 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                     case "pre":
                     {
                         FlushLiteral(target, literal, align);
-                        var content = ConsumeUntilClose(tag, balanced: false)
-                            .TrimEnd('\n', '\r');
+                        var content = ConsumeUntilClose(tag, balanced: false).TrimEnd('\n', '\r');
                         target.Add(new Border
                         {
                             Classes = { "BbCodeBlock" },
@@ -165,7 +166,7 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                         FlushLiteral(target, literal, align);
                         var content = ConsumeUntilClose(tag, balanced: true);
                         var stack = new StackPanel();
-                    RenderSubstringInto(stack.Children, content, null, align);
+                        RenderSubstringInto(stack.Children, content, null, align);
                         target.Add(new Expander
                         {
                             Classes = { "BbSpoiler" },
@@ -183,19 +184,14 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                     }
                     case "center":
                     case "right":
-                    {
-                        FlushLiteral(target, literal, align);
-                        var wrap = new StackPanel();
-                        RenderBlocks(wrap.Children, stopTag: tag,
-                            align: tag == "center" ? TextAlignment.Center : TextAlignment.Right);
-                        target.Add(wrap);
-                        break;
-                    }
                     case "left":
                     {
                         FlushLiteral(target, literal, align);
                         var wrap = new StackPanel();
-                        RenderBlocks(wrap.Children, stopTag: tag, align: TextAlignment.Left);
+                        var childAlign = tag == "center" ? TextAlignment.Center
+                            : tag == "right" ? TextAlignment.Right
+                            : TextAlignment.Left;
+                        RenderBlocks(wrap.Children, stopTag: tag, align: childAlign);
                         target.Add(wrap);
                         break;
                     }
@@ -210,8 +206,8 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                     {
                         FlushLiteral(target, literal, align);
                         var content = ConsumeUntilClose(tag, balanced: false);
-                        var rawId = param.Length > 0 ? param.Substring(1) : content;
-                        var videoId = rawId.Trim().Split(';')[0].Trim('"');
+                        var rawId = !string.IsNullOrWhiteSpace(param) ? param : content;
+                        var videoId = rawId.Trim().Trim('=', '"', '\'', ' ').Split(';')[0];
                         if (!string.IsNullOrWhiteSpace(videoId))
                         {
                             target.Add(BuildLink(
@@ -221,11 +217,6 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                         break;
                     }
                     default:
-                        // Inline tags (b/i/u/s/url/img/…) and unknown tags are
-                        // accumulated into the pending paragraph; ParseInline
-                        // resolves them as inlines when it is flushed, so text
-                        // like "Use [url=..]RimSort[/url] to sort" renders as
-                        // ONE flowing paragraph instead of three blocks.
                         literal.Append(m.Value);
                         break;
                 }
@@ -233,7 +224,6 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             FlushLiteral(target, literal, align);
         }
 
-        /// <summary>Consumes content up to the close of <paramref name="tag"/> and advances _pos past it.</summary>
         private string ConsumeUntilClose(string tag, bool balanced)
         {
             int search = _pos, depth = 1;
@@ -268,7 +258,7 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
         private Control BuildQuote(string param, TextAlignment align)
         {
             var stack = new StackPanel();
-            var author = param.Length > 0 ? param.Substring(1).Trim() : string.Empty;
+            var author = param.Trim().TrimStart('=').Trim('"', '\'', ' ');
             if (!string.IsNullOrWhiteSpace(author))
             {
                 stack.Children.Add(new SelectableTextBlock
@@ -288,7 +278,8 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             var counter = 0;
             foreach (var rawItem in items)
             {
-                var item = rawItem.Trim('\n', '\r', ' ', '\t');
+                var item = rawItem.Replace("[/*]", string.Empty, StringComparison.OrdinalIgnoreCase)
+                                  .Trim('\n', '\r', ' ', '\t');
                 if (item.Length == 0) continue;
 
                 if (ordered) counter++;
@@ -319,32 +310,66 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
         {
             var grid = new Grid { Classes = { "BbTable" } };
             var maxCols = 0;
-            foreach (var rawRow in SplitTopLevel(content, "[tr]"))
+
+            // Extrai as linhas [tr]...[/tr]
+            var trMatches = Regex.Matches(content, @"\[tr\](.*?)\[/tr\]", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            
+            // Fallback se não houver tags de fechamento explícitas [/tr]
+            var rows = trMatches.Count > 0
+                ? (IEnumerable<string>)trMatches.Cast<Match>().Select(m => m.Groups[1].Value)
+                : SplitTopLevel(content, "[tr]");
+
+            foreach (var rawRow in rows)
             {
-                var rowText = rawRow
-                    .Replace("[/tr]", string.Empty, StringComparison.OrdinalIgnoreCase)
-                    .Trim('\n', '\r');
-                if (rowText.Length == 0) continue;
+                var rowText = rawRow.Replace("[/tr]", string.Empty, StringComparison.OrdinalIgnoreCase).Trim('\n', '\r');
+                if (string.IsNullOrWhiteSpace(rowText)) continue;
 
                 var rowIndex = grid.RowDefinitions.Count;
                 grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-                var cells = SplitTopLevel(rowText, "[td]");
+                // Suporta tanto [td] quanto [th] (cabeçalhos)
+                var cellMatches = Regex.Matches(rowText, @"\[(td|th)\](.*?)\[/\1\]", RegexOptions.Singleline | RegexOptions.IgnoreCase);
                 var col = 0;
-                foreach (var rawCell in cells)
-                {
-                    var cell = rawCell
-                        .Replace("[/td]", string.Empty, StringComparison.OrdinalIgnoreCase)
-                        .Trim('\n', '\r');
-                    if (cell.Length == 0) { col++; continue; }
 
-                    var cellPanel = new StackPanel { Margin = new Thickness(0, 0, 12, 4) };
-                    RenderSubstringInto(cellPanel.Children, cell, null, align);
-                    Grid.SetRow(cellPanel, rowIndex);
-                    Grid.SetColumn(cellPanel, col);
-                    grid.Children.Add(cellPanel);
-                    col++;
+                if (cellMatches.Count > 0)
+                {
+                    foreach (Match cellMatch in cellMatches)
+                    {
+                        var isHeader = cellMatch.Groups[1].Value.Equals("th", StringComparison.OrdinalIgnoreCase);
+                        var cellContent = cellMatch.Groups[2].Value.Trim('\n', '\r');
+
+                        var cellPanel = new StackPanel { Margin = new Thickness(0, 0, 12, 4) };
+                        RenderSubstringInto(cellPanel.Children, cellContent, null, align);
+
+                        if (isHeader)
+                        {
+                            foreach (var child in cellPanel.Children)
+                            {
+                                if (child is TextBlock tb) tb.FontWeight = FontWeight.Bold;
+                            }
+                        }
+
+                        Grid.SetRow(cellPanel, rowIndex);
+                        Grid.SetColumn(cellPanel, col++);
+                        grid.Children.Add(cellPanel);
+                    }
                 }
+                else
+                {
+                    // Fallback para células sem tag de fechamento estrita
+                    foreach (var rawCell in SplitTopLevel(rowText, "[td]"))
+                    {
+                        var cell = rawCell.Trim('\n', '\r');
+                        if (cell.Length == 0) continue;
+
+                        var cellPanel = new StackPanel { Margin = new Thickness(0, 0, 12, 4) };
+                        RenderSubstringInto(cellPanel.Children, cell, null, align);
+                        Grid.SetRow(cellPanel, rowIndex);
+                        Grid.SetColumn(cellPanel, col++);
+                        grid.Children.Add(cellPanel);
+                    }
+                }
+
                 maxCols = Math.Max(maxCols, col);
             }
 
@@ -355,7 +380,6 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             return grid;
         }
 
-        /// <summary>Renders a standalone substring with full recursion (stream state temporarily swapped).</summary>
         private void RenderSubstringInto(Controls target, string content, string? stopTag, TextAlignment align)
         {
             var savedSrc = _src;
@@ -402,12 +426,9 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             var trimmed = text.Trim('\n', '\r');
             if (trimmed.Length == 0) return null;
 
-            var inlines = ParseInline(trimmed, style);
+            var inlines = ParseInline(trimmed, style, align);
             if (inlines.Count == 0) return null;
 
-            // IMPORTANT: plain TextBlock, NOT SelectableTextBlock. The selectable
-            // variant captures pointer input for text selection, which swallows
-            // Tapped on inline links/images and made clicks never open the browser.
             var block = new TextBlock
             {
                 Classes = { "BbParagraph" },
@@ -419,9 +440,9 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             return block;
         }
 
-        // ────────────────────────── inline parsing ──────────────────────────
+        // ────────────────────────── Inline Parsing ──────────────────────────
 
-        private List<Inline> ParseInline(string text, BBStyle style)
+        private List<Inline> ParseInline(string text, BBStyle style, TextAlignment align)
         {
             var inlines = new List<Inline>();
             var pending = new StringBuilder();
@@ -442,11 +463,11 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
 
                 var isClose = m.Groups[1].Value == "/";
                 var tag = m.Groups[2].Value.ToLowerInvariant();
-                var param = m.Groups[3].Value;
+                var param = m.Groups[3].Success ? m.Groups[3].Value : m.Groups[4].Value;
 
                 if (isClose || !KnownInlineTags.Contains(tag))
                 {
-                    pending.Append(m.Value); // literal bracket text
+                    pending.Append(m.Value);
                     continue;
                 }
 
@@ -467,18 +488,18 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                             case "u": innerStyle.Underline = true; break;
                             default: innerStyle.Strike = true; break;
                         }
-                        foreach (var inline in ParseInline(inner, innerStyle)) inlines.Add(inline);
+                        foreach (var inline in ParseInline(inner, innerStyle, align)) inlines.Add(inline);
                         i = next;
                         break;
                     }
                     case "url":
                     {
                         var (inner, next) = FindInlineClose(text, i, tag);
-                        var url = param.Length > 0 ? param.Substring(1).Trim() : inner.Trim();
+                        var rawUrl = !string.IsNullOrWhiteSpace(param) ? param : inner;
+                        var url = rawUrl.Trim().TrimStart('=').Trim('"', '\'', ' ');
+
                         if (!string.IsNullOrWhiteSpace(url))
                         {
-                            // Flush the pending text FIRST so the link inline
-                            // keeps its position between the surrounding runs.
                             if (pending.Length > 0)
                             {
                                 AddRun(inlines, pending.ToString(), style);
@@ -486,7 +507,10 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                             }
                             inlines.Add(new InlineUIContainer
                             {
-                                Child = BuildLinkedUrlContent(url, inner, TextAlignment.Left)
+                                Child = BuildLinkedUrlContent(url, inner, align, style),
+                                // Alinha o controle com o fundo da linha de texto;
+                                // sem isso o botão "flutua" acima da linha de base.
+                                BaselineAlignment = BaselineAlignment.TextBottom,
                             });
                         }
                         else
@@ -497,12 +521,14 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                         break;
                     }
                     case "img":
+                    case "previewimg":
+                    case "previewicon":
                     {
                         var (inner, next) = FindInlineClose(text, i, tag);
-                        var url = EnsureHttpUrl(inner.Trim());
+                        var url = ExtractImageUrl(tag, param, inner);
+
                         if (!string.IsNullOrWhiteSpace(url) && IsSafeUrl(url))
                         {
-                            // Flush pending first to keep ordering (see [url]).
                             if (pending.Length > 0)
                             {
                                 AddRun(inlines, pending.ToString(), style);
@@ -510,7 +536,7 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                             }
                             inlines.Add(new InlineUIContainer
                             {
-                                Child = BuildImageControl(url, TextAlignment.Left)
+                                Child = BuildImageControl(url, align)
                             });
                         }
                         else
@@ -523,7 +549,7 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                     case "emoticon":
                     {
                         var (_, next) = FindInlineClose(text, i, tag);
-                        i = next; // emoticons: dropped entirely
+                        i = next;
                         break;
                     }
                 }
@@ -533,10 +559,19 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             return inlines;
         }
 
+        private static string ExtractImageUrl(string tag, string param, string inner)
+        {
+            if (tag == "img") return EnsureHttpUrl(inner.Trim());
+
+            // [previewimg=ID;size,align;url] ou [previewimg]url[/previewimg]
+            var raw = !string.IsNullOrWhiteSpace(param) ? param : inner;
+            var parts = raw.Split(';');
+            var target = parts.Length > 2 ? parts[2] : parts[0];
+            return EnsureHttpUrl(target.Trim('=', '"', '\'', ' '));
+        }
+
         private static (string content, int next) FindInlineClose(string text, int start, string tag)
         {
-            // Scan forward until the CLOSE of THIS tag — intermediate tags
-            // (e.g. [img] inside [url]) are content, not the terminator.
             int search = start;
             while (true)
             {
@@ -562,25 +597,76 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             for (var i = 0; i < parts.Length; i++)
             {
                 var part = parts[i].Replace("\r", string.Empty);
-                if (part.Length > 0)
-                {
-                    var run = new Run(part);
-                    if (style.Bold) run.FontWeight = FontWeight.Bold;
-                    if (style.Italic) run.FontStyle = FontStyle.Italic;
-                    TextDecorationCollection? decorations = null;
-                    if (style.Underline && style.Strike)
-                    {
-                        decorations = new TextDecorationCollection();
-                        foreach (var d in TextDecorations.Underline) decorations.Add(d);
-                        foreach (var d in TextDecorations.Strikethrough) decorations.Add(d);
-                    }
-                    else if (style.Underline) decorations = TextDecorations.Underline;
-                    else if (style.Strike) decorations = TextDecorations.Strikethrough;
-                    if (decorations != null) run.TextDecorations = decorations;
-                    inlines.Add(run);
-                }
+                if (part.Length > 0) AddTextWithAutoLinks(inlines, part, style);
                 if (i < parts.Length - 1) inlines.Add(new LineBreak());
             }
+        }
+
+        private static void AddTextWithAutoLinks(List<Inline> inlines, string part, BBStyle style)
+        {
+            // Ignora URLs que estão dentro de tags [img], [url], etc. — já são
+            // tratadas pelo parser de BBCode como imagens/links, não texto solto.
+            var masked = Regex.Replace(part, @"\[(img|previewimg|previewicon|url)\b[^\]]*\].*?\[/\1\]", (m) => new string(' ', m.Value.Length));
+
+            var last = 0;
+            foreach (Match m in s_bareUrl.Matches(masked))
+            {
+                var raw = TrimUrlTail(m.Value);
+                var url = EnsureHttpUrl(raw);
+                if (raw.Length == 0 || !IsSafeUrl(url)) continue;
+
+                if (m.Index > last) inlines.Add(CreateRun(part.Substring(last, m.Index - last), style));
+                // Usa o Button.BbLink existente (hover + click) e alinha na linha de texto.
+                inlines.Add(new InlineUIContainer
+                {
+                    Child = BuildLink(url, raw, style),
+                    BaselineAlignment = BaselineAlignment.TextBottom,
+                });
+                last = m.Index + raw.Length;
+            }
+            if (last < part.Length) inlines.Add(CreateRun(part.Substring(last), style));
+        }
+
+        private static string TrimUrlTail(string url)
+        {
+            while (url.Length > 0)
+            {
+                var c = url[url.Length - 1];
+                if (".,;:!?'\"*\u2026".IndexOf(c) >= 0) { url = url.Substring(0, url.Length - 1); continue; }
+                if (c == ')' && url.Count(ch => ch == '(') < url.Count(ch => ch == ')')) { url = url.Substring(0, url.Length - 1); continue; }
+                break;
+            }
+            return url;
+        }
+
+        private static Run CreateRun(string text, BBStyle style)
+        {
+            var run = new Run(text);
+            if (style.Bold) run.FontWeight = FontWeight.Bold;
+            if (style.Italic) run.FontStyle = FontStyle.Italic;
+            if (style.Underline || style.Strike)
+            {
+                var decorations = new TextDecorationCollection();
+                if (style.Underline) foreach (var d in TextDecorations.Underline) decorations.Add(d);
+                if (style.Strike) foreach (var d in TextDecorations.Strikethrough) decorations.Add(d);
+                run.TextDecorations = decorations;
+            }
+            return run;
+        }
+
+        private static BbLinkRun CreateLinkRun(string text, string url, BBStyle style)
+        {
+            var run = new BbLinkRun(text, url);
+            if (style.Bold) run.FontWeight = FontWeight.Bold;
+            if (style.Italic) run.FontStyle = FontStyle.Italic;
+            if (style.Underline || style.Strike)
+            {
+                var decorations = new TextDecorationCollection();
+                if (style.Underline) foreach (var d in TextDecorations.Underline) decorations.Add(d);
+                if (style.Strike) foreach (var d in TextDecorations.Strikethrough) decorations.Add(d);
+                run.TextDecorations = decorations;
+            }
+            return run;
         }
 
         private static bool IsSafeUrl(string url)
@@ -598,46 +684,40 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             public BBStyle Clone() => (BBStyle)MemberwiseClone();
         }
 
-        // ────────────────────────── link & image ──────────────────────────
+        // URLs soltas no texto viram links clicáveis automaticamente.
+        private static readonly Regex s_bareUrl = new Regex("\\b(?:https?://|www\\.)[^\\s\\[\\]<>\"\"]+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-        private static Control BuildLink(string url, string displayText)
+        // ────────────────────────── Link & Imagem ──────────────────────────
+
+        private static Control BuildLink(string url, string displayText, BBStyle? style = null)
         {
             var label = new TextBlock
             {
                 Text = displayText,
-                // NoWrap: a wrapping link would measure as a full line and push
-                // the surrounding text onto its own row. Long displays are
-                // trimmed; the click still opens the full URL.
                 TextWrapping = TextWrapping.NoWrap,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 MaxWidth = 440,
                 TextDecorations = TextDecorations.Underline,
             };
 
-            // REAL Button instead of Tapped-on-TextBlock: buttons own the
-            // pointer interaction, so Click always fires regardless of any
-            // ancestor capture/swallowing that made Tapped unreliable.
+            if (style != null)
+            {
+                if (style.Bold) label.FontWeight = FontWeight.Bold;
+                if (style.Italic) label.FontStyle = FontStyle.Italic;
+            }
+
             var button = new Button
             {
                 Classes = { "BbLink" },
                 Content = label,
                 Cursor = new Cursor(StandardCursorType.Hand),
             };
-            button.Click += (_, _) =>
-            {
-                Debug.WriteLine($"[SteamBBCode] Link clicked: {url}");
-                OpenExternal(url);
-            };
+            button.Click += (_, _) => OpenExternal(button, url);
             ToolTip.SetTip(button, url);
             return button;
         }
 
-        /// <summary>
-        /// Builds the visual for one [url] region: a linked image when the
-        /// inner content is an [img] (Steam's standard banner-link pattern),
-        /// otherwise a plain text link with residual BB tags stripped.
-        /// </summary>
-        private static Control BuildLinkedUrlContent(string url, string innerContent, TextAlignment align)
+        private static Control BuildLinkedUrlContent(string url, string innerContent, TextAlignment align, BBStyle style)
         {
             var finalUrl = EnsureHttpUrl(url);
 
@@ -655,15 +735,15 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             }
 
             var display = Regex
-                .Replace(innerContent, @"\[/?[A-Za-z0-9_]+\]", string.Empty)
+                .Replace(innerContent, @"\[/?[A-Za-z0-9_*]+\]", string.Empty)
                 .Trim();
             if (display.Length == 0) display = finalUrl;
-            return BuildLink(finalUrl, display);
+            return BuildLink(finalUrl, display, style);
         }
 
-        /// <summary>Adds https:// to domain-shaped URLs that lack a scheme.</summary>
         private static string EnsureHttpUrl(string url)
         {
+            url = url.Trim('"', '\'', ' ');
             if (!Uri.TryCreate(url, UriKind.Absolute, out _) &&
                 url.IndexOf(':') < 0 &&
                 url.IndexOf('.') > 0)
@@ -699,22 +779,14 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
 
             if (linkUrl != null)
             {
-                // Images wrapped in [url=..][img]..[/img][/url] open the link.
                 var button = new Button
                 {
                     Classes = { "BbLink" },
                     Content = panel,
                     Cursor = new Cursor(StandardCursorType.Hand),
                 };
-                button.Click += (_, _) =>
-                {
-                    Debug.WriteLine($"[SteamBBCode] Linked image clicked: {linkUrl}");
-                    OpenExternal(linkUrl);
-                };
+                button.Click += (_, _) => OpenExternal(button, linkUrl);
                 ToolTip.SetTip(button, linkUrl);
-                // The image must ALSO load when it is a link banner — this is
-                // Steam's standard [url][img] pattern. Miss: placeholder
-                // forever (the image never downloaded).
                 _ = LoadImageAsync(img, placeholder, url);
                 return button;
             }
@@ -732,15 +804,12 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             }
             catch
             {
-                return; // keep the textual placeholder
+                return;
             }
 
             IImage? source = null;
             if (!LooksLikeSvg(bytes))
             {
-                // Natural-size decode: DecodeToWidth would also UPSCALE small
-                // images to the requested width (a 1×1 became 800×800). Only
-                // re-decode when the source is genuinely huge.
                 using (var ms = new MemoryStream(bytes))
                 {
                     try
@@ -750,13 +819,12 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                     }
                     catch (Exception bmpEx)
                     {
-                        Debug.WriteLine($"[SteamBBCode] Raster decode failed for {url}: {bmpEx.Message}");
+                        Debug.WriteLine($"[SteamBBCode] Raster decode failed: {bmpEx.Message}");
                     }
                 }
 
                 if (source is Bitmap bmp && bmp.PixelSize.Width > 1600)
                 {
-                    // Huge screenshots: downscale for memory/display sanity.
                     using var ms2 = new MemoryStream(bytes);
                     try
                     {
@@ -765,10 +833,7 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                         bmp.Dispose();
                         source = scaled;
                     }
-                    catch
-                    {
-                        // keep the natural-size bitmap on re-decode failure
-                    }
+                    catch { }
                 }
             }
 
@@ -776,9 +841,6 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             {
                 if (source == null)
                 {
-                    // SVG content (img.shields.io badges etc.) or a failed
-                    // raster decode. SvgImage/SvgSource are Avalonia objects:
-                    // decode on the UI thread.
                     try
                     {
                         using var ms = new MemoryStream(bytes);
@@ -789,16 +851,11 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                     }
                     catch (Exception svgEx)
                     {
-                        Debug.WriteLine($"[SteamBBCode] SVG decode failed for {url}: {svgEx.Message}");
+                        Debug.WriteLine($"[SteamBBCode] SVG decode failed: {svgEx.Message}");
                     }
                 }
-                if (source == null) return; // keep the textual placeholder
+                if (source == null) return;
 
-                // Never UPSCALE and never become rigid: cap the maximum at
-                // the intrinsic size (Uniform cannot grow past Max*), while
-                // leaving measure free so the image SHRINKS to fit tight
-                // containers (table cells ≈214px each). Explicit Width/Height
-                // would clip inside Star cells — the table image bug.
                 var size = source.Size;
                 if (size.Width > 0 && size.Height > 0)
                 {
@@ -815,29 +872,42 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
         private static bool LooksLikeSvg(byte[] bytes)
         {
             if (bytes.Length < 4) return false;
-            var head = System.Text.Encoding.ASCII.GetString(
-                bytes, 0, Math.Min(bytes.Length, 1024));
+            var head = Encoding.ASCII.GetString(bytes, 0, Math.Min(bytes.Length, 1024));
             return head.Contains("<svg", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static void OpenExternal(string url)
+        private static async void OpenExternal(Visual visual, string url)
         {
             try
             {
                 url = EnsureHttpUrl(url);
-                if (IsSafeUrl(url))
+                if (!IsSafeUrl(url)) return;
+
+                // Forma 100% nativa e multiplataforma do Avalonia 11 (Windows, Linux, macOS)
+                var topLevel = TopLevel.GetTopLevel(visual);
+                if (topLevel?.Launcher != null)
                 {
-                    // Same pattern the Open Workshop context menu command uses.
+                    await topLevel.Launcher.LaunchUriAsync(new Uri(url));
+                    return;
+                }
+
+                // Fallback via Process
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
                     Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
                 }
-                else
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 {
-                    Debug.WriteLine($"[SteamBBCode] Refused to open unsafe URL: {url}");
+                    Process.Start("xdg-open", url);
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                {
+                    Process.Start("open", url);
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[SteamBBCode] Failed to open '{url}': {ex.Message}");
+                Debug.WriteLine($"[SteamBBCode] Failed to open URL '{url}': {ex.Message}");
             }
         }
 
@@ -859,6 +929,16 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                 idx = next;
             }
             return parts;
+        }
+
+        /// <summary>Run de texto que representa um link (clicável via SteamBBCodeViewer).</summary>
+        public sealed class BbLinkRun : Avalonia.Controls.Documents.Run
+        {
+            public string Url { get; }
+            public BbLinkRun(string text, string url) : base(text)
+            {
+                Url = url;
+            }
         }
     }
 }

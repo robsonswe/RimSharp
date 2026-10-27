@@ -424,48 +424,37 @@
             </Grid>
         </StackPanel>
 
-        <!-- Separator and Description Header (plain label only when there is
-             no cached Steam description; tabs handle labels otherwise) -->
-        <StackPanel Grid.Row="2" Margin="10,15,10,0">
-            <Separator Classes="RimworldSeparatorStyle" Margin="0,0,0,10"/>
-            <TextBlock Text="Description" Classes="InfoLabel" FontSize="16" Margin="0,0,0,5"
-                       IsVisible="{Binding SteamDescription, Converter={StaticResource IsNullOrEmptyConverter}}"/>
-        </StackPanel>
-
-        <!-- No cached Steam description: single About.xml view (unchanged behavior) -->
-        <ScrollViewer Grid.Row="3" Margin="10,0,10,10"
-                      HorizontalScrollBarVisibility="Disabled"
-                      VerticalScrollBarVisibility="Auto"
-                      AllowAutoHide="False"
-                      IsVisible="{Binding SteamDescription, Converter={StaticResource IsNullOrEmptyConverter}}">
-            <SelectableTextBlock Text="{Binding Description, Mode=OneWay}"
-                                 TextWrapping="Wrap"
-                                 FontSize="13"
-                                 Foreground="{DynamicResource RimworldBrownBrush}"/>
-        </ScrollViewer>
-
-        <!-- Cached Steam description: tabs, Steam first (default view).
-             Steam tab renders Steam-flavored BBCode via SteamBBCodeViewer. -->
-        <TabControl Grid.Row="3" Classes="RimworldTabControl DescTabs" Margin="10,0,10,10"
-                    IsVisible="{Binding SteamDescription, Converter={StaticResource IsNotNullOrEmptyConverter}}">
-            <TabItem Header="Steam">
-                <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                              VerticalScrollBarVisibility="Auto"
-                              AllowAutoHide="False">
-                    <local:SteamBBCodeViewer Text="{Binding SteamDescription, Mode=OneWay}"/>
-                </ScrollViewer>
-            </TabItem>
-            <TabItem Header="About.xml">
-                <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                              VerticalScrollBarVisibility="Auto"
-                              AllowAutoHide="False">
-                    <SelectableTextBlock Text="{Binding Description, Mode=OneWay}"
-                                         TextWrapping="Wrap"
-                                         FontSize="13"
-                                         Foreground="{DynamicResource RimworldBrownBrush}"/>
-                </ScrollViewer>
-            </TabItem>
-        </TabControl>
+        <!-- Description única -->
+        <Grid Grid.Row="3" Margin="10,15,10,10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <!-- Label unificado para ambos os modos -->
+            <TextBlock Grid.Row="0"
+                       Text="Description"
+                       FontWeight="Bold"
+                       FontSize="14"
+                       Foreground="{DynamicResource RimworldDarkBrownBrush}"
+                       Margin="0,0,0,4"/>
+            <!-- Steam description com BBCode -->
+            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto"
+                          AllowAutoHide="False"
+                          IsVisible="{Binding SteamDescription, Converter={StaticResource IsNotNullOrEmptyConverter}}">
+                <local:SteamBBCodeViewer Text="{Binding SteamDescription, Mode=OneWay}"/>
+            </ScrollViewer>
+            <!-- Fallback: About.xml sem BBCode viewer -->
+            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto"
+                          AllowAutoHide="False"
+                          IsVisible="{Binding SteamDescription, Converter={StaticResource IsNullOrEmptyConverter}}">
+                <SelectableTextBlock Text="{Binding Description, Mode=OneWay}"
+                                     TextWrapping="Wrap"
+                                     FontSize="13"
+                                     Foreground="{DynamicResource RimworldBrownBrush}"/>
+            </ScrollViewer>
+        </Grid>
                     </Grid>
                 </DataTemplate>
             </ContentControl.ContentTemplate>
