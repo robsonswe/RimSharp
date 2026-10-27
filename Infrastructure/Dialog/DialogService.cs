@@ -28,14 +28,22 @@ namespace RimSharp.Infrastructure.Dialog
     {
         private readonly IAppUpdaterService? _appUpdaterService;
         private readonly IFileDialogService? _fileDialogService;
+        private readonly IConfigService? _configService;
+        private readonly IEnumerable<IAIProviderClient>? _aiProviders;
         private int _openDialogCount;
         public bool IsAnyDialogOpen => _openDialogCount > 0;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        public DialogService(IAppUpdaterService appUpdaterService, IFileDialogService? fileDialogService = null)
+        public DialogService(
+            IAppUpdaterService appUpdaterService,
+            IConfigService? configService = null,
+            IEnumerable<IAIProviderClient>? aiProviders = null,
+            IFileDialogService? fileDialogService = null)
         {
             _appUpdaterService = appUpdaterService;
+            _configService = configService;
+            _aiProviders = aiProviders;
             _fileDialogService = fileDialogService;
         }
 
@@ -199,6 +207,14 @@ namespace RimSharp.Infrastructure.Dialog
             var viewModel = new AboutDialogViewModel(_appUpdaterService);
             var dialog = new AboutDialogView(viewModel);
             await ShowDialogInternalAsync<bool>(viewModel, dialog);
+        }
+
+        public async Task<bool> ShowSettingsDialogAsync()
+        {
+            if (_configService == null) return false;
+            var viewModel = new SettingsDialogViewModel(_configService, _fileDialogService, _aiProviders);
+            var dialog = new SettingsDialogView(viewModel);
+            return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }
 
         public ProgressDialogViewModel ShowProgressDialog(string title, string message, bool canCancel = false, bool isIndeterminate = true, CancellationTokenSource? cts = null, bool closeable = false, bool showInTaskbar = true)

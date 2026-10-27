@@ -43,6 +43,9 @@ namespace RimSharp.Infrastructure.AI
         public void SetApiKey(string apiKey) => _configService.SetConfigValue(ConfigApiKey, apiKey);
         public string GetApiKey() => _configService.GetConfigValue(ConfigApiKey);
 
+        public void SetModel(string model) => _configService.SetConfigValue(ConfigModel, model);
+        public string GetModel() => _configService.GetConfigValue(ConfigModel);
+
         /// <summary>
         /// Single provider request — NO internal retry loop. Rate limits are
         /// reported to the caller in TWO forms: the proper HTTP 429, and
@@ -140,7 +143,7 @@ namespace RimSharp.Infrastructure.AI
                     retryAfter = (int)Math.Ceiling(secs);
                 }
 
-                try { System.IO.File.AppendAllText(@"D:\temp\opencode\ai_retry_diag.txt", $"[{DateTime.Now:HH:mm:ss}] OpenRouter HTTP {(int)response.StatusCode} — retryAfter={retryAfter}\n"); } catch { }
+                try { RimSharp.Core.Services.DiagLog.WriteLine($"OpenRouter HTTP {(int)response.StatusCode} — retryAfter={retryAfter}"); } catch { }
 
                 errorMessage ??= $"OpenRouter HTTP {(int)response.StatusCode}: {response.ReasonPhrase} — " +
                     (raw.Length > 400 ? raw.Substring(0, 400) + "..." : raw);

@@ -88,34 +88,17 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- Paths Dropdown -->
-                        <Menu Background="Transparent" VerticalAlignment="Center">
-                            <MenuItem Header="Paths" Classes="RimworldDropDownButtonStyle">
-                                <MenuItem Header="Game Directory" IsEnabled="False" Foreground="{DynamicResource RimworldLightBrownBrush}" FontWeight="Bold" Classes="RimworldMenuItemStyle"/>
-                                <MenuItem Header="{Binding PathSettings.GamePath}"
-                                          ToolTip.Tip="Click to open folder"
-                                          Command="{Binding OpenFolderCommand}"
-                                          CommandParameter="GamePath"
-                                          Classes="RimworldMenuItemStyle"/>
-                                <MenuItem Header="Change Game Path..."
-                                          Command="{Binding BrowsePathCommand}"
-                                          CommandParameter="GamePath"
-                                          Classes="RimworldMenuItemStyle"/>
-
-                                <Separator Classes="RimworldSeparatorStyle"/>
-
-                                <MenuItem Header="Config Directory" IsEnabled="False" Foreground="{DynamicResource RimworldLightBrownBrush}" FontWeight="Bold" Classes="RimworldMenuItemStyle"/>
-                                <MenuItem Header="{Binding PathSettings.ConfigPath}"
-                                          ToolTip.Tip="Click to open folder"
-                                          Command="{Binding OpenFolderCommand}"
-                                          CommandParameter="ConfigPath"
-                                          Classes="RimworldMenuItemStyle"/>
-                                <MenuItem Header="Change Config Path..."
-                                          Command="{Binding BrowsePathCommand}"
-                                          CommandParameter="ConfigPath"
-                                          Classes="RimworldMenuItemStyle"/>
-                            </MenuItem>
-                        </Menu>
+                        <!-- Settings Button -->
+                        <Button Command="{Binding SettingsCommand}"
+                                Classes="RimworldButtonStyle"
+                                Padding="12,4"
+                                MinWidth="0"
+                                ToolTip.Tip="Configure paths, AI providers (API key, model) and more">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <i:Icon Value="fa-gear" VerticalAlignment="Center" FontSize="14"/>
+                                <TextBlock Text="Settings" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
 
                         <!-- Refresh Action -->
                         <Button Command="{Binding RefreshCommand}" 

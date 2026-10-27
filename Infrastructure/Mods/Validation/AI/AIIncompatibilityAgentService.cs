@@ -92,7 +92,7 @@ namespace RimSharp.Infrastructure.Mods.Validation.AI
 
             // 1) Keywords for the target mod (one provider call, with retries).
             reportProgress?.Invoke("Extracting keywords...", 15);
-            try { System.IO.File.AppendAllText(@"D:\temp\opencode\ai_retry_diag.txt", $"[{DateTime.Now:HH:mm:ss}] Start keyword extraction for {mod.PackageId}\n"); } catch { }
+            try { RimSharp.Core.Services.DiagLog.WriteLine($"Start keyword extraction for {mod.PackageId}"); } catch { }
             var (keywords, kwOk) = await GenerateKeywordsForModAsync(
                 mod, ct, msg => reportProgress?.Invoke(msg, 20)).ConfigureAwait(false);
             if (!kwOk)
@@ -287,7 +287,7 @@ namespace RimSharp.Infrastructure.Mods.Validation.AI
                         }
                         var apiDelaySeconds = resp.RetryAfterSeconds.Value;
                         notify?.Invoke($"Provider reached the rate limit — waiting {apiDelaySeconds}s (as instructed by the provider) before retry {attempt}/{MaxProviderRetries}…");
-                        try { System.IO.File.AppendAllText(@"D:\temp\opencode\ai_retry_diag.txt", $"[{DateTime.Now:HH:mm:ss}] Retry {attempt}/{MaxProviderRetries} after {apiDelaySeconds}s (provider-instructed) — {_lastProviderError.Replace("\r", " ").Replace("\n", " ")}\n"); } catch { }
+                        try { RimSharp.Core.Services.DiagLog.WriteLine($"Retry {attempt}/{MaxProviderRetries} after {apiDelaySeconds}s (provider-instructed) — {_lastProviderError.Replace("\r", " ").Replace("\n", " ")}"); } catch { }
                         await Task.Delay(TimeSpan.FromSeconds(apiDelaySeconds), ct).ConfigureAwait(false);
                         notify?.Invoke($"Retrying ({attempt}/{MaxProviderRetries})…");
                     }
@@ -296,7 +296,7 @@ namespace RimSharp.Infrastructure.Mods.Validation.AI
                         // No wait from the provider — dynamic exponential backoff.
                         var delaySeconds = (int)Math.Min(Math.Pow(2, attempt - 1) * 5, 60);
                         notify?.Invoke($"Provider reached the rate limit — waiting {delaySeconds}s before retry {attempt}/{MaxProviderRetries}…");
-                        try { System.IO.File.AppendAllText(@"D:\temp\opencode\ai_retry_diag.txt", $"[{DateTime.Now:HH:mm:ss}] Retry {attempt}/{MaxProviderRetries} after {delaySeconds}s (dynamic) — {_lastProviderError.Replace("\r", " ").Replace("\n", " ")}\n"); } catch { }
+                        try { RimSharp.Core.Services.DiagLog.WriteLine($"Retry {attempt}/{MaxProviderRetries} after {delaySeconds}s (dynamic) — {_lastProviderError.Replace("\r", " ").Replace("\n", " ")}"); } catch { }
                         await Task.Delay(TimeSpan.FromSeconds(delaySeconds), ct).ConfigureAwait(false);
                         notify?.Invoke($"Retrying ({attempt}/{MaxProviderRetries})…");
                     }

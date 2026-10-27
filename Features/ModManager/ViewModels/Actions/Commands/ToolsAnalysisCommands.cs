@@ -743,12 +743,9 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
                 EnsureExecutable(exePath);
 
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = exePath,
-                    WorkingDirectory = gamePath,
-                    UseShellExecute = true
-                });
+                RimSharp.Core.Services.SystemLauncher.LaunchExecutable(
+                    exePath, gamePath,
+                    onError: ex => { });
 
                 await Task.Delay(2000);
             }
@@ -825,7 +822,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             }
             catch (Exception ex)
             {
-                try { System.IO.File.AppendAllText(@"D:\temp\opencode\ai_retry_diag.txt", $"[{DateTime.Now:HH:mm:ss}] ANALYSIS FAILED — {ex.GetType().Name}: {ex.Message}\n"); } catch { }
+                try { RimSharp.Core.Services.DiagLog.WriteLine($"ANALYSIS FAILED — {ex.GetType().Name}: {ex.Message}"); } catch { }
                 await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
                 await RunOnUIThreadAsync(async () => await _dialogService.ShowError("AI Conflict Scan Error", $"Error during AI analysis: {ex.Message}"));
             }

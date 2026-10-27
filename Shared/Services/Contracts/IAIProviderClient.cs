@@ -61,5 +61,17 @@ namespace RimSharp.Shared.Services.Contracts
 
         /// <summary>True when the provider is configured (e.g. API key present).</summary>
         bool IsConfigured { get; }
+
+        /// <summary>Reads the provider's API key from its backing config store.</summary>
+        string GetApiKey();
+
+        /// <summary>Writes the provider's API key to its backing config store.</summary>
+        void SetApiKey(string apiKey);
+
+        /// <summary>Reads the provider's preferred model identifier.</summary>
+        string GetModel();
+
+        /// <summary>Writes the provider's preferred model identifier.</summary>
+        void SetModel(string model);
     }
 }

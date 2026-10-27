@@ -74,7 +74,7 @@ public ModDetailsViewModel(IDialogService dialogService)
 
             try
             {
-                Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
+                RimSharp.Core.Services.SystemLauncher.OpenPathOrUrl(target);
             }
             catch (Exception ex)
             {

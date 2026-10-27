@@ -59,7 +59,7 @@ namespace RimSharp.AppDir.Dialogs
             if (string.IsNullOrEmpty(url)) return;
             try
             {
-                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+                RimSharp.Core.Services.SystemLauncher.OpenUrl(url);
             }
             catch (Exception ex)
             {

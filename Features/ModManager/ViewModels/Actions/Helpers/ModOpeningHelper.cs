@@ -47,7 +47,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                         try
                         {
                             Debug.WriteLine($"Opening {itemTypeDescription}: {target}");
-                            Process.Start(new ProcessStartInfo(target!) { UseShellExecute = true });
+                            RimSharp.Core.Services.SystemLauncher.OpenPathOrUrl(target!);
                             opened.Add(mod.Name);
                         }
                         catch (Exception ex)

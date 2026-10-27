@@ -69,5 +69,11 @@ namespace RimSharp.Shared.Services.Contracts
         Task<(bool Result, string? Path)> ShowOpenFolderDialogAsync(string title, string initialDirectory = "");
 
         Task ShowAboutDialog();
+
+        /// <summary>
+        /// Modals RimSharp settings dialog (Paths + AI Providers tabs).
+        /// Returns true when the user saved changes.
+        /// </summary>
+        Task<bool> ShowSettingsDialogAsync();
     }
 }

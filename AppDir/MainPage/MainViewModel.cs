@@ -169,7 +169,7 @@ namespace RimSharp.AppDir.MainPage
 
             SwitchTabCommand = CreateCommand<string>(SwitchTab, CanExecuteGlobalActions);
             BrowsePathCommand = CreateAsyncCommand<string>(BrowsePathAsync, CanBrowsePath);
-            SettingsCommand = CreateCommand(OpenSettings, CanExecuteGlobalActions);
+            SettingsCommand = CreateAsyncCommand(OpenSettings, CanExecuteGlobalActions);
             RefreshCommand = CreateCommand(RefreshData, CanExecuteGlobalActions);
             OpenFolderCommand = CreateCommand<string>(OpenFolder, CanOpenFolder);
             AboutCommand = CreateAsyncCommand(() => _dialogService.ShowAboutDialog(), CanExecuteGlobalActions);
@@ -350,10 +350,7 @@ namespace RimSharp.AppDir.MainPage
                 _ => null
             };
 
-            if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
-            {
-                Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
-            }
+            RimSharp.Core.Services.SystemLauncher.OpenInFileManager(path ?? string.Empty);
         }
 
         public INotifyPropertyChanged? CurrentViewModel
@@ -406,7 +403,26 @@ namespace RimSharp.AppDir.MainPage
             }
         }
 
-        private void OpenSettings() => _dialogService.ShowInformation("Settings", "Not yet implemented.");
+        private async Task OpenSettings()
+        {
+            var saved = await _dialogService.ShowSettingsDialogAsync();
+            if (!saved) return;
+
+            // Re-sync the path settings from the config the dialog just
+            // wrote (game/config folders may both have changed).
+            _isInitializingPaths = true;
+            try
+            {
+                PathSettings.GamePath = _pathService.GetGamePath();
+                PathSettings.ConfigPath = _pathService.GetConfigPath();
+                PathSettings.ModsPath = _pathService.GetModsPath();
+                PathSettings.GameVersion = _pathService.GetGameVersion();
+            }
+            finally
+            {
+                _isInitializingPaths = false;
+            }
+        }
 
         private void RefreshData()
         {

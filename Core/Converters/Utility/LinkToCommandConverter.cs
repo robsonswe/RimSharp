@@ -17,7 +17,7 @@ namespace RimSharp.Core.Converters.Utility
                 {
                     try
                     {
-                        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+                        RimSharp.Core.Services.SystemLauncher.OpenUrl(url);
                     }
                     catch (Exception ex)
                     {

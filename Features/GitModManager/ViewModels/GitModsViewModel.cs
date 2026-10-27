@@ -518,11 +518,7 @@ namespace RimSharp.Features.GitModManager.ViewModels
                     return;
                 }
 
-                ProcessStartInfo psi = new ProcessStartInfo(url)
-                {
-                    UseShellExecute = true // IMPORTANT: Must be true to open URL in default browser
-                };
-                Process.Start(psi);
+                RimSharp.Core.Services.SystemLauncher.OpenUrl(url);
                 Debug.WriteLine($"[INFO] Opened GitHub repo: {url}");
             }
             catch (Win32Exception ex) // Catch specific exceptions like browser not found

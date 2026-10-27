@@ -193,20 +193,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Strip
 
             try
             {
-                if (File.Exists(path))
-                {
-                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                        Process.Start(new ProcessStartInfo("xdg-open", $"\"{Path.GetDirectoryName(path) ?? path}\""));
-                    else
-                        Process.Start("explorer.exe", $"/select,\"{path}\"");
-                }
-                else if (Directory.Exists(path))
-                {
-                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                        Process.Start(new ProcessStartInfo("xdg-open", $"\"{path}\""));
-                    else
-                        Process.Start("explorer.exe", $"\"{path}\"");
-                }
+                RimSharp.Core.Services.SystemLauncher.RevealInFileManager(path);
             }
             catch (Exception ex)
             {
