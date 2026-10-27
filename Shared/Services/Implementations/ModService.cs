@@ -82,11 +82,16 @@ namespace RimSharp.Shared.Services.Implementations
             if (string.IsNullOrEmpty(gamePath) || string.IsNullOrEmpty(configPath) || string.IsNullOrEmpty(modsPath))
             {
                 _logger.LogWarning("One or more required paths (Game, Config, Mods) are not set. Mod loading aborted.", nameof(ModService));
+                // The virtual list is the app's source of truth — Core is a
+                // non-negotiable member, even when path/config discovery
+                // failed this run. Never leave the user with empty lists.
+                EnsureCoreModPresent(gamePath);
                 return;
             }
 
             _logger.LogDebug("Loading core mods...", nameof(ModService));
             LoadCoreMods(gamePath);
+            EnsureCoreModPresent(gamePath);
             _logger.LogDebug("Loading workshop/local mods...", nameof(ModService));
             LoadWorkshopMods(modsPath);
 
@@ -239,6 +244,9 @@ namespace RimSharp.Shared.Services.Implementations
             {
                 _logger.LogWarning("One or more required paths (Game, Config, Mods) are not set. Mod loading aborted.", nameof(ModService));
                 _allMods.Clear();
+                // Virtual list invariant: Core is ALWAYS present, even when
+                // path/config discovery failed this run.
+                EnsureCoreModPresent(gamePath);
                 progress?.Report((100, 100, "Required paths not set."));
                 return;
             }
@@ -261,6 +269,7 @@ namespace RimSharp.Shared.Services.Implementations
 
             _allMods.Clear();
             _allMods.AddRange(mods);
+            EnsureCoreModPresent(gamePath);
             _logger.LogDebug($"Initial parsing complete. Found {_allMods.Count} mods.", nameof(ModService));
 
             _logger.LogDebug("Retrieving Mlie version data...", nameof(ModService));
@@ -292,6 +301,37 @@ namespace RimSharp.Shared.Services.Implementations
 
             progress?.Report((100, 100, "Mod loading complete."));
             _logger.LogInfo($"Asynchronous mod loading complete. Loaded {_allMods.Count} mods.", nameof(ModService));
+        }
+
+        /// <summary>
+        /// The virtual (in-memory) mods list is the app's source of truth and
+        /// Core is a non-negotiable member of it. A failed Game/Data scan
+        /// (missing or broken paths) must never leave the user with empty
+        /// lists — this adds a placeholder Core when the real one could not
+        /// be loaded from disk.
+        /// </summary>
+        private void EnsureCoreModPresent(string gamePath)
+        {
+            // Only the real Core id counts as present — ModType.Core is the
+            // enum default (0), which makes every untyped mod "look" Core.
+            bool hasCore = _allMods.Any(m =>
+                string.Equals(m.PackageId, "Ludeon.RimWorld", StringComparison.OrdinalIgnoreCase));
+            if (hasCore) return;
+
+            var core = new ModItem
+            {
+                Name = "Core",
+                PackageId = "Ludeon.RimWorld",
+                ModType = ModType.Core,
+                Path = gamePath ?? string.Empty,
+                IsActive = true, // Core is always part of the active list
+            };
+            if (!string.IsNullOrEmpty(_currentMajorVersion) && !_currentMajorVersion.StartsWith("N/A"))
+            {
+                core.SupportedVersions.Add(new VersionSupport(_currentMajorVersion, VersionSource.Official, unofficial: false));
+            }
+            _allMods.Add(core);
+            _logger.LogWarning("Core was missing from the virtual list (failed path/config load). Added placeholder Core — it will be replaced by the real scan when paths are fixed.", nameof(ModService));
         }
 
         private void LoadCoreMods(string gamePath)

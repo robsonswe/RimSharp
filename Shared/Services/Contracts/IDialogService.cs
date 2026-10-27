@@ -72,8 +72,12 @@ namespace RimSharp.Shared.Services.Contracts
 
         /// <summary>
         /// Modals RimSharp settings dialog (Paths + AI Providers tabs).
-        /// Returns true when the user saved changes.
+        /// Returns true when the user saved changes. When
+        /// <paramref name="showAiProviders"/> is false the AI Providers tab
+        /// is hidden — used by the startup path gate, where AI configuration
+        /// is irrelevant to the blocking problem (paths) and would only
+        /// confuse users.
         /// </summary>
-        Task<bool> ShowSettingsDialogAsync();
+        Task<bool> ShowSettingsDialogAsync(bool showAiProviders = true);
     }
 }

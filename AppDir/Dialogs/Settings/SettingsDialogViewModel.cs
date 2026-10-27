@@ -83,6 +83,12 @@ namespace RimSharp.AppDir.Dialogs
         // AI Providers tab
         public IReadOnlyList<AiProviderSettingsRow> Providers { get; }
 
+        /// <summary>
+        /// False for the startup path gate: the AI Providers tab is not part
+        /// of the blocking problem and would suggest AI config is required.
+        /// </summary>
+        public bool ShowAiProviders { get; }
+
         public ICommand BrowseGamePathCommand { get; }
         public ICommand BrowseConfigPathCommand { get; }
         public ICommand OpenGameFolderCommand { get; }
@@ -93,11 +99,13 @@ namespace RimSharp.AppDir.Dialogs
         public SettingsDialogViewModel(
             IConfigService configService,
             IFileDialogService? fileDialogService,
-            IEnumerable<IAIProviderClient>? providers)
+            IEnumerable<IAIProviderClient>? providers,
+            bool showAiProviders = true)
         : base("RimSharp Settings")
         {
             _configService = configService ?? throw new ArgumentNullException(nameof(configService));
             _fileDialogService = fileDialogService;
+            ShowAiProviders = showAiProviders;
 
             _gamePath = _configService.GetConfigValue(GameFolderKey) ?? string.Empty;
             _configPath = _configService.GetConfigValue(ConfigFolderKey) ?? string.Empty;

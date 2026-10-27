@@ -424,6 +424,54 @@ namespace RimSharp.AppDir.MainPage
             }
         }
 
+        /// <summary>
+        /// Startup gate: the app MUST NOT operate with unresolved Game/Config
+        /// folders (that is what produced the confusing "app opens with empty
+        /// lists" runs). Shows the Settings dialog repeatedly until both
+        /// paths resolve. Returns false when the user gives up — the caller
+        /// (App) then shuts the application down instead of loading data.
+        /// </summary>
+        public async Task<bool> EnsurePathsConfiguredAsync()
+        {
+            bool PathsValid() =>
+                !string.IsNullOrEmpty(_pathService.GetGamePath()) &&
+                !string.IsNullOrEmpty(_pathService.GetConfigPath());
+
+            while (!PathsValid())
+            {
+                await _dialogService.ShowSettingsDialogAsync(showAiProviders: false);
+                _pathService.RefreshPaths();
+                if (PathsValid()) break;
+
+                var quit = await _dialogService.ShowConfirmationAsync(
+                    "RimSharp Needs Valid Paths",
+                    "The Game and/or Config folder could not be resolved, so RimSharp cannot load mods.\n\n" +
+                    "Open Settings again to configure them, or quit the application.",
+                    showCancel: true);
+                if (quit != RimSharp.AppDir.Dialogs.MessageDialogResult.OK &&
+                    quit != RimSharp.AppDir.Dialogs.MessageDialogResult.Yes)
+                {
+                    return false; // user chose to quit
+                }
+            }
+
+            // Paths just became valid (or already were) — sync the header
+            // badge and derived path UI state.
+            _isInitializingPaths = true;
+            try
+            {
+                PathSettings.GamePath = _pathService.GetGamePath();
+                PathSettings.ConfigPath = _pathService.GetConfigPath();
+                PathSettings.ModsPath = _pathService.GetModsPath();
+                PathSettings.GameVersion = _pathService.GetGameVersion();
+            }
+            finally
+            {
+                _isInitializingPaths = false;
+            }
+            return true;
+        }
+
         private void RefreshData()
         {
             if (!IsIdle) return;

@@ -209,10 +209,10 @@ namespace RimSharp.Infrastructure.Dialog
             await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }
 
-        public async Task<bool> ShowSettingsDialogAsync()
+        public async Task<bool> ShowSettingsDialogAsync(bool showAiProviders = true)
         {
             if (_configService == null) return false;
-            var viewModel = new SettingsDialogViewModel(_configService, _fileDialogService, _aiProviders);
+            var viewModel = new SettingsDialogViewModel(_configService, _fileDialogService, _aiProviders, showAiProviders);
             var dialog = new SettingsDialogView(viewModel);
             return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }

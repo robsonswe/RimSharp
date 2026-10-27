@@ -70,7 +70,7 @@
                 </TabItem>
 
                 <!-- TAB 2: AI PROVIDERS -->
-                <TabItem Header="AI Providers">
+                <TabItem Header="AI Providers" IsVisible="{Binding ShowAiProviders}">
                     <Border Classes="RimworldSubtlePanelBorder">
                         <StackPanel Margin="15" Spacing="14">
 

@@ -84,10 +84,13 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             await service.LoadModsAsync();
             var mods = service.GetLoadedMods().ToList();
 
-            mods.Should().HaveCount(1);
-            mods[0].Name.Should().Be("Test Mod Name");
-            mods[0].PackageId.Should().Be("test.mod.id");
-            mods[0].SupportedVersionStrings.Should().Contain("1.5");
+            // Virtual-list invariant: Core is ALWAYS present (sentinel when
+            // the game's Data folder has none).
+            mods.Should().Contain(m => m.PackageId == "Ludeon.RimWorld" && m.ModType == ModType.Core && m.IsActive);
+
+            var parsed = mods.Single(m => m.PackageId == "test.mod.id");
+            parsed.Name.Should().Be("Test Mod Name");
+            parsed.SupportedVersionStrings.Should().Contain("1.5");
         }
 
         [Fact]
@@ -110,9 +113,8 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             await service.LoadModsAsync();
             var mods = service.GetLoadedMods().ToList();
 
-            mods.Should().HaveCount(1);
-
-            mods[0].Name.Should().Be("MyFolderName");
+            mods.Should().Contain(m => m.PackageId == "Ludeon.RimWorld"); // Core sentinel invariant
+            mods.Single(m => m.PackageId == "test.mod.id").Name.Should().Be("MyFolderName");
         }
 
         [Fact]
@@ -130,7 +132,10 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             await service.LoadModsAsync();
             var mods = service.GetLoadedMods().ToList();
 
-            mods.Should().BeEmpty();
+            // The malformed mod is skipped, but the Core sentinel constant
+            // of the virtual list remains.
+            mods.Should().ContainSingle(m => m.PackageId == "Ludeon.RimWorld");
+            mods.Should().NotContain(m => m.PackageId == "bad.mod" || m.Name == "BadMod");
         }
     }
 }

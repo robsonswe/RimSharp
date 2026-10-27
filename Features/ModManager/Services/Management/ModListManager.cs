@@ -72,6 +72,24 @@ namespace RimSharp.Features.ModManager.Services.Management
                 .ToList()
                 ?? new List<string>();
 
+            // Core is a non-negotiable member of the ACTIVE list: if
+            // ModsConfig.xml is missing/corrupt or somehow dropped it, put
+            // it back at the top (base layer) instead of letting the
+            // active virtual list exist without it. NOTE: ModType.Core is
+            // the enum's default (0), so the PackageId must be verified —
+            // untyped mods are NOT Core.
+            var coreForActiveList = _allAvailableMods.FirstOrDefault(m =>
+                m.ModType == ModType.Core &&
+                string.Equals(m.PackageId, "Ludeon.RimWorld", StringComparison.OrdinalIgnoreCase));
+            if (coreForActiveList != null)
+            {
+                var coreId = coreForActiveList.PackageId.ToLowerInvariant();
+                if (!string.IsNullOrEmpty(coreId) && !activeIdList.Contains(coreId))
+                {
+                    activeIdList.Insert(0, coreId);
+                }
+            }
+
             _stateTracker.Initialize(_allAvailableMods, _lookupService.GetLookupDictionary(), activeIdList);
 
             var initialActiveModsForOrder = new List<(ModItem Mod, int LoadOrder)>();

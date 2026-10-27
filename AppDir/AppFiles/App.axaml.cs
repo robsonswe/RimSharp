@@ -117,9 +117,33 @@ namespace RimSharp.AppDir.AppFiles
                 desktop.MainWindow = mainWindow;
                 mainWindow.Show();
                 desktop.Exit += OnExit;
-                _ = Dispatcher.UIThread.InvokeAsync(async () => 
+
+                _ = Dispatcher.UIThread.InvokeAsync(async () =>
                 {
-                    try 
+                    // Startup gate: the app MUST NOT load data with unresolved
+                    // Game/Config folders. This blocks on the tabbed Settings
+                    // dialog until both paths are valid; if the user gives up,
+                    // the application shuts down instead of showing empty lists.
+                    bool pathsOk;
+                    try
+                    {
+                        pathsOk = await mainViewModel.EnsurePathsConfiguredAsync();
+                    }
+                    catch (Exception gateEx)
+                    {
+                        _logger?.LogError($"Path configuration gate failed: {gateEx.Message}", "App.Startup");
+                        pathsOk = true; // don't brick the app over gate internals
+                    }
+
+                    if (!pathsOk)
+                    {
+                        _logger.LogInfo("Startup aborted by the user at the path configuration gate.", "App.Startup");
+                        desktop.Shutdown();
+                        System.Environment.Exit(0);
+                        return;
+                    }
+
+                    try
                     {
                         await mainViewModel.OnMainWindowLoadedAsync();
                     }
@@ -128,21 +152,23 @@ namespace RimSharp.AppDir.AppFiles
                         _logger?.LogError($"Error during initial data load: {ex.Message}", "App.Startup");
                         var dialogService = ServiceProvider?.GetService<IDialogService>();
                         dialogService?.ShowError("Startup Error", $"An error occurred during startup: {ex.Message}");
+                        return;
                     }
-                });
 
-                // Background updates
-                var dataUpdater = ServiceProvider.GetRequiredService<IDataUpdateService>();
-                _ = Task.Run(async () =>
-                {
-                    try
+                    // Background data updates start only after the app is up
+                    // with valid paths and the initial load done.
+                    var dataUpdater = ServiceProvider.GetRequiredService<IDataUpdateService>();
+                    _ = Task.Run(async () =>
                     {
-                        await dataUpdater.CheckForAndApplyUpdatesAsync(new Progress<DataUpdateProgress>(), CancellationToken.None);
-                    }
-                    catch (Exception updateEx)
-                    {
-                        _logger.LogWarning($"Failed to update data files on startup: {updateEx.Message}", "App.OnFrameworkInitializationCompleted");
-                    }
+                        try
+                        {
+                            await dataUpdater.CheckForAndApplyUpdatesAsync(new Progress<DataUpdateProgress>(), CancellationToken.None);
+                        }
+                        catch (Exception updateEx)
+                        {
+                            _logger.LogWarning($"Failed to update data files on startup: {updateEx.Message}", "App.OnFrameworkInitializationCompleted");
+                        }
+                    });
                 });
             }
 
