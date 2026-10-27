@@ -23,6 +23,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         bool CanGoForward { get; }
         bool IsNavigating { get; }
         bool IsDomReady { get; }
+        bool IsSecureReal { get; }
 
         void GoBack();
         void GoForward();

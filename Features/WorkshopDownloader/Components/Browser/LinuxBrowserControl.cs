@@ -57,6 +57,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
         public bool IsNavigating => _isNavigating;
         public bool IsDomReady => _isDomReady;
+        public bool IsSecureReal => _currentNavigationUrl != null && _currentNavigationUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
 
         public LinuxBrowserControl(NativeWebView webView, ILoggerService? logger = null)
         {
@@ -104,6 +105,12 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
             _logger?.LogInfo($"NavigationCompleted: {url}, Success: {e.IsSuccess}", Module);
             NavigationCompleted?.Invoke(this, url);
             LoadingStateChanged?.Invoke(this, false);
+
+            // Certificate / TLS failure detection: if navigation fails on HTTPS, likely cert issue
+            if (!e.IsSuccess && url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger?.LogWarning($"NavigationFailed (possible cert error): {url}", Module);
+            }
 
             // Safety net: NativeWebView has no native DOMContentLoaded event. If
             // neither the web-message bridge nor the readyState poll reported it

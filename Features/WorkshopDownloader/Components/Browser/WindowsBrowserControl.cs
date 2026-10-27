@@ -16,6 +16,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
         public bool IsNavigating => _isNavigating;
         public bool IsDomReady => _isDomReady;
+        public bool IsSecureReal => _webView.Source != null && (_webView.Source.ToString() ?? "").StartsWith("https://");
 
         public WindowsBrowserControl(WebView2 webView)
         {
@@ -37,6 +38,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                     {
                         _webView.CoreWebView2.DOMContentLoaded += OnWebViewDomContentLoaded;
                         _webView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
+                        _webView.CoreWebView2.ServerCertificateErrorDetected += OnServerCertificateErrorDetected;
                     }
                 };
             }
@@ -46,6 +48,13 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
         {
             e.Handled = true;
             _webView.CoreWebView2.Navigate(e.Uri);
+        }
+
+        private void OnServerCertificateErrorDetected(object? sender, CoreWebView2ServerCertificateErrorDetectedEventArgs e)
+        {
+            // Certificate validation error detected; action defaults to AlwaysAllow
+            // but the event surfaces that a cert issue exists for the host.
+            Debug.WriteLine($"[WebView2] Certificate error for: {e.RequestUri}, action taken: {e.Action}");
         }
 
         private void OnWebViewNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
