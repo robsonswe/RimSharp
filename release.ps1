@@ -1,13 +1,22 @@
 param (
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory = $true, Position = 0)]
     [ValidateSet("major", "minor", "patch")]
     [string]$Version,
 
+    [Parameter(Position = 1)]
     [ValidateSet("alpha", "beta")]
-    [string]$PreRelease
+    [string]$PreRelease,
+
+    [Parameter(Position = 2)]
+    [Alias("m")]
+    [string]$Message
 )
 
+# Garante leitura/escrita correta de caracteres UTF-8 no console e git
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
 $versionFile = "version.txt"
+$releaseNotesFile = "RELEASE_NOTES.md"
 
 # Check if version file exists
 if (!(Test-Path $versionFile)) {
@@ -48,7 +57,7 @@ switch ($Version) {
 $baseVersion = "v$major.$minor.$patch"
 
 # Add pre-release tag if specified
-if ($PSBoundParameters.ContainsKey('PreRelease')) {
+if ($PSBoundParameters.ContainsKey('PreRelease') -and -not [string]::IsNullOrWhiteSpace($PreRelease)) {
     $finalVersion = "$baseVersion-$PreRelease"
 } else {
     $finalVersion = $baseVersion
@@ -63,41 +72,65 @@ try {
     exit 1
 }
 
+# --- Gerar / Atualizar RELEASE_NOTES.md ---
+if ($PSBoundParameters.ContainsKey('Message') -and -not [string]::IsNullOrWhiteSpace($Message)) {
+    Write-Host "Using custom message provided via -m for $releaseNotesFile..."
+    $notesContent = $Message.Trim()
+} else {
+    Write-Host "No message provided. Extracting commits from git log..."
+    # Localiza a tag mais recente alcançável a partir do HEAD
+    $lastTag = (& git describe --tags --abbrev=0 2>$null)
+    
+    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($lastTag)) {
+        $lastTag = $lastTag.Trim()
+        Write-Host "Fetching git oneline logs between '$lastTag' and HEAD..."
+        $changelog = & git log --oneline "$lastTag..HEAD"
+    } else {
+        Write-Host "No previous tag found. Fetching all commits up to HEAD..."
+        $changelog = & git log --oneline HEAD
+    }
+
+    if ($changelog) {
+        $notesContent = ($changelog -join "`n").Trim()
+    } else {
+        $notesContent = "Release $finalVersion"
+    }
+}
+
+Write-Host "Updating $releaseNotesFile..."
+try {
+    Set-Content -Path $releaseNotesFile -Value $notesContent -Encoding utf8 -ErrorAction Stop
+} catch {
+    Write-Error "Failed to write to $releaseNotesFile. Error: $_"
+    exit 1
+}
+
 # --- Git Operations ---
 Write-Host "Staging, committing, tagging, and pushing $finalVersion..."
 
-# Function to run Git commands and check for errors
 function Invoke-GitCommand {
     param(
-        # Use an array for the arguments
         [Parameter(Mandatory=$true)]
         [string[]]$ArgumentList,
 
         [Parameter(Mandatory=$true)]
         [string]$ErrorMessage
     )
-    # Display the command clearly
     Write-Host "Running: git $($ArgumentList -join ' ')"
-
-    # --- CHANGE HERE: Use the call operator '&' and pass the array ---
-    # PowerShell will correctly pass each element of $ArgumentList as a separate argument to git.exe
     $output = & git @ArgumentList 2>&1
 
     if ($LASTEXITCODE -ne 0) {
         Write-Error "$ErrorMessage`nGit output:`n$output"
-        # Consider attempting to revert the file change here if desired
-        # try { git checkout HEAD -- $versionFile } catch {}
         exit 1
     }
-    # Write-Host "Git command successful." # Optional: Reduce noise
-    Write-Verbose "Git Output:`n$output" # Show output only with -Verbose
+    Write-Verbose "Git Output:`n$output"
 }
 
-# --- CHANGES HERE: Call Invoke-GitCommand with argument arrays ---
-Invoke-GitCommand -ArgumentList 'add', $versionFile -ErrorMessage "Failed to stage $versionFile."
-Invoke-GitCommand -ArgumentList 'commit', '-m', "Release: $finalVersion" -ErrorMessage "Failed to commit changes." # '-m' and the message are separate arguments
+# Adiciona tanto o version.txt quanto o RELEASE_NOTES.md ao commit
+Invoke-GitCommand -ArgumentList 'add', $versionFile, $releaseNotesFile -ErrorMessage "Failed to stage $versionFile and $releaseNotesFile."
+Invoke-GitCommand -ArgumentList 'commit', '-m', "Release: $finalVersion" -ErrorMessage "Failed to commit changes."
 Invoke-GitCommand -ArgumentList 'tag', $finalVersion -ErrorMessage "Failed to create tag $finalVersion."
-Invoke-GitCommand -ArgumentList 'push', 'origin', 'HEAD' -ErrorMessage "Failed to push commit to origin." # 'push', 'origin', 'HEAD' are separate arguments
-Invoke-GitCommand -ArgumentList 'push', 'origin', $finalVersion -ErrorMessage "Failed to push tag $finalVersion to origin." # 'push', 'origin', <tag> are separate arguments
+Invoke-GitCommand -ArgumentList 'push', 'origin', 'HEAD' -ErrorMessage "Failed to push commit to origin."
+Invoke-GitCommand -ArgumentList 'push', 'origin', $finalVersion -ErrorMessage "Failed to push tag $finalVersion to origin."
 
-Write-Output "Successfully released and pushed $finalVersion"
+Write-Output "Successfully released and pushed $finalVersion with release notes!"

@@ -250,19 +250,39 @@ jobs:
     needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
-    # Baixa todos os artefatos de ambos os jobs para a mesma pasta
+    # 1. Faz o checkout do repositório para ter acesso ao RELEASE_NOTES.md
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # 2. Baixa todos os binários gerados pelos jobs anteriores
     - name: Download all artifacts
       uses: actions/download-artifact@v4
       with:
         path: ./release-assets
         merge-multiple: true
 
+    # 3. Constrói o corpo do release com o cabeçalho e o conteúdo do RELEASE_NOTES.md
+    - name: Prepare Release Notes Body
+      shell: bash
+      run: |
+        {
+          echo "RimSharp - RimWorld Mod Manager"
+          echo "Version: ${{ github.ref_name }}"
+          echo ""
+          if [ -f RELEASE_NOTES.md ]; then
+            cat RELEASE_NOTES.md
+          elif [ -f release_notes.md ]; then
+            cat release_notes.md
+          else
+            echo "Release ${{ github.ref_name }}"
+          fi
+        } > release_body.md
+
+    # 4. Publica o release consolidado
     - name: Create Consolidated GitHub Release
       uses: softprops/action-gh-release@v2
       with:
         name: RimSharp Release ${{ github.ref_name }}
-        body: |
-          RimSharp Desktop Application (Avalonia UI)
-          Tag: ${{ github.ref_name }}
+        body_path: release_body.md
         prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
         files: ./release-assets/*
