@@ -88,18 +88,6 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- Settings Button -->
-                        <Button Command="{Binding SettingsCommand}"
-                                Classes="RimworldButtonStyle"
-                                Padding="12,4"
-                                MinWidth="0"
-                                ToolTip.Tip="Configure paths, AI providers (API key, model) and more">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <i:Icon Value="fa-gear" VerticalAlignment="Center" FontSize="14"/>
-                                <TextBlock Text="Settings" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-
                         <!-- Refresh Action -->
                         <Button Command="{Binding RefreshCommand}" 
                                 Classes="RimworldButtonStyle" 
@@ -111,15 +99,33 @@
                             </StackPanel>
                         </Button>
 
-                        <!-- About Action -->
-                        <Button Command="{Binding AboutCommand}" 
-                                Classes="RimworldButtonStyle" 
-                                Padding="12,4">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <i:Icon Value="fa-info" VerticalAlignment="Center" FontSize="14"/>
-                                <TextBlock Text="About" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
+                        <!-- Menu Dropdown -->
+                        <Menu Background="Transparent" VerticalAlignment="Center">
+                            <MenuItem Classes="RimworldDropDownButtonStyle">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="Menu" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                                <MenuItem Header="Settings" Command="{Binding SettingsCommand}" Classes="RimworldMenuItemStyle">
+                                    <MenuItem.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <i:Icon Value="fa-gear" VerticalAlignment="Center" FontSize="14"/>
+                                            <TextBlock Text="Settings" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <MenuItem Header="About" Command="{Binding AboutCommand}" Classes="RimworldMenuItemStyle">
+                                    <MenuItem.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <i:Icon Value="fa-info" VerticalAlignment="Center" FontSize="14"/>
+                                            <TextBlock Text="About" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                            </MenuItem>
+                        </Menu>
+
                     </StackPanel>
                 </Grid>
             </Border>

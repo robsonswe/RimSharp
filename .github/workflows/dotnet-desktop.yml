@@ -49,7 +49,8 @@ jobs:
           -p:PublishSingleFile=true `
           -p:PublishReadyToRun=true `
           -p:EnableCompressionInSingleFile=true `
-          --output ./publish
+          --output ./publish `
+          -p:Version="$($env:GITHUB_REF_NAME.TrimStart('v'))"
 
         $folderName = "RimSharp_Win"
         $zipName = "RimSharp_${env:GITHUB_REF_NAME}.zip"
@@ -119,6 +120,7 @@ jobs:
           -p:PublishSingleFile=true \
           -p:PublishReadyToRun=true \
           -p:EnableCompressionInSingleFile=true \
+          -p:Version="${GITHUB_REF_NAME#v}" \
           --output ./publish-linux
 
         mkdir -p package-root/opt/rimsharp package-root/usr/bin

@@ -63,6 +63,20 @@ namespace RimSharp.AppDir.MainPage
             Height = Math.Min(DesignHeight, maxH);
         }
 
+        private void OnMaintenanceSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (sender is ComboBox cb && cb.DataContext is MainViewModel vm && e.AddedItems.Count > 0)
+            {
+                var selected = e.AddedItems[0]?.ToString();
+                if (selected == "Settings")
+                    vm.SettingsCommand?.Execute(null);
+                else if (selected == "About")
+                    vm.AboutCommand?.Execute(null);
+                // Reset selection so dropdown can be reused
+                cb.SelectedItem = null;
+            }
+        }
+
         private void InitializeComponent()
         {
             AvaloniaXamlLoader.Load(this);
