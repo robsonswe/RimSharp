@@ -69,7 +69,41 @@
                     </Border>
                 </TabItem>
 
-                <!-- TAB 2: AI PROVIDERS -->
+                <!-- TAB 2: UPDATES -->
+                <TabItem Header="Updates">
+                    <Border Classes="RimworldSubtlePanelBorder">
+                        <StackPanel Margin="15" Spacing="18">
+                            <StackPanel Spacing="6">
+                                <Grid ColumnDefinitions="*, Auto" ColumnSpacing="6">
+                                    <TextBlock Grid.Column="0" Text="Update Channel" FontWeight="Bold" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                    <ComboBox Grid.Column="1"
+                                              SelectedValue="{Binding UpdateChannel, Mode=TwoWay}"
+                                              SelectedValueBinding="{Binding Tag, DataType=ComboBoxItem}"
+                                              Width="140"
+                                              VerticalAlignment="Center"
+                                              Classes="RimworldComboBox">
+                                        <ComboBoxItem Tag="stable" Content="Stable"/>
+                                        <ComboBoxItem Tag="beta" Content="Beta"/>
+                                        <ComboBoxItem Tag="alpha" Content="Alpha"/>
+                                    </ComboBox>
+                                </Grid>
+
+                                <TextBlock TextWrapping="Wrap" FontSize="12"
+                                           Foreground="{DynamicResource RimworldDarkBrownBrush}"
+                                           Text="Alpha: Get the latest experimental features as soon as they're available. May contain bugs or instability."/>
+                                <TextBlock TextWrapping="Wrap" FontSize="12"
+                                           Foreground="{DynamicResource RimworldDarkBrownBrush}"
+                                           Text="Beta: Get early access to upcoming features with improved stability. May still contain bugs."/>
+                                <TextBlock TextWrapping="Wrap" FontSize="12"
+                                           Foreground="{DynamicResource RimworldDarkBrownBrush}"
+                                           Text="Stable: Receive only fully tested and stable releases. Recommended for everyday use."/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </TabItem>
+
+                <!-- TAB 3: AI PROVIDERS -->
                 <TabItem Header="AI Providers" IsVisible="{Binding ShowAiProviders}">
                     <Border Classes="RimworldSubtlePanelBorder">
                         <StackPanel Margin="15" Spacing="14">

@@ -10,12 +10,6 @@ using RimSharp.Shared.Services.Contracts;
 
 namespace RimSharp.AppDir.Dialogs
 {
-    /// <summary>
-    /// One editable row in the AI Providers tab: display name, API key and
-    /// preferred model. The provider gets written back through the
-    /// IAIProviderClient contract so any future provider plugs in the same
-    /// way (config-backed key/model per provider).
-    /// </summary>
     public class AiProviderSettingsRow : ViewModelBase
     {
         private readonly IAIProviderClient _client;
@@ -59,34 +53,25 @@ namespace RimSharp.AppDir.Dialogs
         }
     }
 
-    /// <summary>
-    /// RimSharp settings: two tabs — Paths (game/config folders) and
-    /// AI Providers (per-provider API key + model). Save persists
-    /// everything through IConfigService; Cancel discards the edits.
-    /// Returns <c>true</c> (DialogResult) when something was saved.
-    /// </summary>
     public class SettingsDialogViewModel : DialogViewModelBase<bool>
     {
         private const string GameFolderKey = "game_folder";
         private const string ConfigFolderKey = "config_folder";
+        private const string UpdateChannelKey = "update_channel";
 
         private readonly IConfigService _configService;
         private readonly IFileDialogService? _fileDialogService;
 
-        // Paths tab
         private string _gamePath = string.Empty;
         public string GamePath { get => _gamePath; set => SetProperty(ref _gamePath, value); }
 
         private string _configPath = string.Empty;
         public string ConfigPath { get => _configPath; set => SetProperty(ref _configPath, value); }
 
-        // AI Providers tab
-        public IReadOnlyList<AiProviderSettingsRow> Providers { get; }
+        private string _updateChannel = "stable";
+        public string UpdateChannel { get => _updateChannel; set => SetProperty(ref _updateChannel, value); }
 
-        /// <summary>
-        /// False for the startup path gate: the AI Providers tab is not part
-        /// of the blocking problem and would suggest AI config is required.
-        /// </summary>
+        public IReadOnlyList<AiProviderSettingsRow> Providers { get; }
         public bool ShowAiProviders { get; }
 
         public ICommand BrowseGamePathCommand { get; }
@@ -107,8 +92,12 @@ namespace RimSharp.AppDir.Dialogs
             _fileDialogService = fileDialogService;
             ShowAiProviders = showAiProviders;
 
-            _gamePath = _configService.GetConfigValue(GameFolderKey) ?? string.Empty;
-            _configPath = _configService.GetConfigValue(ConfigFolderKey) ?? string.Empty;
+            _gamePath = _configService.GetConfigValue(GameFolderKey);
+            _configPath = _configService.GetConfigValue(ConfigFolderKey);
+
+            // Se for vazio ou nulo no arquivo de config, assume "stable"
+            var channel = _configService.GetConfigValue(UpdateChannelKey);
+            _updateChannel = string.IsNullOrWhiteSpace(channel) ? "stable" : channel;
 
             Providers = (providers ?? Array.Empty<IAIProviderClient>())
                 .Select(p => new AiProviderSettingsRow(p))
@@ -149,6 +138,7 @@ namespace RimSharp.AppDir.Dialogs
         {
             _configService.SetConfigValue(GameFolderKey, GamePath?.Trim() ?? string.Empty);
             _configService.SetConfigValue(ConfigFolderKey, ConfigPath?.Trim() ?? string.Empty);
+            _configService.SetConfigValue(UpdateChannelKey, UpdateChannel);
 
             foreach (var row in Providers)
             {

@@ -292,7 +292,11 @@ namespace RimSharp.AppDir.AppFiles
             services.AddSingleton<IWebNavigationService, WebNavigationService>();
             services.AddSingleton<IDownloadQueueService, DownloadQueueService>();
             services.AddSingleton<IUpdaterService, UpdaterService>(); 
-            services.AddSingleton<IAppUpdaterService, AppUpdaterService>();
+            services.AddSingleton<IAppUpdaterService>(provider => new AppUpdaterService(
+    provider.GetRequiredService<IHttpClientFactory>(),
+    provider.GetRequiredService<ILoggerService>(),
+    provider.GetRequiredService<IConfigService>()
+));
             services.AddSingleton<ISteamApiClient, SteamApiClient>();
             services.AddSingleton<IWorkshopUpdateCheckerService, WorkshopUpdateCheckerService>();
             services.AddSingleton<ISteamWorkshopQueueProcessor, SteamWorkshopQueueProcessor>(); 

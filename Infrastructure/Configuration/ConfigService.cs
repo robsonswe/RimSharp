@@ -9,10 +9,6 @@ namespace RimSharp.Infrastructure.Configuration
 {
     public class ConfigService : IConfigService
     {
-        // Keys that are persisted to config.cfg. game_folder/config_folder are
-        // user-selected game paths; steamcmd_prefix and logs_directory let
-        // users redirect SteamCMD data and log output. The AI keys feed the
-        // provider clients (see IAIProviderClient implementations).
         private static readonly string[] PersistedKeys =
         {
             "game_folder",
@@ -21,6 +17,7 @@ namespace RimSharp.Infrastructure.Configuration
             "logs_directory",
             "openrouter_api_key",
             "ai_model",
+            "update_channel", // <- Adicionado aqui
         };
 
         private readonly string _configPath;
@@ -57,6 +54,7 @@ namespace RimSharp.Infrastructure.Configuration
             {
                 SetConfigValue("game_folder", string.Empty);
                 SetConfigValue("config_folder", string.Empty);
+                SetConfigValue("update_channel", "stable");
                 SaveConfig();
                 return;
             }
