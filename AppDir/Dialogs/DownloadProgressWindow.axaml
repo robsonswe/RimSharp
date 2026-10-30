@@ -24,7 +24,7 @@
                   CanUserReorderColumns="True" IsReadOnly="True">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Steam ID" Width="120" Binding="{Binding SteamId}"/>
-                <DataGridTextColumn Header="Name" Width="*" Binding="{Binding Name}"/>
+                <DataGridTextColumn Header="Name" Width="*" Binding="{Binding DisplayName}"/>
                 <DataGridTextColumn Header="Status" Width="140" Binding="{Binding Status}"/>
                 <DataGridTextColumn Header="Progress" Width="100" Binding="{Binding ProgressString}"/>
             </DataGrid.Columns>

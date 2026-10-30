@@ -51,7 +51,7 @@
                                     <!-- Mod Header -->
                                     <Border Classes="RimworldListHeaderBorder">
                                         <Grid ColumnDefinitions="*, Auto">
-                                            <TextBlock Grid.Column="0" Text="{Binding Mod.Name}" 
+                                            <TextBlock Grid.Column="0" Text="{Binding Mod.DisplayName}" 
                                                        FontWeight="Bold" VerticalAlignment="Center"
                                                        Foreground="{DynamicResource RimworldWhiteBrush}"/>
                                             <TextBlock Grid.Column="1" Text="{Binding Issues.Count, StringFormat='{}{0} issues'}" 

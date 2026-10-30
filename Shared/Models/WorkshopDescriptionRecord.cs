@@ -14,6 +14,9 @@ namespace RimSharp.Shared.Models
         /// <summary>Plain-text, tag-stripped Workshop description.</summary>
         public string SteamDescription { get; set; } = string.Empty;
 
+        /// <summary>Workshop item title (from Steam API / HTML page).</summary>
+        public string SteamName { get; set; } = string.Empty;
+
         /// <summary>"steamapi" or "html" — which extractor produced the text.</summary>
         public string Source { get; set; } = string.Empty;
 

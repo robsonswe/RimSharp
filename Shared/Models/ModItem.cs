@@ -74,6 +74,8 @@ namespace RimSharp.Shared.Models
         /// RimSharp.json by WorkshopDescriptionService (empty when uncached).
         /// </summary>
         public string SteamDescription { get; set; } = string.Empty;
+        public string SteamName { get; set; } = string.Empty;
+        public string DisplayName => !string.IsNullOrWhiteSpace(SteamName) ? SteamName : Name;
         public List<VersionSupport> SupportedVersions { get; set; } = new List<VersionSupport>();
 
         public string ModVersion { get; set; } = string.Empty;

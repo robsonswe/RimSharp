@@ -108,7 +108,7 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
         public bool ShowMaxVram { get => _showMaxVram; set { if (SetProperty(ref _showMaxVram, value)) NotifyBudgetChanged(); } }
         private bool _showMaxVram;
         public string? CurrentSortColumn { get => _currentSortColumn; private set => SetProperty(ref _currentSortColumn, value); }
-        private string? _currentSortColumn = "Mod.Name";
+        private string? _currentSortColumn = "Mod.DisplayName";
         public ListSortDirection SortDirection { get => _sortDirection; private set => SetProperty(ref _sortDirection, value); }
         private ListSortDirection _sortDirection = ListSortDirection.Ascending;
         public AsyncRelayCommand CalculateVramCommand { get; }
@@ -164,7 +164,7 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
                         linkedCts.Token.ThrowIfCancellationRequested(); 
                         processedCount++; 
 
-                        RunOnUIThread(() => { progressVm?.UpdateProgress((int)((double)processedCount / modsToCalculate.Count * 100), $"Analyzing: {modWrapper.Mod.Name}"); }); 
+                        RunOnUIThread(() => { progressVm?.UpdateProgress((int)((double)processedCount / modsToCalculate.Count * 100), $"Analyzing: {modWrapper.Mod.DisplayName}"); }); 
 
                         var result = VramEstimator.Calculate(modWrapper.Mod.Path, majorVersion, activeModIds);
                         if (result.EstimatedVramCompressed == 0 && !string.IsNullOrWhiteSpace(result.Logs))
@@ -300,7 +300,7 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
             IEnumerable<VramModItemWrapper> view = _allVramMods;
             if (ShowOnlyActive) view = view.Where(m => m.Mod.IsActive);
             if (ShowOnlyFavorites) view = view.Where(m => m.Mod.IsFavorite);
-            var sortProperty = CurrentSortColumn ?? "Mod.Name";
+            var sortProperty = CurrentSortColumn ?? "Mod.DisplayName";
             if (ShowMaxVram) {
                 if (sortProperty.Contains("EstimatedVram")) sortProperty = sortProperty.Replace("EstimatedVram", "MaxEstimatedVram");
                 if (sortProperty.Contains("TextureCount")) sortProperty = sortProperty.Replace("TextureCount", "MaxTextureCount");

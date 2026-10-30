@@ -24,7 +24,7 @@
                       FontSize="12"
                       DoubleTapped="DataGrid_DoubleTapped">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*" CanUserResize="True" />
+                    <DataGridTextColumn Header="Name" Binding="{Binding DisplayName}" Width="2*" CanUserResize="True" />
                     <DataGridTextColumn Header="Package ID" Binding="{Binding PackageId}" Width="1.5*" CanUserResize="True" />
                     <DataGridTextColumn Header="Steam ID" Binding="{Binding SteamId}" Width="100" CanUserResize="True" />
                     <DataGridTextColumn Header="Authors" Binding="{Binding Authors}" Width="1.5*" CanUserResize="True" />

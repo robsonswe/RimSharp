@@ -276,7 +276,7 @@
                                     </Border>
 
                                     <!-- Mod Name -->
-                                    <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                    <TextBlock Grid.Column="1" Text="{Binding DisplayName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                                Foreground="{Binding IsSupportedRW, Converter={StaticResource BooleanToColorConverter}, ConverterParameter='RimworldBrown|RimworldErrorRed'}">
                                         <TextBlock.FontWeight>
                                             <MultiBinding Converter="{StaticResource ModWeightConverter}">

@@ -43,7 +43,7 @@
                                                                                 <TextBlock FontWeight="Medium" Foreground="{DynamicResource RimworldBrownBrush}">
                                                                                     <TextBlock.Text>
                                                                                         <MultiBinding StringFormat="Original: {0} by {1}">
-                                                                                            <Binding Path="OriginalMod.Name" FallbackValue="Unknown"/>
+                                                                                            <Binding Path="OriginalMod.DisplayName" FallbackValue="Unknown"/>
                                                                                             <Binding Path="OriginalMod.Authors" FallbackValue="Unknown"/>
                                                                                         </MultiBinding>
                                                                                     </TextBlock.Text>
@@ -93,7 +93,7 @@
                                                     <TextBlock FontWeight="Medium" Foreground="{DynamicResource RimworldBrownBrush}">
                                                         <TextBlock.Text>
                                                             <MultiBinding StringFormat="Original: {0} by {1}">
-                                                                <Binding Path="OriginalMod.Name" FallbackValue="Unknown"/>
+                                                                <Binding Path="OriginalMod.DisplayName" FallbackValue="Unknown"/>
                                                                 <Binding Path="OriginalMod.Authors" FallbackValue="Unknown"/>
                                                             </MultiBinding>
                                                         </TextBlock.Text>

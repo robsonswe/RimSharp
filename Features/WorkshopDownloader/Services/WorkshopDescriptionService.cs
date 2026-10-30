@@ -45,7 +45,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task<bool> SaveCacheAsync(string steamId, string modFolderPath, string plainText, string source, CancellationToken ct = default)
+        public async Task<bool> SaveCacheAsync(string steamId, string modFolderPath, string plainText, string source, string? steamName = null, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(steamId) || string.IsNullOrWhiteSpace(modFolderPath) ||
                 string.IsNullOrWhiteSpace(plainText))
@@ -62,6 +62,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             {
                 SteamId = steamId,
                 SteamDescription = plainText,
+                SteamName = steamName ?? string.Empty,
                 Source = source,
                 FetchedUtc = DateTimeOffset.UtcNow
             };
@@ -94,7 +95,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 return null;
             }
 
-            (string Description, string Source)? extraction =
+            (string Description, string Source, string? Title)? extraction =
                 await ExtractViaSteamApiAsync(steamId, ct).ConfigureAwait(false)
                 ?? await ExtractViaHtmlAsync(steamId, ct).ConfigureAwait(false);
 
@@ -104,12 +105,12 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 return null;
             }
 
-            await SaveCacheAsync(steamId, modFolderPath, extraction.Value.Description, extraction.Value.Source, ct).ConfigureAwait(false);
+            await SaveCacheAsync(steamId, modFolderPath, extraction.Value.Description, extraction.Value.Source, extraction.Value.Title, ct).ConfigureAwait(false);
             return extraction.Value.Description;
         }
 
         /// <summary>Extractor 1 — Steam Web API (structured, preferred).</summary>
-        private async Task<(string Description, string Source)?> ExtractViaSteamApiAsync(string steamId, CancellationToken ct)
+        private async Task<(string Description, string Source, string? Title)?> ExtractViaSteamApiAsync(string steamId, CancellationToken ct)
         {
             try
             {
@@ -122,19 +123,19 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 var raw = detail.Description?.Length >= detail.DetailedDescription?.Length
                     ? detail.Description
                     : detail.DetailedDescription;
-                if (string.IsNullOrWhiteSpace(raw)) return null;
+                if (string.IsNullOrWhiteSpace(raw)) return (null, null, null);
 
-                return (CleanHtml(raw), "steamapi");
+                return (CleanHtml(raw), "steamapi", detail.Title);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogWarning($"Workshop description: Steam API extractor failed for {steamId}: {ex.Message}", nameof(WorkshopDescriptionService));
-                return null;
+                return (null, null, null);
             }
         }
 
         /// <summary>Extractor 2 — Workshop item page HTML scrape (fallback).</summary>
-        private async Task<(string Description, string Source)?> ExtractViaHtmlAsync(string steamId, CancellationToken ct)
+        private async Task<(string Description, string Source, string? Title)?> ExtractViaHtmlAsync(string steamId, CancellationToken ct)
         {
             try
             {
@@ -145,15 +146,29 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
                 var html = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 var raw = ExtractHighlightContent(html);
+                var title = ExtractWorkshopItemTitle(html);
                 if (string.IsNullOrWhiteSpace(raw) || raw.Length < 40) return null;
 
-                return (CleanHtml(raw), "html");
+                return (CleanHtml(raw), "html", title);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogWarning($"Workshop description: HTML extractor failed for {steamId}: {ex.Message}", nameof(WorkshopDescriptionService));
                 return null;
             }
+        }
+
+        private static string? ExtractWorkshopItemTitle(string html)
+        {
+            const string Marker = "workshopItemTitle";
+            var markerIndex = html.IndexOf(Marker, StringComparison.OrdinalIgnoreCase);
+            if (markerIndex < 0) return null;
+            var contentStart = html.IndexOf('>', markerIndex) + 1;
+            if (contentStart < 1) return null;
+            contentStart++;
+            var close = html.IndexOf("</div>", contentStart, StringComparison.OrdinalIgnoreCase);
+            if (close < 0) return null;
+            return html.Substring(contentStart, close - contentStart).Trim();
         }
 
         /// <summary>

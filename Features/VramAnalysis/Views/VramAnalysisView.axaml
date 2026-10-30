@@ -257,14 +257,14 @@
                         <DataGridTemplateColumn Header="Mod Name" Width="*" CanUserResize="True">
                             <DataGridTemplateColumn.HeaderTemplate>
                                 <DataTemplate>
-                                    <Button Command="{Binding $parent[DataGrid].DataContext.SortCommand}" CommandParameter="Mod.Name">
+                                    <Button Command="{Binding $parent[DataGrid].DataContext.SortCommand}" CommandParameter="Mod.DisplayName">
                                         <TextBlock Text="Mod Name"/>
                                     </Button>
                                 </DataTemplate>
                             </DataGridTemplateColumn.HeaderTemplate>
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding Mod.Name}" 
+                                    <TextBlock Text="{Binding Mod.DisplayName}" 
                                                VerticalAlignment="Center"
                                                Margin="10,0"
                                                TextTrimming="CharacterEllipsis"

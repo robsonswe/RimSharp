@@ -153,12 +153,15 @@ namespace RimSharp.Features.ModManager.Services.Filtering
                 string searchLower = criteria.SearchText.ToLowerInvariant();
                 filtered = filtered.Where(m =>
                     // Tier 1: Standard 'Contains' search
+                    (m.DisplayName?.ToLowerInvariant().Contains(searchLower) ?? false) ||
                     (m.Name?.ToLowerInvariant().Contains(searchLower) ?? false) ||
+                    (m.SteamName?.ToLowerInvariant().Contains(searchLower) ?? false) ||
                     (m.PackageId?.ToLowerInvariant().Contains(searchLower) ?? false) ||
                     (m.Description?.ToLowerInvariant().Contains(searchLower) ?? false) ||
+                    (m.SteamDescription?.ToLowerInvariant().Contains(searchLower) ?? false) ||
 
                     // Tier 2: Fuzzy search on token sets
-                    Fuzz.TokenSetRatio(m.Name?.ToLowerInvariant() ?? "", searchLower) >= FuzzySearchThreshold
+                    Fuzz.TokenSetRatio(m.DisplayName?.ToLowerInvariant() ?? m.Name?.ToLowerInvariant() ?? "", searchLower) >= FuzzySearchThreshold
                 );
             }
 

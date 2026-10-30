@@ -581,7 +581,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 }
 
                 var written = await _descriptionService.SaveCacheAsync(
-                    steamId, localMod.Path, modInfo.SteamDescription, "browser", token);
+                    steamId, localMod.Path, modInfo.SteamDescription, "browser", modInfo.Name, token);
                 if (written)
                 {
                     StatusChanged?.Invoke(this, $"Workshop description cached for installed mod '{modInfo.Name}'.");

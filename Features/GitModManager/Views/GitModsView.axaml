@@ -69,7 +69,7 @@
                         </ContextMenu>
                     </DataGrid.ContextMenu>
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Name" Binding="{Binding ModItem.Name}" Width="2*" CanUserResize="True"/>
+                        <DataGridTextColumn Header="Name" Binding="{Binding ModItem.DisplayName}" Width="2*" CanUserResize="True"/>
                         
                         <DataGridTemplateColumn Header="Updates" Width="Auto" MinWidth="150" CanUserResize="True">
                             <DataGridTemplateColumn.CellTemplate>

@@ -33,7 +33,7 @@
                                                                 <TextBlock IsVisible="{Binding ModToKeep, Converter={StaticResource NullToVisibilityConverter}}" FontWeight="SemiBold" FontSize="13">
                                                                     <TextBlock.Text>
                                                                         <MultiBinding StringFormat="Keep: {0}">
-                                                                            <Binding Path="ModToKeep.Name" FallbackValue="Unknown"/>
+                                                                            <Binding Path="ModToKeep.DisplayName" FallbackValue="Unknown"/>
                                                                         </MultiBinding>
                                                                     </TextBlock.Text>
                                                                 </TextBlock>
@@ -47,7 +47,7 @@
                                                                                                                                         <DataTemplate>
                                                                                                                                             <StackPanel Margin="0,5">
                                                                                                                                                 <TextBlock FontWeight="Bold" Foreground="{DynamicResource RimworldRedBrush}" 
-                                                                                                                                                           Text="{Binding Key.Name, FallbackValue='Unknown', TargetNullValue='Unknown'}"/>
+                                                                                                                                                           Text="{Binding Key.DisplayName, FallbackValue='Unknown', TargetNullValue='Unknown'}"/>
                                                                                                                                                 <ItemsControl ItemsSource="{Binding Value}" Margin="15,0,0,0">
                                                                 
                                                                                     <ItemsControl.ItemTemplate>

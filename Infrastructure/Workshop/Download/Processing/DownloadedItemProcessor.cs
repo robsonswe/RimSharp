@@ -118,7 +118,7 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
                 {
                     AddLogMessage($"Item {itemId}: Caching Workshop description...");
                     var description = !string.IsNullOrWhiteSpace(item.SteamDescription)
-                        ? (await _descriptionService.SaveCacheAsync(item.SteamId, targetPath, item.SteamDescription, "browser", cancellationToken)
+                        ? (await _descriptionService.SaveCacheAsync(item.SteamId, targetPath, item.SteamDescription, "browser", item.Name, cancellationToken)
                             ? item.SteamDescription
                             : null)
                         : await _descriptionService.EnrichModAsync(item.SteamId, targetPath, cancellationToken);

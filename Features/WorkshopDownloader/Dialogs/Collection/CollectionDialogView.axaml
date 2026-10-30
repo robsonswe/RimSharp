@@ -37,7 +37,7 @@
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
 
-                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="450"/>
+                    <DataGridTextColumn Header="Name" Binding="{Binding DisplayName}" Width="450"/>
                     <DataGridTextColumn Header="Author" Binding="{Binding Author}" Width="150"/>
                     <DataGridTextColumn Header="Steam ID" Binding="{Binding SteamId}" Width="150"/>
                 </DataGrid.Columns>

@@ -347,7 +347,7 @@ namespace RimSharp.Shared.Services.Implementations
                 bool isCoreMod = mod.PackageId == "Ludeon.RimWorld";
                 mod.ModType = isCoreMod ? ModType.Core : ModType.Expansion;
 
-                if (mod.ModType == ModType.Expansion && !string.IsNullOrEmpty(mod.Name) && !mod.Name.EndsWith(" [DLC]"))
+                if (mod.ModType == ModType.Expansion && !string.IsNullOrEmpty(mod.DisplayName) && !mod.DisplayName.EndsWith(" [DLC]"))
                 {
                     mod.Name = $"{mod.Name} [DLC]";
                 }
@@ -382,14 +382,14 @@ namespace RimSharp.Shared.Services.Implementations
                     var mod = await Task.Run(() => BuildOrReuseModFromFolder(dir, out _));
                     if (mod == null) return;
 
-                    if (!string.IsNullOrEmpty(mod.Name))
+                    if (!string.IsNullOrEmpty(mod.DisplayName))
                     {
-                        modNameForProgress = mod.Name;
+                        modNameForProgress = mod.DisplayName;
                     }
 
                     bool isCoreMod = mod.PackageId == "Ludeon.RimWorld";
                     mod.ModType = isCoreMod ? ModType.Core : ModType.Expansion;
-                    if (mod.ModType == ModType.Expansion && !string.IsNullOrEmpty(mod.Name) && !mod.Name.EndsWith(" [DLC]"))
+                    if (mod.ModType == ModType.Expansion && !string.IsNullOrEmpty(mod.DisplayName) && !mod.DisplayName.EndsWith(" [DLC]"))
                     {
                         mod.Name = $"{mod.Name} [DLC]";
                     }
@@ -511,9 +511,9 @@ namespace RimSharp.Shared.Services.Implementations
                     var mod = await Task.Run(() => BuildOrReuseModFromFolder(dir, out _));
                     if (mod == null) return;
 
-                    if (!string.IsNullOrEmpty(mod.Name))
+                    if (!string.IsNullOrEmpty(mod.DisplayName))
                     {
-                        modNameForProgress = mod.Name;
+                        modNameForProgress = mod.DisplayName;
                     }
 
                     var folderName = Path.GetFileName(dir);
@@ -657,7 +657,7 @@ namespace RimSharp.Shared.Services.Implementations
             }
             catch (Exception ex)
             {
-                _logger.LogError($"CRITICAL ERROR during disk size calculation for '{mod.Name}': {ex.Message}\n{ex.StackTrace}", nameof(ModService));
+                _logger.LogError($"CRITICAL ERROR during disk size calculation for '{mod.DisplayName}': {ex.Message}\n{ex.StackTrace}", nameof(ModService));
                 return new ModSizeInfo();
             }
         }
@@ -824,7 +824,7 @@ namespace RimSharp.Shared.Services.Implementations
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning($"Error parsing loadFolders.xml for mod size calc '{mod.Name}': {ex.Message}", nameof(ModService));
+                        _logger.LogWarning($"Error parsing loadFolders.xml for mod size calc '{mod.DisplayName}': {ex.Message}", nameof(ModService));
                     }
                 }
             }
@@ -1046,6 +1046,11 @@ namespace RimSharp.Shared.Services.Implementations
                             {
                                 mod.SteamDescription = steamDescNode.GetString() ?? string.Empty;
                             }
+                            if (cacheDoc.RootElement.TryGetProperty("SteamName", out var steamNameNode) &&
+                                steamNameNode.ValueKind == JsonValueKind.String)
+                            {
+                                mod.SteamName = steamNameNode.GetString() ?? string.Empty;
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -1053,6 +1058,8 @@ namespace RimSharp.Shared.Services.Implementations
                         }
                     }
                 }
+
+                // Name stays original (About.xml); SteamName separate; UI uses DisplayName
 
                 if (!string.IsNullOrEmpty(modRootFolder))
                 {
@@ -1131,7 +1138,7 @@ namespace RimSharp.Shared.Services.Implementations
 
             foreach (var packageId in incompatibleIds)
             {
-                var reason = $"Incompatible according to '{mod.Name}' authors";
+                var reason = $"Incompatible according to '{mod.DisplayName}' authors";
                 mod.IncompatibleWith.Add(packageId, new ModIncompatibilityRule { HardIncompatibility = true, Comment = new List<string> { reason } });
             }
         }

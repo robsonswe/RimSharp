@@ -562,7 +562,7 @@ private bool CanExecutizeMod(ModItem? mod)
                     {
                         combinedToken.ThrowIfCancellationRequested();
                         processedCount++;
-                        progressDialog.UpdateProgress((int)((double)processedCount / workshopMods.Count * 100), $"Scanning: {mod.Name}");
+                        progressDialog.UpdateProgress((int)((double)processedCount / workshopMods.Count * 100), $"Scanning: {mod.DisplayName}");
 
                         var strippableModVm = new StrippableModViewModel(mod);
                         await ScanDirectoryRecursively(

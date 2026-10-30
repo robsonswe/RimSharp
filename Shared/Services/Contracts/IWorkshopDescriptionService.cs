@@ -31,6 +31,6 @@ namespace RimSharp.Shared.Services.Contracts
         /// from the embedded browser, or carried through the download queue)
         /// into the mod folder's RimSharp.json. Returns true when written.
         /// </summary>
-        Task<bool> SaveCacheAsync(string steamId, string modFolderPath, string plainText, string source, CancellationToken ct = default);
+        Task<bool> SaveCacheAsync(string steamId, string modFolderPath, string plainText, string source, string? steamName = null, CancellationToken ct = default);
     }
 }

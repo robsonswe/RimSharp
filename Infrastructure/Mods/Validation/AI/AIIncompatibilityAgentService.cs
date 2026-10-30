@@ -336,7 +336,7 @@ namespace RimSharp.Infrastructure.Mods.Validation.AI
                 if (HasDirectConflict(mod, other)) continue;
                 if (IsDependency(mod, other)) continue;
 
-                var name = (other.Name ?? string.Empty).ToLowerInvariant();
+                var name = ((other.Name ?? string.Empty) + " " + (other.SteamName ?? string.Empty)).ToLowerInvariant();
                 var desc = BestSearchText(other).ToLowerInvariant();
                 if (desc.Length > SearchDescriptionLength) desc = desc.Substring(0, SearchDescriptionLength);
 

@@ -101,7 +101,7 @@
                                         HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                                         VerticalAlignment="Stretch" VerticalContentAlignment="Center">
                                     <Grid ColumnDefinitions="*, Auto" Background="Transparent">
-                                        <TextBlock Grid.Column="0" Text="{Binding Mod.Name}" 
+                                        <TextBlock Grid.Column="0" Text="{Binding Mod.DisplayName}" 
                                                    FontWeight="Bold" FontSize="14" 
                                                    Foreground="{DynamicResource RimworldDarkBrownBrush}" 
                                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis" 

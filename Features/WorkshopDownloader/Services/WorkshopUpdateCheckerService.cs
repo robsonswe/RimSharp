@@ -66,19 +66,19 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                         cancellationToken.ThrowIfCancellationRequested();
 
                         int currentCount = Interlocked.Increment(ref completedMods);
-                        progress?.Report((currentCount, totalMods, mod.Name));
+                        progress?.Report((currentCount, totalMods, mod.DisplayName));
 
                         await CheckModForUpdateAsync(mod, result, errorMessages, cancellationToken);
                     }
                     catch (OperationCanceledException)
                     {
-                        Debug.WriteLine($"[CheckModForUpdateAsync Task] Cancelled for mod {mod.Name} ({mod.SteamId}).");
+                        Debug.WriteLine($"[CheckModForUpdateAsync Task] Cancelled for mod {mod.DisplayName} ({mod.SteamId}).");
                     }
                     catch (Exception ex)
                     {
                          result.IncrementErrorsEncountered();
-                         errorMessages.Add($"Unexpected task error for '{mod.Name}' ({mod.SteamId}): {ex.Message}");
-                         Debug.WriteLine($"[CheckModForUpdateAsync Task] Error for {mod.Name} ({mod.SteamId}): {ex}");
+                         errorMessages.Add($"Unexpected task error for '{mod.DisplayName}' ({mod.SteamId}): {ex.Message}");
+                         Debug.WriteLine($"[CheckModForUpdateAsync Task] Error for {mod.DisplayName} ({mod.SteamId}): {ex}");
                     }
                     finally
                     {
@@ -122,14 +122,14 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             }
             catch (OperationCanceledException)
             {
-                Debug.WriteLine($"[CheckModForUpdateAsync] API call cancelled for {mod.Name} ({mod.SteamId}).");
+                Debug.WriteLine($"[CheckModForUpdateAsync] API call cancelled for {mod.DisplayName} ({mod.SteamId}).");
                 throw;
             }
             catch (Exception ex)
             {
                 result.IncrementErrorsEncountered();
                 string errorDescription = SteamApiResultHelper.GetDescription((int)SteamApiResultCode.FileNotFound);
-                errorMessages.Add($"API Error for '{mod.Name}' ({mod.SteamId}): {errorDescription} (Details not returned in successful response)");
+                errorMessages.Add($"API Error for '{mod.DisplayName}' ({mod.SteamId}): {errorDescription} (Details not returned in successful response)");
                 Debug.WriteLine($"Error during API call for {mod.SteamId}: {ex}");
                 return;
             }
@@ -139,7 +139,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             if (apiResponse?.Response?.PublishedFileDetails == null || !apiResponse.Response.PublishedFileDetails.Any())
             {
                 result.IncrementErrorsEncountered();
-                errorMessages.Add($"No details returned for '{mod.Name}' ({mod.SteamId}). Mod might be removed or hidden.");
+                errorMessages.Add($"No details returned for '{mod.DisplayName}' ({mod.SteamId}). Mod might be removed or hidden.");
                 return;
             }
 
@@ -149,7 +149,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             {
                 result.IncrementErrorsEncountered();
                 string errorDescription = SteamApiResultHelper.GetDescription(details.Result);
-                errorMessages.Add($"Mod '{mod.Name}' ({mod.SteamId}) - Code {details.Result}: {errorDescription}");
+                errorMessages.Add($"Mod '{mod.DisplayName}' ({mod.SteamId}) - Code {details.Result}: {errorDescription}");
                 return;
             }
 
@@ -162,14 +162,14 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
             if (string.IsNullOrWhiteSpace(mod.UpdateDate))
             {
-                Debug.WriteLine($"Skipping update check for '{mod.Name}' ({mod.SteamId}) due to missing local UpdateDate.");
+                Debug.WriteLine($"Skipping update check for '{mod.DisplayName}' ({mod.SteamId}) due to missing local UpdateDate.");
                 return;
             }
 
             if (!TryParseLocalDate(mod.UpdateDate, out DateTime localUpdateTimeUtc))
             {
                 result.IncrementErrorsEncountered();
-                errorMessages.Add($"Could not parse local date '{mod.UpdateDate}' for mod '{mod.Name}' ({mod.SteamId}). Format expected: '{LocalDateFormat}'.");
+                errorMessages.Add($"Could not parse local date '{mod.UpdateDate}' for mod '{mod.DisplayName}' ({mod.SteamId}). Format expected: '{LocalDateFormat}'.");
                 return;
             }
 
@@ -189,7 +189,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
                 var modInfo = new ModInfoDto
                 {
-                    Name = details.Title ?? mod.Name,
+                    Name = details.Title ?? mod.DisplayName,
                     SteamId = mod.SteamId,
                     Url = $"https://steamcommunity.com/sharedfiles/filedetails/?id={mod.SteamId}",
                     PublishDate = apiUpdateTimeOffset.ToString("d MMM, yyyy @ h:mmtt", CultureInfo.InvariantCulture),
@@ -205,7 +205,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 catch (Exception ex)
                 {
                      result.IncrementErrorsEncountered();
-                     errorMessages.Add($"Failed to add updated mod '{mod.Name}' ({mod.SteamId}) to queue: {ex.Message}");
+                     errorMessages.Add($"Failed to add updated mod '{mod.DisplayName}' ({mod.SteamId}) to queue: {ex.Message}");
                      Debug.WriteLine($"Error adding mod {mod.SteamId} to queue: {ex}");
                 }
             }
