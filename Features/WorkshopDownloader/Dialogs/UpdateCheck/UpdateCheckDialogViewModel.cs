@@ -193,6 +193,7 @@ namespace RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck
         }
 
         public string Name => ModItem.Name ?? "Unknown";
+        public string DisplayName => ModItem.DisplayName ?? ModItem.Name ?? "Unknown";
         public string PackageId => ModItem.PackageId ?? "Unknown";
         public string SteamId => ModItem.SteamId ?? "";
         public string LocalUpdateDate => ModItem.UpdateDate ?? "N/A";

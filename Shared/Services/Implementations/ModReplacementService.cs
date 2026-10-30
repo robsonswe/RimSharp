@@ -200,6 +200,39 @@ namespace RimSharp.Shared.Services.Implementations
             var replacementsPath = Path.Combine(utiModPath, UseThisInsteadReplacementsSubFolder);
             if (!Directory.Exists(replacementsPath))
             {
+                // Fallback: some installations keep replacements.json directly in mod folder
+                var jsonPath = Path.Combine(utiModPath, "replacements.json");
+                if (File.Exists(jsonPath))
+                {
+                    try
+                    {
+                        var jsonText = File.ReadAllText(jsonPath);
+                        using var doc = JsonDocument.Parse(jsonText);
+                        if (doc.RootElement.TryGetProperty("rules", out var rules))
+                        {
+                            foreach (var rule in rules.EnumerateArray())
+                            {
+                                var info = new ModReplacementInfo
+                                {
+                                    SteamId = rule.GetProperty("oldWorkshopId").GetString() ?? string.Empty,
+                                    ReplacementSteamId = rule.GetProperty("newWorkshopId").GetString() ?? string.Empty,
+                                    Author = rule.GetProperty("oldAuthor").GetString() ?? string.Empty,
+                                    ReplacementAuthor = rule.GetProperty("newAuthor").GetString() ?? string.Empty,
+                                    ModId = rule.GetProperty("oldPackageId").GetString() ?? string.Empty,
+                                    ReplacementModId = rule.GetProperty("newPackageId").GetString() ?? string.Empty
+                                };
+                                targetDictionary.TryAdd(info.SteamId.ToLowerInvariant(), info);
+                                count++;
+                            }
+                        }
+                        _logger.LogInfo($"Loaded {count} replacements from '{jsonPath}'.", nameof(ModReplacementService));
+                        return count;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning($"Failed to parse replacements JSON '{jsonPath}': {ex.Message}");
+                    }
+                }
                 _logger.LogWarning($"Replacements subfolder '{UseThisInsteadReplacementsSubFolder}' not found within '{utiModPath}'. Skipping 'Use This Instead' data.", nameof(ModReplacementService));
                 return 0;
             }
