@@ -361,5 +361,59 @@ namespace RimSharp.Tests.Features.ModManager.Components.ModDetails
             Assert.True(w is > 280 and <= 320,
                 $"313-wide banner rendered at {w} [{bmpDump}] — upscaled or wrong sizing");
         }
+
+		[AvaloniaFact]
+		public void VoidImgTag_DoesNotSwallowSubsequentContent()
+		{
+			// Sintaxe exata do EPOE Retexture: [img=url] sem [/img] no início
+			const string epoeBbCode =
+				"[img=https://i.imgur.com/tE28cZ7.gif]\r\n\r\n" +
+				"[h1][b]EPOE Retexture[/b][/h1]\r\n" +
+				"[h3]· Safe to add or remove from an existing save[/h3]\r\n\r\n" +
+				"[img=https://seobongzu.com/assets/images/rimworld/EPOE1.webp]\r\n" +
+				"[h2]Replaces EPOE and RBSE textures[/h2]\r\n" +
+				"[url=https://buymeacoffee.com/seobongzu][img]https://i.imgur.com/t7IGD5Y.png[/img][/url]";
+
+			var viewer = CreateViewer(epoeBbCode);
+
+			// 1. Títulos e cabeçalhos devem existir no visual
+			var textBlocks = viewer.GetVisualDescendants().OfType<TextBlock>().ToList();
+			Assert.Contains(textBlocks, tb => tb.Text?.Contains("EPOE Retexture") == true || 
+											 tb.Inlines?.Any(i => (i as Run)?.Text?.Contains("EPOE Retexture") == true) == true);
+			Assert.Contains(textBlocks, tb => tb.Text?.Contains("Replaces EPOE and RBSE") == true ||
+											 tb.Inlines?.Any(i => (i as Run)?.Text?.Contains("Replaces EPOE and RBSE") == true) == true);
+
+			// 2. Não pode existir nenhum texto órfão "[/url]"
+			var rawText = string.Join(" ", textBlocks.Select(tb => tb.Text ?? string.Join("", tb.Inlines?.OfType<Run>().Select(r => r.Text) ?? Array.Empty<string>())));
+			Assert.DoesNotContain("[/url]", rawText);
+		}
+
+		[AvaloniaFact]
+		public void GravshipStorage_RendersHeadingsTableAndBanners()
+		{
+			// Sintaxe do Gravship Storage com tabela e múltiplas [img=url]
+			const string gravshipBbCode =
+				"[img]https://i.imgur.com/tE28cZ7.gif[/img]\r\n\r\n" +
+				"[h1][b]Gravship Storage[/b][/h1]\r\n" +
+				"[img=https://seobongzu.com/assets/images/rimworld/GravshipStorage1.webp]\r\n" +
+				"[table]\r\n[tr][th]Name[/th][th]Cost[/th][/tr]\r\n[tr][td]Shelf[/td][td]Steel 10[/td][/tr]\r\n[/table]\r\n" +
+				"[url=https://buymeacoffee.com/seobongzu][img]https://i.imgur.com/t7IGD5Y.png[/img][/url]";
+
+			var viewer = CreateViewer(gravshipBbCode);
+
+			// Tabela deve ser instanciada como Grid com classe BbTable
+			var table = viewer.GetVisualDescendants().OfType<Grid>().FirstOrDefault(g => g.Classes.Contains("BbTable"));
+			Assert.NotNull(table);
+
+			// Título preservado
+			var textBlocks = viewer.GetVisualDescendants().OfType<TextBlock>().ToList();
+			Assert.Contains(textBlocks, tb => tb.Text?.Contains("Gravship Storage") == true || 
+											 tb.Inlines?.Any(i => (i as Run)?.Text?.Contains("Gravship Storage") == true) == true);
+
+			// [/url] não pode aparecer solto
+			var rawText = string.Join(" ", textBlocks.Select(tb => tb.Text ?? string.Join("", tb.Inlines?.OfType<Run>().Select(r => r.Text) ?? Array.Empty<string>())));
+			Assert.DoesNotContain("[/url]", rawText);
+		}
+
     }
 }

@@ -119,17 +119,17 @@ namespace RimSharp.Tests.Features.VramAnalysis.ViewModels
             loaded.Should().BeTrue("Mods should be loaded within timeout");
 
             // Initial State: Ascending ("A Mod", "Z Mod")
-            vm.VramMods.First().Mod.Name.Should().Be("A Mod");
+            vm.VramMods.First().Mod.DisplayName.Should().Be("A Mod");
 
-            vm.SortCommand.Execute("Mod.Name"); 
+            vm.SortCommand.Execute("Mod.DisplayName"); 
 
             // Assert - Descending ("Z Mod", "A Mod")
-            vm.VramMods.First().Mod.Name.Should().Be("Z Mod");
+            vm.VramMods.First().Mod.DisplayName.Should().Be("Z Mod");
 
-            vm.SortCommand.Execute("Mod.Name");
+            vm.SortCommand.Execute("Mod.DisplayName");
 
             // Assert - Ascending ("A Mod", "Z Mod")
-            vm.VramMods.First().Mod.Name.Should().Be("A Mod");
+            vm.VramMods.First().Mod.DisplayName.Should().Be("A Mod");
         }
 
         [Fact]

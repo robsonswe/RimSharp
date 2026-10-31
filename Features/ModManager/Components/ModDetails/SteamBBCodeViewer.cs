@@ -13,10 +13,13 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
+using SkiaSharp;
 
 namespace RimSharp.Features.ModManager.Components.ModDetails
 {
@@ -40,7 +43,7 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             new(@"\[(/?)([A-Za-z0-9_*]+)(?:=([^\]]*)|(\s+[^\]]*))?\]", RegexOptions.Compiled);
 
         private static readonly HashSet<string> KnownInlineTags = new(StringComparer.OrdinalIgnoreCase)
-            { "b", "i", "u", "s", "strike", "url", "img", "previewimg", "previewicon", "emoticon" };
+            { "b", "i", "u", "s", "strike", "url", "img", "previewimg", "previewicon", "emoticon", "color", "spoiler" };
 
         private static readonly HttpClient s_http = new()
         {
@@ -60,7 +63,6 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
 
             Children.Clear();
             
-            // Normaliza quebras de linha Windows/Unix e espaços insecáveis (\u00A0)
             _src = (Text ?? string.Empty)
                 .Replace("\r\n", "\n")
                 .Replace('\r', '\n')
@@ -74,6 +76,8 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
         private void RenderBlocks(Controls target, string? stopTag, TextAlignment align)
         {
             var literal = new StringBuilder();
+            var ct = _imageCts?.Token ?? CancellationToken.None;
+
             while (_pos < _src.Length)
             {
                 var m = s_tagRegex.Match(_src, _pos);
@@ -94,7 +98,7 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                     if (m.Index > _pos) literal.Append(_src, _pos, m.Index - _pos);
                     _pos = m.Index;
 
-                    if (tag is "hr" or "*")
+                    if (tag is "hr" or "*" or "img" or "previewimg" or "previewicon")
                     {
                         _pos = posAfterTag;
                         continue;
@@ -120,6 +124,9 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                     case "h1":
                     case "h2":
                     case "h3":
+                    case "h4":
+                    case "h5":
+                    case "h6":
                     {
                         FlushLiteral(target, literal, align);
                         var content = ConsumeUntilClose(tag, balanced: false);
@@ -135,41 +142,57 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                     case "previewimg":
                     case "previewicon":
                     {
-                        // Imagens no nível raiz são tratadas como blocos para não ficarem inline com o texto
                         FlushLiteral(target, literal, align);
-                        var content = ConsumeUntilClose(tag, balanced: false);
+                        string content = string.Empty;
+
+                        if (string.IsNullOrWhiteSpace(param))
+                        {
+                            content = ConsumeImageBody(tag);
+                        }
+                        else
+                        {
+                            var closeMatch = Regex.Match(_src.Substring(_pos), @"^\s*\[/\s*" + Regex.Escape(tag) + @"\s*\]", RegexOptions.IgnoreCase);
+                            if (closeMatch.Success)
+                            {
+                                _pos += closeMatch.Length;
+                            }
+                        }
+
                         var url = ExtractImageUrl(tag, param, content);
                         if (!string.IsNullOrWhiteSpace(url) && IsSafeUrl(url))
                         {
-                            target.Add(BuildImageControl(url, align));
+                            AddImageBlock(target, BuildImageControl(url, align, linkUrl: null, ct));
                         }
                         break;
                     }
                     case "url":
                     {
-                        // Se for um link envolvendo uma imagem [url=...][img]...[/img][/url], tratamos como bloco
                         var savedPos = _pos;
                         var content = ConsumeUntilClose("url", balanced: false);
                         var trimmedContent = content.Trim();
-                        if (trimmedContent.StartsWith("[img", StringComparison.OrdinalIgnoreCase) &&
-                            trimmedContent.EndsWith("[/img]", StringComparison.OrdinalIgnoreCase))
+                        var rawUrl = !string.IsNullOrWhiteSpace(param) ? param : "";
+                        var linkUrl = rawUrl.Trim().TrimStart('=').Trim('"', '\'', ' ');
+
+                        // 1. Caso seja imagem única: [url=...][img]...[/img][/url]
+                        var singleImgUrl = TryExtractImageUrlFromBBCode(trimmedContent);
+                        if (!string.IsNullOrWhiteSpace(singleImgUrl))
                         {
                             FlushLiteral(target, literal, align);
-                            var rawUrl = !string.IsNullOrWhiteSpace(param) ? param : "";
-                            var linkUrl = rawUrl.Trim().TrimStart('=').Trim('"', '\'', ' ');
-                            var imgMatch = Regex.Match(trimmedContent, @"\[img\s*\](.*?)\[/img\s*\]", RegexOptions.IgnoreCase | RegexOptions.Singleline);
-                            if (imgMatch.Success)
-                            {
-                                var imgUrl = EnsureHttpUrl(imgMatch.Groups[1].Value.Trim());
-                                if (IsSafeUrl(imgUrl))
-                                {
-                                    target.Add(BuildImageControl(imgUrl, align, linkUrl: linkUrl));
-                                    break;
-                                }
-                            }
+                            AddImageBlock(target, BuildImageControl(singleImgUrl, align, linkUrl: linkUrl, ct));
+                            break;
                         }
 
-                        // Caso contrário é um link de texto inline normal; continua no literal
+                        // 2. Caso contenha elementos de bloco (h1..h6 e/ou imagens):
+                        // Ex: [url=...][h1]Mod Discord[/h1][img]...[/img][/url]
+                        // ou [url=...][h2]Vanilla Genes Rebalanced[/h2][/url]
+                        if (Regex.IsMatch(trimmedContent, @"\[(h[1-6]|img|previewimg|previewicon)\b", RegexOptions.IgnoreCase))
+                        {
+                            FlushLiteral(target, literal, align);
+                            RenderLinkedBlockContent(target, trimmedContent, linkUrl, align, ct);
+                            break;
+                        }
+
+                        // 3. Caso contrário, é um link inline normal dentro de texto corrido
                         _pos = savedPos;
                         literal.Append(m.Value);
                         break;
@@ -183,7 +206,8 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                     {
                         FlushLiteral(target, literal, align);
                         var content = ConsumeUntilClose(tag, balanced: true);
-                        target.Add(BuildList(tag == "olist", content, align));
+                        var isOrdered = tag == "olist" || (!string.IsNullOrWhiteSpace(param) && param.Trim().StartsWith("1"));
+                        target.Add(BuildList(isOrdered, content, align));
                         break;
                     }
                     case "quote":
@@ -214,10 +238,15 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                         var content = ConsumeUntilClose(tag, balanced: true);
                         var stack = new StackPanel();
                         RenderSubstringInto(stack.Children, content, null, align);
+
+                        var title = !string.IsNullOrWhiteSpace(param)
+                            ? $"Spoiler: {param.Trim().TrimStart('=').Trim('"', '\'', ' ')}"
+                            : "Spoiler";
+
                         target.Add(new Expander
                         {
                             Classes = { "BbSpoiler" },
-                            Header = "Spoiler",
+                            Header = title,
                             Content = stack
                         });
                         break;
@@ -271,6 +300,150 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             FlushLiteral(target, literal, align);
         }
 
+        private void RenderLinkedBlockContent(Controls target, string content, string linkUrl, TextAlignment align, CancellationToken ct)
+        {
+            var pos = 0;
+            while (pos < content.Length)
+            {
+                var m = s_tagRegex.Match(content, pos);
+                if (!m.Success)
+                {
+                    var remaining = content.Substring(pos).Trim();
+                    if (remaining.Length > 0)
+                    {
+                        target.Add(BuildLink(linkUrl, remaining));
+                    }
+                    break;
+                }
+
+                if (m.Index > pos)
+                {
+                    var textBefore = content.Substring(pos, m.Index - pos).Trim();
+                    if (textBefore.Length > 0)
+                    {
+                        target.Add(BuildLink(linkUrl, textBefore));
+                    }
+                }
+
+                pos = m.Index + m.Length;
+                var tag = m.Groups[2].Value.ToLowerInvariant();
+                var isClose = m.Groups[1].Value == "/";
+                var param = m.Groups[3].Success ? m.Groups[3].Value : m.Groups[4].Value;
+
+                if (isClose) continue;
+
+                switch (tag)
+                {
+                    case "h1":
+                    case "h2":
+                    case "h3":
+                    case "h4":
+                    case "h5":
+                    case "h6":
+                    {
+                        var closeTag = "[/" + tag + "]";
+                        var closeIdx = content.IndexOf(closeTag, pos, StringComparison.OrdinalIgnoreCase);
+                        var inner = closeIdx >= 0 ? content.Substring(pos, closeIdx - pos) : content.Substring(pos);
+                        pos = closeIdx >= 0 ? closeIdx + closeTag.Length : content.Length;
+
+                        var heading = BuildLinkedHeading(tag, inner.Trim(), linkUrl, align);
+                        if (heading != null) target.Add(heading);
+                        break;
+                    }
+                    case "img":
+                    case "previewimg":
+                    case "previewicon":
+                    {
+                        string inner = string.Empty;
+                        if (string.IsNullOrWhiteSpace(param))
+                        {
+                            var closeTag = "[/" + tag + "]";
+                            var closeIdx = content.IndexOf(closeTag, pos, StringComparison.OrdinalIgnoreCase);
+                            inner = closeIdx >= 0 ? content.Substring(pos, closeIdx - pos) : content.Substring(pos);
+                            pos = closeIdx >= 0 ? closeIdx + closeTag.Length : content.Length;
+                        }
+                        else
+                        {
+                            var closeMatch = Regex.Match(content.Substring(pos), @"^\s*\[/\s*" + Regex.Escape(tag) + @"\s*\]", RegexOptions.IgnoreCase);
+                            if (closeMatch.Success) pos += closeMatch.Length;
+                        }
+
+                        var imgUrl = ExtractImageUrl(tag, param, inner);
+                        if (!string.IsNullOrWhiteSpace(imgUrl) && IsSafeUrl(imgUrl))
+                        {
+                            AddImageBlock(target, BuildImageControl(imgUrl, align, linkUrl: linkUrl, ct));
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        private static Control BuildLinkedHeading(string tag, string text, string url, TextAlignment align)
+        {
+            var label = new TextBlock
+            {
+                Classes = { "BbParagraph", tag, "BbLink" },
+                Text = text,
+                TextAlignment = align,
+            };
+
+            var button = new Button
+            {
+                Classes = { "BbLink" },
+                Content = label,
+                Cursor = new Cursor(StandardCursorType.Hand),
+            };
+            button.Click += (_, _) => OpenExternal(url);
+            ToolTip.SetTip(button, url);
+            return button;
+        }
+
+        private static void AddImageBlock(Controls target, Control imageControl)
+        {
+            // Se o último item for um WrapPanel de imagens (sem quebra de linha entre elas),
+            // posiciona lado a lado na mesma linha horizontal (como os badges de Discord e Ko-fi).
+            if (target.Count > 0 && target[target.Count - 1] is WrapPanel existingWrap)
+            {
+                existingWrap.Children.Add(imageControl);
+                return;
+            }
+
+            var wrap = new WrapPanel
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal,
+            };
+            wrap.Children.Add(imageControl);
+            target.Add(wrap);
+        }
+
+        private string ConsumeImageBody(string tag)
+        {
+            var closeTag = "[/" + tag + "]";
+            var nextClose = _src.IndexOf(closeTag, _pos, StringComparison.OrdinalIgnoreCase);
+            if (nextClose >= 0)
+            {
+                var candidate = _src.Substring(_pos, nextClose - _pos);
+                if (!candidate.Contains("\n\n") && !candidate.Contains("[h1") && !candidate.Contains("[h2") && !candidate.Contains("[table"))
+                {
+                    _pos = nextClose + closeTag.Length;
+                    return candidate;
+                }
+            }
+
+            var newlineIdx = _src.IndexOf('\n', _pos);
+            if (newlineIdx >= 0)
+            {
+                var line = _src.Substring(_pos, newlineIdx - _pos);
+                _pos = newlineIdx;
+                return line.Trim();
+            }
+
+            var rest = _src.Substring(_pos);
+            _pos = _src.Length;
+            return rest.Trim();
+        }
+
         private string ConsumeUntilClose(string tag, bool balanced)
         {
             int search = _pos, depth = 1;
@@ -322,7 +495,6 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
         {
             var listPanel = new StackPanel();
 
-            // Captura qualquer cabeçalho ou texto que esteja antes do primeiro [*]
             var firstBullet = content.IndexOf("[*]", StringComparison.OrdinalIgnoreCase);
             if (firstBullet > 0)
             {
@@ -376,12 +548,11 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                 ? (IEnumerable<string>)trMatches.Cast<Match>().Select(m => m.Groups[1].Value)
                 : SplitTopLevel(content, "[tr]");
 
-            foreach (var rawRow in rows)
-            {
-                var rowText = rawRow.Replace("[/tr]", string.Empty, StringComparison.OrdinalIgnoreCase).Trim('\n');
-                if (string.IsNullOrWhiteSpace(rowText)) continue;
+            var rowList = rows.Where(r => !string.IsNullOrWhiteSpace(r.Replace("[/tr]", string.Empty, StringComparison.OrdinalIgnoreCase))).ToList();
 
-                var rowIndex = grid.RowDefinitions.Count;
+            for (var rowIndex = 0; rowIndex < rowList.Count; rowIndex++)
+            {
+                var rowText = rowList[rowIndex].Replace("[/tr]", string.Empty, StringComparison.OrdinalIgnoreCase).Trim('\n');
                 grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
                 var cellMatches = Regex.Matches(rowText, @"\[(td|th)\](.*?)\[/\1\]", RegexOptions.Singleline | RegexOptions.IgnoreCase);
@@ -394,20 +565,10 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                         var isHeader = cellMatch.Groups[1].Value.Equals("th", StringComparison.OrdinalIgnoreCase);
                         var cellContent = cellMatch.Groups[2].Value.Trim('\n');
 
-                        var cellPanel = new StackPanel { Margin = new Thickness(0, 0, 12, 4) };
-                        RenderSubstringInto(cellPanel.Children, cellContent, null, align);
-
-                        if (isHeader)
-                        {
-                            foreach (var child in cellPanel.Children)
-                            {
-                                if (child is TextBlock tb) tb.FontWeight = FontWeight.Bold;
-                            }
-                        }
-
-                        Grid.SetRow(cellPanel, rowIndex);
-                        Grid.SetColumn(cellPanel, col++);
-                        grid.Children.Add(cellPanel);
+                        var cellBorder = CreateCellBorder(cellContent, isHeader, align);
+                        Grid.SetRow(cellBorder, rowIndex);
+                        Grid.SetColumn(cellBorder, col++);
+                        grid.Children.Add(cellBorder);
                     }
                 }
                 else
@@ -417,22 +578,97 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                         var cell = rawCell.Trim('\n');
                         if (cell.Length == 0) continue;
 
-                        var cellPanel = new StackPanel { Margin = new Thickness(0, 0, 12, 4) };
-                        RenderSubstringInto(cellPanel.Children, cell, null, align);
-                        Grid.SetRow(cellPanel, rowIndex);
-                        Grid.SetColumn(cellPanel, col++);
-                        grid.Children.Add(cellPanel);
+                        var cellBorder = CreateCellBorder(cell, isHeader: false, align);
+                        Grid.SetRow(cellBorder, rowIndex);
+                        Grid.SetColumn(cellBorder, col++);
+                        grid.Children.Add(cellBorder);
                     }
                 }
 
                 maxCols = Math.Max(maxCols, col);
             }
 
+            if (maxCols == 0) return new Panel();
+
+            var colMaxChars = new int[maxCols];
+            foreach (var rowText in rowList)
+            {
+                var cellMatches = Regex.Matches(rowText, @"\[(td|th)\](.*?)\[/\1\]", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+                for (var colIdx = 0; colIdx < cellMatches.Count && colIdx < maxCols; colIdx++)
+                {
+                    var len = cellMatches[colIdx].Groups[2].Value.Trim().Length;
+                    colMaxChars[colIdx] = Math.Max(colMaxChars[colIdx], len);
+                }
+            }
+
             for (var c = 0; c < maxCols; c++)
             {
-                grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+                if (maxCols <= 2)
+                {
+                    grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+                }
+                else if (maxCols < 6)
+                {
+                    var isShortCol = colMaxChars[c] > 0 && colMaxChars[c] <= 9;
+                    grid.ColumnDefinitions.Add(new ColumnDefinition(isShortCol ? GridLength.Auto : GridLength.Star));
+                }
+                else
+                {
+                    grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+                }
             }
-            return grid;
+
+            foreach (var child in grid.Children)
+            {
+                if (child is Border b)
+                {
+                    var r = Grid.GetRow(b);
+                    var c = Grid.GetColumn(b);
+                    var rightBorder = (c == maxCols - 1) ? 0 : 1;
+                    var bottomBorder = (r == rowList.Count - 1) ? 0 : 1;
+                    b.BorderThickness = new Thickness(0, 0, rightBorder, bottomBorder);
+                }
+            }
+
+            var tableContainer = new Border
+            {
+                Classes = { "BbTableContainer" },
+                Child = grid
+            };
+
+            if (maxCols >= 6)
+            {
+                return new ScrollViewer
+                {
+                    Classes = { "BbTableScroll" },
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                    Content = tableContainer
+                };
+            }
+
+            return tableContainer;
+        }
+
+        private Border CreateCellBorder(string content, bool isHeader, TextAlignment align)
+        {
+            var cellPanel = new StackPanel();
+            RenderSubstringInto(cellPanel.Children, content, null, align);
+
+            foreach (var child in cellPanel.Children)
+            {
+                if (child is TextBlock tb)
+                {
+                    if (isHeader) tb.FontWeight = FontWeight.Bold;
+                    tb.TextWrapping = TextWrapping.Wrap;
+                }
+            }
+
+            return new Border
+            {
+                Classes = { isHeader ? "BbTableHeader" : "BbTableCell" },
+                Child = cellPanel
+            };
         }
 
         private void RenderSubstringInto(Controls target, string content, string? stopTag, TextAlignment align)
@@ -474,7 +710,6 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             var raw = literal.ToString();
             literal.Clear();
 
-            // Separa parágrafos por linhas em branco consecutivas (\n\n+)
             var paragraphs = Regex.Split(raw, @"\n{2,}");
             foreach (var p in paragraphs)
             {
@@ -512,6 +747,7 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             var inlines = new List<Inline>();
             var pending = new StringBuilder();
             var i = 0;
+            var ct = _imageCts?.Token ?? CancellationToken.None;
 
             while (i < text.Length)
             {
@@ -544,7 +780,6 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                     case "s":
                     case "strike":
                     {
-                        // IMPORTANTE: Dá flush no texto acumulado antes da tag formatada!
                         if (pending.Length > 0)
                         {
                             AddRun(inlines, pending.ToString(), style);
@@ -564,6 +799,52 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                         i = next;
                         break;
                     }
+                    case "color":
+                    {
+                        if (pending.Length > 0)
+                        {
+                            AddRun(inlines, pending.ToString(), style);
+                            pending.Clear();
+                        }
+
+                        var (inner, next) = FindInlineClose(text, i, tag);
+                        var innerStyle = style.Clone();
+
+                        if (!string.IsNullOrWhiteSpace(param))
+                        {
+                            var colorStr = param.Trim().TrimStart('=').Trim('"', '\'', ' ');
+                            if (!colorStr.StartsWith("#") && (colorStr.Length == 6 || colorStr.Length == 8) && IsHexString(colorStr))
+                            {
+                                colorStr = "#" + colorStr;
+                            }
+
+                            if (Color.TryParse(colorStr, out var parsedColor))
+                            {
+                                innerStyle.Foreground = new SolidColorBrush(parsedColor);
+                            }
+                        }
+
+                        foreach (var inline in ParseInline(inner, innerStyle, align)) inlines.Add(inline);
+                        i = next;
+                        break;
+                    }
+                    case "spoiler":
+                    {
+                        if (pending.Length > 0)
+                        {
+                            AddRun(inlines, pending.ToString(), style);
+                            pending.Clear();
+                        }
+
+                        var (inner, next) = FindInlineClose(text, i, tag);
+                        inlines.Add(new InlineUIContainer
+                        {
+                            Child = BuildInlineSpoiler(inner, style),
+                            BaselineAlignment = BaselineAlignment.Center
+                        });
+                        i = next;
+                        break;
+                    }
                     case "url":
                     {
                         if (pending.Length > 0)
@@ -580,7 +861,7 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                         {
                             inlines.Add(new InlineUIContainer
                             {
-                                Child = BuildLinkedUrlContent(url, inner, align, style),
+                                Child = BuildLinkedUrlContent(url, inner, align, style, ct),
                                 BaselineAlignment = BaselineAlignment.TextBottom,
                             });
                         }
@@ -601,21 +882,35 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                             pending.Clear();
                         }
 
-                        var (inner, next) = FindInlineClose(text, i, tag);
+                        string inner = string.Empty;
+                        if (string.IsNullOrWhiteSpace(param))
+                        {
+                            var (closeInner, next) = FindInlineClose(text, i, tag);
+                            inner = closeInner;
+                            i = next;
+                        }
+                        else
+                        {
+                            var closeMatch = Regex.Match(text.Substring(i), @"^\s*\[/\s*" + Regex.Escape(tag) + @"\s*\]", RegexOptions.IgnoreCase);
+                            if (closeMatch.Success)
+                            {
+                                i += closeMatch.Length;
+                            }
+                        }
+
                         var url = ExtractImageUrl(tag, param, inner);
 
                         if (!string.IsNullOrWhiteSpace(url) && IsSafeUrl(url))
                         {
                             inlines.Add(new InlineUIContainer
                             {
-                                Child = BuildImageControl(url, align)
+                                Child = BuildImageControl(url, align, linkUrl: null, ct)
                             });
                         }
-                        else
+                        else if (!string.IsNullOrEmpty(inner))
                         {
                             pending.Append(inner);
                         }
-                        i = next;
                         break;
                     }
                     case "emoticon":
@@ -631,14 +926,77 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             return inlines;
         }
 
+        private static Control BuildInlineSpoiler(string text, BBStyle style)
+        {
+            var tb = new TextBlock
+            {
+                Text = text,
+                Classes = { "BbSpoilerText" },
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            };
+            if (style.Bold) tb.FontWeight = FontWeight.Bold;
+            if (style.Italic) tb.FontStyle = FontStyle.Italic;
+            if (style.Foreground != null) tb.Foreground = style.Foreground;
+
+            var border = new Border
+            {
+                Classes = { "BbSpoilerInline" },
+                Child = tb,
+                Cursor = new Cursor(StandardCursorType.Hand)
+            };
+
+            var isRevealed = false;
+            border.PointerPressed += (_, e) =>
+            {
+                isRevealed = !isRevealed;
+                if (isRevealed) border.Classes.Add("revealed");
+                else border.Classes.Remove("revealed");
+                e.Handled = true;
+            };
+
+            ToolTip.SetTip(border, "Click to reveal spoiler");
+            return border;
+        }
+
+        private static bool IsHexString(string text)
+        {
+            foreach (var c in text)
+            {
+                if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
+                    return false;
+            }
+            return true;
+        }
+
         private static string ExtractImageUrl(string tag, string param, string inner)
         {
-            if (tag == "img") return EnsureHttpUrl(inner.Trim());
-
             var raw = !string.IsNullOrWhiteSpace(param) ? param : inner;
+            raw = raw.Trim().TrimStart('=').Trim('"', '\'', ' ');
+
+            if (tag.Equals("img", StringComparison.OrdinalIgnoreCase))
+            {
+                return EnsureHttpUrl(raw);
+            }
+
             var parts = raw.Split(';');
             var target = parts.Length > 2 ? parts[2] : parts[0];
             return EnsureHttpUrl(target.Trim('=', '"', '\'', ' '));
+        }
+
+        private static string? TryExtractImageUrlFromBBCode(string text)
+        {
+            text = text.Trim();
+            var match = Regex.Match(
+                text,
+                @"^\[(img|previewimg|previewicon)(?:=([^\]]*)|(\s+[^\]]*))?\](.*?)(\[/\1\])?$",
+                RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            if (!match.Success) return null;
+
+            var tag = match.Groups[1].Value;
+            var param = match.Groups[2].Success ? match.Groups[2].Value : match.Groups[3].Value;
+            var inner = match.Groups[4].Value;
+            var url = ExtractImageUrl(tag, param, inner);
+            return IsSafeUrl(url) ? url : null;
         }
 
         private static (string content, int next) FindInlineClose(string text, int start, string tag)
@@ -712,6 +1070,7 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             var run = new Run(text);
             if (style.Bold) run.FontWeight = FontWeight.Bold;
             if (style.Italic) run.FontStyle = FontStyle.Italic;
+            if (style.Foreground != null) run.Foreground = style.Foreground;
             if (style.Underline || style.Strike)
             {
                 var decorations = new TextDecorationCollection();
@@ -734,6 +1093,7 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             public bool Italic;
             public bool Underline;
             public bool Strike;
+            public IBrush? Foreground;
             public BBStyle Clone() => (BBStyle)MemberwiseClone();
         }
 
@@ -756,6 +1116,7 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             {
                 if (style.Bold) label.FontWeight = FontWeight.Bold;
                 if (style.Italic) label.FontStyle = FontStyle.Italic;
+                if (style.Foreground != null) label.Foreground = style.Foreground;
             }
 
             var button = new Button
@@ -764,26 +1125,19 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                 Content = label,
                 Cursor = new Cursor(StandardCursorType.Hand),
             };
-            button.Click += (_, _) => OpenExternal(button, url);
+            button.Click += (_, _) => OpenExternal(url);
             ToolTip.SetTip(button, url);
             return button;
         }
 
-        private static Control BuildLinkedUrlContent(string url, string innerContent, TextAlignment align, BBStyle style)
+        private static Control BuildLinkedUrlContent(string url, string innerContent, TextAlignment align, BBStyle style, CancellationToken ct)
         {
             var finalUrl = EnsureHttpUrl(url);
 
-            var imgMatch = Regex.Match(
-                innerContent,
-                @"\[img\s*\](.*?)\[/img\s*\]",
-                RegexOptions.IgnoreCase | RegexOptions.Singleline);
-            if (imgMatch.Success)
+            var imgUrl = TryExtractImageUrlFromBBCode(innerContent);
+            if (!string.IsNullOrWhiteSpace(imgUrl))
             {
-                var imgUrl = EnsureHttpUrl(imgMatch.Groups[1].Value.Trim());
-                if (IsSafeUrl(imgUrl))
-                {
-                    return BuildImageControl(imgUrl, align, linkUrl: finalUrl);
-                }
+                return BuildImageControl(imgUrl, align, linkUrl: finalUrl, ct: ct);
             }
 
             var display = Regex
@@ -806,11 +1160,11 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             return url;
         }
 
-        private static Control BuildImageControl(string url, TextAlignment align, string? linkUrl = null)
+        private static Control BuildImageControl(string url, TextAlignment align, string? linkUrl = null, CancellationToken ct = default)
         {
             var panel = new Panel
             {
-                Margin = new Thickness(0, 4, 0, 8),
+                Margin = new Thickness(0, 4, 8, 8),
                 HorizontalAlignment = align == TextAlignment.Center ? Avalonia.Layout.HorizontalAlignment.Center
                     : align == TextAlignment.Right ? Avalonia.Layout.HorizontalAlignment.Right
                     : Avalonia.Layout.HorizontalAlignment.Left,
@@ -826,6 +1180,8 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                     : Avalonia.Layout.HorizontalAlignment.Left,
                 IsVisible = false,
             };
+
+            RenderOptions.SetBitmapInterpolationMode(img, BitmapInterpolationMode.HighQuality);
 
             var placeholder = new TextBlock
             {
@@ -844,25 +1200,53 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
                     Content = panel,
                     Cursor = new Cursor(StandardCursorType.Hand),
                 };
-                button.Click += (_, _) => OpenExternal(button, linkUrl);
+                button.Click += (_, _) => OpenExternal(linkUrl);
                 ToolTip.SetTip(button, linkUrl);
-                _ = LoadImageAsync(img, placeholder, url);
+                _ = LoadImageAsync(img, placeholder, url, ct);
                 return button;
             }
 
-            _ = LoadImageAsync(img, placeholder, url);
+            _ = LoadImageAsync(img, placeholder, url, ct);
             return panel;
         }
 
-        private static async Task LoadImageAsync(Image target, Control placeholder, string url)
+        private static async Task LoadImageAsync(Image target, Control placeholder, string url, CancellationToken ct)
         {
             byte[] bytes;
             try
             {
-                bytes = await s_http.GetByteArrayAsync(url).ConfigureAwait(false);
+                bytes = await s_http.GetByteArrayAsync(url, ct).ConfigureAwait(false);
             }
             catch
             {
+                return;
+            }
+
+            if (ct.IsCancellationRequested) return;
+
+            var animatedFrames = await Task.Run(() => DecodeAnimatedFrames(bytes), ct).ConfigureAwait(false);
+            if (ct.IsCancellationRequested) return;
+
+            if (animatedFrames != null && animatedFrames.Count > 1)
+            {
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (ct.IsCancellationRequested) return;
+
+                    var firstFrame = animatedFrames[0].Frame;
+                    var size = firstFrame.Size;
+                    if (size.Width > 0 && size.Height > 0)
+                    {
+                        target.MaxWidth = Math.Min(size.Width, 440.0);
+                        target.MaxHeight = Math.Min(size.Height, 420.0);
+                    }
+
+                    target.Source = firstFrame;
+                    target.IsVisible = true;
+                    placeholder.IsVisible = false;
+
+                    _ = PlayAnimationAsync(target, animatedFrames, ct);
+                });
                 return;
             }
 
@@ -898,6 +1282,8 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
+                if (ct.IsCancellationRequested) return;
+
                 if (source == null)
                 {
                     try
@@ -928,6 +1314,84 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             });
         }
 
+        private static List<(Bitmap Frame, int DelayMs)>? DecodeAnimatedFrames(byte[] bytes)
+        {
+            try
+            {
+                using var skData = SKData.CreateCopy(bytes);
+                using var codec = SKCodec.Create(skData);
+                if (codec == null || codec.FrameCount <= 1) return null;
+
+                var count = Math.Min(codec.FrameCount, 120);
+                var info = new SKImageInfo(codec.Info.Width, codec.Info.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+                var frames = new List<(Bitmap Frame, int DelayMs)>(count);
+                var frameInfos = codec.FrameInfo;
+
+                for (var i = 0; i < count; i++)
+                {
+                    using var frameBmp = new SKBitmap(info);
+                    frameBmp.Erase(SKColors.Empty);
+
+                    var res = codec.GetPixels(info, frameBmp.GetPixels(), new SKCodecOptions(i));
+                    if (res != SKCodecResult.Success && res != SKCodecResult.IncompleteInput)
+                    {
+                        continue;
+                    }
+
+                    using var skImage = SKImage.FromBitmap(frameBmp);
+                    using var pngData = skImage.Encode(SKEncodedImageFormat.Png, 100);
+                    if (pngData == null) continue;
+
+                    using var ms = new MemoryStream(pngData.ToArray());
+                    var avaloniaBmp = new Bitmap(ms);
+
+                    var fInfo = frameInfos != null && i < frameInfos.Length ? frameInfos[i] : default;
+                    var delay = fInfo.Duration > 10 ? fInfo.Duration : 100;
+                    frames.Add((avaloniaBmp, delay));
+                }
+
+                return frames.Count > 1 ? frames : null;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[SteamBBCode] Animated decode error: {ex.Message}");
+                return null;
+            }
+        }
+
+        private static async Task PlayAnimationAsync(Image target, List<(Bitmap Frame, int DelayMs)> frames, CancellationToken ct)
+        {
+            var index = 0;
+            while (!ct.IsCancellationRequested)
+            {
+                var (frame, delayMs) = frames[index];
+
+                try
+                {
+                    await Task.Delay(delayMs, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+
+                if (ct.IsCancellationRequested) break;
+
+                var shouldContinue = await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (ct.IsCancellationRequested || !target.IsAttachedToVisualTree())
+                        return false;
+
+                    target.Source = frame;
+                    return true;
+                }, DispatcherPriority.Normal);
+
+                if (!shouldContinue) break;
+
+                index = (index + 1) % frames.Count;
+            }
+        }
+
         private static bool LooksLikeSvg(byte[] bytes)
         {
             if (bytes.Length < 4) return false;
@@ -935,37 +1399,33 @@ namespace RimSharp.Features.ModManager.Components.ModDetails
             return head.Contains("<svg", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static async void OpenExternal(Visual visual, string url)
+        private static void OpenExternal(string url)
         {
             try
             {
-                url = EnsureHttpUrl(url);
+                url = UnwrapSteamLinkFilter(EnsureHttpUrl(url));
                 if (!IsSafeUrl(url)) return;
 
-                var topLevel = TopLevel.GetTopLevel(visual);
-                if (topLevel?.Launcher != null)
-                {
-                    await topLevel.Launcher.LaunchUriAsync(new Uri(url));
-                    return;
-                }
-
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                {
-                    Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-                }
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                {
-                    Process.Start("xdg-open", url);
-                }
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                {
-                    Process.Start("open", url);
-                }
+                RimSharp.Core.Services.SystemLauncher.OpenPathOrUrl(url);
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[SteamBBCode] Failed to open URL '{url}': {ex.Message}");
             }
+        }
+
+        private static string UnwrapSteamLinkFilter(string url)
+        {
+            if (url.Contains("steamcommunity.com/linkfilter/", StringComparison.OrdinalIgnoreCase))
+            {
+                var m = Regex.Match(url, @"[?&](?:url|u)=([^&]+)", RegexOptions.IgnoreCase);
+                if (m.Success)
+                {
+                    var raw = Uri.UnescapeDataString(m.Groups[1].Value);
+                    return EnsureHttpUrl(raw);
+                }
+            }
+            return url;
         }
 
         private static IEnumerable<string> SplitTopLevel(string text, string marker)
