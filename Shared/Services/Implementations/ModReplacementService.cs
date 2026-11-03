@@ -180,6 +180,18 @@ namespace RimSharp.Shared.Services.Implementations
         /// Populates the provided dictionary, *only* adding entries if the SteamId doesn't already exist.
         /// </summary>
         /// <returns>The number of new items successfully loaded from XMLs.</returns>
+        private static string JoinVersions(System.Text.Json.JsonElement versionsElement)
+        {
+            if (versionsElement.ValueKind != System.Text.Json.JsonValueKind.Array) return string.Empty;
+            var items = new List<string>();
+            foreach (var v in versionsElement.EnumerateArray())
+            {
+                var s = v.GetString();
+                if (!string.IsNullOrWhiteSpace(s)) items.Add(s.Trim());
+            }
+            return string.Join(",", items);
+        }
+
         private int LoadFromUseThisInsteadXml(Dictionary<string, ModReplacementInfo> targetDictionary)
         {
             var modsPath = _pathService.GetModsPath();
@@ -219,7 +231,11 @@ namespace RimSharp.Shared.Services.Implementations
                                     Author = rule.GetProperty("oldAuthor").GetString() ?? string.Empty,
                                     ReplacementAuthor = rule.GetProperty("newAuthor").GetString() ?? string.Empty,
                                     ModId = rule.GetProperty("oldPackageId").GetString() ?? string.Empty,
-                                    ReplacementModId = rule.GetProperty("newPackageId").GetString() ?? string.Empty
+                                    ReplacementModId = rule.GetProperty("newPackageId").GetString() ?? string.Empty,
+                                    ModName = rule.TryGetProperty("oldName", out var oldName) ? (oldName.GetString() ?? string.Empty) : string.Empty,
+                                    ReplacementName = rule.TryGetProperty("newName", out var newName) ? (newName.GetString() ?? string.Empty) : string.Empty,
+                                    Versions = rule.TryGetProperty("oldVersions", out var oldVersions) ? JoinVersions(oldVersions) : string.Empty,
+                                    ReplacementVersions = rule.TryGetProperty("newVersions", out var newVersions) ? JoinVersions(newVersions) : string.Empty
                                 };
                                 targetDictionary.TryAdd(info.SteamId.ToLowerInvariant(), info);
                                 count++;

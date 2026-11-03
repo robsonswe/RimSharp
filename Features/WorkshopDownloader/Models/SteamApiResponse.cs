@@ -35,6 +35,8 @@ namespace RimSharp.Features.WorkshopDownloader.Models
 
         [JsonPropertyName("title")]
         public string Title { get; set; } = string.Empty;
+        [JsonPropertyName("creator")]
+        public string Creator { get; set; } = string.Empty; // SteamID64 of the item owner
 
         [JsonPropertyName("time_updated")]
         public long TimeUpdated { get; set; } // Unix timestamp (seconds since epoch)

@@ -107,45 +107,47 @@ public class ModReplacementDialogViewModel : DialogViewModelBase<ModReplacementD
         public ICommand SelectNoneCommand => _selectNoneCommand ??= CreateCommand(SelectNone);
 
         public ModReplacementDialogViewModel(
-            IEnumerable<(ModItem Original, ModReplacementInfo Replacement, long OriginalUpdate, long ReplacementUpdate)> replacements,
+            IEnumerable<(ModItem Original, ModReplacementInfo Replacement, long OriginalUpdate, long ReplacementUpdate, string ReplacementSteamTitle, string ReplacementSteamAuthor)> replacements,
             IEnumerable<ModItem> allInstalledMods)
             : base("Mod Replacements Available")
         {
 
-            var installedModsBySteamId = new HashSet<string>(
-                allInstalledMods
-                    .Where(m => !string.IsNullOrEmpty(m.SteamId))
-                    .Select(m => m.SteamId),
-                StringComparer.OrdinalIgnoreCase);
+            var installedSteamModsBySteamId = allInstalledMods
+                .Where(m => !string.IsNullOrEmpty(m.SteamId))
+                .GroupBy(m => m.SteamId, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-var installedLocalModsByPackageId = new HashSet<string>(
-                allInstalledMods
-                    .Where(m => string.IsNullOrEmpty(m.SteamId) && !string.IsNullOrEmpty(m.PackageId))
-                    .Select(m => m.PackageId),
-                StringComparer.OrdinalIgnoreCase);
+            var installedLocalModsByPackageId = allInstalledMods
+                .Where(m => string.IsNullOrEmpty(m.SteamId) && !string.IsNullOrEmpty(m.PackageId))
+                .GroupBy(m => m.PackageId, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
             var itemGroups = replacements
                 .Select(r =>
                 {
                     var replacementInfo = r.Replacement;
-                    bool alreadyInstalled = false;
+                    ModItem? installedReplacement = null;
 
                     if (!string.IsNullOrEmpty(replacementInfo.ReplacementSteamId))
                     {
-                        alreadyInstalled = installedModsBySteamId.Contains(replacementInfo.ReplacementSteamId);
+                        installedSteamModsBySteamId.TryGetValue(replacementInfo.ReplacementSteamId, out installedReplacement);
+                    }
+                    else if (!string.IsNullOrEmpty(replacementInfo.ReplacementModId))
+                    {
+                        installedLocalModsByPackageId.TryGetValue(replacementInfo.ReplacementModId, out installedReplacement);
                     }
 
-else if (!string.IsNullOrEmpty(replacementInfo.ReplacementModId))
-                    {
-                        alreadyInstalled = installedLocalModsByPackageId.Contains(replacementInfo.ReplacementModId);
-                    }
+                    bool alreadyInstalled = installedReplacement != null;
 
                     return new ModReplacementItem(r.Original, r.Replacement)
                     {
                         OriginalLastUpdate = r.OriginalUpdate,
                         ReplacementLastUpdate = r.ReplacementUpdate,
                         IsSelected = !alreadyInstalled,
-                        ReplacementAlreadyInstalled = alreadyInstalled
+                        ReplacementAlreadyInstalled = alreadyInstalled,
+                        InstalledReplacement = installedReplacement,
+                        SteamTitle = r.ReplacementSteamTitle,
+                        SteamAuthor = r.ReplacementSteamAuthor
                     };
                 })
                 .ToList();

@@ -395,7 +395,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
             ProgressDialogViewModel? progressViewModel = null;
             CancellationTokenSource? linkedCts = null;
-            var modsWithValidReplacements = new ConcurrentBag<(ModItem Original, ModReplacementInfo Replacement, long OriginalUpdate, long ReplacementUpdate)>();
+            var modsWithValidReplacements = new ConcurrentBag<(ModItem Original, ModReplacementInfo Replacement, long OriginalUpdate, long ReplacementUpdate, string ReplacementSteamTitle, string ReplacementSteamAuthor)>();
+            var personaNameCache = new ConcurrentDictionary<string, string?>();
 
             try
             {
@@ -530,7 +531,17 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                                 return;
                             }
 
-                            modsWithValidReplacements.Add((item.Mod, item.Replacement, originalDetails.TimeUpdated, replacementDetails.TimeUpdated));
+                            string? steamAuthor = null;
+                            if (!string.IsNullOrEmpty(replacementDetails.Creator))
+                            {
+                                if (!personaNameCache.TryGetValue(replacementDetails.Creator, out steamAuthor))
+                                {
+                                    steamAuthor = await _steamApiClient.GetPersonaNameAsync(replacementDetails.Creator, combinedTokenPhase1);
+                                    personaNameCache[replacementDetails.Creator] = steamAuthor;
+                                }
+                            }
+
+                            modsWithValidReplacements.Add((item.Mod, item.Replacement, originalDetails.TimeUpdated, replacementDetails.TimeUpdated, replacementDetails.Title, steamAuthor ?? string.Empty));
                         }
                         catch (OperationCanceledException) { /* Task cancelled */ }
                         catch (Exception ex)

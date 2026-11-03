@@ -59,8 +59,8 @@
                                                                                 <TextBlock FontWeight="Medium" Foreground="{DynamicResource RimworldDarkGreenBrush}">
                                                                                     <TextBlock.Text>
                                                                                         <MultiBinding StringFormat="Replace with: {0} by {1}">
-                                                                                            <Binding Path="ReplacementInfo.ReplacementName" FallbackValue="Unknown"/>
-                                                                                            <Binding Path="ReplacementInfo.ReplacementAuthor" FallbackValue="Unknown"/>
+                                                                                            <Binding Path="ReplacementDisplayName" FallbackValue="Unknown"/>
+                                                                                            <Binding Path="ReplacementAuthorDisplay" FallbackValue="Unknown"/>
                                                                                         </MultiBinding>
                                                                                     </TextBlock.Text>
                                                                                 </TextBlock>
@@ -109,8 +109,8 @@
                                                     <TextBlock FontWeight="Medium" Foreground="{DynamicResource RimworldDarkGreenBrush}">
                                                         <TextBlock.Text>
                                                             <MultiBinding StringFormat="Replacement (Already Installed): {0} by {1}">
-                                                                <Binding Path="ReplacementInfo.ReplacementName" FallbackValue="Unknown"/>
-                                                                <Binding Path="ReplacementInfo.ReplacementAuthor" FallbackValue="Unknown"/>
+                                                                <Binding Path="ReplacementDisplayName" FallbackValue="Unknown"/>
+                                                                <Binding Path="ReplacementAuthorDisplay" FallbackValue="Unknown"/>
                                                             </MultiBinding>
                                                         </TextBlock.Text>
                                                     </TextBlock>

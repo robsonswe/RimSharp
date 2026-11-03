@@ -38,7 +38,7 @@ namespace RimSharp.Infrastructure.Mods.Validation.Duplicates
         public ModItem Original { get; }
         public DuplicateModGroupViewModel ParentGroup { get; }
 
-        public string Name => Original.Name;
+        public string Name => Original.DisplayName;
         public string Authors => Original.Authors;
         public string ModVersion => Original.ModVersion;
         public string Path => Original.Path;

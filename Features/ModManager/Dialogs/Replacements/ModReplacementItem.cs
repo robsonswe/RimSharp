@@ -21,6 +21,34 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
             OriginalMod = originalMod ?? throw new ArgumentNullException(nameof(originalMod));
             ReplacementInfo = replacementInfo ?? throw new ArgumentNullException(nameof(replacementInfo));
         }
+        public ModItem? InstalledReplacement { get; set; }
+        public string? SteamTitle { get; set; }
+        public string? SteamAuthor { get; set; }
+
+        public string ReplacementDisplayName
+        {
+            get
+            {
+                // Mirror ModItem.DisplayName: Steam name first, local name fallback.
+                if (!string.IsNullOrWhiteSpace(SteamTitle)) return SteamTitle;
+                var installedName = InstalledReplacement?.DisplayName;
+                if (!string.IsNullOrWhiteSpace(installedName)) return installedName;
+                return ReplacementInfo?.ReplacementName ?? string.Empty;
+            }
+        }
+
+        public string ReplacementAuthorDisplay
+        {
+            get
+            {
+                // Steam persona name (creator) first, then local fallbacks.
+                if (!string.IsNullOrWhiteSpace(SteamAuthor)) return SteamAuthor;
+                var installedAuthors = InstalledReplacement?.Authors;
+                if (!string.IsNullOrWhiteSpace(installedAuthors)) return installedAuthors;
+                return ReplacementInfo?.ReplacementAuthor ?? string.Empty;
+            }
+        }
+
         public long OriginalLastUpdate { get; set; }
         public long ReplacementLastUpdate { get; set; }
         public string FormattedOriginalLastUpdate => 

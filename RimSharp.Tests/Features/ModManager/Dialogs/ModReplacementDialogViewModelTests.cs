@@ -23,9 +23,9 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
             var replacementInfo = new ModReplacementInfo { ReplacementSteamId = "2", ReplacementName = "New Mod" };
             var installed = new List<ModItem> { new ModItem { SteamId = "2" } }; // Replacement already installed
             
-            var data = new List<(ModItem Original, ModReplacementInfo Replacement, long OriginalUpdate, long ReplacementUpdate)>
+            var data = new List<(ModItem Original, ModReplacementInfo Replacement, long OriginalUpdate, long ReplacementUpdate, string ReplacementSteamTitle, string ReplacementSteamAuthor)>
             {
-                (original, replacementInfo, 100, 200)
+                (original, replacementInfo, 100, 200, "New Mod", "Zaljerem")
             };
 
             var vm = new ModReplacementDialogViewModel(data, installed);
@@ -39,10 +39,10 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
         public void SelectAll_ShouldUpdateSelectedCount()
         {
 
-            var data = new List<(ModItem Original, ModReplacementInfo Replacement, long OriginalUpdate, long ReplacementUpdate)>
+            var data = new List<(ModItem Original, ModReplacementInfo Replacement, long OriginalUpdate, long ReplacementUpdate, string ReplacementSteamTitle, string ReplacementSteamAuthor)>
             {
-                (new ModItem(), new ModReplacementInfo { ReplacementSteamId = "1" }, 0, 0),
-                (new ModItem(), new ModReplacementInfo { ReplacementSteamId = "2" }, 0, 0)
+                (new ModItem(), new ModReplacementInfo { ReplacementSteamId = "1" }, 0, 0, "", ""),
+                (new ModItem(), new ModReplacementInfo { ReplacementSteamId = "2" }, 0, 0, "", "")
             };
             var vm = new ModReplacementDialogViewModel(data, new List<ModItem>());
 

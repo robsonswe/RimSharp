@@ -169,7 +169,51 @@ return null;
                 return null;
             }
         }
+        public async Task<string?> GetPersonaNameAsync(string steamId64, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(steamId64) || !long.TryParse(steamId64, out _))
+            {
+                return null;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                // Public profile XML endpoint — no Web API key required.
+                using var request = new HttpRequestMessage(HttpMethod.Get, $"https://steamcommunity.com/profiles/{steamId64}/?xml=1");
+                using HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken);
+                if (!response.IsSuccessStatusCode)
+                {
+                    Debug.WriteLine($"[SteamApiClient] Persona lookup failed for {steamId64}: {response.StatusCode}");
+                    return null;
+                }
+
+                string xml = await response.Content.ReadAsStringAsync(cancellationToken);
+                const string OpenTag = "<steamID>";
+                const string CloseTag = "</steamID>";
+                int start = xml.IndexOf(OpenTag, StringComparison.OrdinalIgnoreCase);
+                if (start < 0) return null;
+                start += OpenTag.Length;
+                int end = xml.IndexOf(CloseTag, start, StringComparison.OrdinalIgnoreCase);
+                if (end < 0) return null;
+
+                var name = System.Net.WebUtility.HtmlDecode(xml.Substring(start, end - start)).Trim();
+                // Strip CDATA wrapper: <steamID><![CDATA[Author]]></steamID>
+                if (name.StartsWith("<![CDATA[", StringComparison.Ordinal))
+                {
+                    name = name.Substring(9);
+                    var cdataEnd = name.IndexOf("]]>", StringComparison.Ordinal);
+                    name = cdataEnd >= 0 ? name.Substring(0, cdataEnd).Trim() : name.Trim();
+                }
+                return string.IsNullOrWhiteSpace(name) ? null : name;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[SteamApiClient] Persona lookup error for {steamId64}: {ex.Message}");
+                return null;
+            }
+        }
     }
 }
-
 
