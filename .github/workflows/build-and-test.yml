@@ -2,17 +2,28 @@ name: .NET Build and Test
 
 on:
   push:
-    paths-ignore:
-      - '**/*.md'
-      - '**/*.ps1'
-      - '**/*.txt'
-      - 'LICENSE'
+    branches:
+      - main
+    paths:
+      - '**/*.cs'
+      - '**/*.csproj'
+      - '**/*.sln'
+      - '**/*.axaml'
+      - 'Directory.Build.props'
+      - 'Directory.Build.targets'
+      - '.github/workflows/**/*.yml'
+
   pull_request:
-    paths-ignore:
-      - '**/*.md'
-      - '**/*.ps1'
-      - '**/*.txt'
-      - 'LICENSE'
+    branches:
+      - main
+    paths:
+      - '**/*.cs'
+      - '**/*.csproj'
+      - '**/*.sln'
+      - '**/*.axaml'
+      - 'Directory.Build.props'
+      - 'Directory.Build.targets'
+      - '.github/workflows/**/*.yml'
 
 permissions:
   contents: read
