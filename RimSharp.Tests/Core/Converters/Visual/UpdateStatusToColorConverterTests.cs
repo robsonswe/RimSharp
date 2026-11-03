@@ -17,11 +17,11 @@ namespace RimSharp.Tests.Core.Converters.Visual
         }
 
         [AvaloniaTheory]
-        [InlineData("Up to date", "RimworldDarkGreenBrush")]
-        [InlineData("Update available", "RimworldHighlightBrush")]
-        [InlineData("Download failed", "RimworldErrorRedBrush")]
-        [InlineData("Checking...", "RimworldConfigOrangeBrush")]
-        [InlineData("Unknown status", "RimworldGrayBrush")]
+        [InlineData("Up to date", "BrushStateSuccess")]
+        [InlineData("Update available", "BrushStateHighlight")]
+        [InlineData("Download failed", "BrushStateDangerStrong")]
+        [InlineData("Checking...", "BrushStateWarning")]
+        [InlineData("Unknown status", "BrushStateNeutral")]
         public void Convert_ShouldReturnCorrectBrushBasedOnStatus(string status, string expectedKey)
         {
 

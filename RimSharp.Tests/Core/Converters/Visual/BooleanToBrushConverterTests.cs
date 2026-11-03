@@ -17,8 +17,8 @@ namespace RimSharp.Tests.Core.Converters.Visual
         }
 
         [AvaloniaTheory]
-        [InlineData(true, "RimworldRedBrush|RimworldDarkGreenBrush", "RimworldDarkGreenBrush")]
-        [InlineData(false, "RimworldRedBrush|RimworldDarkGreenBrush", "RimworldRedBrush")]
+        [InlineData(true, "BrushStateDanger|BrushStateSuccess", "BrushStateSuccess")]
+        [InlineData(false, "BrushStateDanger|BrushStateSuccess", "BrushStateDanger")]
         public void Convert_ShouldReturnCorrectBrushFromResources(bool value, string parameter, string expectedKey)
         {
 

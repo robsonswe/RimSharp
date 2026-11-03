@@ -9,7 +9,7 @@
              x:CompileBindings="True"
              mc:Ignorable="d"
              x:Name="DownloadQueueUserControl"
-             Background="{DynamicResource RimworldBeigeBrush}">
+             Background="{DynamicResource BrushBgSurface}">
 
     <UserControl.Styles>
         <Style Selector="StackPanel.ButtonArea > Button">
@@ -21,18 +21,18 @@
     </UserControl.Styles>
 
     <DockPanel>
-        <Border DockPanel.Dock="Top" Classes="RimworldInfoHeaderBorder">
-            <TextBlock Text="Mod Downloader" Foreground="{DynamicResource RimworldWhiteBrush}" FontWeight="Bold" FontSize="16"/>
+        <Border DockPanel.Dock="Top" Classes="info-header">
+            <TextBlock Text="Mod Downloader" Foreground="{DynamicResource BrushTextOnDark}" FontWeight="Bold" FontSize="16"/>
         </Border>
 
         <StackPanel DockPanel.Dock="Top" Margin="10" Classes="ButtonArea">
             <Button Content="Setup SteamCMD"
                     Command="{Binding SetupSteamCmdCommand}"
-                    Classes="RimworldButtonStyle"
+                    Classes="btn"
                     Margin="0,5"/>
             <Button Content="Check for Updates"
                     Command="{Binding CheckUpdatesCommand}"
-                    Classes="RimworldSaveButtonStyle"
+                    Classes="btn-success"
                     Margin="0,5"/>
 
             <!-- Add Mod and Download buttons -->
@@ -45,23 +45,23 @@
                 <Button Grid.Column="0"
                         Content="{Binding BrowserViewModel.IsCollectionUrl, Converter={StaticResource ConditionalTextConverter}, ConverterParameter='Add Mod|Add Collection', FallbackValue='Add Mod'}"
                         Command="{Binding AddModCommand}"
-                        Classes="RimworldButtonStyle"
+                        Classes="btn"
                         IsEnabled="{Binding CanAddMod}"
                         Margin="0,0,2.5,0"/>
 
                 <Button Grid.Column="1"
                         Content="Download"
                         Command="{Binding DownloadCommand}"
-                        Classes="RimworldRunButtonStyle"
+                        Classes="btn-danger"
                         IsEnabled="{Binding CanDownload}"
                         Margin="2.5,0,0,0"/>
             </Grid>
         </StackPanel>
 
-        <Border DockPanel.Dock="Top" Classes="RimworldListHeaderBorder" Margin="0,10,0,0">
+        <Border DockPanel.Dock="Top" Classes="list-header" Margin="0,10,0,0">
             <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" Text="Download Queue" Foreground="{DynamicResource RimworldWhiteBrush}" FontWeight="Medium"/>
-                <TextBlock Grid.Column="1" Text="{Binding DownloadList.Count, StringFormat='({0} items)'}" Foreground="{DynamicResource RimworldWhiteBrush}" FontSize="12" Margin="5,0,0,0"/>
+                <TextBlock Grid.Column="0" Text="Download Queue" Foreground="{DynamicResource BrushTextOnDark}" FontWeight="Medium"/>
+                <TextBlock Grid.Column="1" Text="{Binding DownloadList.Count, StringFormat='({0} items)'}" Foreground="{DynamicResource BrushTextOnDark}" FontSize="12" Margin="5,0,0,0"/>
             </Grid>
         </Border>
 
@@ -69,8 +69,8 @@
                  ItemsSource="{Binding DownloadList}"
                  SelectionMode="Multiple"
                  Margin="0,1,0,0"
-                 Background="{DynamicResource RimworldBeigeBrush}"
-                 BorderBrush="{DynamicResource RimworldBrownBrush}"
+                 Background="{DynamicResource BrushBgSurface}"
+                 BorderBrush="{DynamicResource BrushBorderDefault}"
                  BorderThickness="1"
                  ScrollViewer.AllowAutoHide="False">
             <ListBox.Resources>
@@ -83,7 +83,7 @@
                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                     <Setter Property="Padding" Value="10,6"/>
                     <Setter Property="Background" Value="Transparent"/>
-                    <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
                     <Setter Property="BorderThickness" Value="0,0,0,1"/>
                 </ControlTheme>
             </ListBox.ItemContainerTheme>
@@ -119,19 +119,19 @@
                         <TextBlock Grid.Row="0"
                                    Text="{Binding Name, FallbackValue='Unknown', TargetNullValue='Unknown'}"
                                    FontWeight="Bold"
-                                   Foreground="{DynamicResource RimworldBrownBrush}"
+                                   Foreground="{DynamicResource BrushTextPrimary}"
                                    TextWrapping="Wrap"/>
 
                         <!-- Row 1: ID -->
                         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,2">
-                            <TextBlock Text="ID: " FontSize="11" Foreground="{DynamicResource RimworldLightBrownBrush}" VerticalAlignment="Center"/>
-                            <TextBlock Text="{Binding SteamId, FallbackValue='N/A', TargetNullValue='N/A'}" FontSize="11" Foreground="{DynamicResource RimworldLightBrownBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="ID: " FontSize="11" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding SteamId, FallbackValue='N/A', TargetNullValue='N/A'}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <!-- Row 2: Latest Version (Date) -->
                         <StackPanel Grid.Row="2" Orientation="Horizontal">
-                            <TextBlock Text="Latest: " FontSize="11" Foreground="{DynamicResource RimworldLightBrownBrush}"/>
-                            <TextBlock Text="{Binding PublishDate, FallbackValue='N/A', TargetNullValue='N/A'}" FontSize="11" Foreground="{DynamicResource RimworldLightBrownBrush}" ToolTip.Tip="{Binding PublishDate}"/>
+                            <TextBlock Text="Latest: " FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
+                            <TextBlock Text="{Binding PublishDate, FallbackValue='N/A', TargetNullValue='N/A'}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" ToolTip.Tip="{Binding PublishDate}"/>
                         </StackPanel>
 
                         <!-- Row 3: Latest Versions -->
@@ -142,14 +142,14 @@
                                     <Binding Path="LatestVersions.Count" Converter="{StaticResource CountToBooleanConverter}"/>
                                 </MultiBinding>
                             </StackPanel.IsVisible>
-                            <TextBlock Text="Updated Versions: " FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource RimworldLightBrownBrush}"/>
-                            <TextBlock Text="{Binding LatestVersions, Converter={StaticResource ListToStringConverter}, FallbackValue='None'}" FontSize="11" Foreground="{DynamicResource RimworldLightBrownBrush}" TextWrapping="Wrap"/>
+                            <TextBlock Text="Updated Versions: " FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextMuted}"/>
+                            <TextBlock Text="{Binding LatestVersions, Converter={StaticResource ListToStringConverter}, FallbackValue='None'}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" TextWrapping="Wrap"/>
                         </StackPanel>
 
                         <!-- Row 4: Installed Version (Date) -->
                         <StackPanel Grid.Row="4" Orientation="Horizontal" IsVisible="{Binding IsInstalled}">
-                            <TextBlock Text="Installed: " FontSize="11" Foreground="{DynamicResource RimworldLightBrownBrush}"/>
-                            <TextBlock Text="{Binding LocalDateStamp, FallbackValue='N/A', TargetNullValue='N/A'}" FontSize="11" Foreground="{DynamicResource RimworldLightBrownBrush}" ToolTip.Tip="{Binding LocalDateStamp}"/>
+                            <TextBlock Text="Installed: " FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
+                            <TextBlock Text="{Binding LocalDateStamp, FallbackValue='N/A', TargetNullValue='N/A'}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" ToolTip.Tip="{Binding LocalDateStamp}"/>
                         </StackPanel>
 
                         <!-- Row 5: Installed Versions -->
@@ -160,14 +160,14 @@
                                     <Binding Path="IsInstalled"/>
                                 </MultiBinding>
                             </StackPanel.IsVisible>
-                            <TextBlock Text="Installed Versions: " FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource RimworldLightBrownBrush}"/>
-                            <TextBlock Text="{Binding InstalledVersions, Converter={StaticResource VersionSupportConverter}, ConverterParameter='OfficialOnly'}" FontSize="11" Foreground="{DynamicResource RimworldLightBrownBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="Installed Versions: " FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextMuted}"/>
+                            <TextBlock Text="{Binding InstalledVersions, Converter={StaticResource VersionSupportConverter}, ConverterParameter='OfficialOnly'}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <!-- Row 6: File Size -->
                         <StackPanel Grid.Row="6" Orientation="Horizontal">
-                            <TextBlock Text="Size: " FontSize="11" Foreground="{DynamicResource RimworldLightBrownBrush}"/>
-                            <TextBlock Text="{Binding FileSize, Converter={StaticResource FileSizeConverter}}" FontSize="11" Foreground="{DynamicResource RimworldLightBrownBrush}" ToolTip.Tip="{Binding FileSize, StringFormat={}{0} Bytes}"/>
+                            <TextBlock Text="Size: " FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
+                            <TextBlock Text="{Binding FileSize, Converter={StaticResource FileSizeConverter}}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" ToolTip.Tip="{Binding FileSize, StringFormat={}{0} Bytes}"/>
                         </StackPanel>
 
                         <!-- Row 7: Status Badges -->
@@ -175,11 +175,11 @@
                             <Border Background="#20008000" BorderBrush="ForestGreen" BorderThickness="1" CornerRadius="3" Padding="4,1" IsVisible="{Binding IsInstalled}">
                                 <TextBlock Text="INSTALLED" FontSize="9" FontWeight="Bold" Foreground="ForestGreen"/>
                             </Border>
-                            
+
                             <Border Background="#201E90FF" BorderBrush="DodgerBlue" BorderThickness="1" CornerRadius="3" Padding="4,1" IsVisible="{Binding IsActive}">
                                 <TextBlock Text="ACTIVE" FontSize="9" FontWeight="Bold" Foreground="DodgerBlue"/>
                             </Border>
-                            
+
                             <Border Background="#20DAA520" BorderBrush="Goldenrod" BorderThickness="1" CornerRadius="3" Padding="4,1" IsVisible="{Binding IsFavorite}">
                                 <TextBlock Text="FAVORITE" FontSize="9" FontWeight="Bold" Foreground="Goldenrod"/>
                             </Border>

@@ -71,7 +71,7 @@ namespace RimSharp.Features.ModManager.Behaviors
                 AssociatedObject.AddHandler(DragDrop.DragOverEvent, OnDragOver);
                 AssociatedObject.AddHandler(DragDrop.DragLeaveEvent, OnDragLeave);
                 AssociatedObject.AddHandler(DragDrop.DropEvent, OnDrop);
-                if (Application.Current?.Resources.TryGetResource("RimworldHighlightBrush", null, out var res) == true)
+                if (Application.Current?.Resources.TryGetResource("BrushStateHighlight", null, out var res) == true)
                 {
                     _insertionBrush = res as IBrush;
                 }

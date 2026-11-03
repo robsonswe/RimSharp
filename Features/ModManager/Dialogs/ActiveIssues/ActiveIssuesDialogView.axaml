@@ -15,48 +15,48 @@
     <dialogs:BaseDialog.MainContent>
         <Grid RowDefinitions="Auto, Auto, *" Margin="10">
             <!-- Optional Confirmation Message -->
-            <Border Grid.Row="0" IsVisible="{Binding IsConfirmationMode}" 
-                    Background="{DynamicResource RimworldWhiteBrush}" 
-                    BorderBrush="{DynamicResource RimworldBrownBrush}"
+            <Border Grid.Row="0" IsVisible="{Binding IsConfirmationMode}"
+                    Background="{DynamicResource BrushTextOnDark}"
+                    BorderBrush="{DynamicResource BrushBorderDefault}"
                     BorderThickness="2" CornerRadius="2" Padding="12" Margin="0,0,0,15">
                 <Grid ColumnDefinitions="Auto, *">
-                    <i:Icon Grid.Column="0" Value="fa-triangle-exclamation" 
-                               FontSize="28" Foreground="{DynamicResource RimworldErrorRedBrush}" 
+                    <i:Icon Grid.Column="0" Value="fa-triangle-exclamation"
+                               FontSize="28" Foreground="{DynamicResource BrushTextError}"
                                VerticalAlignment="Center" Margin="0,0,12,0"/>
                     <StackPanel Grid.Column="1" Spacing="2">
-                        <TextBlock Text="Warning / Confirmation:" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
-                        <TextBlock Text="{Binding ConfirmationMessage}" 
+                        <TextBlock Text="Warning / Confirmation:" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource BrushTextStrong}"/>
+                        <TextBlock Text="{Binding ConfirmationMessage}"
                                    FontSize="12" TextWrapping="Wrap"
-                                   VerticalAlignment="Center" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                   VerticalAlignment="Center" Foreground="{DynamicResource BrushTextStrong}"/>
                     </StackPanel>
                 </Grid>
             </Border>
 
             <Grid Grid.Row="1" ColumnDefinitions="*, Auto" Margin="0,0,5,10">
-                <TextBlock Grid.Column="0" Text="Detected issues in your active mod list, grouped by mod:" 
-                           FontSize="14" VerticalAlignment="Center" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
-                <Border Grid.Column="1" Background="{DynamicResource RimworldErrorRedBrush}" 
+                <TextBlock Grid.Column="0" Text="Detected issues in your active mod list, grouped by mod:"
+                           FontSize="14" VerticalAlignment="Center" Foreground="{DynamicResource BrushTextStrong}"/>
+                <Border Grid.Column="1" Background="{DynamicResource BrushStateDangerStrong}"
                         CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding IssueGroups.Count, StringFormat='{}{0} mods with issues'}" 
+                    <TextBlock Text="{Binding IssueGroups.Count, StringFormat='{}{0} mods with issues'}"
                                Foreground="White" FontSize="12" FontWeight="Bold"/>
                 </Border>
             </Grid>
-            
+
             <ScrollViewer Grid.Row="2" AllowAutoHide="False">
                 <ItemsControl ItemsSource="{Binding IssueGroups}" Margin="0,0,12,0">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="local:ModIssueGroup">
-                            <Border Classes="RimworldPanelBorder" Margin="0,0,0,15" Padding="0">
+                            <Border Classes="panel" Margin="0,0,0,15" Padding="0">
                                 <StackPanel>
                                     <!-- Mod Header -->
-                                    <Border Classes="RimworldListHeaderBorder">
+                                    <Border Classes="list-header">
                                         <Grid ColumnDefinitions="*, Auto">
-                                            <TextBlock Grid.Column="0" Text="{Binding Mod.DisplayName}" 
+                                            <TextBlock Grid.Column="0" Text="{Binding Mod.DisplayName}"
                                                        FontWeight="Bold" VerticalAlignment="Center"
-                                                       Foreground="{DynamicResource RimworldWhiteBrush}"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding Issues.Count, StringFormat='{}{0} issues'}" 
+                                                       Foreground="{DynamicResource BrushTextOnDark}"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Issues.Count, StringFormat='{}{0} issues'}"
                                                        VerticalAlignment="Center" FontSize="11" Opacity="0.8"
-                                                       Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                                       Foreground="{DynamicResource BrushTextOnDark}"/>
                                         </Grid>
                                     </Border>
 
@@ -64,17 +64,17 @@
                                     <ItemsControl ItemsSource="{Binding Issues}" Margin="10,5">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="models:ModIssue">
-                                                <Border Margin="0,2" Padding="8,6" 
-                                                        Background="{DynamicResource RimworldBeigeBrush}" 
-                                                        CornerRadius="3" BorderThickness="1" 
-                                                        BorderBrush="{DynamicResource RimworldBrownBrush}">
+                                                <Border Margin="0,2" Padding="8,6"
+                                                        Background="{DynamicResource BrushBgSurface}"
+                                                        CornerRadius="3" BorderThickness="1"
+                                                        BorderBrush="{DynamicResource BrushBorderDefault}">
                                                     <Grid ColumnDefinitions="Auto, *">
-                                                        <i:Icon Grid.Column="0" Value="{Binding Type, Converter={StaticResource ModIssueTypeToIconConverter}}" 
+                                                        <i:Icon Grid.Column="0" Value="{Binding Type, Converter={StaticResource ModIssueTypeToIconConverter}}"
                                                                    FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0"
-                                                                   Foreground="{DynamicResource RimworldBrownBrush}"/>
+                                                                   Foreground="{DynamicResource BrushTextPrimary}"/>
                                                         <StackPanel Grid.Column="1">
-                                                            <TextBlock Text="{Binding Type, Converter={StaticResource ModIssueTypeToTextConverter}}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
-                                                            <TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource RimworldBrownBrush}"/>
+                                                            <TextBlock Text="{Binding Type, Converter={StaticResource ModIssueTypeToTextConverter}}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource BrushTextStrong}"/>
+                                                            <TextBlock Text="{Binding Description}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextPrimary}"/>
                                                         </StackPanel>
                                                     </Grid>
                                                 </Border>
@@ -93,14 +93,14 @@
     <dialogs:BaseDialog.ButtonContent>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
             <!-- Normal Mode -->
-            <Button Content="Close" IsVisible="{Binding !IsConfirmationMode}" 
-                    Command="{Binding CloseIssuesCommand}" Width="100" Classes="RimworldButtonStyle"/>
-            
+            <Button Content="Close" IsVisible="{Binding !IsConfirmationMode}"
+                    Command="{Binding CloseIssuesCommand}" Width="100" Classes="btn"/>
+
             <!-- Confirmation Mode -->
-            <Button Content="OK" IsVisible="{Binding IsConfirmationMode}" 
-                    Command="{Binding ConfirmCommand}" Width="100" Classes="RimworldSaveButtonStyle"/>
-            <Button Content="Cancel" IsVisible="{Binding IsConfirmationMode}" 
-                    Command="{Binding CancelCommand}" Width="100" Classes="RimworldRunButtonStyle"/>
+            <Button Content="OK" IsVisible="{Binding IsConfirmationMode}"
+                    Command="{Binding ConfirmCommand}" Width="100" Classes="btn-success"/>
+            <Button Content="Cancel" IsVisible="{Binding IsConfirmationMode}"
+                    Command="{Binding CancelCommand}" Width="100" Classes="btn-danger"/>
         </StackPanel>
     </dialogs:BaseDialog.ButtonContent>
 </dialogs:BaseDialog>

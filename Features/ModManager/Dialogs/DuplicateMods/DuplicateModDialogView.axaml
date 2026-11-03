@@ -12,34 +12,34 @@
 
     <dialogs:BaseDialog.MainContent>
         <StackPanel Spacing="10">
-            <TextBlock Text="Duplicate Mods Detected" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+            <TextBlock Text="Duplicate Mods Detected" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource BrushTextStrong}"/>
             <TextBlock Text="Select which version to keep for each duplicate mod, or choose 'Ignore' to keep all versions. The other versions will be deleted unless ignored." FontSize="13" TextWrapping="Wrap"/>
 
             <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="600">
                 <ItemsControl ItemsSource="{Binding DuplicateGroups}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="local:DuplicateModGroupViewModel">
-                            <Border Classes="RimworldPanelBorder" Margin="0,0,0,15" Padding="0">
+                            <Border Classes="panel" Margin="0,0,0,15" Padding="0">
                                 <StackPanel>
-                                    <Border Background="{DynamicResource RimworldLightBrownBrush}" Padding="10,8">
+                                    <Border Background="{DynamicResource BrushBgAccent}" Padding="10,8">
                                         <TextBlock Text="{Binding PackageId}" FontWeight="Bold" FontSize="14"/>
                                     </Border>
-                                    
-                                    <Border Margin="10,10,10,0" Padding="10" Background="{DynamicResource RimworldBeigeBrush}" CornerRadius="3" BorderThickness="1" BorderBrush="{DynamicResource RimworldBrownBrush}">
+
+                                    <Border Margin="10,10,10,0" Padding="10" Background="{DynamicResource BrushBgSurface}" CornerRadius="3" BorderThickness="1" BorderBrush="{DynamicResource BrushBorderDefault}">
                                         <RadioButton IsChecked="{Binding IsIgnored}" GroupName="{Binding GroupName}">
                                             <StackPanel>
-                                                <TextBlock FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource RimworldDarkGreenBrush}" Text="Ignore: Keep all versions of this mod"/>
-                                                <TextBlock Margin="20,4,0,0" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource RimworldDarkBrownBrush}">
+                                                <TextBlock FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource BrushTextSuccess}" Text="Ignore: Keep all versions of this mod"/>
+                                                <TextBlock Margin="20,4,0,0" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextStrong}">
                                                     No mods in this group will be deleted.
                                                 </TextBlock>
                                             </StackPanel>
                                         </RadioButton>
                                     </Border>
-                                    
+
                                     <ItemsControl ItemsSource="{Binding Mods}" Margin="10">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="infra:ModItemWrapper">
-                                                <Border Margin="0,0,0,10" Padding="10" Background="{DynamicResource RimworldBeigeBrush}" CornerRadius="3" BorderThickness="1" BorderBrush="{DynamicResource RimworldBrownBrush}">
+                                                <Border Margin="0,0,0,10" Padding="10" Background="{DynamicResource BrushBgSurface}" CornerRadius="3" BorderThickness="1" BorderBrush="{DynamicResource BrushBorderDefault}">
                                                     <RadioButton IsChecked="{Binding IsActive}" GroupName="{Binding ParentGroup.GroupName}">
                                                         <StackPanel>
                                                             <TextBlock FontWeight="SemiBold" FontSize="13">
@@ -74,8 +74,8 @@
 
     <dialogs:BaseDialog.ButtonContent>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
-            <Button Content="Cancel" Command="{Binding CancelCommand}" Width="100" Classes="RimworldButtonStyle"/>
-            <Button Content="Apply Changes" Command="{Binding ApplyResolutionsCommand}" Width="120" Classes="RimworldSaveButtonStyle"/>
+            <Button Content="Cancel" Command="{Binding CancelCommand}" Width="100" Classes="btn"/>
+            <Button Content="Apply Changes" Command="{Binding ApplyResolutionsCommand}" Width="120" Classes="btn-success"/>
         </StackPanel>
     </dialogs:BaseDialog.ButtonContent>
 </dialogs:BaseDialog>

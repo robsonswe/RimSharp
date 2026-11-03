@@ -14,27 +14,27 @@
                 <!-- High-Performance Shadow -->
                 <Border Background="#44000000" CornerRadius="6" Padding="0,0,2,3">
                     <!-- Main window container -->
-                    <Border Background="{DynamicResource RimworldBeigeBrush}"
-                            BorderBrush="{DynamicResource RimworldBrownBrush}"
+                    <Border Background="{DynamicResource BrushBgSurface}"
+                            BorderBrush="{DynamicResource BrushBorderDefault}"
                             BorderThickness="1"
                             CornerRadius="5"
                             ClipToBounds="True">
                         <Grid RowDefinitions="Auto,*,Auto">
-                            
+
                             <!-- Header/Title Bar -->
-                            <Border x:Name="PART_TitleBar" 
-                                    Grid.Row="0" 
-                                    Background="{DynamicResource RimworldBrownBrush}" 
+                            <Border x:Name="PART_TitleBar"
+                                    Grid.Row="0"
+                                    Background="{DynamicResource BrushBgAction}"
                                     Height="30">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <TextBlock Text="{TemplateBinding Title}"
-                                            Foreground="{DynamicResource RimworldWhiteBrush}"
+                                            Foreground="{DynamicResource BrushTextOnDark}"
                                             FontWeight="Medium"
                                             VerticalAlignment="Center"
                                             HorizontalAlignment="Center"
                                             Margin="10,0"
                                             Grid.Column="0"/>
-                                    
+
                                     <!-- Close button -->
                                     <Button Name="PART_CloseButton"
                                             Grid.Column="1"
@@ -45,28 +45,28 @@
                                             Command="{Binding CloseCommand}"
                                             IsVisible="{TemplateBinding Closeable}">
                                         <i:Icon Value="fa-xmark"
-                                                Foreground="{DynamicResource RimworldWhiteBrush}"
+                                                Foreground="{DynamicResource BrushTextOnDark}"
                                                 FontSize="14"
                                                 HorizontalAlignment="Center"
                                                 VerticalAlignment="Center"/>
                                         <Button.Styles>
                                             <Style Selector="Button:pointerover">
-                                                <Setter Property="Background" Value="{DynamicResource RimworldRedBrush}"/>
+                                                <Setter Property="Background" Value="{DynamicResource BrushBgDanger}"/>
                                             </Style>
                                         </Button.Styles>
                                     </Button>
                                 </Grid>
                             </Border>
-                            
+
                             <!-- Main content area -->
                             <ContentPresenter Name="PART_MainContentPresenter"
-                                            Grid.Row="1" 
+                                            Grid.Row="1"
                                             Content="{TemplateBinding MainContent}"
                                             Margin="10,10,10,0"/>
-                            
+
                             <!-- Button area -->
                             <ContentPresenter Name="PART_ButtonContentPresenter"
-                                            Grid.Row="2" 
+                                            Grid.Row="2"
                                             Content="{TemplateBinding ButtonContent}"
                                             Margin="10,10,10,10"/>
                         </Grid>

@@ -22,7 +22,7 @@ namespace RimSharp.Tests.Core.Converters.Visual
         {
 
             var converter = new ModTypeToForegroundConverter();
-            var blackBrush = (IBrush)Avalonia.Application.Current!.Resources["RimworldBlackBrush"]!;
+            var blackBrush = (IBrush)Avalonia.Application.Current!.Resources["BrushTextBlack"]!;
 
             var result = converter.Convert(ModType.WorkshopL, typeof(IBrush), null, CultureInfo.InvariantCulture);
 
@@ -39,7 +39,7 @@ namespace RimSharp.Tests.Core.Converters.Visual
         {
 
             var converter = new ModTypeToForegroundConverter();
-            var whiteBrush = (IBrush)Avalonia.Application.Current!.Resources["RimworldWhiteBrush"]!;
+            var whiteBrush = (IBrush)Avalonia.Application.Current!.Resources["BrushTextOnDark"]!;
 
             var result = converter.Convert(type, typeof(IBrush), null, CultureInfo.InvariantCulture);
 

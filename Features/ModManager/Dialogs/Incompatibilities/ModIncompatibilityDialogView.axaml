@@ -11,22 +11,22 @@
 
     <dialogs:BaseDialog.MainContent>
         <StackPanel Spacing="10">
-            <TextBlock Text="Incompatible Mods Detected" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+            <TextBlock Text="Incompatible Mods Detected" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource BrushTextStrong}"/>
             <TextBlock Text="Select which mod to keep in each incompatibility group." FontSize="13" TextWrapping="Wrap"/>
 
             <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="600">
                 <ItemsControl ItemsSource="{Binding IncompatibilityGroups}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="local:IncompatibilityGroupViewModel">
-                            <Border Classes="RimworldPanelBorder" Margin="0,0,0,15" Padding="0">
+                            <Border Classes="panel" Margin="0,0,0,15" Padding="0">
                                 <StackPanel>
-                                    <Border Background="{DynamicResource RimworldLightBrownBrush}" Padding="10,8">
+                                    <Border Background="{DynamicResource BrushBgAccent}" Padding="10,8">
                                         <TextBlock Text="Incompatibility Group" FontWeight="Bold" FontSize="14"/>
                                     </Border>
                                     <ItemsControl ItemsSource="{Binding ResolutionOptions}" Margin="10">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="local:IncompatibilityResolutionOption">
-                                                <Border Margin="0,0,0,10" Padding="10" Background="{DynamicResource RimworldBeigeBrush}" CornerRadius="3" BorderThickness="1" BorderBrush="{DynamicResource RimworldBrownBrush}">
+                                                <Border Margin="0,0,0,10" Padding="10" Background="{DynamicResource BrushBgSurface}" CornerRadius="3" BorderThickness="1" BorderBrush="{DynamicResource BrushBorderDefault}">
                                                     <RadioButton IsChecked="{Binding IsSelected}" GroupName="{Binding ParentGroup.GroupName}">
                                                         <StackPanel Spacing="5">
                                                             <Panel>
@@ -37,19 +37,19 @@
                                                                         </MultiBinding>
                                                                     </TextBlock.Text>
                                                                 </TextBlock>
-                                                                <TextBlock IsVisible="{Binding ModToKeep, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Invert}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource RimworldDarkGreenBrush}" Text="Keep all mods (soft incompatibility)"/>
+                                                                <TextBlock IsVisible="{Binding ModToKeep, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Invert}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource BrushTextSuccess}" Text="Keep all mods (soft incompatibility)"/>
                                                             </Panel>
-                                                            
+
                                                             <StackPanel Margin="20,0,0,0" IsVisible="{Binding ModsToRemove.Count}">
                                                                 <TextBlock Text="Will remove the following mods:" FontSize="12"/>
                                                                                                                                     <ItemsControl ItemsSource="{Binding RemovalReasons}">
                                                                                                                                     <ItemsControl.ItemTemplate>
                                                                                                                                         <DataTemplate>
                                                                                                                                             <StackPanel Margin="0,5">
-                                                                                                                                                <TextBlock FontWeight="Bold" Foreground="{DynamicResource RimworldRedBrush}" 
+                                                                                                                                                <TextBlock FontWeight="Bold" Foreground="{DynamicResource BrushTextError}"
                                                                                                                                                            Text="{Binding Key.DisplayName, FallbackValue='Unknown', TargetNullValue='Unknown'}"/>
                                                                                                                                                 <ItemsControl ItemsSource="{Binding Value}" Margin="15,0,0,0">
-                                                                
+
                                                                                     <ItemsControl.ItemTemplate>
                                                                                         <DataTemplate>
                                                                                             <TextBlock Text="{Binding Reason, StringFormat='• {0}'}" FontSize="11" TextWrapping="Wrap"/>
@@ -78,8 +78,8 @@
 
     <dialogs:BaseDialog.ButtonContent>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
-            <Button Content="Cancel" Command="{Binding CancelCommand}" IsEnabled="{Binding IsCancelEnabled}" Width="100" Classes="RimworldButtonStyle"/>
-            <Button Content="Apply Changes" Command="{Binding ApplyResolutionsCommand}" Width="120" Classes="RimworldSaveButtonStyle"/>
+            <Button Content="Cancel" Command="{Binding CancelCommand}" IsEnabled="{Binding IsCancelEnabled}" Width="100" Classes="btn"/>
+            <Button Content="Apply Changes" Command="{Binding ApplyResolutionsCommand}" Width="120" Classes="btn-success"/>
         </StackPanel>
     </dialogs:BaseDialog.ButtonContent>
 </dialogs:BaseDialog>

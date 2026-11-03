@@ -12,7 +12,7 @@
              mc:Ignorable="d"
              d:DesignHeight="600"
              d:DesignWidth="800"
-             Background="{DynamicResource RimworldBeigeBrush}">
+             Background="{DynamicResource BrushBgSurface}">
 
     <Grid RowDefinitions="*,Auto" ColumnDefinitions="*,300">
         <!-- Browser Area -->
@@ -20,7 +20,7 @@
                         Grid.Column="0"
                         Content="{Binding BrowserViewModel}"
                         Margin="0,0,1,1"
-                        BorderBrush="{DynamicResource RimworldBrownBrush}"
+                        BorderBrush="{DynamicResource BrushBorderDefault}"
                         BorderThickness="1"/>
 
         <!-- Download Queue Area -->
@@ -39,7 +39,7 @@
         <Button Grid.Row="0" Grid.ColumnSpan="2"
                 Content="Cancel Current Operation"
                 Command="{Binding CancelOperationCommand}"
-                Classes="RimworldRunButtonStyle"
+                Classes="btn-danger"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Bottom"
                 Margin="0,0,0,40"

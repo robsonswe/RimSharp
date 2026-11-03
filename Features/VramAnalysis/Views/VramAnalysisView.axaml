@@ -13,22 +13,22 @@
             <Setter Property="FontWeight" Value="Bold"/>
         </Style>
         <Style Selector="TextBlock.favorite">
-            <Setter Property="Foreground" Value="{DynamicResource RimworldCodeBlueBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextCode}"/>
         </Style>
         <Style Selector="TextBlock.conditional">
             <Setter Property="FontStyle" Value="Italic"/>
         </Style>
 
         <!-- Summary panel: budget gauge -->
-        <Style Selector="ProgressBar.RimworldProgressBarStyle.overbudget">
-            <Setter Property="Foreground" Value="{DynamicResource RimworldRedBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldRedBorderBrush}"/>
+        <Style Selector="ProgressBar.progress.overbudget">
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextError}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderError}"/>
         </Style>
 
         <!-- Summary panel: breakdown chips -->
         <Style Selector="Border.summaryChip">
-            <Setter Property="Background" Value="{DynamicResource RimworldBeigeBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource BrushBgSurface}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="3"/>
             <Setter Property="Padding" Value="8,5"/>
@@ -37,27 +37,27 @@
             <Setter Property="Width" Value="10"/>
             <Setter Property="Height" Value="10"/>
             <Setter Property="CornerRadius" Value="2"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderStrong}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style Selector="TextBlock.chipLabel">
             <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style Selector="TextBlock.chipValue">
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Foreground" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style Selector="TextBlock.chipMuted">
-            <Setter Property="Foreground" Value="{DynamicResource RimworldLightBrownBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextMuted}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style Selector="TextBlock.budgetPercent">
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Foreground" Value="{DynamicResource RimworldDarkGreenBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSuccess}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
@@ -75,13 +75,13 @@
             <Setter Property="FontWeight" Value="Bold"/>
         </Style>
         <Style Selector="Border.overbudgetPill">
-            <Setter Property="Background" Value="{DynamicResource RimworldRedBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource BrushBgDanger}"/>
             <Setter Property="CornerRadius" Value="2"/>
             <Setter Property="Padding" Value="6,1"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style Selector="Border.modePill">
-            <Setter Property="Background" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource BrushBgActionStrong}"/>
             <Setter Property="CornerRadius" Value="2"/>
             <Setter Property="Padding" Value="6,1"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
@@ -90,7 +90,7 @@
 
     <DockPanel Margin="10">
         <!-- Summary and controls -->
-        <Border DockPanel.Dock="Top" Margin="0,0,0,10" Classes="RimworldPanelBorder">
+        <Border DockPanel.Dock="Top" Margin="0,0,0,10" Classes="panel">
             <StackPanel Spacing="10">
 
                 <!-- Action row -->
@@ -98,7 +98,7 @@
                     <Button Grid.Column="0"
                             Content="Calculate VRAM"
                             Command="{Binding CalculateVramCommand}"
-                            Classes="RimworldButtonStyle"
+                            Classes="btn"
                             Padding="18,6"
                             FontWeight="Bold"
                             ToolTip.Tip="Analyze texture files to estimate VRAM usage."/>
@@ -108,32 +108,31 @@
                                Margin="16,0"
                                VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis"
-                               Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
-
+                               Foreground="{DynamicResource BrushTextStrong}"/>
                     <CheckBox Grid.Column="2"
                               Content="Show max VRAM estimate"
                               IsChecked="{Binding ShowMaxVram}"
                               VerticalAlignment="Center"
-                              Foreground="{DynamicResource RimworldDarkBrownBrush}"
+                              Foreground="{DynamicResource BrushTextStrong}"
                               ToolTip.Tip="When checked, every value shows the maximum possible VRAM usage instead of the typical estimate."/>
                 </Grid>
 
                 <!-- Budget: game, DLCs and active mods measured against the GPU's VRAM -->
-                <Border Classes="RimworldSubtlePanelBorder" Padding="10,8" IsVisible="{Binding IsUserVramAvailable}"
+                <Border Classes="panel-subtle" Padding="10,8" IsVisible="{Binding IsUserVramAvailable}"
                         ToolTip.Tip="Estimated VRAM used by texture assets (compressed, as stored on GPU). Does not include render targets, UI, meshes, shaders, or other runtime GPU memory.">
                     <StackPanel Spacing="8">
 
-                        <Grid ColumnDefinitions="Auto,*,Auto" TextElement.Foreground="{DynamicResource RimworldBrownBrush}">
+                        <Grid ColumnDefinitions="Auto,*,Auto" TextElement.Foreground="{DynamicResource BrushTextPrimary}">
                             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                 <TextBlock Text="Texture VRAM budget"
                                            FontWeight="Bold"
                                            VerticalAlignment="Center"
-                                           Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                           Foreground="{DynamicResource BrushTextStrong}"/>
                                 <Border Classes="modePill">
-                                    <TextBlock Text="{Binding VramEstimateModeLabel}" FontSize="11" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                    <TextBlock Text="{Binding VramEstimateModeLabel}" FontSize="11" Foreground="{DynamicResource BrushTextOnDark}"/>
                                 </Border>
                                 <Border Classes="overbudgetPill" IsVisible="{Binding IsOverBudget}">
-                                    <TextBlock Text="Over budget" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                    <TextBlock Text="Over budget" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextOnDark}"/>
                                 </Border>
                             </StackPanel>
 
@@ -156,21 +155,20 @@
                         <TextBlock Text="Game, DLCs and active mods counted against your GPU VRAM. Not total GPU usage."
                                    TextWrapping="Wrap"
                                    FontSize="11"
-                                   Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
-
+                                   Foreground="{DynamicResource BrushTextStrong}"/>
                         <ProgressBar Height="16"
                                      Minimum="0"
                                      Maximum="{Binding BudgetCapacityMb}"
                                      Value="{Binding BudgetUsageMb}"
-                                     Classes="RimworldProgressBarStyle"
+                                     Classes="progress"
                                      Classes.overbudget="{Binding IsOverBudget}"/>
                     </StackPanel>
                 </Border>
 
                 <!-- Fallback when the GPU VRAM could not be detected -->
-                <Border Classes="RimworldSubtlePanelBorder" Padding="10,8" IsVisible="{Binding !IsUserVramAvailable}">
+                <Border Classes="panel-subtle" Padding="10,8" IsVisible="{Binding !IsUserVramAvailable}">
                     <TextBlock TextWrapping="Wrap"
-                               Foreground="{DynamicResource RimworldDarkBrownBrush}"
+                               Foreground="{DynamicResource BrushTextStrong}"
                                Text="GPU VRAM was not detected, so there is no budget to compare against. Totals are still shown below."/>
                 </Border>
 
@@ -179,7 +177,7 @@
                     <Border Classes="summaryChip" Margin="0,0,8,8"
                             ToolTip.Tip="Texture VRAM only: compressed texture data stored on the GPU, not total GPU usage.">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                            <Border Classes="swatch" Background="{DynamicResource RimworldBrownBrush}"/>
+                            <Border Classes="swatch" Background="{DynamicResource BrushBgAction}"/>
                             <TextBlock Classes="chipLabel" Text="Game"/>
                             <TextBlock Classes="chipValue" Text="{Binding CoreVramCompressed, Converter={StaticResource FileSizeConverter}}"/>
                         </StackPanel>
@@ -188,7 +186,7 @@
                     <Border Classes="summaryChip" Margin="0,0,8,8"
                             ToolTip.Tip="Texture VRAM only: compressed texture data stored on the GPU, not total GPU usage.">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                            <Border Classes="swatch" Background="{DynamicResource RimworldConfigOrangeBrush}"/>
+                            <Border Classes="swatch" Background="{DynamicResource BrushStateWarning}"/>
                             <TextBlock Classes="chipLabel" Text="DLCs"/>
                             <TextBlock Classes="chipValue" Text="{Binding ExpansionsVramCompressed, Converter={StaticResource FileSizeConverter}}"/>
                         </StackPanel>
@@ -197,7 +195,7 @@
                     <Border Classes="summaryChip" Margin="0,0,8,8"
                             ToolTip.Tip="Texture VRAM only: compressed texture data stored on the GPU, not total GPU usage.">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                            <Border Classes="swatch" Background="{DynamicResource RimworldCodeBlueBrush}"/>
+                            <Border Classes="swatch" Background="{DynamicResource BrushTextCode}"/>
                             <TextBlock Classes="chipLabel" Text="Mods"/>
                             <TextBlock Classes="chipValue" Text="{Binding DisplayedModsVram, Converter={StaticResource FileSizeConverter}}"/>
                         </StackPanel>
@@ -235,16 +233,16 @@
         </Border>
 
         <!-- Filter Bar -->
-        <Border DockPanel.Dock="Top" Margin="0,0,0,10" Classes="RimworldSubtlePanelBorder">
+        <Border DockPanel.Dock="Top" Margin="0,0,0,10" Classes="panel-subtle">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Spacing="25">
-                <CheckBox Content="Show only active mods" IsChecked="{Binding ShowOnlyActive}" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
-                <CheckBox Content="Show only favorite mods" IsChecked="{Binding ShowOnlyFavorites}" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                <CheckBox Content="Show only active mods" IsChecked="{Binding ShowOnlyActive}" Foreground="{DynamicResource BrushTextStrong}"/>
+                <CheckBox Content="Show only favorite mods" IsChecked="{Binding ShowOnlyFavorites}" Foreground="{DynamicResource BrushTextStrong}"/>
             </StackPanel>
         </Border>
 
         <!-- Main Content -->
         <Grid>
-            <Border Classes="RimworldPanelBorder" Padding="0">
+            <Border Classes="panel" Padding="0">
                 <DataGrid x:Name="VramModsDataGrid"
                           ItemsSource="{Binding VramMods}"
                           AutoGenerateColumns="False"
@@ -264,7 +262,7 @@
                             </DataGridTemplateColumn.HeaderTemplate>
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding Mod.DisplayName}" 
+                                    <TextBlock Text="{Binding Mod.DisplayName}"
                                                VerticalAlignment="Center"
                                                Margin="10,0"
                                                TextTrimming="CharacterEllipsis"
@@ -323,11 +321,11 @@
                                     <Panel VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,10,0">
                                         <TextBlock Text="{Binding EstimatedVramCompressed, Converter={StaticResource FileSizeConverter}}"
                                                    IsVisible="{Binding !$parent[DataGrid].DataContext.ShowMaxVram}"
-                                                   Foreground="{DynamicResource RimworldBrownBrush}"
+                                                   Foreground="{DynamicResource BrushTextPrimary}"
                                                    FontWeight="Medium"/>
                                         <TextBlock Text="{Binding MaxEstimatedVramCompressed, Converter={StaticResource FileSizeConverter}}"
                                                    IsVisible="{Binding $parent[DataGrid].DataContext.ShowMaxVram}"
-                                                   Foreground="{DynamicResource RimworldBrownBrush}"
+                                                   Foreground="{DynamicResource BrushTextPrimary}"
                                                    FontWeight="Medium"/>
                                     </Panel>
                                 </DataTemplate>
@@ -347,10 +345,10 @@
                                     <Panel VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,10,0">
                                         <TextBlock Text="{Binding EstimatedVramUncompressed, Converter={StaticResource FileSizeConverter}}"
                                                    IsVisible="{Binding !$parent[DataGrid].DataContext.ShowMaxVram}"
-                                                   Foreground="{DynamicResource RimworldLightBrownBrush}"/>
+                                                   Foreground="{DynamicResource BrushTextMuted}"/>
                                         <TextBlock Text="{Binding MaxEstimatedVramUncompressed, Converter={StaticResource FileSizeConverter}}"
                                                    IsVisible="{Binding $parent[DataGrid].DataContext.ShowMaxVram}"
-                                                   Foreground="{DynamicResource RimworldLightBrownBrush}"/>
+                                                   Foreground="{DynamicResource BrushTextMuted}"/>
                                     </Panel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -362,22 +360,22 @@
                             <Border Classes="DataGridRowDetails">
                                 <StackPanel Spacing="5">
                                     <Grid ColumnDefinitions="Auto,*">
-                                        <TextBlock Text="Path:" FontWeight="Bold" Foreground="{DynamicResource RimworldBlackBrush}" Width="80"/>
-                                        <SelectableTextBlock Grid.Column="1" Text="{Binding Mod.Path}" FontSize="11" Foreground="{DynamicResource RimworldBlackBrush}" Opacity="0.8"/>
+                                        <TextBlock Text="Path:" FontWeight="Bold" Foreground="{DynamicResource BrushTextBlack}" Width="80"/>
+                                        <SelectableTextBlock Grid.Column="1" Text="{Binding Mod.Path}" FontSize="11" Foreground="{DynamicResource BrushTextBlack}" Opacity="0.8"/>
                                     </Grid>
                                     <Grid ColumnDefinitions="Auto,*">
-                                        <TextBlock Text="Package ID:" FontWeight="Bold" Foreground="{DynamicResource RimworldBlackBrush}" Width="80"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding Mod.PackageId}" FontSize="11" Foreground="{DynamicResource RimworldBlackBrush}"/>
+                                        <TextBlock Text="Package ID:" FontWeight="Bold" Foreground="{DynamicResource BrushTextBlack}" Width="80"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Mod.PackageId}" FontSize="11" Foreground="{DynamicResource BrushTextBlack}"/>
                                     </Grid>
                                     <Separator Classes="DataGridRowDetails"/>
                                     <StackPanel Orientation="Horizontal" Spacing="20">
                                         <StackPanel Orientation="Horizontal" Spacing="5">
-                                            <TextBlock Text="Compressed Atlas:" FontWeight="SemiBold" Foreground="{DynamicResource RimworldBlackBrush}"/>
-                                            <TextBlock Text="{Binding InAtlasCount}" Foreground="{DynamicResource RimworldBlackBrush}"/>
+                                            <TextBlock Text="Compressed Atlas:" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextBlack}"/>
+                                            <TextBlock Text="{Binding InAtlasCount}" Foreground="{DynamicResource BrushTextBlack}"/>
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal" Spacing="5">
-                                            <TextBlock Text="Compressed Individual:" FontWeight="SemiBold" Foreground="{DynamicResource RimworldBlackBrush}"/>
-                                            <TextBlock Text="{Binding TextureCount}" Foreground="{DynamicResource RimworldBlackBrush}"/>
+                                            <TextBlock Text="Compressed Individual:" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextBlack}"/>
+                                            <TextBlock Text="{Binding TextureCount}" Foreground="{DynamicResource BrushTextBlack}"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
@@ -386,10 +384,10 @@
                     </DataGrid.RowDetailsTemplate>
                 </DataGrid>
             </Border>
-            
+
             <Border Background="#88000000" IsVisible="{Binding IsBusy}">
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10">
-                    <ProgressBar IsIndeterminate="{Binding IsBusy}" Width="200" Classes="RimworldProgressBarStyle"/>
+                    <ProgressBar IsIndeterminate="{Binding IsBusy}" Width="200" Classes="progress"/>
                     <TextBlock Text="Analyzing Textures..." HorizontalAlignment="Center" FontSize="16" FontWeight="Bold" Foreground="White"/>
                 </StackPanel>
             </Border>

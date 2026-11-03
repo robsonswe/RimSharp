@@ -93,10 +93,10 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
 
         private Control CreatePlaceholderContent(string title, string mainText, string subText, bool showProgress)
         {
-            var beigeBrush = Application.Current?.FindResource("RimworldBeigeBrush") as IBrush ?? Brushes.Beige;
-            var brownBrush = Application.Current?.FindResource("RimworldBrownBrush") as IBrush ?? Brushes.Brown;
-            var darkBrownBrush = Application.Current?.FindResource("RimworldDarkBrownBrush") as IBrush ?? brownBrush;
-            var lightBrownBrush = Application.Current?.FindResource("RimworldLightBrownBrush") as IBrush ?? brownBrush;
+            var beigeBrush = Application.Current?.FindResource("BrushBgSurface") as IBrush ?? Brushes.Beige;
+            var brownBrush = Application.Current?.FindResource("BrushStatePrimary") as IBrush ?? Brushes.Brown;
+            var darkBrownBrush = Application.Current?.FindResource("BrushTextStrong") as IBrush ?? brownBrush;
+            var lightBrownBrush = Application.Current?.FindResource("BrushTextMuted") as IBrush ?? brownBrush;
 
             var stack = new StackPanel
             {
@@ -135,7 +135,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.Browser
                     Margin = new Thickness(0, 10, 0, 0),
                     HorizontalAlignment = HorizontalAlignment.Center
                 };
-                progress.Classes.Add("RimworldProgressBarStyle");
+                progress.Classes.Add("progress");
                 stack.Children.Add(progress);
             }
 

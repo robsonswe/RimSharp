@@ -16,44 +16,43 @@
         <Grid RowDefinitions="Auto,Auto,*">
             <TextBlock Grid.Row="0" Text="Select Workshop mods to check for updates:"
                        Margin="0,0,0,10" FontSize="14" FontWeight="Medium"
-                       Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
-
-            <Border Grid.Row="1" Margin="0,0,0,10" Classes="RimworldSubtlePanelBorder">
+                       Foreground="{DynamicResource BrushTextStrong}"/>
+            <Border Grid.Row="1" Margin="0,0,0,10" Classes="panel-subtle">
                 <Grid ColumnDefinitions="Auto,*,Auto">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                        <Button Content="Select Active" Command="{Binding SelectActiveCommand}" Classes="RimworldButtonStyle" Padding="10,4"/>
-                        
-                        <Rectangle Width="1" Fill="{DynamicResource RimworldBrownBrush}" Margin="5,2"/>
+                        <Button Content="Select Active" Command="{Binding SelectActiveCommand}" Classes="btn" Padding="10,4"/>
+
+                        <Rectangle Width="1" Fill="{DynamicResource BrushBgAction}" Margin="5,2"/>
 
                         <Menu Background="Transparent" VerticalAlignment="Center">
-                            <MenuItem Header="Select by Update" Classes="RimworldDropDownButtonStyle" Padding="15,5">
-                                <MenuItem Command="{Binding SelectByTimeframeCommand}" CommandParameter="versionMismatch" Classes="RimworldMenuItemStyle">
+                            <MenuItem Header="Select by Update" Classes="menu-dropdown" Padding="15,5">
+                                <MenuItem Command="{Binding SelectByTimeframeCommand}" CommandParameter="versionMismatch" Classes="menu-item">
                                     <MenuItem.Header>
                                         <StackPanel>
                                             <TextBlock Text="Version Mismatch" FontWeight="Medium"/>
-                                            <TextBlock Text="Mods not updated for current version" FontSize="10" Foreground="{DynamicResource RimworldLightBrownBrush}"/>
+                                            <TextBlock Text="Mods not updated for current version" FontSize="10" Foreground="{DynamicResource BrushTextMuted}"/>
                                         </StackPanel>
                                     </MenuItem.Header>
                                 </MenuItem>
-                                <Separator Classes="RimworldSeparatorStyle"/>
-                                <MenuItem Header="Not updated in 1 week" Command="{Binding SelectByTimeframeCommand}" CommandParameter="week" Classes="RimworldMenuItemStyle"/>
-                                <MenuItem Header="Not updated in 1 month" Command="{Binding SelectByTimeframeCommand}" CommandParameter="month" Classes="RimworldMenuItemStyle"/>
-                                <MenuItem Header="Not updated in 6 months" Command="{Binding SelectByTimeframeCommand}" CommandParameter="6months" Classes="RimworldMenuItemStyle"/>
-                                <MenuItem Header="Not updated in 1 year" Command="{Binding SelectByTimeframeCommand}" CommandParameter="year" Classes="RimworldMenuItemStyle"/>
+                                <Separator Classes="separator"/>
+                                <MenuItem Header="Not updated in 1 week" Command="{Binding SelectByTimeframeCommand}" CommandParameter="week" Classes="menu-item"/>
+                                <MenuItem Header="Not updated in 1 month" Command="{Binding SelectByTimeframeCommand}" CommandParameter="month" Classes="menu-item"/>
+                                <MenuItem Header="Not updated in 6 months" Command="{Binding SelectByTimeframeCommand}" CommandParameter="6months" Classes="menu-item"/>
+                                <MenuItem Header="Not updated in 1 year" Command="{Binding SelectByTimeframeCommand}" CommandParameter="year" Classes="menu-item"/>
                             </MenuItem>
                         </Menu>
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="5">
-                        <TextBlock Text="{Binding SelectedModCount}" Foreground="{DynamicResource RimworldDarkBrownBrush}" FontWeight="Bold"/>
-                        <TextBlock Text="of" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
-                        <TextBlock Text="{Binding TotalModCount}" Foreground="{DynamicResource RimworldDarkBrownBrush}" FontWeight="Bold"/>
-                        <TextBlock Text="selected" Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                        <TextBlock Text="{Binding SelectedModCount}" Foreground="{DynamicResource BrushTextStrong}" FontWeight="Bold"/>
+                        <TextBlock Text="of" Foreground="{DynamicResource BrushTextStrong}"/>
+                        <TextBlock Text="{Binding TotalModCount}" Foreground="{DynamicResource BrushTextStrong}" FontWeight="Bold"/>
+                        <TextBlock Text="selected" Foreground="{DynamicResource BrushTextStrong}"/>
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <Border Grid.Row="2" Classes="RimworldPanelBorder" Padding="0">
+            <Border Grid.Row="2" Classes="panel" Padding="0">
                 <DataGrid x:Name="ModsDataGrid"
                           ItemsSource="{Binding ModsView}"
                           AutoGenerateColumns="False"
@@ -114,8 +113,8 @@
                             </DataGridTemplateColumn.HeaderTemplate>
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate x:DataType="vm:UpdateCheckItemViewModel">
-                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" 
-                                              HorizontalAlignment="Center" VerticalAlignment="Center" 
+                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"
                                               Margin="0" Padding="0"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -128,7 +127,7 @@
                         <DataGridTemplateColumn Header="Last Update" Width="150" CanUserResize="True">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate x:DataType="vm:UpdateCheckItemViewModel">
-                                    <TextBlock Text="{Binding LocalUpdateDate}" 
+                                    <TextBlock Text="{Binding LocalUpdateDate}"
                                                HorizontalAlignment="Center" VerticalAlignment="Center" Margin="10,0"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -141,8 +140,8 @@
 
     <dialogs:BaseDialog.ButtonContent>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="10">
-            <Button Content="Check for Updates" Command="{Binding UpdateCommand}" Classes="RimworldRunButtonStyle" MinWidth="120"/>
-            <Button Content="Cancel" Command="{Binding CancelCommand}" Classes="RimworldButtonStyle" MinWidth="80"/>
+            <Button Content="Check for Updates" Command="{Binding UpdateCommand}" Classes="btn-danger" MinWidth="120"/>
+            <Button Content="Cancel" Command="{Binding CancelCommand}" Classes="btn" MinWidth="80"/>
         </StackPanel>
     </dialogs:BaseDialog.ButtonContent>
 </dialogs:BaseDialog>

@@ -10,24 +10,24 @@
         x:DataType="vm:MainViewModel"
         Title="RimSharp - RimWorld Mod Manager" Height="900" Width="1200"
         MinHeight="700" MinWidth="1200"
-        Background="{DynamicResource RimworldBeigeBrush}">
+        Background="{DynamicResource BrushBgSurface}">
 
     <Window.Styles>
         <Style Selector="Ellipse.StatusBall">
-            <Setter Property="Fill" Value="{DynamicResource RimworldDarkGreenBrush}"/>
+            <Setter Property="Fill" Value="{DynamicResource BrushBgSuccess}"/>
         </Style>
         <Style Selector="Ellipse.StatusBall.update-available">
-            <Setter Property="Fill" Value="{DynamicResource RimworldRedBrush}"/>
+            <Setter Property="Fill" Value="{DynamicResource BrushBgDanger}"/>
             <Style.Animations>
                 <Animation Duration="0:0:2" IterationCount="Infinite">
                     <KeyFrame Cue="0%">
-                        <Setter Property="Fill" Value="{DynamicResource RimworldRedBrush}"/>
+                        <Setter Property="Fill" Value="{DynamicResource BrushBgDanger}"/>
                     </KeyFrame>
                     <KeyFrame Cue="50%">
-                        <Setter Property="Fill" Value="{DynamicResource RimworldRedLightBrush}"/>
+                        <Setter Property="Fill" Value="{DynamicResource BrushBgDangerLight}"/>
                     </KeyFrame>
                     <KeyFrame Cue="100%">
-                        <Setter Property="Fill" Value="{DynamicResource RimworldRedBrush}"/>
+                        <Setter Property="Fill" Value="{DynamicResource BrushBgDanger}"/>
                     </KeyFrame>
                 </Animation>
             </Style.Animations>
@@ -37,29 +37,28 @@
     <Grid>
         <DockPanel IsVisible="{Binding !IsInitialLoading}">
             <!-- Compact Header Bar (Merged Settings and Tabs) -->
-            <Border DockPanel.Dock="Top" Margin="8,8,8,0" Classes="RimworldPanelBorder" Background="{DynamicResource RimworldDarkBeigeBrush}" Padding="12,4">
+            <Border DockPanel.Dock="Top" Margin="8,8,8,0" Classes="panel" Background="{DynamicResource BrushBgPanel}" Padding="12,4">
                 <Grid ColumnDefinitions="*,Auto">
 
                     <!-- Left Side: App Title + Tabs -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="RimSharp" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource RimworldBrownBrush}" VerticalAlignment="Center" Margin="0,0,24,0"/>
-
+                        <TextBlock Text="RimSharp" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center" Margin="0,0,24,0"/>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="5">
                             <Button Content="Mods"
                                     Command="{Binding SwitchTabCommand}" CommandParameter="Mods"
-                                    Classes="RimworldTabButtonStyle"
+                                    Classes="btn-tab"
                                     Classes.active="{Binding SelectedTab, Converter={StaticResource EqualityConverter}, ConverterParameter=Mods}"/>
                             <Button Content="Downloader"
                                     Command="{Binding SwitchTabCommand}" CommandParameter="Downloader"
-                                    Classes="RimworldTabButtonStyle"
+                                    Classes="btn-tab"
                                     Classes.active="{Binding SelectedTab, Converter={StaticResource EqualityConverter}, ConverterParameter=Downloader}"/>
                             <Button Content="Git Mods"
                                     Command="{Binding SwitchTabCommand}" CommandParameter="GitMods"
-                                    Classes="RimworldTabButtonStyle"
+                                    Classes="btn-tab"
                                     Classes.active="{Binding SelectedTab, Converter={StaticResource EqualityConverter}, ConverterParameter=GitMods}"/>
                             <Button Content="VRAM Analysis"
                                     Command="{Binding SwitchTabCommand}" CommandParameter="VRAM"
-                                    Classes="RimworldTabButtonStyle"
+                                    Classes="btn-tab"
                                     Classes.active="{Binding SelectedTab, Converter={StaticResource EqualityConverter}, ConverterParameter=VRAM}"/>
                         </StackPanel>
                     </StackPanel>
@@ -67,30 +66,30 @@
                     <!-- Right Side: Info + Global Actions -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
                         <!-- Game Version Badge -->
-                        <Border Background="{DynamicResource RimworldLightBrownBrush}" 
-                                BorderBrush="{DynamicResource RimworldBrownBrush}" 
-                                BorderThickness="1" 
-                                CornerRadius="3" 
-                                Padding="12,4" 
+                        <Border Background="{DynamicResource BrushBgAccent}"
+                                BorderBrush="{DynamicResource BrushBorderDefault}"
+                                BorderThickness="1"
+                                CornerRadius="3"
+                                Padding="12,4"
                                 VerticalAlignment="Center"
                                 ToolTip.Tip="{Binding UpdateTooltipText}">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center" 
+                                <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"
                                          Classes="StatusBall"
                                          Classes.update-available="{Binding IsUpdateAvailable}">
                                 </Ellipse>
 
-                                <TextBlock Text="{Binding PathSettings.GameVersion, StringFormat='RW v\{0\}'}" 
-                                           FontSize="12" 
-                                           FontWeight="Bold" 
-                                           Foreground="{DynamicResource RimworldBrownBrush}"
+                                <TextBlock Text="{Binding PathSettings.GameVersion, StringFormat='RW v\{0\}'}"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource BrushTextPrimary}"
                                            VerticalAlignment="Center"/>
                             </StackPanel>
                         </Border>
 
                         <!-- Refresh Action -->
-                        <Button Command="{Binding RefreshCommand}" 
-                                Classes="RimworldButtonStyle" 
+                        <Button Command="{Binding RefreshCommand}"
+                                Classes="btn"
                                 Padding="12,4"
                                 MinWidth="0">
                             <StackPanel Orientation="Horizontal" Spacing="8">
@@ -101,13 +100,13 @@
 
                         <!-- Menu Dropdown -->
                         <Menu Background="Transparent" VerticalAlignment="Center">
-                            <MenuItem Classes="RimworldDropDownButtonStyle">
+                            <MenuItem Classes="menu-dropdown">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <TextBlock Text="Menu" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </MenuItem.Header>
-                                <MenuItem Header="Settings" Command="{Binding SettingsCommand}" Classes="RimworldMenuItemStyle">
+                                <MenuItem Header="Settings" Command="{Binding SettingsCommand}" Classes="menu-item">
                                     <MenuItem.Header>
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <i:Icon Value="fa-gear" VerticalAlignment="Center" FontSize="14"/>
@@ -115,7 +114,7 @@
                                         </StackPanel>
                                     </MenuItem.Header>
                                 </MenuItem>
-                                <MenuItem Header="About" Command="{Binding AboutCommand}" Classes="RimworldMenuItemStyle">
+                                <MenuItem Header="About" Command="{Binding AboutCommand}" Classes="menu-item">
                                     <MenuItem.Header>
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <i:Icon Value="fa-info" VerticalAlignment="Center" FontSize="14"/>
@@ -131,7 +130,7 @@
             </Border>
 
             <!-- Main Content Area -->
-            <Border Margin="8" Classes="RimworldPanelBorder" Background="{DynamicResource RimworldBeigeBrush}">
+            <Border Margin="8" Classes="panel" Background="{DynamicResource BrushBgSurface}">
                 <ContentControl Content="{Binding CurrentViewModel}" />
             </Border>
         </DockPanel>
@@ -142,9 +141,9 @@
             <Border Background="#99000000"/>
 
             <!-- Loading Card -->
-            <Border Classes="RimworldPanelBorder" 
-                    Width="450" 
-                    VerticalAlignment="Center" 
+            <Border Classes="panel"
+                    Width="450"
+                    VerticalAlignment="Center"
                     HorizontalAlignment="Center"
                     Padding="30"
                     BorderThickness="2"
@@ -152,38 +151,38 @@
                 <StackPanel Spacing="15">
                     <!-- App Icon -->
                     <Image Source="avares://RimSharp/icon.ico" Width="64" Height="64" Margin="0,0,0,15"/>
-                    
+
                     <!-- Title -->
-                    <TextBlock Text="RimSharp" 
-                               FontSize="36" 
-                               FontWeight="Bold" 
-                               Foreground="{DynamicResource RimworldBrownBrush}" 
+                    <TextBlock Text="RimSharp"
+                               FontSize="36"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource BrushTextPrimary}"
                                HorizontalAlignment="Center"/>
-                    
+
                     <!-- Subtitle -->
-                    <TextBlock Text="RimWorld Mod Manager" 
-                               FontSize="16" 
-                               Foreground="{DynamicResource RimworldBrownBrush}" 
-                               HorizontalAlignment="Center" 
+                    <TextBlock Text="RimWorld Mod Manager"
+                               FontSize="16"
+                               Foreground="{DynamicResource BrushTextPrimary}"
+                               HorizontalAlignment="Center"
                                FontStyle="Italic"/>
-                    
+
                     <!-- App Version -->
-                    <TextBlock Text="{Binding AppVersion, FallbackValue='v1.0.0', TargetNullValue='v1.0.0'}" 
-                               FontSize="12" 
-                               Foreground="{DynamicResource RimworldBrownBrush}" 
-                               HorizontalAlignment="Center" 
+                    <TextBlock Text="{Binding AppVersion, FallbackValue='v1.0.0', TargetNullValue='v1.0.0'}"
+                               FontSize="12"
+                               Foreground="{DynamicResource BrushTextPrimary}"
+                               HorizontalAlignment="Center"
                                FontStyle="Italic"/>
 
                     <!-- Custom Progress Bar -->
                     <ProgressBar Value="{Binding InitialLoadingProgress, FallbackValue=0}"
                                  IsIndeterminate="False"
-                                 Classes="RimworldProgressBarStyle"
+                                 Classes="progress"
                                  Height="10" />
 
                     <!-- Status Text -->
-                    <TextBlock Text="{Binding ModsVM.LoadingMessage}" 
-                               FontSize="14" 
-                               Foreground="{DynamicResource RimworldDarkBrownBrush}" 
+                    <TextBlock Text="{Binding ModsVM.LoadingMessage}"
+                               FontSize="14"
+                               Foreground="{DynamicResource BrushTextStrong}"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                MaxWidth="380"/>

@@ -13,21 +13,20 @@
         CanResize="False">
 
     <dialogs:BaseDialog.MainContent>
-        <Border Classes="RimworldPanelBorder">
+        <Border Classes="panel">
             <StackPanel Margin="15,10" Spacing="10">
                 <!-- Message -->
                 <TextBlock Text="{Binding Message}"
                            TextWrapping="Wrap"
                            FontSize="14"
-                           Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
-                
+                           Foreground="{DynamicResource BrushTextStrong}"/>
                 <!-- Input Field -->
                 <TextBox Text="{Binding Input}"
                          AcceptsReturn="True"
                          Height="60"
                          FontSize="14"
                          Padding="5"
-                         BorderBrush="{DynamicResource RimworldBrownBrush}"
+                         BorderBrush="{DynamicResource BrushBorderDefault}"
                          BorderThickness="1"/>
             </StackPanel>
         </Border>
@@ -37,12 +36,12 @@
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
             <Button Content="OK"
                     Command="{Binding OkCommand}"
-                    Classes="RimworldSaveButtonStyle"
+                    Classes="btn-success"
                     IsVisible="{Binding ShowOkButton}"/>
-            
+
             <Button Content="Cancel"
                     Command="{Binding CancelCommand}"
-                    Classes="RimworldRunButtonStyle"
+                    Classes="btn-danger"
                     IsVisible="{Binding ShowCancelButton}"/>
         </StackPanel>
     </dialogs:BaseDialog.ButtonContent>

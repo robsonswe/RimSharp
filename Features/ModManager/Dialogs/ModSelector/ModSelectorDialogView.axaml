@@ -19,7 +19,7 @@
                       IsReadOnly="True"
                       GridLinesVisibility="All"
                       BorderThickness="1"
-                      BorderBrush="{DynamicResource RimworldBorderBrush}"
+                      BorderBrush="{DynamicResource BrushBorderDefault}"
                       CanUserResizeColumns="True"
                       FontSize="12"
                       DoubleTapped="DataGrid_DoubleTapped">
@@ -31,7 +31,7 @@
                     <DataGridTemplateColumn Header="Versions" Width="100" CanUserResize="True">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding SupportedVersionStrings, Converter={StaticResource ListToStringConverter}}" 
+                                <TextBlock Text="{Binding SupportedVersionStrings, Converter={StaticResource ListToStringConverter}}"
                                            VerticalAlignment="Center" Margin="5,0" FontSize="12"/>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
@@ -42,8 +42,8 @@
     </dialogs:BaseDialog.MainContent>
     <dialogs:BaseDialog.ButtonContent>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
-            <Button Content="Select" Command="{Binding ConfirmCommand}" Width="80" Classes="RimworldButtonStyle"/>
-            <Button Content="Cancel" Command="{Binding CancelCommand}" Width="80" Classes="RimworldButtonStyle"/>
+            <Button Content="Select" Command="{Binding ConfirmCommand}" Width="80" Classes="btn"/>
+            <Button Content="Cancel" Command="{Binding CancelCommand}" Width="80" Classes="btn"/>
         </StackPanel>
     </dialogs:BaseDialog.ButtonContent>
 </dialogs:BaseDialog>

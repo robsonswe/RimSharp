@@ -8,23 +8,22 @@
              x:CompileBindings="True"
              mc:Ignorable="d">
 
-    <Border Background="{DynamicResource RimworldLightBrownBrush}"
-            BorderBrush="{DynamicResource RimworldBrownBrush}"
+    <Border Background="{DynamicResource BrushBgAccent}"
+            BorderBrush="{DynamicResource BrushBorderDefault}"
             BorderThickness="0,1,0,0">
         <Grid ColumnDefinitions="*,Auto">
             <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
                        Padding="5"
-                       Foreground="{DynamicResource RimworldWhiteBrush}"/>
-            
-            <ProgressBar Grid.Column="1" 
-                         Width="150" 
+                       Foreground="{DynamicResource BrushTextOnDark}"/>
+            <ProgressBar Grid.Column="1"
+                         Width="150"
                          Height="12"
                          Margin="5,0"
                          VerticalAlignment="Center"
                          Value="{Binding Progress}"
                          IsIndeterminate="{Binding IsIndeterminate}"
                          IsVisible="{Binding IsProgressBarVisible}"
-                         Classes="RimworldProgressBarStyle"/>
+                         Classes="progress"/>
         </Grid>
     </Border>
 </UserControl>

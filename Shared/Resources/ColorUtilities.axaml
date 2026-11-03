@@ -1,0 +1,73 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Text utilities -->
+    <Style Selector="TextBlock.text-primary">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+    </Style>
+    <Style Selector="TextBlock.text-strong">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+    </Style>
+    <Style Selector="TextBlock.text-on-dark">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextOnDark}"/>
+    </Style>
+    <Style Selector="TextBlock.text-muted">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextMuted}"/>
+    </Style>
+    <Style Selector="TextBlock.text-success">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextSuccess}"/>
+    </Style>
+    <Style Selector="TextBlock.text-error">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextError}"/>
+    </Style>
+    <Style Selector="TextBlock.text-warning">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextWarning}"/>
+    </Style>
+
+    <Style Selector="Button.text-primary, MenuItem.text-primary, TabItem.text-primary">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+    </Style>
+    <Style Selector="Button.text-strong, MenuItem.text-strong, TabItem.text-strong">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+    </Style>
+    <Style Selector="Button.text-on-dark, MenuItem.text-on-dark, TabItem.text-on-dark">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextOnDark}"/>
+    </Style>
+    <Style Selector="Button.text-muted, MenuItem.text-muted, TabItem.text-muted">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextMuted}"/>
+    </Style>
+    <Style Selector="Button.text-success, MenuItem.text-success, TabItem.text-success">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextSuccess}"/>
+    </Style>
+    <Style Selector="Button.text-error, MenuItem.text-error, TabItem.text-error">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextError}"/>
+    </Style>
+    <Style Selector="Button.text-warning, MenuItem.text-warning, TabItem.text-warning">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextWarning}"/>
+    </Style>
+
+    <!-- Background utilities -->
+    <Style Selector="Border.bg-surface">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSurface}"/>
+    </Style>
+    <Style Selector="Border.bg-panel">
+        <Setter Property="Background" Value="{DynamicResource BrushBgPanel}"/>
+    </Style>
+    <Style Selector="Border.bg-accent">
+        <Setter Property="Background" Value="{DynamicResource BrushBgAccent}"/>
+    </Style>
+    <Style Selector="Border.bg-action">
+        <Setter Property="Background" Value="{DynamicResource BrushBgAction}"/>
+    </Style>
+    <Style Selector="Border.bg-action-hover">
+        <Setter Property="Background" Value="{DynamicResource BrushBgActionHover}"/>
+    </Style>
+
+    <!-- Border utilities -->
+    <Style Selector="Border.border-default">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+    </Style>
+    <Style Selector="Border.border-strong">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderStrong}"/>
+    </Style>
+</Styles>

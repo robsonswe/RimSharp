@@ -26,7 +26,7 @@ namespace RimSharp.AppDir.Dialogs
         private string _updateStatusIcon = "fa-arrows-rotate";
         public string UpdateStatusIcon { get => _updateStatusIcon; set => SetProperty(ref _updateStatusIcon, value); }
 
-        private string _statusColor = "RimworldBrownBrush";
+        private string _statusColor = "BrushStatePrimary";
         public string StatusColor { get => _statusColor; set => SetProperty(ref _statusColor, value); }
 
         private bool _isNewVersionAvailable;
@@ -77,7 +77,7 @@ namespace RimSharp.AppDir.Dialogs
                 {
                     UpdateStatus = $"New version available: {latestVersion}";
                     UpdateStatusIcon = "fa-triangle-exclamation";
-                    StatusColor = "RimworldRedBrush";
+                    StatusColor = "BrushStateDanger";
                     IsNewVersionAvailable = true;
                     ReleaseUrl = url;
                 }
@@ -85,14 +85,14 @@ namespace RimSharp.AppDir.Dialogs
                 {
                     UpdateStatus = "RimSharp is up to date";
                     UpdateStatusIcon = "fa-circle-check";
-                    StatusColor = "RimworldDarkGreenBrush";
+                    StatusColor = "BrushStateSuccess";
                     IsNewVersionAvailable = false;
                 }
                 else
                 {
                     UpdateStatus = "Could not check for updates";
                     UpdateStatusIcon = "fa-circle-xmark";
-                    StatusColor = "RimworldErrorRedBrush";
+                    StatusColor = "BrushStateDangerStrong";
                     IsNewVersionAvailable = false;
                 }
             }
@@ -100,7 +100,7 @@ namespace RimSharp.AppDir.Dialogs
             {
                 UpdateStatus = "Error checking for updates";
                 UpdateStatusIcon = "fa-circle-xmark";
-                StatusColor = "RimworldErrorRedBrush";
+                StatusColor = "BrushStateDangerStrong";
                 IsNewVersionAvailable = false;
             }
         }

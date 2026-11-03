@@ -16,28 +16,28 @@
         WindowStartupLocation="CenterOwner">
 
     <dialogs:BaseDialog.MainContent>
-        <Border Classes="RimworldPanelBorder">
-            <TabControl Classes="RimworldTabControl" Margin="12">
+        <Border Classes="panel">
+            <TabControl Classes="tabs" Margin="12">
 
                 <!-- TAB 1: PATHS -->
                 <TabItem Header="Paths">
-                    <Border Classes="RimworldSubtlePanelBorder">
+                    <Border Classes="panel-subtle">
                         <StackPanel Margin="15" Spacing="18">
 
                             <!-- Game Directory -->
                             <StackPanel Spacing="6">
                                 <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="6">
                                     <TextBlock Grid.Column="0" Text="Game Directory" FontWeight="Bold" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                               Foreground="{DynamicResource BrushTextStrong}"/>
                                     <Button Grid.Column="1" Content="Browse..."
                                             Command="{Binding BrowseGamePathCommand}"
-                                            Classes="RimworldButtonStyle" Padding="10,4"/>
+                                            Classes="btn" Padding="10,4"/>
                                     <Button Grid.Column="2" Content="Open Folder"
                                             Command="{Binding OpenGameFolderCommand}"
-                                            Classes="RimworldButtonStyle" Padding="10,4"/>
+                                            Classes="btn" Padding="10,4"/>
                                 </Grid>
                                 <TextBox Text="{Binding GamePath, Mode=TwoWay}"
-                                         Classes="RimworldTextBox"
+                                         Classes="input"
                                          TextWrapping="Wrap"
                                          MinHeight="30"
                                          Watermark="Folder where RimWorld is installed"/>
@@ -47,23 +47,23 @@
                             <StackPanel Spacing="6">
                                 <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="6">
                                     <TextBlock Grid.Column="0" Text="Config Directory" FontWeight="Bold" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                               Foreground="{DynamicResource BrushTextStrong}"/>
                                     <Button Grid.Column="1" Content="Browse..."
                                             Command="{Binding BrowseConfigPathCommand}"
-                                            Classes="RimworldButtonStyle" Padding="10,4"/>
+                                            Classes="btn" Padding="10,4"/>
                                     <Button Grid.Column="2" Content="Open Folder"
                                             Command="{Binding OpenConfigFolderCommand}"
-                                            Classes="RimworldButtonStyle" Padding="10,4"/>
+                                            Classes="btn" Padding="10,4"/>
                                 </Grid>
                                 <TextBox Text="{Binding ConfigPath, Mode=TwoWay}"
-                                         Classes="RimworldTextBox"
+                                         Classes="input"
                                          TextWrapping="Wrap"
                                          MinHeight="30"
                                          Watermark="Folder with RimWorld's config files"/>
                             </StackPanel>
 
                             <TextBlock TextWrapping="Wrap" FontSize="12"
-                                       Foreground="{DynamicResource RimworldDarkBrownBrush}"
+                                       Foreground="{DynamicResource BrushTextStrong}"
                                        Text="Mod and config folders resolve from these directories. Restart is not required, but already-loaded lists keep the previous paths."/>
                         </StackPanel>
                     </Border>
@@ -71,18 +71,18 @@
 
                 <!-- TAB 2: UPDATES -->
                 <TabItem Header="Updates">
-                    <Border Classes="RimworldSubtlePanelBorder">
+                    <Border Classes="panel-subtle">
                         <StackPanel Margin="15" Spacing="18">
                             <StackPanel Spacing="6">
                                 <Grid ColumnDefinitions="*, Auto" ColumnSpacing="6">
                                     <TextBlock Grid.Column="0" Text="Update Channel" FontWeight="Bold" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                               Foreground="{DynamicResource BrushTextStrong}"/>
                                     <ComboBox Grid.Column="1"
                                               SelectedValue="{Binding UpdateChannel, Mode=TwoWay}"
                                               SelectedValueBinding="{Binding Tag, DataType=ComboBoxItem}"
                                               Width="140"
                                               VerticalAlignment="Center"
-                                              Classes="RimworldComboBox">
+                                              Classes="select">
                                         <ComboBoxItem Tag="stable" Content="Stable"/>
                                         <ComboBoxItem Tag="beta" Content="Beta"/>
                                         <ComboBoxItem Tag="alpha" Content="Alpha"/>
@@ -90,13 +90,13 @@
                                 </Grid>
 
                                 <TextBlock TextWrapping="Wrap" FontSize="12"
-                                           Foreground="{DynamicResource RimworldDarkBrownBrush}"
+                                           Foreground="{DynamicResource BrushTextStrong}"
                                            Text="Alpha: Get the latest experimental features as soon as they're available. May contain bugs or instability."/>
                                 <TextBlock TextWrapping="Wrap" FontSize="12"
-                                           Foreground="{DynamicResource RimworldDarkBrownBrush}"
+                                           Foreground="{DynamicResource BrushTextStrong}"
                                            Text="Beta: Get early access to upcoming features with improved stability. May still contain bugs."/>
                                 <TextBlock TextWrapping="Wrap" FontSize="12"
-                                           Foreground="{DynamicResource RimworldDarkBrownBrush}"
+                                           Foreground="{DynamicResource BrushTextStrong}"
                                            Text="Stable: Receive only fully tested and stable releases. Recommended for everyday use."/>
                             </StackPanel>
                         </StackPanel>
@@ -105,17 +105,17 @@
 
                 <!-- TAB 3: AI PROVIDERS -->
                 <TabItem Header="AI Providers" IsVisible="{Binding ShowAiProviders}">
-                    <Border Classes="RimworldSubtlePanelBorder">
+                    <Border Classes="panel-subtle">
                         <StackPanel Margin="15" Spacing="14">
 
                             <TextBlock TextWrapping="Wrap" FontSize="12"
-                                       Foreground="{DynamicResource RimworldDarkBrownBrush}"
+                                       Foreground="{DynamicResource BrushTextStrong}"
                                        Text="Configure the API key and model used by each AI provider. Saved keys stay local to config.cfg."/>
 
                             <ItemsControl ItemsSource="{Binding Providers}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="local:AiProviderSettingsRow">
-                                        <Border BorderBrush="{DynamicResource RimworldBrownBrush}"
+                                        <Border BorderBrush="{DynamicResource BrushBorderDefault}"
                                                 BorderThickness="1"
                                                 CornerRadius="4"
                                                 Padding="12,10">
@@ -127,32 +127,32 @@
                                                              Classes.configured="{Binding IsConfigured}">
                                                         <Ellipse.Styles>
                                                             <Style Selector="Ellipse">
-                                                                <Setter Property="Fill" Value="{DynamicResource RimworldLightBrownBrush}"/>
+                                                                <Setter Property="Fill" Value="{DynamicResource BrushBgAccent}"/>
                                                             </Style>
                                                             <Style Selector="Ellipse.configured">
-                                                                <Setter Property="Fill" Value="{DynamicResource RimworldDarkGreenBrush}"/>
+                                                                <Setter Property="Fill" Value="{DynamicResource BrushBgSuccess}"/>
                                                             </Style>
                                                         </Ellipse.Styles>
                                                     </Ellipse>
                                                     <TextBlock Text="{Binding DisplayName}" FontWeight="Bold"
                                                                FontSize="14"
-                                                               Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                                               Foreground="{DynamicResource BrushTextStrong}"/>
                                                     <TextBlock Text="configured" FontSize="11" FontStyle="Italic"
                                                                VerticalAlignment="Center"
                                                                IsVisible="{Binding IsConfigured}"
-                                                               Foreground="{DynamicResource RimworldDarkGreenBrush}"/>
+                                                               Foreground="{DynamicResource BrushTextSuccess}"/>
                                                     <TextBlock Text="not configured" FontSize="11" FontStyle="Italic"
                                                                VerticalAlignment="Center"
                                                                IsVisible="{Binding !IsConfigured}"
-                                                               Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                                               Foreground="{DynamicResource BrushTextStrong}"/>
                                                 </StackPanel>
 
                                                 <!-- API Key -->
                                                 <StackPanel Spacing="4">
                                                     <TextBlock Text="API Key" FontWeight="SemiBold"
-                                                               Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                                               Foreground="{DynamicResource BrushTextStrong}"/>
                                                     <TextBox Text="{Binding ApiKey, Mode=TwoWay}"
-                                                             Classes="RimworldTextBox"
+                                                             Classes="input"
                                                              PasswordChar="●"
                                                              Watermark="sk-or-v1-..."/>
                                                 </StackPanel>
@@ -160,9 +160,9 @@
                                                 <!-- Model -->
                                                 <StackPanel Spacing="4">
                                                     <TextBlock Text="Model" FontWeight="SemiBold"
-                                                               Foreground="{DynamicResource RimworldDarkBrownBrush}"/>
+                                                               Foreground="{DynamicResource BrushTextStrong}"/>
                                                     <TextBox Text="{Binding Model, Mode=TwoWay}"
-                                                             Classes="RimworldTextBox"
+                                                             Classes="input"
                                                              Watermark="e.g. openrouter/free"/>
                                                 </StackPanel>
                                             </StackPanel>
@@ -182,11 +182,11 @@
         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
             <Button Content="Cancel"
                     Command="{Binding CancelCommand}"
-                    Classes="RimworldButtonStyle"
+                    Classes="btn"
                     MinWidth="100" Height="32"/>
             <Button Content="Save"
                     Command="{Binding SaveCommand}"
-                    Classes="RimworldSaveButtonStyle"
+                    Classes="btn-success"
                     MinWidth="100" Height="32"/>
         </StackPanel>
     </dialogs:BaseDialog.ButtonContent>

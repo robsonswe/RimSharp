@@ -30,10 +30,10 @@
             </Style>
             <Style.Resources>
                 <!-- Standardize selection brushes to override Avalonia defaults -->
-                <StaticResource x:Key="SystemControlHighlightListAccentLowBrush" ResourceKey="RimworldHighlightBrush" />
-                <StaticResource x:Key="SystemControlHighlightListAccentMediumBrush" ResourceKey="RimworldHighlightBrush" />
-                <StaticResource x:Key="SystemControlHighlightListAccentHighBrush" ResourceKey="RimworldHighlightBrush" />
-                <StaticResource x:Key="SystemControlHighlightListLowBrush" ResourceKey="RimworldHighlightBrush" />
+                <StaticResource x:Key="SystemControlHighlightListAccentLowBrush" ResourceKey="BrushStateHighlight" />
+                <StaticResource x:Key="SystemControlHighlightListAccentMediumBrush" ResourceKey="BrushStateHighlight" />
+                <StaticResource x:Key="SystemControlHighlightListAccentHighBrush" ResourceKey="BrushStateHighlight" />
+                <StaticResource x:Key="SystemControlHighlightListLowBrush" ResourceKey="BrushStateHighlight" />
             </Style.Resources>
             <Setter Property="Template">
                 <ControlTemplate>
@@ -50,12 +50,12 @@
             </Setter>
         </Style>
 
-        <!-- ListBoxItem Style to match WPF RimworldListBoxItemStyle -->
+        <!-- ListBoxItem Style to match WPF list-item -->
         <Style Selector="ListBox.IntegratedListBox > ListBoxItem">
             <Setter Property="Padding" Value="0,1"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0,0,0,1"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
             <Setter Property="Focusable" Value="False"/>
             <Setter Property="ContextMenu">
                 <Setter.Value>
@@ -93,7 +93,7 @@
                         <MenuItem Header="Customize Mod" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.CustomizeModCommand}" CommandParameter="{Binding}">
                             <MenuItem.Icon><i:Icon Value="fa-gear" FontSize="14"/></MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="Delete Mod" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.DeleteModsCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" Foreground="{DynamicResource RimworldErrorRedBrush}">
+                        <MenuItem Header="Delete Mod" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.DeleteModsCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" Foreground="{DynamicResource BrushTextError}">
                             <MenuItem.Icon><i:Icon Value="fa-trash-can" FontSize="14"/></MenuItem.Icon>
                             <MenuItem.IsVisible>
                                 <Binding Path="ModType" Converter="{StaticResource ModTypeToDeleteVisibilityConverter}"/>
@@ -103,14 +103,14 @@
                 </Setter.Value>
             </Setter>
             <Style Selector="^:pointerover">
-                <Setter Property="Background" Value="{DynamicResource RimworldHighlightBrush}"/>
+                <Setter Property="Background" Value="{DynamicResource BrushBgHighlight}"/>
             </Style>
             <Style Selector="^:selected">
-                <Setter Property="Background" Value="{DynamicResource RimworldHighlightBrush}"/>
-                <Setter Property="Foreground" Value="{DynamicResource RimworldBlackBrush}"/>
+                <Setter Property="Background" Value="{DynamicResource BrushBgHighlight}"/>
+                <Setter Property="Foreground" Value="{DynamicResource BrushTextBlack}"/>
             </Style>
             <Style Selector="^:selected:pointerover">
-                <Setter Property="Background" Value="{DynamicResource RimworldHighlightBrush}"/>
+                <Setter Property="Background" Value="{DynamicResource BrushBgHighlight}"/>
             </Style>
             <Setter Property="Template">
                 <ControlTemplate>
@@ -137,8 +137,8 @@
             <Setter Property="Margin" Value="0,0,4,0"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Background" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource BrushBgAction}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderStrong}"/>
         </Style>
 
         <!-- Filter Button Styles -->
@@ -149,17 +149,17 @@
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Margin" Value="4,0,0,0"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldBorderBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Background" Value="{DynamicResource RimworldBrownBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource BrushBgAction}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextOnDark}"/>
             <Setter Property="MinWidth" Value="0"/>
             <Setter Property="MinHeight" Value="0"/>
             <Setter Property="Template">
                 <ControlTemplate>
                     <Grid>
                         <Border Name="ShadowLayer"
-                                Background="{DynamicResource RimworldDarkBrownBrush}"
+                                Background="{DynamicResource BrushBgActionStrong}"
                                 CornerRadius="3"
                                 Margin="0,1,0,0" />
                         <Border Name="ButtonBackground"
@@ -179,28 +179,28 @@
         </Style>
 
         <Style Selector="Button.FilterButtonStyle.FilterActive">
-            <Setter Property="BorderBrush" Value="{DynamicResource RimworldHighlightBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource RimworldHighlightBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderHighlight}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextHighlight}"/>
             <Setter Property="BorderThickness" Value="2"/>
             <Setter Property="FontWeight" Value="Bold"/>
         </Style>
 
         <Style Selector="Button.FilterButtonStyle:pointerover /template/ Border#ButtonBackground">
-            <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource BrushBgAccent}"/>
         </Style>
 
         <Style Selector="Button.FilterButtonStyle:pressed /template/ Border#ButtonBackground">
-            <Setter Property="Background" Value="{DynamicResource RimworldDarkBrownBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource BrushBgActionStrong}"/>
             <Setter Property="Margin" Value="0,1,0,-1"/>
         </Style>
     </UserControl.Styles>
 
-    <Border Classes="RimworldPanelBorder">
+    <Border Classes="panel">
         <Grid RowDefinitions="Auto,*,Auto" PointerPressed="Root_PointerPressed" Background="Transparent">
             <!-- Header -->
-            <Border Grid.Row="0" Classes="RimworldListHeaderBorder">
+            <Border Grid.Row="0" Classes="list-header">
                  <Grid RowDefinitions="Auto,Auto">
-                    <TextBlock Grid.Row="0" FontWeight="Bold" Margin="4" HorizontalAlignment="Left" Foreground="{DynamicResource RimworldWhiteBrush}">
+                    <TextBlock Grid.Row="0" FontWeight="Bold" Margin="4" HorizontalAlignment="Left" Foreground="{DynamicResource BrushTextOnDark}">
                         <TextBlock.Text>
                             <MultiBinding StringFormat="{}{0} [{1}]">
                                 <Binding Path="#RootModListView.HeaderText" FallbackValue="Items"/>
@@ -209,7 +209,7 @@
                         </TextBlock.Text>
                     </TextBlock>
                     <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="4,0,4,4">
-                        <TextBox Grid.Column="0" PlaceholderText="{Binding #RootModListView.SearchPlaceholder}" Classes="RimworldTextBoxWatermark" VerticalAlignment="Center" Text="{Binding #RootModListView.SearchText, Mode=TwoWay}"
+                        <TextBox Grid.Column="0" PlaceholderText="{Binding #RootModListView.SearchPlaceholder}" Classes="input-watermark" VerticalAlignment="Center" Text="{Binding #RootModListView.SearchText, Mode=TwoWay}"
                                  KeyDown="SearchTextBox_KeyDown"/>
                         <Button Grid.Column="1" Content="Filters" Command="{Binding #RootModListView.FilterCommand}"
                                 ToolTip.Tip="{Binding #RootModListView.FilterToolTip}"
@@ -227,17 +227,17 @@
                     DragDrop.AllowDrop="True"
                     Background="Transparent">
                 <interactivity:Interaction.Behaviors>
-                    <behaviors:ListBoxDragDropBehavior DropCommand="{Binding #RootModListView.DropCommand}" 
-                                                       DragItemType="{Binding #RootModListView.DragItemType}" 
+                    <behaviors:ListBoxDragDropBehavior DropCommand="{Binding #RootModListView.DropCommand}"
+                                                       DragItemType="{Binding #RootModListView.DragItemType}"
                                                        ListGroupName="{Binding #RootModListView.GroupName}"/>
                 </interactivity:Interaction.Behaviors>
                 <ListBox.ItemTemplate>
                      <DataTemplate x:DataType="models:ModItem">
                         <Grid ColumnDefinitions="Auto,*">
                             <!-- Favorite Indicator - Width changes based on IsFavorite -->
-                            <Border Name="FavoriteIndicator" Grid.Column="0" 
-                                    Width="{Binding IsFavorite, Converter={StaticResource BooleanToDoubleConverter}, ConverterParameter='3|0'}" 
-                                    Background="{DynamicResource RimworldDarkGreenBrush}"/>
+                            <Border Name="FavoriteIndicator" Grid.Column="0"
+                                    Width="{Binding IsFavorite, Converter={StaticResource BooleanToDoubleConverter}, ConverterParameter='3|0'}"
+                                    Background="{DynamicResource BrushBgSuccess}"/>
 
                             <Border Grid.Column="1" Name="ContentBorder" Padding="2,1"
                                     Tag="{Binding $parent[UserControl].DataContext}"
@@ -277,7 +277,7 @@
 
                                     <!-- Mod Name -->
                                     <TextBlock Grid.Column="1" Text="{Binding DisplayName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                                               Foreground="{Binding IsSupportedRW, Converter={StaticResource BooleanToColorConverter}, ConverterParameter='RimworldBrown|RimworldErrorRed'}">
+                                               Foreground="{Binding IsSupportedRW, Converter={StaticResource BooleanToColorConverter}, ConverterParameter='ColorBrown|ColorErrorRed'}">
                                         <TextBlock.FontWeight>
                                             <MultiBinding Converter="{StaticResource ModWeightConverter}">
                                                 <Binding Path="IsFavorite"/>
@@ -288,7 +288,7 @@
 
                                     <!-- Warning Icon - Only visible when HasIssues AND IsActive -->
                                     <i:Icon Grid.Column="2" Value="fa-triangle-exclamation"
-                                               Foreground="{DynamicResource RimworldRedBrush}"
+                                               Foreground="{DynamicResource BrushTextError}"
                                                VerticalAlignment="Center" HorizontalAlignment="Right" Margin="5,0,2,0"
                                                FontSize="12">
                                         <i:Icon.IsVisible>
@@ -309,14 +309,14 @@
             </ListBox>
 
             <!-- Problems Bar -->
-            <Button Grid.Row="2" 
+            <Button Grid.Row="2"
                     Command="{Binding #RootModListView.OpenIssuesCommand}"
-                    HorizontalAlignment="Stretch" 
+                    HorizontalAlignment="Stretch"
                     Padding="0"
                     Cursor="Hand"
                     BorderThickness="0,1,0,0"
-                    BorderBrush="{DynamicResource RimworldDarkBrownBrush}"
-                    Background="{DynamicResource RimworldDarkBrownBrush}">
+                    BorderBrush="{DynamicResource BrushBorderStrong}"
+                    Background="{DynamicResource BrushBgActionStrong}">
                 <Button.IsVisible>
                     <MultiBinding Converter="{StaticResource BooleanAndConverter}">
                         <Binding Path="#RootModListView.ShowProblemBar"/>
@@ -331,43 +331,43 @@
                 </Button.IsVisible>
                 <Button.Template>
                     <ControlTemplate>
-                        <Border Background="{TemplateBinding Background}" 
-                                BorderBrush="{TemplateBinding BorderBrush}" 
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 Padding="4,2">
                             <Grid ColumnDefinitions="*,*,*,*,*">
                                 <!-- Sorting Issues -->
                                 <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
-                                    <i:Icon Value="fa-arrow-down-z-a" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource RimworldWhiteBrush}"/>
-                                    <TextBlock Text="{Binding #RootModListView.SortingIssuesCount}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                    <i:Icon Value="fa-arrow-down-z-a" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource BrushTextOnDark}"/>
+                                    <TextBlock Text="{Binding #RootModListView.SortingIssuesCount}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource BrushTextOnDark}"/>
                                     <ToolTip.Tip>Sorting order problems</ToolTip.Tip>
                                 </StackPanel>
 
                                 <!-- Missing Dependencies -->
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
-                                    <i:Icon Value="fa-box" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource RimworldWhiteBrush}"/>
-                                    <TextBlock Text="{Binding #RootModListView.MissingDependenciesCount}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                    <i:Icon Value="fa-box" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource BrushTextOnDark}"/>
+                                    <TextBlock Text="{Binding #RootModListView.MissingDependenciesCount}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource BrushTextOnDark}"/>
                                     <ToolTip.Tip>Missing dependencies</ToolTip.Tip>
                                 </StackPanel>
 
                                 <!-- Incompatibilities -->
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
-                                    <i:Icon Value="fa-ban" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource RimworldWhiteBrush}"/>
-                                    <TextBlock Text="{Binding #RootModListView.IncompatibilitiesCount}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                    <i:Icon Value="fa-ban" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource BrushTextOnDark}"/>
+                                    <TextBlock Text="{Binding #RootModListView.IncompatibilitiesCount}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource BrushTextOnDark}"/>
                                     <ToolTip.Tip>Incompatibilities</ToolTip.Tip>
                                 </StackPanel>
 
                                 <!-- Version Mismatch -->
                                 <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
-                                    <i:Icon Value="fa-triangle-exclamation" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource RimworldWhiteBrush}"/>
-                                    <TextBlock Text="{Binding #RootModListView.ActiveVersionMismatchCount}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                    <i:Icon Value="fa-triangle-exclamation" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource BrushTextOnDark}"/>
+                                    <TextBlock Text="{Binding #RootModListView.ActiveVersionMismatchCount}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource BrushTextOnDark}"/>
                                     <ToolTip.Tip>Version mismatch</ToolTip.Tip>
                                 </StackPanel>
 
                                 <!-- Duplicates -->
                                 <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
-                                    <i:Icon Value="fa-clone" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource RimworldWhiteBrush}"/>
-                                    <TextBlock Text="{Binding #RootModListView.ActiveDuplicateIssuesCount}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource RimworldWhiteBrush}"/>
+                                    <i:Icon Value="fa-clone" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource BrushTextOnDark}"/>
+                                    <TextBlock Text="{Binding #RootModListView.ActiveDuplicateIssuesCount}" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource BrushTextOnDark}"/>
                                     <ToolTip.Tip>Duplicate mods</ToolTip.Tip>
                                 </StackPanel>
                             </Grid>

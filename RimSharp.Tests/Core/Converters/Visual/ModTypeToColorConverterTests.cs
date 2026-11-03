@@ -18,12 +18,12 @@ namespace RimSharp.Tests.Core.Converters.Visual
         }
 
         [AvaloniaTheory]
-        [InlineData(ModType.Core, "RimworldRedBrush")]
-        [InlineData(ModType.Expansion, "RimworldDarkGreenBrush")]
-        [InlineData(ModType.Workshop, "RimworldBrownBrush")]
-        [InlineData(ModType.WorkshopL, "RimworldHighlightBrush")]
-        [InlineData(ModType.Git, "RimworldDarkBeigeBrush")]
-        [InlineData(ModType.Zipped, "RimworldGrayBrush")]
+        [InlineData(ModType.Core, "BrushStateDanger")]
+        [InlineData(ModType.Expansion, "BrushStateSuccess")]
+        [InlineData(ModType.Workshop, "BrushStatePrimary")]
+        [InlineData(ModType.WorkshopL, "BrushStateHighlight")]
+        [InlineData(ModType.Git, "BrushStatePanel")]
+        [InlineData(ModType.Zipped, "BrushStateNeutral")]
         public void Convert_ShouldReturnCorrectBrushBasedOnModType(ModType type, string expectedKey)
         {
 

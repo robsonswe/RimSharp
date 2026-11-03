@@ -1,35 +1,35 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Colors based on RimWorld UI -->
-    <Color x:Key="RimworldBrown">#4A3A2B</Color>
-    <Color x:Key="RimworldDarkBrown">#372A1F</Color>
-    <Color x:Key="RimworldLightBrown">#8B7A64</Color>
-    <Color x:Key="RimworldBeige">#D0C8B0</Color>
-    <Color x:Key="RimworldDarkBeige">#AA9D85</Color>
-    <Color x:Key="RimworldHighlight">#F7D070</Color>
-    <Color x:Key="RimworldDarkGreen">#2B4933</Color>
-    <Color x:Key="RimworldRed">#9E2A2A</Color>
-    <Color x:Key="RimworldRedLight">#D44D4D</Color>
-    <Color x:Key="RimworldErrorRed">#b52828</Color>
-    <Color x:Key="RimworldOrange">#D98A4B</Color>
-    <Color x:Key="RimworldWhite">#FFFFFF</Color>
-    <Color x:Key="RimworldGray">#BBBBBB</Color>
-    <Color x:Key="RimworldShadow">#222222</Color>
-    <Color x:Key="RimworldDarkGreenHover">#3C5F46</Color>
-    <Color x:Key="RimworldDarkGreenDisabled">#5A6F61</Color>
-    <Color x:Key="RimworldDarkGreenBorder">#1B3021</Color>
-    <Color x:Key="RimworldRedHover">#B13434</Color>
-    <Color x:Key="RimworldRedDisabled">#8A5656</Color>
-    <Color x:Key="RimworldRedBorder">#7A1F1F</Color>
-    <Color x:Key="RimworldTextBoxShadow">#33000000</Color>
-    <Color x:Key="RimworldBlack">#FF000000</Color>
-    <Color x:Key="RimworldCodeBlue">#406090</Color>    <!-- For C# / Assemblies -->
-    <Color x:Key="RimworldConfigOrange">#D09040</Color> <!-- For XML / Config only -->
+    <!-- Application palette -->
+    <Color x:Key="ColorBrown">#4A3A2B</Color>
+    <Color x:Key="ColorDarkBrown">#372A1F</Color>
+    <Color x:Key="ColorLightBrown">#8B7A64</Color>
+    <Color x:Key="ColorBeige">#D0C8B0</Color>
+    <Color x:Key="ColorDarkBeige">#AA9D85</Color>
+    <Color x:Key="ColorHighlight">#F7D070</Color>
+    <Color x:Key="ColorDarkGreen">#2B4933</Color>
+    <Color x:Key="ColorRed">#9E2A2A</Color>
+    <Color x:Key="ColorRedLight">#D44D4D</Color>
+    <Color x:Key="ColorErrorRed">#b52828</Color>
+    <Color x:Key="ColorOrange">#D98A4B</Color>
+    <Color x:Key="ColorWhite">#FFFFFF</Color>
+    <Color x:Key="ColorGray">#BBBBBB</Color>
+    <Color x:Key="ColorShadow">#222222</Color>
+    <Color x:Key="ColorDarkGreenHover">#3C5F46</Color>
+    <Color x:Key="ColorDarkGreenDisabled">#5A6F61</Color>
+    <Color x:Key="ColorDarkGreenBorder">#1B3021</Color>
+    <Color x:Key="ColorRedHover">#B13434</Color>
+    <Color x:Key="ColorRedDisabled">#8A5656</Color>
+    <Color x:Key="ColorRedBorder">#7A1F1F</Color>
+    <Color x:Key="ColorInputShadow">#33000000</Color>
+    <Color x:Key="ColorBlack">#FF000000</Color>
+    <Color x:Key="ColorCodeBlue">#406090</Color>    <!-- For C# / Assemblies -->
+    <Color x:Key="ColorConfigOrange">#D09040</Color> <!-- For XML / Config only -->
 
     <!-- DataGrid Row Colors - white with gray alternation for better contrast -->
-    <Color x:Key="DataGridRowWhite">#FFFFFF</Color>       <!-- White row background -->
-    <Color x:Key="DataGridRowGray">#E8E8E8</Color>        <!-- Light gray alternating row -->
-    <Color x:Key="DataGridGridLine">#CCCCCC</Color>       <!-- Subtle grid line color -->
+    <Color x:Key="ColorDataGridRowWhite">#FFFFFF</Color>       <!-- White row background -->
+    <Color x:Key="ColorDataGridRowGray">#E8E8E8</Color>        <!-- Light gray alternating row -->
+    <Color x:Key="ColorDataGridGridLine">#CCCCCC</Color>       <!-- Subtle grid line color -->
 
 </ResourceDictionary>

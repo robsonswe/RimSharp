@@ -51,10 +51,10 @@ namespace RimSharp.Core.Converters.Text
 
             if (Application.Current != null)
             {
-                Application.Current.TryGetResource("RimworldLightBrownBrush", out var unofficialObj);
+                Application.Current.TryGetResource("BrushTextMuted", out var unofficialObj);
                 unofficialBrush = unofficialObj as IBrush;
 
-                Application.Current.TryGetResource("RimworldBrownBrush", out var defaultObj);
+                Application.Current.TryGetResource("BrushStatePrimary", out var defaultObj);
                 defaultBrush = defaultObj as IBrush;
             }
 
@@ -101,7 +101,7 @@ namespace RimSharp.Core.Converters.Text
             IBrush? defaultBrush = null;
             if (Application.Current != null)
             {
-                Application.Current.TryGetResource("RimworldBrownBrush", out var defaultObj);
+                Application.Current.TryGetResource("BrushStatePrimary", out var defaultObj);
                 defaultBrush = defaultObj as IBrush;
             }
             defaultBrush ??= Brushes.SaddleBrown;

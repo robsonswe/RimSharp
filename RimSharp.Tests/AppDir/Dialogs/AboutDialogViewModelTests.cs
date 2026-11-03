@@ -28,7 +28,7 @@ namespace RimSharp.Tests.AppDir.Dialogs
 
             vm.IsNewVersionAvailable.Should().BeTrue();
             vm.UpdateStatus.Should().Contain("v1.1.0");
-            vm.StatusColor.Should().Be("RimworldRedBrush");
+            vm.StatusColor.Should().Be("BrushStateDanger");
             vm.ReleaseUrl.Should().Be("https://github.com/release");
         }
 
@@ -44,7 +44,7 @@ namespace RimSharp.Tests.AppDir.Dialogs
 
             vm.IsNewVersionAvailable.Should().BeFalse();
             vm.UpdateStatus.Should().Be("RimSharp is up to date");
-            vm.StatusColor.Should().Be("RimworldDarkGreenBrush");
+            vm.StatusColor.Should().Be("BrushStateSuccess");
         }
 
         [AvaloniaFact]

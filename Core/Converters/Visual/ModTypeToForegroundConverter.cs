@@ -13,14 +13,14 @@ namespace RimSharp.Core.Converters.Visual
         {
             if (value is ModType type && type == ModType.WorkshopL)
             {
-                if (Application.Current?.Resources.TryGetResource("RimworldBlackBrush", null, out var resource) == true)
+                if (Application.Current?.Resources.TryGetResource("BrushTextBlack", null, out var resource) == true)
                 {
                     return resource as IBrush;
                 }
                 return Brushes.Black;
             }
             
-            if (Application.Current?.Resources.TryGetResource("RimworldWhiteBrush", null, out var white) == true)
+            if (Application.Current?.Resources.TryGetResource("BrushTextOnDark", null, out var white) == true)
             {
                 return white as IBrush;
             }

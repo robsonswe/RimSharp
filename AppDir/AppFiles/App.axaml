@@ -41,6 +41,7 @@
         </Style>
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
         <StyleInclude Source="avares://RimSharp/Shared/Resources/BaseStyles.axaml"/>
+        <StyleInclude Source="avares://RimSharp/Shared/Resources/ColorUtilities.axaml"/>
         <StyleInclude Source="avares://RimSharp/Shared/Resources/ButtonStyles.axaml"/>
         <StyleInclude Source="avares://RimSharp/Shared/Resources/DataGridStyles.axaml"/>
         <StyleInclude Source="avares://RimSharp/Infrastructure/Dialog/DialogTemplates.axaml"/>

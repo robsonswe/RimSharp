@@ -15,11 +15,11 @@ namespace RimSharp.Core.Converters.Visual
                 string statusLower = status.ToLowerInvariant();
                 string key;
 
-                if (statusLower.Contains("up to date")) key = "RimworldDarkGreenBrush";
-                else if (statusLower.Contains("update(s)") || statusLower.Contains("available") || statusLower.Contains("behind")) key = "RimworldHighlightBrush";
-                else if (statusLower.Contains("error") || statusLower.Contains("fail") || statusLower.Contains("conflict")) key = "RimworldErrorRedBrush";
-                else if (statusLower.Contains("checking") || statusLower.Contains("fetching")) key = "RimworldConfigOrangeBrush";
-                else key = "RimworldGrayBrush";
+                if (statusLower.Contains("up to date")) key = "BrushStateSuccess";
+                else if (statusLower.Contains("update(s)") || statusLower.Contains("available") || statusLower.Contains("behind")) key = "BrushStateHighlight";
+                else if (statusLower.Contains("error") || statusLower.Contains("fail") || statusLower.Contains("conflict")) key = "BrushStateDangerStrong";
+                else if (statusLower.Contains("checking") || statusLower.Contains("fetching")) key = "BrushStateWarning";
+                else key = "BrushStateNeutral";
 
                 if (Application.Current?.Resources.TryGetResource(key, null, out var resource) == true)
                 {

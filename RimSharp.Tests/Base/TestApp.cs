@@ -23,17 +23,17 @@ namespace RimSharp.Tests.Base
         {
             if (Current == null) return;
 
-            Current.Resources["RimworldRedBrush"] = Brushes.Red;
-            Current.Resources["RimworldDarkGreenBrush"] = Brushes.DarkGreen;
-            Current.Resources["RimworldBrownBrush"] = Brushes.Brown;
-            Current.Resources["RimworldHighlightBrush"] = Brushes.Yellow;
-            Current.Resources["RimworldDarkBeigeBrush"] = Brushes.Beige;
-            Current.Resources["RimworldGrayBrush"] = Brushes.Gray;
-            Current.Resources["RimworldBlackBrush"] = Brushes.Black;
-            Current.Resources["RimworldWhiteBrush"] = Brushes.White;
-            Current.Resources["RimworldConfigOrangeBrush"] = Brushes.Orange;
-            Current.Resources["RimworldErrorRedBrush"] = Brushes.Red;
-            Current.Resources["RimworldLightBrownBrush"] = Brushes.SandyBrown;
+            Current.Resources["BrushStateDanger"] = Brushes.Red;
+            Current.Resources["BrushStateSuccess"] = Brushes.DarkGreen;
+            Current.Resources["BrushStatePrimary"] = Brushes.Brown;
+            Current.Resources["BrushStateHighlight"] = Brushes.Yellow;
+            Current.Resources["BrushStatePanel"] = Brushes.Beige;
+            Current.Resources["BrushStateNeutral"] = Brushes.Gray;
+            Current.Resources["BrushTextBlack"] = Brushes.Black;
+            Current.Resources["BrushTextOnDark"] = Brushes.White;
+            Current.Resources["BrushStateWarning"] = Brushes.Orange;
+            Current.Resources["BrushStateDangerStrong"] = Brushes.Red;
+            Current.Resources["BrushTextMuted"] = Brushes.SandyBrown;
         }
     }
 }

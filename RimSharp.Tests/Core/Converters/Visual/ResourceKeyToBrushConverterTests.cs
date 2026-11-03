@@ -21,9 +21,9 @@ namespace RimSharp.Tests.Core.Converters.Visual
         {
 
             var converter = new ResourceKeyToBrushConverter();
-            var expectedBrush = (IBrush)Avalonia.Application.Current!.Resources["RimworldRedBrush"]!;
+            var expectedBrush = (IBrush)Avalonia.Application.Current!.Resources["BrushStateDanger"]!;
 
-            var result = converter.Convert("RimworldRedBrush", typeof(IBrush), null, CultureInfo.InvariantCulture);
+            var result = converter.Convert("BrushStateDanger", typeof(IBrush), null, CultureInfo.InvariantCulture);
 
             result.Should().Be(expectedBrush);
         }

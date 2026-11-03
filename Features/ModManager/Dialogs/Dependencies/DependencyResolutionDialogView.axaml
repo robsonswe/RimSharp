@@ -20,16 +20,16 @@
                 </TextBlock>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="5">
-                    <Button Content="Select All" Command="{Binding SelectAllCommand}" Classes="RimworldButtonStyle"/>
-                    <Button Content="Select None" Command="{Binding SelectNoneCommand}" Classes="RimworldButtonStyle"/>
+                    <Button Content="Select All" Command="{Binding SelectAllCommand}" Classes="btn"/>
+                    <Button Content="Select None" Command="{Binding SelectNoneCommand}" Classes="btn"/>
                 </StackPanel>
             </Grid>
 
             <!-- List of Missing Dependencies -->
-            <ListBox Grid.Row="1" ItemsSource="{Binding MissingDependencies}" Classes="RimworldListBox" SelectionMode="Multiple">
+            <ListBox Grid.Row="1" ItemsSource="{Binding MissingDependencies}" Classes="list" SelectionMode="Multiple">
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="local:MissingDependencyItemViewModel">
-                        <Border Padding="5" Margin="2" BorderBrush="{DynamicResource RimworldBrownBrush}" BorderThickness="0,0,0,1">
+                        <Border Padding="5" Margin="2" BorderBrush="{DynamicResource BrushBorderDefault}" BorderThickness="0,0,0,1">
                             <Grid ColumnDefinitions="Auto,*">
                                 <!-- Checkbox -->
                                 <CheckBox Grid.Column="0" VerticalAlignment="Top" Margin="0,2,10,0" IsChecked="{Binding IsSelected}" IsEnabled="{Binding IsSelectable}"/>
@@ -47,15 +47,14 @@
 
                                     <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding IsSelectable}">
                                         <TextBlock Text="Steam: " FontSize="10" Foreground="Gray"/>
-                                        <Button Content="{Binding SteamId}" 
+                                        <Button Content="{Binding SteamId}"
                                                 Command="{Binding $parent[Window].DataContext.OpenUrlCommand}"
                                                 CommandParameter="{Binding SteamWorkshopUrl}"
                                                 Background="Transparent" BorderThickness="0" Padding="0"
-                                                Foreground="{DynamicResource RimworldDarkGreenBrush}" FontSize="10"/>
+                                                Foreground="{DynamicResource BrushTextSuccess}" FontSize="10"/>
                                     </StackPanel>
-                                    
-                                    <TextBlock IsVisible="{Binding !IsSelectable}" FontSize="10" Foreground="{DynamicResource RimworldRedBrush}" Text="No Steam Workshop link found"/>
 
+                                    <TextBlock IsVisible="{Binding !IsSelectable}" FontSize="10" Foreground="{DynamicResource BrushTextError}" Text="No Steam Workshop link found"/>
                                     <Expander Header="Required By:" Margin="0,5,0,0">
                                          <ItemsControl ItemsSource="{Binding RequiredByDisplay}">
                                              <ItemsControl.ItemTemplate>
@@ -75,8 +74,8 @@
             <!-- Footer -->
             <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0" Spacing="10">
                 <TextBlock Text="{Binding SelectedCount, StringFormat='{}{0} dependencies selected'}" VerticalAlignment="Center"/>
-                <Button Content="Cancel" Command="{Binding CloseWithResultCommand}" CommandParameter="{x:Static local:DependencyResolutionDialogResult.Cancel}" Classes="RimworldButtonStyle"/>
-                <Button Content="Download Selected" Command="{Binding CloseWithResultCommand}" CommandParameter="{x:Static local:DependencyResolutionDialogResult.Download}" Classes="RimworldButtonStyle" IsEnabled="{Binding SelectedCount}"/>
+                <Button Content="Cancel" Command="{Binding CloseWithResultCommand}" CommandParameter="{x:Static local:DependencyResolutionDialogResult.Cancel}" Classes="btn"/>
+                <Button Content="Download Selected" Command="{Binding CloseWithResultCommand}" CommandParameter="{x:Static local:DependencyResolutionDialogResult.Download}" Classes="btn" IsEnabled="{Binding SelectedCount}"/>
             </StackPanel>
         </Grid>
     </dialogs:BaseDialog.MainContent>

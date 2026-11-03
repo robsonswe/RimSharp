@@ -3,10 +3,10 @@
 
     <!-- Standardized DataGrid Styles for RimSharp -->
     <!-- Consistent color scheme across all DataGrids -->
-    
+
     <Style Selector="DataGrid">
         <Setter Property="Background" Value="{DynamicResource DataGridRowWhiteBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="GridLinesVisibility" Value="All"/>
         <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource DataGridRowGrayBrush}"/>
@@ -21,14 +21,14 @@
     </Style>
 
     <Style Selector="DataGridColumnHeader">
-        <Setter Property="Background" Value="{DynamicResource RimworldLightBrownBrush}"/>
-        <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource BrushBgAccent}"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextOnDark}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="FontSize" Value="12"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
         <Setter Property="BorderThickness" Value="0,0,1,1"/>
         <Setter Property="Padding" Value="4,6"/>
-        <Setter Property="SeparatorBrush" Value="{DynamicResource RimworldBrownBrush}"/>
+        <Setter Property="SeparatorBrush" Value="{DynamicResource BrushBorderDefault}"/>
         <Setter Property="Cursor" Value="Arrow"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
@@ -37,7 +37,7 @@
 
     <Style Selector="DataGridColumnHeader Button">
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="{DynamicResource RimworldWhiteBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextOnDark}"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Padding" Value="0"/>
@@ -59,11 +59,11 @@
     <Style Selector="DataGridRow">
         <Setter Property="FontSize" Value="12"/>
         <Style Selector="^:selected /template/ Rectangle#Background">
-            <Setter Property="Fill" Value="{DynamicResource RimworldHighlightBrush}"/>
+            <Setter Property="Fill" Value="{DynamicResource BrushBgHighlight}"/>
             <Setter Property="Opacity" Value="0.3"/>
         </Style>
         <Style Selector="^:pointerover /template/ Rectangle#Background">
-            <Setter Property="Fill" Value="{DynamicResource RimworldHighlightBrush}"/>
+            <Setter Property="Fill" Value="{DynamicResource BrushBgHighlight}"/>
             <Setter Property="Opacity" Value="0.1"/>
         </Style>
     </Style>
@@ -71,7 +71,7 @@
     <Style Selector="DataGridCell">
         <Setter Property="Padding" Value="4,4"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
-        <Setter Property="Foreground" Value="{DynamicResource RimworldBlackBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextBlack}"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
         <Setter Property="ClipToBounds" Value="False"/>
         <Style Selector="^:selected /template/ Grid#FocusVisual">

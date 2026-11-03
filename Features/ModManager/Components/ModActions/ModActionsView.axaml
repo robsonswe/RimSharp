@@ -14,11 +14,11 @@
 
         <!-- Left: Management Actions -->
         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
-            <Button Content="Clear" Command="{Binding ClearActiveListCommand}" Classes="RimworldButtonStyle" MinWidth="60"/>
-            <Button Command="{Binding SortActiveListCommand}" Classes="RimworldButtonStyle" MinWidth="60">
+            <Button Content="Clear" Command="{Binding ClearActiveListCommand}" Classes="btn" MinWidth="60"/>
+            <Button Command="{Binding SortActiveListCommand}" Classes="btn" MinWidth="60">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                     <TextBlock Text="Sort"/>
-                    <Border Background="{DynamicResource RimworldErrorRedBrush}" 
+                    <Border Background="{DynamicResource BrushStateDangerStrong}"
                             CornerRadius="10" Padding="5,0" VerticalAlignment="Center"
                             IsVisible="{Binding ActiveSortingIssuesCount, Converter={StaticResource NumericToBooleanConverter}}">
                         <TextBlock Text="{Binding ActiveSortingIssuesCount}" Foreground="White" FontSize="10" FontWeight="Bold"/>
@@ -26,28 +26,28 @@
                 </StackPanel>
             </Button>
 
-            <Border Width="1" Height="16" Background="{DynamicResource RimworldBrownBrush}" Margin="8,0" VerticalAlignment="Center" Opacity="0.3"/>
+            <Border Width="1" Height="16" Background="{DynamicResource BrushBgAction}" Margin="8,0" VerticalAlignment="Center" Opacity="0.3"/>
 
             <Menu Background="Transparent" VerticalAlignment="Center">
-                <MenuItem Classes="RimworldDropDownButtonStyle">
+                <MenuItem Classes="menu-dropdown">
                     <MenuItem.Header>
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <TextBlock Text="Maintenance"/>
-                            <Border Background="{DynamicResource RimworldErrorRedBrush}" 
+                            <Border Background="{DynamicResource BrushStateDangerStrong}"
                                     CornerRadius="10" Padding="5,0" VerticalAlignment="Center"
                                     IsVisible="{Binding TotalActiveIssues, Converter={StaticResource NumericToBooleanConverter}}">
                                 <TextBlock Text="{Binding TotalActiveIssues}" Foreground="White" FontSize="10" FontWeight="Bold"/>
                             </Border>
                         </StackPanel>
                     </MenuItem.Header>
-                    <MenuItem Command="{Binding ResolveDependenciesCommand}" Classes="RimworldMenuItemStyle">
+                    <MenuItem Command="{Binding ResolveDependenciesCommand}" Classes="menu-item">
                         <MenuItem.Header>
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
                                     <i:Icon Value="fa-box" VerticalAlignment="Center" FontSize="12"/>
                                     <TextBlock Text="Dependencies" VerticalAlignment="Center"/>
                                 </StackPanel>
-                                <Border Grid.Column="1" Background="{DynamicResource RimworldErrorRedBrush}" 
+                                <Border Grid.Column="1" Background="{DynamicResource BrushStateDangerStrong}"
                                         CornerRadius="10" Padding="5,0" VerticalAlignment="Center" Margin="10,0,0,0"
                                         IsVisible="{Binding ActiveMissingDependenciesCount, Converter={StaticResource NumericToBooleanConverter}}">
                                     <TextBlock Text="{Binding ActiveMissingDependenciesCount}" Foreground="White" FontSize="10" FontWeight="Bold"/>
@@ -55,14 +55,14 @@
                             </Grid>
                         </MenuItem.Header>
                     </MenuItem>
-                    <MenuItem Command="{Binding CheckIncompatibilitiesCommand}" Classes="RimworldMenuItemStyle">
+                    <MenuItem Command="{Binding CheckIncompatibilitiesCommand}" Classes="menu-item">
                         <MenuItem.Header>
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
                                     <i:Icon Value="fa-ban" VerticalAlignment="Center" FontSize="12"/>
                                     <TextBlock Text="Incompatibilities" VerticalAlignment="Center"/>
                                 </StackPanel>
-                                <Border Grid.Column="1" Background="{DynamicResource RimworldErrorRedBrush}" 
+                                <Border Grid.Column="1" Background="{DynamicResource BrushStateDangerStrong}"
                                         CornerRadius="10" Padding="5,0" VerticalAlignment="Center" Margin="10,0,0,0"
                                         IsVisible="{Binding ActiveIncompatibilitiesCount, Converter={StaticResource NumericToBooleanConverter}}">
                                     <TextBlock Text="{Binding ActiveIncompatibilitiesCount}" Foreground="White" FontSize="10" FontWeight="Bold"/>
@@ -70,14 +70,14 @@
                             </Grid>
                         </MenuItem.Header>
                     </MenuItem>
-                    <MenuItem Command="{Binding CheckDuplicatesCommand}" Classes="RimworldMenuItemStyle">
+                    <MenuItem Command="{Binding CheckDuplicatesCommand}" Classes="menu-item">
                         <MenuItem.Header>
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
                                     <i:Icon Value="fa-clone" VerticalAlignment="Center" FontSize="12"/>
                                     <TextBlock Text="Duplicates" VerticalAlignment="Center"/>
                                 </StackPanel>
-                                <Border Grid.Column="1" Background="{DynamicResource RimworldErrorRedBrush}" 
+                                <Border Grid.Column="1" Background="{DynamicResource BrushStateDangerStrong}"
                                         CornerRadius="10" Padding="5,0" VerticalAlignment="Center" Margin="10,0,0,0"
                                         IsVisible="{Binding ActiveDuplicateIssuesCount, Converter={StaticResource NumericToBooleanConverter}}">
                                     <TextBlock Text="{Binding ActiveDuplicateIssuesCount}" Foreground="White" FontSize="10" FontWeight="Bold"/>
@@ -85,7 +85,7 @@
                             </Grid>
                         </MenuItem.Header>
                     </MenuItem>
-                    <MenuItem Command="{Binding CheckReplacementsCommand}" Classes="RimworldMenuItemStyle">
+                    <MenuItem Command="{Binding CheckReplacementsCommand}" Classes="menu-item">
                         <MenuItem.Header>
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <i:Icon Value="fa-arrows-rotate" VerticalAlignment="Center" FontSize="12"/>
@@ -97,8 +97,8 @@
             </Menu>
 
             <Menu Background="Transparent" VerticalAlignment="Center">
-                <MenuItem Header="Utilities" Classes="RimworldDropDownButtonStyle">
-                    <MenuItem Command="{Binding StripModsCommand}" Classes="RimworldMenuItemStyle">
+                <MenuItem Header="Utilities" Classes="menu-dropdown">
+                    <MenuItem Command="{Binding StripModsCommand}" Classes="menu-item">
                         <MenuItem.Header>
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <i:Icon Value="fa-scissors" VerticalAlignment="Center" FontSize="12"/>
@@ -106,7 +106,7 @@
                             </StackPanel>
                         </MenuItem.Header>
                     </MenuItem>
-                    <MenuItem Command="{Binding FixIntegrityCommand}" Classes="RimworldMenuItemStyle">
+                    <MenuItem Command="{Binding FixIntegrityCommand}" Classes="menu-item">
                         <MenuItem.Header>
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <i:Icon Value="fa-hammer" VerticalAlignment="Center" FontSize="12"/>
@@ -114,8 +114,8 @@
                             </StackPanel>
                         </MenuItem.Header>
                     </MenuItem>
-                    <Separator Classes="RimworldSeparatorStyle"/>
-                    <MenuItem Command="{Binding InstallFromZipCommand}" Classes="RimworldMenuItemStyle">
+                    <Separator Classes="separator"/>
+                    <MenuItem Command="{Binding InstallFromZipCommand}" Classes="menu-item">
                         <MenuItem.Header>
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <i:Icon Value="fa-box" VerticalAlignment="Center" FontSize="12"/>
@@ -123,7 +123,7 @@
                             </StackPanel>
                         </MenuItem.Header>
                     </MenuItem>
-                    <MenuItem Command="{Binding InstallFromGithubCommand}" Classes="RimworldMenuItemStyle">
+                    <MenuItem Command="{Binding InstallFromGithubCommand}" Classes="menu-item">
                         <MenuItem.Header>
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <i:Icon Value="fa-brands fa-github" VerticalAlignment="Center" FontSize="12"/>
@@ -137,13 +137,13 @@
 
         <!-- Right: IO Actions -->
         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
-            <Button Content="Import list" Command="{Binding ImportListCommand}" Classes="RimworldButtonStyle" MinWidth="90"/>
-            <Button Content="Export list" Command="{Binding ExportListCommand}" Classes="RimworldButtonStyle" MinWidth="90"/>
+            <Button Content="Import list" Command="{Binding ImportListCommand}" Classes="btn" MinWidth="90"/>
+            <Button Content="Export list" Command="{Binding ExportListCommand}" Classes="btn" MinWidth="90"/>
 
-            <Border Width="1" Height="16" Background="{DynamicResource RimworldBrownBrush}" Margin="8,0" VerticalAlignment="Center" Opacity="0.3"/>
+            <Border Width="1" Height="16" Background="{DynamicResource BrushBgAction}" Margin="8,0" VerticalAlignment="Center" Opacity="0.3"/>
 
-            <Button Content="Save" Command="{Binding SaveCommand}" Classes="RimworldSaveButtonStyle" MinWidth="80"/>
-            <Button Content="Run" Command="{Binding RunGameCommand}" Classes="RimworldRunButtonStyle" MinWidth="80"/>
+            <Button Content="Save" Command="{Binding SaveCommand}" Classes="btn-success" MinWidth="80"/>
+            <Button Content="Run" Command="{Binding RunGameCommand}" Classes="btn-danger" MinWidth="80"/>
         </StackPanel>
     </Grid>
 </UserControl>

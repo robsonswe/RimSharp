@@ -15,16 +15,16 @@ namespace RimSharp.Core.Converters.Visual
             {
                 string colorKey = type switch
                 {
-                    ModType.Core => "RimworldRed",
-                    ModType.Expansion => "RimworldDarkGreen",
-                    ModType.Workshop => "RimworldBrown",
-                    ModType.WorkshopL => "RimworldHighlight",
-                    ModType.Git => "RimworldDarkBeige",
-                    ModType.Zipped => "RimworldGray",
-                    _ => "RimworldBrown"
+                    ModType.Core => "BrushStateDanger",
+                    ModType.Expansion => "BrushStateSuccess",
+                    ModType.Workshop => "BrushStatePrimary",
+                    ModType.WorkshopL => "BrushStateHighlight",
+                    ModType.Git => "BrushStatePanel",
+                    ModType.Zipped => "BrushStateNeutral",
+                    _ => "BrushStatePrimary"
                 };
 
-                if (Application.Current?.Resources.TryGetResource(colorKey + "Brush", null, out var resource) == true)
+                if (Application.Current?.Resources.TryGetResource(colorKey, null, out var resource) == true)
                 {
                     return resource as IBrush;
                 }
@@ -38,4 +38,3 @@ namespace RimSharp.Core.Converters.Visual
         }
     }
 }
-
