@@ -28,6 +28,7 @@ namespace RimSharp.Tests.Base
             Current.Resources["BrushStatePrimary"] = Brushes.Brown;
             Current.Resources["BrushStateHighlight"] = Brushes.Yellow;
             Current.Resources["BrushStatePanel"] = Brushes.Beige;
+            Current.Resources["BrushStateGit"] = Brushes.SteelBlue;
             Current.Resources["BrushStateNeutral"] = Brushes.Gray;
             Current.Resources["BrushTextBlack"] = Brushes.Black;
             Current.Resources["BrushTextOnDark"] = Brushes.White;
@@ -37,4 +38,3 @@ namespace RimSharp.Tests.Base
         }
     }
 }
-

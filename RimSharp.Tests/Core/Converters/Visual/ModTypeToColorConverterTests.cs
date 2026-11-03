@@ -22,7 +22,7 @@ namespace RimSharp.Tests.Core.Converters.Visual
         [InlineData(ModType.Expansion, "BrushStateSuccess")]
         [InlineData(ModType.Workshop, "BrushStatePrimary")]
         [InlineData(ModType.WorkshopL, "BrushStateHighlight")]
-        [InlineData(ModType.Git, "BrushStatePanel")]
+        [InlineData(ModType.Git, "BrushStateGit")]
         [InlineData(ModType.Zipped, "BrushStateNeutral")]
         public void Convert_ShouldReturnCorrectBrushBasedOnModType(ModType type, string expectedKey)
         {
@@ -47,4 +47,3 @@ namespace RimSharp.Tests.Core.Converters.Visual
         }
     }
 }
-

@@ -19,7 +19,7 @@ namespace RimSharp.Core.Converters.Visual
                     ModType.Expansion => "BrushStateSuccess",
                     ModType.Workshop => "BrushStatePrimary",
                     ModType.WorkshopL => "BrushStateHighlight",
-                    ModType.Git => "BrushStatePanel",
+                    ModType.Git => "BrushStateGit",
                     ModType.Zipped => "BrushStateNeutral",
                     _ => "BrushStatePrimary"
                 };

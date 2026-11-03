@@ -41,6 +41,7 @@
     <SolidColorBrush x:Key="BrushStateWarning" Color="{StaticResource ColorOrange600}"/>
     <SolidColorBrush x:Key="BrushStateNeutral" Color="{StaticResource ColorGray500}"/>
     <SolidColorBrush x:Key="BrushStatePanel" Color="{StaticResource ColorBrown400}"/>
+    <SolidColorBrush x:Key="BrushStateGit" Color="{StaticResource ColorBlue700}"/>
 
     <SolidColorBrush x:Key="BrushBorderDefault" Color="{StaticResource ColorBrown800}"/>
     <SolidColorBrush x:Key="BrushBorderStrong" Color="{StaticResource ColorBrown900}"/>
