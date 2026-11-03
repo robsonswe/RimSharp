@@ -123,14 +123,14 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 var raw = detail.Description?.Length >= detail.DetailedDescription?.Length
                     ? detail.Description
                     : detail.DetailedDescription;
-                if (string.IsNullOrWhiteSpace(raw)) return (null, null, null);
+                if (string.IsNullOrWhiteSpace(raw)) return null;
 
                 return (CleanHtml(raw), "steamapi", detail.Title);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogWarning($"Workshop description: Steam API extractor failed for {steamId}: {ex.Message}", nameof(WorkshopDescriptionService));
-                return (null, null, null);
+                return null;
             }
         }
 

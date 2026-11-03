@@ -128,7 +128,7 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.CustomizeMod
             var vm = new IncompatibilityRuleEditorDialogViewModel("Title", _mockDialogService, _mockModService);
 
             vm.OpenModSelectorCommand.Execute(null);
-            await Task.Delay(200);
+            await Task.Delay(200, TestContext.Current.CancellationToken);
 
             vm.PackageId.Should().Be("selected.mod");
             vm.DisplayName.Should().Be("Selected Mod");

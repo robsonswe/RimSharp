@@ -36,7 +36,7 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.DuplicateMods
             vm.DuplicateGroups[0].Mods.First(m => m.Original == mod2).IsActive = false;
 
             vm.ApplyResolutionsCommand.Execute(null);
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
 
             pathsToDelete.Should().NotBeNull();
             pathsToDelete.Should().HaveCount(1);
@@ -61,7 +61,7 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.DuplicateMods
             vm.DuplicateGroups[0].IsIgnored = true;
 
             vm.ApplyResolutionsCommand.Execute(null);
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
 
             pathsToDelete.Should().BeEmpty();
         }

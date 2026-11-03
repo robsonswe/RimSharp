@@ -40,7 +40,7 @@
                                          Classes="input"
                                          TextWrapping="Wrap"
                                          MinHeight="30"
-                                         Watermark="Folder where RimWorld is installed"/>
+                                         PlaceholderText="Folder where RimWorld is installed"/>
                             </StackPanel>
 
                             <!-- Config Directory -->
@@ -59,7 +59,7 @@
                                          Classes="input"
                                          TextWrapping="Wrap"
                                          MinHeight="30"
-                                         Watermark="Folder with RimWorld's config files"/>
+                                         PlaceholderText="Folder with RimWorld's config files"/>
                             </StackPanel>
 
                             <TextBlock TextWrapping="Wrap" FontSize="12"
@@ -154,7 +154,7 @@
                                                     <TextBox Text="{Binding ApiKey, Mode=TwoWay}"
                                                              Classes="input"
                                                              PasswordChar="●"
-                                                             Watermark="sk-or-v1-..."/>
+                                                             PlaceholderText="sk-or-v1-..."/>
                                                 </StackPanel>
 
                                                 <!-- Model -->
@@ -163,7 +163,7 @@
                                                                Foreground="{DynamicResource BrushTextStrong}"/>
                                                     <TextBox Text="{Binding Model, Mode=TwoWay}"
                                                              Classes="input"
-                                                             Watermark="e.g. openrouter/free"/>
+                                                             PlaceholderText="e.g. openrouter/free"/>
                                                 </StackPanel>
                                             </StackPanel>
                                         </Border>

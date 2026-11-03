@@ -137,7 +137,7 @@ namespace RimSharp.AppDir.AppFiles
 
                     if (!pathsOk)
                     {
-                        _logger.LogInfo("Startup aborted by the user at the path configuration gate.", "App.Startup");
+                        _logger?.LogInfo("Startup aborted by the user at the path configuration gate.", "App.Startup");
                         desktop.Shutdown();
                         System.Environment.Exit(0);
                         return;
@@ -166,7 +166,7 @@ namespace RimSharp.AppDir.AppFiles
                         }
                         catch (Exception updateEx)
                         {
-                            _logger.LogWarning($"Failed to update data files on startup: {updateEx.Message}", "App.OnFrameworkInitializationCompleted");
+                            _logger?.LogWarning($"Failed to update data files on startup: {updateEx.Message}", "App.OnFrameworkInitializationCompleted");
                         }
                     });
                 });
@@ -446,5 +446,4 @@ namespace RimSharp.AppDir.AppFiles
         }
     }
 }
-
 

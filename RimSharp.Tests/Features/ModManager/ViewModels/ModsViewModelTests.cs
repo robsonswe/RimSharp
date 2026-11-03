@@ -121,8 +121,8 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
             _mockDataService.LoadActiveModIdsFromConfig().Returns(new List<string>());
 
             vm.RequestRefreshCommand.Execute(null);
-            for (int i = 0; i < 100 && !vm.IsLoading; i++) await Task.Delay(10);
-            for (int i = 0; i < 500 && vm.IsLoading; i++) await Task.Delay(10);
+            for (int i = 0; i < 100 && !vm.IsLoading; i++) await Task.Delay(10, TestContext.Current.CancellationToken);
+            for (int i = 0; i < 500 && vm.IsLoading; i++) await Task.Delay(10, TestContext.Current.CancellationToken);
 
             await _mockDataService.Received(1).LoadAllModsAsync(Arg.Any<IProgress<(int current, int total, string message)>>());
             _mockModListManager.Received(1).Initialize(Arg.Any<List<ModItem>>(), Arg.Any<List<string>>());

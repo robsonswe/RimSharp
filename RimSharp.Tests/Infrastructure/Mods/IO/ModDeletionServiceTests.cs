@@ -39,7 +39,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
             File.WriteAllText(readOnlyFile, "I am read-only");
             File.SetAttributes(readOnlyFile, FileAttributes.ReadOnly);
 
-            await _service.DeleteDirectoryRobustAsync(_testTempDir);
+            await _service.DeleteDirectoryRobustAsync(_testTempDir, TestContext.Current.CancellationToken);
 
             Directory.Exists(_testTempDir).Should().BeFalse();
         }
@@ -56,7 +56,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
             // must exist before the directory is marked read-only.
             File.SetAttributes(subDir, FileAttributes.ReadOnly);
 
-            await _service.DeleteDirectoryRobustAsync(_testTempDir);
+            await _service.DeleteDirectoryRobustAsync(_testTempDir, TestContext.Current.CancellationToken);
 
             Directory.Exists(_testTempDir).Should().BeFalse();
         }
@@ -67,11 +67,10 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
 
             var nonExistentPath = Path.Combine(_testTempDir, "NonExistent");
 
-            Func<Task> act = async () => await _service.DeleteDirectoryRobustAsync(nonExistentPath);
+            Func<Task> act = async () => await _service.DeleteDirectoryRobustAsync(nonExistentPath, TestContext.Current.CancellationToken);
 
             await act.Should().NotThrowAsync();
         }
     }
 }
-
 

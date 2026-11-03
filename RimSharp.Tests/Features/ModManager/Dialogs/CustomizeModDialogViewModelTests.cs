@@ -52,7 +52,7 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
                 });
 
             vm.AddLoadBeforeCommand.Execute(null);
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
 
             vm.CustomLoadBefore.Should().HaveCount(1);
             vm.CustomLoadBefore[0].PackageId.Should().Be("other.mod");
@@ -74,7 +74,7 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
                 });
 
             vm.AddLoadBeforeCommand.Execute(null);
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
 
             vm.CustomLoadBefore.Should().BeEmpty();
             await _mockDialogService.Received(1).ShowWarning(Arg.Any<string>(), Arg.Is<string>(s => s.Contains("already exists")));
@@ -89,7 +89,7 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
             vm.IsFavorite = true;
 
             vm.SaveCommand.Execute(null);
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
 
             await _mockModService.Received(1).SaveCustomModInfoAsync("test.mod", Arg.Is<ModCustomInfo>(info => info.Favorite == true));
         }

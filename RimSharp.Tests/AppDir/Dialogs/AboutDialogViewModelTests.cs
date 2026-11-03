@@ -24,7 +24,7 @@ namespace RimSharp.Tests.AppDir.Dialogs
             mockService.CheckForAppUpdateAsync().Returns((true, "v1.1.0", "https://github.com/release"));
 
             var vm = new AboutDialogViewModel(mockService);
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
 
             vm.IsNewVersionAvailable.Should().BeTrue();
             vm.UpdateStatus.Should().Contain("v1.1.0");
@@ -40,7 +40,7 @@ namespace RimSharp.Tests.AppDir.Dialogs
             mockService.CheckForAppUpdateAsync().Returns((false, "v1.0.0", null));
 
             var vm = new AboutDialogViewModel(mockService);
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
 
             vm.IsNewVersionAvailable.Should().BeFalse();
             vm.UpdateStatus.Should().Be("RimSharp is up to date");

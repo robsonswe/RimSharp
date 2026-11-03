@@ -42,10 +42,10 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download.Execution
             var installDir = @"C:\SteamCMD\RimWorld";
             var uniqueId = "test";
 
-            var path = await _generator.GenerateScriptAsync(_testTempDir, uniqueId, installDir, items, true, CancellationToken.None);
+            var path = await _generator.GenerateScriptAsync(_testTempDir, uniqueId, installDir, items, true, TestContext.Current.CancellationToken);
 
             File.Exists(path).Should().BeTrue();
-            var content = await File.ReadAllTextAsync(path);
+            var content = await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken);
             content.Should().Contain($@"force_install_dir ""{installDir}""");
             content.Should().Contain("login anonymous");
             content.Should().Contain("workshop_download_item 294100 123 validate");
@@ -61,9 +61,9 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download.Execution
             var installDir = @"C:\SteamCMD\RimWorld";
             var uniqueId = "test_no_validate";
 
-            var path = await _generator.GenerateScriptAsync(_testTempDir, uniqueId, installDir, items, false, CancellationToken.None);
+            var path = await _generator.GenerateScriptAsync(_testTempDir, uniqueId, installDir, items, false, TestContext.Current.CancellationToken);
 
-            var content = await File.ReadAllTextAsync(path);
+            var content = await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken);
             content.Should().Contain("workshop_download_item 294100 789");
             content.Should().NotContain("validate");
         }
@@ -72,13 +72,12 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download.Execution
         public async Task GenerateScriptAsync_WithEmptyItems_ShouldStillCreateValidBaseScript()
         {
 
-            var path = await _generator.GenerateScriptAsync(_testTempDir, "empty", "dir", new List<DownloadItem>(), false, CancellationToken.None);
+            var path = await _generator.GenerateScriptAsync(_testTempDir, "empty", "dir", new List<DownloadItem>(), false, TestContext.Current.CancellationToken);
 
-            var content = await File.ReadAllTextAsync(path);
+            var content = await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken);
             content.Should().Contain("login anonymous");
             content.Should().Contain("quit");
             content.Should().NotContain("workshop_download_item");
         }
     }
 }
-

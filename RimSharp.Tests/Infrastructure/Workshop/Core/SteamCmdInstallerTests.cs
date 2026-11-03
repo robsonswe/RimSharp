@@ -102,7 +102,7 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Core
                 .Do(ci => dialogErrors.Add($"{ci.ArgAt<string>(0)}: {ci.ArgAt<string>(1)}"));
 
             var progressMessages = new System.Collections.Generic.List<string>();
-            var result = await installer.SetupAsync(new Progress<string>(m => progressMessages.Add(m)));
+            var result = await installer.SetupAsync(new Progress<string>(m => progressMessages.Add(m)), TestContext.Current.CancellationToken);
 
             if (_platformInfo.IsSupported)
             {
@@ -154,5 +154,4 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Core
         }
     }
 }
-
 

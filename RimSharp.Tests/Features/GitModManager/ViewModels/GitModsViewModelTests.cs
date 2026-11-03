@@ -102,7 +102,7 @@ namespace RimSharp.Tests.Features.GitModManager.ViewModels
             var start = DateTime.Now;
             while (!condition() && (DateTime.Now - start).TotalMilliseconds < timeoutMs)
             {
-                await Task.Delay(10);
+                await Task.Delay(10, TestContext.Current.CancellationToken);
             }
         }
     }

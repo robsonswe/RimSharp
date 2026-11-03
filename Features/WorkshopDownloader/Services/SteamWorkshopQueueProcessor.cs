@@ -142,10 +142,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                                 StandardDate = apiUpdateTimeUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture),
                                 FileSize = details.FileSize,
                                 LatestVersions = SteamApiResultHelper.ExtractAndSortVersionTags(details.Tags),
-                                SteamDescription = WorkshopDescriptionService.CleanHtml(
-                                    details.DetailedDescription?.Length > details.Description?.Length
-                                        ? details.DetailedDescription
-                                        : details.Description)
+                                SteamDescription = GetCleanDescription(details)
                             };
                             progress?.Report(new QueueProcessProgress
                             {
@@ -162,6 +159,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                                 _logger.LogInfo($"Added {modIdentifier} to download queue.", nameof(SteamWorkshopQueueProcessor));
                                 progress?.Report(new QueueProcessProgress { /*...*/ CurrentItemName = modNameForProgress, Message = $"Queued {modNameForProgress}" });
                             }
+
                             else
                             {
 
@@ -226,7 +224,16 @@ Interlocked.Increment(ref alreadyQueuedCount);
 
             return result;
         }
+
+        private static string GetCleanDescription(SteamPublishedFileDetails details)
+        {
+            var rawDescription = details.DetailedDescription?.Length > details.Description?.Length
+                ? details.DetailedDescription
+                : details.Description;
+
+            return string.IsNullOrWhiteSpace(rawDescription)
+                ? string.Empty
+                : WorkshopDescriptionService.CleanHtml(rawDescription);
+        }
     }
 }
-
-

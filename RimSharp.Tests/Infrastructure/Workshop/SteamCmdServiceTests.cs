@@ -65,7 +65,7 @@ namespace RimSharp.Tests.Infrastructure.Workshop
             _mockInstaller.SetupAsync(null, Arg.Any<CancellationToken>()).Returns(true);
             _mockInstaller.CheckSetupAsync().Returns(true);
 
-            var result = await _service.SetupAsync();
+            var result = await _service.SetupAsync(null, TestContext.Current.CancellationToken);
 
             result.Should().BeTrue();
             await _mockInstaller.Received(1).SetupAsync(null, Arg.Any<CancellationToken>());
@@ -93,12 +93,10 @@ namespace RimSharp.Tests.Infrastructure.Workshop
             var expectedResult = new SteamCmdDownloadResult();
             _mockDownloader.DownloadModsAsync(items, true, null, Arg.Any<CancellationToken>()).Returns(expectedResult);
 
-            var result = await _service.DownloadModsAsync(items, true);
+            var result = await _service.DownloadModsAsync(items, true, null, TestContext.Current.CancellationToken);
 
             result.Should().Be(expectedResult);
             await _mockDownloader.Received(1).DownloadModsAsync(items, true, null, Arg.Any<CancellationToken>());
         }
     }
 }
-
-

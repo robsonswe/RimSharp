@@ -24,7 +24,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.Sorting
         public void TopologicalSort_WhenEmpty_ShouldBeSuccess()
         {
 
-            var result = _sorter.TopologicalSort(new List<ModItem>());
+            var result = _sorter.TopologicalSort(new List<ModItem>(), TestContext.Current.CancellationToken);
 
             result.IsSuccess.Should().BeTrue();
             result.SortedMods.Should().BeEmpty();
@@ -36,7 +36,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.Sorting
 
             var mod = new ModItem { Name = "Mod 1", PackageId = "mod1" };
 
-            var result = _sorter.TopologicalSort(new List<ModItem> { mod });
+            var result = _sorter.TopologicalSort(new List<ModItem> { mod }, TestContext.Current.CancellationToken);
 
             result.IsSuccess.Should().BeTrue();
             result.SortedMods.Should().ContainSingle().Which.Should().Be(mod);
@@ -50,7 +50,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.Sorting
             var mod1 = new ModItem { Name = "Mod 1", PackageId = "mod1", ModType = ModType.Workshop };
             var mods = new List<ModItem> { mod1, coreMod };
 
-            var result = _sorter.TopologicalSort(mods);
+            var result = _sorter.TopologicalSort(mods, TestContext.Current.CancellationToken);
 
             result.IsSuccess.Should().BeTrue();
             result.SortedMods[0].Should().Be(coreMod);
@@ -65,7 +65,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.Sorting
             var modB = new ModItem { Name = "Mod B", PackageId = "modB", LoadAfter = new List<string> { "modA" } };
             var mods = new List<ModItem> { modB, modA };
 
-            var result = _sorter.TopologicalSort(mods);
+            var result = _sorter.TopologicalSort(mods, TestContext.Current.CancellationToken);
 
             result.IsSuccess.Should().BeTrue();
             result.SortedMods.IndexOf(modA).Should().BeLessThan(result.SortedMods.IndexOf(modB));
@@ -90,7 +90,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.Sorting
             };
             var mods = new List<ModItem> { core, harmony };
 
-            var result = _sorter.TopologicalSort(mods);
+            var result = _sorter.TopologicalSort(mods, TestContext.Current.CancellationToken);
 
             result.IsSuccess.Should().BeTrue();
             result.SortedMods[0].Should().Be(harmony);
@@ -105,7 +105,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.Sorting
             var modB = new ModItem { Name = "Mod B", PackageId = "modB", LoadAfter = new List<string> { "modA" } };
             var mods = new List<ModItem> { modA, modB };
 
-            var result = _sorter.TopologicalSort(mods);
+            var result = _sorter.TopologicalSort(mods, TestContext.Current.CancellationToken);
 
             result.IsSuccess.Should().BeFalse();
             result.CyclicDependencies.Should().NotBeEmpty();
@@ -119,7 +119,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.Sorting
             var modA = new ModItem { Name = "Mod A", PackageId = "modA", ModType = ModType.Workshop };
             var mods = new List<ModItem> { rocketman, modA };
 
-            var result = _sorter.TopologicalSort(mods);
+            var result = _sorter.TopologicalSort(mods, TestContext.Current.CancellationToken);
 
             result.IsSuccess.Should().BeTrue();
             result.SortedMods.Last().Should().Be(rocketman);
@@ -134,7 +134,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.Sorting
             var modC = new ModItem { Name = "Mod C", PackageId = "modC", LoadAfter = new List<string> { "modB" } };
             var mods = new List<ModItem> { modC, modB, modA };
 
-            var result = _sorter.TopologicalSort(mods);
+            var result = _sorter.TopologicalSort(mods, TestContext.Current.CancellationToken);
 
             result.IsSuccess.Should().BeTrue();
             var sorted = result.SortedMods;
@@ -150,7 +150,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.Sorting
             var modB = new ModItem { Name = "Mod B", PackageId = "modB" };
             var mods = new List<ModItem> { modB, modA };
 
-            var result = _sorter.TopologicalSort(mods);
+            var result = _sorter.TopologicalSort(mods, TestContext.Current.CancellationToken);
 
             result.IsSuccess.Should().BeTrue();
             result.SortedMods.IndexOf(modA).Should().BeLessThan(result.SortedMods.IndexOf(modB));
@@ -164,7 +164,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.Sorting
             var core = new ModItem { Name = "Core", PackageId = "Ludeon.RimWorld", ModType = ModType.Core };
             var mods = new List<ModItem> { core, hugsLib, harmony };
 
-            var result = _sorter.TopologicalSort(mods);
+            var result = _sorter.TopologicalSort(mods, TestContext.Current.CancellationToken);
 
             result.IsSuccess.Should().BeTrue();
             var coreIndex = result.SortedMods.IndexOf(core);
@@ -181,7 +181,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.Sorting
             var modC = new ModItem { Name = "Mod C", PackageId = "modC" };
             var mods = new List<ModItem> { modC, modA, modB };
 
-            var result = _sorter.TopologicalSort(mods);
+            var result = _sorter.TopologicalSort(mods, TestContext.Current.CancellationToken);
 
             result.IsSuccess.Should().BeTrue();
             var sorted = result.SortedMods;
@@ -214,7 +214,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.Sorting
             var modC = new ModItem { Name = "Mod C", PackageId = "modC" };
             var mods = new List<ModItem> { modA, modB, modC };
 
-            var result = _sorter.TopologicalSort(mods);
+            var result = _sorter.TopologicalSort(mods, TestContext.Current.CancellationToken);
 
             result.IsSuccess.Should().BeTrue();
             result.SortedMods.Should().HaveCount(3);
@@ -222,4 +222,3 @@ namespace RimSharp.Tests.Infrastructure.Mods.Sorting
         }
     }
 }
-

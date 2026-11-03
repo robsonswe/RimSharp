@@ -89,7 +89,7 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download
             _mockItemProcessor.ProcessItemAsync(Arg.Any<DownloadItem>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
                 .Returns((true, "Processed"));
 
-            var result = await _downloader.DownloadModsAsync(items, true, null);
+            var result = await _downloader.DownloadModsAsync(items, true, null, TestContext.Current.CancellationToken);
 
             result.OverallSuccess.Should().BeTrue();
             result.SucceededItems.Should().HaveCount(1);
@@ -107,7 +107,7 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download
                     WorkshopItemResults = { ["123"] = (false, DateTime.Now, "Timeout") }
                 });
 
-            var result = await _downloader.DownloadModsAsync(items, true, null);
+            var result = await _downloader.DownloadModsAsync(items, true, null, TestContext.Current.CancellationToken);
 
             result.OverallSuccess.Should().BeFalse();
             result.FailedItems.Should().HaveCount(1);
@@ -116,5 +116,4 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download
         }
     }
 }
-
 

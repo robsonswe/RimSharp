@@ -17,12 +17,12 @@ namespace RimSharp.Tests.Core.Commands.Base
             bool executed = false;
             var command = new AsyncDelegateCommand(async () =>
             {
-                await Task.Delay(10);
+                await Task.Delay(10, TestContext.Current.CancellationToken);
                 executed = true;
             });
 
             command.Execute(null);
-            for (int i = 0; i < 100 && !executed; i++) await Task.Delay(10);
+            for (int i = 0; i < 100 && !executed; i++) await Task.Delay(10, TestContext.Current.CancellationToken);
 
             executed.Should().BeTrue();
         }
@@ -91,7 +91,7 @@ namespace RimSharp.Tests.Core.Commands.Base
 
             command.Execute(null); // starts execution — fires one CanExecuteChanged (false)
             tcs.SetResult(true);
-            await Task.Delay(50); // let the async completion propagate
+            await Task.Delay(50, TestContext.Current.CancellationToken); // let the async completion propagate
 
             // At least two changes: false when starting, true when done
             changeCount.Should().BeGreaterThanOrEqualTo(2);

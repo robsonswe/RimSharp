@@ -60,11 +60,12 @@ namespace RimSharp.Tests.Features.ModManager.Components.ModDetails
                     {
                         var label = "";
                         if (b.Content is TextBlock tb) label = tb.Text ?? "";
-                        yield return $"Button '{b.Content switch
+                        var description = b.Content is object content ? content switch
                         {
                             TextBlock => "text:" + label,
-                            _ => "visual:" + b.Content.GetType().Name // image
-                        }}'";
+                            _ => "visual:" + content.GetType().Name // image
+                        } : "Button content unavailable";
+                        yield return $"Button '{description}'";
                     }
                 }
             }
@@ -114,8 +115,9 @@ namespace RimSharp.Tests.Features.ModManager.Components.ModDetails
             // (that is what "fica só o link" looked like).
             var textLabelButtons = viewer.GetVisualDescendants()
                 .OfType<Button>()
-                .Where(b => b.Content is TextBlock && b.Classes.Contains("BbLink"))
-                .Any(b => ((TextBlock)b.Content).Text is { Length: > 0 });
+                .Any(b => b.Content is TextBlock tb
+                    && b.Classes.Contains("BbLink")
+                    && !string.IsNullOrEmpty(tb.Text));
             Assert.False(textLabelButtons,
                 "linked badge must not fall back to URL text labels");
         }
@@ -219,7 +221,7 @@ namespace RimSharp.Tests.Features.ModManager.Components.ModDetails
                 var img = viewer.GetVisualDescendants().OfType<Image>()
                     .FirstOrDefault(i => i.Source != null);
                 if (img != null) return img;
-                await Task.Delay(50);
+                await Task.Delay(50, TestContext.Current.CancellationToken);
             }
             return viewer.GetVisualDescendants().OfType<Image>().FirstOrDefault();
         }
@@ -318,7 +320,7 @@ namespace RimSharp.Tests.Features.ModManager.Components.ModDetails
                 images = viewer.GetVisualDescendants().OfType<Image>()
                     .Where(i => i.Source != null).ToArray();
                 if (images.Length >= 2) break;
-                await Task.Delay(50);
+                await Task.Delay(50, TestContext.Current.CancellationToken);
             }
 
             Assert.True(images.Length >= 2, $"expected 2 loaded banner images, got {images.Length}");
