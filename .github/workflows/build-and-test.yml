@@ -1,0 +1,45 @@
+name: .NET Build and Test
+
+on:
+  push:
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.ps1'
+      - '**/*.txt'
+      - 'LICENSE'
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.ps1'
+      - '**/*.txt'
+      - 'LICENSE'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    strategy:
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-24.04
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore test project
+        run: dotnet restore RimSharp.Tests/RimSharp.Tests.csproj
+
+      - name: Build test project
+        run: dotnet build RimSharp.Tests/RimSharp.Tests.csproj --framework net8.0 --configuration Release --no-restore
+
+      - name: Run tests
+        run: dotnet test RimSharp.Tests/RimSharp.Tests.csproj --framework net8.0 --configuration Release --no-build --no-restore

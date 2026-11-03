@@ -129,11 +129,10 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
 
             LoadSystemInfo(); 
             _ = Task.Run(LoadMods); 
-            _baselineTask = Task.Run(RunBaselineCalculationAsync);
         }
 
         private void LoadSystemInfo() { Task.Run(() => { UserVram = _systemInfoService.GetPrimaryGpuVram(); OnPropertyChanged(nameof(UserVram)); OnPropertyChanged(nameof(IsUserVramAvailable)); NotifyBudgetChanged(); }); }
-        private void LoadMods() { _gameBaselineMods = _modListManager.GetAllMods().Where(m => m.ModType == ModType.Core || m.ModType == ModType.Expansion).ToList(); _allVramMods = _modListManager.GetAllMods().Where(m => m.ModType != ModType.Core && m.ModType != ModType.Expansion && m.Textures).Select(m => new VramModItemWrapper(m)).ToList(); ShowOnlyActive = false; ShowOnlyFavorites = false; ShowMaxVram = false; _modsCalculated = false; ApplyFiltersAndSort(); UpdateTotalVramEstimates(); Task.Run(RunBaselineCalculationAsync); }
+        private void LoadMods() { _gameBaselineMods = _modListManager.GetAllMods().Where(m => m.ModType == ModType.Core || m.ModType == ModType.Expansion).ToList(); _allVramMods = _modListManager.GetAllMods().Where(m => m.ModType != ModType.Core && m.ModType != ModType.Expansion && m.Textures).Select(m => new VramModItemWrapper(m)).ToList(); ShowOnlyActive = false; ShowOnlyFavorites = false; ShowMaxVram = false; _modsCalculated = false; ApplyFiltersAndSort(); UpdateTotalVramEstimates(); _baselineTask = Task.Run(RunBaselineCalculationAsync); }
         private void OnModListChanged(object? sender, EventArgs e) => RunOnUIThread(LoadMods);
 
         private async Task ExecuteVramCalculationAsync(CancellationToken ct) 
@@ -314,5 +313,4 @@ namespace RimSharp.Features.VramAnalysis.ViewModels
         protected override void Dispose(bool disposing) { if (!_disposed && disposing) _modListManager.ListChanged -= OnModListChanged; base.Dispose(disposing); }
     }
 }
-
 
