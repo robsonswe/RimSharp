@@ -12,18 +12,18 @@
             <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,15,Auto,15,Auto,15,Auto" Margin="10">
 
                 <!-- Package ID -->
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="Package ID:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Package ID:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextStrong}"/>
                 <Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="*,Auto">
                     <TextBox Grid.Column="0" Text="{Binding PackageId}" Classes="input" PlaceholderText="e.g. ludeon.rimworld"/>
                     <Button Grid.Column="1" Content="Search" Command="{Binding OpenModSelectorCommand}" Margin="8,0,0,0" Classes="btn"/>
                 </Grid>
 
                 <!-- Display Name -->
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="Display Name:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Display Name:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextStrong}"/>
                 <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding DisplayName}" Classes="input" PlaceholderText="Optional display name"/>
 
                 <!-- Comment -->
-                <TextBlock Grid.Row="4" Grid.Column="0" Text="Comment:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="Comment:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextStrong}"/>
                 <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Comment}" Classes="input" PlaceholderText="Optional reasoning"/>
 
                 <!-- Hard Incompatibility Box -->
@@ -39,7 +39,7 @@
                         <TextBlock Text="If checked, this marks a critical conflict. Running both mods together will break the game or cause major instability."
                                    FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextStrong}"/>
                         <TextBlock Text="Leave unchecked if the mods have conflicts (glitches, balance issues) but the game can still technically run (Soft Incompatibility)."
-                                   FontSize="11" TextWrapping="Wrap" FontStyle="Italic" Foreground="{DynamicResource BrushTextMuted}"/>
+                                   FontSize="11" TextWrapping="Wrap" FontStyle="Italic" Foreground="{DynamicResource BrushTextStrong}"/>
                     </StackPanel>
                 </Border>
 

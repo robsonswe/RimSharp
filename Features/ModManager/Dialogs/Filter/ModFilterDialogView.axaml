@@ -40,10 +40,10 @@
                                                                     <!-- Header Row -->
                                                                     <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Background="{DynamicResource BrushBgAccent}" Padding="10,5">
                                                                         <Grid ColumnDefinitions="*, 60, 60, 60">
-                                                                            <TextBlock Text="Criteria" FontWeight="Bold" Foreground="{DynamicResource BrushTextOnDark}"/>
-                                                                            <TextBlock Grid.Column="1" Text="Any" FontWeight="Bold" Foreground="{DynamicResource BrushTextOnDark}" HorizontalAlignment="Center"/>
-                                                                            <TextBlock Grid.Column="2" Text="Yes" FontWeight="Bold" Foreground="{DynamicResource BrushTextOnDark}" HorizontalAlignment="Center"/>
-                                                                            <TextBlock Grid.Column="3" Text="No" FontWeight="Bold" Foreground="{DynamicResource BrushTextOnDark}" HorizontalAlignment="Center"/>
+                                                                            <TextBlock Text="Criteria" FontWeight="Bold" Foreground="{DynamicResource BrushTextBrown950}"/>
+                                                                            <TextBlock Grid.Column="1" Text="Any" FontWeight="Bold" Foreground="{DynamicResource BrushTextBrown950}" HorizontalAlignment="Center"/>
+                                                                            <TextBlock Grid.Column="2" Text="Yes" FontWeight="Bold" Foreground="{DynamicResource BrushTextBrown950}" HorizontalAlignment="Center"/>
+                                                                            <TextBlock Grid.Column="3" Text="No" FontWeight="Bold" Foreground="{DynamicResource BrushTextBrown950}" HorizontalAlignment="Center"/>
                                                                         </Grid>
                                                                     </Border>
 

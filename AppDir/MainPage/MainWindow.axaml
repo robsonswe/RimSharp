@@ -82,7 +82,7 @@
                                 <TextBlock Text="{Binding PathSettings.GameVersion, StringFormat='RW v\{0\}'}"
                                            FontSize="12"
                                            FontWeight="Bold"
-                                           Foreground="{DynamicResource BrushTextPrimary}"
+                                           Foreground="{DynamicResource BrushTextStrong}"
                                            VerticalAlignment="Center"/>
                             </StackPanel>
                         </Border>
@@ -162,7 +162,7 @@
                     <!-- Subtitle -->
                     <TextBlock Text="RimWorld Mod Manager"
                                FontSize="16"
-                               Foreground="{DynamicResource BrushTextPrimary}"
+                               Foreground="{DynamicResource BrushTextStrong}"
                                HorizontalAlignment="Center"
                                FontStyle="Italic"/>
 

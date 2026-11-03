@@ -7,44 +7,45 @@
     <SolidColorBrush x:Key="DataGridGridLineBrush" Color="{StaticResource ColorDataGridGridLine}"/>
 
     <!-- Role-based utility brushes. These are intentionally independent from component styles. -->
-    <SolidColorBrush x:Key="BrushTextPrimary" Color="{StaticResource ColorBrown}"/>
-    <SolidColorBrush x:Key="BrushTextStrong" Color="{StaticResource ColorDarkBrown}"/>
+    <SolidColorBrush x:Key="BrushTextPrimary" Color="{StaticResource ColorBrown800}"/>
+    <SolidColorBrush x:Key="BrushTextStrong" Color="{StaticResource ColorBrown900}"/>
     <SolidColorBrush x:Key="BrushTextOnDark" Color="{StaticResource ColorWhite}"/>
-    <SolidColorBrush x:Key="BrushTextMuted" Color="{StaticResource ColorLightBrown}"/>
-    <SolidColorBrush x:Key="BrushTextSuccess" Color="{StaticResource ColorDarkGreen}"/>
-    <SolidColorBrush x:Key="BrushTextError" Color="{StaticResource ColorErrorRed}"/>
-    <SolidColorBrush x:Key="BrushTextWarning" Color="{StaticResource ColorOrange}"/>
+    <SolidColorBrush x:Key="BrushTextMuted" Color="{StaticResource ColorBrown800}"/>
+    <SolidColorBrush x:Key="BrushTextSuccess" Color="{StaticResource ColorGreen900}"/>
+    <SolidColorBrush x:Key="BrushTextError" Color="{StaticResource ColorRed800}"/>
+    <SolidColorBrush x:Key="BrushTextWarning" Color="{StaticResource ColorOrange500}"/>
     <SolidColorBrush x:Key="BrushTextBlack" Color="{StaticResource ColorBlack}"/>
-    <SolidColorBrush x:Key="BrushTextCode" Color="{StaticResource ColorCodeBlue}"/>
-    <SolidColorBrush x:Key="BrushTextHighlight" Color="{StaticResource ColorHighlight}"/>
-    <SolidColorBrush x:Key="BrushTextSuccessHover" Color="{StaticResource ColorDarkGreenHover}"/>
-    <SolidColorBrush x:Key="BrushBgSurface" Color="{StaticResource ColorBeige}"/>
-    <SolidColorBrush x:Key="BrushBgPanel" Color="{StaticResource ColorDarkBeige}"/>
-    <SolidColorBrush x:Key="BrushBgAction" Color="{StaticResource ColorBrown}"/>
-    <SolidColorBrush x:Key="BrushBgActionHover" Color="{StaticResource ColorDarkBeige}"/>
-    <SolidColorBrush x:Key="BrushBgActionStrong" Color="{StaticResource ColorDarkBrown}"/>
-    <SolidColorBrush x:Key="BrushBgAccent" Color="{StaticResource ColorLightBrown}"/>
-    <SolidColorBrush x:Key="BrushBgSuccess" Color="{StaticResource ColorDarkGreen}"/>
-    <SolidColorBrush x:Key="BrushBgSuccessHover" Color="{StaticResource ColorDarkGreenHover}"/>
-    <SolidColorBrush x:Key="BrushBgDanger" Color="{StaticResource ColorRed}"/>
-    <SolidColorBrush x:Key="BrushBgDangerLight" Color="{StaticResource ColorRedLight}"/>
-    <SolidColorBrush x:Key="BrushBgDangerHover" Color="{StaticResource ColorRedHover}"/>
-    <SolidColorBrush x:Key="BrushBgHighlight" Color="{StaticResource ColorHighlight}"/>
-    <SolidColorBrush x:Key="BrushBgDisabled" Color="{StaticResource ColorGray}"/>
+    <SolidColorBrush x:Key="BrushTextBrown950" Color="{StaticResource ColorBrown950}"/>
+    <SolidColorBrush x:Key="BrushTextCode" Color="{StaticResource ColorBlue700}"/>
+    <SolidColorBrush x:Key="BrushTextHighlight" Color="{StaticResource ColorAmber300}"/>
+    <SolidColorBrush x:Key="BrushTextSuccessHover" Color="{StaticResource ColorGreen700}"/>
+    <SolidColorBrush x:Key="BrushBgSurface" Color="{StaticResource ColorBrown200}"/>
+    <SolidColorBrush x:Key="BrushBgPanel" Color="{StaticResource ColorBrown400}"/>
+    <SolidColorBrush x:Key="BrushBgAction" Color="{StaticResource ColorBrown800}"/>
+    <SolidColorBrush x:Key="BrushBgActionHover" Color="{StaticResource ColorBrown400}"/>
+    <SolidColorBrush x:Key="BrushBgActionStrong" Color="{StaticResource ColorBrown900}"/>
+    <SolidColorBrush x:Key="BrushBgAccent" Color="{StaticResource ColorBrown600}"/>
+    <SolidColorBrush x:Key="BrushBgSuccess" Color="{StaticResource ColorGreen800}"/>
+    <SolidColorBrush x:Key="BrushBgSuccessHover" Color="{StaticResource ColorGreen700}"/>
+    <SolidColorBrush x:Key="BrushBgDanger" Color="{StaticResource ColorRed600}"/>
+    <SolidColorBrush x:Key="BrushBgDangerLight" Color="{StaticResource ColorRed400}"/>
+    <SolidColorBrush x:Key="BrushBgDangerHover" Color="{StaticResource ColorRed500}"/>
+    <SolidColorBrush x:Key="BrushBgHighlight" Color="{StaticResource ColorAmber300}"/>
+    <SolidColorBrush x:Key="BrushBgDisabled" Color="{StaticResource ColorGray500}"/>
     <SolidColorBrush x:Key="BrushBgSelected" Color="#FFE8D8B0"/>
-    <SolidColorBrush x:Key="BrushStatePrimary" Color="{StaticResource ColorBrown}"/>
-    <SolidColorBrush x:Key="BrushStateSuccess" Color="{StaticResource ColorDarkGreen}"/>
-    <SolidColorBrush x:Key="BrushStateDanger" Color="{StaticResource ColorRed}"/>
-    <SolidColorBrush x:Key="BrushStateDangerStrong" Color="{StaticResource ColorErrorRed}"/>
-    <SolidColorBrush x:Key="BrushStateHighlight" Color="{StaticResource ColorHighlight}"/>
-    <SolidColorBrush x:Key="BrushStateWarning" Color="{StaticResource ColorConfigOrange}"/>
-    <SolidColorBrush x:Key="BrushStateNeutral" Color="{StaticResource ColorGray}"/>
-    <SolidColorBrush x:Key="BrushStatePanel" Color="{StaticResource ColorDarkBeige}"/>
+    <SolidColorBrush x:Key="BrushStatePrimary" Color="{StaticResource ColorBrown800}"/>
+    <SolidColorBrush x:Key="BrushStateSuccess" Color="{StaticResource ColorGreen800}"/>
+    <SolidColorBrush x:Key="BrushStateDanger" Color="{StaticResource ColorRed600}"/>
+    <SolidColorBrush x:Key="BrushStateDangerStrong" Color="{StaticResource ColorRed700}"/>
+    <SolidColorBrush x:Key="BrushStateHighlight" Color="{StaticResource ColorAmber300}"/>
+    <SolidColorBrush x:Key="BrushStateWarning" Color="{StaticResource ColorOrange600}"/>
+    <SolidColorBrush x:Key="BrushStateNeutral" Color="{StaticResource ColorGray500}"/>
+    <SolidColorBrush x:Key="BrushStatePanel" Color="{StaticResource ColorBrown400}"/>
 
-    <SolidColorBrush x:Key="BrushBorderDefault" Color="{StaticResource ColorBrown}"/>
-    <SolidColorBrush x:Key="BrushBorderStrong" Color="{StaticResource ColorDarkBrown}"/>
-    <SolidColorBrush x:Key="BrushBorderMuted" Color="{StaticResource ColorLightBrown}"/>
-    <SolidColorBrush x:Key="BrushBorderHighlight" Color="{StaticResource ColorHighlight}"/>
-    <SolidColorBrush x:Key="BrushBorderSuccess" Color="{StaticResource ColorDarkGreenBorder}"/>
-    <SolidColorBrush x:Key="BrushBorderError" Color="{StaticResource ColorRedBorder}"/>
+    <SolidColorBrush x:Key="BrushBorderDefault" Color="{StaticResource ColorBrown800}"/>
+    <SolidColorBrush x:Key="BrushBorderStrong" Color="{StaticResource ColorBrown900}"/>
+    <SolidColorBrush x:Key="BrushBorderMuted" Color="{StaticResource ColorBrown600}"/>
+    <SolidColorBrush x:Key="BrushBorderHighlight" Color="{StaticResource ColorAmber300}"/>
+    <SolidColorBrush x:Key="BrushBorderSuccess" Color="{StaticResource ColorGreen900}"/>
+    <SolidColorBrush x:Key="BrushBorderError" Color="{StaticResource ColorRed800}"/>
 </ResourceDictionary>

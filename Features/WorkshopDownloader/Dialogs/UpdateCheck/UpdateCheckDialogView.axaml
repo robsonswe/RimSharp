@@ -30,7 +30,7 @@
                                     <MenuItem.Header>
                                         <StackPanel>
                                             <TextBlock Text="Version Mismatch" FontWeight="Medium"/>
-                                            <TextBlock Text="Mods not updated for current version" FontSize="10" Foreground="{DynamicResource BrushTextMuted}"/>
+                                            <TextBlock Text="Mods not updated for current version" FontSize="10" Foreground="{DynamicResource BrushTextStrong}"/>
                                         </StackPanel>
                                     </MenuItem.Header>
                                 </MenuItem>

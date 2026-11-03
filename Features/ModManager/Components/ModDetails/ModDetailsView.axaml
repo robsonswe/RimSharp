@@ -312,7 +312,7 @@
                                         <Rectangle Fill="{DynamicResource BrushBgActionStrong}" />
                                         <Image Source="{Binding PreviewImagePath, Converter={StaticResource ImagePathConverter}}" Stretch="Uniform"/>
                                         <TextBlock Text="NO PREVIEW IMAGE" FontSize="18"
-                                                   Foreground="{DynamicResource BrushTextMuted}"
+                                                   Foreground="{DynamicResource BrushTextOnDark}"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center" FontStyle="Italic"
                                                    IsVisible="{Binding PreviewImagePath, Converter={StaticResource IsNullOrEmptyConverter}}"/>
                                     </Grid>

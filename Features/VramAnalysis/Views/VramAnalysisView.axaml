@@ -360,22 +360,22 @@
                             <Border Classes="DataGridRowDetails">
                                 <StackPanel Spacing="5">
                                     <Grid ColumnDefinitions="Auto,*">
-                                        <TextBlock Text="Path:" FontWeight="Bold" Foreground="{DynamicResource BrushTextBlack}" Width="80"/>
-                                        <SelectableTextBlock Grid.Column="1" Text="{Binding Mod.Path}" FontSize="11" Foreground="{DynamicResource BrushTextBlack}" Opacity="0.8"/>
+                                        <TextBlock Text="Path:" FontWeight="Bold" Foreground="{DynamicResource BrushTextStrong}" Width="80"/>
+                                        <SelectableTextBlock Grid.Column="1" Text="{Binding Mod.Path}" FontSize="11" Foreground="{DynamicResource BrushTextStrong}" Opacity="0.8"/>
                                     </Grid>
                                     <Grid ColumnDefinitions="Auto,*">
-                                        <TextBlock Text="Package ID:" FontWeight="Bold" Foreground="{DynamicResource BrushTextBlack}" Width="80"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding Mod.PackageId}" FontSize="11" Foreground="{DynamicResource BrushTextBlack}"/>
+                                        <TextBlock Text="Package ID:" FontWeight="Bold" Foreground="{DynamicResource BrushTextStrong}" Width="80"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Mod.PackageId}" FontSize="11" Foreground="{DynamicResource BrushTextStrong}"/>
                                     </Grid>
                                     <Separator Classes="DataGridRowDetails"/>
                                     <StackPanel Orientation="Horizontal" Spacing="20">
                                         <StackPanel Orientation="Horizontal" Spacing="5">
-                                            <TextBlock Text="Compressed Atlas:" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextBlack}"/>
-                                            <TextBlock Text="{Binding InAtlasCount}" Foreground="{DynamicResource BrushTextBlack}"/>
+                                            <TextBlock Text="Compressed Atlas:" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextStrong}"/>
+                                            <TextBlock Text="{Binding InAtlasCount}" Foreground="{DynamicResource BrushTextStrong}"/>
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal" Spacing="5">
-                                            <TextBlock Text="Compressed Individual:" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextBlack}"/>
-                                            <TextBlock Text="{Binding TextureCount}" Foreground="{DynamicResource BrushTextBlack}"/>
+                                            <TextBlock Text="Compressed Individual:" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextStrong}"/>
+                                            <TextBlock Text="{Binding TextureCount}" Foreground="{DynamicResource BrushTextStrong}"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </StackPanel>

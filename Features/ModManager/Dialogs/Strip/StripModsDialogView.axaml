@@ -112,7 +112,7 @@
                                             <TextBlock Text="{Binding SelectedSize, Converter={StaticResource FileSizeConverter}}"
                                                        FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSuccess}"
                                                        VerticalAlignment="Center"/>
-                                            <TextBlock Text="/" Foreground="{DynamicResource BrushTextBlack}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="/" Foreground="{DynamicResource BrushTextStrong}" VerticalAlignment="Center"/>
                                             <TextBlock Text="{Binding TotalStrippableSize, Converter={StaticResource FileSizeConverter}}"
                                                        Foreground="{DynamicResource BrushTextPrimary}"
                                                        VerticalAlignment="Center"/>

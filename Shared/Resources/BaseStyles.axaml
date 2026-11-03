@@ -195,38 +195,38 @@
 
         <Style.Resources>
             <!-- Border / Stroke - Unchecked -->
-            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUnchecked" Color="{StaticResource ColorBrown}" />
-            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUncheckedPointerOver" Color="{StaticResource ColorDarkBrown}" />
-            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUncheckedPressed" Color="{StaticResource ColorDarkBrown}" />
-            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUncheckedDisabled" Color="{StaticResource ColorGray}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUnchecked" Color="{StaticResource ColorBrown800}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUncheckedPointerOver" Color="{StaticResource ColorBrown900}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUncheckedPressed" Color="{StaticResource ColorBrown900}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUncheckedDisabled" Color="{StaticResource ColorGray500}" />
 
             <!-- Background / Fill - Unchecked -->
-            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUnchecked" Color="{StaticResource ColorBeige}" />
-            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPointerOver" Color="{StaticResource ColorDarkBeige}" />
-            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPressed" Color="{StaticResource ColorDarkBeige}" />
-            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedDisabled" Color="{StaticResource ColorGray}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUnchecked" Color="{StaticResource ColorBrown200}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPointerOver" Color="{StaticResource ColorBrown400}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPressed" Color="{StaticResource ColorBrown400}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedDisabled" Color="{StaticResource ColorGray500}" />
 
             <!-- Border / Stroke - Checked -->
-            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeChecked" Color="{StaticResource ColorBrown}" />
-            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeCheckedPointerOver" Color="{StaticResource ColorDarkBrown}" />
-            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeCheckedPressed" Color="{StaticResource ColorDarkBrown}" />
-            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeCheckedDisabled" Color="{StaticResource ColorGray}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeChecked" Color="{StaticResource ColorBrown800}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeCheckedPointerOver" Color="{StaticResource ColorBrown900}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeCheckedPressed" Color="{StaticResource ColorBrown900}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeCheckedDisabled" Color="{StaticResource ColorGray500}" />
 
             <!-- Background / Fill - Checked -->
-            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="{StaticResource ColorBrown}" />
-            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="{StaticResource ColorBrown}" />
-            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPressed" Color="{StaticResource ColorBrown}" />
-            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedDisabled" Color="{StaticResource ColorGray}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="{StaticResource ColorBrown800}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="{StaticResource ColorBrown800}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPressed" Color="{StaticResource ColorBrown800}" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedDisabled" Color="{StaticResource ColorGray500}" />
 
             <!-- Foreground - Ensure ALWAYS brown -->
-            <SolidColorBrush x:Key="CheckBoxForegroundUnchecked" Color="{StaticResource ColorBrown}" />
-            <SolidColorBrush x:Key="CheckBoxForegroundUncheckedPointerOver" Color="{StaticResource ColorBrown}" />
-            <SolidColorBrush x:Key="CheckBoxForegroundUncheckedPressed" Color="{StaticResource ColorBrown}" />
-            <SolidColorBrush x:Key="CheckBoxForegroundChecked" Color="{StaticResource ColorBrown}" />
-            <SolidColorBrush x:Key="CheckBoxForegroundCheckedPointerOver" Color="{StaticResource ColorBrown}" />
-            <SolidColorBrush x:Key="CheckBoxForegroundCheckedPressed" Color="{StaticResource ColorBrown}" />
-            <SolidColorBrush x:Key="CheckBoxForegroundUncheckedDisabled" Color="{StaticResource ColorGray}" />
-            <SolidColorBrush x:Key="CheckBoxForegroundCheckedDisabled" Color="{StaticResource ColorGray}" />
+            <SolidColorBrush x:Key="CheckBoxForegroundUnchecked" Color="{StaticResource ColorBrown800}" />
+            <SolidColorBrush x:Key="CheckBoxForegroundUncheckedPointerOver" Color="{StaticResource ColorBrown800}" />
+            <SolidColorBrush x:Key="CheckBoxForegroundUncheckedPressed" Color="{StaticResource ColorBrown800}" />
+            <SolidColorBrush x:Key="CheckBoxForegroundChecked" Color="{StaticResource ColorBrown800}" />
+            <SolidColorBrush x:Key="CheckBoxForegroundCheckedPointerOver" Color="{StaticResource ColorBrown800}" />
+            <SolidColorBrush x:Key="CheckBoxForegroundCheckedPressed" Color="{StaticResource ColorBrown800}" />
+            <SolidColorBrush x:Key="CheckBoxForegroundUncheckedDisabled" Color="{StaticResource ColorGray500}" />
+            <SolidColorBrush x:Key="CheckBoxForegroundCheckedDisabled" Color="{StaticResource ColorGray500}" />
 
             <!-- Glyph (Checkmark) -->
             <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundChecked" Color="{StaticResource ColorWhite}" />
@@ -285,27 +285,27 @@
 
         <Style.Resources>
             <!-- Normal State (Unchecked) -->
-            <SolidColorBrush x:Key="RadioButtonOuterEllipseFillUnchecked" Color="{StaticResource ColorBeige}" />
-            <SolidColorBrush x:Key="RadioButtonOuterEllipseStrokeUnchecked" Color="{StaticResource ColorBrown}" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseFillUnchecked" Color="{StaticResource ColorBrown200}" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseStrokeUnchecked" Color="{StaticResource ColorBrown800}" />
 
             <!-- PointerOver State (Unchecked) -->
-            <SolidColorBrush x:Key="RadioButtonOuterEllipseFillUncheckedPointerOver" Color="{StaticResource ColorDarkBeige}" />
-            <SolidColorBrush x:Key="RadioButtonOuterEllipseStrokeUncheckedPointerOver" Color="{StaticResource ColorDarkBrown}" />
-            <SolidColorBrush x:Key="RadioButtonForegroundUncheckedPointerOver" Color="{StaticResource ColorBrown}" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseFillUncheckedPointerOver" Color="{StaticResource ColorBrown400}" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseStrokeUncheckedPointerOver" Color="{StaticResource ColorBrown900}" />
+            <SolidColorBrush x:Key="RadioButtonForegroundUncheckedPointerOver" Color="{StaticResource ColorBrown800}" />
 
             <!-- Pressed State (Unchecked) -->
-            <SolidColorBrush x:Key="RadioButtonOuterEllipseFillUncheckedPressed" Color="{StaticResource ColorDarkBeige}" />
-            <SolidColorBrush x:Key="RadioButtonOuterEllipseStrokeUncheckedPressed" Color="{StaticResource ColorDarkBrown}" />
-            <SolidColorBrush x:Key="RadioButtonForegroundUncheckedPressed" Color="{StaticResource ColorBrown}" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseFillUncheckedPressed" Color="{StaticResource ColorBrown400}" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseStrokeUncheckedPressed" Color="{StaticResource ColorBrown900}" />
+            <SolidColorBrush x:Key="RadioButtonForegroundUncheckedPressed" Color="{StaticResource ColorBrown800}" />
 
             <!-- Checked State -->
-            <SolidColorBrush x:Key="RadioButtonOuterEllipseFillChecked" Color="{StaticResource ColorBrown}" />
-            <SolidColorBrush x:Key="RadioButtonOuterEllipseStrokeChecked" Color="{StaticResource ColorBrown}" />
-            <SolidColorBrush x:Key="RadioButtonOuterEllipseFillCheckedPointerOver" Color="{StaticResource ColorDarkBrown}" />
-            <SolidColorBrush x:Key="RadioButtonOuterEllipseStrokeCheckedPointerOver" Color="{StaticResource ColorDarkBrown}" />
-            <SolidColorBrush x:Key="RadioButtonForegroundChecked" Color="{StaticResource ColorBrown}" />
-            <SolidColorBrush x:Key="RadioButtonForegroundCheckedPointerOver" Color="{StaticResource ColorBrown}" />
-            <SolidColorBrush x:Key="RadioButtonForegroundCheckedPressed" Color="{StaticResource ColorBrown}" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseFillChecked" Color="{StaticResource ColorBrown800}" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseStrokeChecked" Color="{StaticResource ColorBrown800}" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseFillCheckedPointerOver" Color="{StaticResource ColorBrown900}" />
+            <SolidColorBrush x:Key="RadioButtonOuterEllipseStrokeCheckedPointerOver" Color="{StaticResource ColorBrown900}" />
+            <SolidColorBrush x:Key="RadioButtonForegroundChecked" Color="{StaticResource ColorBrown800}" />
+            <SolidColorBrush x:Key="RadioButtonForegroundCheckedPointerOver" Color="{StaticResource ColorBrown800}" />
+            <SolidColorBrush x:Key="RadioButtonForegroundCheckedPressed" Color="{StaticResource ColorBrown800}" />
 
             <!-- Glyph (Dot) -->
             <SolidColorBrush x:Key="RadioButtonCheckGlyphFillChecked" Color="{StaticResource ColorWhite}" />
@@ -317,7 +317,7 @@
     <!-- Tab item toggles -->
     <Style Selector="TabControl.tabs TabItem">
         <Setter Property="Background" Value="{DynamicResource BrushBgAccent}"/>
-        <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextBrown950}"/>
         <Setter Property="Padding" Value="12,6"/>
         <Setter Property="Margin" Value="0,0,5,5"/>
         <Setter Property="FontSize" Value="13"/>

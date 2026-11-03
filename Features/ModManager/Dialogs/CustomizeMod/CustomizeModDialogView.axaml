@@ -72,7 +72,7 @@
                                     <Border Background="{DynamicResource BrushBgSurface}" CornerRadius="3" Padding="10" IsVisible="{Binding HasOriginalLoadBottom}">
                                         <StackPanel Spacing="3">
                                             <TextBlock Text="Original Mod: Enabled" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                            <TextBlock Text="This setting is hardcoded in the mod and cannot be overridden here." FontSize="11" Foreground="{DynamicResource BrushTextMuted}" TextWrapping="Wrap"/>
+                                            <TextBlock Text="This setting is hardcoded in the mod and cannot be overridden here." FontSize="11" Foreground="{DynamicResource BrushTextStrong}" TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Border>
 

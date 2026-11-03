@@ -53,13 +53,13 @@
 
                 <!-- Info Grid -->
                 <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto">
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Description:" FontWeight="Bold" Margin="0,0,10,8" Foreground="{DynamicResource BrushTextPrimary}"/>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Description:" FontWeight="Bold" Margin="0,0,10,8" Foreground="{DynamicResource BrushTextStrong}"/>
                     <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Description}" TextWrapping="Wrap" Margin="0,0,0,8" Foreground="{DynamicResource BrushTextStrong}"/>
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Developer:" FontWeight="Bold" Margin="0,0,10,8" Foreground="{DynamicResource BrushTextPrimary}"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Developer:" FontWeight="Bold" Margin="0,0,10,8" Foreground="{DynamicResource BrushTextStrong}"/>
                     <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Developer}" Margin="0,0,0,8" Foreground="{DynamicResource BrushTextStrong}"/>
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="License:" FontWeight="Bold" Margin="0,0,10,8" Foreground="{DynamicResource BrushTextPrimary}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="License:" FontWeight="Bold" Margin="0,0,10,8" Foreground="{DynamicResource BrushTextStrong}"/>
                     <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding License}" Margin="0,0,0,8" Foreground="{DynamicResource BrushTextStrong}"/>
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="GitHub:" FontWeight="Bold" Margin="0,0,10,0" Foreground="{DynamicResource BrushTextPrimary}"/>
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="GitHub:" FontWeight="Bold" Margin="0,0,10,0" Foreground="{DynamicResource BrushTextStrong}"/>
                     <Button Grid.Row="3" Grid.Column="1"
                             Content="{Binding GitHubUrl}"
                             Command="{Binding GitHubUrl, Converter={StaticResource LinkToCommandConverter}}"

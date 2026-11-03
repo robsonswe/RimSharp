@@ -11,18 +11,18 @@
             <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,15,Auto,15,Auto" Margin="10">
 
                 <!-- Package ID -->
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="Package ID:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Package ID:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextStrong}"/>
                 <Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="*,Auto">
                     <TextBox Grid.Column="0" Text="{Binding PackageId}" Classes="input" PlaceholderText="e.g. brrainz.harmony"/>
                     <Button Grid.Column="1" Content="Search" Command="{Binding OpenModSelectorCommand}" Margin="8,0,0,0" Classes="btn"/>
                 </Grid>
 
                 <!-- Display Name -->
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="Display Name:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Display Name:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextStrong}"/>
                 <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding DisplayName}" Classes="input" PlaceholderText="Optional display name"/>
 
                 <!-- Comment -->
-                <TextBlock Grid.Row="4" Grid.Column="0" Text="Comment:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="Comment:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextStrong}"/>
                 <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Comment}" Classes="input" PlaceholderText="Optional reasoning for this rule"/>
             </Grid>
         </Border>

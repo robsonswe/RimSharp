@@ -107,7 +107,7 @@
             </Style>
             <Style Selector="^:selected">
                 <Setter Property="Background" Value="{DynamicResource BrushBgHighlight}"/>
-                <Setter Property="Foreground" Value="{DynamicResource BrushTextBlack}"/>
+                <Setter Property="Foreground" Value="{DynamicResource BrushTextBrown950}"/>
             </Style>
             <Style Selector="^:selected:pointerover">
                 <Setter Property="Background" Value="{DynamicResource BrushBgHighlight}"/>
@@ -187,6 +187,9 @@
 
         <Style Selector="Button.FilterButtonStyle:pointerover /template/ Border#ButtonBackground">
             <Setter Property="Background" Value="{DynamicResource BrushBgAccent}"/>
+        </Style>
+        <Style Selector="Button.FilterButtonStyle:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextBrown950}"/>
         </Style>
 
         <Style Selector="Button.FilterButtonStyle:pressed /template/ Border#ButtonBackground">
@@ -277,7 +280,7 @@
 
                                     <!-- Mod Name -->
                                     <TextBlock Grid.Column="1" Text="{Binding DisplayName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                                               Foreground="{Binding IsSupportedRW, Converter={StaticResource BooleanToColorConverter}, ConverterParameter='ColorBrown|ColorErrorRed'}">
+                                               Foreground="{Binding IsSupportedRW, Converter={StaticResource BooleanToColorConverter}, ConverterParameter='ColorBrown800|ColorRed700'}">
                                         <TextBlock.FontWeight>
                                             <MultiBinding Converter="{StaticResource ModWeightConverter}">
                                                 <Binding Path="IsFavorite"/>

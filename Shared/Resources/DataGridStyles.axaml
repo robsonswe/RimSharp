@@ -71,7 +71,7 @@
     <Style Selector="DataGridCell">
         <Setter Property="Padding" Value="4,4"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
-        <Setter Property="Foreground" Value="{DynamicResource BrushTextBlack}"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
         <Setter Property="ClipToBounds" Value="False"/>
         <Style Selector="^:selected /template/ Grid#FocusVisual">

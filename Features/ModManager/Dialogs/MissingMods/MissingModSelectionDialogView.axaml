@@ -58,7 +58,7 @@
                                 <Border Classes="panel" Margin="0,5">
                                     <StackPanel Spacing="5">
                                         <TextBlock Text="{Binding}" FontWeight="SemiBold"/>
-                                        <TextBlock Text="Not found in local database - Cannot be downloaded automatically." FontStyle="Italic" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
+                                        <TextBlock Text="Not found in local database - Cannot be downloaded automatically." FontStyle="Italic" FontSize="11" Foreground="{DynamicResource BrushTextStrong}"/>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>

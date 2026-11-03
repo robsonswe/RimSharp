@@ -60,8 +60,8 @@
 
         <Border DockPanel.Dock="Top" Classes="list-header" Margin="0,10,0,0">
             <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" Text="Download Queue" Foreground="{DynamicResource BrushTextOnDark}" FontWeight="Medium"/>
-                <TextBlock Grid.Column="1" Text="{Binding DownloadList.Count, StringFormat='({0} items)'}" Foreground="{DynamicResource BrushTextOnDark}" FontSize="12" Margin="5,0,0,0"/>
+                <TextBlock Grid.Column="0" Text="Download Queue" Foreground="{DynamicResource BrushTextBrown950}" FontWeight="Medium"/>
+                <TextBlock Grid.Column="1" Text="{Binding DownloadList.Count, StringFormat='({0} items)'}" Foreground="{DynamicResource BrushTextBrown950}" FontSize="12" Margin="5,0,0,0"/>
             </Grid>
         </Border>
 
@@ -124,13 +124,13 @@
 
                         <!-- Row 1: ID -->
                         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,2">
-                            <TextBlock Text="ID: " FontSize="11" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
+                            <TextBlock Text="ID: " FontSize="11" Foreground="{DynamicResource BrushTextStrong}" VerticalAlignment="Center"/>
                             <TextBlock Text="{Binding SteamId, FallbackValue='N/A', TargetNullValue='N/A'}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <!-- Row 2: Latest Version (Date) -->
                         <StackPanel Grid.Row="2" Orientation="Horizontal">
-                            <TextBlock Text="Latest: " FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
+                            <TextBlock Text="Latest: " FontSize="11" Foreground="{DynamicResource BrushTextStrong}"/>
                             <TextBlock Text="{Binding PublishDate, FallbackValue='N/A', TargetNullValue='N/A'}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" ToolTip.Tip="{Binding PublishDate}"/>
                         </StackPanel>
 
@@ -142,13 +142,13 @@
                                     <Binding Path="LatestVersions.Count" Converter="{StaticResource CountToBooleanConverter}"/>
                                 </MultiBinding>
                             </StackPanel.IsVisible>
-                            <TextBlock Text="Updated Versions: " FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextMuted}"/>
+                            <TextBlock Text="Updated Versions: " FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextStrong}"/>
                             <TextBlock Text="{Binding LatestVersions, Converter={StaticResource ListToStringConverter}, FallbackValue='None'}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" TextWrapping="Wrap"/>
                         </StackPanel>
 
                         <!-- Row 4: Installed Version (Date) -->
                         <StackPanel Grid.Row="4" Orientation="Horizontal" IsVisible="{Binding IsInstalled}">
-                            <TextBlock Text="Installed: " FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
+                            <TextBlock Text="Installed: " FontSize="11" Foreground="{DynamicResource BrushTextStrong}"/>
                             <TextBlock Text="{Binding LocalDateStamp, FallbackValue='N/A', TargetNullValue='N/A'}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" ToolTip.Tip="{Binding LocalDateStamp}"/>
                         </StackPanel>
 
@@ -160,13 +160,13 @@
                                     <Binding Path="IsInstalled"/>
                                 </MultiBinding>
                             </StackPanel.IsVisible>
-                            <TextBlock Text="Installed Versions: " FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextMuted}"/>
+                            <TextBlock Text="Installed Versions: " FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextStrong}"/>
                             <TextBlock Text="{Binding InstalledVersions, Converter={StaticResource VersionSupportConverter}, ConverterParameter='OfficialOnly'}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <!-- Row 6: File Size -->
                         <StackPanel Grid.Row="6" Orientation="Horizontal">
-                            <TextBlock Text="Size: " FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
+                            <TextBlock Text="Size: " FontSize="11" Foreground="{DynamicResource BrushTextStrong}"/>
                             <TextBlock Text="{Binding FileSize, Converter={StaticResource FileSizeConverter}}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" ToolTip.Tip="{Binding FileSize, StringFormat={}{0} Bytes}"/>
                         </StackPanel>
 

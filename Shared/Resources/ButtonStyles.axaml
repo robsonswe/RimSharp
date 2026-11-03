@@ -38,6 +38,9 @@
     <Style Selector="Button.btn:pointerover /template/ Border#ButtonBackground">
         <Setter Property="Background" Value="{DynamicResource BrushBgAccent}"/>
     </Style>
+    <Style Selector="Button.btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextBrown950}"/>
+    </Style>
 
     <Style Selector="Button.btn:pressed /template/ Border#ButtonBackground">
         <Setter Property="Background" Value="{DynamicResource BrushBgActionStrong}"/>
@@ -130,7 +133,7 @@
 
     <!-- Tab Buttons Style -->
     <Style Selector="Button.btn-tab">
-        <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextBrown950}"/>
         <Setter Property="Padding" Value="12,6"/>
         <Setter Property="MinWidth" Value="80"/>
         <Setter Property="FontWeight" Value="Medium"/>
@@ -156,7 +159,7 @@
         <Setter Property="Background" Value="{DynamicResource BrushBgPanel}"/>
     </Style>
     <Style Selector="Button.btn-tab:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextBrown950}"/>
     </Style>
 
     <Style Selector="Button.btn-tab.active /template/ Border#ButtonBackground">
@@ -220,9 +223,15 @@
     <Style Selector="MenuItem.menu-dropdown:pointerover /template/ Border#ButtonBackground">
         <Setter Property="Background" Value="{DynamicResource BrushBgAccent}"/>
     </Style>
+    <Style Selector="MenuItem.menu-dropdown:pointerover /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextBrown950}"/>
+    </Style>
 
     <Style Selector="MenuItem.menu-dropdown:selected /template/ Border#ButtonBackground">
         <Setter Property="Background" Value="{DynamicResource BrushBgAccent}"/>
+    </Style>
+    <Style Selector="MenuItem.menu-dropdown:selected /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextBrown950}"/>
     </Style>
 
     <!-- Menu item style (items inside dropdown) -->
@@ -276,6 +285,9 @@
 
     <Style Selector="Button.btn-browser-nav:pointerover /template/ Border#ButtonBorder">
         <Setter Property="Background" Value="{DynamicResource BrushBgAccent}"/>
+    </Style>
+    <Style Selector="Button.btn-browser-nav:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextBrown950}"/>
     </Style>
 
     <Style Selector="Button.btn-browser-nav:pressed /template/ Border#ButtonBorder">
