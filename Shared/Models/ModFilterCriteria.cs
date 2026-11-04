@@ -11,7 +11,11 @@ namespace RimSharp.Shared.Models
 
         public List<ModType> SelectedModTypes { get; set; } = new List<ModType>();
 
-        public List<string> SelectedSupportedVersions { get; set; } = new List<string>();
+        // Version filter with two complementary lists (Any / Include / Exclude).
+        // A mod matches when it supports at least one INCLUDED version (if any
+        // are set) AND none of the EXCLUDED versions (if any are set).
+        public List<string> IncludedSupportedVersions { get; set; } = new List<string>();
+        public List<string> ExcludedSupportedVersions { get; set; } = new List<string>();
 
         public List<string> SelectedTags { get; set; } = new List<string>();
 
@@ -25,7 +29,8 @@ namespace RimSharp.Shared.Models
             return !string.IsNullOrWhiteSpace(SearchText)
                 || !string.IsNullOrWhiteSpace(AuthorFilterText)
                 || (SelectedModTypes != null && SelectedModTypes.Any())
-                || (SelectedSupportedVersions != null && SelectedSupportedVersions.Any())
+                || (IncludedSupportedVersions != null && IncludedSupportedVersions.Any())
+                || (ExcludedSupportedVersions != null && ExcludedSupportedVersions.Any())
                 || (SelectedTags != null && SelectedTags.Any())
                 || IsSupportedFilter.HasValue
                 || IsFavoriteFilter.HasValue
@@ -38,7 +43,8 @@ namespace RimSharp.Shared.Models
             SearchText = string.Empty;
             AuthorFilterText = string.Empty;
             SelectedModTypes?.Clear();
-            SelectedSupportedVersions?.Clear();
+            IncludedSupportedVersions?.Clear();
+            ExcludedSupportedVersions?.Clear();
             SelectedTags?.Clear(); 
             IsSupportedFilter = null;
             IsFavoriteFilter = null;
@@ -53,7 +59,8 @@ namespace RimSharp.Shared.Models
                 SearchText = this.SearchText,
                 AuthorFilterText = this.AuthorFilterText, // Clone Author
                 SelectedModTypes = new List<ModType>(this.SelectedModTypes ?? Enumerable.Empty<ModType>()),
-                SelectedSupportedVersions = new List<string>(this.SelectedSupportedVersions ?? Enumerable.Empty<string>()),
+                IncludedSupportedVersions = new List<string>(this.IncludedSupportedVersions ?? Enumerable.Empty<string>()),
+                ExcludedSupportedVersions = new List<string>(this.ExcludedSupportedVersions ?? Enumerable.Empty<string>()),
                 SelectedTags = new List<string>(this.SelectedTags ?? Enumerable.Empty<string>()), // Clone Tags
                 IsSupportedFilter = this.IsSupportedFilter,
                 IsFavoriteFilter = this.IsFavoriteFilter,

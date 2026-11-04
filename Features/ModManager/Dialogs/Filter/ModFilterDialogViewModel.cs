@@ -34,7 +34,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Filter
         }
 
         public ObservableCollection<SelectableItemViewModel<ModType>> AvailableModTypes { get; }
-        public ObservableCollection<SelectableItemViewModel<string>> AvailableVersions { get; }
+        public ObservableCollection<VersionFilterItemViewModel> AvailableVersions { get; }
         public ObservableCollection<SelectableItemViewModel<string>> AvailableTags { get; }
 
         public ReadOnlyCollection<string> AllAvailableAuthors { get; }
@@ -49,6 +49,7 @@ public bool? IsSupportedFilter { get => _isSupportedFilter; set => SetProperty(r
         public ICommand ClearCommand { get; }
         public ICommand CancelCommand { get; }
         public ICommand SetFilterPropertyCommand { get; }
+        public ICommand SetVersionModeCommand { get; }
 
         public ModFilterDialogViewModel(
             ModFilterCriteria currentCriteria,
@@ -76,13 +77,19 @@ public bool? IsSupportedFilter { get => _isSupportedFilter; set => SetProperty(r
                     ))
             );
 
-            // Populate Versions
-            AvailableVersions = new ObservableCollection<SelectableItemViewModel<string>>(
+            // Populate Versions with tri-state mode (Any/Include/Exclude)
+            var included = new HashSet<string>(_initialCriteria.IncludedSupportedVersions ?? Enumerable.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+            var excluded = new HashSet<string>(_initialCriteria.ExcludedSupportedVersions ?? Enumerable.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+            AvailableVersions = new ObservableCollection<VersionFilterItemViewModel>(
                 (allSupportedVersions ?? Enumerable.Empty<string>())
                     .OrderByDescending(v => v)
-                    .Select(v => new SelectableItemViewModel<string>(
-                        v, v, _initialCriteria.SelectedSupportedVersions?.Contains(v) ?? false
-                    ))
+                    .Select(v =>
+                    {
+                        var mode = included.Contains(v) ? VersionFilterItemViewModel.VersionMode.Include
+                                 : excluded.Contains(v) ? VersionFilterItemViewModel.VersionMode.Exclude
+                                 : VersionFilterItemViewModel.VersionMode.Any;
+                        return new VersionFilterItemViewModel(v, mode);
+                    })
             );
 
             // Populate Tags
@@ -101,6 +108,7 @@ ApplyCommand = CreateCommand(ApplyFilters);
             ClearCommand = CreateCommand(ClearFilters);
             CancelCommand = CloseCommand;
             SetFilterPropertyCommand = CreateCommand<string>(SetFilterProperty);
+            SetVersionModeCommand = CreateCommand<string>(SetVersionMode);
         }
 
         private void SetFilterProperty(string parameter)
@@ -129,6 +137,30 @@ ApplyCommand = CreateCommand(ApplyFilters);
             }
         }
 
+        // CommandParameter format: "<version>|<Any|Include|Exclude>"
+        private void SetVersionMode(string? parameter)
+        {
+            if (string.IsNullOrEmpty(parameter)) return;
+
+            var parts = parameter.Split('|');
+            if (parts.Length != 2) return;
+
+            string version = parts[0];
+            var mode = parts[1] switch
+            {
+                "Include" => VersionFilterItemViewModel.VersionMode.Include,
+                "Exclude" => VersionFilterItemViewModel.VersionMode.Exclude,
+                _ => VersionFilterItemViewModel.VersionMode.Any
+            };
+
+            var item = AvailableVersions.FirstOrDefault(v =>
+                string.Equals(v.Item, version, StringComparison.OrdinalIgnoreCase));
+            if (item != null)
+            {
+                item.Mode = mode;
+            }
+        }
+
         private void ApplyFilters()
         {
             CurrentCriteria = new ModFilterCriteria
@@ -136,7 +168,8 @@ ApplyCommand = CreateCommand(ApplyFilters);
                 SearchText = this.SearchText,
                 AuthorFilterText = this.AuthorFilterText,
                 SelectedModTypes = AvailableModTypes.Where(vm => vm.IsSelected).Select(vm => vm.Item).ToList(),
-                SelectedSupportedVersions = AvailableVersions.Where(vm => vm.IsSelected).Select(vm => vm.Item).ToList(),
+                IncludedSupportedVersions = AvailableVersions.Where(vm => vm.Mode == VersionFilterItemViewModel.VersionMode.Include).Select(vm => vm.Item).ToList(),
+                ExcludedSupportedVersions = AvailableVersions.Where(vm => vm.Mode == VersionFilterItemViewModel.VersionMode.Exclude).Select(vm => vm.Item).ToList(),
                 SelectedTags = AvailableTags.Where(vm => vm.IsSelected).Select(vm => vm.Item).ToList(),
                 IsSupportedFilter = this.IsSupportedFilter,
                 IsFavoriteFilter = this.IsFavoriteFilter,
@@ -151,7 +184,7 @@ ApplyCommand = CreateCommand(ApplyFilters);
             SearchText = string.Empty;
             AuthorFilterText = string.Empty;
             foreach (var item in AvailableModTypes) item.IsSelected = false;
-            foreach (var item in AvailableVersions) item.IsSelected = false;
+            foreach (var item in AvailableVersions) item.Mode = VersionFilterItemViewModel.VersionMode.Any;
             foreach (var item in AvailableTags) item.IsSelected = false;
             IsSupportedFilter = null;
             IsFavoriteFilter = null;

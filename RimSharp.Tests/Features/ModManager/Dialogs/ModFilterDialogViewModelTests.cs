@@ -47,6 +47,67 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
             vm.IsFavoriteFilter.Should().BeNull();
             vm.CurrentCriteria!.SearchText.Should().BeEmpty();
         }
+
+        [Fact]
+        public void Constructor_ShouldRestoreVersionModesFromCriteria()
+        {
+
+            var criteria = new ModFilterCriteria
+            {
+                IncludedSupportedVersions = new List<string> { "1.5" },
+                ExcludedSupportedVersions = new List<string> { "1.4" }
+            };
+
+            var vm = new ModFilterDialogViewModel(criteria, new[] { "1.4", "1.5", "1.6" }, new string[0], new string[0]);
+
+            vm.AvailableVersions.Single(v => v.Item == "1.5").Mode
+                .Should().Be(VersionFilterItemViewModel.VersionMode.Include);
+            vm.AvailableVersions.Single(v => v.Item == "1.4").Mode
+                .Should().Be(VersionFilterItemViewModel.VersionMode.Exclude);
+            vm.AvailableVersions.Single(v => v.Item == "1.6").Mode
+                .Should().Be(VersionFilterItemViewModel.VersionMode.Any);
+        }
+
+        [Fact]
+        public void SetVersionModeCommand_ShouldUpdateItemMode()
+        {
+
+            var vm = new ModFilterDialogViewModel(new ModFilterCriteria(), new[] { "1.5" }, new string[0], new string[0]);
+
+            vm.SetVersionModeCommand.Execute("1.5|Include");
+
+            vm.AvailableVersions.Single().Mode.Should().Be(VersionFilterItemViewModel.VersionMode.Include);
+        }
+
+        [Fact]
+        public void ApplyFilters_ShouldMapVersionModesIntoCriteria()
+        {
+
+            var vm = new ModFilterDialogViewModel(new ModFilterCriteria(), new[] { "1.4", "1.5" }, new string[0], new string[0]);
+            vm.SetVersionModeCommand.Execute("1.5|Include");
+            vm.SetVersionModeCommand.Execute("1.4|Exclude");
+
+            vm.ApplyCommand.Execute(null);
+
+            vm.CurrentCriteria!.IncludedSupportedVersions.Should().BeEquivalentTo("1.5");
+            vm.CurrentCriteria.ExcludedSupportedVersions.Should().BeEquivalentTo("1.4");
+        }
+
+        [Fact]
+        public void ClearFilters_ShouldResetVersionModesToAny()
+        {
+
+            var criteria = new ModFilterCriteria
+            {
+                IncludedSupportedVersions = new List<string> { "1.5" }
+            };
+            var vm = new ModFilterDialogViewModel(criteria, new[] { "1.5" }, new string[0], new string[0]);
+
+            vm.ClearCommand.Execute(null);
+
+            vm.AvailableVersions.Single().Mode.Should().Be(VersionFilterItemViewModel.VersionMode.Any);
+            vm.CurrentCriteria!.IncludedSupportedVersions.Should().BeEmpty();
+        }
     }
 }
 
