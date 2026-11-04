@@ -128,7 +128,7 @@ namespace RimSharp.Tests.Features.ModManager.Services.Filtering
         }
 
         [Fact]
-        public async Task ApplyActiveFilterCriteria_WithTags_ShouldFilter()
+        public async Task ApplyActiveFilterCriteria_WithIncludedTag_ShouldFilter()
         {
 
             var mods = GetSampleMods();
@@ -137,7 +137,7 @@ namespace RimSharp.Tests.Features.ModManager.Services.Filtering
                 expectedEvents: 2
             );
 
-            var criteria = new ModFilterCriteria { SelectedTags = new List<string> { "Performance" } };
+            var criteria = new ModFilterCriteria { IncludedTags = new List<string> { "Performance" } };
             await WaitForFilteringAsync(() => 
                 _service.ApplyInactiveFilterCriteria(criteria)
             );
@@ -262,6 +262,41 @@ namespace RimSharp.Tests.Features.ModManager.Services.Filtering
             await WaitForFilteringAsync(() => _service.ApplyInactiveFilterCriteria(criteria));
 
             _service.InactiveMods.Should().ContainSingle().Which.Name.Should().Be("Mod15");
+        }
+
+        [Fact]
+        public async Task Criteria_WithExcludedTag_ShouldHideTaggedMods()
+        {
+
+            // RocketMan has "Performance"; the others have "Library"/no tags
+            var mods = GetSampleMods();
+            await PrepareInactiveModsAsync(mods.ToArray());
+
+            var criteria = new ModFilterCriteria { ExcludedTags = new List<string> { "Performance" } };
+            await WaitForFilteringAsync(() => _service.ApplyInactiveFilterCriteria(criteria));
+
+            var names = _service.InactiveMods.Select(m => m.Name).ToList();
+            names.Should().NotContain("RocketMan");
+            names.Should().Contain(new[] { "Harmony", "HugsLib", "Core" });
+        }
+
+        [Fact]
+        public async Task Criteria_WithIncludeAndExcludeTags_ShouldApplyBothConditions()
+        {
+
+            var both = new ModItem { Name = "Both", PackageId = "both", Tags = "Library, Performance" };
+            var onlyLib = new ModItem { Name = "OnlyLib", PackageId = "onlylib", Tags = "Library" };
+            var noTags = new ModItem { Name = "NoTags", PackageId = "notags" };
+            await PrepareInactiveModsAsync(both, onlyLib, noTags);
+
+            var criteria = new ModFilterCriteria
+            {
+                IncludedTags = new List<string> { "Library" },
+                ExcludedTags = new List<string> { "Performance" }
+            };
+            await WaitForFilteringAsync(() => _service.ApplyInactiveFilterCriteria(criteria));
+
+            _service.InactiveMods.Should().ContainSingle().Which.Name.Should().Be("OnlyLib");
         }
     }
 }

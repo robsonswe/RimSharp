@@ -119,15 +119,37 @@
                     </Border>
                 </TabItem>
 
-                <!-- TAB 3: TAGS (Dedicated) -->
+                <!-- TAB 3: TAGS (tri-state, local tags set via Customize Mod) -->
                 <TabItem Header="Tags">
                     <Border Classes="panel-subtle">
                         <Grid RowDefinitions="Auto, 5, *">
-                            <TextBlock Grid.Row="0" Text="Steam Workshop Tags" FontWeight="Bold" Foreground="{DynamicResource BrushTextStrong}" Margin="5"/>
-                            <ListBox Grid.Row="2" ItemsSource="{Binding AvailableTags}" Classes="list-safe">
+                            <TextBlock Grid.Row="0" Text="Tags" FontWeight="Bold" Foreground="{DynamicResource BrushTextStrong}" Margin="5"/>
+                            <TextBlock Grid.Row="2" Text="No tags found. Tag your mods via right-click, Customize Mod, then reopen this filter."
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
+                                       FontStyle="Italic" TextWrapping="Wrap" Margin="20"
+                                       Foreground="{DynamicResource BrushTextMuted}"
+                                       IsVisible="{Binding HasNoTags}"/>
+                            <ListBox x:Name="TagsList" Grid.Row="2" ItemsSource="{Binding AvailableTags}" Classes="list-safe">
                                 <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <CheckBox Content="{Binding DisplayName}" IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="2,0"/>
+                                    <DataTemplate x:DataType="local:TriStateFilterItemViewModel">
+                                        <Grid ColumnDefinitions="140, *, *, *" Margin="2,0">
+                                            <TextBlock Grid.Column="0" Text="{Binding DisplayName}" VerticalAlignment="Center"/>
+                                            <RadioButton Grid.Column="1" GroupName="{Binding Item}"
+                                                         Content="Any" HorizontalAlignment="Center"
+                                                         IsChecked="{Binding IsAny, Mode=OneWay}"
+                                                         Command="{Binding #TagsList.((local:ModFilterDialogViewModel)DataContext).SetFilterModeCommand}"
+                                                         CommandParameter="{Binding ParamAny}"/>
+                                            <RadioButton Grid.Column="2" GroupName="{Binding Item}"
+                                                         Content="Include" HorizontalAlignment="Center"
+                                                         IsChecked="{Binding IsInclude, Mode=OneWay}"
+                                                         Command="{Binding #TagsList.((local:ModFilterDialogViewModel)DataContext).SetFilterModeCommand}"
+                                                         CommandParameter="{Binding ParamInclude}"/>
+                                            <RadioButton Grid.Column="3" GroupName="{Binding Item}"
+                                                         Content="Exclude" HorizontalAlignment="Center"
+                                                         IsChecked="{Binding IsExclude, Mode=OneWay}"
+                                                         Command="{Binding #TagsList.((local:ModFilterDialogViewModel)DataContext).SetFilterModeCommand}"
+                                                         CommandParameter="{Binding ParamExclude}"/>
+                                        </Grid>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
@@ -142,23 +164,23 @@
                             <TextBlock Grid.Row="0" Text="Supported Game Versions" FontWeight="Bold" Foreground="{DynamicResource BrushTextStrong}" Margin="5"/>
                             <ListBox x:Name="VersionsList" Grid.Row="2" ItemsSource="{Binding AvailableVersions}" Classes="list-safe">
                                 <ListBox.ItemTemplate>
-                                    <DataTemplate x:DataType="local:VersionFilterItemViewModel">
+                                    <DataTemplate x:DataType="local:TriStateFilterItemViewModel">
                                         <Grid ColumnDefinitions="60, *, *, *" Margin="2,0">
                                             <TextBlock Grid.Column="0" Text="{Binding DisplayName}" VerticalAlignment="Center"/>
                                             <RadioButton Grid.Column="1" GroupName="{Binding Item}"
                                                          Content="Any" HorizontalAlignment="Center"
                                                          IsChecked="{Binding IsAny, Mode=OneWay}"
-                                                         Command="{Binding #VersionsList.((local:ModFilterDialogViewModel)DataContext).SetVersionModeCommand}"
+                                                         Command="{Binding #VersionsList.((local:ModFilterDialogViewModel)DataContext).SetFilterModeCommand}"
                                                          CommandParameter="{Binding ParamAny}"/>
                                             <RadioButton Grid.Column="2" GroupName="{Binding Item}"
                                                          Content="Include" HorizontalAlignment="Center"
                                                          IsChecked="{Binding IsInclude, Mode=OneWay}"
-                                                         Command="{Binding #VersionsList.((local:ModFilterDialogViewModel)DataContext).SetVersionModeCommand}"
+                                                         Command="{Binding #VersionsList.((local:ModFilterDialogViewModel)DataContext).SetFilterModeCommand}"
                                                          CommandParameter="{Binding ParamInclude}"/>
                                             <RadioButton Grid.Column="3" GroupName="{Binding Item}"
                                                          Content="Exclude" HorizontalAlignment="Center"
                                                          IsChecked="{Binding IsExclude, Mode=OneWay}"
-                                                         Command="{Binding #VersionsList.((local:ModFilterDialogViewModel)DataContext).SetVersionModeCommand}"
+                                                         Command="{Binding #VersionsList.((local:ModFilterDialogViewModel)DataContext).SetFilterModeCommand}"
                                                          CommandParameter="{Binding ParamExclude}"/>
                                         </Grid>
                                     </DataTemplate>

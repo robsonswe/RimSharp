@@ -77,10 +77,19 @@ namespace RimSharp.Tests.Shared.Models
         }
 
         [Fact]
-        public void IsActive_WhenSelectedTagsSet_ShouldBeTrue()
+        public void IsActive_WhenIncludedTagSet_ShouldBeTrue()
         {
 
-            var criteria = new ModFilterCriteria { SelectedTags = new List<string> { "Performance" } };
+            var criteria = new ModFilterCriteria { IncludedTags = new List<string> { "Performance" } };
+
+            criteria.IsActive().Should().BeTrue();
+        }
+
+        [Fact]
+        public void IsActive_WhenExcludedTagSet_ShouldBeTrue()
+        {
+
+            var criteria = new ModFilterCriteria { ExcludedTags = new List<string> { "Performance" } };
 
             criteria.IsActive().Should().BeTrue();
         }
@@ -116,7 +125,8 @@ namespace RimSharp.Tests.Shared.Models
                 HasTexturesFilter = true,
                 IsFavoriteFilter = true,
                 SelectedModTypes = new List<ModType> { ModType.Core },
-                SelectedTags = new List<string> { "tag" },
+                IncludedTags = new List<string> { "tag" },
+                ExcludedTags = new List<string> { "other" },
                 IncludedSupportedVersions = new List<string> { "1.5" },
                 ExcludedSupportedVersions = new List<string> { "1.6" }
             };
@@ -130,7 +140,8 @@ namespace RimSharp.Tests.Shared.Models
             criteria.HasTexturesFilter.Should().BeNull();
             criteria.IsFavoriteFilter.Should().BeNull();
             criteria.SelectedModTypes.Should().BeEmpty();
-            criteria.SelectedTags.Should().BeEmpty();
+            criteria.IncludedTags.Should().BeEmpty();
+            criteria.ExcludedTags.Should().BeEmpty();
             criteria.IncludedSupportedVersions.Should().BeEmpty();
             criteria.ExcludedSupportedVersions.Should().BeEmpty();
             criteria.IsActive().Should().BeFalse();
@@ -159,17 +170,20 @@ namespace RimSharp.Tests.Shared.Models
 
             var criteria = new ModFilterCriteria
             {
-                SelectedTags = new List<string> { "Library" },
+                IncludedTags = new List<string> { "Library" },
+                ExcludedTags = new List<string> { "Beta" },
                 IncludedSupportedVersions = new List<string> { "1.5" },
                 ExcludedSupportedVersions = new List<string> { "1.6" }
             };
 
             var clone = criteria.Clone();
-            criteria.SelectedTags.Add("Performance");
+            criteria.IncludedTags.Add("Performance");
+            criteria.ExcludedTags.Add(" unstable");
             criteria.IncludedSupportedVersions.Add("1.4");
             criteria.ExcludedSupportedVersions.Add("1.3");
 
-            clone.SelectedTags.Should().HaveCount(1);
+            clone.IncludedTags.Should().HaveCount(1);
+            clone.ExcludedTags.Should().HaveCount(1);
             clone.IncludedSupportedVersions.Should().HaveCount(1);
             clone.ExcludedSupportedVersions.Should().HaveCount(1);
         }

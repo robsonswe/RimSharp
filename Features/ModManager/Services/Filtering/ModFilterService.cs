@@ -193,10 +193,20 @@ namespace RimSharp.Features.ModManager.Services.Filtering
                 filtered = filtered.Where(m => m.SupportedVersionStrings.All(sv => !excludedSet.Contains(sv)));
             }
 
-            if (criteria.SelectedTags?.Any() ?? false)
+            // Tag filter: Include and Exclude lists act independently.
+            // Include: mod must carry at least one listed tag.
+            // Exclude: mod must not carry any listed tag.
+            // Mods without tags fail Include but pass Exclude.
+            if (criteria.IncludedTags?.Any() ?? false)
             {
-                var selectedTagsSet = new HashSet<string>(criteria.SelectedTags, StringComparer.OrdinalIgnoreCase);
-                filtered = filtered.Where(m => m.TagList.Any(tag => selectedTagsSet.Contains(tag)));
+                var includedTagsSet = new HashSet<string>(criteria.IncludedTags, StringComparer.OrdinalIgnoreCase);
+                filtered = filtered.Where(m => m.TagList.Any(tag => includedTagsSet.Contains(tag)));
+            }
+
+            if (criteria.ExcludedTags?.Any() ?? false)
+            {
+                var excludedTagsSet = new HashSet<string>(criteria.ExcludedTags, StringComparer.OrdinalIgnoreCase);
+                filtered = filtered.Where(m => m.TagList.All(tag => !excludedTagsSet.Contains(tag)));
             }
 
             if (criteria.IsSupportedFilter.HasValue) filtered = filtered.Where(m => m.IsSupportedRW == criteria.IsSupportedFilter.Value);
