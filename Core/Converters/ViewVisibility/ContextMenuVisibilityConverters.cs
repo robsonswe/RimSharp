@@ -65,6 +65,34 @@ namespace RimSharp.Core.Converters.ViewVisibility
             return null;
         }
     }
+
+    /// <summary>
+    /// Checks whether a mod can be managed via Steam Workshop actions.
+    /// </summary>
+    public class WorkshopModVisibilityConverter : IMultiValueConverter, IValueConverter
+    {
+        public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (values == null || values.Count == 0) return false;
+
+            var first = values[0];
+            ModType? modType = first as ModType?;
+            if (modType == null && first is int intVal) modType = (ModType)intVal;
+            return modType == ModType.Workshop;
+        }
+
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (value is ModItem mod) return mod.IsWorkshopMod;
+            if (value is ModType modType) return modType == ModType.Workshop;
+            return false;
+        }
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            return null;
+        }
+    }
 }
 
 

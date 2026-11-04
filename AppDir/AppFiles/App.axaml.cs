@@ -39,6 +39,7 @@ using RimSharp.Infrastructure.Workshop.Download.Execution;
 using RimSharp.Infrastructure.Workshop.Download.Parsing;
 using RimSharp.Infrastructure.Workshop.Download.Processing;
 using RimSharp.Infrastructure.Workshop.Download.Models;
+using RimSharp.Services.Workshop;
 using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.AppDir.Dialogs;
@@ -179,6 +180,61 @@ namespace RimSharp.AppDir.AppFiles
         {
             services.AddSingleton<ILoggerService, LoggerService>();
             services.AddSingleton<IConfigService, ConfigService>(provider => new ConfigService(AppDataPaths.GetConfigFilePath()));
+            services.AddSingleton<GameInstance>(provider =>
+            {
+                var gameInstance = new GameInstance();
+                var pathService = provider.GetRequiredService<IPathService>();
+                var configService = provider.GetRequiredService<IConfigService>();
+                var steamDetectionService = new SteamDetectionService();
+                
+                // Initialize game instance with paths from path service
+                gameInstance.GameFolder = pathService.GetGamePath();
+                gameInstance.ConfigFolder = pathService.GetConfigPath();
+                gameInstance.LocalFolder = pathService.GetModsPath();
+                
+                // Detect Steam installation
+                steamDetectionService.DetectAndConfigureSteam(gameInstance);
+
+                // Override with saved settings if configured
+                var savedSteamInstallation = configService.GetConfigValue("steam_installation");
+                if (!string.IsNullOrEmpty(savedSteamInstallation) && bool.TryParse(savedSteamInstallation, out var isSteam))
+                {
+                    gameInstance.IsSteamInstallation = isSteam;
+                }
+
+                var savedWorkshopFolder = configService.GetConfigValue("steam_workshop_folder");
+                if (!string.IsNullOrEmpty(savedWorkshopFolder))
+                {
+                    gameInstance.WorkshopFolder = savedWorkshopFolder;
+                }
+
+                var savedIntegration = configService.GetConfigValue("steam_integration");
+                if (!string.IsNullOrEmpty(savedIntegration) && bool.TryParse(savedIntegration, out var integration))
+                {
+                    gameInstance.SteamClientIntegration = integration;
+                }
+
+                var savedProtocol = configService.GetConfigValue("steam_protocol");
+                if (!string.IsNullOrEmpty(savedProtocol) && bool.TryParse(savedProtocol, out var protocol))
+                {
+                    gameInstance.LaunchViaSteamProtocol = protocol;
+                }
+
+                var savedSteamCmdPath = configService.GetConfigValue("steamcmd_path");
+                if (!string.IsNullOrEmpty(savedSteamCmdPath))
+                {
+                    gameInstance.SteamCmdPath = savedSteamCmdPath;
+                }
+
+                var savedSteamCmdCache = configService.GetConfigValue("steamcmd_cache");
+                if (!string.IsNullOrEmpty(savedSteamCmdCache) && bool.TryParse(savedSteamCmdCache, out var clearCache))
+                {
+                    gameInstance.SteamCmdAutoClearCache = clearCache;
+                }
+
+                gameInstance.ValidateAndFix();
+                return gameInstance;
+            });
             services.AddSingleton<IFileDialogService, AvaloniaFileDialogService>();
             services.AddSingleton<IDialogService, DialogService>();
             services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
@@ -272,7 +328,8 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IModRulesService>(),
                     provider.GetRequiredService<IModCustomService>(),
                     provider.GetRequiredService<IMlieVersionService>(),
-                    provider.GetRequiredService<ILoggerService>()
+                    provider.GetRequiredService<ILoggerService>(),
+                    provider.GetRequiredService<GameInstance>()
                 ));
             services.AddSingleton<IModListManager>(provider => 
             {
@@ -299,7 +356,13 @@ namespace RimSharp.AppDir.AppFiles
 ));
             services.AddSingleton<ISteamApiClient, SteamApiClient>();
             services.AddSingleton<IWorkshopUpdateCheckerService, WorkshopUpdateCheckerService>();
-            services.AddSingleton<ISteamWorkshopQueueProcessor, SteamWorkshopQueueProcessor>(); 
+            services.AddSingleton<ISteamWorkshopQueueProcessor, SteamWorkshopQueueProcessor>();
+            
+            // Workshop Management Services
+            services.AddSingleton<SteamWorkshopApiClient>(provider =>
+                new SteamWorkshopApiClient(provider.GetRequiredService<IHttpClientFactory>().CreateClient()));
+            services.AddSingleton<ISteamSubscriptionService, SteamSubscriptionService>();
+            services.AddSingleton<IWorkshopUpdateService, WorkshopUpdateService>(); 
 
             services.AddSingleton<IModListIOService>(provider =>
             {
@@ -380,7 +443,9 @@ namespace RimSharp.AppDir.AppFiles
                    provider.GetRequiredService<ISteamWorkshopQueueProcessor>(),
                    provider.GetRequiredService<IGitService>(),
                    provider.GetRequiredService<IAIncompatibilityAgentService>(),
-                   provider.GetRequiredService<IModCustomService>()
+                   provider.GetRequiredService<IModCustomService>(),
+                   provider.GetRequiredService<ISteamSubscriptionService>(),
+                   provider.GetRequiredService<IWorkshopUpdateService>()
                ));
 
             services.AddTransient<DownloaderViewModel>(provider =>
@@ -426,7 +491,10 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<ModsViewModel>(),
                     provider.GetRequiredService<DownloaderViewModel>(), 
                     provider.GetRequiredService<GitModsViewModel>(),
-                    provider.GetRequiredService<VramAnalysisViewModel>()
+                    provider.GetRequiredService<VramAnalysisViewModel>(),
+                    provider.GetRequiredService<ISteamSubscriptionService>(),
+                    provider.GetRequiredService<IWorkshopUpdateService>(),
+                    provider.GetRequiredService<GameInstance>()
                 ));
 
             services.AddSingleton<MainWindow>();

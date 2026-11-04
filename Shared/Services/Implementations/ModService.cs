@@ -10,6 +10,8 @@ using System.Xml.Linq;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Shared.Models;
 using RimSharp.Infrastructure.Mods.IO;
+using RimSharp.Infrastructure.Configuration;
+using RimSharp.Services.ModManagement;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
@@ -22,6 +24,11 @@ namespace RimSharp.Shared.Services.Implementations
         private readonly IPathService _pathService;
         private readonly List<ModItem> _allMods = new();
         private string _currentMajorVersion = string.Empty;
+        
+        // Steam and mod classification services
+        private readonly SteamDetectionService _steamDetectionService;
+        private readonly GameInstance _gameInstance;
+        private readonly ModClassificationService _modClassificationService;
 
         // --- Incremental scan cache (targeted refresh) -----------------------
         // Maps a mod folder path to its last scan result. The stamp combines
@@ -57,16 +64,84 @@ namespace RimSharp.Shared.Services.Implementations
             "Source", ".git", ".github", ".vs", ".vscode", "bin", "obj", "Properties"
         };
 
-        public ModService(IPathService pathService, IModRulesService rulesService, IModCustomService customService, IMlieVersionService mlieVersionService, ILoggerService logger)
+        public ModService(IPathService pathService, IModRulesService rulesService, IModCustomService customService, IMlieVersionService mlieVersionService, ILoggerService logger, GameInstance? gameInstance = null)
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
             _rulesService = rulesService ?? throw new ArgumentNullException(nameof(rulesService));
             _customService = customService ?? throw new ArgumentNullException(nameof(customService));
             _mlieVersionService = mlieVersionService ?? throw new ArgumentNullException(nameof(mlieVersionService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            
+            // Initialize Steam detection and mod classification
+            _steamDetectionService = new SteamDetectionService();
+            _gameInstance = gameInstance ?? new GameInstance();
+            _modClassificationService = new ModClassificationService(_gameInstance);
+            
+            if (gameInstance == null)
+            {
+                // Detect Steam installation and configure game instance
+                DetectSteamInstallation();
+            }
+            else
+            {
+                if (_gameInstance.IsSteamInstallation)
+                {
+                    _logger.LogInfo($"Steam installation active at {_gameInstance.GameFolder}", nameof(ModService));
+                    _logger.LogInfo($"Workshop folder: {_gameInstance.WorkshopFolder}", nameof(ModService));
+                }
+                else
+                {
+                    _logger.LogInfo("Non-Steam configuration active", nameof(ModService));
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Detect Steam installation and configure the game instance.
+        /// </summary>
+        private void DetectSteamInstallation()
+        {
+            try
+            {
+                var steamDetected = _steamDetectionService.DetectAndConfigureSteam(_gameInstance);
+                
+                if (steamDetected)
+                {
+                    _logger.LogInfo($"Steam installation detected at {_gameInstance.GameFolder}", nameof(ModService));
+                    _logger.LogInfo($"Workshop folder: {_gameInstance.WorkshopFolder}", nameof(ModService));
+                }
+                else
+                {
+                    _logger.LogInfo("No Steam installation detected, using non-Steam configuration", nameof(ModService));
+                    
+                    // Set up non-Steam configuration
+                    var gamePath = _pathService.GetGamePath();
+                    if (!string.IsNullOrEmpty(gamePath))
+                    {
+                        _gameInstance.GameFolder = gamePath;
+                        _gameInstance.LocalFolder = Path.Combine(gamePath, "Mods");
+                        _gameInstance.ConfigFolder = _pathService.GetConfigPath();
+                        _gameInstance.IsSteamInstallation = false;
+                    }
+                }
+                
+                // Validate and fix any inconsistencies
+                _gameInstance.ValidateAndFix();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error detecting Steam installation: {ex.Message}", nameof(ModService));
+                // Fall back to non-Steam configuration
+                _gameInstance.IsSteamInstallation = false;
+            }
         }
 
         public IEnumerable<ModItem> GetLoadedMods() => _allMods;
+        
+        /// <summary>
+        /// Get the current game instance configuration.
+        /// </summary>
+        public GameInstance GetGameInstance() => _gameInstance;
 
         public void LoadMods()
         {
@@ -418,92 +493,120 @@ namespace RimSharp.Shared.Services.Implementations
 
         private void LoadWorkshopMods(string modsPath)
         {
-            if (!Directory.Exists(modsPath)) return;
-
-            foreach (var dir in Directory.GetDirectories(modsPath))
+            // Use the game instance's mod search paths instead of a single path
+            var modSearchPaths = _gameInstance.GetModSearchPaths();
+            
+            foreach (var searchPath in modSearchPaths)
             {
-                var mod = BuildOrReuseModFromFolder(dir, out _);
-                if (mod == null) continue;
+                if (!Directory.Exists(searchPath)) continue;
 
-                var folderName = Path.GetFileName(dir);
-                if (long.TryParse(folderName, out _))
+                foreach (var dir in Directory.GetDirectories(searchPath))
                 {
-                    mod.SteamId = folderName;
-                    mod.SteamUrl = $"https://steamcommunity.com/workshop/filedetails/?id={folderName}";
-                    mod.ModType = ModType.WorkshopL;
-                }
-                else
-                {
-                    var gitDir = Path.Combine(dir, ".git");
-                    if (Directory.Exists(gitDir))
+                    var mod = BuildOrReuseModFromFolder(dir, out _);
+                    if (mod == null) continue;
+
+                    // Classify the mod based on its source
+                    var originalModType = mod.ModType;
+                    mod.ModType = _modClassificationService.ClassifyMod(dir, originalModType);
+
+                    // Set SteamId and SteamUrl for workshop and SteamCMD mods
+                    if (mod.ModType == ModType.Workshop || mod.ModType == ModType.WorkshopL)
                     {
-                        mod.ModType = ModType.Git;
-                        var gitConfigPath = Path.Combine(gitDir, "config");
-                        if (File.Exists(gitConfigPath))
+                        var folderName = Path.GetFileName(dir);
+                        if (long.TryParse(folderName, out _))
                         {
-                            try
-                            {
-                                var lines = File.ReadAllLines(gitConfigPath);
-                                bool inOriginSection = false;
-                                foreach (var line in lines)
-                                {
-                                    var trimmed = line.Trim();
-                                    if (trimmed.StartsWith("[remote \"origin\"]"))
-                                    {
-                                        inOriginSection = true;
-                                    }
-                                    else if (trimmed.StartsWith("[") && inOriginSection)
-                                    {
-                                        inOriginSection = false;
-                                    }
-                                    else if (inOriginSection && trimmed.StartsWith("url = "))
-                                    {
-                                        mod.GitRepo = trimmed.Substring("url = ".Length).Trim();
-                                        break;
-                                    }
-                                }
-                                if (!string.IsNullOrEmpty(mod.GitRepo))
-                                {
-                                    if (mod.GitRepo.StartsWith("git@"))
-                                    {
-                                        var parts = mod.GitRepo.Split(':');
-                                        if (parts.Length == 2)
-                                        {
-                                            mod.GitRepo = parts[1].Replace(".git", "");
-                                        }
-                                    }
-                                    else if (mod.GitRepo.StartsWith("https://"))
-                                    {
-                                        mod.GitRepo = mod.GitRepo.Replace("https://", "").Replace(".git", "");
-                                    }
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Debug.WriteLine($"Failed to read Git config for mod {mod.PackageId}: {ex.Message}");
-                            }
+                            mod.SteamId = folderName;
+                            mod.SteamUrl = $"https://steamcommunity.com/workshop/filedetails/?id={folderName}";
                         }
                     }
-                    else
+
+                    // Extract Git repo information for Git mods
+                    if (mod.ModType == ModType.Git)
                     {
-                        mod.ModType = ModType.Zipped;
+                        ExtractGitRepoInfo(mod, dir);
+                    }
+
+                    _allMods.Add(mod);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Extract Git repository information from a mod directory.
+        /// </summary>
+        private void ExtractGitRepoInfo(ModItem mod, string modDir)
+        {
+            var gitDir = Path.Combine(modDir, ".git");
+            if (!Directory.Exists(gitDir)) return;
+
+            var gitConfigPath = Path.Combine(gitDir, "config");
+            if (!File.Exists(gitConfigPath)) return;
+
+            try
+            {
+                var lines = File.ReadAllLines(gitConfigPath);
+                bool inOriginSection = false;
+                
+                foreach (var line in lines)
+                {
+                    var trimmed = line.Trim();
+                    if (trimmed.StartsWith("[remote \"origin\"]"))
+                    {
+                        inOriginSection = true;
+                    }
+                    else if (trimmed.StartsWith("[") && inOriginSection)
+                    {
+                        inOriginSection = false;
+                    }
+                    else if (inOriginSection && trimmed.StartsWith("url = "))
+                    {
+                        mod.GitRepo = trimmed.Substring("url = ".Length).Trim();
+                        break;
                     }
                 }
-
-                _allMods.Add(mod);
+                
+                if (!string.IsNullOrEmpty(mod.GitRepo))
+                {
+                    // Clean up Git repo URL
+                    if (mod.GitRepo.StartsWith("git@"))
+                    {
+                        var parts = mod.GitRepo.Split(':');
+                        if (parts.Length == 2)
+                        {
+                            mod.GitRepo = parts[1].Replace(".git", "");
+                        }
+                    }
+                    else if (mod.GitRepo.StartsWith("https://"))
+                    {
+                        mod.GitRepo = mod.GitRepo.Replace("https://", "").Replace(".git", "");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to read Git config for mod {mod.PackageId}: {ex.Message}");
             }
         }
 
         private async Task LoadWorkshopModsAsync(string modsPath, ConcurrentBag<ModItem> mods, IProgress<(int current, int total, string message)>? progress, int startPercent, int endPercent)
         {
-            if (!Directory.Exists(modsPath)) return;
-
-            var directories = Directory.GetDirectories(modsPath);
-            int total = directories.Length;
+            // Use the game instance's mod search paths instead of a single path
+            var modSearchPaths = _gameInstance.GetModSearchPaths();
+            
+            var allDirectories = new List<string>();
+            foreach (var searchPath in modSearchPaths)
+            {
+                if (Directory.Exists(searchPath))
+                {
+                    allDirectories.AddRange(Directory.GetDirectories(searchPath));
+                }
+            }
+            
+            int total = allDirectories.Count;
             int current = 0;
             double range = endPercent - startPercent;
 
-            await Task.WhenAll(directories.Select(async dir =>
+            await Task.WhenAll(allDirectories.Select(async dir =>
             {
                 string modNameForProgress = Path.GetFileName(dir) ?? "Unknown";
                 try
@@ -516,69 +619,25 @@ namespace RimSharp.Shared.Services.Implementations
                         modNameForProgress = mod.DisplayName;
                     }
 
-                    var folderName = Path.GetFileName(dir);
-                    if (long.TryParse(folderName, out _))
+                    // Classify the mod based on its source
+                    var originalModType = mod.ModType;
+                    mod.ModType = _modClassificationService.ClassifyMod(dir, originalModType);
+
+                    // Set SteamId and SteamUrl for workshop and SteamCMD mods
+                    if (mod.ModType == ModType.Workshop || mod.ModType == ModType.WorkshopL)
                     {
-                        mod.SteamId = folderName;
-                        mod.SteamUrl = $"https://steamcommunity.com/workshop/filedetails/?id={folderName}";
-                        mod.ModType = ModType.WorkshopL;
+                        var folderName = Path.GetFileName(dir);
+                        if (long.TryParse(folderName, out _))
+                        {
+                            mod.SteamId = folderName;
+                            mod.SteamUrl = $"https://steamcommunity.com/workshop/filedetails/?id={folderName}";
+                        }
                     }
-                    else
+
+                    // Extract Git repo information for Git mods
+                    if (mod.ModType == ModType.Git)
                     {
-                        var gitDir = Path.Combine(dir, ".git");
-                        if (Directory.Exists(gitDir))
-                        {
-                            mod.ModType = ModType.Git;
-                            var gitConfigPath = Path.Combine(gitDir, "config");
-                            if (File.Exists(gitConfigPath))
-                            {
-                                try
-                                {
-                                    var lines = await File.ReadAllLinesAsync(gitConfigPath);
-                                    bool inOriginSection = false;
-                                    foreach (var line in lines)
-                                    {
-                                        var trimmed = line.Trim();
-                                        if (trimmed.StartsWith("[remote \"origin\"]"))
-                                        {
-                                            inOriginSection = true;
-                                        }
-                                        else if (trimmed.StartsWith("[") && inOriginSection)
-                                        {
-                                            inOriginSection = false;
-                                        }
-                                        else if (inOriginSection && trimmed.StartsWith("url = "))
-                                        {
-                                            mod.GitRepo = trimmed.Substring("url = ".Length).Trim();
-                                            break;
-                                        }
-                                    }
-                                    if (!string.IsNullOrEmpty(mod.GitRepo))
-                                    {
-                                        if (mod.GitRepo.StartsWith("git@"))
-                                        {
-                                            var parts = mod.GitRepo.Split(':');
-                                            if (parts.Length == 2)
-                                            {
-                                                mod.GitRepo = parts[1].Replace(".git", "");
-                                            }
-                                        }
-                                        else if (mod.GitRepo.StartsWith("https://"))
-                                        {
-                                            mod.GitRepo = mod.GitRepo.Replace("https://", "").Replace(".git", "");
-                                        }
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    Debug.WriteLine($"Failed to read Git config for mod {mod.PackageId}: {ex.Message}");
-                                }
-                            }
-                        }
-                        else
-                        {
-                            mod.ModType = ModType.Zipped;
-                        }
+                        ExtractGitRepoInfo(mod, dir);
                     }
 
                     mods.Add(mod);

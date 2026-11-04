@@ -18,12 +18,14 @@
      <convViewVisibility:ContextMenuVisibilityConverter x:Key="ContextMenuVisibilityConverter"/>
      <convViewVisibility:ModTypeToRedownloadVisibilityConverter x:Key="ModTypeToRedownloadVisibilityConverter"/>
      <convViewVisibility:ModTypeToDeleteVisibilityConverter x:Key="ModTypeToDeleteVisibilityConverter"/>
+     <convViewVisibility:WorkshopModVisibilityConverter x:Key="WorkshopModVisibilityConverter"/>
 
      <!-- Logic Converters -->
      <convLogic:NullToBoolConverter x:Key="NullToBoolConverter"/>
      <convLogic:InvertedBooleanConverter x:Key="InvertedBooleanConverter"/>
      <convLogic:StringIsNullOrEmptyConverter x:Key="StringIsNullOrEmptyConverter"/>
      <convLogic:IsNotNullOrEmptyConverter x:Key="IsNotNullOrEmptyConverter"/>
+     <convLogic:IsNotNullOrEmptyConverter x:Key="StringIsNotNullOrEmptyConverter"/>
      <convLogic:IsNotNullOrEmptyConverter x:Key="IsNullOrEmptyConverter" Inverse="True"/>
      <convLogic:BooleanAndConverter x:Key="BooleanAndConverter"/>
      <convLogic:OrConverter x:Key="OrConverter"/>

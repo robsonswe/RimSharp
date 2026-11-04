@@ -86,6 +86,21 @@
                                 <Binding Path="ModType" Converter="{StaticResource ModTypeToRedownloadVisibilityConverter}"/>
                             </MenuItem.IsVisible>
                         </MenuItem>
+                        
+                        <!-- Workshop Management Items -->
+                        <Separator IsVisible="{Binding IsWorkshopMod}"/>
+                        <MenuItem Header="Check for Updates" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.CheckWorkshopUpdatesCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" IsVisible="{Binding IsWorkshopMod}">
+                            <MenuItem.Icon><i:Icon Value="fa-clock-rotate-left" FontSize="14"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Update Mod" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.UpdateWorkshopModsCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" IsVisible="{Binding IsWorkshopMod}">
+                            <MenuItem.Icon><i:Icon Value="fa-download" FontSize="14"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Subscribe" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.SubscribeToWorkshopCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" IsVisible="{Binding IsWorkshopMod}">
+                            <MenuItem.Icon><i:Icon Value="fa-plus" FontSize="14"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Unsubscribe" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.UnsubscribeFromWorkshopCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" IsVisible="{Binding IsWorkshopMod}">
+                            <MenuItem.Icon><i:Icon Value="fa-minus" FontSize="14"/></MenuItem.Icon>
+                        </MenuItem>
                         <Separator/>
                         <MenuItem Header="AI Conflict Scan" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.CheckAIIncompatibilitiesCommand}" CommandParameter="{Binding}">
                             <MenuItem.Icon><i:Icon Value="fa-robot" FontSize="14"/></MenuItem.Icon>

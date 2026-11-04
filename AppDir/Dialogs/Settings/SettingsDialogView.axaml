@@ -103,7 +103,14 @@
                     </Border>
                 </TabItem>
 
-                <!-- TAB 3: AI PROVIDERS -->
+                <!-- TAB 3: STEAM -->
+                <TabItem Header="Steam">
+                    <Border Classes="panel-subtle">
+                        <TextBlock Text="Steam settings will be available in a future update." Margin="15"/>
+                    </Border>
+                </TabItem>
+
+                <!-- TAB 4: AI PROVIDERS -->
                 <TabItem Header="AI Providers" IsVisible="{Binding ShowAiProviders}">
                     <Border Classes="panel-subtle">
                         <StackPanel Margin="15" Spacing="14">

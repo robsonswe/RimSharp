@@ -7,6 +7,7 @@ using RimSharp.AppDir.AppFiles;
 using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
+using RimSharp.Services.Workshop;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -50,6 +51,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private readonly IGitService _gitService;
         private readonly IAIncompatibilityAgentService _aiAgentService;
         private readonly IModCustomService _customService;
+        private readonly ISteamSubscriptionService? _steamSubscriptionService;
+        private readonly IWorkshopUpdateService? _workshopUpdateService;
         private bool _isParentLoading;
         private bool _hasUnsavedChanges;
         private ModItem? _selectedMod;
@@ -180,6 +183,12 @@ public bool IsParentLoading
         public ICommand InstallFromZipCommand { get; private set; } = null!;
         public ICommand InstallFromGithubCommand { get; private set; } = null!;
         public ICommand RedownloadModsCommand { get; private set; } = null!;
+        
+        // Workshop Management
+        public ICommand CheckWorkshopUpdatesCommand { get; private set; } = null!;
+        public ICommand UpdateWorkshopModsCommand { get; private set; } = null!;
+        public ICommand SubscribeToWorkshopCommand { get; private set; } = null!;
+        public ICommand UnsubscribeFromWorkshopCommand { get; private set; } = null!;
         public event EventHandler<bool>? IsLoadingRequest;
         public event EventHandler? RequestDataRefresh;
         public event EventHandler<bool>? HasUnsavedChangesRequest;
@@ -204,7 +213,9 @@ public bool IsParentLoading
             ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor,
             IGitService gitService,
             IAIncompatibilityAgentService aiAgentService,
-            IModCustomService customService)
+            IModCustomService customService,
+            ISteamSubscriptionService? steamSubscriptionService = null,
+            IWorkshopUpdateService? workshopUpdateService = null)
         {
             _dataService = dataService;
             _commandService = commandService;
@@ -225,6 +236,8 @@ public bool IsParentLoading
             _gitService = gitService;
             _aiAgentService = aiAgentService;
             _customService = customService;
+            _steamSubscriptionService = steamSubscriptionService;
+            _workshopUpdateService = workshopUpdateService;
             RefreshPathValidity();
 
             _modListManager.ListChanged += OnModListChanged;
@@ -292,6 +305,7 @@ public bool IsParentLoading
             InitializeModActionsCommands();
             InitializeToolsAnalysisCommands();
             InitializeInstallationCommands();
+            InitializeWorkshopCommands(); // Add workshop commands initialization
             InitializePlaceholderCommands();
             CustomizeModCommand = CreateAsyncCommand<ModItem>(
                 execute: ExecuteCustomizeMod,
@@ -828,6 +842,333 @@ public void RefreshPathValidity()
             HasValidPaths = !string.IsNullOrEmpty(gamePath) &&
                            !string.IsNullOrEmpty(modsPath) &&
                            !string.IsNullOrEmpty(configPath);
+        }
+
+        // Partial initialization methods
+
+        private void InitializeWorkshopCommands()
+        {
+            CheckWorkshopUpdatesCommand = CreateCancellableAsyncCommand(
+                execute: ExecuteCheckWorkshopUpdates,
+                canExecute: CanExecuteWorkshopCommands,
+                observedProperties: new[] { nameof(IsParentLoading) });
+
+            UpdateWorkshopModsCommand = CreateCancellableAsyncCommand(
+                execute: ExecuteUpdateWorkshopMods,
+                canExecute: CanExecuteWorkshopCommands,
+                observedProperties: new[] { nameof(IsParentLoading) });
+
+            SubscribeToWorkshopCommand = CreateCancellableAsyncCommand(
+                execute: ExecuteSubscribeToWorkshop,
+                canExecute: CanExecuteWorkshopCommands,
+                observedProperties: new[] { nameof(IsParentLoading) });
+
+            UnsubscribeFromWorkshopCommand = CreateCancellableAsyncCommand(
+                execute: ExecuteUnsubscribeFromWorkshop,
+                canExecute: CanExecuteWorkshopCommands,
+                observedProperties: new[] { nameof(IsParentLoading) });
+        }
+
+        private bool CanExecuteWorkshopCommands()
+        {
+            return !IsParentLoading && SelectedItems != null && SelectedItems.Count > 0;
+        }
+
+        private async Task ExecuteCheckWorkshopUpdates(CancellationToken ct)
+        {
+            if (SelectedItems == null || SelectedItems.Count == 0) return;
+
+            var workshopMods = SelectedItems.OfType<ModItem>()
+                .Where(m => m.ModType == ModType.Workshop || m.ModType == ModType.WorkshopL)
+                .ToList();
+
+            if (!workshopMods.Any())
+            {
+                await _dialogService.ShowWarning("No Workshop Mods", "No workshop mods selected for update checking.");
+                return;
+            }
+
+            if (_workshopUpdateService == null)
+            {
+                await _dialogService.ShowWarning("Service Unavailable", "Workshop update service is not available.");
+                return;
+            }
+
+            try
+            {
+                await RunOnUIThreadAsync(() =>
+                {
+                    IsLoadingRequest?.Invoke(this, true);
+                });
+
+                // Use the workshop update service to check for updates
+                var progress = new Progress<(int current, int total, string message)>((p) =>
+                {
+                    RunOnUIThread(() =>
+                    {
+                        // Update progress dialog if needed
+                    });
+                });
+
+                var result = await _workshopUpdateService.CheckForUpdatesAsync(workshopMods, progress, ct);
+
+                await RunOnUIThreadAsync(async () =>
+                {
+                    if (result.Status == WorkshopUpdateStatus.Success)
+                    {
+                        if (result.UpdatesAvailable > 0)
+                        {
+                            await _dialogService.ShowInformation("Updates Available", 
+                                $"Found {result.UpdatesAvailable} updates available for workshop mods.");
+                        }
+                        else
+                        {
+                            await _dialogService.ShowInformation("No Updates", 
+                                "No updates available for the selected workshop mods.");
+                        }
+                    }
+                    else
+                    {
+                        await _dialogService.ShowWarning("Update Check Failed", 
+                            $"Failed to check for updates: {string.Join(", ", result.ErrorMessages)}");
+                    }
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                await _dialogService.ShowWarning("Operation Cancelled", "Update checking was cancelled.");
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowError("Update Check Error", $"An error occurred: {ex.Message}");
+            }
+            finally
+            {
+                await RunOnUIThreadAsync(() =>
+                {
+                    IsLoadingRequest?.Invoke(this, false);
+                });
+            }
+        }
+
+        private async Task ExecuteUpdateWorkshopMods(CancellationToken ct)
+        {
+            if (SelectedItems == null || SelectedItems.Count == 0) return;
+
+            var workshopMods = SelectedItems.OfType<ModItem>()
+                .Where(m => m.ModType == ModType.Workshop || m.ModType == ModType.WorkshopL)
+                .ToList();
+
+            if (!workshopMods.Any())
+            {
+                await _dialogService.ShowWarning("No Workshop Mods", "No workshop mods selected for updating.");
+                return;
+            }
+
+            if (_workshopUpdateService == null)
+            {
+                await _dialogService.ShowWarning("Service Unavailable", "Workshop update service is not available.");
+                return;
+            }
+
+            try
+            {
+                await RunOnUIThreadAsync(() =>
+                {
+                    IsLoadingRequest?.Invoke(this, true);
+                });
+
+                var progress = new Progress<(int current, int total, string message)>((p) =>
+                {
+                    RunOnUIThread(() =>
+                    {
+                        // Update progress dialog if needed
+                    });
+                });
+
+                var result = await _workshopUpdateService.UpdateModsAsync(
+                    workshopMods.Select(m => m.SteamId!).ToList(), 
+                    progress, 
+                    ct);
+
+                await RunOnUIThreadAsync(async () =>
+                {
+                    if (result.SuccessfullyUpdated > 0)
+                    {
+                        await _dialogService.ShowInformation("Update Complete", 
+                            $"Successfully updated {result.SuccessfullyUpdated} workshop mod(s).");
+                    }
+                    
+                    if (result.FailedToUpdate > 0)
+                    {
+                        await _dialogService.ShowWarning("Update Partially Failed", 
+                            $"Failed to update {result.FailedToUpdate} workshop mod(s).");
+                    }
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                await _dialogService.ShowWarning("Operation Cancelled", "Mod updating was cancelled.");
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowError("Update Error", $"An error occurred: {ex.Message}");
+            }
+            finally
+            {
+                await RunOnUIThreadAsync(() =>
+                {
+                    IsLoadingRequest?.Invoke(this, false);
+                });
+            }
+        }
+
+        private async Task ExecuteSubscribeToWorkshop(CancellationToken ct)
+        {
+            if (SelectedItems == null || SelectedItems.Count == 0) return;
+
+            var workshopMods = SelectedItems.OfType<ModItem>()
+                .Where(m => m.ModType == ModType.Workshop)
+                .ToList();
+
+            if (!workshopMods.Any())
+            {
+                await _dialogService.ShowWarning("No Workshop Mods", "No workshop mods selected for subscription.");
+                return;
+            }
+
+            if (_steamSubscriptionService == null)
+            {
+                await _dialogService.ShowWarning("Service Unavailable", "Steam subscription service is not available.");
+                return;
+            }
+
+            try
+            {
+                await RunOnUIThreadAsync(() =>
+                {
+                    IsLoadingRequest?.Invoke(this, true);
+                });
+
+                var progress = new Progress<(int current, int total, string message)>((p) =>
+                {
+                    RunOnUIThread(() =>
+                    {
+                        // Update progress dialog if needed
+                    });
+                });
+
+                var successCount = 0;
+                foreach (var mod in workshopMods)
+                {
+                    var success = await _steamSubscriptionService.SubscribeAsync(mod.SteamId!, progress, ct);
+                    if (success) successCount++;
+                }
+
+                await RunOnUIThreadAsync(async () =>
+                {
+                    if (successCount > 0)
+                    {
+                        await _dialogService.ShowInformation("Subscription Complete", 
+                            $"Successfully subscribed to {successCount} workshop mod(s).");
+                    }
+                    
+                    if (successCount < workshopMods.Count)
+                    {
+                        await _dialogService.ShowWarning("Subscription Partially Failed", 
+                            $"Failed to subscribe to {workshopMods.Count - successCount} workshop mod(s).");
+                    }
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                await _dialogService.ShowWarning("Operation Cancelled", "Subscription was cancelled.");
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowError("Subscription Error", $"An error occurred: {ex.Message}");
+            }
+            finally
+            {
+                await RunOnUIThreadAsync(() =>
+                {
+                    IsLoadingRequest?.Invoke(this, false);
+                });
+            }
+        }
+
+        private async Task ExecuteUnsubscribeFromWorkshop(CancellationToken ct)
+        {
+            if (SelectedItems == null || SelectedItems.Count == 0) return;
+
+            var workshopMods = SelectedItems.OfType<ModItem>()
+                .Where(m => m.ModType == ModType.Workshop)
+                .ToList();
+
+            if (!workshopMods.Any())
+            {
+                await _dialogService.ShowWarning("No Workshop Mods", "No workshop mods selected for unsubscription.");
+                return;
+            }
+
+            if (_steamSubscriptionService == null)
+            {
+                await _dialogService.ShowWarning("Service Unavailable", "Steam subscription service is not available.");
+                return;
+            }
+
+            try
+            {
+                await RunOnUIThreadAsync(() =>
+                {
+                    IsLoadingRequest?.Invoke(this, true);
+                });
+
+                var progress = new Progress<(int current, int total, string message)>((p) =>
+                {
+                    RunOnUIThread(() =>
+                    {
+                        // Update progress dialog if needed
+                    });
+                });
+
+                var successCount = 0;
+                foreach (var mod in workshopMods)
+                {
+                    var success = await _steamSubscriptionService.UnsubscribeAsync(mod.SteamId!, progress, ct);
+                    if (success) successCount++;
+                }
+
+                await RunOnUIThreadAsync(async () =>
+                {
+                    if (successCount > 0)
+                    {
+                        await _dialogService.ShowInformation("Unsubscription Complete", 
+                            $"Successfully unsubscribed from {successCount} workshop mod(s).");
+                    }
+                    
+                    if (successCount < workshopMods.Count)
+                    {
+                        await _dialogService.ShowWarning("Unsubscription Partially Failed", 
+                            $"Failed to unsubscribe from {workshopMods.Count - successCount} workshop mod(s).");
+                    }
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                await _dialogService.ShowWarning("Operation Cancelled", "Unsubscription was cancelled.");
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowError("Unsubscription Error", $"An error occurred: {ex.Message}");
+            }
+            finally
+            {
+                await RunOnUIThreadAsync(() =>
+                {
+                    IsLoadingRequest?.Invoke(this, false);
+                });
+            }
         }
     }
 }

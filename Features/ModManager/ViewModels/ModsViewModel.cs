@@ -5,6 +5,7 @@ using RimSharp.AppDir.AppFiles;
 using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
+using RimSharp.Services.Workshop;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -28,6 +29,8 @@ namespace RimSharp.Features.ModManager.ViewModels
         private readonly IModDeletionService _deletionService;
         private readonly ISteamWorkshopQueueProcessor _steamWorkshopQueueProcessor;
         private readonly IGitService _gitService;
+        private readonly ISteamSubscriptionService? _steamSubscriptionService;
+        private readonly IWorkshopUpdateService? _workshopUpdateService;
 
         public ModListViewModel ModListViewModel { get; private set; }
         public ModDetailsViewModel ModDetailsViewModel { get; private set; }
@@ -166,7 +169,9 @@ namespace RimSharp.Features.ModManager.ViewModels
             ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor,
             IGitService gitService,
             IAIncompatibilityAgentService aiAgentService,
-            IModCustomService customService)
+            IModCustomService customService,
+            ISteamSubscriptionService? steamSubscriptionService = null,
+            IWorkshopUpdateService? workshopUpdateService = null)
         {
             _dataService = dataService;
             _filterService = filterService;
@@ -177,6 +182,8 @@ namespace RimSharp.Features.ModManager.ViewModels
             _deletionService = deletionService;
             _steamWorkshopQueueProcessor = steamWorkshopQueueProcessor;
             _gitService = gitService;
+            _steamSubscriptionService = steamSubscriptionService;
+            _workshopUpdateService = workshopUpdateService;
 
             RequestRefreshCommand = CreateCancellableAsyncCommand(ExecuteRequestRefreshAsync, CanExecuteRequestRefresh, nameof(IsLoading));
 
@@ -185,7 +192,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             ModActionsViewModel = new ModActionsViewModel(
                 _dataService, commandService, ioService, _modListManager, incompatibilityService, duplicateService, _deletionService, _dialogService, _pathService, _modService,
                         replacementService, downloadQueueService, steamApiClient, navigationService, steamWorkshopQueueProcessor, _gitService,
-                        aiAgentService, customService
+                        aiAgentService, customService, steamSubscriptionService, workshopUpdateService
                         );
             _modListManager.ListChanged += OnModListManagerChanged;
             ModListViewModel.RequestSelectionChange += OnChildRequestSelectionChange;

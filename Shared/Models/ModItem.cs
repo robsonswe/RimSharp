@@ -15,6 +15,8 @@ namespace RimSharp.Shared.Models
         Zipped = 5
     }
 
+
+
     public class ModSizeInfo
     {
         /// <summary>
@@ -113,11 +115,13 @@ namespace RimSharp.Shared.Models
         public bool HasUrl => !string.IsNullOrEmpty(Url);
         public bool HasSteamUrl => !string.IsNullOrEmpty(SteamUrl);
         public bool HasExternalUrl => !string.IsNullOrEmpty(ExternalUrl);
+        public bool IsWorkshopMod => ModType == ModType.Workshop;
 
         public string GitRepo { get; set; } = string.Empty;
 
         public string DateStamp { get; set; } = string.Empty;
         public string UpdateDate { get; set; } = string.Empty;
+        public DateTime? LastUpdated { get; set; }
 
         public string Tags { get; set; } = string.Empty;
 
