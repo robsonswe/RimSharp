@@ -216,7 +216,10 @@ namespace RimSharp.Infrastructure.Dialog
         public async Task<bool> ShowSettingsDialogAsync(bool showAiProviders = true)
         {
             if (_configService == null) return false;
-            var viewModel = new SettingsDialogViewModel(_configService, _fileDialogService, _logger, _aiProviders, showAiProviders);
+            // _logger is intentionally optional in DialogService (ctor param may be null);
+            // SettingsDialogViewModel only consumes it opportunistically, so the null-forgiving
+            // operator documents that a missing logger is an accepted state, not an error.
+            var viewModel = new SettingsDialogViewModel(_configService, _fileDialogService, _logger!, _aiProviders, showAiProviders);
             var dialog = new SettingsDialogView(viewModel);
             return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }
