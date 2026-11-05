@@ -55,7 +55,9 @@ namespace RimSharp.Infrastructure.Configuration
             }
             if (!string.IsNullOrEmpty(gamePath))
             {
-                string derivedModsPath = Path.Combine(gamePath, "Mods");
+                // Derive via GetModsPathFor so the derivation rule lives in one place
+                // (Phase 0 single-writer rule); existence-checked and cached as before.
+                string derivedModsPath = GetModsPathFor(gamePath);
 
                 _cachedModsPath = Directory.Exists(derivedModsPath) ? derivedModsPath : string.Empty;
             }
@@ -65,6 +67,18 @@ namespace RimSharp.Infrastructure.Configuration
             }
 
             return _cachedModsPath;
+        }
+
+        /// <summary>
+        /// Raw derivation rule for the local mods folder of the given game folder.
+        /// No existence check and no cache — callers that need those use GetModsPath().
+        /// Current rule: Path.Combine(gamePath, "Mods"). The mod-folder override slot
+        /// resolves in GetModsPath(); derivations for a specific folder go here.
+        /// (handoff doc §6 Phase 0 — single-writer rule for GameInstance.LocalFolder.)
+        /// </summary>
+        public string GetModsPathFor(string gamePath)
+        {
+            return string.IsNullOrEmpty(gamePath) ? string.Empty : Path.Combine(gamePath, "Mods");
         }
 
 public string GetConfigPath()

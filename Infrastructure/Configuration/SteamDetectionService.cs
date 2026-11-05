@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using RimSharp.Shared.Models;
+using RimSharp.Shared.Services.Contracts;
 
 namespace RimSharp.Infrastructure.Configuration
 {
@@ -15,6 +16,19 @@ namespace RimSharp.Infrastructure.Configuration
     {
         private const string RimWorldAppId = "294100";
         private const string SteamAppworkshopAcf = "appworkshop_294100.acf";
+
+        private readonly IPathService? _pathService;
+
+        /// <summary>
+        /// IPathService is used for the single-writer rule on GameInstance.LocalFolder
+        /// (handoff doc §6 Phase 0): local-folder writes derive via IPathService.GetModsPathFor
+        /// instead of a local Path.Combine. Optional so existing parameterless ctor callers
+        /// keep working; the fallback keeps the pre-centralization behavior verbatim.
+        /// </summary>
+        public SteamDetectionService(IPathService? pathService = null)
+        {
+            _pathService = pathService;
+        }
 
         /// <summary>
         /// Detect Steam installation and return a candidate.
@@ -92,8 +106,13 @@ namespace RimSharp.Infrastructure.Configuration
             // Set config folder based on platform
             instance.ConfigFolder = GetConfigFolder();
 
-            // Set local folder (typically game_folder/Mods)
-            instance.LocalFolder = Path.Combine(instance.GameFolder, "Mods");
+            // Set local folder: derivation rule lives in IPathService (single-writer rule
+            // for GameInstance.LocalFolder; handoff §6 Phase 0). Overrides, when added,
+            // flow through the same resolver. Falls back to the raw derivation if no
+            // path service was provided (legacy parameterless construction).
+            instance.LocalFolder = _pathService != null
+                ? _pathService.GetModsPathFor(instance.GameFolder)
+                : Path.Combine(instance.GameFolder, "Mods");
 
             // Validate and fix any inconsistencies
             instance.ValidateAndFix();

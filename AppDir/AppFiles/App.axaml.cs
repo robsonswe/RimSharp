@@ -186,7 +186,7 @@ namespace RimSharp.AppDir.AppFiles
                 var gameInstance = new GameInstance();
                 var pathService = provider.GetRequiredService<IPathService>();
                 var configService = provider.GetRequiredService<IConfigService>();
-                var steamDetectionService = new SteamDetectionService();
+                var steamDetectionService = new SteamDetectionService(pathService);
                 
                 // Initialize game instance with paths from path service
                 gameInstance.GameFolder = pathService.GetGamePath();

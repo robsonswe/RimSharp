@@ -19,6 +19,18 @@ namespace RimSharp.Shared.Services.Contracts
         string GetModsPath();
 
         /// <summary>
+        /// Derives the local mods folder for the *specified* game folder:
+        /// Path.Combine(gamePath, "Mods"). No existence check, no cache — the raw
+        /// derivation. This is the single writer rule for GameInstance.LocalFolder
+        /// (handoff doc §6 Phase 0): every writer of that property must go through
+        /// this method or GetModsPath(), never a direct Path.Combine.
+        /// </summary>
+        /// <param name="gamePath">The game installation folder to derive from.</param>
+        /// <returns>The derived mods folder path (may not exist on disk).</returns>
+        string GetModsPathFor(string gamePath);
+
+
+        /// <summary>
 
         /// which contains saves, settings, and ModsConfig.xml.
         /// </summary>

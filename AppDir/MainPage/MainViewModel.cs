@@ -129,7 +129,7 @@ namespace RimSharp.AppDir.MainPage
             _gameInstance = gameInstance ?? new GameInstance();
 
             // Initialize Steam detection and mod classification
-            _steamDetectionService = new SteamDetectionService();
+            _steamDetectionService = new SteamDetectionService(_pathService);
             _modClassificationService = new ModClassificationService(_gameInstance);
 
             ModsVM = modsViewModel;
@@ -234,7 +234,7 @@ namespace RimSharp.AppDir.MainPage
                     if (!string.IsNullOrEmpty(PathSettings.GamePath))
                     {
                         _gameInstance.GameFolder = PathSettings.GamePath;
-                        _gameInstance.LocalFolder = PathSettings.ModsPath;
+                        _gameInstance.LocalFolder = _pathService.GetModsPath(); // single-writer rule: resolve via PathService, not via the UI model cache
                         _gameInstance.ConfigFolder = PathSettings.ConfigPath;
                         _gameInstance.IsSteamInstallation = false;
                     }
@@ -536,7 +536,7 @@ namespace RimSharp.AppDir.MainPage
                 if (!string.IsNullOrEmpty(PathSettings.GamePath))
                 {
                     _gameInstance.GameFolder = PathSettings.GamePath;
-                    _gameInstance.LocalFolder = PathSettings.ModsPath;
+                    _gameInstance.LocalFolder = _pathService.GetModsPath(); // single-writer rule: resolve via PathService, not via the UI model
                     _gameInstance.ConfigFolder = PathSettings.ConfigPath;
                 }
             }

@@ -73,7 +73,7 @@ namespace RimSharp.Shared.Services.Implementations
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             
             // Initialize Steam detection and mod classification
-            _steamDetectionService = new SteamDetectionService();
+            _steamDetectionService = new SteamDetectionService(_pathService);
             _gameInstance = gameInstance ?? new GameInstance();
             _modClassificationService = new ModClassificationService(_gameInstance);
             
@@ -119,7 +119,7 @@ namespace RimSharp.Shared.Services.Implementations
                     if (!string.IsNullOrEmpty(gamePath))
                     {
                         _gameInstance.GameFolder = gamePath;
-                        _gameInstance.LocalFolder = Path.Combine(gamePath, "Mods");
+                        _gameInstance.LocalFolder = _pathService.GetModsPath(); // single-writer rule: derive via IPathService, never Path.Combine here
                         _gameInstance.ConfigFolder = _pathService.GetConfigPath();
                         _gameInstance.IsSteamInstallation = false;
                     }
