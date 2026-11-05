@@ -34,7 +34,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void GetGamePath_WhenConfigValueIsValid_ShouldReturnPath()
         {
-
             _mockConfigService.GetConfigValue("game_folder").Returns(_testTempDir);
 
             var result = _service.GetGamePath();
@@ -45,7 +44,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void GetGamePath_WhenConfigValueIsInvalid_ShouldReturnEmpty()
         {
-
             _mockConfigService.GetConfigValue("game_folder").Returns(@"C:\NonExistentPath_12345");
 
             var result = _service.GetGamePath();
@@ -56,7 +54,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void GetModsPath_WhenGamePathIsValid_ShouldReturnModsPath()
         {
-
             var modsPath = Path.Combine(_testTempDir, "Mods");
             Directory.CreateDirectory(modsPath);
             _mockConfigService.GetConfigValue("game_folder").Returns(_testTempDir);
@@ -69,7 +66,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void GetGameVersion_WhenVersionFileExists_ShouldReturnVersion()
         {
-
             var versionFile = Path.Combine(_testTempDir, "Version.txt");
             File.WriteAllText(versionFile, "1.5.4321");
             _mockConfigService.GetConfigValue("game_folder").Returns(_testTempDir);
@@ -82,7 +78,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void GetMajorGameVersion_ShouldExtractCorrectly()
         {
-
             var versionFile = Path.Combine(_testTempDir, "Version.txt");
             File.WriteAllText(versionFile, "1.4.3529 rev704");
             _mockConfigService.GetConfigValue("game_folder").Returns(_testTempDir);
@@ -95,7 +90,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void RefreshPaths_ShouldInvalidateCache()
         {
-
             _mockConfigService.GetConfigValue("game_folder").Returns(_testTempDir);
             _service.GetGamePath(); // Populate cache
 
@@ -112,7 +106,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void GetModsPath_WhenGamePathDoesNotExist_ShouldReturnEmpty()
         {
-
             _mockConfigService.GetConfigValue("game_folder").Returns(@"C:\NonExistent_XYZ_123");
 
             var result = _service.GetModsPath();
@@ -123,7 +116,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void GetModsPath_WhenModsDirDoesNotExist_ShouldReturnEmpty()
         {
-
             // Game dir exists but has no Mods subdirectory
             _mockConfigService.GetConfigValue("game_folder").Returns(_testTempDir);
 
@@ -135,7 +127,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void GetConfigPath_WhenConfigValueIsValid_ShouldReturnPath()
         {
-
             var configPath = Path.Combine(_testTempDir, "Config");
             Directory.CreateDirectory(configPath);
             _mockConfigService.GetConfigValue("config_folder").Returns(configPath);
@@ -148,7 +139,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void GetConfigPath_WhenConfigValueDoesNotExist_ShouldReturnEmpty()
         {
-
             _mockConfigService.GetConfigValue("config_folder").Returns(@"C:\NonExistent_XYZ_789");
 
             var result = _service.GetConfigPath();
@@ -159,7 +149,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void GetGameVersion_WhenNoVersionSourceExists_ShouldReturnErrorMessage()
         {
-
             _mockConfigService.GetConfigValue("game_folder").Returns(_testTempDir);
             // No Version.txt and no version-bearing game binaries created
 
@@ -248,11 +237,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
             probedPaths.Should().Contain(p => p.Contains(Path.Combine("RimWorldLinux_Data", "Managed", "Assembly-CSharp.dll")));
         }
 
-        /// <summary>
-        /// Opt-in real-install test. Set <c>RIMSHARP_TEST_GAME_16</c> to a RimWorld 1.6 install
-        /// root (Windows or Linux player-data layout). Skipped when the variable is unset, empty,
-        /// or points to a missing directory.
-        /// </summary>
         [Fact]
         public void GetGameVersion_Game16RealInstall_ShouldDetectMajorVersion()
         {
@@ -268,5 +252,110 @@ namespace RimSharp.Tests.Infrastructure.Configuration
             major.Should().StartWith("1");
         }
     }
-}
 
+    public class PathServiceModsFolderOverrideTests : IDisposable
+    {
+        private readonly IConfigService _mockConfigService;
+        private readonly PathService _service;
+        private readonly string _testTempDir;
+        private readonly ILoggerService _mockLogger;
+
+        public PathServiceModsFolderOverrideTests()
+        {
+            _mockConfigService = Substitute.For<IConfigService>();
+            _mockLogger = Substitute.For<ILoggerService>();
+            _service = new PathService(_mockConfigService, null, _mockLogger);
+            _testTempDir = Path.Combine(Path.GetTempPath(), "RimSharpTests_Override_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(_testTempDir);
+        }
+
+        public void Dispose()
+        {
+            if (Directory.Exists(_testTempDir))
+            {
+                Directory.Delete(_testTempDir, true);
+            }
+        }
+
+        [Fact]
+        public void GetModsPath_UnsetOverride_ShouldDeriveFromGameFolder()
+        {
+            var gameDir = Path.Combine(_testTempDir, "Game");
+            var modsDir = Path.Combine(gameDir, "Mods");
+            Directory.CreateDirectory(gameDir);
+            Directory.CreateDirectory(modsDir);
+
+            _mockConfigService.GetConfigValue("game_folder").Returns(gameDir);
+            _mockConfigService.GetConfigValue("mods_folder").Returns(string.Empty);
+
+            var result = _service.GetModsPath();
+            result.Should().Be(modsDir);
+        }
+
+        [Fact]
+        public void GetModsPath_ValidOverride_ShouldReturnUserDir()
+        {
+            var gameDir = Path.Combine(_testTempDir, "Game");
+            var overrideDir = Path.Combine(_testTempDir, "MyMods");
+            Directory.CreateDirectory(gameDir);
+            Directory.CreateDirectory(overrideDir);
+
+            _mockConfigService.GetConfigValue("game_folder").Returns(gameDir);
+            _mockConfigService.GetConfigValue("mods_folder").Returns(overrideDir);
+
+            var result = _service.GetModsPath();
+            result.Should().Be(overrideDir);
+        }
+
+        [Fact]
+        public void GetModsPath_BrokenOverride_ShouldWarnAndFallBack()
+        {
+            var gameDir = Path.Combine(_testTempDir, "Game");
+            var fallbackModsDir = Path.Combine(gameDir, "Mods");
+            var brokenOverrideDir = Path.Combine(_testTempDir, "DoesNotExist");
+
+            Directory.CreateDirectory(gameDir);
+            Directory.CreateDirectory(fallbackModsDir);
+            // DO NOT create brokenOverrideDir - it must fail Directory.Exists to trigger the fallback!
+
+            _mockConfigService.GetConfigValue("game_folder").Returns(gameDir);
+            _mockConfigService.GetConfigValue("mods_folder").Returns(brokenOverrideDir);
+
+            var result = _service.GetModsPath();
+            
+            result.Should().Be(fallbackModsDir);
+            _mockLogger.Received(1).LogWarning(Arg.Is<string>(msg => msg.Contains(brokenOverrideDir)), Arg.Any<string>());
+        }
+
+        [Fact]
+        public void GetModsPath_OverrideKeyedOnGamePath_ShouldInvalidateCacheWhenGamePathChanges()
+        {
+            var firstGameDir = Path.Combine(_testTempDir, "FirstDir");
+            var firstModsDir = Path.Combine(firstGameDir, "MyMods");
+
+            var secondGameDir = Path.Combine(_testTempDir, "SecondDir");
+            var secondModsDir = Path.Combine(secondGameDir, "Mods");
+
+            Directory.CreateDirectory(firstGameDir);
+            Directory.CreateDirectory(firstModsDir);
+            Directory.CreateDirectory(secondGameDir);
+            Directory.CreateDirectory(secondModsDir);
+
+            // First call -> Setup Initial Path
+            _mockConfigService.GetConfigValue("game_folder").Returns(firstGameDir);
+            _mockConfigService.GetConfigValue("mods_folder").Returns(firstModsDir);
+
+            var firstResult = _service.GetModsPath();
+            firstResult.Should().Be(firstModsDir);
+
+            // Second call -> Change game path + Reset override
+            _mockConfigService.GetConfigValue("game_folder").Returns(secondGameDir);
+            _mockConfigService.GetConfigValue("mods_folder").Returns(string.Empty);
+            
+            _service.RefreshPaths(); // Necessary to clear '_isGamePathResolved' inside PathService
+
+            var secondResult = _service.GetModsPath();
+            secondResult.Should().Be(secondModsDir);
+        }
+    }
+}

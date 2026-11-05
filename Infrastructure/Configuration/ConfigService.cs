@@ -13,6 +13,11 @@ namespace RimSharp.Infrastructure.Configuration
         {
             "game_folder",
             "config_folder",
+            "mods_folder", // mod-folder override slot (handoff doc §2.3)
+            "game_distribution", // distribution choice persisted by the settings dialog
+            "steam_installation", // persisted Steam claim (settings dialog / manual confirmation)
+            "steam_workshop_folder",
+            "steam_integration",
             "steamcmd_prefix",
             "logs_directory",
             "openrouter_api_key",

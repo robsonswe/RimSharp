@@ -293,7 +293,7 @@ namespace RimSharp.AppDir.AppFiles
                );
 
             services.AddSingleton<IPathService, PathService>(provider =>
-                new PathService(provider.GetRequiredService<IConfigService>()));
+                new PathService(provider.GetRequiredService<IConfigService>(), null, provider.GetRequiredService<ILoggerService>()));
 
             services.AddSingleton(provider =>
             {

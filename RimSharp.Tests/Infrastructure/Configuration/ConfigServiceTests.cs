@@ -26,7 +26,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void Constructor_WhenFileDoesNotExist_ShouldCreateDefaultConfig()
         {
-
             var service = new ConfigService(_testConfigPath);
 
             File.Exists(_testConfigPath).Should().BeTrue();
@@ -37,7 +36,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void LoadConfig_WhenFileExists_ShouldLoadValues()
         {
-
             File.WriteAllLines(_testConfigPath, new[] { @"game_folder=C:\Game", @"config_folder=C:\Config" });
 
             var service = new ConfigService(_testConfigPath);
@@ -49,7 +47,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void SaveConfig_ShouldPersistChanges()
         {
-
             var service = new ConfigService(_testConfigPath);
             service.SetConfigValue("game_folder", @"D:\RimWorld");
 
@@ -62,7 +59,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void SetConfigValue_ShouldOnlyAllowValidKeys()
         {
-
             var service = new ConfigService(_testConfigPath);
 
             service.SetConfigValue("invalid_key", "some value");
@@ -73,7 +69,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void LoadConfig_ShouldIgnoreCommentLines()
         {
-
             File.WriteAllLines(_testConfigPath, new[]
             {
                 "# This is a comment",
@@ -89,7 +84,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void LoadConfig_ShouldIgnoreBlankLines()
         {
-
             File.WriteAllLines(_testConfigPath, new[]
             {
                 "",
@@ -105,7 +99,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void LoadConfig_ShouldTrimWhitespaceAroundKeyAndValue()
         {
-
             File.WriteAllLines(_testConfigPath, new[]
             {
                 @"  game_folder  =  C:\Trimmed  "
@@ -119,7 +112,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void SaveConfig_MultipleSaves_ShouldPersistLastValue()
         {
-
             var service = new ConfigService(_testConfigPath);
             service.SetConfigValue("game_folder", @"C:\First");
             service.SaveConfig();
@@ -134,7 +126,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void GetConfigValue_WhenKeyNotPresent_ShouldReturnEmpty()
         {
-
             var service = new ConfigService(_testConfigPath);
 
             service.GetConfigValue("nonexistent_key").Should().BeEmpty();
@@ -143,7 +134,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void SetConfigValue_WithNull_ShouldStoreEmptyString()
         {
-
             var service = new ConfigService(_testConfigPath);
             service.SetConfigValue("game_folder", null!);
 
@@ -153,7 +143,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void SetConfigValue_SteamCmdPrefix_ShouldPersistAcrossInstances()
         {
-
             var service = new ConfigService(_testConfigPath);
             service.SetConfigValue("steamcmd_prefix", "/opt/steamcmd-data");
 
@@ -166,7 +155,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void SetConfigValue_LogsDirectory_ShouldPersistAcrossInstances()
         {
-
             var service = new ConfigService(_testConfigPath);
             service.SetConfigValue("logs_directory", "/var/log/rimsharp");
 
@@ -179,7 +167,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void LoadConfig_ShouldLoadSteamCmdPrefixAndLogsDirectory()
         {
-
             File.WriteAllLines(_testConfigPath, new[]
             {
                 @"game_folder=C:\Game",
@@ -197,7 +184,6 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         [Fact]
         public void SaveConfig_ShouldPersistAllWhitelistedKeysTogether()
         {
-
             var service = new ConfigService(_testConfigPath);
             service.SetConfigValue("game_folder", @"C:\Game");
             service.SetConfigValue("config_folder", @"C:\Config");
@@ -213,5 +199,50 @@ namespace RimSharp.Tests.Infrastructure.Configuration
             lines.Should().Contain("logs_directory=/var/log/rimsharp");
         }
     }
-}
 
+    public class ModsFolderOverrideTests : IDisposable
+    {
+        private readonly string _testConfigPath;
+
+        public ModsFolderOverrideTests()
+        {
+            _testConfigPath = Path.Combine(Path.GetTempPath(), "RimSharp_ConfigOverrideTest_" + Guid.NewGuid().ToString("N") + ".cfg");
+        }
+
+        public void Dispose()
+        {
+            if (File.Exists(_testConfigPath))
+            {
+                File.Delete(_testConfigPath);
+            }
+        }
+
+        [Fact]
+        public void ModsFolder_ValidOverride_ShouldRoundTripThroughSaveAndLoad()
+        {
+            var service = new ConfigService(_testConfigPath);
+            service.SetConfigValue("mods_folder", @"D:\MyMods");
+            service.SaveConfig();
+
+            var loadedService = new ConfigService(_testConfigPath);
+            loadedService.GetConfigValue("mods_folder").Should().Be(@"D:\MyMods");
+        }
+
+        [Fact]
+        public void LoadConfig_ShouldReadModsFolderIfPresent()
+        {
+            File.WriteAllLines(_testConfigPath, new[] { @"mods_folder=D:\ExistingMods" });
+            var service = new ConfigService(_testConfigPath);
+
+            service.GetConfigValue("mods_folder").Should().Be(@"D:\ExistingMods");
+        }
+
+        [Fact]
+        public void GetConfigValue_WhenModsFolderNotSet_ShouldReturnEmptyString()
+        {
+            var service = new ConfigService(_testConfigPath);
+
+            service.GetConfigValue("mods_folder").Should().BeEmpty();
+        }
+    }
+}

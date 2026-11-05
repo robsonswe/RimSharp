@@ -475,6 +475,12 @@ namespace RimSharp.AppDir.MainPage
             var saved = await _dialogService.ShowSettingsDialogAsync();
             if (!saved) return;
 
+            // Refresh the service caches first so config values the dialog just wrote
+            // (game_folder, config_folder, mods_folder override) are actually re-read;
+            // PathService caches would otherwise hold session-stale values here. This
+            // is what makes a mods-folder override effective without an app restart.
+            _pathService.RefreshPaths();
+
             // Re-sync the path settings from the config the dialog just
             // wrote (game/config folders may both have changed).
             _isInitializingPaths = true;
