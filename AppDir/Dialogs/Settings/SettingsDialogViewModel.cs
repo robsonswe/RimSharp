@@ -9,6 +9,7 @@ using RimSharp.AppDir.AppFiles;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Shared.Models;
 using RimSharp.Infrastructure.Configuration;
+using RimSharp.Infrastructure.Logging;
 
 namespace RimSharp.AppDir.Dialogs
 {
@@ -60,16 +61,16 @@ namespace RimSharp.AppDir.Dialogs
         private const string GameFolderKey = "game_folder";
         private const string ConfigFolderKey = "config_folder";
         private const string UpdateChannelKey = "update_channel";
+        private const string GameDistributionKey = "game_distribution";
+        private const string LegacyLauncherKey = "game_launcher";
         private const string SteamInstallationKey = "steam_installation";
         private const string SteamWorkshopFolderKey = "steam_workshop_folder";
         private const string SteamIntegrationKey = "steam_integration";
-        private const string SteamProtocolKey = "steam_protocol";
-        private const string SteamCmdPathKey = "steamcmd_path";
-        private const string SteamCmdCacheKey = "steamcmd_cache";
 
         private readonly IConfigService _configService;
         private readonly IFileDialogService? _fileDialogService;
-        private readonly SteamDetectionService _steamDetectionService;
+        private readonly GameInstallationDetectionService _gameInstallationDetectionService;
+        private readonly ILoggerService _logger;
 
         private string _gamePath = string.Empty;
         public string GamePath { get => _gamePath; set => SetProperty(ref _gamePath, value); }
@@ -80,12 +81,43 @@ namespace RimSharp.AppDir.Dialogs
         private string _updateChannel = "stable";
         public string UpdateChannel { get => _updateChannel; set => SetProperty(ref _updateChannel, value); }
 
-        // Steam settings
-        private GameInstance _gameInstance = new GameInstance();
-        public GameInstance GameInstance { get => _gameInstance; set => SetProperty(ref _gameInstance, value); }
+        private GameDistribution _selectedDistribution = GameDistribution.NonSteam;
+        public GameDistribution SelectedDistribution 
+        { 
+            get => _selectedDistribution; 
+            set 
+            { 
+                if (SetProperty(ref _selectedDistribution, value))
+                {
+                    ApplyDistributionPaths(userInitiatedChange: true);
+                }
+            } 
+        }
 
-        public IReadOnlyList<AiProviderSettingsRow> Providers { get; }
-        public bool ShowAiProviders { get; }
+        private GameInstallationCandidate? _steamCandidate;
+        public GameInstallationCandidate? SteamCandidate
+        {
+            get => _steamCandidate;
+            private set
+            {
+                if (SetProperty(ref _steamCandidate, value))
+                    OnPropertyChanged(nameof(SteamAvailable));
+            }
+        }
+
+        private GameInstallationCandidate? _nonSteamCandidate;
+        public GameInstallationCandidate? NonSteamCandidate
+        {
+            get => _nonSteamCandidate;
+            private set
+            {
+                if (SetProperty(ref _nonSteamCandidate, value))
+                    OnPropertyChanged(nameof(NonSteamAvailable));
+            }
+        }
+
+        public bool SteamAvailable => SteamCandidate != null && SteamCandidate.IsValid;
+        public bool NonSteamAvailable => NonSteamCandidate != null && NonSteamCandidate.IsValid;
 
         public ICommand BrowseGamePathCommand { get; }
         public ICommand BrowseConfigPathCommand { get; }
@@ -94,27 +126,30 @@ namespace RimSharp.AppDir.Dialogs
         public ICommand SaveCommand { get; }
         public ICommand CancelCommand { get; }
 
+        public IReadOnlyList<AiProviderSettingsRow> Providers { get; }
+        public bool ShowAiProviders { get; }
+
         public SettingsDialogViewModel(
             IConfigService configService,
             IFileDialogService? fileDialogService,
+            ILoggerService logger,
             IEnumerable<IAIProviderClient>? providers,
             bool showAiProviders = true)
         : base("RimSharp Settings")
         {
             _configService = configService ?? throw new ArgumentNullException(nameof(configService));
             _fileDialogService = fileDialogService;
-            _steamDetectionService = new SteamDetectionService();
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _gameInstallationDetectionService = new GameInstallationDetectionService();
             ShowAiProviders = showAiProviders;
 
-            _gamePath = _configService.GetConfigValue(GameFolderKey);
-            _configPath = _configService.GetConfigValue(ConfigFolderKey);
+            _gamePath = _configService.GetConfigValue(GameFolderKey) ?? string.Empty;
+            _configPath = _configService.GetConfigValue(ConfigFolderKey) ?? string.Empty;
 
-            // Load Steam settings
-            LoadSteamSettings();
-
-            // Se for vazio ou nulo no arquivo de config, assume "stable"
             var channel = _configService.GetConfigValue(UpdateChannelKey);
             _updateChannel = string.IsNullOrWhiteSpace(channel) ? "stable" : channel;
+
+            LoadSettings();
 
             Providers = (providers ?? Array.Empty<IAIProviderClient>())
                 .Select(p => new AiProviderSettingsRow(p))
@@ -128,53 +163,65 @@ namespace RimSharp.AppDir.Dialogs
             CancelCommand = CreateCommand(() => CloseDialog(false));
         }
 
-        /// <summary>
-        /// Load Steam settings from configuration.
-        /// </summary>
-        private void LoadSteamSettings()
+        private void LoadSettings()
         {
-            // Try to detect Steam installation
-            var steamDetected = _steamDetectionService.DetectAndConfigureSteam(_gameInstance);
-            
-            // Override with saved settings if they exist
-            var savedSteamInstallation = _configService.GetConfigValue(SteamInstallationKey);
-            if (!string.IsNullOrEmpty(savedSteamInstallation))
+            // Detect installations
+            SteamCandidate = _gameInstallationDetectionService.DetectSteamInstallation();
+            NonSteamCandidate = _gameInstallationDetectionService.DetectNonSteamInstallation();
+
+            // Check if user already has a saved preference in config
+            var savedDistStr = _configService.GetConfigValue(GameDistributionKey) 
+                            ?? _configService.GetConfigValue(LegacyLauncherKey);
+
+            if (!string.IsNullOrEmpty(savedDistStr))
             {
-                _gameInstance.IsSteamInstallation = bool.Parse(savedSteamInstallation);
+                // After first run, strictly respect what is saved in cfg
+                if (string.Equals(savedDistStr, "Steam", StringComparison.OrdinalIgnoreCase) && SteamAvailable)
+                {
+                    _selectedDistribution = GameDistribution.Steam;
+                }
+                else
+                {
+                    _selectedDistribution = GameDistribution.NonSteam;
+                }
+            }
+            else
+            {
+                // First load (not in cfg yet):
+                // If Steam installation is detected -> auto-pick Steam, else Non-Steam
+                _selectedDistribution = SteamAvailable ? GameDistribution.Steam : GameDistribution.NonSteam;
             }
 
-            var savedWorkshopFolder = _configService.GetConfigValue(SteamWorkshopFolderKey);
-            if (!string.IsNullOrEmpty(savedWorkshopFolder))
-            {
-                _gameInstance.WorkshopFolder = savedWorkshopFolder;
-            }
+            OnPropertyChanged(nameof(SelectedDistribution));
 
-            var savedIntegration = _configService.GetConfigValue(SteamIntegrationKey);
-            if (!string.IsNullOrEmpty(savedIntegration))
-            {
-                _gameInstance.SteamClientIntegration = bool.Parse(savedIntegration);
-            }
+            // Only fill empty path fields on initial load
+            ApplyDistributionPaths(userInitiatedChange: false);
+        }
 
-            var savedProtocol = _configService.GetConfigValue(SteamProtocolKey);
-            if (!string.IsNullOrEmpty(savedProtocol))
+        private void ApplyDistributionPaths(bool userInitiatedChange)
+        {
+            if (SelectedDistribution == GameDistribution.Steam && SteamCandidate != null)
             {
-                _gameInstance.LaunchViaSteamProtocol = bool.Parse(savedProtocol);
+                if (userInitiatedChange || string.IsNullOrEmpty(GamePath))
+                {
+                    GamePath = SteamCandidate.GameFolder;
+                }
+                if (userInitiatedChange || string.IsNullOrEmpty(ConfigPath))
+                {
+                    ConfigPath = SteamCandidate.ConfigFolder;
+                }
             }
-
-            var savedSteamCmdPath = _configService.GetConfigValue(SteamCmdPathKey);
-            if (!string.IsNullOrEmpty(savedSteamCmdPath))
+            else if (SelectedDistribution == GameDistribution.NonSteam && NonSteamCandidate != null)
             {
-                _gameInstance.SteamCmdPath = savedSteamCmdPath;
+                if (userInitiatedChange || string.IsNullOrEmpty(GamePath))
+                {
+                    GamePath = NonSteamCandidate.GameFolder;
+                }
+                if (userInitiatedChange || string.IsNullOrEmpty(ConfigPath))
+                {
+                    ConfigPath = NonSteamCandidate.ConfigFolder;
+                }
             }
-
-            var savedSteamCmdCache = _configService.GetConfigValue(SteamCmdCacheKey);
-            if (!string.IsNullOrEmpty(savedSteamCmdCache))
-            {
-                _gameInstance.SteamCmdAutoClearCache = bool.Parse(savedSteamCmdCache);
-            }
-
-            // Validate and fix any inconsistencies
-            _gameInstance.ValidateAndFix();
         }
 
         private async Task BrowseGamePathAsync() => await BrowseFolderAsync(
@@ -205,14 +252,20 @@ namespace RimSharp.AppDir.Dialogs
             _configService.SetConfigValue(GameFolderKey, GamePath?.Trim() ?? string.Empty);
             _configService.SetConfigValue(ConfigFolderKey, ConfigPath?.Trim() ?? string.Empty);
             _configService.SetConfigValue(UpdateChannelKey, UpdateChannel);
+            _configService.SetConfigValue(GameDistributionKey, SelectedDistribution.ToString());
 
-            // Save Steam settings
-            _configService.SetConfigValue(SteamInstallationKey, _gameInstance.IsSteamInstallation.ToString());
-            _configService.SetConfigValue(SteamWorkshopFolderKey, _gameInstance.WorkshopFolder ?? string.Empty);
-            _configService.SetConfigValue(SteamIntegrationKey, _gameInstance.SteamClientIntegration.ToString());
-            _configService.SetConfigValue(SteamProtocolKey, _gameInstance.LaunchViaSteamProtocol.ToString());
-            _configService.SetConfigValue(SteamCmdPathKey, _gameInstance.SteamCmdPath);
-            _configService.SetConfigValue(SteamCmdCacheKey, _gameInstance.SteamCmdAutoClearCache.ToString());
+            if (SelectedDistribution == GameDistribution.Steam && SteamCandidate != null)
+            {
+                _configService.SetConfigValue(SteamInstallationKey, "true");
+                _configService.SetConfigValue(SteamWorkshopFolderKey, SteamCandidate.WorkshopFolder ?? string.Empty);
+                _configService.SetConfigValue(SteamIntegrationKey, SteamCandidate.HasSteamClientIntegration.ToString());
+            }
+            else
+            {
+                _configService.SetConfigValue(SteamInstallationKey, "false");
+                _configService.SetConfigValue(SteamWorkshopFolderKey, string.Empty);
+                _configService.SetConfigValue(SteamIntegrationKey, "false");
+            }
 
             foreach (var row in Providers)
             {

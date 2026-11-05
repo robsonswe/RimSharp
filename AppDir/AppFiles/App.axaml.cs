@@ -1,6 +1,7 @@
 // App.axaml.cs
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -236,7 +237,14 @@ namespace RimSharp.AppDir.AppFiles
                 return gameInstance;
             });
             services.AddSingleton<IFileDialogService, AvaloniaFileDialogService>();
-            services.AddSingleton<IDialogService, DialogService>();
+            services.AddSingleton<IDialogService>(provider => 
+                new DialogService(
+                    provider.GetRequiredService<IAppUpdaterService>(),
+                    provider.GetRequiredService<IConfigService>(),
+                    provider.GetRequiredService<IEnumerable<IAIProviderClient>>(),
+                    provider.GetRequiredService<IFileDialogService>(),
+                    provider.GetRequiredService<ILoggerService>()
+                ));
             services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
             services.AddSingleton<ISystemInfoService>(provider => SystemInfoServiceFactory.Create());
             services.AddSingleton<IGitService, GitService>();

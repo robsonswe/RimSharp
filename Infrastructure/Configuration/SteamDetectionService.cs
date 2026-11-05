@@ -17,7 +17,50 @@ namespace RimSharp.Infrastructure.Configuration
         private const string SteamAppworkshopAcf = "appworkshop_294100.acf";
 
         /// <summary>
-        /// Detect Steam installation and configure game instance.
+        /// Detect Steam installation and return a candidate.
+        /// </summary>
+        /// <returns>Steam installation candidate or null if not found</returns>
+        public GameInstallationCandidate? DetectSteamInstallation()
+        {
+            try
+            {
+                // Try to find Steam installation
+                var steamRoot = FindSteamRoot();
+                if (steamRoot == null)
+                    return null;
+
+                // Try to find RimWorld in Steam libraries
+                var gameFolder = FindRimWorldInSteam(steamRoot);
+                if (gameFolder == null)
+                    return null;
+
+                // Get workshop folder
+                var workshopFolder = GetWorkshopFolder(gameFolder, steamRoot);
+
+                // Get config folder
+                var configFolder = GetConfigFolder();
+
+                return new GameInstallationCandidate
+                {
+                    Distribution = GameDistribution.Steam,
+                    GameFolder = gameFolder,
+                    ConfigFolder = configFolder ?? string.Empty,
+                    WorkshopFolder = workshopFolder,
+                    HasSteamClientIntegration = !string.IsNullOrEmpty(workshopFolder) && 
+                                                Directory.Exists(workshopFolder) && 
+                                                ValidateWorkshopAcfFile(workshopFolder),
+                    DisplayName = $"Steam - {Path.GetFileName(gameFolder)}",
+                    DetectionSource = "Steam VDF"
+                };
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Detect Steam installation and configure game instance (legacy method).
         /// </summary>
         /// <param name="instance">Game instance to configure</param>
         /// <returns>True if Steam installation was detected, false otherwise</returns>
@@ -178,7 +221,6 @@ namespace RimSharp.Infrastructure.Configuration
             {
                 if (Directory.Exists(candidate))
                 {
-                    // Verify it's a valid Steam installation
                     if (Directory.Exists(Path.Combine(candidate, "steamapps")) ||
                         File.Exists(Path.Combine(candidate, "steamapps", "libraryfolders.vdf")) ||
                         File.Exists(Path.Combine(candidate, "config", "libraryfolders.vdf")))
@@ -206,7 +248,6 @@ namespace RimSharp.Infrastructure.Configuration
             {
                 if (Directory.Exists(candidate))
                 {
-                    // Verify it's a valid Steam installation
                     if (Directory.Exists(Path.Combine(candidate, "steamapps")) ||
                         File.Exists(Path.Combine(candidate, "steamapps", "libraryfolders.vdf")) ||
                         File.Exists(Path.Combine(candidate, "config", "libraryfolders.vdf")))
@@ -226,7 +267,6 @@ namespace RimSharp.Infrastructure.Configuration
         {
             var libraryFolders = ParseLibraryFolders(steamRoot);
 
-            // Check all libraries for RimWorld
             foreach (var library in libraryFolders)
             {
                 var rimWorldPath = Path.Combine(library, "steamapps", "common", "RimWorld");
@@ -235,7 +275,6 @@ namespace RimSharp.Infrastructure.Configuration
                     return rimWorldPath;
                 }
 
-                // Also check for RimWorld in the root of the library
                 var rimWorldInRoot = Path.Combine(library, "RimWorld");
                 if (IsValidRimWorldFolder(rimWorldInRoot))
                 {
@@ -243,7 +282,6 @@ namespace RimSharp.Infrastructure.Configuration
                 }
             }
 
-            // Fallback: check steamRoot common folder
             var defaultCommon = Path.Combine(steamRoot, "steamapps", "common", "RimWorld");
             if (IsValidRimWorldFolder(defaultCommon))
             {
@@ -255,7 +293,6 @@ namespace RimSharp.Infrastructure.Configuration
 
         /// <summary>
         /// Parse Steam libraryfolders.vdf to get all library paths.
-        /// Checks both steamapps/libraryfolders.vdf (modern) and config/libraryfolders.vdf (legacy).
         /// </summary>
         private List<string> ParseLibraryFolders(string steamRoot)
         {
@@ -296,16 +333,12 @@ namespace RimSharp.Infrastructure.Configuration
             }
             catch (Exception)
             {
-                // Continue with whatever libraries we found
+                // Continue with whatever libraries were found
             }
 
             return libraries.ToList();
         }
 
-        /// <summary>
-        /// Get workshop folder path from game folder and Steam root.
-        /// Strips path up to steamapps folder to build steamapps/workshop/content/294100.
-        /// </summary>
         private string GetWorkshopFolder(string gameFolder, string steamRoot)
         {
             if (!string.IsNullOrEmpty(gameFolder))
@@ -322,13 +355,9 @@ namespace RimSharp.Infrastructure.Configuration
                 }
             }
 
-            // Fallback to the main Steam workshop folder
             return Path.Combine(steamRoot, "steamapps", "workshop", "content", RimWorldAppId);
         }
 
-        /// <summary>
-        /// Get config folder path based on platform.
-        /// </summary>
         private string GetConfigFolder()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -344,13 +373,9 @@ namespace RimSharp.Infrastructure.Configuration
                 return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RimWorld", "Config");
             }
 
-            // Fallback
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RimWorld", "Config");
         }
 
-        /// <summary>
-        /// Validate that a directory looks like a RimWorld installation.
-        /// </summary>
         public bool IsValidRimWorldFolder(string folderPath)
         {
             if (!Directory.Exists(folderPath))
@@ -358,7 +383,6 @@ namespace RimSharp.Infrastructure.Configuration
                 return false;
             }
 
-            // Check for Version.txt
             var versionFile = Path.Combine(folderPath, "Version.txt");
             if (File.Exists(versionFile))
             {
@@ -372,31 +396,19 @@ namespace RimSharp.Infrastructure.Configuration
                 }
                 catch (Exception)
                 {
-                    // Continue to other checks
+                    // Continue to next check
                 }
             }
 
-            // Check for Data folder
             var dataFolder = Path.Combine(folderPath, "Data");
-            if (Directory.Exists(dataFolder))
-            {
-                return true;
-            }
-
-            return false;
+            return Directory.Exists(dataFolder);
         }
 
-        /// <summary>
-        /// Check if a path points to a RimWorld Steam Workshop content folder.
-        /// </summary>
         public bool IsRimWorldWorkshopFolder(string path)
         {
             return Path.GetFileName(path) == RimWorldAppId;
         }
 
-        /// <summary>
-        /// Validate that the appworkshop_294100.acf file exists for the Steam Workshop location.
-        /// </summary>
         public bool ValidateWorkshopAcfFile(string workshopLocation)
         {
             try

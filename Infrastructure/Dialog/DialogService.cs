@@ -10,6 +10,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Services.Contracts;
+using RimSharp.Infrastructure.Logging;
 using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
 using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
 using RimSharp.Features.ModManager.Dialogs.ModSelector;
@@ -30,6 +31,7 @@ namespace RimSharp.Infrastructure.Dialog
         private readonly IFileDialogService? _fileDialogService;
         private readonly IConfigService? _configService;
         private readonly IEnumerable<IAIProviderClient>? _aiProviders;
+        private readonly ILoggerService? _logger;
         private int _openDialogCount;
         public bool IsAnyDialogOpen => _openDialogCount > 0;
 
@@ -39,12 +41,14 @@ namespace RimSharp.Infrastructure.Dialog
             IAppUpdaterService appUpdaterService,
             IConfigService? configService = null,
             IEnumerable<IAIProviderClient>? aiProviders = null,
-            IFileDialogService? fileDialogService = null)
+            IFileDialogService? fileDialogService = null,
+            ILoggerService? logger = null)
         {
             _appUpdaterService = appUpdaterService;
             _configService = configService;
             _aiProviders = aiProviders;
             _fileDialogService = fileDialogService;
+            _logger = logger;
         }
 
         private void OnPropertyChanged(string propertyName)
@@ -212,7 +216,7 @@ namespace RimSharp.Infrastructure.Dialog
         public async Task<bool> ShowSettingsDialogAsync(bool showAiProviders = true)
         {
             if (_configService == null) return false;
-            var viewModel = new SettingsDialogViewModel(_configService, _fileDialogService, _aiProviders, showAiProviders);
+            var viewModel = new SettingsDialogViewModel(_configService, _fileDialogService, _logger, _aiProviders, showAiProviders);
             var dialog = new SettingsDialogView(viewModel);
             return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }
