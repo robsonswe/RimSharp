@@ -23,7 +23,7 @@ namespace RimSharp.Services.ModManagement
         /// <param name="modPath">Path to the mod directory</param>
         /// <param name="existingModType">Existing ModType to preserve if no better classification is found</param>
         /// <returns>ModType classification</returns>
-        public ModType ClassifyMod(string modPath, ModType existingModType = ModType.Zipped)
+        public ModType ClassifyMod(string modPath, ModType existingModType = ModType.Untracked)
         {
             if (string.IsNullOrEmpty(modPath) || !Directory.Exists(modPath))
             {
@@ -59,7 +59,7 @@ namespace RimSharp.Services.ModManagement
             // If not in any known location, check if it's a valid RimWorld mod
             if (IsValidRimWorldMod(modPath))
             {
-                return ModType.Zipped; // Default to Zipped for local mods not in known locations
+                return ModType.Untracked; // Default to Untracked for local mods not in known locations
             }
 
             return existingModType; // Return existing type if no better classification found
@@ -117,7 +117,7 @@ namespace RimSharp.Services.ModManagement
                     if (!string.IsNullOrEmpty(publishedFileId) && 
                         new DirectoryInfo(modPath).Name == publishedFileId)
                     {
-                        return ModType.WorkshopL; // Your existing WorkshopL type for SteamCMD mods
+                        return ModType.Tracked; // App-downloaded workshop copy tracked for updates
                     }
                 }
                 catch (Exception)
@@ -174,9 +174,9 @@ namespace RimSharp.Services.ModManagement
                 ModType.Core => "Core Game",
                 ModType.Expansion => "DLC",
                 ModType.Workshop => "Steam Workshop",
-                ModType.WorkshopL => "SteamCMD",
+                ModType.Tracked => "Tracked",
                 ModType.Git => "Git",
-                ModType.Zipped => "Local",
+                ModType.Untracked => "Untracked",
                 _ => "Unknown"
             };
         }

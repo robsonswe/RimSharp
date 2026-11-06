@@ -21,9 +21,9 @@ namespace RimSharp.Tests.Core.Converters.ViewVisibility
         [InlineData(ModType.Core, false)]
         [InlineData(ModType.Expansion, false)]
         [InlineData(ModType.Workshop, true)]
-        [InlineData(ModType.WorkshopL, true)]
+        [InlineData(ModType.Tracked, true)]
         [InlineData(ModType.Git, true)]
-        [InlineData(ModType.Zipped, true)]
+        [InlineData(ModType.Untracked, true)]
         [InlineData(null, true)]
         public void Convert_ShouldReturnCorrectVisibility(object? modType, bool expected)
         {
@@ -53,11 +53,11 @@ namespace RimSharp.Tests.Core.Converters.ViewVisibility
         }
 
         [Theory]
-        [InlineData(ModType.WorkshopL, true)]
+        [InlineData(ModType.Tracked, true)]
         [InlineData(ModType.Workshop, false)]
         [InlineData(ModType.Core, false)]
         [InlineData(null, false)]
-        public void Convert_ShouldReturnTrueOnlyForWorkshopL(object? value, bool expected)
+        public void Convert_ShouldReturnTrueOnlyForTracked(object? value, bool expected)
         {
 
             var result = _converter.Convert(value, typeof(bool), null, CultureInfo.InvariantCulture);
@@ -76,9 +76,9 @@ namespace RimSharp.Tests.Core.Converters.ViewVisibility
         }
 
         [Theory]
-        [InlineData(ModType.WorkshopL, true)]
+        [InlineData(ModType.Tracked, true)]
         [InlineData(ModType.Git, true)]
-        [InlineData(ModType.Zipped, true)]
+        [InlineData(ModType.Untracked, true)]
         [InlineData(ModType.Workshop, false)]
         [InlineData(ModType.Core, false)]
         [InlineData(ModType.Expansion, false)]

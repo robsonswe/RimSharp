@@ -363,7 +363,7 @@ public bool IsParentLoading
             {
                 anyValid = currentSelection.Cast<ModItem>().ToList().Any(mod =>
                     mod != null &&
-                    mod.ModType == ModType.WorkshopL &&
+                    mod.ModType == ModType.Tracked &&
                     !string.IsNullOrEmpty(mod.SteamId) &&
                     long.TryParse(mod.SteamId, out _)
                 );
@@ -383,13 +383,13 @@ public bool IsParentLoading
             var currentSelection = selectedItems ?? SelectedItems;
 
             var modsToProcess = currentSelection?.Cast<ModItem>()
-                .Where(mod => mod != null && mod.ModType == ModType.WorkshopL && !string.IsNullOrEmpty(mod.SteamId) && long.TryParse(mod.SteamId, out _))
+                .Where(mod => mod != null && mod.ModType == ModType.Tracked && !string.IsNullOrEmpty(mod.SteamId) && long.TryParse(mod.SteamId, out _))
                 .Select(mod => mod.SteamId!) // Select only the valid Steam IDs
                 .ToList();
 
             if (modsToProcess == null || !modsToProcess.Any())
             {
-                Debug.WriteLine("[ExecuteRedownloadModsAsync] No valid WorkshopL mods found in the selection after filtering.");
+                Debug.WriteLine("[ExecuteRedownloadModsAsync] No valid Tracked mods found in the selection after filtering.");
                 await _dialogService.ShowInformation("Redownload Mod", "No selected mods are eligible for redownload (must be locally installed Workshop mods).");
                 return;
             }
@@ -545,7 +545,7 @@ private bool CanExecutizeMod(ModItem? mod)
 
         private async Task ExecuteStripModsAsync(CancellationToken ct)
         {
-            var workshopMods = _modListManager.GetAllMods().Where(m => m.ModType == ModType.WorkshopL).ToList();
+            var workshopMods = _modListManager.GetAllMods().Where(m => m.ModType == ModType.Tracked).ToList();
             if (!workshopMods.Any())
             {
                 await _dialogService.ShowInformation("Strip Mods", "No locally installed Workshop mods found to strip.");
@@ -879,7 +879,7 @@ public void RefreshPathValidity()
             if (SelectedItems == null || SelectedItems.Count == 0) return;
 
             var workshopMods = SelectedItems.OfType<ModItem>()
-                .Where(m => m.ModType == ModType.Workshop || m.ModType == ModType.WorkshopL)
+                .Where(m => m.ModType == ModType.Workshop || m.ModType == ModType.Tracked)
                 .ToList();
 
             if (!workshopMods.Any())
@@ -956,7 +956,7 @@ public void RefreshPathValidity()
             if (SelectedItems == null || SelectedItems.Count == 0) return;
 
             var workshopMods = SelectedItems.OfType<ModItem>()
-                .Where(m => m.ModType == ModType.Workshop || m.ModType == ModType.WorkshopL)
+                .Where(m => m.ModType == ModType.Workshop || m.ModType == ModType.Tracked)
                 .ToList();
 
             if (!workshopMods.Any())

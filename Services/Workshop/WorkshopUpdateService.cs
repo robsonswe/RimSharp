@@ -38,7 +38,7 @@ namespace RimSharp.Services.Workshop
             // Filter workshop mods
             var workshopMods = mods.Where(m => !string.IsNullOrEmpty(m.SteamId) && 
                                             long.TryParse(m.SteamId, out _) && 
-                                            (m.ModType == ModType.Workshop || m.ModType == ModType.WorkshopL)).ToList();
+                                            (m.ModType == ModType.Workshop || m.ModType == ModType.Tracked)).ToList();
 
             if (!workshopMods.Any())
             {

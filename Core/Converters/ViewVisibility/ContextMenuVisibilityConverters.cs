@@ -33,7 +33,7 @@ namespace RimSharp.Core.Converters.ViewVisibility
         {
             if (value is ModType modType)
             {
-                return modType == ModType.WorkshopL;
+                return modType == ModType.Tracked;
             }
             return false;
         }
@@ -46,7 +46,7 @@ namespace RimSharp.Core.Converters.ViewVisibility
 
     /// <summary>
 
-    /// WorkshopL, Git, and Zipped mods can be deleted
+    /// Tracked, Git, and Untracked mods can be deleted
     /// </summary>
     public class ModTypeToDeleteVisibilityConverter : IValueConverter
     {
@@ -54,7 +54,7 @@ namespace RimSharp.Core.Converters.ViewVisibility
         {
             if (value is ModType modType)
             {
-                // Hide for Core, Expansion, and Workshop (not WorkshopL)
+                // Hide for Core, Expansion, and Workshop (not Tracked)
                 return modType != ModType.Core && modType != ModType.Expansion && modType != ModType.Workshop;
             }
             return false;

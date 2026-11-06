@@ -10,9 +10,9 @@ namespace RimSharp.Shared.Models
         Core = 0,
         Expansion = 1,
         Workshop = 2,
-        WorkshopL = 3,
+        Tracked = 3,
         Git = 4,
-        Zipped = 5
+        Untracked = 5
     }
 
 

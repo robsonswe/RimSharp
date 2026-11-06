@@ -20,9 +20,9 @@ namespace RimSharp.Tests.Core.Converters.Text
         [InlineData(ModType.Core, "C")]
         [InlineData(ModType.Expansion, "E")]
         [InlineData(ModType.Workshop, "W")]
-        [InlineData(ModType.WorkshopL, "WL")]
+        [InlineData(ModType.Tracked, "T")]
         [InlineData(ModType.Git, "G")]
-        [InlineData(ModType.Zipped, "Z")]
+        [InlineData(ModType.Untracked, "U")]
         [InlineData((ModType)999, "")]
         [InlineData(null, "")]
         public void Convert_ShouldReturnCorrectInitial(object? value, string expected)

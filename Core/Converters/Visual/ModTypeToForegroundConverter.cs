@@ -11,7 +11,7 @@ namespace RimSharp.Core.Converters.Visual
     {
         public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            if (value is ModType type && type == ModType.WorkshopL)
+            if (value is ModType type && type == ModType.Tracked)
             {
                 if (Application.Current?.Resources.TryGetResource("BrushTextBlack", null, out var resource) == true)
                 {

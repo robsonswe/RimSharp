@@ -41,7 +41,7 @@ namespace RimSharp.Tests.Features.GitModManager.ViewModels
             var mods = new List<ModItem>
             {
                 new ModItem { Name = "Git Mod", ModType = ModType.Git },
-                new ModItem { Name = "Workshop Mod", ModType = ModType.WorkshopL }
+                new ModItem { Name = "Workshop Mod", ModType = ModType.Tracked }
             };
             _mockModListManager.GetAllMods().Returns(mods);
 

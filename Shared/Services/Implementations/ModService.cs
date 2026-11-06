@@ -547,7 +547,7 @@ namespace RimSharp.Shared.Services.Implementations
                     mod.ModType = _modClassificationService.ClassifyMod(dir, originalModType);
 
                     // Set SteamId and SteamUrl for workshop and SteamCMD mods
-                    if (mod.ModType == ModType.Workshop || mod.ModType == ModType.WorkshopL)
+                    if (mod.ModType == ModType.Workshop || mod.ModType == ModType.Tracked)
                     {
                         var folderName = Path.GetFileName(dir);
                         if (long.TryParse(folderName, out _))
@@ -661,7 +661,7 @@ namespace RimSharp.Shared.Services.Implementations
                     mod.ModType = _modClassificationService.ClassifyMod(dir, originalModType);
 
                     // Set SteamId and SteamUrl for workshop and SteamCMD mods
-                    if (mod.ModType == ModType.Workshop || mod.ModType == ModType.WorkshopL)
+                    if (mod.ModType == ModType.Workshop || mod.ModType == ModType.Tracked)
                     {
                         var folderName = Path.GetFileName(dir);
                         if (long.TryParse(folderName, out _))
