@@ -4,8 +4,10 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Shared.Models;
 using RimSharp.Infrastructure.Configuration;
 using RimSharp.Shared.Services.Contracts;
@@ -82,7 +84,7 @@ namespace RimSharp.Services.Workshop
                     if (modDetail.Result != 1) // k_EResultOK
                     {
                         result.FailedModIds.Add(mod.SteamId!);
-                        result.ErrorMessages.Add($"Mod '{mod.DisplayName}' ({mod.SteamId}) - Code {modDetail.Result}: {ExplainResult(modDetail.Result)}");
+                        result.ErrorMessages.Add($"Mod '{mod.DisplayName}' ({mod.SteamId}) - Code {modDetail.Result}: {SteamApiResultHelper.GetDescription(modDetail.Result)}");
                         _logger.LogWarning($"API result {modDetail.Result} for mod {mod.SteamId}.", nameof(WorkshopUpdateService));
                         continue;
                     }
@@ -175,16 +177,6 @@ namespace RimSharp.Services.Workshop
             }
 
             return 0;
-        }
-
-        private static string ExplainResult(int resultCode)
-        {
-            return resultCode switch
-            {
-                1 => "Success.",
-                15 => "Workshop item not found (deleted or unlisted).",
-                _ => $"Steam API result code {resultCode}."
-            };
         }
 
         /// <summary>

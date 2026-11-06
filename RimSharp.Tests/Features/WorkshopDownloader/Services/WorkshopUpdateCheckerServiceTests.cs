@@ -39,10 +39,10 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
             {
                 Candidate("123", ModType.Tracked, WorkshopUpdateDecision.UpdateAvailable, "Test Mod", fileSize: 2048)
             });
-            _mockCentralService.CheckForUpdatesAsync(default!, null, default)
+            _mockCentralService.CheckForUpdatesAsync(default!, null, TestContext.Current.CancellationToken)
                 .ReturnsForAnyArgs(Task.FromResult(central));
 
-            var result = await _service.CheckForUpdatesAsync(new[] { NewMod("123", ModType.Tracked) });
+            var result = await _service.CheckForUpdatesAsync(new[] { NewMod("123", ModType.Tracked) }, cancellationToken: TestContext.Current.CancellationToken);
 
             result.ModsChecked.Should().Be(1);
             result.UpdatesFound.Should().Be(1);
@@ -62,10 +62,10 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
             {
                 Candidate("456", ModType.Workshop, WorkshopUpdateDecision.UpdateAvailable, "Client Mod")
             });
-            _mockCentralService.CheckForUpdatesAsync(default!, null, default)
+            _mockCentralService.CheckForUpdatesAsync(default!, null, TestContext.Current.CancellationToken)
                 .ReturnsForAnyArgs(Task.FromResult(central));
 
-            var result = await _service.CheckForUpdatesAsync(new[] { NewMod("456", ModType.Workshop) });
+            var result = await _service.CheckForUpdatesAsync(new[] { NewMod("456", ModType.Workshop) }, cancellationToken: TestContext.Current.CancellationToken);
 
             result.UpdatesFound.Should().Be(0);
             _mockDownloadQueueService.DidNotReceive().AddToQueue(Arg.Any<ModInfoDto>());
@@ -78,10 +78,10 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
             {
                 Candidate("123", ModType.Tracked, WorkshopUpdateDecision.UpToDate)
             });
-            _mockCentralService.CheckForUpdatesAsync(default!, null, default)
+            _mockCentralService.CheckForUpdatesAsync(default!, null, TestContext.Current.CancellationToken)
                 .ReturnsForAnyArgs(Task.FromResult(central));
 
-            var result = await _service.CheckForUpdatesAsync(new[] { NewMod("123", ModType.Tracked) });
+            var result = await _service.CheckForUpdatesAsync(new[] { NewMod("123", ModType.Tracked) }, cancellationToken: TestContext.Current.CancellationToken);
 
             result.UpdatesFound.Should().Be(0);
             _mockDownloadQueueService.DidNotReceive().AddToQueue(Arg.Any<ModInfoDto>());
@@ -93,10 +93,10 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
             var central = CentralResult(candidates: Array.Empty<WorkshopUpdateCandidate>());
             central.FailedModIds.Add("999");
             central.ErrorMessages.Add("No details returned for 'Gone' (999).");
-            _mockCentralService.CheckForUpdatesAsync(default!, null, default)
+            _mockCentralService.CheckForUpdatesAsync(default!, null, TestContext.Current.CancellationToken)
                 .ReturnsForAnyArgs(Task.FromResult(central));
 
-            var result = await _service.CheckForUpdatesAsync(new[] { NewMod("999", ModType.Tracked) });
+            var result = await _service.CheckForUpdatesAsync(new[] { NewMod("999", ModType.Tracked) }, cancellationToken: TestContext.Current.CancellationToken);
 
             result.ErrorsEncountered.Should().Be(1);
             result.ErrorMessages.Should().Contain(m => m.Contains("999"));
@@ -105,7 +105,7 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
         [Fact]
         public async Task CheckForUpdatesAsync_NullMods_ShouldReturnEmptyResultWithoutCentralCall()
         {
-            var result = await _service.CheckForUpdatesAsync(null!, null, default);
+            var result = await _service.CheckForUpdatesAsync(null!, null, TestContext.Current.CancellationToken);
 
             result.ModsChecked.Should().Be(0);
             result.UpdatesFound.Should().Be(0);
@@ -117,7 +117,7 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
         {
             var central = CentralResult(candidates: Array.Empty<WorkshopUpdateCandidate>());
             central.ModsChecked = 1;
-            _mockCentralService.CheckForUpdatesAsync(default!, null, default)
+            _mockCentralService.CheckForUpdatesAsync(default!, null, TestContext.Current.CancellationToken)
                 .ReturnsForAnyArgs(info =>
                 {
                     info.ArgAt<IProgress<(int current, int total, string message)>>(1)
@@ -126,10 +126,13 @@ namespace RimSharp.Tests.Features.WorkshopDownloader.Services
                 });
 
             var reports = new List<(int current, int total, string modName)>();
-            var progress = new Progress<(int current, int total, string modName)>(reports.Add);
+            var progress = new Progress<(int current, int total, string modName)>(r =>
+            {
+                lock (reports) { reports.Add(r); }
+            });
 
-            await _service.CheckForUpdatesAsync(new[] { NewMod("123", ModType.Tracked) }, progress);
-            await Task.Delay(50); // Progress<T> callbacks are async
+            await _service.CheckForUpdatesAsync(new[] { NewMod("123", ModType.Tracked) }, progress, TestContext.Current.CancellationToken);
+            await Task.Delay(50, TestContext.Current.CancellationToken); // Progress<T> callbacks are async
 
             reports.Should().Contain(r =>
                 r.current == 1 && r.total == 1 && r.modName == "Mod 123");

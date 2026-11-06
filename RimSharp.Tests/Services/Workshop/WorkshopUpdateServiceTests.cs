@@ -4,7 +4,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -45,7 +44,7 @@ namespace RimSharp.Tests.Services.Workshop
             var service = CreateService(handler);
             var mod = new ModItem { Name = "T", SteamId = "123", ModType = ModType.Tracked, UpdateDate = LocalDate };
 
-            var result = await service.CheckForUpdatesAsync(new[] { mod });
+            var result = await service.CheckForUpdatesAsync(new[] { mod }, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Status.Should().Be(WorkshopUpdateStatus.Success);
             result.UpdatesAvailable.Should().Be(1);
@@ -69,7 +68,7 @@ namespace RimSharp.Tests.Services.Workshop
                 AcfTimeUpdated = acfTime
             };
 
-            var result = await service.CheckForUpdatesAsync(new[] { mod });
+            var result = await service.CheckForUpdatesAsync(new[] { mod }, cancellationToken: TestContext.Current.CancellationToken);
 
             result.UpdatesAvailable.Should().Be(1);
             result.Updates[0].InternalTime.Should().Be(acfTime);
@@ -84,7 +83,7 @@ namespace RimSharp.Tests.Services.Workshop
             var service = CreateService(handler);
             var mod = new ModItem { Name = "T", SteamId = "123", ModType = ModType.Tracked, UpdateDate = LocalDate };
 
-            var result = await service.CheckForUpdatesAsync(new[] { mod });
+            var result = await service.CheckForUpdatesAsync(new[] { mod }, cancellationToken: TestContext.Current.CancellationToken);
 
             result.UpdatesAvailable.Should().Be(0);
             result.Updates[0].Decision.Should().Be(WorkshopUpdateDecision.UpToDate);
@@ -97,7 +96,7 @@ namespace RimSharp.Tests.Services.Workshop
             var service = CreateService(handler);
             var mod = new ModItem { Name = "T", SteamId = "123", ModType = ModType.Tracked };
 
-            var result = await service.CheckForUpdatesAsync(new[] { mod });
+            var result = await service.CheckForUpdatesAsync(new[] { mod }, cancellationToken: TestContext.Current.CancellationToken);
 
             result.UpdatesAvailable.Should().Be(0); // Initial sync is NOT an "update available"
             result.Updates[0].Decision.Should().Be(WorkshopUpdateDecision.InitialSyncPossible);
@@ -115,7 +114,7 @@ namespace RimSharp.Tests.Services.Workshop
                 AcfTimeUpdated = ExternalFor(localHour: 14)
             };
 
-            var result = await service.CheckForUpdatesAsync(new[] { mod });
+            var result = await service.CheckForUpdatesAsync(new[] { mod }, cancellationToken: TestContext.Current.CancellationToken);
 
             result.UpdatesAvailable.Should().Be(0);
             result.Updates[0].Decision.Should().Be(WorkshopUpdateDecision.UpToDate);
@@ -128,11 +127,11 @@ namespace RimSharp.Tests.Services.Workshop
             var service = CreateService(handler);
             var mod = new ModItem { Name = "T", SteamId = "123", ModType = ModType.Tracked, UpdateDate = LocalDate };
 
-            var result = await service.CheckForUpdatesAsync(new[] { mod });
+            var result = await service.CheckForUpdatesAsync(new[] { mod }, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Status.Should().Be(WorkshopUpdateStatus.Failed);
             result.FailedModIds.Should().Contain("123");
-            result.ErrorMessages.Should().Contain(m => m.Contains("not found"));
+            result.ErrorMessages.Should().Contain(m => m.Contains("Access Denied"));
             result.Updates.Should().BeEmpty();
         }
 
@@ -144,7 +143,7 @@ namespace RimSharp.Tests.Services.Workshop
             var service = CreateService(handler);
             var mod = new ModItem { Name = "T", SteamId = "123", ModType = ModType.Tracked, UpdateDate = LocalDate };
 
-            var result = await service.CheckForUpdatesAsync(new[] { mod });
+            var result = await service.CheckForUpdatesAsync(new[] { mod }, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Status.Should().Be(WorkshopUpdateStatus.Failed);
             result.FailedModIds.Should().Contain("123");
@@ -159,7 +158,7 @@ namespace RimSharp.Tests.Services.Workshop
             var service = CreateService(handler);
             var mod = new ModItem { Name = "T", SteamId = "123", ModType = ModType.Tracked, UpdateDate = LocalDate };
 
-            var result = await service.CheckForUpdatesAsync(new[] { mod });
+            var result = await service.CheckForUpdatesAsync(new[] { mod }, cancellationToken: TestContext.Current.CancellationToken);
 
             result.FailedModIds.Should().Contain("123");
             result.ErrorMessages.Should().Contain(m => m.Contains("105600"));
@@ -173,7 +172,7 @@ namespace RimSharp.Tests.Services.Workshop
             var service = CreateService(handler);
             var localMod = new ModItem { Name = "Untracked", ModType = ModType.Untracked };
 
-            var result = await service.CheckForUpdatesAsync(new[] { localMod });
+            var result = await service.CheckForUpdatesAsync(new[] { localMod }, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Status.Should().Be(WorkshopUpdateStatus.NoWorkshopMods);
             result.ModsChecked.Should().Be(0);
@@ -183,7 +182,6 @@ namespace RimSharp.Tests.Services.Workshop
         [Fact]
         public async Task CheckForUpdatesAsync_ReportsEachModBeingChecked()
         {
-            // Two real detail records so both mods resolve without errors.
             var twoDetailsJson =
                 "{\"response\":{\"result\":1,\"publishedfiledetails\":[" +
                 "{\"publishedfileid\":\"111\",\"result\":1,\"consumer_appid\":294100,\"title\":\"First Mod\",\"time_updated\":1,\"file_size\":1,\"tags\":[]}," +
@@ -191,20 +189,39 @@ namespace RimSharp.Tests.Services.Workshop
             var handler = new StubSteamHandler(twoDetailsJson);
             var service = CreateService(handler);
             var reports = new List<(int current, int total, string modName)>();
-            var progress = new Progress<(int current, int total, string modName)>(reports.Add);
+            
+            // FIX: Using a lock makes List<T>.Add thread-safe so we don't drop items 
+            // when the ThreadPool fires these concurrently.
+            var progress = new Progress<(int current, int total, string modName)>(r => 
+            {
+                lock (reports) { reports.Add(r); }
+            });
+            
             var first = new ModItem { Name = "First Mod", SteamId = "111", ModType = ModType.Tracked };
             var second = new ModItem { Name = "Second Mod", SteamId = "222", ModType = ModType.Tracked };
 
-            var result = await service.CheckForUpdatesAsync(new[] { first, second }, progress);
-            await Task.Delay(50); // Progress<T> callbacks are asynchronous
+            var result = await service.CheckForUpdatesAsync(new[] { first, second }, progress, TestContext.Current.CancellationToken);
+            
+            // FIX: Added a timeout so if it ever fails, it fails the test instead of hanging forever.
+            var timeoutTask = Task.Delay(3000, TestContext.Current.CancellationToken);
+            while (reports.Count < 2 && !timeoutTask.IsCompleted) 
+            { 
+                await Task.Delay(10, TestContext.Current.CancellationToken); 
+            }
 
             result.Status.Should().Be(WorkshopUpdateStatus.Success);
             reports.Should().HaveCount(2);
-            reports[0].current.Should().Be(1);
-            reports[0].total.Should().Be(2);
-            reports[0].modName.Should().Be("First Mod");
-            reports[1].current.Should().Be(2);
-            reports[1].modName.Should().Be("Second Mod");
+
+            // Because Progress<T> dispatches to the ThreadPool without a sync context in tests,
+            // callbacks can arrive out of order. We sort them by 'current' index before asserting.
+            var sortedReports = reports.OrderBy(r => r.current).ToList();
+
+            sortedReports[0].current.Should().Be(1);
+            sortedReports[0].total.Should().Be(2);
+            sortedReports[0].modName.Should().Be("First Mod");
+            
+            sortedReports[1].current.Should().Be(2);
+            sortedReports[1].modName.Should().Be("Second Mod");
         }
 
         // ------------------------------------------------------------------ //
