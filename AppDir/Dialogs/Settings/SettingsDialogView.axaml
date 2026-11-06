@@ -38,10 +38,25 @@
                                     <ComboBoxItem Tag="{x:Static models:GameDistribution.NonSteam}" Content="Non-Steam"/>
                                     <ComboBoxItem Tag="{x:Static models:GameDistribution.Steam}"
                                                 Content="Steam"
-                                                IsEnabled="{Binding SteamAvailable, Mode=OneWay}"
-                                                ToolTip.Tip="No Steam installation of RimWorld detected"
+                                                ToolTip.Tip="Not auto-detected. You can still select Steam, set the Game Directory manually, and it will be validated when you Save."
                                                 ToolTip.ShowOnDisabled="True"/>
                                 </ComboBox>
+
+                                <!-- Manual Steam confirmation mode: no detected candidate -->
+                                <StackPanel Spacing="4" IsVisible="{Binding IsManualSteamClaim}">
+                                    <TextBlock Text="{Binding ManualSteamClaimHint}"
+                                               TextWrapping="Wrap" FontSize="11"
+                                               Foreground="{DynamicResource BrushTextSecondary}"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Content="Check now"
+                                                Command="{Binding ValidateSteamClaimCommand}"
+                                                Classes="btn" Padding="10,4"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding ManualSteamClaimStatus}"
+                                               IsVisible="{Binding ManualSteamClaimStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                               TextWrapping="Wrap" FontSize="11"
+                                               Foreground="{DynamicResource BrushTextStrong}"/>
+                                </StackPanel>
                             </StackPanel>
 
                             <!-- Game Directory -->

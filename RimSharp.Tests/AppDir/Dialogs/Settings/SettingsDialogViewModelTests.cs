@@ -5,6 +5,8 @@ using System.IO;
 using FluentAssertions;
 using NSubstitute;
 using RimSharp.AppDir.Dialogs;
+using RimSharp.Infrastructure.Configuration;
+using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Infrastructure.Logging;
 using Xunit;
@@ -320,6 +322,223 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
             );
 
             viewModel.ResolvedModsPath.Should().Be(@"D:\CustomMods");
+        }
+
+        // ---- Manual Steam confirmation flow (ValidateSteamClaim-backed Save) ----
+
+        [Fact]
+        public void Save_WhenSteamSelectedWithoutCandidateAndClaimInvalid_ShouldAbortWithoutPersisting()
+        {
+            var stubDetection = CreateStubDetectionWithoutCandidates();
+            var mockConfig = Substitute.For<IConfigService>();
+            var mockLogger = Substitute.For<ILoggerService>();
+            var viewModel = new SettingsDialogViewModel(
+                mockConfig,
+                _mockPathService,
+                null,
+                mockLogger,
+                null,
+                stubDetection
+            );
+
+            viewModel.SteamCandidate.Should().BeNull(); // stubbed: no auto-detection
+            viewModel.SelectedDistribution = GameDistribution.Steam;
+            viewModel.GamePath = @"Q:\No_Such_Dir\RimWorld"; // fails every structural check
+
+            viewModel.Save();
+
+            // Refusal must write NOTHING — no in-memory config writes, no SaveConfig
+            mockConfig.DidNotReceive().SaveConfig();
+            mockConfig.DidNotReceive().SetConfigValue("steam_installation", "true");
+            mockLogger.Received(1).LogWarning(
+                Arg.Is<string>(s => s.Contains("rejected") && s.Contains("Q:\\No_Such_Dir\\RimWorld")),
+                Arg.Any<string>());
+        }
+
+        [Fact]
+        public void Save_WhenSteamSelectedWithoutCandidateAndClaimValid_ShouldPersistSteamSettings()
+        {
+            // Build a real, fully-valid Steam layout on disk for the structural check
+            var tempRoot = Path.Combine(Path.GetTempPath(), "RimSharpTests_" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                var gameDir = Path.Combine(tempRoot, "steamapps", "common", "RimWorld");
+                var workshopContent = Path.Combine(tempRoot, "steamapps", "workshop", "content", "294100");
+                Directory.CreateDirectory(gameDir);
+                Directory.CreateDirectory(workshopContent);
+                File.WriteAllText(Path.Combine(gameDir, "RimWorldWin64.exe"), "");
+                File.WriteAllText(Path.Combine(gameDir, "Version.txt"), "1.6.4518 rev1234");
+                File.WriteAllText(Path.Combine(tempRoot, "steamapps", "appmanifest_294100.acf"), "\"294100\"{}");
+                File.WriteAllText(Path.Combine(tempRoot, "steamapps", "workshop", "appworkshop_294100.acf"), "\"appworkshop_294100\"{}");
+
+                var stubDetection = CreateStubDetectionWithoutCandidates();
+                var mockConfig = Substitute.For<IConfigService>();
+                var viewModel = new SettingsDialogViewModel(
+                    mockConfig,
+                    _mockPathService,
+                    null,
+                    _mockLogger,
+                    null,
+                    stubDetection
+                );
+
+                viewModel.SelectedDistribution = GameDistribution.Steam;
+                viewModel.GamePath = gameDir;
+
+                viewModel.Save();
+
+                mockConfig.Received(1).SetConfigValue("steam_installation", "true");
+                mockConfig.Received(1).SetConfigValue("steam_workshop_folder", workshopContent);
+                mockConfig.Received(1).SetConfigValue("steam_integration", "true");
+                mockConfig.Received(1).SaveConfig();
+            }
+            finally
+            {
+                if (Directory.Exists(tempRoot)) Directory.Delete(tempRoot, true);
+            }
+        }
+
+        [Fact]
+        public void Save_WhenSteamSelectedWithoutCandidateAndNoWorkshopContent_ShouldRefuseAndNotPersist()
+        {
+            // Valid Steam layout but zero workshop mods downloaded: there is no content
+            // folder to validate against GameInstance.ValidateAndFix semantics (which
+            // require an existing workshop folder), so the claim is refused — persisting
+            // it would be stripped at next startup anyway. Nothing is written.
+            var tempRoot = Path.Combine(Path.GetTempPath(), "RimSharpTests_" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                var gameDir = Path.Combine(tempRoot, "steamapps", "common", "RimWorld");
+                Directory.CreateDirectory(gameDir);
+                Directory.CreateDirectory(Path.Combine(tempRoot, "steamapps", "workshop"));
+                File.WriteAllText(Path.Combine(gameDir, "RimWorldWin64.exe"), "");
+                File.WriteAllText(Path.Combine(gameDir, "Version.txt"), "1.6.4518 rev1234");
+                File.WriteAllText(Path.Combine(tempRoot, "steamapps", "appmanifest_294100.acf"), "\"AppState\"\n{\n\t\"appid\"\t\t\"294100\"\n\t\"installdir\"\t\t\"RimWorld\"\n}\n");
+                File.WriteAllText(Path.Combine(tempRoot, "steamapps", "workshop", "appworkshop_294100.acf"), "\"appworkshop_294100\"{}");
+
+                var stubDetection = CreateStubDetectionWithoutCandidates();
+                var mockConfig = Substitute.For<IConfigService>();
+                var mockLogger = Substitute.For<ILoggerService>();
+                var viewModel = new SettingsDialogViewModel(
+                    mockConfig,
+                    _mockPathService,
+                    null,
+                    mockLogger,
+                    null,
+                    stubDetection
+                );
+
+                viewModel.SelectedDistribution = GameDistribution.Steam;
+                viewModel.GamePath = gameDir;
+
+                viewModel.Save();
+
+                // Refused claim: nothing persisted, dialog stays open, reason logged
+                mockConfig.DidNotReceive().SaveConfig();
+                mockConfig.DidNotReceive().SetConfigValue("steam_installation", "true");
+                mockLogger.Received(1).LogWarning(
+                    Arg.Is<string>(s => s.Contains("rejected")),
+                    Arg.Any<string>());
+            }
+            finally
+            {
+                if (Directory.Exists(tempRoot)) Directory.Delete(tempRoot, true);
+            }
+        }
+
+        private static GameInstallationDetectionService CreateStubDetectionWithoutCandidates()
+        {
+            var stub = Substitute.ForPartsOf<GameInstallationDetectionService>();
+            stub.DetectSteamInstallation().Returns((GameInstallationCandidate?)null);
+            stub.DetectNonSteamInstallation().Returns((GameInstallationCandidate?)null);
+            return stub;
+        }
+
+        // ---- Manual Steam confirmation UX (mode flag, hint, Check-now command) ----
+
+        [Fact]
+        public void IsManualSteamClaim_ShouldBeFalse_WithNonSteamSelected()
+        {
+            var viewModel = new SettingsDialogViewModel(
+                _mockConfigService, _mockPathService, null, _mockLogger, null,
+                CreateStubDetectionWithoutCandidates());
+
+            viewModel.IsManualSteamClaim.Should().BeFalse();
+            viewModel.ManualSteamClaimHint.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void IsManualSteamClaim_ShouldBeTrue_WhenSteamSelectedWithoutCandidate()
+        {
+            var viewModel = new SettingsDialogViewModel(
+                _mockConfigService, _mockPathService, null, _mockLogger, null,
+                CreateStubDetectionWithoutCandidates());
+
+            viewModel.SelectedDistribution = GameDistribution.Steam;
+
+            viewModel.IsManualSteamClaim.Should().BeTrue();
+            viewModel.ManualSteamClaimHint.Should().Contain("not auto-detected");
+        }
+
+        [Fact]
+        public void ValidateSteamClaimCommand_WhenNotPending_ShouldLeaveStatusEmpty()
+        {
+            var viewModel = new SettingsDialogViewModel(
+                _mockConfigService, _mockPathService, null, _mockLogger, null,
+                CreateStubDetectionWithoutCandidates());
+
+            viewModel.ValidateSteamClaimCommand.Execute(null);
+
+            viewModel.ManualSteamClaimStatus.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void ValidateSteamClaimCommand_WhenClaimInvalid_ShouldShowFailureStatus()
+        {
+            var viewModel = new SettingsDialogViewModel(
+                _mockConfigService, _mockPathService, null, _mockLogger, null,
+                CreateStubDetectionWithoutCandidates());
+            viewModel.SelectedDistribution = GameDistribution.Steam;
+            viewModel.GamePath = @"Q:\No_Such_Dir\RimWorld";
+
+            viewModel.ValidateSteamClaimCommand.Execute(null);
+
+            viewModel.ManualSteamClaimStatus.Should().NotBeEmpty();
+            viewModel.ManualSteamClaimStatus.Should().Contain("does not exist");
+        }
+
+        [Fact]
+        public void ValidateSteamClaimCommand_WhenClaimValid_ShouldShowSuccessStatus()
+        {
+            var tempRoot = Path.Combine(Path.GetTempPath(), "RimSharpTests_" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                var gameDir = Path.Combine(tempRoot, "steamapps", "common", "RimWorld");
+                var workshopContent = Path.Combine(tempRoot, "steamapps", "workshop", "content", "294100");
+                Directory.CreateDirectory(gameDir);
+                Directory.CreateDirectory(workshopContent);
+                File.WriteAllText(Path.Combine(gameDir, "RimWorldWin64.exe"), "");
+                File.WriteAllText(Path.Combine(gameDir, "Version.txt"), "1.6.4518 rev1234");
+                File.WriteAllText(Path.Combine(tempRoot, "steamapps", "appmanifest_294100.acf"),
+                    "\"AppState\"\n{\n\t\"appid\"\t\t\"294100\"\n\t\"installdir\"\t\t\"RimWorld\"\n}\n");
+                File.WriteAllText(Path.Combine(tempRoot, "steamapps", "workshop", "appworkshop_294100.acf"),
+                    "\"appworkshop_294100\"{}");
+
+                var viewModel = new SettingsDialogViewModel(
+                    _mockConfigService, _mockPathService, null, _mockLogger, null,
+                    CreateStubDetectionWithoutCandidates());
+                viewModel.SelectedDistribution = GameDistribution.Steam;
+                viewModel.GamePath = gameDir;
+
+                viewModel.ValidateSteamClaimCommand.Execute(null);
+
+                viewModel.ManualSteamClaimStatus.Should().Contain("✓");
+                viewModel.ManualSteamClaimStatus.Should().Contain(workshopContent);
+            }
+            finally
+            {
+                if (Directory.Exists(tempRoot)) Directory.Delete(tempRoot, true);
+            }
         }
     }
 }

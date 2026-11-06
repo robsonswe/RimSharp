@@ -72,6 +72,7 @@ namespace RimSharp.AppDir.Dialogs
         private readonly IPathService _pathService;
         private readonly IFileDialogService? _fileDialogService;
         private readonly GameInstallationDetectionService _gameInstallationDetectionService;
+        private readonly IDialogService? _dialogService;
         private readonly ILoggerService _logger;
 
         private string _gamePath = string.Empty;
@@ -156,16 +157,39 @@ namespace RimSharp.AppDir.Dialogs
         public string UpdateChannel { get => _updateChannel; set => SetProperty(ref _updateChannel, value); }
 
         private GameDistribution _selectedDistribution = GameDistribution.NonSteam;
-        public GameDistribution SelectedDistribution 
-        { 
-            get => _selectedDistribution; 
-            set 
-            { 
+        public GameDistribution SelectedDistribution
+        {
+            get => _selectedDistribution;
+            set
+            {
                 if (SetProperty(ref _selectedDistribution, value))
                 {
+                    OnPropertyChanged(nameof(IsManualSteamClaim));
+                    OnPropertyChanged(nameof(ManualSteamClaimHint));
                     ApplyDistributionPaths(userInitiatedChange: true);
                 }
-            } 
+            }
+        }
+
+        /// <summary>
+        /// True when Steam is selected but no Steam candidate was auto-detected — the
+        /// user is in "manual Steam confirmation" mode: paths are kept/edited by hand
+        /// and the claim is validated on Save (or on demand, see
+        /// ValidateSteamClaimCommand). Nothing silently re-points the paths.
+        /// </summary>
+        public bool IsManualSteamClaim =>
+            SelectedDistribution == GameDistribution.Steam && SteamCandidate == null;
+
+        public string ManualSteamClaimHint => IsManualSteamClaim
+            ? "Steam was not auto-detected. Keep or set the Game Directory manually — it will be validated against Steam when you Save."
+            : string.Empty;
+
+        private string _manualSteamClaimStatus = string.Empty;
+        /// <summary>Result line shown after a manual claim check (empty until one runs).</summary>
+        public string ManualSteamClaimStatus
+        {
+            get => _manualSteamClaimStatus;
+            private set => SetProperty(ref _manualSteamClaimStatus, value);
         }
 
         private GameInstallationCandidate? _steamCandidate;
@@ -175,7 +199,11 @@ namespace RimSharp.AppDir.Dialogs
             private set
             {
                 if (SetProperty(ref _steamCandidate, value))
+                {
                     OnPropertyChanged(nameof(SteamAvailable));
+                    OnPropertyChanged(nameof(IsManualSteamClaim));
+                    OnPropertyChanged(nameof(ManualSteamClaimHint));
+                }
             }
         }
 
@@ -199,6 +227,7 @@ namespace RimSharp.AppDir.Dialogs
         public ICommand OpenGameFolderCommand { get; }
         public ICommand OpenConfigFolderCommand { get; }
         public ICommand OpenModsFolderCommand { get; }
+        public ICommand ValidateSteamClaimCommand { get; }
         public ICommand SaveCommand { get; }
         public ICommand CancelCommand { get; }
 
@@ -211,6 +240,8 @@ namespace RimSharp.AppDir.Dialogs
             IFileDialogService? fileDialogService,
             ILoggerService logger,
             IEnumerable<IAIProviderClient>? providers,
+            GameInstallationDetectionService? gameInstallationDetectionService = null,
+            IDialogService? dialogService = null,
             bool showAiProviders = true)
         : base("RimSharp Settings")
         {
@@ -218,7 +249,8 @@ namespace RimSharp.AppDir.Dialogs
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
             _fileDialogService = fileDialogService;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _gameInstallationDetectionService = new GameInstallationDetectionService();
+            _dialogService = dialogService;
+            _gameInstallationDetectionService = gameInstallationDetectionService ?? new GameInstallationDetectionService();
             ShowAiProviders = showAiProviders;
 
             _gamePath = _configService.GetConfigValue(GameFolderKey) ?? string.Empty;
@@ -240,6 +272,7 @@ namespace RimSharp.AppDir.Dialogs
             OpenGameFolderCommand = CreateCommand(() => OpenFolder(GamePath));
             OpenConfigFolderCommand = CreateCommand(() => OpenFolder(ConfigPath));
             OpenModsFolderCommand = CreateCommand(() => OpenFolder(ModsFolderPath));
+            ValidateSteamClaimCommand = CreateCommand(ValidateSteamClaimNow);
             SaveCommand = CreateCommand(Save);
             CancelCommand = CreateCommand(() => CloseDialog(false));
         }
@@ -335,8 +368,86 @@ namespace RimSharp.AppDir.Dialogs
             RimSharp.Core.Services.SystemLauncher.OpenInFileManager(path);
         }
 
+        /// <summary>
+        /// "Check now" for manual Steam confirmation mode: validates the claimed Game
+        /// Directory on demand and surfaces the result inline (status line) plus a
+        /// message dialog. Same validation Save() will run — lets the user verify
+        /// before committing anything.
+        /// </summary>
+        private void ValidateSteamClaimNow()
+        {
+            if (!IsManualSteamClaim) return;
+
+            var claim = _gameInstallationDetectionService.ValidateSteamClaim(GamePath);
+            if (claim.IsValid)
+            {
+                ManualSteamClaimStatus =
+                    "✓ The Game Directory validates as a Steam-managed RimWorld installation." +
+                    (claim.WorkshopFolder != null ? $" Workshop folder: {claim.WorkshopFolder}" : "");
+                _logger.LogInfo(
+                    $"Manual Steam claim validated for '{GamePath}'. Workshop folder: {claim.WorkshopFolder ?? "(auto-detect)"}",
+                    nameof(SettingsDialogViewModel));
+
+                if (_dialogService != null)
+                {
+                    _ = _dialogService.ShowInformation(
+                        "Steam confirmed",
+                        $"The Game Directory validates as a Steam-managed RimWorld installation.\n\n" +
+                        (claim.WorkshopFolder != null
+                            ? $"Workshop folder: {claim.WorkshopFolder}"
+                            : "The workshop folder will be auto-detected."));
+                }
+            }
+            else
+            {
+                ManualSteamClaimStatus = claim.FailureReason;
+                LogAndShowSteamClaimRefusal(claim.FailureReason);
+            }
+        }
+
+        private void LogAndShowSteamClaimRefusal(string failureReason)
+        {
+            _logger.LogWarning(
+                $"Manual Steam claim rejected for '{GamePath}': {failureReason}",
+                nameof(SettingsDialogViewModel));
+
+            if (_dialogService != null)
+            {
+                // Fire-and-forget: the error surface is a separate message dialog owned
+                // by the main window; the settings dialog stays open for corrections.
+                _ = _dialogService.ShowError(
+                    "Steam confirmation failed",
+                    $"{failureReason}\n\n" +
+                    "Fix the Game Directory above, or choose \"Non-Steam\" in Game Distribution.");
+            }
+        }
+
         internal void Save()
         {
+            // Manual Steam confirmation (handoff §6 Phase 0): a Steam selection without a
+            // detected candidate is only a claim until ValidateSteamClaim passes. Validate
+            // up-front so a refusal writes NOTHING (not even the path updates below) —
+            // the in-memory config stays exactly as it was when the dialog opened.
+            string? manualSteamWorkshop = null;
+            if (SelectedDistribution == GameDistribution.Steam && SteamCandidate == null)
+            {
+                var claim = _gameInstallationDetectionService.ValidateSteamClaim(GamePath);
+                if (!claim.IsValid)
+                {
+                    LogAndShowSteamClaimRefusal(claim.FailureReason);
+                    return; // Refuse to persist anything
+                }
+
+                // Claim validated: use the resolved workshop folder only when it actually
+                // exists on disk; otherwise persist auto-detect semantics (empty value
+                // re-resolves on every launch).
+                manualSteamWorkshop = claim.WorkshopFolder;
+                _logger.LogInfo(
+                    $"Manual Steam claim validated for '{GamePath}'. " +
+                    $"Workshop folder: {claim.WorkshopFolder ?? "(auto-detect)"}",
+                    nameof(SettingsDialogViewModel));
+            }
+
             _configService.SetConfigValue(GameFolderKey, GamePath?.Trim() ?? string.Empty);
             _configService.SetConfigValue(ConfigFolderKey, ConfigPath?.Trim() ?? string.Empty);
             _configService.SetConfigValue(UpdateChannelKey, UpdateChannel);
@@ -383,11 +494,22 @@ namespace RimSharp.AppDir.Dialogs
                 _configService.SetConfigValue(ModsFolderKey, string.Empty);
             }
 
-            if (SelectedDistribution == GameDistribution.Steam && SteamCandidate != null)
+            if (SelectedDistribution == GameDistribution.Steam)
             {
-                _configService.SetConfigValue(SteamInstallationKey, "true");
-                _configService.SetConfigValue(SteamWorkshopFolderKey, SteamCandidate.WorkshopFolder ?? string.Empty);
-                _configService.SetConfigValue(SteamIntegrationKey, SteamCandidate.HasSteamClientIntegration.ToString());
+                if (SteamCandidate != null)
+                {
+                    // Auto-detected Steam install: trust ladder rung 1 + 2 already satisfied.
+                    _configService.SetConfigValue(SteamInstallationKey, "true");
+                    _configService.SetConfigValue(SteamWorkshopFolderKey, SteamCandidate.WorkshopFolder ?? string.Empty);
+                    _configService.SetConfigValue(SteamIntegrationKey, SteamCandidate.HasSteamClientIntegration.ToString());
+                }
+                else
+                {
+                    // Manual claim already validated up-front (see top of Save).
+                    _configService.SetConfigValue(SteamInstallationKey, "true");
+                    _configService.SetConfigValue(SteamWorkshopFolderKey, manualSteamWorkshop ?? string.Empty);
+                    _configService.SetConfigValue(SteamIntegrationKey, "true");
+                }
             }
             else
             {

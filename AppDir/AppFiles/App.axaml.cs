@@ -203,11 +203,11 @@ namespace RimSharp.AppDir.AppFiles
                     gameInstance.IsSteamInstallation = isSteam;
                 }
 
+                // Workshop override resolves through the detection service (single writer
+                // of GameInstance.WorkshopFolder): empty = keep the detected folder; set =
+                // use if ACF-valid, else warn + fall back to detection; never clears config.
                 var savedWorkshopFolder = configService.GetConfigValue("steam_workshop_folder");
-                if (!string.IsNullOrEmpty(savedWorkshopFolder))
-                {
-                    gameInstance.WorkshopFolder = savedWorkshopFolder;
-                }
+                steamDetectionService.ApplyWorkshopFolderOverride(gameInstance, savedWorkshopFolder);
 
                 var savedIntegration = configService.GetConfigValue("steam_integration");
                 if (!string.IsNullOrEmpty(savedIntegration) && bool.TryParse(savedIntegration, out var integration))

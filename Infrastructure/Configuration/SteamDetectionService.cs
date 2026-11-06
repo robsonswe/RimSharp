@@ -18,16 +18,21 @@ namespace RimSharp.Infrastructure.Configuration
         private const string SteamAppworkshopAcf = "appworkshop_294100.acf";
 
         private readonly IPathService? _pathService;
+        private readonly ILoggerService? _logger;
 
         /// <summary>
         /// IPathService is used for the single-writer rule on GameInstance.LocalFolder
         /// (handoff doc §6 Phase 0): local-folder writes derive via IPathService.GetModsPathFor
         /// instead of a local Path.Combine. Optional so existing parameterless ctor callers
         /// keep working; the fallback keeps the pre-centralization behavior verbatim.
+        /// ILoggerService is used for fail-open warnings on invalid overrides; optional for
+        /// the same reason.
+        /// This service is the single writer of GameInstance.WorkshopFolder (handoff §2.3).
         /// </summary>
-        public SteamDetectionService(IPathService? pathService = null)
+        public SteamDetectionService(IPathService? pathService = null, ILoggerService? logger = null)
         {
             _pathService = pathService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -118,6 +123,54 @@ namespace RimSharp.Infrastructure.Configuration
             instance.ValidateAndFix();
 
             return instance.IsSteamInstallation;
+        }
+
+        /// <summary>
+        /// Applies the persisted steam_workshop_folder override to the instance
+        /// (handoff §2.3, fail-open policy — the detection service is the single
+        /// writer of GameInstance.WorkshopFolder):
+        ///   - empty/missing override ("auto mode"): keep the detected folder —
+        ///     it is re-detected on every launch;
+        ///   - set + valid (directory exists and appworkshop_294100.acf validates):
+        ///     use the override;
+        ///   - set + invalid: warn and fall back to the detected folder. The config
+        ///     value is never cleared or deleted — user intent is preserved.
+        /// GameInstance.ValidateAndFix() still runs afterwards as the consistency
+        /// gate (it governs the Steam-claim state, not this slot).
+        /// </summary>
+        public void ApplyWorkshopFolderOverride(GameInstance instance, string? workshopOverride)
+        {
+            if (instance == null) throw new ArgumentNullException(nameof(instance));
+
+            // Empty = auto mode: no override, detection result stands (re-detected
+            // every launch). Nothing to log — this is the normal case.
+            if (string.IsNullOrWhiteSpace(workshopOverride))
+            {
+                return;
+            }
+
+            var overrideValid = Directory.Exists(workshopOverride) && ValidateWorkshopAcfFile(workshopOverride);
+            if (overrideValid)
+            {
+                instance.WorkshopFolder = workshopOverride;
+                _logger?.LogInfo(
+                    $"Workshop folder override '{workshopOverride}' is valid (ACF file found). Using it.",
+                    nameof(SteamDetectionService));
+            }
+            else
+            {
+                // Fail-open: keep the stored override in config; bypass it at runtime
+                // and fall back to whatever detection resolved.
+                var reason = Directory.Exists(workshopOverride)
+                    ? "no appworkshop_294100.acf file found"
+                    : "directory does not exist";
+                var detected = instance.WorkshopFolder ?? string.Empty;
+                _logger?.LogWarning(
+                    $"Workshop folder override '{workshopOverride}' is invalid ({reason}). " +
+                    $"Falling back to detected folder{(!string.IsNullOrEmpty(detected) ? $": {detected}" : " (none)")}. " +
+                    "The saved override is kept in configuration.",
+                    nameof(SteamDetectionService));
+            }
         }
 
         /// <summary>
