@@ -123,6 +123,16 @@ namespace RimSharp.Shared.Models
         public string UpdateDate { get; set; } = string.Empty;
         public DateTime? LastUpdated { get; set; }
 
+        /// <summary>
+        /// The Steam ACF manifest time for this workshop item (unix seconds) — the
+        /// Steam client's own record of when the item's content was last updated
+        /// locally (appworkshop_294100.acf). Populated during scan by the ACF
+        /// timestamp service, keyed by SteamId; null when no Steam record exists
+        /// (vanilla content, non-Steam mods, or an undecipherable manifest).
+        /// Update-check "internal time" = max(ACF, timestamp.txt-derived UpdateDate).
+        /// </summary>
+        public long? AcfTimeUpdated { get; set; }
+
         public string Tags { get; set; } = string.Empty;
 
         public string LocalUpdateDate => UpdateDate ?? "N/A";

@@ -338,7 +338,8 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IModCustomService>(),
                     provider.GetRequiredService<IMlieVersionService>(),
                     provider.GetRequiredService<ILoggerService>(),
-                    provider.GetRequiredService<GameInstance>()
+                    provider.GetRequiredService<GameInstance>(),
+                    provider.GetRequiredService<IWorkshopAcfTimestampService>()
                 ));
             services.AddSingleton<IModListManager>(provider => 
             {
@@ -371,6 +372,10 @@ namespace RimSharp.AppDir.AppFiles
             services.AddSingleton<SteamWorkshopApiClient>(provider =>
                 new SteamWorkshopApiClient(provider.GetRequiredService<IHttpClientFactory>().CreateClient()));
             services.AddSingleton<IAcfFileParser, AcfFileParser>();
+            services.AddSingleton<IWorkshopAcfTimestampService>(
+                provider => new WorkshopAcfTimestampService(
+                    provider.GetRequiredService<IAcfFileParser>(),
+                    provider.GetRequiredService<ILoggerService>()));
             services.AddSingleton<ISteamSubscriptionService, SteamSubscriptionService>();
             services.AddSingleton<IWorkshopUpdateService, WorkshopUpdateService>(); 
 

@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using RimSharp.Shared.Services.Contracts;
+using RimSharp.Services.Workshop;
 using RimSharp.Shared.Models;
 using RimSharp.Infrastructure.Mods.IO;
 using RimSharp.Infrastructure.Configuration;
@@ -51,6 +52,12 @@ namespace RimSharp.Shared.Services.Implementations
         private readonly IMlieVersionService _mlieVersionService;
         private readonly ILoggerService _logger;
 
+        /// <summary>
+        /// Applies ACF-manifest timestamps (WorkshopItemsInstalled/Details) onto the
+        /// scanned mods. Null in tests that construct ModService by hand.
+        /// </summary>
+        private readonly IWorkshopAcfTimestampService? _acfTimestampService;
+
         // Mirrors the game's actual texture allow-list (Verse.ModContentLoader.AcceptableExtensionsTexture):
         // .png/.jpg/.jpeg/.psd + .dds (added in 1.6.4566). TGA/BMP/GIF/PSB are silently
         // ignored by the game's loader, so they must not count as loadable textures.
@@ -64,13 +71,14 @@ namespace RimSharp.Shared.Services.Implementations
             "Source", ".git", ".github", ".vs", ".vscode", "bin", "obj", "Properties"
         };
 
-        public ModService(IPathService pathService, IModRulesService rulesService, IModCustomService customService, IMlieVersionService mlieVersionService, ILoggerService logger, GameInstance? gameInstance = null)
+        public ModService(IPathService pathService, IModRulesService rulesService, IModCustomService customService, IMlieVersionService mlieVersionService, ILoggerService logger, GameInstance? gameInstance = null, IWorkshopAcfTimestampService? acfTimestampService = null)
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
             _rulesService = rulesService ?? throw new ArgumentNullException(nameof(rulesService));
             _customService = customService ?? throw new ArgumentNullException(nameof(customService));
             _mlieVersionService = mlieVersionService ?? throw new ArgumentNullException(nameof(mlieVersionService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _acfTimestampService = acfTimestampService;
             
             // Initialize Steam detection and mod classification
             _steamDetectionService = new SteamDetectionService(_pathService);
@@ -169,6 +177,8 @@ namespace RimSharp.Shared.Services.Implementations
             EnsureCoreModPresent(gamePath);
             _logger.LogDebug("Loading workshop/local mods...", nameof(ModService));
             LoadWorkshopMods(modsPath);
+
+            ApplyAcfTimestamps();
 
             _logger.LogDebug("Retrieving Mlie version data...", nameof(ModService));
             var mlieVersions = _mlieVersionService.GetMlieVersions();
@@ -347,6 +357,8 @@ namespace RimSharp.Shared.Services.Implementations
             EnsureCoreModPresent(gamePath);
             _logger.LogDebug($"Initial parsing complete. Found {_allMods.Count} mods.", nameof(ModService));
 
+            ApplyAcfTimestamps();
+
             _logger.LogDebug("Retrieving Mlie version data...", nameof(ModService));
             progress?.Report((75, 100, "Retrieving compatibility data (Mlie)..."));
             var mlieVersions = _mlieVersionService.GetMlieVersions();
@@ -376,6 +388,31 @@ namespace RimSharp.Shared.Services.Implementations
 
             progress?.Report((100, 100, "Mod loading complete."));
             _logger.LogInfo($"Asynchronous mod loading complete. Loaded {_allMods.Count} mods.", nameof(ModService));
+        }
+
+        /// <summary>
+        /// Applies locally-recorded Workshop timestamps (appworkshop_294100.acf) onto
+        /// the freshly scanned mod list, keyed by SteamId. No-op when no timestamp
+        /// service was injected (hand-built ModService instances in tests) or when
+        /// there is no workshop folder resolvable from the game instance.
+        /// </summary>
+        private void ApplyAcfTimestamps()
+        {
+            if (_acfTimestampService == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _acfTimestampService.ApplyToMods(_allMods, _gameInstance.WorkshopFolder);
+            }
+            catch (Exception ex)
+            {
+                // ACF data is auxiliary — a failure here only loses the
+                // manifest-sourced timestamp, never the scan itself.
+                _logger.LogWarning($"Could not apply ACF timestamps: {ex.Message}", nameof(ModService));
+            }
         }
 
         /// <summary>
