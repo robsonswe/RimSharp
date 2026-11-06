@@ -30,6 +30,7 @@ namespace RimSharp.Infrastructure.Dialog
         private readonly IAppUpdaterService? _appUpdaterService;
         private readonly IFileDialogService? _fileDialogService;
         private readonly IConfigService? _configService;
+        private readonly IPathService? _pathService;
         private readonly IEnumerable<IAIProviderClient>? _aiProviders;
         private readonly ILoggerService? _logger;
         private int _openDialogCount;
@@ -40,12 +41,14 @@ namespace RimSharp.Infrastructure.Dialog
         public DialogService(
             IAppUpdaterService appUpdaterService,
             IConfigService? configService = null,
+            IPathService? pathService = null,
             IEnumerable<IAIProviderClient>? aiProviders = null,
             IFileDialogService? fileDialogService = null,
             ILoggerService? logger = null)
         {
             _appUpdaterService = appUpdaterService;
             _configService = configService;
+            _pathService = pathService;
             _aiProviders = aiProviders;
             _fileDialogService = fileDialogService;
             _logger = logger;
@@ -219,7 +222,7 @@ namespace RimSharp.Infrastructure.Dialog
             // _logger is intentionally optional in DialogService (ctor param may be null);
             // SettingsDialogViewModel only consumes it opportunistically, so the null-forgiving
             // operator documents that a missing logger is an accepted state, not an error.
-            var viewModel = new SettingsDialogViewModel(_configService, _fileDialogService, _logger!, _aiProviders, showAiProviders);
+            var viewModel = new SettingsDialogViewModel(_configService, _pathService!, _fileDialogService, _logger!, _aiProviders, showAiProviders);
             var dialog = new SettingsDialogView(viewModel);
             return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }

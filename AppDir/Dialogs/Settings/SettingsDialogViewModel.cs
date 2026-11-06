@@ -66,17 +66,91 @@ namespace RimSharp.AppDir.Dialogs
         private const string SteamInstallationKey = "steam_installation";
         private const string SteamWorkshopFolderKey = "steam_workshop_folder";
         private const string SteamIntegrationKey = "steam_integration";
+        private const string ModsFolderKey = "mods_folder";
 
         private readonly IConfigService _configService;
+        private readonly IPathService _pathService;
         private readonly IFileDialogService? _fileDialogService;
         private readonly GameInstallationDetectionService _gameInstallationDetectionService;
         private readonly ILoggerService _logger;
 
         private string _gamePath = string.Empty;
-        public string GamePath { get => _gamePath; set => SetProperty(ref _gamePath, value); }
+        public string GamePath { get => _gamePath; set
+        {
+            if (SetProperty(ref _gamePath, value))
+            {
+                // Notify dependent computed properties so IsEnabled bindings re-evaluate
+                OnPropertyChanged(nameof(IsGamePathSet));
+                OnPropertyChanged(nameof(IsModsFolderEnabled));
+
+                // When auto-synced (backing empty), the displayed value derives from the
+                // game path — refresh the binding so it re-derives for the new path.
+                if (string.IsNullOrWhiteSpace(_modsFolderPath))
+                {
+                    OnPropertyChanged(nameof(ModsFolderPath));
+                }
+            }
+        }}
 
         private string _configPath = string.Empty;
         public string ConfigPath { get => _configPath; set => SetProperty(ref _configPath, value); }
+
+        // Auto-sync model (handoff §2.3): an EMPTY backing field means "no override —
+        // derive <game>\Mods", mirroring the runtime PathService semantics. The UI shows
+        // the derived path so the user can see what resolves; anything the user types
+        // other than the derived path becomes a persisted override. If the user sets the
+        // field back to exactly <game>\Mods, the backing clears and we return to auto-sync.
+        private string _modsFolderPath = string.Empty;
+        public string ModsFolderPath
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(_modsFolderPath) && !string.IsNullOrWhiteSpace(_gamePath))
+                {
+                    try
+                    {
+                        return Path.Combine(_gamePath, "Mods");
+                    }
+                    catch
+                    {
+                        return string.Empty; // Malformed game path — show nothing rather than throw
+                    }
+                }
+                return _modsFolderPath;
+            }
+            set
+            {
+                if (SetProperty(ref _modsFolderPath, value))
+                {
+                    // Reverting to the derived path = returning to auto-sync: store the
+                    // canonical "empty" (auto) state so runtime keeps deriving.
+                    if (!string.IsNullOrWhiteSpace(_modsFolderPath) && !string.IsNullOrWhiteSpace(GamePath))
+                    {
+                        try
+                        {
+                            if (_modsFolderPath.Equals(Path.Combine(_gamePath, "Mods"), StringComparison.OrdinalIgnoreCase))
+                            {
+                                _modsFolderPath = string.Empty;
+                                OnPropertyChanged(nameof(ModsFolderPath)); // getter now shows derived
+                            }
+                        }
+                        catch
+                        {
+                            // Malformed game path — leave the typed value as a manual override
+                        }
+                    }
+                }
+            }
+        }
+
+        private string _resolvedModsPath = string.Empty;
+        public string ResolvedModsPath => _pathService.GetGamePath() != string.Empty
+            ? _pathService.GetModsPath()
+            : "No game path set";
+
+        public bool IsGamePathSet => !string.IsNullOrWhiteSpace(GamePath);
+
+        public bool IsModsFolderEnabled => IsGamePathSet;
 
         private string _updateChannel = "stable";
         public string UpdateChannel { get => _updateChannel; set => SetProperty(ref _updateChannel, value); }
@@ -121,8 +195,10 @@ namespace RimSharp.AppDir.Dialogs
 
         public ICommand BrowseGamePathCommand { get; }
         public ICommand BrowseConfigPathCommand { get; }
+        public ICommand BrowseModsFolderCommand { get; }
         public ICommand OpenGameFolderCommand { get; }
         public ICommand OpenConfigFolderCommand { get; }
+        public ICommand OpenModsFolderCommand { get; }
         public ICommand SaveCommand { get; }
         public ICommand CancelCommand { get; }
 
@@ -131,6 +207,7 @@ namespace RimSharp.AppDir.Dialogs
 
         public SettingsDialogViewModel(
             IConfigService configService,
+            IPathService pathService,
             IFileDialogService? fileDialogService,
             ILoggerService logger,
             IEnumerable<IAIProviderClient>? providers,
@@ -138,6 +215,7 @@ namespace RimSharp.AppDir.Dialogs
         : base("RimSharp Settings")
         {
             _configService = configService ?? throw new ArgumentNullException(nameof(configService));
+            _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
             _fileDialogService = fileDialogService;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _gameInstallationDetectionService = new GameInstallationDetectionService();
@@ -145,6 +223,7 @@ namespace RimSharp.AppDir.Dialogs
 
             _gamePath = _configService.GetConfigValue(GameFolderKey) ?? string.Empty;
             _configPath = _configService.GetConfigValue(ConfigFolderKey) ?? string.Empty;
+            // Empty config value = auto mode; ModsFolderPath getter derives <game>\Mods live.
 
             var channel = _configService.GetConfigValue(UpdateChannelKey);
             _updateChannel = string.IsNullOrWhiteSpace(channel) ? "stable" : channel;
@@ -157,8 +236,10 @@ namespace RimSharp.AppDir.Dialogs
 
             BrowseGamePathCommand = CreateAsyncCommand(BrowseGamePathAsync);
             BrowseConfigPathCommand = CreateAsyncCommand(BrowseConfigPathAsync);
+            BrowseModsFolderCommand = CreateAsyncCommand(BrowseModsFolderAsync);
             OpenGameFolderCommand = CreateCommand(() => OpenFolder(GamePath));
             OpenConfigFolderCommand = CreateCommand(() => OpenFolder(ConfigPath));
+            OpenModsFolderCommand = CreateCommand(() => OpenFolder(ModsFolderPath));
             SaveCommand = CreateCommand(Save);
             CancelCommand = CreateCommand(() => CloseDialog(false));
         }
@@ -170,7 +251,7 @@ namespace RimSharp.AppDir.Dialogs
             NonSteamCandidate = _gameInstallationDetectionService.DetectNonSteamInstallation();
 
             // Check if user already has a saved preference in config
-            var savedDistStr = _configService.GetConfigValue(GameDistributionKey) 
+            var savedDistStr = _configService.GetConfigValue(GameDistributionKey)
                             ?? _configService.GetConfigValue(LegacyLauncherKey);
 
             if (!string.IsNullOrEmpty(savedDistStr))
@@ -205,6 +286,8 @@ namespace RimSharp.AppDir.Dialogs
                 if (userInitiatedChange || string.IsNullOrEmpty(GamePath))
                 {
                     GamePath = SteamCandidate.GameFolder;
+                    // Auto-fill mods path when game path is set
+                    ModsFolderPath = Path.Combine(SteamCandidate.GameFolder, "Mods");
                 }
                 if (userInitiatedChange || string.IsNullOrEmpty(ConfigPath))
                 {
@@ -216,6 +299,8 @@ namespace RimSharp.AppDir.Dialogs
                 if (userInitiatedChange || string.IsNullOrEmpty(GamePath))
                 {
                     GamePath = NonSteamCandidate.GameFolder;
+                    // Auto-fill mods path when game path is set
+                    ModsFolderPath = Path.Combine(NonSteamCandidate.GameFolder, "Mods");
                 }
                 if (userInitiatedChange || string.IsNullOrEmpty(ConfigPath))
                 {
@@ -229,6 +314,9 @@ namespace RimSharp.AppDir.Dialogs
 
         private async Task BrowseConfigPathAsync() => await BrowseFolderAsync(
             "Select RimWorld Config Folder", _configPath, p => ConfigPath = p);
+
+        private async Task BrowseModsFolderAsync() => await BrowseFolderAsync(
+            "Select Mods Directory", ModsFolderPath, p => ModsFolderPath = p);
 
         private async Task BrowseFolderAsync(string title, string? initialDirectory, Action<string> setValue)
         {
@@ -247,12 +335,53 @@ namespace RimSharp.AppDir.Dialogs
             RimSharp.Core.Services.SystemLauncher.OpenInFileManager(path);
         }
 
-        private void Save()
+        internal void Save()
         {
             _configService.SetConfigValue(GameFolderKey, GamePath?.Trim() ?? string.Empty);
             _configService.SetConfigValue(ConfigFolderKey, ConfigPath?.Trim() ?? string.Empty);
             _configService.SetConfigValue(UpdateChannelKey, UpdateChannel);
             _configService.SetConfigValue(GameDistributionKey, SelectedDistribution.ToString());
+
+            // mods_folder canonical semantics (match PathService): EMPTY = auto-derive
+            // <game>\Mods; a different value = a persisted override (warn + keep if broken).
+            if (!string.IsNullOrWhiteSpace(ModsFolderPath))
+            {
+                var isAutoSynced = false;
+                if (!string.IsNullOrWhiteSpace(GamePath))
+                {
+                    try
+                    {
+                        isAutoSynced = ModsFolderPath.Equals(Path.Combine(GamePath, "Mods"), StringComparison.OrdinalIgnoreCase);
+                    }
+                    catch
+                    {
+                        isAutoSynced = false; // Malformed game path — treat as a manual override
+                    }
+                }
+
+                if (isAutoSynced)
+                {
+                    // In sync with <game>\Mods: persist the canonical EMPTY (auto) value so
+                    // runtime keeps deriving if the game path ever changes outside this dialog.
+                    _configService.SetConfigValue(ModsFolderKey, string.Empty);
+                }
+                else if (!Directory.Exists(ModsFolderPath))
+                {
+                    _logger.LogWarning($"Mods folder override '{ModsFolderPath}' does not exist. Falling back to automatic path.", nameof(SettingsDialogViewModel));
+                    // Don't clear the stored value — the user may fix it later
+                    // Save the invalid value anyway (warn + allow save, never clear)
+                    _configService.SetConfigValue(ModsFolderKey, ModsFolderPath.Trim());
+                }
+                else
+                {
+                    _configService.SetConfigValue(ModsFolderKey, ModsFolderPath.Trim());
+                }
+            }
+            else
+            {
+                // Clear the override if user clears the field
+                _configService.SetConfigValue(ModsFolderKey, string.Empty);
+            }
 
             if (SelectedDistribution == GameDistribution.Steam && SteamCandidate != null)
             {
@@ -273,6 +402,10 @@ namespace RimSharp.AppDir.Dialogs
             }
 
             _configService.SaveConfig();
+
+            // Refresh path service to pick up the new mods_folder value
+            _pathService.RefreshPaths();
+
             CloseDialog(true);
         }
     }

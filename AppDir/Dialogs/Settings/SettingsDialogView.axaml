@@ -29,15 +29,15 @@
                             <StackPanel Spacing="6">
                                 <TextBlock Text="Game Distribution" FontWeight="Bold" VerticalAlignment="Center"
                                            Foreground="{DynamicResource BrushTextStrong}"/>
-                                
+
                                 <ComboBox SelectedValue="{Binding SelectedDistribution, Mode=TwoWay}"
                                           SelectedValueBinding="{Binding Tag, DataType=ComboBoxItem}"
                                           Width="220"
                                           VerticalAlignment="Center"
                                           Classes="select">
                                     <ComboBoxItem Tag="{x:Static models:GameDistribution.NonSteam}" Content="Non-Steam"/>
-                                    <ComboBoxItem Tag="{x:Static models:GameDistribution.Steam}" 
-                                                Content="Steam" 
+                                    <ComboBoxItem Tag="{x:Static models:GameDistribution.Steam}"
+                                                Content="Steam"
                                                 IsEnabled="{Binding SteamAvailable, Mode=OneWay}"
                                                 ToolTip.Tip="No Steam installation of RimWorld detected"
                                                 ToolTip.ShowOnDisabled="True"/>
@@ -80,6 +80,28 @@
                                          TextWrapping="Wrap"
                                          MinHeight="30"
                                          PlaceholderText="Folder with RimWorld's config files"/>
+                            </StackPanel>
+
+                            <!-- Mods Directory Override -->
+                            <StackPanel Spacing="6">
+                                <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="6">
+                                    <TextBlock Grid.Column="0" Text="Mods Directory" FontWeight="Bold" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource BrushTextStrong}"/>
+                                    <Button Grid.Column="1" Content="Browse..."
+                                            Command="{Binding BrowseModsFolderCommand}"
+                                            Classes="btn" Padding="10,4"
+                                            IsEnabled="{Binding IsGamePathSet, Mode=OneWay}"/>
+                                    <Button Grid.Column="2" Content="Open Folder"
+                                            Command="{Binding OpenModsFolderCommand}"
+                                            Classes="btn" Padding="10,4"
+                                            IsEnabled="{Binding IsGamePathSet, Mode=OneWay}"/>
+                                </Grid>
+                                <TextBox Text="{Binding ModsFolderPath, Mode=TwoWay}"
+                                         Classes="input"
+                                         TextWrapping="Wrap"
+                                         MinHeight="30"
+                                         PlaceholderText="Set the game path first; defaults to game\Mods"
+                                         IsEnabled="{Binding IsGamePathSet, Mode=OneWay}"/>
                             </StackPanel>
 
                             <TextBlock TextWrapping="Wrap" FontSize="12"

@@ -237,10 +237,11 @@ namespace RimSharp.AppDir.AppFiles
                 return gameInstance;
             });
             services.AddSingleton<IFileDialogService, AvaloniaFileDialogService>();
-            services.AddSingleton<IDialogService>(provider => 
+            services.AddSingleton<IDialogService>(provider =>
                 new DialogService(
                     provider.GetRequiredService<IAppUpdaterService>(),
                     provider.GetRequiredService<IConfigService>(),
+                    provider.GetRequiredService<IPathService>(),
                     provider.GetRequiredService<IEnumerable<IAIProviderClient>>(),
                     provider.GetRequiredService<IFileDialogService>(),
                     provider.GetRequiredService<ILoggerService>()
