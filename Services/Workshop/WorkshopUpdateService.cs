@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -17,6 +18,10 @@ namespace RimSharp.Services.Workshop
     /// </summary>
     public class WorkshopUpdateService : IWorkshopUpdateService
     {
+        private const long RimWorldAppId = 294100;
+        private const string LocalDateFormat = "dd/MM/yyyy HH:mm:ss";
+        private const long ClockSkewToleranceSeconds = 120;
+
         private readonly GameInstance _gameInstance;
         private readonly ILoggerService _logger;
         private readonly SteamWorkshopApiClient _apiClient;
@@ -34,10 +39,10 @@ namespace RimSharp.Services.Workshop
         public async Task<WorkshopUpdateResult> CheckForUpdatesAsync(IEnumerable<ModItem> mods, IProgress<(int current, int total, string message)>? progress = null, CancellationToken cancellationToken = default)
         {
             var result = new WorkshopUpdateResult();
-            
-            // Filter workshop mods
-            var workshopMods = mods.Where(m => !string.IsNullOrEmpty(m.SteamId) && 
-                                            long.TryParse(m.SteamId, out _) && 
+
+            // Workshop-identity mods only: Steam client copies + app-downloaded (Tracked) copies
+            var workshopMods = mods.Where(m => !string.IsNullOrEmpty(m.SteamId) &&
+                                            long.TryParse(m.SteamId, out _) &&
                                             (m.ModType == ModType.Workshop || m.ModType == ModType.Tracked)).ToList();
 
             if (!workshopMods.Any())
@@ -48,26 +53,80 @@ namespace RimSharp.Services.Workshop
             }
 
             result.ModsChecked = workshopMods.Count;
-            progress?.Report((0, result.ModsChecked, "Starting update check..."));
 
-            // Get mod details from Steam API
+            // Get mod details from Steam API (batched client-side, 300 per request)
             var steamIds = workshopMods.Select(m => m.SteamId!).ToList();
             var modDetails = await _apiClient.GetModDetailsBatchAsync(steamIds, cancellationToken);
 
+            var detailsById = modDetails
+                .Where(d => !string.IsNullOrEmpty(d.PublishedFileId))
+                .ToDictionary(d => d.PublishedFileId!, d => d, StringComparer.Ordinal);
+
+            // Progress contract: (modsCheckedSoFar, totalMods, current mod's display name).
+            int checkedCount = 0;
             foreach (var mod in workshopMods)
             {
+                checkedCount++;
+                progress?.Report((checkedCount, result.ModsChecked, mod.DisplayName));
+
                 try
                 {
-                    var modDetail = modDetails.FirstOrDefault(d => d.PublishedFileId == mod.SteamId);
-                    if (modDetail != null)
+                    if (!detailsById.TryGetValue(mod.SteamId!, out var modDetail))
                     {
-                        var hasUpdate = await CheckModForUpdateAsync(mod, modDetail, cancellationToken);
-                        
-                        if (hasUpdate)
-                        {
-                            result.UpdatesAvailable++;
-                            result.UpdatesApplied++;
-                        }
+                        result.FailedModIds.Add(mod.SteamId!);
+                        result.ErrorMessages.Add($"No details returned for '{mod.DisplayName}' ({mod.SteamId}). Mod might be removed or hidden.");
+                        _logger.LogWarning($"No API details returned for mod {mod.SteamId}.", nameof(WorkshopUpdateService));
+                        continue;
+                    }
+
+                    if (modDetail.Result != 1) // k_EResultOK
+                    {
+                        result.FailedModIds.Add(mod.SteamId!);
+                        result.ErrorMessages.Add($"Mod '{mod.DisplayName}' ({mod.SteamId}) - Code {modDetail.Result}: {ExplainResult(modDetail.Result)}");
+                        _logger.LogWarning($"API result {modDetail.Result} for mod {mod.SteamId}.", nameof(WorkshopUpdateService));
+                        continue;
+                    }
+
+                    if (modDetail.ConsumerAppId.HasValue && modDetail.ConsumerAppId.Value != RimWorldAppId)
+                    {
+                        result.FailedModIds.Add(mod.SteamId!);
+                        result.ErrorMessages.Add($"Mod '{modDetail.Title}' ({mod.SteamId}) is not a RimWorld ({RimWorldAppId}) mod (AppID: {modDetail.ConsumerAppId.Value}). Skipping.");
+                        _logger.LogWarning($"Mod {mod.SteamId} is for AppId {modDetail.ConsumerAppId.Value}, not RimWorld.", nameof(WorkshopUpdateService));
+                        continue;
+                    }
+
+                    // Internal = max(ACF manifest time, timestamp.txt-derived UpdateDate);
+                    // ACF is populated during scan by the ACF timestamp service.
+                    var internalTime = Math.Max(mod.AcfTimeUpdated ?? 0, GetTimestampUnix(mod.UpdateDate));
+                    var externalTime = modDetail.TimeUpdated ?? 0;
+
+                    var decision = WorkshopUpdateDecider.Decide(externalTime, internalTime);
+
+                    // Keep the historical "clock-skew tolerance" behavior: a remote stamp
+                    // barely newer than the local one is treated as UpToDate, because
+                    // timestamp.txt is written with second granularity by whatever tool
+                    // last touched it and tiny deltas are almost never real revisions.
+                    if (decision == WorkshopUpdateDecision.UpdateAvailable &&
+                        externalTime - internalTime <= ClockSkewToleranceSeconds)
+                    {
+                        decision = WorkshopUpdateDecision.UpToDate;
+                    }
+
+                    result.Updates.Add(new WorkshopUpdateCandidate
+                    {
+                        Mod = mod,
+                        Details = modDetail,
+                        ExternalTimeUpdated = externalTime,
+                        InternalTime = internalTime,
+                        Decision = decision
+                    });
+
+                    if (decision == WorkshopUpdateDecision.UpdateAvailable)
+                    {
+                        result.UpdatesAvailable++;
+                        _logger.LogInfo(
+                            $"Update available for '{mod.DisplayName}' ({mod.SteamId}): external {externalTime} > internal {internalTime}.",
+                            nameof(WorkshopUpdateService));
                     }
                 }
                 catch (Exception ex)
@@ -85,56 +144,47 @@ namespace RimSharp.Services.Workshop
             }
             else
             {
-                result.Status = result.UpdatesAvailable > 0 ? WorkshopUpdateStatus.Success : WorkshopUpdateStatus.Success;
+                result.Status = WorkshopUpdateStatus.Success;
             }
 
             return result;
         }
 
         /// <summary>
-        /// Get update information for a specific mod.
+        /// Parse the timestamp.txt-derived UpdateDate ("dd/MM/yyyy HH:mm:ss", treated as
+        /// UTC — the same contract RimSharp's own downloader historically wrote) into
+        /// unix seconds. 0 when absent/unparseable. This is the single implementation of
+        /// that conversion; the per-mod date-parsing dance in the downloader checker was
+        /// deleted in favor of this one.
         /// </summary>
-        public async Task<ModUpdateInfo?> GetUpdateInfoAsync(string steamId)
+        private static long GetTimestampUnix(string? updateDate)
         {
-            if (string.IsNullOrWhiteSpace(steamId) || !long.TryParse(steamId, out _))
+            if (string.IsNullOrWhiteSpace(updateDate))
             {
-                return null;
+                return 0;
             }
 
-            try
+            if (DateTime.TryParseExact(
+                    updateDate,
+                    LocalDateFormat,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                    out var parsed))
             {
-                var modDetail = await _apiClient.GetModDetailsAsync(steamId);
-                if (modDetail == null)
-                {
-                    return null;
-                }
-
-                var updateInfo = new ModUpdateInfo
-                {
-                    SteamId = steamId,
-                    LatestVersion = modDetail.Title ?? "Unknown",
-                    LatestUpdate = modDetail.TimeUpdated != null ? 
-                        DateTimeOffset.FromUnixTimeSeconds(modDetail.TimeUpdated.Value).DateTime : null,
-                    FileSize = modDetail.FileSize
-                };
-
-                // Check if we have local info for comparison
-                var localMod = FindLocalModBySteamId(steamId);
-                if (localMod != null)
-                {
-                    updateInfo.CurrentVersion = localMod.DisplayName;
-                    updateInfo.LastUpdated = localMod.LastUpdated;
-                    updateInfo.UpdateAvailable = modDetail.TimeUpdated != null && 
-                                               localMod.LastUpdated < DateTimeOffset.FromUnixTimeSeconds(modDetail.TimeUpdated.Value).DateTime;
-                }
-
-                return updateInfo;
+                return new DateTimeOffset(parsed, TimeSpan.Zero).ToUnixTimeSeconds();
             }
-            catch (Exception ex)
+
+            return 0;
+        }
+
+        private static string ExplainResult(int resultCode)
+        {
+            return resultCode switch
             {
-                _logger.LogError($"Error getting update info for mod {steamId}: {ex.Message}", nameof(WorkshopUpdateService));
-                return null;
-            }
+                1 => "Success.",
+                15 => "Workshop item not found (deleted or unlisted).",
+                _ => $"Steam API result code {resultCode}."
+            };
         }
 
         /// <summary>
@@ -231,38 +281,6 @@ namespace RimSharp.Services.Workshop
             }
 
             return result;
-        }
-
-        /// <summary>
-        /// Check if a specific mod has updates available.
-        /// </summary>
-        private async Task<bool> CheckModForUpdateAsync(ModItem mod, WorkshopModDetails modDetail, CancellationToken cancellationToken)
-        {
-            if (modDetail.TimeUpdated == null)
-            {
-                return false;
-            }
-
-            var lastUpdateTime = DateTimeOffset.FromUnixTimeSeconds(modDetail.TimeUpdated.Value);
-            
-            // Compare with mod's last updated time
-            if (mod.LastUpdated.HasValue && mod.LastUpdated.Value >= lastUpdateTime)
-            {
-                return false;
-            }
-
-            // If no local update time, assume it needs updating
-            return true;
-        }
-
-        /// <summary>
-        /// Find a local mod by Steam ID.
-        /// </summary>
-        private ModItem? FindLocalModBySteamId(string steamId)
-        {
-            // This would need to be implemented based on your ModService
-            // For now, return null as a placeholder
-            return null;
         }
 
         /// <summary>

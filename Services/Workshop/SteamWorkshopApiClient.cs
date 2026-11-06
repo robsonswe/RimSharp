@@ -174,6 +174,9 @@ namespace RimSharp.Services.Workshop
         [JsonPropertyName("result")]
         public int Result { get; set; }
 
+        [JsonPropertyName("consumer_appid")]
+        public long? ConsumerAppId { get; set; }
+
         [JsonPropertyName("title")]
         public string? Title { get; set; }
 
