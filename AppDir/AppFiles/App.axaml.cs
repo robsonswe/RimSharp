@@ -40,6 +40,7 @@ using RimSharp.Infrastructure.Workshop.Download.Execution;
 using RimSharp.Infrastructure.Workshop.Download.Parsing;
 using RimSharp.Infrastructure.Workshop.Download.Processing;
 using RimSharp.Infrastructure.Workshop.Download.Models;
+using RimSharp.Services.ModManager;
 using RimSharp.Services.Workshop;
 using System.Threading;
 using System.Threading.Tasks;
@@ -244,7 +245,9 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IPathService>(),
                     provider.GetRequiredService<IEnumerable<IAIProviderClient>>(),
                     provider.GetRequiredService<IFileDialogService>(),
-                    provider.GetRequiredService<ILoggerService>()
+                    provider.GetRequiredService<ILoggerService>(),
+                    provider.GetRequiredService<ISteamClaimValidator>(),
+                    provider.GetRequiredService<GameInstallationDetectionService>()
                 ));
             services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
             services.AddSingleton<ISystemInfoService>(provider => SystemInfoServiceFactory.Create());
@@ -377,7 +380,12 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IAcfFileParser>(),
                     provider.GetRequiredService<ILoggerService>()));
             services.AddSingleton<ISteamSubscriptionService, SteamSubscriptionService>();
-            services.AddSingleton<IWorkshopUpdateService, WorkshopUpdateService>(); 
+            services.AddSingleton<IWorkshopUpdateService>(provider =>
+                new WorkshopUpdateService(
+                    provider.GetRequiredService<GameInstance>(),
+                    provider.GetRequiredService<ILoggerService>(),
+                    provider.GetRequiredService<SteamWorkshopApiClient>(),
+                    provider.GetRequiredService<ISteamSubscriptionService>())); 
 
             services.AddSingleton<IModListIOService>(provider =>
             {
@@ -395,6 +403,17 @@ namespace RimSharp.AppDir.AppFiles
                );
             });
 
+            services.AddSingleton<GameInstallationDetectionService>();
+
+            services.AddSingleton<ISteamClaimValidator>(provider =>
+                new SteamClaimValidator(
+                    provider.GetRequiredService<GameInstallationDetectionService>(),
+                    provider.GetRequiredService<ILoggerService>(),
+                    provider.GetRequiredService<GameInstance>()));
+            services.AddSingleton<IContextMenuAvailabilityService>(provider =>
+                new ContextMenuAvailabilityService(
+                    provider.GetRequiredService<ILoggerService>(),
+                    provider.GetRequiredService<GameInstance>()));
             services.AddSingleton<IModIncompatibilityService, ModIncompatibilityService>();
             services.AddSingleton<IAIProviderClient, OpenRouterProviderClient>();
             services.AddSingleton<AIProviderFactory>();
@@ -459,7 +478,10 @@ namespace RimSharp.AppDir.AppFiles
                    provider.GetRequiredService<IGitService>(),
                    provider.GetRequiredService<IAIncompatibilityAgentService>(),
                    provider.GetRequiredService<IModCustomService>(),
-                   provider.GetRequiredService<ISteamSubscriptionService>(),
+                   provider.GetRequiredService<ILoggerService>(),
+                   provider.GetRequiredService<IContextMenuAvailabilityService>(),
+                   provider.GetRequiredService<GameInstance>(),
+                    provider.GetRequiredService<ISteamSubscriptionService>(),
                    provider.GetRequiredService<IWorkshopUpdateService>()
                ));
 

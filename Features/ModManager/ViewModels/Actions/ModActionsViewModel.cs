@@ -53,6 +53,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private readonly IModCustomService _customService;
         private readonly ISteamSubscriptionService? _steamSubscriptionService;
         private readonly IWorkshopUpdateService? _workshopUpdateService;
+        private readonly ILoggerService _logger;
+        private readonly GameInstance _gameInstance;
         private bool _isParentLoading;
         private bool _hasUnsavedChanges;
         private ModItem? _selectedMod;
@@ -65,11 +67,11 @@ public bool IsParentLoading
             get => _isParentLoading;
             set
             {
-                Debug.WriteLine($"[ModActionsViewModel] IsParentLoading SETTER: Current = {_isParentLoading}, New = {value}");
+                _logger.LogDebug($"[ModActionsViewModel] IsParentLoading SETTER: Current = {_isParentLoading}, New = {value}");
 
                 if (SetProperty(ref _isParentLoading, value))
                 {
-                    Debug.WriteLine($"[ModActionsViewModel] IsParentLoading Changed to {value}.");
+                    _logger.LogDebug($"[ModActionsViewModel] IsParentLoading Changed to {value}.");
                 }
             }
         }
@@ -214,6 +216,8 @@ public bool IsParentLoading
             IGitService gitService,
             IAIncompatibilityAgentService aiAgentService,
             IModCustomService customService,
+            ILoggerService logger,
+            GameInstance gameInstance,
             ISteamSubscriptionService? steamSubscriptionService = null,
             IWorkshopUpdateService? workshopUpdateService = null)
         {
@@ -236,6 +240,8 @@ public bool IsParentLoading
             _gitService = gitService;
             _aiAgentService = aiAgentService;
             _customService = customService;
+            _logger = logger;
+            _gameInstance = gameInstance;
             _steamSubscriptionService = steamSubscriptionService;
             _workshopUpdateService = workshopUpdateService;
             RefreshPathValidity();
@@ -281,7 +287,7 @@ public bool IsParentLoading
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ModActionsViewModel] Error checking game status: {ex.Message}");
+                _logger.LogDebug($"[ModActionsViewModel] Error checking game status: {ex.Message}");
             }
         }
 
@@ -327,7 +333,7 @@ public bool IsParentLoading
                     }
                     else
                     {
-                        Debug.WriteLine("[RedownloadModsCommand] Execute called but SelectedItems was null or empty.");
+                        _logger.LogDebug("[RedownloadModsCommand] Execute called but SelectedItems was null or empty.");
                     }
                 },
                 canExecute: () => // Lambda takes no parameters
@@ -347,11 +353,11 @@ public bool IsParentLoading
             int count = currentSelection?.Count ?? 0;
             bool hasSelection = currentSelection != null && count > 0;
 
-            Debug.WriteLine($"[CanExecuteRedownloadMods] Check: IsLoading={isLoading}, VM.SelectedItems.Count={count}");
+            _logger.LogDebug($"[CanExecuteRedownloadMods] Check: IsLoading={isLoading}, VM.SelectedItems.Count={count}");
 
             if (isLoading || !hasSelection)
             {
-                Debug.WriteLine($"[CanExecuteRedownloadMods] Result: false (Loading or No Selection)");
+                _logger.LogDebug($"[CanExecuteRedownloadMods] Result: false (Loading or No Selection)");
                 return false;
             }
             if (currentSelection is null)
@@ -370,11 +376,11 @@ public bool IsParentLoading
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[CanExecuteRedownloadMods] Error during Any() check: {ex.Message}");
+                _logger.LogDebug($"[CanExecuteRedownloadMods] Error during Any() check: {ex.Message}");
                 anyValid = false; // Treat error as invalid
             }
 
-            Debug.WriteLine($"[CanExecuteRedownloadMods] AnyValid Check Result: {anyValid}. Final CanExecute: {anyValid}");
+            _logger.LogDebug($"[CanExecuteRedownloadMods] AnyValid Check Result: {anyValid}. Final CanExecute: {anyValid}");
             return anyValid; 
         }
 
@@ -389,7 +395,7 @@ public bool IsParentLoading
 
             if (modsToProcess == null || !modsToProcess.Any())
             {
-                Debug.WriteLine("[ExecuteRedownloadModsAsync] No valid Tracked mods found in the selection after filtering.");
+                _logger.LogDebug("[ExecuteRedownloadModsAsync] No valid Tracked mods found in the selection after filtering.");
                 await _dialogService.ShowInformation("Redownload Mod", "No selected mods are eligible for redownload (must be locally installed Workshop mods).");
                 return;
             }
@@ -403,7 +409,7 @@ public bool IsParentLoading
             var confirmResult = await _dialogService.ShowConfirmationAsync("Confirm Redownload", confirmMessage, showCancel: true);
             if (confirmResult != MessageDialogResult.OK && confirmResult != MessageDialogResult.Yes)
             {
-                Debug.WriteLine("[ExecuteRedownloadModsAsync] User cancelled redownload confirmation.");
+                _logger.LogDebug("[ExecuteRedownloadModsAsync] User cancelled redownload confirmation.");
                 return;
             }
             IsLoadingRequest?.Invoke(this, true);
@@ -446,7 +452,7 @@ public bool IsParentLoading
                 {
                     if (queueResult.WasCancelled)
                     {
-                        Debug.WriteLine("Redownload operation cancelled.", nameof(ModActionsViewModel));
+                        _logger.LogDebug("Redownload operation cancelled.", nameof(ModActionsViewModel));
                         progressDialog?.ForceClose();
                         await _dialogService.ShowWarning("Operation Cancelled", "Queueing mods for redownload was cancelled.");
                         return;
@@ -485,7 +491,7 @@ public bool IsParentLoading
             catch (OperationCanceledException) // Catch cancellation from WaitAsync or linked CTS propagation
             {
 
-                Debug.WriteLine("[ExecuteRedownloadModsAsync] Operation cancelled (caught top level).", nameof(ModActionsViewModel));
+                _logger.LogDebug("[ExecuteRedownloadModsAsync] Operation cancelled (caught top level).", nameof(ModActionsViewModel));
                 await RunOnUIThreadAsync(() => progressDialog?.ForceClose());
             }
             catch (Exception ex) // Catch unexpected errors
@@ -517,28 +523,28 @@ private bool CanExecutizeMod(ModItem? mod)
 
             try
             {
-                Debug.WriteLine($"Attempting to customize mod: {mod.PackageId}");
+                _logger.LogDebug($"Attempting to customize mod: {mod.PackageId}");
                 customInfo = await Task.Run(() => _modService.GetCustomModInfo(mod.PackageId));
 
                 // Create ViewModel and show dialog on UI thread
                 viewModel = new CustomizeModDialogViewModel(mod, customInfo ?? new ModCustomInfo(), _modService, _dialogService);
 
-                Debug.WriteLine("Showing customize dialog on UI thread...");
+                _logger.LogDebug("Showing customize dialog on UI thread...");
 
                 // Show Dialog (blocks until dialog closes)
                 result = await _dialogService.ShowCustomizeModDialog(viewModel);
 
-                Debug.WriteLine($"Dialog result: {result}");
+                _logger.LogDebug($"Dialog result: {result}");
 
                 if (result == ModCustomizationResult.Save)
                 {
-                    Debug.WriteLine("Requesting data refresh after save...");
+                    _logger.LogDebug("Requesting data refresh after save...");
                     RequestDataRefresh?.Invoke(this, EventArgs.Empty);
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error in ExecuteCustomizeMod: {ex}");
+                _logger.LogDebug($"Error in ExecuteCustomizeMod: {ex}");
                 await RunOnUIThreadAsync(async () => await _dialogService.ShowError("Customization Error", $"Failed to customize mod '{mod?.Name ?? "Unknown"}': {ex.Message}"));
             }
         }
@@ -647,7 +653,7 @@ private bool CanExecutizeMod(ModItem? mod)
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"Failed to delete {path}: {ex.Message}");
+                            _logger.LogDebug($"Failed to delete {path}: {ex.Message}");
                         }
                     }
                 });
@@ -816,7 +822,7 @@ private bool CanExecutizeMod(ModItem? mod)
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"Error parsing loadFolders.xml for mod {strippableModVm.Mod.Name}: {ex.Message}");
+                        _logger.LogDebug($"Error parsing loadFolders.xml for mod {strippableModVm.Mod.Name}: {ex.Message}");
                     }
                 }
 

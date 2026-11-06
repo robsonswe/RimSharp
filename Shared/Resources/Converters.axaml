@@ -18,7 +18,9 @@
      <convViewVisibility:ContextMenuVisibilityConverter x:Key="ContextMenuVisibilityConverter"/>
      <convViewVisibility:ModTypeToRedownloadVisibilityConverter x:Key="ModTypeToRedownloadVisibilityConverter"/>
      <convViewVisibility:ModTypeToDeleteVisibilityConverter x:Key="ModTypeToDeleteVisibilityConverter"/>
+     <convViewVisibility:ModTypeToTrackedConverter x:Key="ModTypeToTrackedConverter"/>
      <convViewVisibility:WorkshopModVisibilityConverter x:Key="WorkshopModVisibilityConverter"/>
+     <convViewVisibility:ContextMenuAvailabilityServiceWrapper x:Key="ContextMenuAvailabilityWrapper"/>
 
      <!-- Logic Converters -->
      <convLogic:NullToBoolConverter x:Key="NullToBoolConverter"/>

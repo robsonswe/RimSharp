@@ -27,12 +27,14 @@ namespace RimSharp.Services.Workshop
         private readonly GameInstance _gameInstance;
         private readonly ILoggerService _logger;
         private readonly SteamWorkshopApiClient _apiClient;
+        private readonly ISteamSubscriptionService? _subscriptionService;
 
-        public WorkshopUpdateService(GameInstance gameInstance, ILoggerService logger, SteamWorkshopApiClient apiClient)
+        public WorkshopUpdateService(GameInstance gameInstance, ILoggerService logger, SteamWorkshopApiClient apiClient, ISteamSubscriptionService? subscriptionService = null)
         {
             _gameInstance = gameInstance ?? throw new ArgumentNullException(nameof(gameInstance));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+            _subscriptionService = subscriptionService;
         }
 
         /// <summary>
@@ -189,30 +191,18 @@ namespace RimSharp.Services.Workshop
                 return false;
             }
 
+            if (_subscriptionService == null)
+            {
+                _logger.LogError("Cannot update mod: Steam subscription service not available", nameof(WorkshopUpdateService));
+                return false;
+            }
+
             try
             {
                 progress?.Report((1, 3, $"Updating mod {steamId}..."));
 
-                // Use steam:// protocol to trigger Steam update
-                var steamUrl = $"steam://rungameid/294100//update/{steamId}";
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = steamUrl,
-                    UseShellExecute = true,
-                    CreateNoWindow = true
-                };
-
-                using var process = Process.Start(startInfo);
-                if (process != null)
-                {
-                    // Wait a bit for Steam to start processing
-                    await Task.Delay(5000, cancellationToken);
-                }
-
-                progress?.Report((2, 3, "Waiting for Steam to download update..."));
-
-                // Wait for the update to complete
-                var updated = await WaitForModUpdateAsync(steamId, cancellationToken);
+                // Delegate to SteamSubscriptionService which uses Steamworks.NET
+                var updated = await _subscriptionService.UpdateModAsync(steamId, progress, cancellationToken);
                 
                 if (updated)
                 {

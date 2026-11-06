@@ -71,6 +71,7 @@ namespace RimSharp.AppDir.Dialogs
         private readonly IConfigService _configService;
         private readonly IPathService _pathService;
         private readonly IFileDialogService? _fileDialogService;
+        private readonly ISteamClaimValidator _steamClaimValidator;
         private readonly GameInstallationDetectionService _gameInstallationDetectionService;
         private readonly IDialogService? _dialogService;
         private readonly ILoggerService _logger;
@@ -240,7 +241,8 @@ namespace RimSharp.AppDir.Dialogs
             IFileDialogService? fileDialogService,
             ILoggerService logger,
             IEnumerable<IAIProviderClient>? providers,
-            GameInstallationDetectionService? gameInstallationDetectionService = null,
+            ISteamClaimValidator steamClaimValidator,
+            GameInstallationDetectionService gameInstallationDetectionService,
             IDialogService? dialogService = null,
             bool showAiProviders = true)
         : base("RimSharp Settings")
@@ -250,7 +252,8 @@ namespace RimSharp.AppDir.Dialogs
             _fileDialogService = fileDialogService;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _dialogService = dialogService;
-            _gameInstallationDetectionService = gameInstallationDetectionService ?? new GameInstallationDetectionService();
+            _steamClaimValidator = steamClaimValidator ?? throw new ArgumentNullException(nameof(steamClaimValidator));
+            _gameInstallationDetectionService = gameInstallationDetectionService ?? throw new ArgumentNullException(nameof(gameInstallationDetectionService));
             ShowAiProviders = showAiProviders;
 
             _gamePath = _configService.GetConfigValue(GameFolderKey) ?? string.Empty;
@@ -374,11 +377,11 @@ namespace RimSharp.AppDir.Dialogs
         /// message dialog. Same validation Save() will run — lets the user verify
         /// before committing anything.
         /// </summary>
-        private void ValidateSteamClaimNow()
+        private async void ValidateSteamClaimNow()
         {
             if (!IsManualSteamClaim) return;
 
-            var claim = _gameInstallationDetectionService.ValidateSteamClaim(GamePath);
+            var claim = await _steamClaimValidator.ValidateAsync(GamePath);
             if (claim.IsValid)
             {
                 ManualSteamClaimStatus =
@@ -424,14 +427,14 @@ namespace RimSharp.AppDir.Dialogs
 
         internal void Save()
         {
-            // Manual Steam confirmation (handoff §6 Phase 0): a Steam selection without a
+            // Manual Steam confirmation: a Steam selection without a
             // detected candidate is only a claim until ValidateSteamClaim passes. Validate
             // up-front so a refusal writes NOTHING (not even the path updates below) —
             // the in-memory config stays exactly as it was when the dialog opened.
             string? manualSteamWorkshop = null;
             if (SelectedDistribution == GameDistribution.Steam && SteamCandidate == null)
             {
-                var claim = _gameInstallationDetectionService.ValidateSteamClaim(GamePath);
+                var claim = _steamClaimValidator.ValidateAsync(GamePath).GetAwaiter().GetResult();
                 if (!claim.IsValid)
                 {
                     LogAndShowSteamClaimRefusal(claim.FailureReason);

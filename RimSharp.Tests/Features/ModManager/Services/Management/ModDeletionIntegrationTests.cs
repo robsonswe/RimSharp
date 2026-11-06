@@ -58,7 +58,9 @@ namespace RimSharp.Tests.Features.ModManager.Services.Management
                 Substitute.For<ISteamWorkshopQueueProcessor>(),
                 Substitute.For<IGitService>(),
                 Substitute.For<IAIncompatibilityAgentService>(),
-                Substitute.For<IModCustomService>()
+                Substitute.For<IModCustomService>(),
+                Substitute.For<ILoggerService>(),
+                new GameInstance { IsSteamInstallation = false }
             );
         }
 

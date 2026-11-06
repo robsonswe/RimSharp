@@ -44,7 +44,7 @@ namespace RimSharp.Shared.Services.Implementations
             public required string Stamp { get; init; }
             public required ModItem Mod { get; init; }
         }
-        private readonly Dictionary<string, FolderScanCacheEntry> _folderScanCache =
+        private readonly ConcurrentDictionary<string, FolderScanCacheEntry> _folderScanCache =
             new(StringComparer.OrdinalIgnoreCase);
 
         private readonly IModRulesService _rulesService;
@@ -1040,7 +1040,7 @@ namespace RimSharp.Shared.Services.Implementations
             if (!File.Exists(aboutPath))
             {
                 fromCache = false;
-                _folderScanCache.Remove(dir);
+                _folderScanCache.TryRemove(dir, out _);
                 return null;
             }
 

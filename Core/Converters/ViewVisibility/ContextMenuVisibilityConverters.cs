@@ -93,6 +93,26 @@ namespace RimSharp.Core.Converters.ViewVisibility
             return null;
         }
     }
+
+    /// <summary>
+    /// Returns true for Tracked mods (SteamCMD-downloaded mods)
+    /// </summary>
+    public class ModTypeToTrackedConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (value is ModType modType)
+            {
+                return modType == ModType.Tracked;
+            }
+            return false;
+        }
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            return null;
+        }
+    }
 }
 
 

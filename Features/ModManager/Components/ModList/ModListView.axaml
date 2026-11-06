@@ -8,6 +8,7 @@
              xmlns:interactivity="clr-namespace:Avalonia.Xaml.Interactivity;assembly=Xaml.Behaviors.Interactivity"
              xmlns:i="https://github.com/projektanker/icons.avalonia"
              xmlns:behaviors="clr-namespace:RimSharp.Features.ModManager.Behaviors"
+             xmlns:convViewVisibility="clr-namespace:RimSharp.Core.Converters.ViewVisibility"
              x:Class="RimSharp.Features.ModManager.Components.ModList.ModListView"
              mc:Ignorable="d"
              x:Name="RootModListView"
@@ -16,6 +17,8 @@
 
     <UserControl.Resources>
         <local:SelectedItemsHolder x:Key="selectedItemsHolder"/>
+        <!-- Context menu availability service for intersection semantics -->
+        <convViewVisibility:ContextMenuAvailabilityServiceWrapper x:Key="ContextMenuAvailability"/>
     </UserControl.Resources>
 
     <UserControl.Styles>
@@ -60,59 +63,43 @@
             <Setter Property="ContextMenu">
                 <Setter.Value>
                     <ContextMenu>
-                        <ContextMenu.IsVisible>
-                            <MultiBinding Converter="{StaticResource ContextMenuVisibilityConverter}">
-                                <Binding Path="ModType"/>
-                            </MultiBinding>
-                        </ContextMenu.IsVisible>
-                        <MenuItem Header="Open Mod Folder" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.OpenModFoldersCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}">
+                        <MenuItem Header="Open Mod Folder" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.OpenModFoldersCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" IsVisible="{Binding CanOpenFolder, Source={StaticResource ContextMenuAvailability}}">
                             <MenuItem.Icon><i:Icon Value="fa-folder-open" FontSize="14"/></MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="Open URL" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.OpenUrlsCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}">
+                        <MenuItem Header="Open URL" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.OpenUrlsCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" IsVisible="{Binding CanOpenExternalUrl, Source={StaticResource ContextMenuAvailability}}">
                             <MenuItem.Icon><i:Icon Value="fa-link" FontSize="14"/></MenuItem.Icon>
-                            <MenuItem.IsVisible><Binding Path="HasUrl"/></MenuItem.IsVisible>
                         </MenuItem>
-                        <MenuItem Header="Open Workshop Page" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.OpenWorkshopPagesCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}">
+                        <MenuItem Header="Open Workshop Page" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.OpenWorkshopPagesCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" IsVisible="{Binding CanOpenWorkshopPage, Source={StaticResource ContextMenuAvailability}}">
                             <MenuItem.Icon><i:Icon Value="fa-brands fa-steam" FontSize="14"/></MenuItem.Icon>
-                            <MenuItem.IsVisible><Binding Path="HasSteamUrl"/></MenuItem.IsVisible>
                         </MenuItem>
-                        <MenuItem Header="Open Other URL" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.OpenOtherUrlsCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}">
+                        <MenuItem Header="Open Other URL" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.OpenOtherUrlsCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" IsVisible="{Binding CanOpenExternalUrl, Source={StaticResource ContextMenuAvailability}}">
                             <MenuItem.Icon><i:Icon Value="fa-globe" FontSize="14"/></MenuItem.Icon>
-                            <MenuItem.IsVisible><Binding Path="HasExternalUrl"/></MenuItem.IsVisible>
                         </MenuItem>
-                        <MenuItem Header="Redownload Mod" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.RedownloadModsCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}">
+                        <MenuItem Header="Redownload Mod" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.RedownloadModsCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" IsVisible="{Binding CanRedownloadMod, Source={StaticResource ContextMenuAvailability}}">
                             <MenuItem.Icon><i:Icon Value="fa-arrows-rotate" FontSize="14"/></MenuItem.Icon>
-                            <MenuItem.IsVisible>
-                                <Binding Path="ModType" Converter="{StaticResource ModTypeToRedownloadVisibilityConverter}"/>
-                            </MenuItem.IsVisible>
                         </MenuItem>
                         
-                        <!-- Workshop Management Items -->
-                        <Separator IsVisible="{Binding IsWorkshopMod}"/>
-                        <MenuItem Header="Check for Updates" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.CheckWorkshopUpdatesCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" IsVisible="{Binding IsWorkshopMod}">
-                            <MenuItem.Icon><i:Icon Value="fa-clock-rotate-left" FontSize="14"/></MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem Header="Update Mod" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.UpdateWorkshopModsCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" IsVisible="{Binding IsWorkshopMod}">
-                            <MenuItem.Icon><i:Icon Value="fa-download" FontSize="14"/></MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem Header="Subscribe" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.SubscribeToWorkshopCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" IsVisible="{Binding IsWorkshopMod}">
-                            <MenuItem.Icon><i:Icon Value="fa-plus" FontSize="14"/></MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem Header="Unsubscribe" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.UnsubscribeFromWorkshopCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" IsVisible="{Binding IsWorkshopMod}">
-                            <MenuItem.Icon><i:Icon Value="fa-minus" FontSize="14"/></MenuItem.Icon>
-                        </MenuItem>
-                        <Separator/>
-                        <MenuItem Header="AI Conflict Scan" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.CheckAIIncompatibilitiesCommand}" CommandParameter="{Binding}">
+                        <MenuItem Header="AI Conflict Scan" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.CheckAIIncompatibilitiesCommand}" CommandParameter="{Binding}" IsVisible="{Binding CanAiConflictScan, Source={StaticResource ContextMenuAvailability}}">
                             <MenuItem.Icon><i:Icon Value="fa-robot" FontSize="14"/></MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="Customize Mod" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.CustomizeModCommand}" CommandParameter="{Binding}">
+                        <MenuItem Header="Customize Mod" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.CustomizeModCommand}" CommandParameter="{Binding}" IsVisible="{Binding CanCustomizeMod, Source={StaticResource ContextMenuAvailability}}">
                             <MenuItem.Icon><i:Icon Value="fa-gear" FontSize="14"/></MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="Delete Mod" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.DeleteModsCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" Foreground="{DynamicResource BrushTextError}">
+                        <!-- Delete: Direct for Tracked/Untracked/Git, Submenu for Workshop -->
+                        <MenuItem Header="Delete Mod" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.DeleteModsCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}" Foreground="{DynamicResource BrushTextError}" IsVisible="{Binding CanDeleteMod, Source={StaticResource ContextMenuAvailability}}">
                             <MenuItem.Icon><i:Icon Value="fa-trash-can" FontSize="14"/></MenuItem.Icon>
-                            <MenuItem.IsVisible>
-                                <Binding Path="ModType" Converter="{StaticResource ModTypeToDeleteVisibilityConverter}"/>
-                            </MenuItem.IsVisible>
+                        </MenuItem>
+                        <MenuItem Header="Delete Mod" Foreground="{DynamicResource BrushTextError}" IsVisible="{Binding CanDeleteAndUnsubscribe, Source={StaticResource ContextMenuAvailability}}">
+                            <MenuItem.Icon><i:Icon Value="fa-trash-can" FontSize="14"/></MenuItem.Icon>
+                            <MenuItem Header="Delete mod completely" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.DeleteModsCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}">
+                                <MenuItem.Icon><i:Icon Value="fa-trash-can" FontSize="12"/></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Delete mod and unsubscribe from Steam" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.DeleteAndUnsubscribeCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}">
+                                <MenuItem.Icon><i:Icon Value="fa-minus-circle" FontSize="12"/></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Delete mod and resubscribe using Steam" Command="{Binding #RootModListView.DataContext.ModActionsViewModel.DeleteAndResubscribeCommand}" CommandParameter="{Binding SelectedItems, Source={StaticResource selectedItemsHolder}}">
+                                <MenuItem.Icon><i:Icon Value="fa-sync" FontSize="12"/></MenuItem.Icon>
+                            </MenuItem>
                         </MenuItem>
                     </ContextMenu>
                 </Setter.Value>
@@ -226,7 +213,7 @@
                             </MultiBinding>
                         </TextBlock.Text>
                     </TextBlock>
-                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="4,0,4,4">
+                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" Margin="4,0,4,4">
                         <TextBox Grid.Column="0" PlaceholderText="{Binding #RootModListView.SearchPlaceholder}" Classes="input-watermark" VerticalAlignment="Center" Text="{Binding #RootModListView.SearchText, Mode=TwoWay}"
                                  KeyDown="SearchTextBox_KeyDown"/>
                         <Button Grid.Column="1" Content="Filters" Command="{Binding #RootModListView.FilterCommand}"
