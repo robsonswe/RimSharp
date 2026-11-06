@@ -1,0 +1,50 @@
+"AppState"
+{
+	"appid"		"294100"
+	"universe"		"1"
+	"name"		"RimWorld"
+	"StateFlags"		"4"
+	"installdir"		"RimWorld"
+	"lastupdated"		"1717169455"
+	"SizeOfAppFiles"		"58347571"
+}
+"AppWorkshop"
+{
+	"WorkshopItemsInstalled"
+	{
+		"818773962"		"1694112958"
+		"2009463077"		"1660069393"
+		"2535924806"		"1708950034"
+		"1127840558"		"1690100000"
+	}
+	"WorkshopItemsIncomplete"
+	{
+	}
+	"WorkshopItemDetails"
+	{
+		"818773962"
+		{
+			"sourceid"		"1694112958"
+			"sizepublished"		"12345678"
+			"local"		"0"
+			"timeupdated"		"1694112958"
+			"timetouched"		"1700000000"
+		}
+		"2009463077"
+		{
+			"sourceid"		"1660069393"
+			"sizepublished"		"5242880"
+			"local"		"1"
+			"timeupdated"		"1660080000"
+			"timetouched"		"1699955428"
+		}
+		"2535924806"
+		{
+			"sourceid"		"1708950034"
+			"sizepublished"		"0"
+			"local"		"\"staging\" build pinned by user"
+			"timeupdated"		"0"
+			"timetouched"		"0"
+		}
+	}
+}

@@ -370,6 +370,7 @@ namespace RimSharp.AppDir.AppFiles
             // Workshop Management Services
             services.AddSingleton<SteamWorkshopApiClient>(provider =>
                 new SteamWorkshopApiClient(provider.GetRequiredService<IHttpClientFactory>().CreateClient()));
+            services.AddSingleton<IAcfFileParser, AcfFileParser>();
             services.AddSingleton<ISteamSubscriptionService, SteamSubscriptionService>();
             services.AddSingleton<IWorkshopUpdateService, WorkshopUpdateService>(); 
 
