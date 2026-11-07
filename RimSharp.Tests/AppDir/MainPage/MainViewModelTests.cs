@@ -166,10 +166,14 @@ namespace RimSharp.Tests.AppDir.MainPage
         }
 
         [Fact]
-        public void StatusMessage_ShouldBeSettable()
+        public async Task StatusMessage_ShouldBeSettable()
         {
 
             var vm = CreateViewModel();
+            // The constructor kicks off background path/Steam initialization that
+            // also writes StatusMessage as a startup status line; wait for it so
+            // the assertion is not racing the background task.
+            await vm.WaitForPathInitializationAsync();
             var expectedMessage = "Test Status";
 
             vm.StatusMessage = expectedMessage;
