@@ -27,10 +27,29 @@
                             Command="{Binding LoadDefaultCommand}"
                             Classes="btn"
                             MinWidth="110" Height="30"/>
+                    <Button Content="Open..."
+                            Command="{Binding LoadFileCommand}"
+                            Classes="btn"
+                            MinWidth="80" Height="30"/>
+                    <Button Content="Export"
+                            Command="{Binding ExportCommand}"
+                            Classes="btn"
+                            MinWidth="80" Height="30"/>
                     <Button Content="Refresh"
                             Command="{Binding RefreshCommand}"
                             Classes="btn"
                             MinWidth="80" Height="30"/>
+                    <ComboBox ItemsSource="{Binding SourceOptions}"
+                              SelectedItem="{Binding SelectedSourceOption, Mode=TwoWay}"
+                              IsEnabled="{Binding HasMultipleSources}"
+                              MinWidth="200"
+                              VerticalAlignment="Center">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Label}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
                     <TextBlock Text="{Binding LineCountText}"
                                VerticalAlignment="Center"
                                Foreground="{DynamicResource BrushTextMuted}"/>
@@ -49,6 +68,9 @@
                     <TextBox Width="180"
                              Watermark="Search..."
                              TextChanged="OnLineFilterTextChanged"/>
+                    <CheckBox Content="Collapse repeats"
+                              IsChecked="{Binding CollapseRepeats, Mode=TwoWay}"
+                              VerticalAlignment="Center"/>
                 </StackPanel>
 
                 <StackPanel Grid.Row="3" Margin="0,6,0,0" Spacing="2">
@@ -56,6 +78,8 @@
                                TextWrapping="Wrap"
                                Foreground="{DynamicResource BrushTextMuted}"/>
                     <TextBlock Text="{Binding SizeText}"
+                               Foreground="{DynamicResource BrushTextMuted}"/>
+                    <TextBlock Text="{Binding ModifiedText}"
                                Foreground="{DynamicResource BrushTextMuted}"/>
                     <TextBlock Text="{Binding StatusMessage}"
                                TextWrapping="Wrap"
@@ -106,6 +130,12 @@
                         BorderThickness="1"
                         CornerRadius="4">
                     <Grid>
+                        <ProgressBar IsIndeterminate="True"
+                                     IsVisible="{Binding IsLoading}"
+                                     Height="4"
+                                     Margin="0,-4,0,0"
+                                     HorizontalAlignment="Stretch"
+                                     VerticalAlignment="Top"/>
                         <ScrollViewer HorizontalScrollBarVisibility="Auto"
                                       VerticalScrollBarVisibility="Auto"
                                       AllowAutoHide="False">
@@ -117,7 +147,7 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Text}"
+                                        <TextBlock Text="{Binding DisplayText}"
                                                    Foreground="{Binding SeverityBrushKey, Converter={StaticResource ResourceKeyToBrushConverter}}"
                                                    TextWrapping="NoWrap"/>
                                     </DataTemplate>

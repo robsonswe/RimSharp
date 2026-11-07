@@ -361,5 +361,269 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
             vm.Lines.Should().HaveCount(2);
             vm.Lines[1].Text.Should().Be("Warning: new");
         }
+
+        [AvaloniaFact]
+        public async Task LoadAsync_ShowsLastModifiedTimestamp()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath, "plain\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            vm.ModifiedText.Should().Be("Last modified " + File.GetLastWriteTime(logPath).ToString("G"));
+        }
+
+        [AvaloniaFact]
+        public async Task LoadFromFileAsync_CancelledDialog_LoadsNothing()
+        {
+            var files = new FakeFileDialogService { OpenResult = (false, null) };
+            var vm = new LogViewerViewModel(_pathService, fileDialogService: files);
+
+            await vm.LoadFromFileAsync();
+
+            vm.Lines.Should().BeEmpty();
+            vm.StatusMessage.Should().Contain("cancelled");
+        }
+
+        [AvaloniaFact]
+        public async Task LoadFromFileAsync_OpensTheChosenFileAndTracksItAsSource()
+        {
+            var logPath = Path.Combine(_root, "shared.log");
+            File.WriteAllText(logPath, "shared line one\nWarning: shared two\n");
+            var files = new FakeFileDialogService { OpenResult = (true, logPath) };
+            var vm = new LogViewerViewModel(_pathService, fileDialogService: files);
+
+            vm.LoadFileCommand.CanExecute(null).Should().BeTrue();
+            await vm.LoadFromFileAsync();
+
+            vm.Lines.Should().HaveCount(2);
+            vm.PathText.Should().Be(logPath);
+            vm.SourceOptions.Should().Contain(o => o.Path == logPath);
+            vm.SelectedSourceOption!.Path.Should().Be(logPath);
+        }
+
+        [AvaloniaFact]
+        public async Task SourceSwitcher_ListsPreviousSessionWhenPresent()
+        {
+            File.WriteAllText(Path.Combine(_root, "Player.log"), "current line\n");
+            File.WriteAllText(Path.Combine(_root, "Player-prev.log"), "previous line\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadDefaultAsync();
+
+            vm.SourceOptions.Should().HaveCount(2);
+            vm.HasMultipleSources.Should().BeTrue();
+            vm.SelectedSourceOption!.Path.Should().Be(Path.Combine(_root, "Player.log"));
+        }
+
+        [AvaloniaFact]
+        public async Task SourceSwitcher_OnlyCurrentSessionWhenPrevMissing()
+        {
+            File.WriteAllText(Path.Combine(_root, "Player.log"), "current line\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadDefaultAsync();
+
+            vm.SourceOptions.Should().HaveCount(1);
+            vm.HasMultipleSources.Should().BeFalse();
+        }
+
+        [AvaloniaFact]
+        public async Task SwitchingSource_ReloadsAndKeepsFilterState()
+        {
+            var current = Path.Combine(_root, "Player.log");
+            var previous = Path.Combine(_root, "Player-prev.log");
+            File.WriteAllText(current, "Warning: current\n");
+            File.WriteAllText(previous, "Warning: previous\nplain in prev\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadDefaultAsync();
+            vm.SelectedFilterOption = vm.FilterOptions.First(o => o.Mode == LogFilterMode.WarningsOnly);
+            vm.ApplyLineFilter("prev");
+
+            vm.SelectedSourceOption = vm.SourceOptions.First(o => o.Path == previous);
+            await vm.SwitchTask!;
+
+            vm.PathText.Should().Be(previous);
+            vm.SelectedSourceOption!.Path.Should().Be(previous);
+            vm.SelectedFilterOption.Mode.Should().Be(LogFilterMode.WarningsOnly);
+            vm.LineFilter.Should().Be("prev");
+            vm.Lines.Should().HaveCount(1);
+            vm.Lines[0].Text.Should().Be("Warning: previous");
+        }
+
+        [AvaloniaFact]
+        public async Task SwitchingBackToCurrentSession_WorksAfterLoadingPrev()
+        {
+            var current = Path.Combine(_root, "Player.log");
+            var previous = Path.Combine(_root, "Player-prev.log");
+            File.WriteAllText(current, "Warning: current\n");
+            File.WriteAllText(previous, "previous line\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadDefaultAsync();
+
+            vm.SelectedSourceOption = vm.SourceOptions.First(o => o.Path == previous);
+            await vm.SwitchTask!;
+            vm.PathText.Should().Be(previous);
+
+            await vm.LoadDefaultAsync();
+
+            vm.PathText.Should().Be(current);
+            vm.SelectedSourceOption!.Path.Should().Be(current);
+        }
+
+        [AvaloniaFact]
+        public async Task CollapseRepeats_MergesConsecutiveIdenticalMessages()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath,
+                "Warning: same dropped stack\nWarning: same dropped stack\nWarning: same dropped stack\nother\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            vm.Lines.Should().HaveCount(2);
+            vm.Lines[0].RepeatCount.Should().Be(3);
+            vm.Lines[0].Text.Should().Be("Warning: same dropped stack");
+            vm.Lines[0].DisplayText.Should().Be("Warning: same dropped stack\n(Repeated 3 times)");
+            // The collapsed run counts once, so totals reflect what is displayed.
+            vm.Stats.TotalLines.Should().Be(2);
+            vm.Stats.Warnings.Should().Be(1);
+            vm.LineCountText.Should().Be("2 lines");
+        }
+
+        [AvaloniaFact]
+        public async Task CollapseRepeats_DoesNotMergeNonConsecutiveMessages()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath, "Warning: a\nWarning: b\nWarning: a\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            vm.Lines.Should().HaveCount(3);
+            vm.Lines.Should().OnlyContain(l => l.RepeatCount == 1);
+        }
+
+        [AvaloniaFact]
+        public async Task CollapseRepeats_TogglingOffRestoresEveryMessage()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath, "Warning: same\nWarning: same\nother\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+            vm.Lines.Should().HaveCount(2);
+
+            vm.CollapseRepeats = false;
+
+            vm.Lines.Should().HaveCount(3);
+            vm.Stats.TotalLines.Should().Be(3);
+            vm.Lines.Should().OnlyContain(l => l.RepeatCount == 1);
+        }
+
+        [AvaloniaFact]
+        public async Task TextFilter_MatchesTheMessageNotTheAnnotation()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath, "Warning: same\nWarning: same\nother\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+            vm.ApplyLineFilter("same");
+
+            vm.Lines.Should().HaveCount(1);
+            vm.Lines[0].DisplayText.Should().Contain("(Repeated 2 times)");
+        }
+
+        [AvaloniaFact]
+        public async Task Export_WritesTheFilteredViewAndOffersADefaultName()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath, "[Alpha] Error in alpha\n[Beta] Error in beta\nplain\n");
+            var files = new FakeFileDialogService();
+            var vm = new LogViewerViewModel(_pathService, fileDialogService: files);
+            await vm.LoadAsync(logPath);
+
+            vm.ExportCommand.CanExecute(null).Should().BeTrue();
+            var target = Path.Combine(_root, "export.txt");
+            files.SaveResult = (true, target);
+
+            await vm.ExportAsync();
+
+            files.LastSaveFileName.Should().Be("Player-log-export.txt");
+            File.ReadAllText(target).Trim().Replace("\r\n", "\n")
+                .Should().Be("[Alpha] Error in alpha\n[Beta] Error in beta\nplain");
+            vm.StatusMessage.Should().Contain("Exported 3 lines");
+        }
+
+        [AvaloniaFact]
+        public async Task Export_ExportsOnlyWhatTheFilterShows()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath, "Warning: keep\nplain\n");
+            var files = new FakeFileDialogService();
+            var vm = new LogViewerViewModel(_pathService, fileDialogService: files);
+            await vm.LoadAsync(logPath);
+            vm.SelectedFilterOption = vm.FilterOptions.First(o => o.Mode == LogFilterMode.WarningsOnly);
+
+            var target = Path.Combine(_root, "export.txt");
+            files.SaveResult = (true, target);
+            await vm.ExportAsync();
+
+            File.ReadAllText(target).Trim().Replace("\r\n", "\n").Should().Be("Warning: keep");
+        }
+
+        [AvaloniaFact]
+        public async Task Export_CancelledDialog_WritesNothing()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath, "plain\n");
+            var files = new FakeFileDialogService { SaveResult = (false, null) };
+            var vm = new LogViewerViewModel(_pathService, fileDialogService: files);
+            await vm.LoadAsync(logPath);
+
+            await vm.ExportAsync();
+
+            File.Exists(Path.Combine(_root, "export.txt")).Should().BeFalse();
+            vm.StatusMessage.Should().Contain("cancelled");
+        }
+
+        [AvaloniaFact]
+        public async Task Export_WithNothingLoaded_StaysDisabledAndExplains()
+        {
+            var files = new FakeFileDialogService();
+            var vm = new LogViewerViewModel(_pathService, fileDialogService: files);
+
+            vm.ExportCommand.CanExecute(null).Should().BeFalse();
+
+            await vm.ExportAsync();
+
+            vm.StatusMessage.Should().Contain("Nothing to export");
+        }
+
+        private sealed class FakeFileDialogService : IFileDialogService
+        {
+            public (bool Success, string? FilePath) OpenResult { get; set; } = (true, null);
+
+            public (bool Success, string? FilePath) SaveResult { get; set; } = (true, null);
+
+            public string? LastSaveFileName { get; private set; }
+
+            public Task<(bool Success, string? FilePath)> ShowOpenFileDialogAsync(string title, string filter, string? initialDirectory = null) =>
+                Task.FromResult(OpenResult);
+
+            public Task<(bool Success, string? FilePath)> ShowSaveFileDialogAsync(
+                string title, string filter, string? initialDirectory = null, string? defaultExtension = null, string? defaultFileName = null)
+            {
+                LastSaveFileName = defaultFileName;
+                return Task.FromResult(SaveResult);
+            }
+
+            public Task<(bool Success, string? Path)> ShowOpenFolderDialogAsync(string title, string? initialDirectory = null) =>
+                Task.FromResult<(bool Success, string? Path)>((true, null));
+        }
     }
 }

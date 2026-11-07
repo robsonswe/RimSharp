@@ -229,7 +229,7 @@ namespace RimSharp.Infrastructure.Dialog
 
         public async Task<bool> ShowLogViewerAsync()
         {
-            var viewModel = new LogViewerViewModel(_pathService);
+            var viewModel = new LogViewerViewModel(_pathService, fileDialogService: _fileDialogService);
             var dialog = new LogViewerView(viewModel);
             return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }
