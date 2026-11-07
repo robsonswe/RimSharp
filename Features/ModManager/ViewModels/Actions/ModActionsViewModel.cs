@@ -178,6 +178,7 @@ public bool IsParentLoading
 
         public ICommand StripModsCommand { get; private set; } = null!;
         public ICommand FixIntegrityCommand { get; private set; } = null!;
+        public ICommand OpenLogViewerCommand { get; private set; } = null!;
         public ICommand RunGameCommand { get; private set; } = null!;
         public ICommand CustomizeModCommand { get; private set; } = null!;
 

@@ -132,6 +132,26 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
 
             vm.ResolveDependenciesCommand.CanExecute(null).Should().BeTrue();
         }
+
+        [AvaloniaFact]
+        public void OpenLogViewerCommand_WhenNotLoading_ShouldBeEnabled()
+        {
+
+            var vm = CreateViewModel();
+
+            vm.OpenLogViewerCommand.CanExecute(null).Should().BeTrue();
+        }
+
+        [AvaloniaFact]
+        public void OpenLogViewerCommand_Execution_ShouldRequestLogViewerDialog()
+        {
+
+            var vm = CreateViewModel();
+
+            vm.OpenLogViewerCommand.Execute(null);
+
+            _dialogService.Received().ShowLogViewerAsync();
+        }
     }
 }
 

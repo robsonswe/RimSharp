@@ -59,6 +59,11 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 CanExecuteSimpleCommands,
                 observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
 
+            OpenLogViewerCommand = CreateAsyncCommand(
+                async () => await _dialogService.ShowLogViewerAsync(),
+                () => !IsParentLoading,
+                nameof(IsParentLoading));
+
             RunGameCommand = CreateCommand(
                 ExecuteRunGame,
                 CanExecuteRunGame,

@@ -23,6 +23,8 @@ using RimSharp.Features.ModManager.Dialogs.MissingMods;
 using RimSharp.Features.WorkshopDownloader.Dialogs.Collection;
 using RimSharp.Features.ModManager.Dialogs.Strip;
 using RimSharp.Features.ModManager.Dialogs.ActiveIssues;
+using RimSharp.Features.LogViewer.ViewModels;
+using RimSharp.Features.LogViewer.Views;
 using Avalonia.Platform.Storage;
 
 namespace RimSharp.Infrastructure.Dialog
@@ -223,6 +225,13 @@ namespace RimSharp.Infrastructure.Dialog
             var viewModel = new AboutDialogViewModel(_appUpdaterService);
             var dialog = new AboutDialogView(viewModel);
             await ShowDialogInternalAsync<bool>(viewModel, dialog);
+        }
+
+        public async Task<bool> ShowLogViewerAsync()
+        {
+            var viewModel = new LogViewerViewModel(_pathService);
+            var dialog = new LogViewerView(viewModel);
+            return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }
 
         public async Task<bool> ShowSettingsDialogAsync(bool showAiProviders = true)
