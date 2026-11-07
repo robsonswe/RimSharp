@@ -46,6 +46,46 @@ namespace RimSharp.Tests.Features.LogViewer.Services
         }
 
         [Fact]
+        public void AppendText_NonFinalChunkHoldsPartialLineUntilTerminated()
+        {
+            var store = new LogContentStore();
+
+            store.AppendText("one\ntwo", finalChunk: false);
+
+            store.LineCount.Should().Be(1);
+            store.Lines[0].Should().Be("one");
+
+            // The remainder of the split line merges with the next chunk.
+            store.AppendText("three\n", finalChunk: false);
+
+            store.LineCount.Should().Be(2);
+            store.Lines[1].Should().Be("twothree");
+        }
+
+        [Fact]
+        public void AppendText_FinalChunkFlushesThePendingLine()
+        {
+            var store = new LogContentStore();
+
+            store.AppendText("one\ntwo", finalChunk: false);
+            store.AppendText("three", finalChunk: true);
+
+            store.LineCount.Should().Be(2);
+            store.Lines[1].Should().Be("twothree");
+        }
+
+        [Fact]
+        public void AppendText_EmptyNonFinalChunkKeepsPendingLine()
+        {
+            var store = new LogContentStore();
+
+            store.AppendText("partial", finalChunk: false);
+            store.AppendText(string.Empty, finalChunk: false);
+
+            store.LineCount.Should().Be(0);
+        }
+
+        [Fact]
         public void AppendText_EvictsOldestLinesBeyondCap()
         {
             // Same eviction rule as production, with a tiny cap so the test stays fast.

@@ -10,8 +10,10 @@ namespace RimSharp.Features.LogViewer.Services
     /// </summary>
     public static class LogPatterns
     {
+        // Multiline so ^ anchors at the start of each line inside a joined
+        // multi-line message (stack-trace frames in message continuations).
         private const RegexOptions Options =
-            RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;
+            RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Multiline;
 
         /// <summary>RimWorld log timestamps, e.g. "11:04:37 PM".</summary>
         public static readonly Regex Timestamp = new(@"\d{1,2}:\d{2}:\d{2} [AP]M", Options);

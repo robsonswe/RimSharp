@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Headless.XUnit;
 using FluentAssertions;
@@ -90,7 +91,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         }
 
         [AvaloniaFact]
-        public async Task LoadAsync_ClassifiesLinesWithSeverities()
+        public async Task LoadAsync_ClassifiesMessagesWithSeverities()
         {
             var logPath = Path.Combine(_root, "any.log");
             File.WriteAllText(logPath,
@@ -99,14 +100,15 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
             var vm = CreateViewModel();
             await vm.LoadAsync(logPath);
 
+            // The stack frame joins the exception message; three messages total.
+            vm.Lines.Should().HaveCount(3);
             vm.Lines[0].Severity.Should().Be(LogLineSeverity.Info);
             vm.Lines[0].SeverityBrushKey.Should().Be("BrushTextMuted");
             vm.Lines[1].Severity.Should().Be(LogLineSeverity.Keybind);
             vm.Lines[1].SeverityBrushKey.Should().Be("BrushTextWarning");
             vm.Lines[2].Severity.Should().Be(LogLineSeverity.Exception);
             vm.Lines[2].SeverityBrushKey.Should().Be("BrushTextError");
-            // Stack-trace frames inherit exception severity.
-            vm.Lines[3].Severity.Should().Be(LogLineSeverity.Exception);
+            vm.Lines[2].Text.Should().Be("Unhandled exception\n   at Verse.Awake ()");
         }
 
         [AvaloniaFact]
@@ -151,6 +153,213 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
             var vm = CreateViewModel();
 
             vm.LoadDefaultCommand.CanExecute(null).Should().BeTrue();
+        }
+
+        [AvaloniaFact]
+        public async Task LoadAsync_AccumulatesStatisticsOverAllLines()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath,
+                "Loaded mods\nWarning: one\nWarning: two\n[E] Failed\n[MyMod] Error while resolving\nplain\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            vm.Stats.TotalLines.Should().Be(6);
+            vm.Stats.Infos.Should().Be(1);
+            vm.Stats.Warnings.Should().Be(2);
+            vm.Stats.Errors.Should().Be(2);
+            vm.Stats.ModIssues.Should().Be(1);
+            vm.Stats.AllIssues.Should().Be(4); // distinct issue lines, not bucket sum
+        }
+
+        [AvaloniaFact]
+        public async Task SelectingWarningsFilter_ShowsOnlyWarnings()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath, "Loaded mods\nWarning: one\nplain\nWarning: two\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            var warnings = vm.FilterOptions.First(o => o.Mode == LogFilterMode.WarningsOnly);
+            vm.SelectedFilterOption = warnings;
+
+            vm.Lines.Should().HaveCount(2);
+            vm.Lines.Should().OnlyContain(l => l.Severity == LogLineSeverity.Warning);
+            vm.LineCountText.Should().Be("2 of 4 lines");
+        }
+
+        [AvaloniaFact]
+        public async Task SelectFilterCommand_AppliesChosenMode()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath, "plain\n[E] Failed\nanother plain\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            var errors = vm.FilterOptions.First(o => o.Mode == LogFilterMode.ErrorsOnly);
+            vm.SelectFilterCommand.Execute(errors);
+
+            vm.SelectedFilterOption.Should().Be(errors);
+            vm.Lines.Should().HaveCount(1);
+            vm.Lines[0].Severity.Should().Be(LogLineSeverity.Error);
+        }
+
+        [AvaloniaFact]
+        public async Task StatButtonsUseTheSameFilterModes()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath, "plain\nKey binding conflict: A\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            var keybinds = vm.FilterOptions.First(o => o.Mode == LogFilterMode.KeybindsOnly);
+            vm.SelectFilterCommand.Execute(keybinds);
+
+            vm.Lines.Should().HaveCount(1);
+            vm.Lines[0].Severity.Should().Be(LogLineSeverity.Keybind);
+        }
+
+        [AvaloniaFact]
+        public async Task LineFilter_ComposesWithModeFilter()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath,
+                "[Alpha] Error in alpha\n[Beta] Error in beta\n[Alpha] plain info line\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            var errors = vm.FilterOptions.First(o => o.Mode == LogFilterMode.ErrorsOnly);
+            vm.SelectedFilterOption = errors;
+
+            vm.ApplyLineFilter("alpha");
+
+            vm.Lines.Should().HaveCount(1);
+            vm.Lines[0].Text.Should().Be("[Alpha] Error in alpha");
+            vm.LineCountText.Should().Be("1 of 3 lines");
+        }
+
+        [AvaloniaFact]
+        public async Task LineFilter_IsCaseInsensitive()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath, "[AlphaMod] Warning\n[betamod] Warning\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            vm.ApplyLineFilter("ALPHAMOD");
+
+            vm.Lines.Should().HaveCount(1);
+            vm.Lines[0].Text.Should().Be("[AlphaMod] Warning");
+        }
+
+        [AvaloniaFact]
+        public async Task Filters_WithNoMatches_ShowEmptyAndStatus()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath, "plain one\nplain two\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            var exceptions = vm.FilterOptions.First(o => o.Mode == LogFilterMode.ExceptionsOnly);
+            vm.SelectedFilterOption = exceptions;
+
+            vm.Lines.Should().BeEmpty();
+            vm.StatusMessage.Should().Contain("No lines match");
+            vm.LineCountText.Should().Be("0 of 2 lines");
+        }
+
+        [AvaloniaFact]
+        public void EmptyLogArea_ShowsPlaceholder_UntilContentLoads()
+        {
+            var vm = CreateViewModel();
+
+            vm.ShowLogPlaceholder.Should().BeTrue();
+        }
+
+        [AvaloniaFact]
+        public async Task LoadedLogArea_HidesPlaceholder()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath, "plain\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            vm.ShowLogPlaceholder.Should().BeFalse();
+        }
+
+        [AvaloniaFact]
+        public async Task MultilineMessage_CountsAndDisplaysAsOneEntry()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath,
+                "Error in MyMod: resolving XML\n  at Verse.Foo ()\n  at RimSharp.Bar ()\nplain info\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            // Two messages, not four lines.
+            vm.Lines.Should().HaveCount(2);
+            vm.Stats.TotalLines.Should().Be(2);
+            vm.Lines[0].Text.Should().Be("Error in MyMod: resolving XML\n  at Verse.Foo ()\n  at RimSharp.Bar ()");
+            vm.LineCountText.Should().Be("2 lines");
+        }
+
+        [AvaloniaFact]
+        public async Task TextFilter_MatchesContentOnContinuationLines()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath, "Wrapped output\n  mentioned Harmony here\nplain info\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            vm.ApplyLineFilter("harmony");
+
+            vm.Lines.Should().HaveCount(1);
+            vm.Lines[0].Text.Should().Contain("mentioned Harmony here");
+        }
+
+        [AvaloniaFact]
+        public async Task ModeFilter_SeesTheWholeMessage()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath, "Loading scene\n  UnityException: boom\nplain info\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            var exceptions = vm.FilterOptions.First(o => o.Mode == LogFilterMode.ExceptionsOnly);
+            vm.SelectedFilterOption = exceptions;
+
+            vm.Lines.Should().HaveCount(1);
+            vm.Lines[0].Severity.Should().Be(LogLineSeverity.Exception);
+        }
+
+        [AvaloniaFact]
+        public async Task Refresh_PreservesActiveFilter()
+        {
+            var logPath = Path.Combine(_root, "any.log");
+            File.WriteAllText(logPath, "Warning: old\nplain\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+            vm.SelectedFilterOption = vm.FilterOptions.First(o => o.Mode == LogFilterMode.WarningsOnly);
+
+            File.AppendAllText(logPath, "Warning: new\nplain\n");
+            await vm.RefreshAsync();
+
+            // Filter stays applied across the refresh and picks up the new line.
+            vm.SelectedFilterOption.Mode.Should().Be(LogFilterMode.WarningsOnly);
+            vm.Lines.Should().HaveCount(2);
+            vm.Lines[1].Text.Should().Be("Warning: new");
         }
     }
 }

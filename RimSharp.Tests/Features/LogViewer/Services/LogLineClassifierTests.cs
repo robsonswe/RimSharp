@@ -44,6 +44,36 @@ namespace RimSharp.Tests.Features.LogViewer.Services
         }
 
         [Fact]
+        public void ClassifyMessage_MembershipSpansTheWholeMessage()
+        {
+            // The exception only appears on the continuation line; the message
+            // as a whole must count as an exception.
+            var classification = LogLineClassifier.ClassifyMessage("Loading scene\n  UnityException: boom");
+
+            classification.IsException.Should().BeTrue();
+            classification.Severity.Should().Be(LogLineSeverity.Exception);
+        }
+
+        [Fact]
+        public void ClassifyMessage_SeverityPrefersTheLeadLine()
+        {
+            // A Warning whose body is a stack trace stays warning-colored; the
+            // frames still mark the message as a stack trace.
+            var classification = LogLineClassifier.ClassifyMessage("Warning: something\n  at Verse.Foo ()");
+
+            classification.IsStackTrace.Should().BeTrue();
+            classification.Severity.Should().Be(LogLineSeverity.Warning);
+        }
+
+        [Fact]
+        public void ClassifyMessage_ExceptionLeadKeepsExceptionSeverity()
+        {
+            var classification = LogLineClassifier.ClassifyMessage("NullReferenceException: x\n  at Verse.Awake ()");
+
+            classification.Severity.Should().Be(LogLineSeverity.Exception);
+        }
+
+        [Fact]
         public void Analyze_AccumulatesCountersPerCategory()
         {
             var stats = LogLineClassifier.Analyze(new[]
@@ -86,13 +116,13 @@ namespace RimSharp.Tests.Features.LogViewer.Services
         }
 
         [Fact]
-        public void MatchesModFilter_ComposesWithModeFilter()
+        public void MatchesTextFilter_ComposesWithModeFilter()
         {
             var classification = LogLineClassifier.Classify("[MyMod] Error while resolving");
 
-            LogLineClassifier.MatchesModFilter("[MyMod] Error while resolving", "mymod").Should().BeTrue();
-            LogLineClassifier.MatchesModFilter("[MyMod] Error while resolving", "othermod").Should().BeFalse();
-            LogLineClassifier.MatchesModFilter("[MyMod] Error while resolving", "   ").Should().BeTrue();
+            LogLineClassifier.MatchesTextFilter("[MyMod] Error while resolving", "mymod").Should().BeTrue();
+            LogLineClassifier.MatchesTextFilter("[MyMod] Error while resolving", "othermod").Should().BeFalse();
+            LogLineClassifier.MatchesTextFilter("[MyMod] Error while resolving", "   ").Should().BeTrue();
         }
 
         [Fact]

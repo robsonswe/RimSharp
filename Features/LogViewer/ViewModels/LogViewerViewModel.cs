@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Threading.Tasks;
@@ -20,6 +21,7 @@ namespace RimSharp.Features.LogViewer.ViewModels
         private readonly IPathService? _pathService;
         private readonly PlayerLogReader _reader;
         private readonly LogContentStore _store = new();
+        private readonly List<LogEntryViewModel> _allEntries = new();
 
         private string? _currentPath;
         private long _tailOffset;
@@ -32,10 +34,28 @@ namespace RimSharp.Features.LogViewer.ViewModels
             _reader = reader ?? new PlayerLogReader();
             LoadDefaultCommand = CreateAsyncCommand(LoadDefaultAsync, () => !IsLoading, nameof(IsLoading));
             RefreshCommand = CreateAsyncCommand(RefreshAsync, () => !IsLoading, nameof(IsLoading));
+            SelectFilterCommand = CreateCommand<LogFilterOption>(option =>
+            {
+                SelectedFilterOption = option;
+            });
+            _selectedFilterOption = FilterOptions[0];
         }
 
-        /// <summary>Classified lines bound to the virtualizing display list.</summary>
-        public ObservableCollection<LogLineViewModel> Lines { get; } = new();
+        /// <summary>Filter modes offered by the combo box.</summary>
+        public IReadOnlyList<LogFilterOption> FilterOptions { get; } = new[]
+        {
+            new LogFilterOption("All Entries", LogFilterMode.AllEntries),
+            new LogFilterOption("Infos Only", LogFilterMode.InfosOnly),
+            new LogFilterOption("Keybinds Only", LogFilterMode.KeybindsOnly),
+            new LogFilterOption("Mod Issues", LogFilterMode.ModIssues),
+            new LogFilterOption("Warnings Only", LogFilterMode.WarningsOnly),
+            new LogFilterOption("Errors Only", LogFilterMode.ErrorsOnly),
+            new LogFilterOption("Exceptions Only", LogFilterMode.ExceptionsOnly),
+            new LogFilterOption("All Issues", LogFilterMode.AllIssues)
+        };
+
+        /// <summary>Whole messages bound to the virtualizing display list (after filtering).</summary>
+        public ObservableCollection<LogEntryViewModel> Lines { get; } = new();
 
         public bool IsLoading
         {
@@ -71,8 +91,56 @@ namespace RimSharp.Features.LogViewer.ViewModels
             private set => SetProperty(ref _lineCountText, value);
         }
 
+        /// <summary>
+        /// True while no log content has been read at all — the view shows an
+        /// empty-state hint inside the log area. A filter that hides every line
+        /// of a loaded log does not count; the status message covers that case.
+        /// </summary>
+        public bool ShowLogPlaceholder => _store.LineCount == 0;
+
+        private LogFilterOption _selectedFilterOption;
+        public LogFilterOption SelectedFilterOption
+        {
+            get => _selectedFilterOption;
+            set
+            {
+                if (SetProperty(ref _selectedFilterOption, value) && value != null)
+                {
+                    ApplyDisplay();
+                }
+            }
+        }
+
+        private string _lineFilter = string.Empty;
+        public string LineFilter
+        {
+            get => _lineFilter;
+            private set => SetProperty(ref _lineFilter, value);
+        }
+
+        private LogStats _stats = new();
+        /// <summary>Category counters over the full loaded content (not the filtered view).</summary>
+        public LogStats Stats
+        {
+            get => _stats;
+            private set => SetProperty(ref _stats, value);
+        }
+
         public ICommand LoadDefaultCommand { get; }
         public ICommand RefreshCommand { get; }
+        public ICommand SelectFilterCommand { get; }
+
+        /// <summary>
+        /// Applies the line-text filter (called from the view, debounced).
+        /// Composes with the selected filter mode.
+        /// </summary>
+        public void ApplyLineFilter(string? value)
+        {
+            var normalized = value ?? string.Empty;
+            if (LineFilter == normalized) return;
+            LineFilter = normalized;
+            ApplyDisplay();
+        }
 
         /// <summary>Locates Player.log beside the game's config folder and loads it.</summary>
         public async Task LoadDefaultAsync()
@@ -129,10 +197,10 @@ namespace RimSharp.Features.LogViewer.ViewModels
                 _currentPath = path;
                 _tailOffset = result.BytesRead;
                 _store.AppendText(result.Text);
-                RebuildLines();
+                RebuildAllLines();
+                ApplyDisplay();
 
                 SizeText = FormatSize(result.FileSize);
-                LineCountText = $"{_store.LineCount:N0} lines";
                 StatusMessage = "Loaded. Live tailing is not enabled yet.";
             }
             finally
@@ -141,12 +209,44 @@ namespace RimSharp.Features.LogViewer.ViewModels
             }
         }
 
-        private void RebuildLines()
+        /// <summary>
+        /// Groups stored lines into whole messages once and classifies each, so
+        /// filters, statistics and the text search all operate on messages
+        /// (lead line plus indented continuations), not bare lines.
+        /// </summary>
+        private void RebuildAllLines()
         {
-            foreach (var line in _store.Lines)
+            _allEntries.Clear();
+            var stats = new LogStats();
+            foreach (var message in LogMessageGrouper.Group(_store.Lines))
             {
-                Lines.Add(new LogLineViewModel(line, LogLineClassifier.Classify(line).Severity));
+                var classification = LogLineClassifier.ClassifyMessage(message.Text);
+                _allEntries.Add(new LogEntryViewModel(message.Text, classification));
+                stats.Add(classification);
             }
+            Stats = stats;
+        }
+
+        /// <summary>Rebuilds the displayed list from the current filter selections.</summary>
+        private void ApplyDisplay()
+        {
+            var mode = _selectedFilterOption?.Mode ?? LogFilterMode.AllEntries;
+            Lines.Clear();
+
+            foreach (var entry in _allEntries)
+            {
+                if (!LogLineClassifier.MatchesFilter(entry.Classification, mode)) continue;
+                if (!LogLineClassifier.MatchesTextFilter(entry.Text, LineFilter)) continue;
+                Lines.Add(entry);
+            }
+
+            LineCountText = Lines.Count == _allEntries.Count
+                ? $"{_allEntries.Count:N0} lines"
+                : $"{Lines.Count:N0} of {_allEntries.Count:N0} lines";
+            StatusMessage = Lines.Count == 0
+                ? "No lines match the current filters."
+                : "Loaded. Live tailing is not enabled yet.";
+            OnPropertyChanged(nameof(ShowLogPlaceholder));
         }
 
         private static string FormatSize(long bytes)
@@ -160,4 +260,7 @@ namespace RimSharp.Features.LogViewer.ViewModels
             return FormattableString.Invariant($"{size:F1} PB");
         }
     }
+
+    /// <summary>A filter mode with its display label, for the combo box and stat buttons.</summary>
+    public sealed record LogFilterOption(string Label, LogFilterMode Mode);
 }

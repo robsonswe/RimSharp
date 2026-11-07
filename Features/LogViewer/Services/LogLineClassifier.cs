@@ -108,6 +108,30 @@ namespace RimSharp.Features.LogViewer.Services
                 severity, isInfo, isKeybind, isModIssue, isWarning, isError, isException, isStackTrace);
         }
 
+        /// <summary>
+        /// Classifies a whole message (lead line plus indented continuations).
+        /// Category membership spans every line of the message, so filters and
+        /// statistics treat it as one unit; display severity prefers the lead
+        /// line's own category and falls back to the message-wide one, so a
+        /// "Warning:" whose body is a stack trace stays warning-colored instead
+        /// of becoming exception-colored.
+        /// </summary>
+        public static LogLineClassification ClassifyMessage(string? message)
+        {
+            if (string.IsNullOrEmpty(message)) return Classify(message);
+
+            var whole = Classify(message);
+            var lead = Classify(FirstLine(message));
+            var severity = lead.Severity != LogLineSeverity.None ? lead.Severity : whole.Severity;
+            return whole with { Severity = severity };
+        }
+
+        private static string FirstLine(string message)
+        {
+            var newline = message.IndexOf('\n');
+            return newline < 0 ? message : message[..newline];
+        }
+
         /// <summary>True when the line's categories satisfy the given filter mode.</summary>
         public static bool MatchesFilter(LogLineClassification classification, LogFilterMode mode) =>
             mode switch
@@ -126,13 +150,13 @@ namespace RimSharp.Features.LogViewer.Services
             };
 
         /// <summary>
-        /// Mod-name substring filter; composes with the mode filter. Empty/whitespace
+        /// Line-text substring filter; composes with the mode filter. Empty/whitespace
         /// matches everything.
         /// </summary>
-        public static bool MatchesModFilter(string? line, string? modFilter)
+        public static bool MatchesTextFilter(string? line, string? text)
         {
-            if (string.IsNullOrWhiteSpace(modFilter)) return true;
-            return line != null && line.Contains(modFilter.Trim(), StringComparison.OrdinalIgnoreCase);
+            if (string.IsNullOrWhiteSpace(text)) return true;
+            return line != null && line.Contains(text.Trim(), StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>Accumulates category counters over the given lines.</summary>
