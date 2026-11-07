@@ -451,6 +451,7 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<ISteamCmdProcessRunner>(),
                     provider.GetRequiredService<ISteamCmdLogParser>(),
                     provider.GetRequiredService<IDownloadedItemProcessor>(),
+                    autoClearDepotCache: provider.GetRequiredService<GameInstance>().SteamCmdAutoClearCache,
                     fileSystem: provider.GetRequiredService<ISteamCmdFileSystem>()
                 ));
 
