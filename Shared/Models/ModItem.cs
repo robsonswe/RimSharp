@@ -5,6 +5,29 @@ using System.Text.RegularExpressions;
 
 namespace RimSharp.Shared.Models
 {
+    /// <summary>
+    /// How a mod got onto this machine. The classification service applies these
+    /// in order, and Core/Expansion are produced ONLY by the game's Data/ scan —
+    /// a mod in the local mods folder or the Workshop folder is never either:
+    /// <list type="bullet">
+    /// <item><b>Core</b> — in the game's Data/ folder and is the game itself
+    /// (folder named Core, or packageId exactly "Ludeon.RimWorld").</item>
+    /// <item><b>Expansion</b> — in Data/ and is official shipped content that is
+    /// not Core (the DLC packageIds are "Ludeon.RimWorld.*").</item>
+    /// <item><b>Workshop</b> — in the Steam Workshop content folder
+    /// (steamapps/workshop/content/294100) when Steam integration is enabled.</item>
+    /// <item><b>Tracked</b> — an app-downloaded Workshop copy in the local mods
+    /// folder: About/PublishedFileId.txt matching the folder name, RimSharp.json
+    /// carrying a SteamId, the download timestamps (DateStamp or
+    /// About/timestamp.txt), or a folder named solely by the item id. Gets
+    /// update tracking and a Steam link.</item>
+    /// <item><b>Git</b> — a local mods folder containing a .git directory.</item>
+    /// <item><b>Untracked</b> — anything else in the local mods folder
+    /// (hand-placed or copied mods) and valid mods outside every known folder.</item>
+    /// </list>
+    /// Core is the enum default (0), so a default-constructed value is not a
+    /// classification and must never be read as one.
+    /// </summary>
     public enum ModType
     {
         Core = 0,

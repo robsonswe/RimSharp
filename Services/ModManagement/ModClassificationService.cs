@@ -1,6 +1,9 @@
 using System;
 using System.IO;
+using System.Text.Json;
+using System.Xml.Linq;
 using RimSharp.Shared.Models;
+using RimSharp.Shared.Services.Contracts;
 
 namespace RimSharp.Services.ModManagement
 {
@@ -10,6 +13,9 @@ namespace RimSharp.Services.ModManagement
     /// </summary>
     public class ModClassificationService
     {
+        /// <summary>The one packageId that means the game itself.</summary>
+        private const string CorePackageId = "Ludeon.RimWorld";
+
         private readonly GameInstance _instance;
 
         public ModClassificationService(GameInstance instance)
@@ -40,6 +46,17 @@ namespace RimSharp.Services.ModManagement
                 {
                     return ClassifyDataMod(modPath);
                 }
+            }
+
+            // Everything below this line is outside the game's Data folder, where
+            // Core and Expansion are meaningless — neither type ever lives in the
+            // mods folder or the Workshop folder. ModType.Core is also the enum
+            // default (0), so a freshly parsed folder arrives "looking" Core;
+            // normalize it (and a stray Expansion) to Untracked so a marker-less
+            // mod can never display as a game component.
+            if (existingModType is ModType.Core or ModType.Expansion)
+            {
+                existingModType = ModType.Untracked;
             }
 
             // Check if it's in the workshop folder
@@ -86,12 +103,15 @@ namespace RimSharp.Services.ModManagement
             {
                 try
                 {
-                    var content = File.ReadAllText(aboutXml);
-                    if (content.Contains("ludeon.rimworld", StringComparison.OrdinalIgnoreCase))
+                    var packageId = ReadPackageId(aboutXml);
+                    if (string.Equals(packageId, CorePackageId, StringComparison.OrdinalIgnoreCase))
                     {
-                        return ModType.Expansion; // Expansion type for DLC
+                        return ModType.Core;
                     }
-                    return ModType.Core;
+                    // Every other entry shipped in Data/ is official content (the
+                    // DLC packageIds are Ludeon.RimWorld.*). Official content that
+                    // matches neither is still never Core.
+                    return ModType.Expansion;
                 }
                 catch (Exception)
                 {
@@ -100,6 +120,12 @@ namespace RimSharp.Services.ModManagement
             }
 
             return ModType.Expansion;
+        }
+
+        private static string? ReadPackageId(string aboutXml)
+        {
+            var doc = XDocument.Load(aboutXml);
+            return doc.Root?.Element("packageId")?.Value?.Trim();
         }
 
         /// <summary>
@@ -126,6 +152,38 @@ namespace RimSharp.Services.ModManagement
                 }
             }
 
+            // App-downloaded workshop copy: the download pipeline caches Workshop
+            // metadata as RimSharp.json in the mod root, and the SteamId inside
+            // ties the folder to a Workshop item.
+            var appMetadataPath = Path.Combine(modPath, WorkshopDescriptionCache.FileName);
+            if (File.Exists(appMetadataPath) && HasWorkshopSteamId(appMetadataPath))
+            {
+                return ModType.Tracked;
+            }
+
+            // The download pipeline also leaves its own timestamps behind —
+            // DateStamp in the mod root and About/timestamp.txt, both written by
+            // ModService.CreateTimestampFilesAsync and by nothing else. Either
+            // file alone proves the folder came through this app's downloads.
+            // (About/PublishStamp.txt is NOT one of ours: it is author-published
+            // content that ships with the item from any source.)
+            if (File.Exists(Path.Combine(modPath, "DateStamp")) ||
+                File.Exists(Path.Combine(modPath, "About", "timestamp.txt")))
+            {
+                return ModType.Tracked;
+            }
+
+            // Last resort: this app and SteamCMD install Workshop items into
+            // directories named after the PublishedFileId, so a folder whose
+            // name is solely a number in the local mods folder is a workshop
+            // copy even if every marker file was stripped (av, sync tools).
+            // Checked before .git because Workshop items also ship .git dirs.
+            var folderName = new DirectoryInfo(modPath).Name;
+            if (long.TryParse(folderName, out _))
+            {
+                return ModType.Tracked;
+            }
+
             // Check for Git repository
             try
             {
@@ -140,6 +198,22 @@ namespace RimSharp.Services.ModManagement
             }
 
             return existingModType; // Return existing type if no specific classification found
+        }
+
+        private static bool HasWorkshopSteamId(string metadataPath)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(metadataPath));
+                return doc.RootElement.TryGetProperty("SteamId", out var id) &&
+                       id.ValueKind == JsonValueKind.String &&
+                       !string.IsNullOrWhiteSpace(id.GetString());
+            }
+            catch (Exception)
+            {
+                // Unreadable metadata is not a marker.
+                return false;
+            }
         }
 
         /// <summary>

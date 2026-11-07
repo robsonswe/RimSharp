@@ -109,6 +109,12 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
                 _logger.LogInfo($"Item {itemId} ('{itemName}') processing SUCCEEDED.", "DownloadedItemProcessor");
                 AddLogMessage($"Item {itemId} ({itemName}) successfully updated/installed.");
 
+                // Standard SteamCMD marker (About/PublishedFileId.txt) so the mod
+                // scan can tell app-installed workshop copies from hand-placed
+                // local mods — the same file external tooling writes. Non-fatal:
+                // the RimSharp.json cache below still marks the folder.
+                WritePublishedFileIdMarker(targetPath, itemId);
+
                 // Cache the full Workshop description into the freshly
                 // installed mod folder (RimSharp.json) — non-fatal on failure.
                 // The queue item may already carry the text captured from the
@@ -160,6 +166,25 @@ namespace RimSharp.Infrastructure.Workshop.Download.Processing
                         _logger.LogCritical($"Item {itemId}: FAILED TO CLEANUP STAGING DIRECTORY '{stagingPath}'. Manual deletion may be required. Error: {cleanupEx.Message}", "DownloadedItemProcessor");
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Writes About/PublishedFileId.txt with the Workshop item id. Best-effort:
+        /// a failure here costs the mod its Steam marker, not the installation.
+        /// </summary>
+        private static void WritePublishedFileIdMarker(string targetPath, string itemId)
+        {
+            try
+            {
+                var aboutDir = Path.Combine(targetPath, "About");
+                Directory.CreateDirectory(aboutDir);
+                File.WriteAllText(Path.Combine(aboutDir, "PublishedFileId.txt"), itemId);
+            }
+            catch (Exception)
+            {
+                // Marker is an optimization; the RimSharp.json cache still
+                // identifies app-downloaded mods.
             }
         }
 
