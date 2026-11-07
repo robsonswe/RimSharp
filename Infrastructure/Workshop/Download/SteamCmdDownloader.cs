@@ -43,7 +43,9 @@ namespace RimSharp.Infrastructure.Workshop.Download
             ISteamCmdScriptGenerator scriptGenerator,
             ISteamCmdProcessRunner processRunner,
             ISteamCmdLogParser logParser,
-            IDownloadedItemProcessor itemProcessor
+            IDownloadedItemProcessor itemProcessor,
+            bool autoClearDepotCache = true,
+            ISteamCmdFileSystem? fileSystem = null
             )
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
@@ -55,7 +57,18 @@ namespace RimSharp.Infrastructure.Workshop.Download
             _processRunner = processRunner ?? throw new ArgumentNullException(nameof(processRunner));
             _logParser = logParser ?? throw new ArgumentNullException(nameof(logParser));
             _itemProcessor = itemProcessor ?? throw new ArgumentNullException(nameof(itemProcessor));
+            AutoClearDepotCache = autoClearDepotCache;
+            _fileSystem = fileSystem;
         }
+
+        /// <summary>
+        /// When true (default, matching RimSort's steamcmd_auto_clear_depot_cache),
+        /// the SteamCMD depot cache is cleared before each download operation —
+        /// the documented workaround for weird SteamCMD behavior and download
+        /// failures. Clear failures are logged and never abort the download.
+        /// </summary>
+        public bool AutoClearDepotCache { get; }
+        private readonly ISteamCmdFileSystem? _fileSystem;
 
         public async Task<SteamCmdDownloadResult> DownloadModsAsync(
                         IEnumerable<DownloadItem> itemsToDownload,
@@ -75,6 +88,21 @@ namespace RimSharp.Infrastructure.Workshop.Download
                 return result;
             }
             if (!EnsurePathValidity(userModsPath, result)) return result;
+
+            if (AutoClearDepotCache && _fileSystem != null)
+            {
+                try
+                {
+                    await _fileSystem.ClearDepotCacheAsync();
+                    _logger.LogInfo("SteamCMD depot cache cleared before download (auto-clear).", "SteamCmdDownloader");
+                }
+                catch (Exception ex)
+                {
+                    // Never abort downloads on a cache-clear hiccup — SteamCMD recreates
+                    // depot manifests as needed.
+                    _logger.LogWarning($"Depot cache auto-clear failed (continuing): {ex.Message}", "SteamCmdDownloader");
+                }
+            }
 
             var validItems = itemsToDownload
                 .Where(i => i != null && !string.IsNullOrWhiteSpace(i.SteamId) && long.TryParse(i.SteamId.Trim(), out _))

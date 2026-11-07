@@ -446,11 +446,12 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<ISteamCmdInstaller>(),
                     provider.GetRequiredService<IDialogService>(),
                     provider.GetRequiredService<ILoggerService>(),
-                    provider.GetRequiredService<IPathService>(), 
+                    provider.GetRequiredService<IPathService>(),
                     provider.GetRequiredService<ISteamCmdScriptGenerator>(),
                     provider.GetRequiredService<ISteamCmdProcessRunner>(),
                     provider.GetRequiredService<ISteamCmdLogParser>(),
-                    provider.GetRequiredService<IDownloadedItemProcessor>()
+                    provider.GetRequiredService<IDownloadedItemProcessor>(),
+                    fileSystem: provider.GetRequiredService<ISteamCmdFileSystem>()
                 ));
 
             services.AddSingleton<ISteamCmdService, SteamCmdService>();

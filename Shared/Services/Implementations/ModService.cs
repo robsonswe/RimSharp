@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using RimSharp.Core.Services;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Services.Workshop;
 using RimSharp.Shared.Models;
@@ -278,7 +279,7 @@ namespace RimSharp.Shared.Services.Implementations
                     throw new DirectoryNotFoundException($"Target mod directory does not exist: {modDirectoryPath}");
                 }
 
-                var aboutDir = Path.Combine(modDirectoryPath, "About");
+                var aboutDir = ModAboutPaths.GetAboutFolder(modDirectoryPath);
                 var dateStampPath = Path.Combine(modDirectoryPath, "DateStamp");
                 var timestampPath = Path.Combine(aboutDir, "timestamp.txt");
 
@@ -710,7 +711,7 @@ namespace RimSharp.Shared.Services.Implementations
 
                 long totalSize = validFiles.Sum(f => f.Length);
 
-                string aboutFolderPathWithSeparator = Path.Combine(mod.Path, "About") + Path.DirectorySeparatorChar;
+                string aboutFolderPathWithSeparator = ModAboutPaths.GetAboutFolder(mod.Path) + Path.DirectorySeparatorChar;
                 var textureFiles = validFiles
                     .Where(f => TextureExtensions.Contains(f.Extension) &&
                                 !f.FullName.StartsWith(aboutFolderPathWithSeparator, StringComparison.OrdinalIgnoreCase))
@@ -1019,7 +1020,7 @@ namespace RimSharp.Shared.Services.Implementations
         private static string GetFolderScanStamp(string dir)
         {
             var stamp = File.GetLastWriteTimeUtc(dir).Ticks.ToString();
-            var aboutPath = Path.Combine(dir, "About", "About.xml");
+            var aboutPath = ModAboutPaths.GetAboutFilePath(dir);
             if (File.Exists(aboutPath))
             {
                 stamp += "|" + File.GetLastWriteTimeUtc(aboutPath).Ticks.ToString();
@@ -1036,7 +1037,7 @@ namespace RimSharp.Shared.Services.Implementations
         /// </summary>
         private ModItem? BuildOrReuseModFromFolder(string dir, out bool fromCache)
         {
-            var aboutPath = Path.Combine(dir, "About", "About.xml");
+            var aboutPath = ModAboutPaths.GetAboutFilePath(dir);
             if (!File.Exists(aboutPath))
             {
                 fromCache = false;

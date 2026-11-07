@@ -15,6 +15,7 @@ namespace RimSharp.Infrastructure.Configuration
         private const string CompanyFolder = "Ludeon Studios";
         private const string ProductFolder = "RimWorld by Ludeon Studios";
         private const string ConfigSubFolder = "Config";
+        private const string SteamAppId = "294100";
 
         /// <summary>
         /// Returns the RimWorld config folder that contains ModsConfig.xml for
@@ -95,6 +96,58 @@ namespace RimSharp.Infrastructure.Configuration
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Steam root candidates on Linux, in probe order (RimSort reference behavior):
+        /// native/legacy installs first, then sandboxed (Flatpak, Snap) installs.
+        /// Callers apply their own validity checks (steamapps dir / libraryfolders.vdf)
+        /// on top of these paths.
+        /// </summary>
+        internal static string[] GetLinuxSteamRootCandidates(string userProfile)
+        {
+            return new[]
+            {
+                Path.Combine(userProfile, ".steam", "debian-installation"),
+                Path.Combine(userProfile, ".steam", "steam"),
+                Path.Combine(userProfile, ".local", "share", "Steam"),
+                Path.Combine(userProfile, ".var", "app", "com.valvesoftware.Steam", ".local", "share", "Steam"),
+                Path.Combine(userProfile, "snap", "steam", "common", ".local", "share", "Steam")
+            };
+        }
+
+        /// <summary>
+        /// Proton prefix config path for Steam Play users. When RimWorld runs through
+        /// Proton on Linux, Unity writes its config inside the game's compat prefix
+        /// instead of the native <c>~/.config/unity3d/...</c> path — so detection must
+        /// prefer the prefix when it exists (RimSort reference behavior).
+        /// Exposed separately from <see cref="GetProtonConfigFolder"/> so tests can pin
+        /// the exact path shape without a filesystem.
+        /// </summary>
+        public static string BuildProtonConfigPath(string steamRoot)
+        {
+            return Path.Combine(
+                steamRoot,
+                "steamapps", "compatdata", SteamAppId,
+                "pfx", "drive_c", "users", "steamuser",
+                "AppData", "LocalLow", CompanyFolder, ProductFolder, ConfigSubFolder);
+        }
+
+        /// <summary>
+        /// Returns the Proton prefix config folder under the given Steam root when it
+        /// exists on disk, or null (caller falls back to the native Unity config path).
+        /// <paramref name="exists"/> allows tests to probe candidates without touching
+        /// the real filesystem. Valid on any OS — callers gate on Linux themselves.
+        /// </summary>
+        public static string? GetProtonConfigFolder(string? steamRoot, Func<string, bool>? exists = null)
+        {
+            if (string.IsNullOrWhiteSpace(steamRoot))
+            {
+                return null;
+            }
+
+            var protonConfig = BuildProtonConfigPath(steamRoot);
+            return (exists ?? Directory.Exists)(protonConfig) ? protonConfig : null;
         }
     }
 }

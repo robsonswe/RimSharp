@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.Win32;
+using RimSharp.Core.Services;
 using RimSharp.Shared.Models;
 
 namespace RimSharp.Infrastructure.Configuration
@@ -32,7 +33,7 @@ namespace RimSharp.Infrastructure.Configuration
                     return null;
 
                 var workshopFolder = FindSteamWorkshopFolder(steamRoot);
-                var configFolder = RimWorldDefaultPaths.GetConfigFolder() ?? GetDefaultConfigFolder();
+                var configFolder = ResolveConfigFolderForSteamRoot(steamRoot);
 
                 return new GameInstallationCandidate
                 {
@@ -86,7 +87,7 @@ namespace RimSharp.Infrastructure.Configuration
 
         /// <summary>
         /// Structurally validates a user's manual "this is a Steam RimWorld" claim for
-        /// the given game directory (handoff §2.3.1 trust-ladder rung 2). Falls well short
+        /// the given game directory (trust-ladder rung 2). Falls well short
         /// of proving provenance — it verifies configuration consistency:
         ///   1. the directory exists and looks like RimWorld (IsRimWorldInstallation),
         ///   2. it sits directly under &lt;library&gt;\steamapps\common\ (Steam's own fixed
@@ -218,6 +219,29 @@ namespace RimSharp.Infrastructure.Configuration
                 return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "unity3d", "Ludeon Studios", "RimWorld by Ludeon Studios", "Config");
             }
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RimWorld", "Config");
+        }
+
+        /// <summary>
+        /// Steam-aware config resolution. On Linux, RimWorld running through Proton
+        /// writes its config inside the compat prefix under the Steam root
+        /// (<c>steamapps/compatdata/294100/pfx/drive_c/users/steamuser/...</c>);
+        /// the native <c>~/.config/unity3d/...</c> path is then unused by the game.
+        /// When the prefix config exists it wins; otherwise the native path stands.
+        /// Non-Linux (and null/unrelated steamRoot) always resolves natively.
+        /// </summary>
+        private static string ResolveConfigFolderForSteamRoot(string? steamRoot)
+        {
+            var native = RimWorldDefaultPaths.GetConfigFolder() ?? GetDefaultConfigFolder();
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) &&
+                !string.IsNullOrWhiteSpace(steamRoot))
+            {
+                var protonConfig = RimWorldDefaultPaths.GetProtonConfigFolder(steamRoot);
+                if (protonConfig != null)
+                {
+                    return protonConfig;
+                }
+            }
+            return native;
         }
 
         private string? DetectNonSteamGameFolder()
@@ -394,7 +418,7 @@ namespace RimSharp.Infrastructure.Configuration
                 // 2. Official Core Mod About.xml (<packageId>ludeon.rimworld</packageId>) —
                 //    strongest corroboration; ships in Data\Core\About\About.xml in the
                 //    Waylith layout as well.
-                string coreAboutXml = Path.Combine(path, "Data", "Core", "About", "About.xml");
+                string coreAboutXml = ModAboutPaths.GetAboutFilePath(Path.Combine(path, "Data", "Core"));
                 bool hasCoreAbout = false;
                 if (File.Exists(coreAboutXml))
                 {
@@ -455,14 +479,9 @@ namespace RimSharp.Infrastructure.Configuration
 
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 {
-                    var userHome = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                    var linuxPaths = new[]
-                    {
-                        Path.Combine(userHome, ".steam", "debian-installation"),
-                        Path.Combine(userHome, ".steam", "steam"),
-                        Path.Combine(userHome, ".local", "share", "Steam")
-                    };
-                    return linuxPaths.FirstOrDefault(Directory.Exists);
+                    return RimWorldDefaultPaths
+                        .GetLinuxSteamRootCandidates(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile))
+                        .FirstOrDefault(Directory.Exists);
                 }
 
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))

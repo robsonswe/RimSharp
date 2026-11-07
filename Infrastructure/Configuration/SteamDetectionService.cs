@@ -22,12 +22,12 @@ namespace RimSharp.Infrastructure.Configuration
 
         /// <summary>
         /// IPathService is used for the single-writer rule on GameInstance.LocalFolder
-        /// (handoff doc §6 Phase 0): local-folder writes derive via IPathService.GetModsPathFor
+        /// local-folder writes derive via IPathService.GetModsPathFor
         /// instead of a local Path.Combine. Optional so existing parameterless ctor callers
         /// keep working; the fallback keeps the pre-centralization behavior verbatim.
         /// ILoggerService is used for fail-open warnings on invalid overrides; optional for
         /// the same reason.
-        /// This service is the single writer of GameInstance.WorkshopFolder (handoff §2.3).
+        /// This service is the single writer of GameInstance.WorkshopFolder.
         /// </summary>
         public SteamDetectionService(IPathService? pathService = null, ILoggerService? logger = null)
         {
@@ -56,8 +56,8 @@ namespace RimSharp.Infrastructure.Configuration
                 // Get workshop folder
                 var workshopFolder = GetWorkshopFolder(gameFolder, steamRoot);
 
-                // Get config folder
-                var configFolder = GetConfigFolder();
+                // Get config folder (Proton-aware on Linux)
+                var configFolder = GetConfigFolder(steamRoot);
 
                 return new GameInstallationCandidate
                 {
@@ -108,11 +108,11 @@ namespace RimSharp.Infrastructure.Configuration
             // Set workshop folder
             instance.WorkshopFolder = GetWorkshopFolder(gameFolder, steamRoot);
 
-            // Set config folder based on platform
-            instance.ConfigFolder = GetConfigFolder();
+            // Set config folder based on platform (Proton-aware on Linux)
+            instance.ConfigFolder = GetConfigFolder(steamRoot);
 
             // Set local folder: derivation rule lives in IPathService (single-writer rule
-            // for GameInstance.LocalFolder; handoff §6 Phase 0). Overrides, when added,
+            // for GameInstance.LocalFolder). Overrides, when added,
             // flow through the same resolver. Falls back to the raw derivation if no
             // path service was provided (legacy parameterless construction).
             instance.LocalFolder = _pathService != null
@@ -127,7 +127,7 @@ namespace RimSharp.Infrastructure.Configuration
 
         /// <summary>
         /// Applies the persisted steam_workshop_folder override to the instance
-        /// (handoff §2.3, fail-open policy — the detection service is the single
+        /// (fail-open policy — the detection service is the single
         /// writer of GameInstance.WorkshopFolder):
         ///   - empty/missing override ("auto mode"): keep the detected folder —
         ///     it is re-detected on every launch;
@@ -281,13 +281,10 @@ namespace RimSharp.Infrastructure.Configuration
         /// </summary>
         private string? FindSteamRootLinux()
         {
-            var candidates = new[]
-            {
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".steam", "steam"),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share", "Steam"),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".steam", "debian-installation"),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "snap", "steam", "common", ".local", "share", "Steam")
-            };
+            // Shared candidate list (native/legacy roots first, then Flatpak, then
+            // the snap-confined install); validity is checked per candidate below.
+            var candidates = RimWorldDefaultPaths.GetLinuxSteamRootCandidates(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
 
             foreach (var candidate in candidates)
             {
@@ -297,12 +294,31 @@ namespace RimSharp.Infrastructure.Configuration
                         File.Exists(Path.Combine(candidate, "steamapps", "libraryfolders.vdf")) ||
                         File.Exists(Path.Combine(candidate, "config", "libraryfolders.vdf")))
                     {
+                        LogSnapSteamRootIfNeeded(candidate);
                         return candidate;
                     }
                 }
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Logs a warning when the detected Linux Steam root is the snap-confined
+        /// install. Snap packaging restricts filesystem/environment access enough
+        /// that Steamworks.NET initialization can fail — at that point the ownership
+        /// gate reports "unknown" and interactive Steam features stay disabled.
+        /// This log is diagnostic context, never a gate.
+        /// </summary>
+        private void LogSnapSteamRootIfNeeded(string steamRoot)
+        {
+            var snapLeaf = Path.Combine("snap", "steam", "common", ".local", "share", "Steam");
+            if (steamRoot.EndsWith(snapLeaf, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger?.LogWarning(
+                    $"Snap Steam root detected ('{steamRoot}'). Steamworks.NET may fail to initialize under snap confinement; if Steam API init fails, subscription features will stay disabled (unknown ownership state).",
+                    nameof(SteamDetectionService));
+            }
         }
 
         /// <summary>
@@ -430,7 +446,32 @@ namespace RimSharp.Infrastructure.Configuration
             return Path.Combine(steamRoot, "steamapps", "workshop", "content", RimWorldAppId);
         }
 
-        private string GetConfigFolder()
+        /// <summary>
+        /// Steam-aware config resolution. Returns the Proton prefix config folder when
+        /// RimWorld was installed via Steam Play (Proton) — the game's Unity config
+        /// then lives inside the compat prefix under the Steam root instead of the
+        /// native Unity path — otherwise the native path. Non-Linux always resolves
+        /// natively.
+        /// </summary>
+        private string GetConfigFolder(string? steamRoot)
+        {
+            var native = RimWorldDefaultPaths.GetConfigFolder() ?? GetNativeConfigFolder();
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) &&
+                !string.IsNullOrWhiteSpace(steamRoot))
+            {
+                var protonConfig = RimWorldDefaultPaths.GetProtonConfigFolder(steamRoot);
+                if (protonConfig != null)
+                {
+                    _logger?.LogInfo(
+                        $"Proton prefix config detected: '{protonConfig}'. Using it instead of the native Unity config folder.",
+                        nameof(SteamDetectionService));
+                    return protonConfig;
+                }
+            }
+            return native;
+        }
+
+        private string GetNativeConfigFolder()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
