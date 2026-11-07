@@ -114,6 +114,53 @@ namespace RimSharp.Tests.Infrastructure.Workshop.Download
             result.FailedItems[0].Item.SteamId.Should().Be("123");
             result.FailedItems[0].Reason.Should().Contain("Timeout");
         }
+        [Fact]
+        public async Task DownloadModsAsync_WhenAutoClearDepotCacheEnabled_ShouldClearCacheBeforeDownloading()
+        {
+            var fileSystem = Substitute.For<ISteamCmdFileSystem>();
+            var downloader = new SteamCmdDownloader(
+                _mockPathService, _mockInstaller, _mockDialogService, _mockLogger, _mockGamePathService,
+                _mockScriptGenerator, _mockProcessRunner, _mockLogParser, _mockItemProcessor,
+                autoClearDepotCache: true, fileSystem: fileSystem);
+
+            var items = new List<DownloadItem> { new DownloadItem { SteamId = "123", Name = "Mod 1" } };
+            _mockLogParser.ParseSteamCmdSessionLogsAsync(Arg.Any<SteamCmdLogFilePaths>(), Arg.Any<ISet<string>>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+                .Returns(new SteamCmdSessionLogParseResult
+                {
+                    WorkshopItemResults = { ["123"] = (true, DateTime.Now, null) }
+                });
+            _mockItemProcessor.ProcessItemAsync(Arg.Any<DownloadItem>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns((true, "Processed"));
+
+            var result = await downloader.DownloadModsAsync(items, true, null, TestContext.Current.CancellationToken);
+
+            result.OverallSuccess.Should().BeTrue();
+            await fileSystem.Received(1).ClearDepotCacheAsync();
+        }
+
+        [Fact]
+        public async Task DownloadModsAsync_WhenAutoClearDepotCacheDisabled_ShouldNotClearCache()
+        {
+            var fileSystem = Substitute.For<ISteamCmdFileSystem>();
+            var downloader = new SteamCmdDownloader(
+                _mockPathService, _mockInstaller, _mockDialogService, _mockLogger, _mockGamePathService,
+                _mockScriptGenerator, _mockProcessRunner, _mockLogParser, _mockItemProcessor,
+                autoClearDepotCache: false, fileSystem: fileSystem);
+
+            var items = new List<DownloadItem> { new DownloadItem { SteamId = "123", Name = "Mod 1" } };
+            _mockLogParser.ParseSteamCmdSessionLogsAsync(Arg.Any<SteamCmdLogFilePaths>(), Arg.Any<ISet<string>>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+                .Returns(new SteamCmdSessionLogParseResult
+                {
+                    WorkshopItemResults = { ["123"] = (true, DateTime.Now, null) }
+                });
+            _mockItemProcessor.ProcessItemAsync(Arg.Any<DownloadItem>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns((true, "Processed"));
+
+            var result = await downloader.DownloadModsAsync(items, true, null, TestContext.Current.CancellationToken);
+
+            result.OverallSuccess.Should().BeTrue();
+            await fileSystem.DidNotReceive().ClearDepotCacheAsync();
+        }
     }
 }
 

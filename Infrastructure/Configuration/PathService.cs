@@ -10,23 +10,33 @@ namespace RimSharp.Infrastructure.Configuration
     {
         private readonly IConfigService _configService;
         private readonly Func<string, string?>? _fileVersionProbe; // Test seam for file-version probing
+        private readonly ILoggerService? _logger; // Optional: broken-override warnings (fail-open policy)
         private string? _cachedGamePath;
         private string? _cachedConfigPath;
-        private string? _cachedModsPath; // Cache for derived path
+        private string? _cachedModsPath; // Cache for resolved path
+        private string? _cachedModsOverrideUsed; // mods_folder value backing _cachedModsPath (self-invalidation key)
+        private string? _cachedModsGamePathUsed; // game path backing _cachedModsPath (self-invalidation key)
         private string? _cachedGameVersion;
         private string? _cachedMajorGameVersion;
         private bool _isGamePathResolved = false; // Flag to track if game path has been resolved
 
         public PathService(IConfigService configService)
-            : this(configService, null)
+            : this(configService, null, null)
         {
         }
 
         // Secondary constructor exists so unit tests can stub out file-version probing.
         public PathService(IConfigService configService, Func<string, string?>? fileVersionProbe)
+            : this(configService, fileVersionProbe, null)
+        {
+        }
+
+        // Full constructor: path resolution + optional logging for override warnings.
+        public PathService(IConfigService configService, Func<string, string?>? fileVersionProbe, ILoggerService? logger)
         {
             _configService = configService ?? throw new ArgumentNullException(nameof(configService));
             _fileVersionProbe = fileVersionProbe;
+            _logger = logger;
         }
 
         public string GetGamePath()
@@ -46,25 +56,120 @@ namespace RimSharp.Infrastructure.Configuration
 
         public string GetModsPath()
         {
-
             string gamePath = GetGamePath();
+            var overridePath = _configService.GetConfigValue("mods_folder");
+            var overrideKey = overridePath ?? string.Empty;
 
-            if (_cachedModsPath != null)
+            // Self-invalidating cache: the entry is only honored while both inputs that
+            // produced it are unchanged. This is what lets a mods_folder value written by
+            // the settings dialog take effect on the next GetModsPath() call, without
+            // requiring a restart or an explicit invalidation call.
+            if (_cachedModsPath != null &&
+                _cachedModsOverrideUsed == overrideKey &&
+                _cachedModsGamePathUsed == gamePath)
             {
                 return _cachedModsPath;
             }
-            if (!string.IsNullOrEmpty(gamePath))
-            {
-                string derivedModsPath = Path.Combine(gamePath, "Mods");
 
-                _cachedModsPath = Directory.Exists(derivedModsPath) ? derivedModsPath : string.Empty;
+            // Mod-folder override slot: if the user configured
+            // mods_folder, it is honored while the directory exists; otherwise warn
+            // and fall back to the derived path. Fail-open policy: a broken override
+            // is bypassed but NEVER cleared — the stored value is preserved for the
+            // moment the user fixes the path (deleting it would destroy user intent).
+            if (TryResolveModsOverride(out var resolvedOverride, out var brokenOverride))
+            {
+                _cachedModsPath = resolvedOverride;
             }
             else
             {
-                _cachedModsPath = string.Empty; // No game path, no mods path
+                if (!string.IsNullOrEmpty(brokenOverride))
+                {
+                    WarnBrokenModsOverride(brokenOverride, gamePath);
+                }
+
+                if (string.IsNullOrEmpty(gamePath))
+                {
+                    _cachedModsPath = string.Empty; // No game path, no mods path
+                }
+                else
+                {
+                    string derivedModsPath = GetModsPathFor(gamePath);
+                    _cachedModsPath = Directory.Exists(derivedModsPath) ? derivedModsPath : string.Empty;
+                }
             }
 
+            _cachedModsOverrideUsed = overrideKey;
+            _cachedModsGamePathUsed = gamePath;
             return _cachedModsPath;
+        }
+
+        /// <summary>
+        /// Resolves the local mods folder override slot for the *given* game folder.
+        /// Precedence: a valid mods_folder override always wins;
+        /// without one (or with a broken one — see GetModsPath for the warn+fallback
+        /// path), the raw derivation rule applies. No existence check on the derived
+        /// result and no cache — callers that need those use GetModsPath().
+        /// This is the single writer rule for GameInstance.LocalFolder:
+        /// every writer of that property must go through this method or
+        /// GetModsPath(), never a direct Path.Combine or a UI-model read.
+        /// </summary>
+        /// <param name="gamePath">The game installation folder to derive from.</param>
+        /// <returns>The resolved mods folder path (may not exist on disk).</returns>
+        public string GetModsPathFor(string gamePath)
+        {
+            if (TryResolveModsOverride(out var resolvedOverride, out _))
+            {
+                return resolvedOverride;
+            }
+
+            return string.IsNullOrEmpty(gamePath) ? string.Empty : Path.Combine(gamePath, "Mods");
+        }
+
+        /// <summary>
+        /// Reads the mods_folder override slot. Out parameters disambiguate the two
+        /// fail-states from "not configured": a broken override is returned via
+        /// <paramref name="brokenOverride"/> so the caller can warn without deleting it.
+        /// </summary>
+        /// <returns>True when a valid override exists; false when unset or broken.</returns>
+        private bool TryResolveModsOverride(out string resolvedOverride, out string brokenOverride)
+        {
+            resolvedOverride = string.Empty;
+            brokenOverride = string.Empty;
+
+            var configured = _configService.GetConfigValue("mods_folder");
+            if (string.IsNullOrWhiteSpace(configured))
+            {
+                return false; // No override configured — the normal case
+            }
+
+            if (Directory.Exists(configured))
+            {
+                resolvedOverride = configured;
+                return true;
+            }
+
+            brokenOverride = configured;
+            return false;
+        }
+
+        private void WarnBrokenModsOverride(string brokenOverride, string gamePath)
+        {
+            string derivedPreview = string.IsNullOrEmpty(gamePath)
+                ? "an empty mods path"
+                : $"'{GetModsPathFor(gamePath)}'";
+            string message =
+                $"Mods folder override '{brokenOverride}' does not exist on disk. Falling back to {derivedPreview}. " +
+                "The stored override has been kept — fix or clear it in Settings to stop seeing this warning.";
+
+            if (_logger != null)
+            {
+                _logger.LogWarning(message, nameof(PathService));
+            }
+            else
+            {
+                // Test/no-logger construction: keep the signal without a logger dependency.
+                Debug.WriteLine($"[PathService] {message}");
+            }
         }
 
 public string GetConfigPath()
@@ -239,6 +344,8 @@ _cachedGamePath = null;
         private void InvalidateModsPathCache()
         {
             _cachedModsPath = null;
+            _cachedModsOverrideUsed = null;
+            _cachedModsGamePathUsed = null;
         }
 
         public void RefreshPaths()

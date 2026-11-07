@@ -16,9 +16,9 @@ namespace RimSharp.Core.Converters.Text
                     ModType.Core => "Core Game",
                     ModType.Expansion => "Expansion/DLC",
                     ModType.Workshop => "Workshop Mod",
-                    ModType.WorkshopL => "Workshop Mod (Local)",
+                    ModType.Tracked => "Tracked for updates (downloaded copy)",
                     ModType.Git => "Git Repository",
-                    ModType.Zipped => "Local/Zipped Mod",
+                    ModType.Untracked => "Local copy (not tracked for updates)",
                     _ => "Unknown Mod Type"
                 };
             }

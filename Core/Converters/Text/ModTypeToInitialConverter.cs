@@ -16,9 +16,9 @@ namespace RimSharp.Core.Converters.Text
                     ModType.Core => "C",
                     ModType.Expansion => "E",
                     ModType.Workshop => "W",
-                    ModType.WorkshopL => "WL",
+                    ModType.Tracked => "T",
                     ModType.Git => "G",
-                    ModType.Zipped => "Z",
+                    ModType.Untracked => "U",
                     _ => ""
                 };
             }

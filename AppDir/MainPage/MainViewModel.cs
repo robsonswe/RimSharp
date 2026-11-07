@@ -13,6 +13,7 @@ using RimSharp.Features.ModManager.ViewModels;
 using RimSharp.Features.WorkshopDownloader.ViewModels;
 using RimSharp.Shared.Models;
 using RimSharp.Infrastructure.Configuration;
+using RimSharp.Services.ModManagement;
 using RimSharp.Core.Extensions;
 using RimSharp.Features.GitModManager.ViewModels;
 using RimSharp.Core.Commands.Base;
@@ -20,6 +21,7 @@ using RimSharp.Features.VramAnalysis.ViewModels;
 using ReactiveUI;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+using RimSharp.Services.Workshop;
 
 namespace RimSharp.AppDir.MainPage
 {
@@ -39,7 +41,16 @@ namespace RimSharp.AppDir.MainPage
         public IGitModsViewModel GitModsVM { get; }
         public IVramAnalysisViewModel VramAnalysisVM { get; }
 
+        // Workshop Management Services
+        public ISteamSubscriptionService? SteamSubscriptionService { get; }
+        public IWorkshopUpdateService? WorkshopUpdateService { get; }
+
         public PathSettings PathSettings { get; }
+
+        // Steam detection and mod classification
+        private readonly SteamDetectionService _steamDetectionService;
+        private readonly ModClassificationService _modClassificationService;
+        private GameInstance _gameInstance = new GameInstance();
 
         private Task? _pathInitializationTask;
         private bool _isInitializingPaths;
@@ -104,7 +115,10 @@ namespace RimSharp.AppDir.MainPage
             IModsViewModel modsViewModel,
             IDownloaderViewModel downloaderViewModel,
             IGitModsViewModel gitModsViewModel,
-            IVramAnalysisViewModel vramAnalysisViewModel)
+            IVramAnalysisViewModel vramAnalysisViewModel,
+            ISteamSubscriptionService? steamSubscriptionService = null,
+            IWorkshopUpdateService? workshopUpdateService = null,
+            GameInstance? gameInstance = null)
         {
             _pathService = pathService;
             _configService = configService;
@@ -112,10 +126,20 @@ namespace RimSharp.AppDir.MainPage
             _navigationService = navigationService;
             _updaterService = updaterService;
 
+            _gameInstance = gameInstance ?? new GameInstance();
+
+            // Initialize Steam detection and mod classification
+            _steamDetectionService = new SteamDetectionService(_pathService);
+            _modClassificationService = new ModClassificationService(_gameInstance);
+
             ModsVM = modsViewModel;
             DownloaderVM = downloaderViewModel;
             GitModsVM = gitModsViewModel;
             VramAnalysisVM = vramAnalysisViewModel;
+            
+            // Initialize workshop services (optional)
+            SteamSubscriptionService = steamSubscriptionService;
+            WorkshopUpdateService = workshopUpdateService;
 
             if (DownloaderVM != null)
             {
@@ -132,7 +156,7 @@ namespace RimSharp.AppDir.MainPage
 
             PathSettings.PropertyChanged += PathSettings_PropertyChanged;
 
-            _pathInitializationTask = Task.Run(() =>
+            _pathInitializationTask = Task.Run(async () =>
             {
                 var gamePath = _pathService.GetGamePath();
                 var configPath = _pathService.GetConfigPath();
@@ -161,6 +185,9 @@ namespace RimSharp.AppDir.MainPage
                     this.RaisePropertyChanged(nameof(PathSettings));
                     _ = Task.Run(() => CheckAndWarnDifferentDrives(PathSettings.GamePath));
                 });
+
+                // Detect Steam installation and configure game instance
+                await DetectSteamInstallation();
             });
 
             CurrentViewModel = ModsVM;
@@ -182,6 +209,46 @@ namespace RimSharp.AppDir.MainPage
         /// <see cref="PathSettings"/>.
         /// </summary>
         public Task WaitForPathInitializationAsync() => _pathInitializationTask ?? Task.CompletedTask;
+
+        /// <summary>
+        /// Detect Steam installation and configure the game instance.
+        /// </summary>
+        private async Task DetectSteamInstallation()
+        {
+            try
+            {
+                if (!_gameInstance.IsSteamInstallation)
+                {
+                    _steamDetectionService.DetectAndConfigureSteam(_gameInstance);
+                }
+
+                if (_gameInstance.IsSteamInstallation)
+                {
+                    StatusMessage = $"Steam installation detected at {_gameInstance.GameFolder}";
+                }
+                else
+                {
+                    StatusMessage = "No Steam installation detected, using non-Steam configuration";
+                    
+                    // Set up non-Steam configuration based on existing paths
+                    if (!string.IsNullOrEmpty(PathSettings.GamePath))
+                    {
+                        _gameInstance.GameFolder = PathSettings.GamePath;
+                        _gameInstance.LocalFolder = _pathService.GetModsPath(); // single-writer rule: resolve via PathService, not via the UI model cache
+                        _gameInstance.ConfigFolder = PathSettings.ConfigPath;
+                        _gameInstance.IsSteamInstallation = false;
+                    }
+                }
+                
+                // Validate and fix any inconsistencies
+                _gameInstance.ValidateAndFix();
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error detecting Steam installation: {ex.Message}";
+                _gameInstance.IsSteamInstallation = false;
+            }
+        }
 
         public async Task OnMainWindowLoadedAsync()
         {
@@ -408,6 +475,12 @@ namespace RimSharp.AppDir.MainPage
             var saved = await _dialogService.ShowSettingsDialogAsync();
             if (!saved) return;
 
+            // Refresh the service caches first so config values the dialog just wrote
+            // (game_folder, config_folder, mods_folder override) are actually re-read;
+            // PathService caches would otherwise hold session-stale values here. This
+            // is what makes a mods-folder override effective without an app restart.
+            _pathService.RefreshPaths();
+
             // Re-sync the path settings from the config the dialog just
             // wrote (game/config folders may both have changed).
             _isInitializingPaths = true;
@@ -464,6 +537,14 @@ namespace RimSharp.AppDir.MainPage
                 PathSettings.ConfigPath = _pathService.GetConfigPath();
                 PathSettings.ModsPath = _pathService.GetModsPath();
                 PathSettings.GameVersion = _pathService.GetGameVersion();
+                
+                // Update game instance with path information
+                if (!string.IsNullOrEmpty(PathSettings.GamePath))
+                {
+                    _gameInstance.GameFolder = PathSettings.GamePath;
+                    _gameInstance.LocalFolder = _pathService.GetModsPath(); // single-writer rule: resolve via PathService, not via the UI model
+                    _gameInstance.ConfigFolder = PathSettings.ConfigPath;
+                }
             }
             finally
             {

@@ -10,6 +10,9 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Services.Contracts;
+using RimSharp.Infrastructure.Logging;
+using RimSharp.Infrastructure.Configuration;
+using RimSharp.Services.Workshop;
 using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
 using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
 using RimSharp.Features.ModManager.Dialogs.ModSelector;
@@ -29,7 +32,9 @@ namespace RimSharp.Infrastructure.Dialog
         private readonly IAppUpdaterService? _appUpdaterService;
         private readonly IFileDialogService? _fileDialogService;
         private readonly IConfigService? _configService;
+        private readonly IPathService? _pathService;
         private readonly IEnumerable<IAIProviderClient>? _aiProviders;
+        private readonly ILoggerService? _logger;
         private int _openDialogCount;
         public bool IsAnyDialogOpen => _openDialogCount > 0;
 
@@ -38,14 +43,25 @@ namespace RimSharp.Infrastructure.Dialog
         public DialogService(
             IAppUpdaterService appUpdaterService,
             IConfigService? configService = null,
+            IPathService? pathService = null,
             IEnumerable<IAIProviderClient>? aiProviders = null,
-            IFileDialogService? fileDialogService = null)
+            IFileDialogService? fileDialogService = null,
+            ILoggerService? logger = null,
+            ISteamClaimValidator? steamClaimValidator = null,
+            GameInstallationDetectionService? gameInstallationDetectionService = null)
         {
             _appUpdaterService = appUpdaterService;
             _configService = configService;
+            _pathService = pathService;
             _aiProviders = aiProviders;
             _fileDialogService = fileDialogService;
+            _logger = logger;
+            _steamClaimValidator = steamClaimValidator;
+            _gameInstallationDetectionService = gameInstallationDetectionService;
         }
+
+        private readonly ISteamClaimValidator? _steamClaimValidator;
+        private readonly GameInstallationDetectionService? _gameInstallationDetectionService;
 
         private void OnPropertyChanged(string propertyName)
         {
@@ -212,7 +228,16 @@ namespace RimSharp.Infrastructure.Dialog
         public async Task<bool> ShowSettingsDialogAsync(bool showAiProviders = true)
         {
             if (_configService == null) return false;
-            var viewModel = new SettingsDialogViewModel(_configService, _fileDialogService, _aiProviders, showAiProviders);
+            // _logger is intentionally optional in DialogService (ctor param may be null);
+            // SettingsDialogViewModel only consumes it opportunistically, so the null-forgiving
+            // operator documents that a missing logger is an accepted state, not an error.
+            var viewModel = new SettingsDialogViewModel(
+                _configService, _pathService!, _fileDialogService, _logger!,
+                _aiProviders,
+                _steamClaimValidator!,
+                _gameInstallationDetectionService!,
+                dialogService: this,
+                showAiProviders: showAiProviders);
             var dialog = new SettingsDialogView(viewModel);
             return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }

@@ -19,6 +19,21 @@ namespace RimSharp.Shared.Services.Contracts
         string GetModsPath();
 
         /// <summary>
+        /// Resolves the local mods folder override slot for the *specified* game folder.
+        /// A valid mods_folder override wins; otherwise the raw derivation applies
+        /// (Path.Combine(gamePath, "Mods")). No existence check on the derived result
+        /// and no cache — callers that need those use GetModsPath(). This is the
+        /// single writer rule for GameInstance.LocalFolder:
+        /// every writer of that property must go through this method or GetModsPath(),
+        /// never a direct Path.Combine.
+        /// </summary>
+        /// <param name="gamePath">The game installation folder to derive from.</param>
+        /// <returns>The resolved mods folder path (may not exist on disk).</returns>
+        string GetModsPathFor(string gamePath);
+
+
+
+        /// <summary>
 
         /// which contains saves, settings, and ModsConfig.xml.
         /// </summary>

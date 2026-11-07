@@ -10,16 +10,36 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Reactive;
 using Avalonia.Threading;
+using Microsoft.Extensions.DependencyInjection;
+using RimSharp.AppDir.AppFiles;
+using RimSharp.Core.Converters.ViewVisibility;
+using RimSharp.Services.ModManager;
+using RimSharp.Shared.Services.Contracts;
 
 namespace RimSharp.Features.ModManager.Components.ModList
 {
     public partial class ModListView : UserControl
     {
         private ListBox? _internalListBox;
+        private IContextMenuAvailabilityService? _contextMenuAvailabilityService;
 
         public ModListView()
         {
             InitializeComponent();
+            
+            // Resolve the context menu availability service from the App's service provider
+            var app = Avalonia.Application.Current as App;
+            _contextMenuAvailabilityService = app?.ServiceProvider?.GetService<IContextMenuAvailabilityService>();
+
+            // Set the service on the wrapper in resources for XAML bindings
+            if (Resources.TryGetValue("ContextMenuAvailability", out var wrapperObj) && 
+                wrapperObj is ContextMenuAvailabilityServiceWrapper wrapper)
+            {
+                var logger = app?.ServiceProvider?.GetService<ILoggerService>();
+                wrapper.SetLogger(logger);
+                wrapper.Service = _contextMenuAvailabilityService;
+            }
+
             this.GetObservable(HeaderTextProperty).Subscribe(new AnonymousObserver<string>(header =>
             {
                 SearchPlaceholder = $"Search {header}...";
@@ -170,6 +190,16 @@ namespace RimSharp.Features.ModManager.Components.ModList
             if (Resources.TryGetValue("selectedItemsHolder", out var holderObj) && holderObj is SelectedItemsHolder holder)
             {
                 holder.SelectedItems = items;
+            }
+            
+            // Update context menu availability for intersection semantics
+            _contextMenuAvailabilityService?.UpdateSelection(items);
+            
+            // Also update the wrapper in XAML resources to trigger property changed notifications
+            if (Resources.TryGetValue("ContextMenuAvailability", out var wrapperObj) && 
+                wrapperObj is ContextMenuAvailabilityServiceWrapper wrapper)
+            {
+                wrapper.UpdateSelection(items);
             }
         }
 

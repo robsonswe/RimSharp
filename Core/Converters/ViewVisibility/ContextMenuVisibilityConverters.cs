@@ -33,7 +33,7 @@ namespace RimSharp.Core.Converters.ViewVisibility
         {
             if (value is ModType modType)
             {
-                return modType == ModType.WorkshopL;
+                return modType == ModType.Tracked;
             }
             return false;
         }
@@ -46,7 +46,7 @@ namespace RimSharp.Core.Converters.ViewVisibility
 
     /// <summary>
 
-    /// WorkshopL, Git, and Zipped mods can be deleted
+    /// Tracked, Git, and Untracked mods can be deleted
     /// </summary>
     public class ModTypeToDeleteVisibilityConverter : IValueConverter
     {
@@ -54,8 +54,56 @@ namespace RimSharp.Core.Converters.ViewVisibility
         {
             if (value is ModType modType)
             {
-                // Hide for Core, Expansion, and Workshop (not WorkshopL)
+                // Hide for Core, Expansion, and Workshop (not Tracked)
                 return modType != ModType.Core && modType != ModType.Expansion && modType != ModType.Workshop;
+            }
+            return false;
+        }
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Checks whether a mod can be managed via Steam Workshop actions.
+    /// </summary>
+    public class WorkshopModVisibilityConverter : IMultiValueConverter, IValueConverter
+    {
+        public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (values == null || values.Count == 0) return false;
+
+            var first = values[0];
+            ModType? modType = first as ModType?;
+            if (modType == null && first is int intVal) modType = (ModType)intVal;
+            return modType == ModType.Workshop;
+        }
+
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (value is ModItem mod) return mod.IsWorkshopMod;
+            if (value is ModType modType) return modType == ModType.Workshop;
+            return false;
+        }
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Returns true for Tracked mods (SteamCMD-downloaded mods)
+    /// </summary>
+    public class ModTypeToTrackedConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (value is ModType modType)
+            {
+                return modType == ModType.Tracked;
             }
             return false;
         }

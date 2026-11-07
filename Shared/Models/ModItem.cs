@@ -10,10 +10,12 @@ namespace RimSharp.Shared.Models
         Core = 0,
         Expansion = 1,
         Workshop = 2,
-        WorkshopL = 3,
+        Tracked = 3,
         Git = 4,
-        Zipped = 5
+        Untracked = 5
     }
+
+
 
     public class ModSizeInfo
     {
@@ -113,11 +115,23 @@ namespace RimSharp.Shared.Models
         public bool HasUrl => !string.IsNullOrEmpty(Url);
         public bool HasSteamUrl => !string.IsNullOrEmpty(SteamUrl);
         public bool HasExternalUrl => !string.IsNullOrEmpty(ExternalUrl);
+        public bool IsWorkshopMod => ModType == ModType.Workshop;
 
         public string GitRepo { get; set; } = string.Empty;
 
         public string DateStamp { get; set; } = string.Empty;
         public string UpdateDate { get; set; } = string.Empty;
+        public DateTime? LastUpdated { get; set; }
+
+        /// <summary>
+        /// The Steam ACF manifest time for this workshop item (unix seconds) — the
+        /// Steam client's own record of when the item's content was last updated
+        /// locally (appworkshop_294100.acf). Populated during scan by the ACF
+        /// timestamp service, keyed by SteamId; null when no Steam record exists
+        /// (vanilla content, non-Steam mods, or an undecipherable manifest).
+        /// Update-check "internal time" = max(ACF, timestamp.txt-derived UpdateDate).
+        /// </summary>
+        public long? AcfTimeUpdated { get; set; }
 
         public string Tags { get; set; } = string.Empty;
 

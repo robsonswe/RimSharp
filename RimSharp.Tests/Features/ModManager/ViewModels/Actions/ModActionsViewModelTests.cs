@@ -47,6 +47,7 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
 
         private ModActionsViewModel CreateViewModel()
         {
+            var gameInstance = new GameInstance { IsSteamInstallation = false };
             return new ModActionsViewModel(
                 _dataService, _commandService, _ioService, _modListManager,
                 _incompatibilityService, _duplicateService, _deletionService,
@@ -54,7 +55,9 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
                 _downloadQueueService, _steamApiClient, _navigationService,
                 _steamWorkshopQueueProcessor, _gitService,
                 Substitute.For<IAIncompatibilityAgentService>(),
-                Substitute.For<IModCustomService>());
+                Substitute.For<IModCustomService>(),
+                Substitute.For<ILoggerService>(),
+                gameInstance);
         }
 
         [AvaloniaFact]

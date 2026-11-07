@@ -2,6 +2,7 @@ using RimSharp.AppDir.AppFiles;
 using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
+using RimSharp.Services.Workshop;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -22,7 +23,59 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             mod != null &&
             mod.ModType != ModType.Core &&
             mod.ModType != ModType.Expansion &&
-            !string.IsNullOrEmpty(mod.Path); 
+            !string.IsNullOrEmpty(mod.Path);
+        
+        /// <summary>
+        /// If the mod is a Steam Workshop mod (ModType.Workshop), offer to unsubscribe from Steam.
+        /// Returns true if the operation should continue (user agreed to unsubscribe or mod is not Workshop type).
+        /// </summary>
+        private async Task<bool> HandleWorkshopUnsubscribeAsync(ModItem mod, CancellationToken ct = default)
+        {
+            if (mod.ModType != ModType.Workshop || string.IsNullOrEmpty(mod.SteamId) || _steamSubscriptionService == null)
+            {
+                return true; // Not a Workshop mod or no subscription service - continue with deletion
+            }
+
+            var result = await _dialogService.ShowConfirmationAsync(
+                "Unsubscribe from Steam Workshop?",
+                $"The mod '{mod.Name}' is a Steam Workshop mod (managed by the Steam client).\n\n" +
+                $"Do you also want to unsubscribe from it on Steam?\n\n" +
+                $"This will remove the subscription from your Steam account. The local files will be deleted regardless.",
+                showCancel: true);
+
+            if (result == MessageDialogResult.OK || result == MessageDialogResult.Yes)
+            {
+                try
+                {
+                    var progress = new Progress<(int current, int total, string message)>(p => 
+                    {
+                        Debug.WriteLine($"[Unsubscribe] {p.current}/{p.total}: {p.message}");
+                    });
+                    
+                    var success = await _steamSubscriptionService.UnsubscribeAsync(mod.SteamId!, progress, ct);
+                    
+                    if (success)
+                    {
+                        await _dialogService.ShowInformation("Unsubscribed", $"Successfully unsubscribed from '{mod.Name}' on Steam.");
+                    }
+                    else
+                    {
+                        await _dialogService.ShowWarning("Unsubscribe Failed", $"Failed to unsubscribe from '{mod.Name}' on Steam. The local files were still deleted.");
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // User cancelled the unsubscribe operation
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[HandleWorkshopUnsubscribeAsync] Error: {ex}");
+                    await _dialogService.ShowWarning("Unsubscribe Error", $"Error during Steam unsubscribe: {ex.Message}");
+                }
+            }
+
+            return true; // Always continue - local deletion happens regardless
+        } 
         private async Task DeleteSingleModAsyncInternal(ModItem? mod, CancellationToken ct = default)
         {
             mod ??= SelectedMod;
@@ -69,6 +122,12 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                showCancel: true);
 
             if (result != MessageDialogResult.OK && result != MessageDialogResult.Yes) return;
+
+            // For Steam Workshop mods, offer to unsubscribe from Steam
+            if (!await HandleWorkshopUnsubscribeAsync(mod, ct))
+            {
+                return; // User cancelled the unsubscribe flow
+            }
 
             IsLoadingRequest?.Invoke(this, true);
             bool deletionSuccess = false;
@@ -141,6 +200,46 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             // Link the external token if provided
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, cts.Token);
             var operationToken = linkedCts.Token; // Use this for the deletion loop
+
+            // For Steam Workshop mods in the selection, offer to unsubscribe from Steam
+            var workshopMods = deletableMods.Where(m => m.ModType == ModType.Workshop && !string.IsNullOrEmpty(m.SteamId)).ToList();
+            if (workshopMods.Any() && _steamSubscriptionService != null)
+            {
+                var unsubscribeResult = await _dialogService.ShowConfirmationAsync(
+                    "Unsubscribe from Steam Workshop?",
+                    $"{workshopMods.Count} of the selected mods are Steam Workshop mods (managed by the Steam client).\n\n" +
+                    $"Do you also want to unsubscribe from them on Steam?\n\n" +
+                    $"This will remove the subscriptions from your Steam account. The local files will be deleted regardless.",
+                    showCancel: true);
+
+                if (unsubscribeResult == MessageDialogResult.OK || unsubscribeResult == MessageDialogResult.Yes)
+                {
+                    // Perform unsubscription for all workshop mods
+                    foreach (var workshopMod in workshopMods)
+                    {
+                        operationToken.ThrowIfCancellationRequested();
+                        try
+                        {
+                            var progress = new Progress<(int current, int total, string message)>(p => 
+                            {
+                                Debug.WriteLine($"[Unsubscribe] {p.current}/{p.total}: {p.message}");
+                            });
+                            
+                            var success = await _steamSubscriptionService.UnsubscribeAsync(workshopMod.SteamId!, progress, operationToken);
+                            
+                            if (!success)
+                            {
+                                deletionResults.Add($"Failed to unsubscribe from '{workshopMod.Name}' on Steam (local files will still be deleted)");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[DeleteMultipleModsAsyncInternal] Error unsubscribing {workshopMod.Name}: {ex}");
+                            deletionResults.Add($"Error unsubscribing from '{workshopMod.Name}' on Steam: {ex.Message}");
+                        }
+                    }
+                }
+            }
 
             try
             {

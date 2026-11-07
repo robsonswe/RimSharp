@@ -58,7 +58,9 @@ namespace RimSharp.Tests.Features.ModManager.Services.Management
                 Substitute.For<ISteamWorkshopQueueProcessor>(),
                 Substitute.For<IGitService>(),
                 Substitute.For<IAIncompatibilityAgentService>(),
-                Substitute.For<IModCustomService>()
+                Substitute.For<IModCustomService>(),
+                Substitute.For<ILoggerService>(),
+                new GameInstance { IsSteamInstallation = false }
             );
         }
 
@@ -80,8 +82,8 @@ namespace RimSharp.Tests.Features.ModManager.Services.Management
             File.WriteAllText(Path.Combine(path1, "About.xml"), "v1 content");
             File.WriteAllText(Path.Combine(path2, "About.xml"), "v2 content");
 
-            var mod1 = new ModItem { Name = "My Mod (v1)", PackageId = "my.mod", Path = path1, ModType = ModType.WorkshopL };
-            var mod2 = new ModItem { Name = "My Mod (v2)", PackageId = "my.mod", Path = path2, ModType = ModType.WorkshopL };
+            var mod1 = new ModItem { Name = "My Mod (v1)", PackageId = "my.mod", Path = path1, ModType = ModType.Tracked };
+            var mod2 = new ModItem { Name = "My Mod (v2)", PackageId = "my.mod", Path = path2, ModType = ModType.Tracked };
 
             _modListManager.Initialize(new[] { mod1, mod2 }, new[] { "my.mod" });
 

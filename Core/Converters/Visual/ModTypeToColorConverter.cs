@@ -18,9 +18,9 @@ namespace RimSharp.Core.Converters.Visual
                     ModType.Core => "BrushStateDanger",
                     ModType.Expansion => "BrushStateSuccess",
                     ModType.Workshop => "BrushStatePrimary",
-                    ModType.WorkshopL => "BrushStateHighlight",
+                    ModType.Tracked => "BrushStateHighlight",
                     ModType.Git => "BrushStateGit",
-                    ModType.Zipped => "BrushStateNeutral",
+                    ModType.Untracked => "BrushStateNeutral",
                     _ => "BrushStatePrimary"
                 };
 

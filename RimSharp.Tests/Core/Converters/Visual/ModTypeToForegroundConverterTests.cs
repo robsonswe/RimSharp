@@ -18,13 +18,13 @@ namespace RimSharp.Tests.Core.Converters.Visual
         }
 
         [AvaloniaFact]
-        public void Convert_WithWorkshopL_ShouldReturnBlack()
+        public void Convert_WithTracked_ShouldReturnBlack()
         {
 
             var converter = new ModTypeToForegroundConverter();
             var blackBrush = (IBrush)Avalonia.Application.Current!.Resources["BrushTextBlack"]!;
 
-            var result = converter.Convert(ModType.WorkshopL, typeof(IBrush), null, CultureInfo.InvariantCulture);
+            var result = converter.Convert(ModType.Tracked, typeof(IBrush), null, CultureInfo.InvariantCulture);
 
             result.Should().Be(blackBrush);
         }
@@ -34,7 +34,7 @@ namespace RimSharp.Tests.Core.Converters.Visual
         [InlineData(ModType.Expansion)]
         [InlineData(ModType.Workshop)]
         [InlineData(ModType.Git)]
-        [InlineData(ModType.Zipped)]
+        [InlineData(ModType.Untracked)]
         public void Convert_WithOtherModTypes_ShouldReturnWhite(ModType type)
         {
 

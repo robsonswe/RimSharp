@@ -128,7 +128,7 @@ namespace RimSharp.Tests.Features.ModManager.Services.Filtering
         }
 
         [Fact]
-        public async Task ApplyActiveFilterCriteria_WithTags_ShouldFilter()
+        public async Task ApplyActiveFilterCriteria_WithIncludedTag_ShouldFilter()
         {
 
             var mods = GetSampleMods();
@@ -137,7 +137,7 @@ namespace RimSharp.Tests.Features.ModManager.Services.Filtering
                 expectedEvents: 2
             );
 
-            var criteria = new ModFilterCriteria { SelectedTags = new List<string> { "Performance" } };
+            var criteria = new ModFilterCriteria { IncludedTags = new List<string> { "Performance" } };
             await WaitForFilteringAsync(() => 
                 _service.ApplyInactiveFilterCriteria(criteria)
             );
@@ -178,6 +178,125 @@ namespace RimSharp.Tests.Features.ModManager.Services.Filtering
             );
 
             _service.InactiveMods.Should().ContainSingle().Which.Name.Should().Be("Wall Light");
+        }
+
+        private static ModItem ModWithVersions(string name, params string[] versions)
+        {
+            return new ModItem
+            {
+                Name = name,
+                PackageId = name.ToLowerInvariant(),
+                SupportedVersions = versions.Select(v => new VersionSupport(v, VersionSource.Official)).ToList()
+            };
+        }
+
+        private async Task PrepareInactiveModsAsync(params ModItem[] mods)
+        {
+            await WaitForFilteringAsync(() =>
+                _service.UpdateCollections(new (ModItem, int)[0], mods),
+                expectedEvents: 2
+            );
+        }
+
+        [Fact]
+        public async Task Criteria_WithIncludedVersion_ShouldKeepOnlyModsSupportingIt()
+        {
+
+            var v15 = ModWithVersions("Mod15", "1.5");
+            var v16 = ModWithVersions("Mod16", "1.6");
+            var none = new ModItem { Name = "NoVersion", PackageId = "noversion" };
+            await PrepareInactiveModsAsync(v15, v16, none);
+
+            var criteria = new ModFilterCriteria { IncludedSupportedVersions = new List<string> { "1.5" } };
+            await WaitForFilteringAsync(() => _service.ApplyInactiveFilterCriteria(criteria));
+
+            _service.InactiveMods.Should().ContainSingle().Which.Name.Should().Be("Mod15");
+        }
+
+        [Fact]
+        public async Task Criteria_WithExcludedVersion_ShouldHideModsSupportingIt()
+        {
+
+            var v15 = ModWithVersions("Mod15", "1.5");
+            var mixed = ModWithVersions("Mixed", "1.5", "1.6");
+            var v16 = ModWithVersions("Mod16", "1.6");
+            await PrepareInactiveModsAsync(v15, mixed, v16);
+
+            var criteria = new ModFilterCriteria { ExcludedSupportedVersions = new List<string> { "1.5" } };
+            await WaitForFilteringAsync(() => _service.ApplyInactiveFilterCriteria(criteria));
+
+            var names = _service.InactiveMods.Select(m => m.Name).ToList();
+            names.Should().BeEquivalentTo("Mod16");
+        }
+
+        [Fact]
+        public async Task Criteria_WithIncludeAndExclude_ShouldApplyBothConditions()
+        {
+
+            // include 1.7 + exclude 1.6: {1.5} hidden (no 1.7), {1.7,1.6} hidden (has 1.6)
+            var only15 = ModWithVersions("Only15", "1.5");
+            var mix76 = ModWithVersions("Mix76", "1.7", "1.6");
+            var mix75 = ModWithVersions("Mix75", "1.7", "1.5");
+            var only17 = ModWithVersions("Only17", "1.7");
+            await PrepareInactiveModsAsync(only15, mix76, mix75, only17);
+
+            var criteria = new ModFilterCriteria
+            {
+                IncludedSupportedVersions = new List<string> { "1.7" },
+                ExcludedSupportedVersions = new List<string> { "1.6" }
+            };
+            await WaitForFilteringAsync(() => _service.ApplyInactiveFilterCriteria(criteria));
+
+            var names = _service.InactiveMods.Select(m => m.Name).ToList();
+            names.Should().BeEquivalentTo("Mix75", "Only17");
+        }
+
+        [Fact]
+        public async Task Criteria_WithNoVersionCriteria_ShouldKeepEverything()
+        {
+
+            var v15 = ModWithVersions("Mod15", "1.5");
+            await PrepareInactiveModsAsync(v15);
+
+            var criteria = new ModFilterCriteria(); // both lists empty -> no filtering
+            await WaitForFilteringAsync(() => _service.ApplyInactiveFilterCriteria(criteria));
+
+            _service.InactiveMods.Should().ContainSingle().Which.Name.Should().Be("Mod15");
+        }
+
+        [Fact]
+        public async Task Criteria_WithExcludedTag_ShouldHideTaggedMods()
+        {
+
+            // RocketMan has "Performance"; the others have "Library"/no tags
+            var mods = GetSampleMods();
+            await PrepareInactiveModsAsync(mods.ToArray());
+
+            var criteria = new ModFilterCriteria { ExcludedTags = new List<string> { "Performance" } };
+            await WaitForFilteringAsync(() => _service.ApplyInactiveFilterCriteria(criteria));
+
+            var names = _service.InactiveMods.Select(m => m.Name).ToList();
+            names.Should().NotContain("RocketMan");
+            names.Should().Contain(new[] { "Harmony", "HugsLib", "Core" });
+        }
+
+        [Fact]
+        public async Task Criteria_WithIncludeAndExcludeTags_ShouldApplyBothConditions()
+        {
+
+            var both = new ModItem { Name = "Both", PackageId = "both", Tags = "Library, Performance" };
+            var onlyLib = new ModItem { Name = "OnlyLib", PackageId = "onlylib", Tags = "Library" };
+            var noTags = new ModItem { Name = "NoTags", PackageId = "notags" };
+            await PrepareInactiveModsAsync(both, onlyLib, noTags);
+
+            var criteria = new ModFilterCriteria
+            {
+                IncludedTags = new List<string> { "Library" },
+                ExcludedTags = new List<string> { "Performance" }
+            };
+            await WaitForFilteringAsync(() => _service.ApplyInactiveFilterCriteria(criteria));
+
+            _service.InactiveMods.Should().ContainSingle().Which.Name.Should().Be("OnlyLib");
         }
     }
 }

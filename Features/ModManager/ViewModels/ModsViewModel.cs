@@ -5,6 +5,8 @@ using RimSharp.AppDir.AppFiles;
 using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
+using RimSharp.Services.Workshop;
+using RimSharp.Services.ModManager;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -28,10 +30,16 @@ namespace RimSharp.Features.ModManager.ViewModels
         private readonly IModDeletionService _deletionService;
         private readonly ISteamWorkshopQueueProcessor _steamWorkshopQueueProcessor;
         private readonly IGitService _gitService;
+        private readonly ISteamSubscriptionService? _steamSubscriptionService;
+        private readonly IWorkshopUpdateService? _workshopUpdateService;
+        private readonly ILoggerService _logger;
+        private readonly IContextMenuAvailabilityService _contextMenuAvailabilityService;
+        private readonly GameInstance _gameInstance;
 
         public ModListViewModel ModListViewModel { get; private set; }
         public ModDetailsViewModel ModDetailsViewModel { get; private set; }
         public ModActionsViewModel ModActionsViewModel { get; private set; }
+        public IContextMenuAvailabilityService ContextMenuAvailabilityService => _contextMenuAvailabilityService;
 
         public ICommand RequestRefreshCommand { get; }
         private bool _isLoading;
@@ -142,6 +150,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                 if (SetProperty(ref _selectedItems, value))
                 {
                     if (ModActionsViewModel != null) ModActionsViewModel.SelectedItems = value; 
+                    _contextMenuAvailabilityService?.UpdateSelection(value);
                 }
             }
         }
@@ -166,7 +175,12 @@ namespace RimSharp.Features.ModManager.ViewModels
             ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor,
             IGitService gitService,
             IAIncompatibilityAgentService aiAgentService,
-            IModCustomService customService)
+            IModCustomService customService,
+            ILoggerService logger,
+            IContextMenuAvailabilityService contextMenuAvailabilityService,
+            GameInstance gameInstance,
+            ISteamSubscriptionService? steamSubscriptionService = null,
+            IWorkshopUpdateService? workshopUpdateService = null)
         {
             _dataService = dataService;
             _filterService = filterService;
@@ -177,6 +191,11 @@ namespace RimSharp.Features.ModManager.ViewModels
             _deletionService = deletionService;
             _steamWorkshopQueueProcessor = steamWorkshopQueueProcessor;
             _gitService = gitService;
+            _logger = logger;
+            _steamSubscriptionService = steamSubscriptionService;
+            _workshopUpdateService = workshopUpdateService;
+            _contextMenuAvailabilityService = contextMenuAvailabilityService;
+            _gameInstance = gameInstance;
 
             RequestRefreshCommand = CreateCancellableAsyncCommand(ExecuteRequestRefreshAsync, CanExecuteRequestRefresh, nameof(IsLoading));
 
@@ -185,7 +204,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             ModActionsViewModel = new ModActionsViewModel(
                 _dataService, commandService, ioService, _modListManager, incompatibilityService, duplicateService, _deletionService, _dialogService, _pathService, _modService,
                         replacementService, downloadQueueService, steamApiClient, navigationService, steamWorkshopQueueProcessor, _gitService,
-                        aiAgentService, customService
+                        aiAgentService, customService, _logger, _gameInstance, steamSubscriptionService, workshopUpdateService
                         );
             _modListManager.ListChanged += OnModListManagerChanged;
             ModListViewModel.RequestSelectionChange += OnChildRequestSelectionChange;

@@ -177,16 +177,36 @@ namespace RimSharp.Features.ModManager.Services.Filtering
                 filtered = filtered.Where(m => selectedTypesSet.Contains(m.ModType));
             }
 
-            if (criteria.SelectedSupportedVersions?.Any() ?? false)
+            // Version filter: Include and Exclude lists act independently.
+            // Include: mod must support at least one listed version.
+            // Exclude: mod must not support any listed version.
+            // Mods without any version info fail Include but pass Exclude.
+            if (criteria.IncludedSupportedVersions?.Any() ?? false)
             {
-                var selectedVersionsSet = new HashSet<string>(criteria.SelectedSupportedVersions, StringComparer.OrdinalIgnoreCase);
-                filtered = filtered.Where(m => m.SupportedVersionStrings.Any(sv => selectedVersionsSet.Contains(sv)));
+                var includedSet = new HashSet<string>(criteria.IncludedSupportedVersions, StringComparer.OrdinalIgnoreCase);
+                filtered = filtered.Where(m => m.SupportedVersionStrings.Any(sv => includedSet.Contains(sv)));
             }
 
-            if (criteria.SelectedTags?.Any() ?? false)
+            if (criteria.ExcludedSupportedVersions?.Any() ?? false)
             {
-                var selectedTagsSet = new HashSet<string>(criteria.SelectedTags, StringComparer.OrdinalIgnoreCase);
-                filtered = filtered.Where(m => m.TagList.Any(tag => selectedTagsSet.Contains(tag)));
+                var excludedSet = new HashSet<string>(criteria.ExcludedSupportedVersions, StringComparer.OrdinalIgnoreCase);
+                filtered = filtered.Where(m => m.SupportedVersionStrings.All(sv => !excludedSet.Contains(sv)));
+            }
+
+            // Tag filter: Include and Exclude lists act independently.
+            // Include: mod must carry at least one listed tag.
+            // Exclude: mod must not carry any listed tag.
+            // Mods without tags fail Include but pass Exclude.
+            if (criteria.IncludedTags?.Any() ?? false)
+            {
+                var includedTagsSet = new HashSet<string>(criteria.IncludedTags, StringComparer.OrdinalIgnoreCase);
+                filtered = filtered.Where(m => m.TagList.Any(tag => includedTagsSet.Contains(tag)));
+            }
+
+            if (criteria.ExcludedTags?.Any() ?? false)
+            {
+                var excludedTagsSet = new HashSet<string>(criteria.ExcludedTags, StringComparer.OrdinalIgnoreCase);
+                filtered = filtered.Where(m => m.TagList.All(tag => !excludedTagsSet.Contains(tag)));
             }
 
             if (criteria.IsSupportedFilter.HasValue) filtered = filtered.Where(m => m.IsSupportedRW == criteria.IsSupportedFilter.Value);

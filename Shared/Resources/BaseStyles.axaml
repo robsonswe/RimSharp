@@ -12,7 +12,7 @@
     </Style>
 
     <Style Selector="Border.panel-subtle">
-        <Setter Property="Background" Value="{DynamicResource BrushBgPanel}"/> <!-- Adjusted to existing brush -->
+        <Setter Property="Background" Value="{DynamicResource BrushBgPanel}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="5"/>
@@ -317,7 +317,7 @@
     <!-- Tab item toggles -->
     <Style Selector="TabControl.tabs TabItem">
         <Setter Property="Background" Value="{DynamicResource BrushBgAccent}"/>
-        <Setter Property="Foreground" Value="{DynamicResource BrushTextBrown950}"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
         <Setter Property="Padding" Value="12,6"/>
         <Setter Property="Margin" Value="0,0,5,5"/>
         <Setter Property="FontSize" Value="13"/>
@@ -331,6 +331,7 @@
                         CornerRadius="3">
                     <ContentPresenter Name="PART_ContentPresenter"
                                       Content="{TemplateBinding Header}"
+                                      Foreground="{TemplateBinding Foreground}"
                                       Margin="{TemplateBinding Padding}"
                                       HorizontalAlignment="Center"
                                       VerticalAlignment="Center"/>
@@ -338,13 +339,24 @@
             </ControlTemplate>
         </Setter>
     </Style>
-    <Style Selector="TabControl.tabs TabItem:pointerover /template/ Border#PART_LayoutRoot">
+
+    <Style Selector="TabControl.tabs TabItem TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+    </Style>
+
+    <Style Selector="TabControl.tabs TabItem:pointerover">
         <Setter Property="Background" Value="{DynamicResource BrushBgPanel}"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
     </Style>
-    <Style Selector="TabControl.tabs TabItem:selected /template/ Border#PART_LayoutRoot">
-        <Setter Property="Background" Value="{DynamicResource BrushBgAction}"/>
+    <Style Selector="TabControl.tabs TabItem:pointerover TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
     </Style>
+
     <Style Selector="TabControl.tabs TabItem:selected">
+        <Setter Property="Background" Value="{DynamicResource BrushBgAction}"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextOnDark}"/>
+    </Style>
+    <Style Selector="TabControl.tabs TabItem:selected TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource BrushTextOnDark}"/>
     </Style>
 
@@ -511,6 +523,19 @@
                 </KeyFrame>
             </Animation>
         </Style.Animations>
+    </Style>
+
+    <!-- ComboBoxItem disabled state -->
+    <Style Selector="ComboBoxItem:disabled">
+        <Setter Property="Opacity" Value="0.4"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushBgDisabled}"/>
+        <Setter Property="FontStyle" Value="Italic"/>
+    </Style>
+    <Style Selector="ComboBoxItem:disabled TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource BrushBgDisabled}"/>
+    </Style>
+    <Style Selector="ComboBoxItem:disabled:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
     </Style>
 
     <!-- Separator -->

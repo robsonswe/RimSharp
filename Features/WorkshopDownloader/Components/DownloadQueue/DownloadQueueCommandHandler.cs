@@ -113,7 +113,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
             try
             {
                 return (_modService?.GetLoadedMods().Any(m =>
-                    !string.IsNullOrEmpty(m.SteamId) && long.TryParse(m.SteamId, out _) && m.ModType == ModType.WorkshopL) ?? false);
+                    !string.IsNullOrEmpty(m.SteamId) && long.TryParse(m.SteamId, out _) && m.ModType == ModType.Tracked) ?? false);
             }
             catch (Exception ex)
             {
@@ -813,7 +813,7 @@ namespace RimSharp.Features.WorkshopDownloader.Components.DownloadQueue
                 );
                 await _modService.LoadModsAsync();
                 workshopMods = _modService.GetLoadedMods()
-                    .Where(m => !string.IsNullOrEmpty(m.SteamId) && long.TryParse(m.SteamId, out _) && m.ModType == ModType.WorkshopL)
+                    .Where(m => !string.IsNullOrEmpty(m.SteamId) && long.TryParse(m.SteamId, out _) && m.ModType == ModType.Tracked)
                     .OrderBy(m => m.Name)
                     .ToList();
 

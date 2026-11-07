@@ -11,11 +11,16 @@ namespace RimSharp.Shared.Models
 
         public List<ModType> SelectedModTypes { get; set; } = new List<ModType>();
 
-        public List<string> SelectedSupportedVersions { get; set; } = new List<string>();
+        // Version filter with two complementary lists (Any / Include / Exclude).
+        // A mod matches when it supports at least one INCLUDED version (if any
+        // are set) AND none of the EXCLUDED versions (if any are set).
+        public List<string> IncludedSupportedVersions { get; set; } = new List<string>();
+        public List<string> ExcludedSupportedVersions { get; set; } = new List<string>();
 
-        public List<string> SelectedTags { get; set; } = new List<string>();
-
-        public bool? IsSupportedFilter { get; set; } = null;
+        // Tag filter: same tri-state model as versions. Tags are the local
+        // tags assigned to mods (Customize Mod), not Steam Workshop tags.
+        public List<string> IncludedTags { get; set; } = new List<string>();
+        public List<string> ExcludedTags { get; set; } = new List<string>();        public bool? IsSupportedFilter { get; set; } = null;
         public bool? HasAssembliesFilter { get; set; } = null;
         public bool? HasTexturesFilter { get; set; } = null;
         public bool? IsFavoriteFilter { get; set; } = null;
@@ -25,8 +30,10 @@ namespace RimSharp.Shared.Models
             return !string.IsNullOrWhiteSpace(SearchText)
                 || !string.IsNullOrWhiteSpace(AuthorFilterText)
                 || (SelectedModTypes != null && SelectedModTypes.Any())
-                || (SelectedSupportedVersions != null && SelectedSupportedVersions.Any())
-                || (SelectedTags != null && SelectedTags.Any())
+                || (IncludedSupportedVersions != null && IncludedSupportedVersions.Any())
+                || (ExcludedSupportedVersions != null && ExcludedSupportedVersions.Any())
+                || (IncludedTags != null && IncludedTags.Any())
+                || (ExcludedTags != null && ExcludedTags.Any())
                 || IsSupportedFilter.HasValue
                 || IsFavoriteFilter.HasValue
                 || HasAssembliesFilter.HasValue
@@ -38,8 +45,10 @@ namespace RimSharp.Shared.Models
             SearchText = string.Empty;
             AuthorFilterText = string.Empty;
             SelectedModTypes?.Clear();
-            SelectedSupportedVersions?.Clear();
-            SelectedTags?.Clear(); 
+            IncludedSupportedVersions?.Clear();
+            ExcludedSupportedVersions?.Clear();
+            IncludedTags?.Clear();
+            ExcludedTags?.Clear();
             IsSupportedFilter = null;
             IsFavoriteFilter = null;
             HasAssembliesFilter = null;
@@ -53,8 +62,10 @@ namespace RimSharp.Shared.Models
                 SearchText = this.SearchText,
                 AuthorFilterText = this.AuthorFilterText, // Clone Author
                 SelectedModTypes = new List<ModType>(this.SelectedModTypes ?? Enumerable.Empty<ModType>()),
-                SelectedSupportedVersions = new List<string>(this.SelectedSupportedVersions ?? Enumerable.Empty<string>()),
-                SelectedTags = new List<string>(this.SelectedTags ?? Enumerable.Empty<string>()), // Clone Tags
+                IncludedSupportedVersions = new List<string>(this.IncludedSupportedVersions ?? Enumerable.Empty<string>()),
+                ExcludedSupportedVersions = new List<string>(this.ExcludedSupportedVersions ?? Enumerable.Empty<string>()),
+                IncludedTags = new List<string>(this.IncludedTags ?? Enumerable.Empty<string>()),
+                ExcludedTags = new List<string>(this.ExcludedTags ?? Enumerable.Empty<string>()),
                 IsSupportedFilter = this.IsSupportedFilter,
                 IsFavoriteFilter = this.IsFavoriteFilter,
                 HasAssembliesFilter = this.HasAssembliesFilter,
