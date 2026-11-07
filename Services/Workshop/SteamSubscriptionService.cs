@@ -22,17 +22,31 @@ namespace RimSharp.Services.Workshop
         private readonly GameInstance _gameInstance;
         private readonly ILoggerService _logger;
         private readonly SteamWorkshopApiClient _apiClient;
+        private readonly Func<bool> _steamApiInit;
         private readonly object _initLock = new();
         private bool _steamworksInitialized = false;
-        private bool _initializationAttempted = false;
+        private DateTime _lastInitAttemptUtc = DateTime.MinValue;
         private CancellationTokenSource? _callbackCts;
         private Task? _callbackTask;
 
-        public SteamSubscriptionService(GameInstance gameInstance, ILoggerService logger, SteamWorkshopApiClient apiClient)
+        /// <summary>
+        /// Cooldown between SteamAPI.Init attempts after a failure. A failed init is
+        /// the "unknown ownership" state (design ladder): interactive ops stay off and
+        /// the user gets a clear message, but starting Steam later and retrying the
+        /// action must work — a one-shot latch would brick the whole session on a
+        /// client-startup race.
+        /// </summary>
+        private static readonly TimeSpan InitRetryCooldown = TimeSpan.FromSeconds(30);
+
+        private readonly TimeSpan _initRetryCooldown;
+
+        public SteamSubscriptionService(GameInstance gameInstance, ILoggerService logger, SteamWorkshopApiClient apiClient, Func<bool>? steamApiInit = null, TimeSpan? initRetryCooldown = null)
         {
             _gameInstance = gameInstance ?? throw new ArgumentNullException(nameof(gameInstance));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+            _steamApiInit = steamApiInit ?? (() => SteamAPI.Init());
+            _initRetryCooldown = initRetryCooldown ?? InitRetryCooldown;
         }
 
         /// <summary>
@@ -45,18 +59,18 @@ namespace RimSharp.Services.Workshop
                 if (_steamworksInitialized)
                     return true;
 
-                if (_initializationAttempted)
+                if (DateTime.UtcNow - _lastInitAttemptUtc < _initRetryCooldown)
                 {
-                    _logger.LogWarning("Steamworks initialization was previously attempted and failed", nameof(SteamSubscriptionService));
+                    _logger.LogWarning("Steamworks initialization failed recently; retry after a short wait", nameof(SteamSubscriptionService));
                     return false;
                 }
 
-                _initializationAttempted = true;
+                _lastInitAttemptUtc = DateTime.UtcNow;
 
                 try
                 {
                     // Steamworks.NET requires steam_appid.txt (294100) next to the executable
-                    var result = SteamAPI.Init();
+                    var result = _steamApiInit();
                     if (!result)
                     {
                         _logger.LogError("SteamAPI.Init() failed - Steam not running or not logged in", nameof(SteamSubscriptionService));
@@ -802,29 +816,22 @@ namespace RimSharp.Services.Workshop
 
             try
             {
-                // Use the steam://validate protocol to trigger Steam's file verification
-                // This is a valid Steam protocol verb (unlike fake subscribe/update)
+                // Launch the steam://validate protocol. Linux users often have no
+                // registered URL handler, so the launcher falls back to a terminal
+                // emulator running the steam client (RimSort reference behavior).
                 var verifyUrl = "steam://validate/294100";
-                
+
                 _logger.LogInfo($"Launching Steam file verification for RimWorld (294100)", nameof(SteamSubscriptionService));
-                
-                var psi = new ProcessStartInfo
-                {
-                    FileName = verifyUrl,
-                    UseShellExecute = true
-                };
-                
-                var process = Process.Start(psi);
-                if (process != null)
+
+                var launched = Core.Services.SteamProtocolLauncher.TryOpen(verifyUrl, _logger);
+                if (launched)
                 {
                     _logger.LogInfo("Steam verify game files launched successfully", nameof(SteamSubscriptionService));
                     return true;
                 }
-                else
-                {
-                    _logger.LogError("Failed to launch Steam verify game files", nameof(SteamSubscriptionService));
-                    return false;
-                }
+
+                _logger.LogError("Failed to launch Steam verify game files", nameof(SteamSubscriptionService));
+                return false;
             }
             catch (Exception ex)
             {

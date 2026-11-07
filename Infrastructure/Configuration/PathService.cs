@@ -63,7 +63,7 @@ namespace RimSharp.Infrastructure.Configuration
             // Self-invalidating cache: the entry is only honored while both inputs that
             // produced it are unchanged. This is what lets a mods_folder value written by
             // the settings dialog take effect on the next GetModsPath() call, without
-            // requiring a restart or an explicit invalidation call (handoff doc §2.3).
+            // requiring a restart or an explicit invalidation call.
             if (_cachedModsPath != null &&
                 _cachedModsOverrideUsed == overrideKey &&
                 _cachedModsGamePathUsed == gamePath)
@@ -71,7 +71,7 @@ namespace RimSharp.Infrastructure.Configuration
                 return _cachedModsPath;
             }
 
-            // Mod-folder override slot (handoff doc §2.3): if the user configured
+            // Mod-folder override slot: if the user configured
             // mods_folder, it is honored while the directory exists; otherwise warn
             // and fall back to the derived path. Fail-open policy: a broken override
             // is bypassed but NEVER cleared — the stored value is preserved for the
@@ -105,12 +105,12 @@ namespace RimSharp.Infrastructure.Configuration
 
         /// <summary>
         /// Resolves the local mods folder override slot for the *given* game folder.
-        /// Precedence (handoff doc §2.3): a valid mods_folder override always wins;
+        /// Precedence: a valid mods_folder override always wins;
         /// without one (or with a broken one — see GetModsPath for the warn+fallback
         /// path), the raw derivation rule applies. No existence check on the derived
         /// result and no cache — callers that need those use GetModsPath().
-        /// This is the single writer rule for GameInstance.LocalFolder (handoff §6
-        /// Phase 0): every writer of that property must go through this method or
+        /// This is the single writer rule for GameInstance.LocalFolder:
+        /// every writer of that property must go through this method or
         /// GetModsPath(), never a direct Path.Combine or a UI-model read.
         /// </summary>
         /// <param name="gamePath">The game installation folder to derive from.</param>

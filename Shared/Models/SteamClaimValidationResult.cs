@@ -2,7 +2,7 @@ namespace RimSharp.Shared.Models
 {
     /// <summary>
     /// Result of structurally validating a user's "I am on Steam" claim for a given
-    /// game directory (handoff §2.3.1 trust ladder, rung 2). Validation never proves
+    /// game directory (trust ladder, rung 2). Validation never proves
     /// provenance 100% — it verifies that the claimed folder is consistent with a
     /// real Steam-managed RimWorld installation (layout + Steam bookkeeping files).
     /// </summary>

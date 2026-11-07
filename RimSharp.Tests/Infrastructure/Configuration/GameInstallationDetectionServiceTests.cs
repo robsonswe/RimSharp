@@ -7,8 +7,8 @@ using Xunit;
 namespace RimSharp.Tests.Infrastructure.Configuration
 {
     /// <summary>
-    /// Structural validation of manual Steam claims (SteamClaimValidationResult,
-    /// handoff §2.3.1): layout under &lt;library&gt;\steamapps\common\RimWorld, Steam
+    /// Structural validation of manual Steam claims (SteamClaimValidationResult):
+    /// layout under &lt;library&gt;\steamapps\common\RimWorld, Steam
     /// manifest present, and the workshop ACF file validating.
     /// </summary>
     public class GameInstallationDetectionServiceTests : IDisposable

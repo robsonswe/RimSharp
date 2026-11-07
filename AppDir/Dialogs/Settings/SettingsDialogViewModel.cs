@@ -97,7 +97,7 @@ namespace RimSharp.AppDir.Dialogs
         private string _configPath = string.Empty;
         public string ConfigPath { get => _configPath; set => SetProperty(ref _configPath, value); }
 
-        // Auto-sync model (handoff §2.3): an EMPTY backing field means "no override —
+        // Auto-sync model: an EMPTY backing field means "no override —
         // derive <game>\Mods", mirroring the runtime PathService semantics. The UI shows
         // the derived path so the user can see what resolves; anything the user types
         // other than the derived path becomes a persisted override. If the user sets the

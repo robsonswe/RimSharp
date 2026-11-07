@@ -2,6 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using FluentAssertions;
 using NSubstitute;
 using RimSharp.AppDir.Dialogs;
@@ -18,12 +20,18 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
         private readonly IConfigService _mockConfigService;
         private readonly IPathService _mockPathService;
         private readonly ILoggerService _mockLogger;
+        private readonly ISteamClaimValidator _mockSteamClaimValidator;
 
         public SettingsDialogViewModelTests()
         {
             _mockConfigService = Substitute.For<IConfigService>();
             _mockPathService = Substitute.For<IPathService>();
             _mockLogger = Substitute.For<ILoggerService>();
+            _mockSteamClaimValidator = Substitute.For<ISteamClaimValidator>();
+            // Manual Steam confirmation flow routes Save() through the claim validator;
+            // the default stub refuses, per-test overrides set up a valid claim.
+            _mockSteamClaimValidator.ValidateAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                .Returns(_ => Task.FromResult(SteamClaimValidationResult.Fail("stub rejection")));
         }
 
         [Fact]
@@ -34,7 +42,9 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 _mockPathService,
                 null,
                 _mockLogger,
-                null
+                null,
+                _mockSteamClaimValidator,
+                CreateStubDetectionWithoutCandidates()
             );
 
             viewModel.ModsFolderPath = @"D:\CustomMods";
@@ -51,7 +61,9 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 _mockPathService,
                 null,
                 _mockLogger,
-                null
+                null,
+                _mockSteamClaimValidator,
+                CreateStubDetectionWithoutCandidates()
             );
 
             viewModel.ModsFolderPath = string.Empty;
@@ -68,7 +80,9 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 _mockPathService,
                 null,
                 _mockLogger,
-                null
+                null,
+                _mockSteamClaimValidator,
+                CreateStubDetectionWithoutCandidates()
             );
 
             viewModel.ModsFolderPath = @"D:\DoesNotExist";
@@ -91,7 +105,9 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 _mockPathService,
                 null,
                 _mockLogger,
-                null
+                null,
+                _mockSteamClaimValidator,
+                CreateStubDetectionWithoutCandidates()
             );
 
             viewModel.IsGamePathSet.Should().BeFalse();
@@ -105,7 +121,9 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 _mockPathService,
                 null,
                 _mockLogger,
-                null
+                null,
+                _mockSteamClaimValidator,
+                CreateStubDetectionWithoutCandidates()
             );
 
             viewModel.GamePath = @"D:\Game";
@@ -120,7 +138,9 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 _mockPathService,
                 null,
                 _mockLogger,
-                null
+                null,
+                _mockSteamClaimValidator,
+                CreateStubDetectionWithoutCandidates()
             );
 
             viewModel.IsGamePathSet.Should().BeFalse();
@@ -134,7 +154,9 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 _mockPathService,
                 null,
                 _mockLogger,
-                null
+                null,
+                _mockSteamClaimValidator,
+                CreateStubDetectionWithoutCandidates()
             );
 
             viewModel.IsModsFolderEnabled.Should().BeFalse();
@@ -148,7 +170,9 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 _mockPathService,
                 null,
                 _mockLogger,
-                null
+                null,
+                _mockSteamClaimValidator,
+                CreateStubDetectionWithoutCandidates()
             );
 
             viewModel.GamePath = @"D:\Game";
@@ -165,7 +189,9 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 _mockPathService,
                 null,
                 _mockLogger,
-                null
+                null,
+                _mockSteamClaimValidator,
+                CreateStubDetectionWithoutCandidates()
             );
 
             viewModel.GamePath = @"D:\Game";
@@ -181,7 +207,9 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 _mockPathService,
                 null,
                 _mockLogger,
-                null
+                null,
+                _mockSteamClaimValidator,
+                CreateStubDetectionWithoutCandidates()
             );
 
             viewModel.GamePath = @"D:\Game";
@@ -200,7 +228,9 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 _mockPathService,
                 null,
                 _mockLogger,
-                null
+                null,
+                _mockSteamClaimValidator,
+                CreateStubDetectionWithoutCandidates()
             );
 
             viewModel.GamePath = @"D:\Game";
@@ -219,7 +249,9 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 _mockPathService,
                 null,
                 _mockLogger,
-                null
+                null,
+                _mockSteamClaimValidator,
+                CreateStubDetectionWithoutCandidates()
             );
 
             viewModel.GamePath = @"D:\Game";
@@ -253,7 +285,9 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 _mockPathService,
                 null,
                 _mockLogger,
-                null
+                null,
+                _mockSteamClaimValidator,
+                CreateStubDetectionWithoutCandidates()
             );
             viewModel.GamePath = @"D:\Game";
 
@@ -269,7 +303,9 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 _mockPathService,
                 null,
                 _mockLogger,
-                null
+                null,
+                _mockSteamClaimValidator,
+                CreateStubDetectionWithoutCandidates()
             );
             viewModel.GamePath = @"D:\Game";
         }
@@ -285,7 +321,9 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 _mockPathService,
                 null,
                 _mockLogger,
-                null
+                null,
+                _mockSteamClaimValidator,
+                CreateStubDetectionWithoutCandidates()
             );
 
             viewModel.ResolvedModsPath.Should().Be(@"D:\Game\Mods");
@@ -301,7 +339,9 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 _mockPathService,
                 null,
                 _mockLogger,
-                null
+                null,
+                _mockSteamClaimValidator,
+                CreateStubDetectionWithoutCandidates()
             );
 
             viewModel.ResolvedModsPath.Should().Be("No game path set");
@@ -318,7 +358,9 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 _mockPathService,
                 null,
                 _mockLogger,
-                null
+                null,
+                _mockSteamClaimValidator,
+                CreateStubDetectionWithoutCandidates()
             );
 
             viewModel.ResolvedModsPath.Should().Be(@"D:\CustomMods");
@@ -338,6 +380,7 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 null,
                 mockLogger,
                 null,
+                _mockSteamClaimValidator,
                 stubDetection
             );
 
@@ -373,12 +416,15 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
 
                 var stubDetection = CreateStubDetectionWithoutCandidates();
                 var mockConfig = Substitute.For<IConfigService>();
+                _mockSteamClaimValidator.ValidateAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                    .Returns(Task.FromResult(SteamClaimValidationResult.Success(workshopContent)));
                 var viewModel = new SettingsDialogViewModel(
                     mockConfig,
                     _mockPathService,
                     null,
                     _mockLogger,
                     null,
+                    _mockSteamClaimValidator,
                     stubDetection
                 );
 
@@ -425,6 +471,7 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                     null,
                     mockLogger,
                     null,
+                    _mockSteamClaimValidator,
                     stubDetection
                 );
 
@@ -460,7 +507,7 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
         public void IsManualSteamClaim_ShouldBeFalse_WithNonSteamSelected()
         {
             var viewModel = new SettingsDialogViewModel(
-                _mockConfigService, _mockPathService, null, _mockLogger, null,
+                _mockConfigService, _mockPathService, null, _mockLogger, null, _mockSteamClaimValidator,
                 CreateStubDetectionWithoutCandidates());
 
             viewModel.IsManualSteamClaim.Should().BeFalse();
@@ -471,7 +518,7 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
         public void IsManualSteamClaim_ShouldBeTrue_WhenSteamSelectedWithoutCandidate()
         {
             var viewModel = new SettingsDialogViewModel(
-                _mockConfigService, _mockPathService, null, _mockLogger, null,
+                _mockConfigService, _mockPathService, null, _mockLogger, null, _mockSteamClaimValidator,
                 CreateStubDetectionWithoutCandidates());
 
             viewModel.SelectedDistribution = GameDistribution.Steam;
@@ -484,7 +531,7 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
         public void ValidateSteamClaimCommand_WhenNotPending_ShouldLeaveStatusEmpty()
         {
             var viewModel = new SettingsDialogViewModel(
-                _mockConfigService, _mockPathService, null, _mockLogger, null,
+                _mockConfigService, _mockPathService, null, _mockLogger, null, _mockSteamClaimValidator,
                 CreateStubDetectionWithoutCandidates());
 
             viewModel.ValidateSteamClaimCommand.Execute(null);
@@ -496,10 +543,14 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
         public void ValidateSteamClaimCommand_WhenClaimInvalid_ShouldShowFailureStatus()
         {
             var viewModel = new SettingsDialogViewModel(
-                _mockConfigService, _mockPathService, null, _mockLogger, null,
+                _mockConfigService, _mockPathService, null, _mockLogger, null, _mockSteamClaimValidator,
                 CreateStubDetectionWithoutCandidates());
             viewModel.SelectedDistribution = GameDistribution.Steam;
             viewModel.GamePath = @"Q:\No_Such_Dir\RimWorld";
+
+            _mockSteamClaimValidator.ValidateAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromResult(
+                    SteamClaimValidationResult.Fail("Claimed game directory does not exist")));
 
             viewModel.ValidateSteamClaimCommand.Execute(null);
 
@@ -524,8 +575,12 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 File.WriteAllText(Path.Combine(tempRoot, "steamapps", "workshop", "appworkshop_294100.acf"),
                     "\"appworkshop_294100\"{}");
 
+                _mockSteamClaimValidator.ValidateAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                    .Returns(Task.FromResult(SteamClaimValidationResult.Success(workshopContent)));
+
                 var viewModel = new SettingsDialogViewModel(
                     _mockConfigService, _mockPathService, null, _mockLogger, null,
+                    _mockSteamClaimValidator,
                     CreateStubDetectionWithoutCandidates());
                 viewModel.SelectedDistribution = GameDistribution.Steam;
                 viewModel.GamePath = gameDir;

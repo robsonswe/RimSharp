@@ -23,7 +23,7 @@ namespace RimSharp.Shared.Services.Contracts
         /// A valid mods_folder override wins; otherwise the raw derivation applies
         /// (Path.Combine(gamePath, "Mods")). No existence check on the derived result
         /// and no cache — callers that need those use GetModsPath(). This is the
-        /// single writer rule for GameInstance.LocalFolder (handoff doc §6 Phase 0):
+        /// single writer rule for GameInstance.LocalFolder:
         /// every writer of that property must go through this method or GetModsPath(),
         /// never a direct Path.Combine.
         /// </summary>

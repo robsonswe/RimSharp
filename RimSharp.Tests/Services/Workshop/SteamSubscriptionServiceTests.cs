@@ -36,6 +36,51 @@ namespace RimSharp.Tests.Services.Workshop
         }
 
         [Fact]
+        public async Task GetDownloadProgressAsync_WhenSteamInitFails_ShouldReturnNullAndAttemptInitOnce()
+        {
+            var initCalls = 0;
+            var service = new SteamSubscriptionService(
+                _gameInstance, _logger, _apiClient,
+                steamApiInit: () => { initCalls++; return false; },
+                initRetryCooldown: TimeSpan.FromSeconds(30));
+
+            var result = await service.GetDownloadProgressAsync("123");
+
+            result.Should().BeNull();
+            initCalls.Should().Be(1);
+        }
+
+        [Fact]
+        public async Task GetDownloadProgressAsync_WhenInitFailsAndCooldownActive_ShouldNotRetryImmediately()
+        {
+            var initCalls = 0;
+            var service = new SteamSubscriptionService(
+                _gameInstance, _logger, _apiClient,
+                steamApiInit: () => { initCalls++; return false; },
+                initRetryCooldown: TimeSpan.FromSeconds(30));
+
+            await service.GetDownloadProgressAsync("123");
+            await service.GetDownloadProgressAsync("124");
+
+            initCalls.Should().Be(1, "the second action inside the cooldown window must not hammer SteamAPI.Init");
+        }
+
+        [Fact]
+        public async Task GetDownloadProgressAsync_WhenInitFailsAndCooldownElapsed_ShouldRetryInit()
+        {
+            var initCalls = 0;
+            var service = new SteamSubscriptionService(
+                _gameInstance, _logger, _apiClient,
+                steamApiInit: () => { initCalls++; return false; },
+                initRetryCooldown: TimeSpan.Zero);
+
+            await service.GetDownloadProgressAsync("123");
+            await service.GetDownloadProgressAsync("124");
+
+            initCalls.Should().Be(2, "a user who started Steam after the failure must be able to retry");
+        }
+
+        [Fact]
         public void Constructor_ValidArguments_CreatesInstance()
         {
             // Act
@@ -82,7 +127,7 @@ namespace RimSharp.Tests.Services.Workshop
             var service = CreateService();
 
             // Act
-            var result = await service.SubscribeAsync("invalid-id");
+            var result = await service.SubscribeAsync("invalid-id", null, TestContext.Current.CancellationToken);
 
             // Assert
             result.Should().BeFalse();
@@ -96,7 +141,7 @@ namespace RimSharp.Tests.Services.Workshop
             var service = CreateService();
 
             // Act
-            var result = await service.SubscribeAsync("");
+            var result = await service.SubscribeAsync("", null, TestContext.Current.CancellationToken);
 
             // Assert
             result.Should().BeFalse();
@@ -111,7 +156,7 @@ namespace RimSharp.Tests.Services.Workshop
             _gameInstance.IsSteamInstallation = false;
 
             // Act
-            var result = await service.SubscribeAsync("123456789");
+            var result = await service.SubscribeAsync("123456789", null, TestContext.Current.CancellationToken);
 
             // Assert
             result.Should().BeFalse();
@@ -126,7 +171,7 @@ namespace RimSharp.Tests.Services.Workshop
             _gameInstance.WorkshopFolder = null;
 
             // Act
-            var result = await service.SubscribeAsync("123456789");
+            var result = await service.SubscribeAsync("123456789", null, TestContext.Current.CancellationToken);
 
             // Assert
             result.Should().BeFalse();
@@ -140,7 +185,7 @@ namespace RimSharp.Tests.Services.Workshop
             var service = CreateService();
 
             // Act
-            var result = await service.UnsubscribeAsync("invalid-id");
+            var result = await service.UnsubscribeAsync("invalid-id", null, TestContext.Current.CancellationToken);
 
             // Assert
             result.Should().BeFalse();
@@ -155,7 +200,7 @@ namespace RimSharp.Tests.Services.Workshop
             _gameInstance.IsSteamInstallation = false;
 
             // Act
-            var result = await service.UnsubscribeAsync("123456789");
+            var result = await service.UnsubscribeAsync("123456789", null, TestContext.Current.CancellationToken);
 
             // Assert
             result.Should().BeFalse();
@@ -211,7 +256,7 @@ namespace RimSharp.Tests.Services.Workshop
             _gameInstance.WorkshopFolder = null;
 
             // Act
-            var result = await service.RefreshSubscriptionsAsync();
+            var result = await service.RefreshSubscriptionsAsync(null, TestContext.Current.CancellationToken);
 
             // Assert
             result.Should().Be(0);
@@ -224,7 +269,7 @@ namespace RimSharp.Tests.Services.Workshop
             var service = CreateService();
 
             // Act
-            var result = await service.ResubscribeAsync(Enumerable.Empty<string>());
+            var result = await service.ResubscribeAsync(Enumerable.Empty<string>(), null, TestContext.Current.CancellationToken);
 
             // Assert
             result.Should().Be(0);
@@ -237,7 +282,7 @@ namespace RimSharp.Tests.Services.Workshop
             var service = CreateService();
 
             // Act
-            var result = await service.ResubscribeAsync(null!);
+            var result = await service.ResubscribeAsync(null!, null, TestContext.Current.CancellationToken);
 
             // Assert
             result.Should().Be(0);
@@ -251,7 +296,7 @@ namespace RimSharp.Tests.Services.Workshop
             _gameInstance.IsSteamInstallation = false;
 
             // Act
-            var result = await service.ResubscribeAsync(new[] { "123", "456" });
+            var result = await service.ResubscribeAsync(new[] { "123", "456" }, null, TestContext.Current.CancellationToken);
 
             // Assert
             result.Should().Be(0);
@@ -294,7 +339,7 @@ namespace RimSharp.Tests.Services.Workshop
             _gameInstance.IsSteamInstallation = false;
 
             // Act
-            var result = await service.CheckOwnershipAsync();
+            var result = await service.CheckOwnershipAsync(TestContext.Current.CancellationToken);
 
             // Assert
             result.Should().BeFalse();
@@ -309,7 +354,7 @@ namespace RimSharp.Tests.Services.Workshop
             _gameInstance.WorkshopFolder = null;
 
             // Act
-            var result = await service.CheckOwnershipAsync();
+            var result = await service.CheckOwnershipAsync(TestContext.Current.CancellationToken);
 
             // Assert
             result.Should().BeFalse();
@@ -325,7 +370,7 @@ namespace RimSharp.Tests.Services.Workshop
             // The service will log a warning and return false
 
             // Act
-            var result = await service.CheckOwnershipAsync();
+            var result = await service.CheckOwnershipAsync(TestContext.Current.CancellationToken);
 
             // Assert
             result.Should().BeFalse();

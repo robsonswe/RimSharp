@@ -90,7 +90,9 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
                 _mockGitService,
                 Substitute.For<IAIncompatibilityAgentService>(),
                 Substitute.For<IModCustomService>(),
-                Substitute.For<ILoggerService>()
+                Substitute.For<ILoggerService>(),
+                Substitute.For<IContextMenuAvailabilityService>(),
+                new GameInstance()
             );
         }
 

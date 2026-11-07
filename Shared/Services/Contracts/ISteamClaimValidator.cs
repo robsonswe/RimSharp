@@ -7,8 +7,8 @@ namespace RimSharp.Shared.Services.Contracts
 {
     /// <summary>
     /// Interface for validating a Steam RimWorld installation claim.
-    /// Phase 0: Structural validation (filesystem layout, manifests).
-    /// Phase 2: Can be augmented with Steamworks ownership check (BIsSubscribedApp).
+    /// Stage 0: Structural validation (filesystem layout, manifests).
+    /// Stage 2: Can be augmented with Steamworks ownership check (BIsSubscribedApp).
     /// </summary>
     public interface ISteamClaimValidator
     {

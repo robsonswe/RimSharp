@@ -39,9 +39,9 @@ namespace RimSharp.Core.Converters.ViewVisibility
         /// <summary>
         /// Sets the logger after XAML construction (when created via parameterless constructor).
         /// </summary>
-        public void SetLogger(ILoggerService logger)
+        public void SetLogger(ILoggerService? logger)
         {
-            _logger = logger;
+            _logger = logger ?? new NullLogger();
         }
 
         // Expose properties for direct binding

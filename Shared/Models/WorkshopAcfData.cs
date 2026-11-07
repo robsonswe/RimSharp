@@ -20,7 +20,7 @@ namespace RimSharp.Shared.Models
         /// <summary>
         /// Best-known local content timestamp for this item (unix seconds): TimeUpdated,
         /// falling back to the WorkshopItemsInstalled record when details are absent or
-        /// zero. This is what Phase 1.2 stores on ModItem.AcfTimeUpdated.
+        /// zero. This is what the per-mod timestamp scan stores on ModItem.AcfTimeUpdated.
         /// </summary>
         public long ResolvedTimeUpdated { get; init; }
 

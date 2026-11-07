@@ -31,7 +31,7 @@ namespace RimSharp.Services.Workshop
 
         public async Task<SteamClaimValidationResult> ValidateAsync(string? gamePath, CancellationToken cancellationToken = default)
         {
-            // Step 1: Structural validation (filesystem layout, manifests)
+            // Stage 1: Structural validation (filesystem layout, manifests)
             var structuralResult = _structuralValidator.ValidateSteamClaim(gamePath);
             
             if (!structuralResult.IsValid)
@@ -42,7 +42,7 @@ namespace RimSharp.Services.Workshop
 
             _logger.LogDebug("Structural validation passed, proceeding to Steamworks ownership check", nameof(SteamClaimValidator));
 
-            // Step 2: Steamworks ownership gate
+            // Stage 2: Steamworks ownership gate
             try
             {
                 // Ensure Steamworks is initialized
