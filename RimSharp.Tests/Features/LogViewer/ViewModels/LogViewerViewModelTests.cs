@@ -37,6 +37,24 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
 
         private LogViewerViewModel CreateViewModel() => new(_pathService);
 
+        private static void WriteWaylithLog(string path) =>
+            File.WriteAllLines(path, new[]
+            {
+                "=== Waylith log ===",
+                "Started:   2026-11-02 20:57:04.800 -03:00",
+                "Version:   1.7.4995.309",
+                "2026-11-02 20:57:04.936  INFO [Verse] RimWorld 1.7.4995 rev309",
+                "2026-11-02 20:57:10.826  INFO [Verse] Harmony Mod v3.0.1.0; Harmony library v3.0.0.0-rc.3",
+                "2026-11-02 20:57:13.519  INFO [Verse] [Bed Rest For Food Poisoning] Loaded.",
+                "2026-11-02 20:57:23.237  INFO [Verse] [Wil's Group Organization] Loaded.",
+                "2026-11-02 20:57:07.208  WARN [Verse] Mod Age vanity dependency (brrainz.harmony) needs to have <downloadUrl> and/or <steamWorkshopUrl> specified.",
+                "2026-11-02 20:58:17.192  INFO [Verse] CharacterEditor v1.7.1 initializing...",
+                "    at .RimWorld.MainMenuDrawer.Init_Patch2() [0xFFFFFFFF]",
+                "2026-11-02 20:59:01.001 ERROR [Verse] Root level exception in OnGUI(): System.NullReferenceException: Object reference not set to an instance of an object.",
+                "2026-11-02 20:59:01.002 ERROR [Verse] Root level exception in OnGUI(): System.NullReferenceException: Object reference not set to an instance of an object.",
+                "2026-11-02 20:59:01.003  WARN [NativeAllocationRuntime] Persistent allocation 0x7F0C18334EC0 (7816 bytes, align 8) was not freed before shutdown."
+            });
+
         [AvaloniaFact]
         public async Task LoadDefaultAsync_OnWaylithVersionReadsLogsSubfolder()
         {
@@ -188,39 +206,6 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
             vm.Lines.Should().HaveCount(2);
             vm.Lines.Should().OnlyContain(l => l.Severity == LogLineSeverity.Warning);
             vm.LineCountText.Should().Be("2 of 4 lines");
-        }
-
-        [AvaloniaFact]
-        public async Task SelectFilterCommand_AppliesChosenMode()
-        {
-            var logPath = Path.Combine(_root, "any.log");
-            File.WriteAllText(logPath, "plain\n[E] Failed\nanother plain\n");
-
-            var vm = CreateViewModel();
-            await vm.LoadAsync(logPath);
-
-            var errors = vm.FilterOptions.First(o => o.Mode == LogFilterMode.ErrorsOnly);
-            vm.SelectFilterCommand.Execute(errors);
-
-            vm.SelectedFilterOption.Should().Be(errors);
-            vm.Lines.Should().HaveCount(1);
-            vm.Lines[0].Severity.Should().Be(LogLineSeverity.Error);
-        }
-
-        [AvaloniaFact]
-        public async Task StatButtonsUseTheSameFilterModes()
-        {
-            var logPath = Path.Combine(_root, "any.log");
-            File.WriteAllText(logPath, "plain\nKey binding conflict: A\n");
-
-            var vm = CreateViewModel();
-            await vm.LoadAsync(logPath);
-
-            var keybinds = vm.FilterOptions.First(o => o.Mode == LogFilterMode.KeybindsOnly);
-            vm.SelectFilterCommand.Execute(keybinds);
-
-            vm.Lines.Should().HaveCount(1);
-            vm.Lines[0].Severity.Should().Be(LogLineSeverity.Keybind);
         }
 
         [AvaloniaFact]
@@ -604,8 +589,112 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
             vm.StatusMessage.Should().Contain("Nothing to export");
         }
 
-        private sealed class FakeFileDialogService : IFileDialogService
+        [AvaloniaFact]
+        public async Task Diagnostics_RebuildAfterLoadingAWaylithLog()
         {
+            var logPath = Path.Combine(_root, "Player.log");
+            WriteWaylithLog(logPath);
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            vm.Diagnostics.HasContent.Should().BeTrue();
+            vm.Diagnostics.SummaryFormat.Should().Be("Waylith (1.7+)");
+            vm.Diagnostics.SummaryVersion.Should().Be("1.7.4995 rev 309");
+
+            vm.Diagnostics.Issues.Should().Contain(i => i.Title == "UI Loop Exception" && i.Count == 2);
+            vm.Diagnostics.Issues.Should().Contain(i => i.Title == "Incomplete Mod Metadata");
+            vm.Diagnostics.Issues.Should().Contain(i => i.Title == "Native Memory Leak Report");
+            vm.Diagnostics.IssueSummaryText.Should().Contain("4 distinct issue signatures");
+
+            // The OnGUI lines raise both the UI-loop and the null-reference signature.
+            vm.Diagnostics.Issues.Should().Contain(i => i.Title == "Null Reference Exception" && i.Count == 2);
+
+            vm.Diagnostics.SummaryRows.Should().Contain("Log format: Waylith (1.7+)");
+            vm.Diagnostics.SummaryRows.Should().Contain("Game version: 1.7.4995 rev 309");
+            vm.Diagnostics.SummaryRows.Should().Contain("Mods listed: 0");
+
+            // The viewer's own message counters now live in the summary (the
+            // numbers the stat buttons used to show).
+            vm.Diagnostics.SummaryRows.Should().Contain(r => r.StartsWith("Messages:"));
+            vm.Diagnostics.SummaryRows.Should().Contain(r => r.StartsWith("Error lines:"));
+
+            // The first issue is preselected so the detail pane is never empty.
+            vm.Diagnostics.SelectedIssue.Should().NotBeNull();
+            vm.Diagnostics.IssueDetailTitle.Should().Be(vm.Diagnostics.SelectedIssue!.Title);
+            vm.Diagnostics.IssueDetail.Should().Contain("What to try");
+        }
+
+        [AvaloniaFact]
+        public async Task Diagnostics_ContentWinsOverTheInstalledVersion()
+        {
+            // The install runs 1.7 (Waylith) but the opened log is a 1.6 (Unity) log.
+            _pathService.GetMajorGameVersion().Returns("1.7");
+            var logPath = Path.Combine(_root, "old.log");
+            File.WriteAllLines(logPath, new[]
+            {
+                "Mono path[0] = 'C:/Program Files (x86)/Steam/steamapps/common/RimWorld/RimWorldWin64_Data/Managed'",
+                "Begin MonoManager ReloadAssembly",
+                "- Loaded All Assemblies, in  1.332 seconds",
+                "    [ALLOC_GFX_MAIN]",
+                "      Peak Allocated memory 365.6 MB",
+                "RimWorld 1.6.4871 rev591"
+            });
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            vm.Diagnostics.SummaryFormat.Should().Be("Unity (pre-1.7)");
+            // Memory figures moved into the summary rows.
+            vm.Diagnostics.SummaryRows.Should().Contain(r => r.StartsWith("Graphics memory: 366 MB"));
+            vm.Diagnostics.SummaryRows.Should().Contain("Severity by: the viewer's line classifier (this log has no level tags)");
+        }
+
+        [AvaloniaFact]
+        public async Task Diagnostics_VersionSettlesAnUnrecognizedLog()
+        {
+            _pathService.GetMajorGameVersion().Returns("1.7");
+            var logPath = Path.Combine(_root, "mystery.log");
+            File.WriteAllText(logPath, "nothing recognizable here\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            vm.Diagnostics.SummaryFormat.Should().Be("Waylith (1.7+)");
+            vm.Diagnostics.HasContent.Should().BeTrue();
+            vm.Diagnostics.Issues.Should().BeEmpty();
+            vm.Diagnostics.IssueSummaryText.Should().Be("No known issues detected in this log.");
+        }
+
+        [AvaloniaFact]
+        public void Diagnostics_FreshViewModelHasNoReports()
+        {
+            var vm = CreateViewModel();
+
+            vm.Diagnostics.HasContent.Should().BeFalse();
+            vm.Diagnostics.Issues.Should().BeEmpty();
+            vm.Diagnostics.SummaryRows.Should().BeEmpty();
+            vm.Diagnostics.IssueDetail.Should().Contain("Select an issue");
+        }
+
+        [AvaloniaFact]
+        public async Task Diagnostics_SelectingAnIssueShowsItsDetail()
+        {
+            var logPath = Path.Combine(_root, "Player.log");
+            WriteWaylithLog(logPath);
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            var leak = vm.Diagnostics.Issues.First(i => i.Title == "Native Memory Leak Report");
+            vm.Diagnostics.SelectedIssue = leak;
+
+            vm.Diagnostics.IssueDetailTitle.Should().Be("Native Memory Leak Report");
+            vm.Diagnostics.IssueDetail.Should().Contain("Severity: Warning");
+            vm.Diagnostics.IssueDetail.Should().Contain("Occurrences: 1");
+            vm.Diagnostics.IssueDetail.Should().Contain("First at line");
+            vm.Diagnostics.IssueDetail.Should().Contain("What it means");
+        }
+
+        private sealed class FakeFileDialogService : IFileDialogService        {
             public (bool Success, string? FilePath) OpenResult { get; set; } = (true, null);
 
             public (bool Success, string? FilePath) SaveResult { get; set; } = (true, null);

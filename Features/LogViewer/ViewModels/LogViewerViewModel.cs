@@ -43,7 +43,6 @@ namespace RimSharp.Features.LogViewer.ViewModels
             _fileDialogService = fileDialogService;
             _reader = reader ?? new PlayerLogReader();
             _selectedFilterOption = FilterOptions[0];
-
             LoadDefaultCommand = CreateAsyncCommand(LoadDefaultAsync, () => !IsLoading, nameof(IsLoading));
             RefreshCommand = CreateAsyncCommand(RefreshAsync, () => !IsLoading, nameof(IsLoading));
             LoadFileCommand = CreateAsyncCommand(LoadFromFileAsync, () => !IsLoading, nameof(IsLoading));
@@ -52,12 +51,11 @@ namespace RimSharp.Features.LogViewer.ViewModels
                 () => !IsLoading && LoadedCount > 0,
                 nameof(IsLoading),
                 nameof(LoadedCount));
-            SelectFilterCommand = CreateCommand<LogFilterOption>(option =>
-            {
-                SelectedFilterOption = option;
-            });
             SourceOptions.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasMultipleSources));
         }
+
+        /// <summary>Troubleshooter, summary and startup-analysis state for the report tabs.</summary>
+        public LogDiagnosticsViewModel Diagnostics { get; } = new();
 
         /// <summary>Filter modes offered by the combo box.</summary>
         public IReadOnlyList<LogFilterOption> FilterOptions { get; } = new[]
@@ -206,7 +204,6 @@ namespace RimSharp.Features.LogViewer.ViewModels
         public ICommand RefreshCommand { get; }
         public ICommand LoadFileCommand { get; }
         public ICommand ExportCommand { get; }
-        public ICommand SelectFilterCommand { get; }
 
         /// <summary>
         /// Applies the line-text filter (called from the view, debounced).
@@ -345,6 +342,7 @@ namespace RimSharp.Features.LogViewer.ViewModels
                 SizeText = FormatSize(result.FileSize);
                 ModifiedText = FormatModified(path);
                 SyncSources(path);
+                await RebuildDiagnosticsAsync(path);
                 StatusMessage = "Loaded.";
             }
             finally
@@ -357,6 +355,33 @@ namespace RimSharp.Features.LogViewer.ViewModels
         {
             if (option.Path == _currentPath) return;
             await LoadAsync(option.Path);
+        }
+
+        /// <summary>
+        /// Rebuilds the three report tabs. The display store keeps only the
+        /// newest slice of a large log (it evicts oldest-first at its cap), so
+        /// the log's head is read separately and merged with the retained window
+        /// — otherwise the startup banner, version and mod list would vanish
+        /// from the reports on any log bigger than the cap.
+        /// </summary>
+        private async Task RebuildDiagnosticsAsync(string path)
+        {
+            LogHeadResult head;
+            try
+            {
+                head = await _reader.ReadHeadAsync(path, LogDiagnosticsWindow.HeadBytes);
+            }
+            catch (Exception)
+            {
+                head = new LogHeadResult { Found = false };
+            }
+
+            var window = LogDiagnosticsWindow.Build(head.Text, _store.FirstRetainedLineNumber, _store.Lines);
+            Diagnostics.Rebuild(
+                window,
+                _pathService?.GetMajorGameVersion(),
+                LogDiagnosticsWindow.DescribeScope(head.CoversWholeFile, _store.LinesEvicted),
+                Stats);
         }
 
         /// <summary>

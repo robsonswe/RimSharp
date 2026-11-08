@@ -19,6 +19,7 @@ namespace RimSharp.Features.LogViewer.Services
         private readonly List<string> _lines = new();
         private readonly long _maxTotalBytes;
         private long _totalBytes;
+        private long _linesEvicted;
         private string _pendingTail = string.Empty;
 
         public LogContentStore(long maxTotalBytes = MaxTotalBytes)
@@ -30,6 +31,15 @@ namespace RimSharp.Features.LogViewer.Services
         public int LineCount => _lines.Count;
         public long TotalBytes => _totalBytes;
         public bool IsEmpty => _lines.Count == 0;
+
+        /// <summary>How many lines the cap evicted from the top of the log.</summary>
+        public long LinesEvicted => _linesEvicted;
+
+        /// <summary>
+        /// The file line number of <see cref="Lines"/>[0], so callers can map the
+        /// retained window back onto the file (0 once nothing was evicted).
+        /// </summary>
+        public long FirstRetainedLineNumber => _linesEvicted + 1;
 
         /// <summary>
         /// Appends decoded text as lines. Line terminators are normalized so
@@ -96,6 +106,7 @@ namespace RimSharp.Features.LogViewer.Services
 
             if (index > 0)
             {
+                _linesEvicted += index;
                 _lines.RemoveRange(0, index);
             }
         }

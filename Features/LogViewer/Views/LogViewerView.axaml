@@ -15,7 +15,9 @@
 
     <dialogs:BaseDialog.MainContent>
         <Border Classes="panel">
-            <Grid Margin="15,10" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*">
+            <TabControl Margin="15,10">
+                <TabItem Header="Log View">
+                    <Grid Margin="0,6" RowDefinitions="Auto,Auto,Auto,Auto,*">
                 <TextBlock Grid.Row="0"
                            Text="Player.log Viewer"
                            FontSize="18"
@@ -66,7 +68,7 @@
                         </ComboBox.ItemTemplate>
                     </ComboBox>
                     <TextBox Width="180"
-                             Watermark="Search..."
+                             PlaceholderText="Search..."
                              TextChanged="OnLineFilterTextChanged"/>
                     <CheckBox Content="Collapse repeats"
                               IsChecked="{Binding CollapseRepeats, Mode=TwoWay}"
@@ -86,42 +88,7 @@
                                Foreground="{DynamicResource BrushTextMuted}"/>
                 </StackPanel>
 
-                <UniformGrid Grid.Row="4" Columns="4" Margin="0,8,0,0">
-                    <Button Content="{Binding Stats.TotalLines, StringFormat='Total Lines: {0}'}"
-                            Command="{Binding SelectFilterCommand}"
-                            CommandParameter="{Binding FilterOptions[0]}"
-                            Classes="btn" Margin="2" HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"/>
-                    <Button Content="{Binding Stats.AllIssues, StringFormat='All Issues: {0}'}"
-                            Command="{Binding SelectFilterCommand}"
-                            CommandParameter="{Binding FilterOptions[7]}"
-                            Classes="btn" Margin="2" HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"/>
-                    <Button Content="{Binding Stats.Errors, StringFormat='Errors: {0}'}"
-                            Command="{Binding SelectFilterCommand}"
-                            CommandParameter="{Binding FilterOptions[5]}"
-                            Classes="btn" Margin="2" HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"/>
-                    <Button Content="{Binding Stats.Exceptions, StringFormat='Exceptions: {0}'}"
-                            Command="{Binding SelectFilterCommand}"
-                            CommandParameter="{Binding FilterOptions[6]}"
-                            Classes="btn" Margin="2" HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"/>
-                    <Button Content="{Binding Stats.Warnings, StringFormat='Warnings: {0}'}"
-                            Command="{Binding SelectFilterCommand}"
-                            CommandParameter="{Binding FilterOptions[4]}"
-                            Classes="btn" Margin="2" HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"/>
-                    <Button Content="{Binding Stats.ModIssues, StringFormat='Mod Issues: {0}'}"
-                            Command="{Binding SelectFilterCommand}"
-                            CommandParameter="{Binding FilterOptions[3]}"
-                            Classes="btn" Margin="2" HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"/>
-                    <Button Content="{Binding Stats.Keybinds, StringFormat='Keybinds: {0}'}"
-                            Command="{Binding SelectFilterCommand}"
-                            CommandParameter="{Binding FilterOptions[2]}"
-                            Classes="btn" Margin="2" HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"/>
-                    <Button Content="{Binding Stats.Infos, StringFormat='Infos: {0}'}"
-                            Command="{Binding SelectFilterCommand}"
-                            CommandParameter="{Binding FilterOptions[1]}"
-                            Classes="btn" Margin="2" HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"/>
-                </UniformGrid>
-
-                <Border Grid.Row="5"
+                <Border Grid.Row="4"
                         Height="300"
                         Margin="0,8,0,0"
                         Padding="6,4"
@@ -163,6 +130,77 @@
                     </Grid>
                 </Border>
             </Grid>
+                </TabItem>
+
+                <TabItem Header="Troubleshooter">
+                    <Grid Margin="0,6" RowDefinitions="Auto,Auto,*,Auto">
+                        <TextBlock Grid.Row="0"
+                                   Text="{Binding Diagnostics.IssueSummaryText}"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource BrushTextPrimary}"/>
+                        <TextBlock Grid.Row="1"
+                                   Text="Pattern hits over the log, deduplicated and counted; line numbers refer to the log file. This tab explains what the log says — mod-list problems themselves (duplicates, missing dependencies, incompatibilities, load order) are checked live in Maintenance and the Sort button."
+                                   TextWrapping="Wrap"
+                                   Foreground="{DynamicResource BrushTextMuted}"/>
+                        <ListBox Grid.Row="2"
+                                 Margin="0,6,0,0"
+                                 ItemsSource="{Binding Diagnostics.Issues}"
+                                 SelectedItem="{Binding Diagnostics.SelectedIssue, Mode=TwoWay}"
+                                 Background="Transparent">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{Binding SeverityLabel}"
+                                                   Foreground="{Binding SeverityBrushKey, Converter={StaticResource ResourceKeyToBrushConverter}}"
+                                                   Width="70"/>
+                                        <TextBlock Text="{Binding Title}"/>
+                                        <TextBlock Text="{Binding Count}"
+                                                   Foreground="{DynamicResource BrushTextMuted}"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <Border Grid.Row="3"
+                                Margin="0,6,0,0"
+                                Padding="8"
+                                BorderBrush="{DynamicResource BrushBorderDefault}"
+                                BorderThickness="1"
+                                CornerRadius="4">
+                            <Grid RowDefinitions="Auto,*">
+                                <TextBlock Grid.Row="0"
+                                           Text="{Binding Diagnostics.IssueDetailTitle}"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource BrushTextPrimary}"/>
+                                <TextBlock Grid.Row="1"
+                                           Margin="0,4,0,0"
+                                           Text="{Binding Diagnostics.IssueDetail}"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource BrushTextMuted}"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </TabItem>
+
+                <TabItem Header="Summary">
+                    <Grid Margin="0,6" RowDefinitions="Auto,*">
+                        <TextBlock Grid.Row="0"
+                                   Text="What this log says about itself"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource BrushTextPrimary}"/>
+                        <ItemsControl Grid.Row="1"
+                                      Margin="0,6,0,0"
+                                      ItemsSource="{Binding Diagnostics.SummaryRows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}"
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource BrushTextMuted}"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+                </TabItem>
+            </TabControl>
         </Border>
     </dialogs:BaseDialog.MainContent>
 
