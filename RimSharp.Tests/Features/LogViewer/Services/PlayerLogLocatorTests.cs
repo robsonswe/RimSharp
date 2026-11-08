@@ -11,16 +11,23 @@ namespace RimSharp.Tests.Features.LogViewer.Services
     {
         private readonly string _root;
         private readonly string _configFolder;
+        private readonly OSPlatform? _originalPlatformOverride;
 
         public PlayerLogLocatorTests()
         {
             _root = Path.Combine(Path.GetTempPath(), "rimsharp-logreader-" + Path.GetRandomFileName());
             _configFolder = Path.Combine(_root, "Config");
             Directory.CreateDirectory(_configFolder);
+
+            // Pin to Windows so platform-blind tests run the Windows/Linux code path
+            // on ANY host OS (including macOS CI). This mirrors the macOS test class pattern.
+            _originalPlatformOverride = PlayerLogLocator.TestPlatformOverride;
+            PlayerLogLocator.TestPlatformOverride = OSPlatform.Windows;
         }
 
         public void Dispose()
         {
+            PlayerLogLocator.TestPlatformOverride = _originalPlatformOverride;
             try { Directory.Delete(_root, recursive: true); } catch { /* best effort */ }
         }
 

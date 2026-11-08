@@ -40,6 +40,19 @@ namespace RimSharp.Services.Workshop
 
         private readonly TimeSpan _initRetryCooldown;
 
+        /// <summary>
+        /// Test seam: override the Steamworks runtime support check.
+        /// When null (default), uses the real OS/platform check.
+        /// </summary>
+        internal static Func<bool>? TestSteamworksSupportedOverride { get; set; }
+
+        /// <summary>
+        /// Cached result of the Steamworks runtime support check.
+        /// False on macOS (especially arm64 where Steamworks.NET lacks native assets),
+        /// true on Windows/Linux.
+        /// </summary>
+        private readonly bool _isSteamworksRuntimeSupported;
+
         public SteamSubscriptionService(GameInstance gameInstance, ILoggerService logger, SteamWorkshopApiClient apiClient, Func<bool>? steamApiInit = null, TimeSpan? initRetryCooldown = null)
         {
             _gameInstance = gameInstance ?? throw new ArgumentNullException(nameof(gameInstance));
@@ -47,6 +60,33 @@ namespace RimSharp.Services.Workshop
             _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
             _steamApiInit = steamApiInit ?? (() => SteamAPI.Init());
             _initRetryCooldown = initRetryCooldown ?? InitRetryCooldown;
+
+            // Determine once at construction whether the current runtime can support Steamworks.NET.
+            // On macOS (especially arm64), Steamworks.NET 2024.8.0 lacks native assets and will
+            // throw FileNotFoundException on any Steamworks type access. We gate all Steamworks
+            // touch points behind this flag so the service degrades gracefully with the same
+            // failure shapes used for "non-Steam installation" / "not initialized" paths.
+            _isSteamworksRuntimeSupported = IsSteamworksRuntimeSupported();
+        }
+
+        /// <summary>
+        /// Checks whether the current runtime can load and use Steamworks.NET.
+        /// Returns false on macOS (all architectures) because Steamworks.NET 2024.8.0
+        /// ships no osx-arm64 native library and the x64 binary fails on Apple Silicon.
+        /// Windows and Linux return true (byte-for-byte behavior preserved).
+        /// </summary>
+        private static bool IsSteamworksRuntimeSupported()
+        {
+            // Test seam takes precedence (for unit tests driving both outcomes)
+            if (TestSteamworksSupportedOverride != null)
+                return TestSteamworksSupportedOverride();
+
+            // Real runtime check: macOS is unsupported due to missing native assets in Steamworks.NET 2024.8.0
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                return false;
+
+            // Windows and Linux are supported
+            return true;
         }
 
         /// <summary>
@@ -54,6 +94,15 @@ namespace RimSharp.Services.Workshop
         /// </summary>
         private bool EnsureSteamworksInitialized()
         {
+            // Fast path: if the runtime cannot support Steamworks, never attempt init.
+            // This avoids FileNotFoundException on macOS arm64 where Steamworks.NET
+            // lacks native assets. The failure shape matches "not initialized" paths.
+            if (!_isSteamworksRuntimeSupported)
+            {
+                _logger.LogWarning("Steamworks not supported on this runtime (macOS); subscription features unavailable", nameof(SteamSubscriptionService));
+                return false;
+            }
+
             lock (_initLock)
             {
                 if (_steamworksInitialized)
@@ -130,7 +179,10 @@ namespace RimSharp.Services.Workshop
             }
             catch { }
 
-            if (_steamworksInitialized)
+            // Only call SteamAPI.Shutdown if we actually initialized on a supported runtime.
+            // On unsupported runtimes (macOS), _steamworksInitialized is always false and
+            // we never touched Steamworks types, so Shutdown would throw FileNotFoundException.
+            if (_steamworksInitialized && _isSteamworksRuntimeSupported)
             {
                 try
                 {
@@ -811,6 +863,12 @@ namespace RimSharp.Services.Workshop
             if (!_gameInstance.IsSteamInstallation)
             {
                 _logger.LogWarning("Cannot verify game files: Not a Steam installation", nameof(SteamSubscriptionService));
+                return false;
+            }
+
+            if (!_isSteamworksRuntimeSupported)
+            {
+                _logger.LogWarning("Steamworks not supported on this runtime (macOS); subscription features unavailable", nameof(SteamSubscriptionService));
                 return false;
             }
 
