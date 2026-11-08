@@ -56,8 +56,27 @@
     <None Include="steam_appid.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <PackageReference Include="Steamworks.NET" Version="2024.8.0" />
     <PackageReference Include="System.Management" Version="8.0.0" Condition="'$(TargetFramework)'=='net8.0-windows'" />
+  </ItemGroup>
+
+  <!--
+    Steamworks.NET: exactly ONE of these two packages is referenced per build. They both ship an assembly
+    named "Steamworks.NET" with the same "Steamworks" namespace, so they cannot coexist.
+    - Windows/Linux: the long-standing third-party "Steamworks.NET" 2024.8.0 (SDK 1.60), unchanged.
+    - macOS: that package's managed assembly is not deployed for osx-arm64, so use the community
+      "Steamworks.NET.AnyCPU" fork (net8.0 build; 2026.165.3+ targets net10.0 only). It ships the
+      osx-arm64/x64 natives and registers its own native-library resolver.
+    The RuntimeIdentifier check covers cross-building a Mac release from another host (-r osx-arm64).
+    All Steamworks calls live in Services/Workshop/SteamworksInterop.cs, the only file that sees this API.
+  -->
+  <PropertyGroup>
+    <UseAnyCpuSteamworks Condition="$([MSBuild]::IsOSPlatform('OSX')) Or $(RuntimeIdentifier.StartsWith('osx'))">true</UseAnyCpuSteamworks>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(UseAnyCpuSteamworks)' != 'true'">
+    <PackageReference Include="Steamworks.NET" Version="2024.8.0" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UseAnyCpuSteamworks)' == 'true'">
+    <PackageReference Include="Steamworks.NET.AnyCPU" Version="2026.165.2" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)'=='net8.0'">

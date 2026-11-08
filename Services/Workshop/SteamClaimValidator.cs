@@ -5,7 +5,6 @@ using RimSharp.Infrastructure.Configuration;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Services.Workshop;
-using Steamworks;
 
 namespace RimSharp.Services.Workshop
 {
@@ -18,15 +17,18 @@ namespace RimSharp.Services.Workshop
         private readonly GameInstallationDetectionService _structuralValidator;
         private readonly ILoggerService _logger;
         private readonly GameInstance _gameInstance;
+        private readonly ISteamworksInterop _interop;
 
         public SteamClaimValidator(
             GameInstallationDetectionService structuralValidator,
             ILoggerService logger,
-            GameInstance gameInstance)
+            GameInstance gameInstance,
+            ISteamworksInterop? interop = null)
         {
             _structuralValidator = structuralValidator ?? throw new ArgumentNullException(nameof(structuralValidator));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _gameInstance = gameInstance ?? throw new ArgumentNullException(nameof(gameInstance));
+            _interop = interop ?? SteamworksInteropFactory.Create();
         }
 
         public async Task<SteamClaimValidationResult> ValidateAsync(string? gamePath, CancellationToken cancellationToken = default)
@@ -46,7 +48,7 @@ namespace RimSharp.Services.Workshop
             try
             {
                 // Ensure Steamworks is initialized
-                if (!SteamAPI.Init())
+                if (!_interop.Init())
                 {
                     _logger.LogWarning("SteamAPI.Init() failed - cannot perform Steamworks ownership check. Falling back to structural validation only.", nameof(SteamClaimValidator));
                     // Don't fail the claim - structural validation passed, Steamworks unavailable = unknown, not not-owned
@@ -54,7 +56,7 @@ namespace RimSharp.Services.Workshop
                 }
 
                 // Check if the current user owns RimWorld (AppID 294100)
-                var ownsApp = SteamApps.BIsSubscribedApp(new AppId_t(294100));
+                var ownsApp = _interop.BIsSubscribedApp(294100);
 
                 if (!ownsApp)
                 {
@@ -65,9 +67,9 @@ namespace RimSharp.Services.Workshop
                 }
 
                 // Family-sharing diagnostics (logged for triage, never gates)
-                var ownerId = SteamApps.GetAppOwner();
-                var currentUser = SteamUser.GetSteamID();
-                var isFamilyShared = SteamApps.BIsSubscribedFromFamilySharing();
+                var ownerId = _interop.GetAppOwner();
+                var currentUser = _interop.GetSteamID();
+                var isFamilyShared = _interop.BIsSubscribedFromFamilySharing();
 
                 if (ownerId != currentUser)
                 {
@@ -77,7 +79,7 @@ namespace RimSharp.Services.Workshop
                 _logger.LogDebug("Steamworks ownership check passed", nameof(SteamClaimValidator));
 
                 // Shutdown Steamworks (we only needed it for the check)
-                SteamAPI.Shutdown();
+                _interop.Shutdown();
 
                 return structuralResult; // Success - return the structural result with resolved workshop folder
             }
@@ -85,7 +87,7 @@ namespace RimSharp.Services.Workshop
             {
                 _logger.LogError($"Steamworks ownership check error: {ex.Message}", nameof(SteamClaimValidator));
                 // On error, fall back to structural validation only (unknown, not not-owned)
-                try { SteamAPI.Shutdown(); } catch { }
+                try { _interop.Shutdown(); } catch { }
                 return structuralResult;
             }
         }

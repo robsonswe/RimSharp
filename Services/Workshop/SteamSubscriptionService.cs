@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using RimSharp.Shared.Models;
 using RimSharp.Infrastructure.Configuration;
 using RimSharp.Shared.Services.Contracts;
-using Steamworks;
 
 namespace RimSharp.Services.Workshop
 {
@@ -23,6 +22,7 @@ namespace RimSharp.Services.Workshop
         private readonly ILoggerService _logger;
         private readonly SteamWorkshopApiClient _apiClient;
         private readonly Func<bool> _steamApiInit;
+        private ISteamworksInterop? _interop;
         private readonly object _initLock = new();
         private bool _steamworksInitialized = false;
         private DateTime _lastInitAttemptUtc = DateTime.MinValue;
@@ -46,6 +46,9 @@ namespace RimSharp.Services.Workshop
         /// </summary>
         internal static Func<bool>? TestSteamworksSupportedOverride { get; set; }
 
+        /// <summary>Set to "1" to enable (experimental) Steamworks integration on macOS.</summary>
+        internal const string MacOsOptInEnvVar = "RIMSHARP_STEAMWORKS_MACOS";
+
         /// <summary>
         /// Cached result of the Steamworks runtime support check.
         /// False on macOS (especially arm64 where Steamworks.NET lacks native assets),
@@ -53,12 +56,21 @@ namespace RimSharp.Services.Workshop
         /// </summary>
         private readonly bool _isSteamworksRuntimeSupported;
 
-        public SteamSubscriptionService(GameInstance gameInstance, ILoggerService logger, SteamWorkshopApiClient apiClient, Func<bool>? steamApiInit = null, TimeSpan? initRetryCooldown = null)
+        /// <summary>
+        /// Lazily created Steamworks adapter. Only reached on runtimes where
+        /// <see cref="_isSteamworksRuntimeSupported"/> is true. This service never references a
+        /// Steamworks.NET type itself, so it (and its async state machines) load and run on
+        /// runtimes where the Steamworks.NET assembly is absent.
+        /// </summary>
+        private ISteamworksInterop Interop => _interop ??= SteamworksInteropFactory.Create();
+
+        public SteamSubscriptionService(GameInstance gameInstance, ILoggerService logger, SteamWorkshopApiClient apiClient, Func<bool>? steamApiInit = null, TimeSpan? initRetryCooldown = null, ISteamworksInterop? interop = null)
         {
             _gameInstance = gameInstance ?? throw new ArgumentNullException(nameof(gameInstance));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
-            _steamApiInit = steamApiInit ?? (() => SteamAPI.Init());
+            _interop = interop;
+            _steamApiInit = steamApiInit ?? (() => Interop.Init());
             _initRetryCooldown = initRetryCooldown ?? InitRetryCooldown;
 
             // Determine once at construction whether the current runtime can support Steamworks.NET.
@@ -66,24 +78,31 @@ namespace RimSharp.Services.Workshop
             // throw FileNotFoundException on any Steamworks type access. We gate all Steamworks
             // touch points behind this flag so the service degrades gracefully with the same
             // failure shapes used for "non-Steam installation" / "not initialized" paths.
-            _isSteamworksRuntimeSupported = IsSteamworksRuntimeSupported();
+            _isSteamworksRuntimeSupported = IsSteamworksRuntimeSupported(hasInjectedBackend: steamApiInit != null || interop != null);
         }
 
         /// <summary>
         /// Checks whether the current runtime can load and use Steamworks.NET.
-        /// Returns false on macOS (all architectures) because Steamworks.NET 2024.8.0
-        /// ships no osx-arm64 native library and the x64 binary fails on Apple Silicon.
-        /// Windows and Linux return true (byte-for-byte behavior preserved).
+        /// Windows and Linux return true. macOS is opt-in via RIMSHARP_STEAMWORKS_MACOS=1 until
+        /// real Steam init has been verified on a Mac.
         /// </summary>
-        private static bool IsSteamworksRuntimeSupported()
+        private static bool IsSteamworksRuntimeSupported(bool hasInjectedBackend)
         {
-            // Test seam takes precedence (for unit tests driving both outcomes)
+            // A caller-supplied init/interop never touches the real Steamworks.NET assembly, so it
+            // is always usable. Checked first so the static test override below cannot leak into
+            // tests that inject their own backend when xunit runs test classes in parallel.
+            if (hasInjectedBackend)
+                return true;
+
+            // Test seam (for unit tests driving the unsupported outcome)
             if (TestSteamworksSupportedOverride != null)
                 return TestSteamworksSupportedOverride();
 
-            // Real runtime check: macOS is unsupported due to missing native assets in Steamworks.NET 2024.8.0
+            // macOS uses the Steamworks.NET.AnyCPU package (see RimSharp.csproj). It builds and loads in CI,
+            // but real Steam init has not been verified on an Apple Silicon machine yet, so it is opt-in.
+            // To enable by default once a Mac user confirms it works, return true here instead.
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                return false;
+                return Environment.GetEnvironmentVariable(MacOsOptInEnvVar) == "1";
 
             // Windows and Linux are supported
             return true;
@@ -99,7 +118,7 @@ namespace RimSharp.Services.Workshop
             // lacks native assets. The failure shape matches "not initialized" paths.
             if (!_isSteamworksRuntimeSupported)
             {
-                _logger.LogWarning("Steamworks not supported on this runtime (macOS); subscription features unavailable", nameof(SteamSubscriptionService));
+                _logger.LogWarning("Steamworks not supported on this runtime (macOS; set RIMSHARP_STEAMWORKS_MACOS=1 to try experimental support); subscription features unavailable", nameof(SteamSubscriptionService));
                 return false;
             }
 
@@ -152,7 +171,7 @@ namespace RimSharp.Services.Workshop
             {
                 try
                 {
-                    SteamAPI.RunCallbacks();
+                    Interop.RunCallbacks();
                 }
                 catch (Exception ex)
                 {
@@ -186,7 +205,7 @@ namespace RimSharp.Services.Workshop
             {
                 try
                 {
-                    SteamAPI.Shutdown();
+                    _interop?.Shutdown();
                     _steamworksInitialized = false;
                 }
                 catch (Exception ex)
@@ -233,12 +252,11 @@ namespace RimSharp.Services.Workshop
                 progress?.Report((2, 4, $"Calling Steam SubscribeItem for mod {steamId}..."));
 
                 // Call Steamworks SubscribeItem - async, returns SteamAPICall_t
-                var call = SteamUGC.SubscribeItem(new PublishedFileId_t(pfid));
-                var result = await WaitForApiCallAsync<RemoteStorageSubscribePublishedFileResult_t>(call, cancellationToken);
+                var result = await Interop.SubscribeItemAsync(pfid, cancellationToken);
                 
-                if (result?.m_eResult != EResult.k_EResultOK)
+                if (!result.IsOk)
                 {
-                    var error = result?.m_eResult.ToString() ?? "No result";
+                    var error = result.ResultName;
                     _logger.LogError($"SubscribeItem failed for {steamId}: {error}", nameof(SteamSubscriptionService));
                     return false;
                 }
@@ -309,12 +327,11 @@ namespace RimSharp.Services.Workshop
                 progress?.Report((2, 3, $"Calling Steam UnsubscribeItem for mod {steamId}..."));
 
                 // Call Steamworks UnsubscribeItem
-                var call = SteamUGC.UnsubscribeItem(new PublishedFileId_t(pfid));
-                var result = await WaitForApiCallAsync<RemoteStorageUnsubscribePublishedFileResult_t>(call, cancellationToken);
+                var result = await Interop.UnsubscribeItemAsync(pfid, cancellationToken);
                 
-                if (result?.m_eResult != EResult.k_EResultOK)
+                if (!result.IsOk)
                 {
-                    var error = result?.m_eResult.ToString() ?? "No result";
+                    var error = result.ResultName;
                     _logger.LogError($"UnsubscribeItem failed for {steamId}: {error}", nameof(SteamSubscriptionService));
                     return false;
                 }
@@ -374,8 +391,7 @@ namespace RimSharp.Services.Workshop
                     cancellationToken.ThrowIfCancellationRequested();
                     if (ulong.TryParse(id, out var pfid))
                     {
-                        var call = SteamUGC.UnsubscribeItem(new PublishedFileId_t(pfid));
-                        await WaitForApiCallAsync<RemoteStorageUnsubscribePublishedFileResult_t>(call, cancellationToken);
+                        await Interop.UnsubscribeItemAsync(pfid, cancellationToken);
                     }
                 }
 
@@ -389,8 +405,7 @@ namespace RimSharp.Services.Workshop
                     cancellationToken.ThrowIfCancellationRequested();
                     if (ulong.TryParse(id, out var pfid))
                     {
-                        var call = SteamUGC.SubscribeItem(new PublishedFileId_t(pfid));
-                        await WaitForApiCallAsync<RemoteStorageSubscribePublishedFileResult_t>(call, cancellationToken);
+                        await Interop.SubscribeItemAsync(pfid, cancellationToken);
                     }
                 }
 
@@ -404,7 +419,7 @@ namespace RimSharp.Services.Workshop
                     cancellationToken.ThrowIfCancellationRequested();
                     if (ulong.TryParse(id, out var pfid))
                     {
-                        SteamUGC.DownloadItem(new PublishedFileId_t(pfid), true); // highPriority = true
+                        Interop.DownloadItem(pfid, true); // highPriority = true
                     }
                 }
 
@@ -423,8 +438,8 @@ namespace RimSharp.Services.Workshop
                     {
                         if (ulong.TryParse(id, out var pfid))
                         {
-                            var state = SteamUGC.GetItemState(new PublishedFileId_t(pfid));
-                            if ((state & (uint)EItemState.k_EItemStateInstalled) == 0 || (state & (uint)EItemState.k_EItemStateNeedsUpdate) != 0)
+                            var state = Interop.GetItemState(pfid);
+                            if ((state & SteamItemState.Installed) == 0 || (state & SteamItemState.NeedsUpdate) != 0)
                             {
                                 remaining++;
                             }
@@ -485,13 +500,11 @@ namespace RimSharp.Services.Workshop
             try
             {
                 // Use Steamworks GetSubscribedItems to get true subscription state
-                var subscribedCount = SteamUGC.GetNumSubscribedItems();
-                var subscribedItems = new PublishedFileId_t[subscribedCount];
-                SteamUGC.GetSubscribedItems(subscribedItems, (uint)subscribedCount);
+                var subscribedItems = Interop.GetSubscribedItems();
                 
                 foreach (var item in subscribedItems)
                 {
-                    if (item.m_PublishedFileId == pfid)
+                    if (item == pfid)
                         return true;
                 }
                 return false;
@@ -526,14 +539,12 @@ namespace RimSharp.Services.Workshop
 
             try
             {
-                var subscribedCount = SteamUGC.GetNumSubscribedItems();
-                var subscribedItems = new PublishedFileId_t[subscribedCount];
-                SteamUGC.GetSubscribedItems(subscribedItems, (uint)subscribedCount);
+                var subscribedItems = Interop.GetSubscribedItems();
                 
                 var result = new List<string>();
                 foreach (var item in subscribedItems)
                 {
-                    result.Add(item.m_PublishedFileId.ToString());
+                    result.Add(item.ToString());
                 }
                 return result;
             }
@@ -608,10 +619,10 @@ namespace RimSharp.Services.Workshop
 
             try
             {
-                if (SteamUGC.GetItemDownloadInfo(new PublishedFileId_t(pfid), out ulong bytesDownloaded, out ulong bytesTotal))
+                if (Interop.TryGetDownloadInfo(pfid, out ulong bytesDownloaded, out ulong bytesTotal))
                 {
-                    var state = SteamUGC.GetItemState(new PublishedFileId_t(pfid));
-                    var isDownloading = (state & (uint)EItemState.k_EItemStateDownloading) != 0;
+                    var state = Interop.GetItemState(pfid);
+                    var isDownloading = (state & SteamItemState.Downloading) != 0;
                     return (isDownloading, bytesDownloaded, bytesTotal);
                 }
             }
@@ -660,7 +671,7 @@ namespace RimSharp.Services.Workshop
                 progress?.Report((2, 3, $"Triggering Steam download for mod {steamId}..."));
 
                 // Trigger high-priority download for the update
-                SteamUGC.DownloadItem(new PublishedFileId_t(pfid), true);
+                Interop.DownloadItem(pfid, true);
 
                 progress?.Report((3, 3, "Waiting for Steam to download update..."));
 
@@ -691,50 +702,6 @@ namespace RimSharp.Services.Workshop
         }
 
         /// <summary>
-        /// Wait for a Steam API call to complete and return the result.
-        /// </summary>
-        private async Task<T?> WaitForApiCallAsync<T>(SteamAPICall_t call, CancellationToken cancellationToken) where T : struct
-        {
-            var tcs = new TaskCompletionSource<T?>();
-            
-            // Register callback for the API call using Steamworks.NET CallResult pattern
-            var callback = CallResult<T>.Create((result, ioFailure) =>
-            {
-                if (ioFailure)
-                {
-                    tcs.TrySetResult(default);
-                }
-                else
-                {
-                    tcs.TrySetResult(result);
-                }
-            });
-            
-            callback.Set(call);
-            
-            try
-            {
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                cts.CancelAfter(TimeSpan.FromSeconds(30)); // 30 second timeout for API call
-                
-                var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(Timeout.Infinite, cts.Token));
-                
-                if (completedTask == tcs.Task)
-                {
-                    return await tcs.Task;
-                }
-                else
-                {
-                    return default;
-                }
-            }
-            finally
-            {
-                callback.Dispose();
-            }
-        }
-
-        /// <summary>
         /// Wait for a mod to be downloaded using Steamworks state.
         /// </summary>
         private async Task<bool> WaitForModDownloadAsync(ulong pfid, CancellationToken cancellationToken, IProgress<(int current, int total, string message)>? progress = null)
@@ -748,20 +715,20 @@ namespace RimSharp.Services.Workshop
 
                 try
                 {
-                    var state = SteamUGC.GetItemState(new PublishedFileId_t(pfid));
+                    var state = Interop.GetItemState(pfid);
                     
                     // Check if installed
-                    if ((state & (uint)EItemState.k_EItemStateInstalled) != 0)
+                    if ((state & SteamItemState.Installed) != 0)
                     {
                         // Also ensure it's not still downloading or needs update
-                        if ((state & (uint)EItemState.k_EItemStateDownloading) == 0 && (state & (uint)EItemState.k_EItemStateNeedsUpdate) == 0)
+                        if ((state & SteamItemState.Downloading) == 0 && (state & SteamItemState.NeedsUpdate) == 0)
                         {
                             return true;
                         }
                     }
 
                     // Report progress if available
-                    if (SteamUGC.GetItemDownloadInfo(new PublishedFileId_t(pfid), out ulong bytesDownloaded, out ulong bytesTotal))
+                    if (Interop.TryGetDownloadInfo(pfid, out ulong bytesDownloaded, out ulong bytesTotal))
                     {
                         if (bytesTotal > 0)
                         {
@@ -823,16 +790,16 @@ namespace RimSharp.Services.Workshop
             try
             {
                 // Steamworks.NET: SteamApps.BIsSubscribedApp checks if the current user owns the app
-                var ownsApp = SteamApps.BIsSubscribedApp(new AppId_t(294100));
+                var ownership = Interop.QueryOwnership(294100);
                 
-                if (ownsApp)
+                if (ownership.OwnsApp)
                 {
                     _logger.LogDebug("Ownership check passed: Account owns RimWorld (294100)", nameof(SteamSubscriptionService));
                     
                     // Family-sharing diagnostics (logged for triage, never gates)
-                    var ownerId = SteamApps.GetAppOwner();
-                    var currentUser = SteamUser.GetSteamID();
-                    var isFamilyShared = SteamApps.BIsSubscribedFromFamilySharing();
+                    var ownerId = ownership.OwnerId;
+                    var currentUser = ownership.CurrentUserId;
+                    var isFamilyShared = ownership.IsFamilyShared;
                     
                     if (ownerId != currentUser)
                     {
@@ -868,7 +835,7 @@ namespace RimSharp.Services.Workshop
 
             if (!_isSteamworksRuntimeSupported)
             {
-                _logger.LogWarning("Steamworks not supported on this runtime (macOS); subscription features unavailable", nameof(SteamSubscriptionService));
+                _logger.LogWarning("Steamworks not supported on this runtime (macOS; set RIMSHARP_STEAMWORKS_MACOS=1 to try experimental support); subscription features unavailable", nameof(SteamSubscriptionService));
                 return false;
             }
 
