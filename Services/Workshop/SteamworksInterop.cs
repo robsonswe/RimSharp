@@ -94,7 +94,13 @@ namespace RimSharp.Services.Workshop
             => SteamApps.BIsSubscribedFromFamilySharing();
 
         private static async Task<SteamCallOutcome> WaitForApiCallAsync<T>(
-            ulong apiCallHandle, Func<T, EResult> getResult, CancellationToken cancellationToken) where T : struct
+            ulong apiCallHandle, Func<T, EResult> getResult, CancellationToken cancellationToken)
+#if RIMSHARP_STEAMWORKS_FORK
+            // The AnyCPU fork's CallResult<T> requires the struct to carry its callback identity.
+            where T : struct, ISteamCallbackIdentity
+#else
+            where T : struct
+#endif
         {
             var tcs = new TaskCompletionSource<SteamCallOutcome>(TaskCreationOptions.RunContinuationsAsynchronously);
 

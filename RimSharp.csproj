@@ -71,6 +71,9 @@
   -->
   <PropertyGroup>
     <UseAnyCpuSteamworks Condition="$([MSBuild]::IsOSPlatform('OSX')) Or $(RuntimeIdentifier.StartsWith('osx'))">true</UseAnyCpuSteamworks>
+    <!-- The fork tightens CallResult<T> with a constraint the classic package lacks;
+         SteamworksInterop.cs switches its own constraint with this symbol. -->
+    <DefineConstants Condition="'$(UseAnyCpuSteamworks)' == 'true'">$(DefineConstants);RIMSHARP_STEAMWORKS_FORK</DefineConstants>
   </PropertyGroup>
   <ItemGroup Condition="'$(UseAnyCpuSteamworks)' != 'true'">
     <PackageReference Include="Steamworks.NET" Version="2024.8.0" />
