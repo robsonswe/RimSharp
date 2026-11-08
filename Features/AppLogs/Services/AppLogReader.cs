@@ -132,6 +132,28 @@ namespace RimSharp.Features.AppLogs.Services
         }
 
         /// <summary>
+        /// True when the text reads like an app log the writer produced: tagged
+        /// lines with a module. Used by the Player.log viewer's open path to
+        /// recognize our own logs, since opening one there is legitimate.
+        /// Two tagged lines are required — prose occasionally brackets a word,
+        /// but not a timestamp plus level plus module on one line.
+        /// </summary>
+        public static bool LooksLikeContent(string? text)
+        {
+            if (string.IsNullOrEmpty(text)) return false;
+
+            var lines = text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+            var tagged = 0;
+            for (var i = 0; i < lines.Length && i < 200; i++)
+            {
+                if (Header.IsMatch(lines[i])) tagged++;
+                if (tagged >= 2) return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// The severity tag as the writer emitted it. Unknown tags read as
         /// Info rather than hiding the line.
         /// </summary>

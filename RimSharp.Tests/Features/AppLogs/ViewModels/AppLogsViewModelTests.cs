@@ -67,7 +67,7 @@ namespace RimSharp.Tests.Features.AppLogs.ViewModels
 
             // Selecting a group loads that service's newest day.
             vm.SelectedModule = downloader;
-            await vm.LoadTask;
+            await (vm.LoadTask ?? Task.CompletedTask);
             vm.Messages.Should().ContainSingle(m => m.Entry.Text == "today");
             vm.FilePathText.Should().Contain("RimSharp_SteamCmd_Downloader_20261107.log");
         }

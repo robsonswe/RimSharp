@@ -116,6 +116,23 @@ namespace RimSharp.Features.LogViewer.ViewModels
             SelectedIssue = Issues.FirstOrDefault();
         }
 
+        /// <summary>
+        /// Clears both reports — used when an invalid file is being explained,
+        /// so the tabs show nothing rather than the previous log's findings.
+        /// </summary>
+        public void Reset()
+        {
+            Issues.Clear();
+            SummaryRows.Clear();
+            HasContent = false;
+            ScopeNote = string.Empty;
+            SummaryFormat = string.Empty;
+            SummaryVersion = string.Empty;
+            SelectedIssue = null;
+            OnPropertyChanged(nameof(HasIssues));
+            OnPropertyChanged(nameof(IssueSummaryText));
+        }
+
         private void FillIssues(IReadOnlyList<LogDiagnosticIssue> issues)
         {
             Issues.Clear();

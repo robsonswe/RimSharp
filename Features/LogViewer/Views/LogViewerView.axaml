@@ -121,6 +121,14 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </ScrollViewer>
+                        <TextBlock Text="{Binding InvalidMessage}"
+                                   IsVisible="{Binding HasInvalidMessage}"
+                                   IsHitTestVisible="False"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   TextWrapping="Wrap"
+                                   MaxWidth="420"
+                                   Foreground="{DynamicResource BrushTextWarning}"/>
                         <TextBlock Text="No log loaded"
                                    IsVisible="{Binding ShowLogPlaceholder}"
                                    IsHitTestVisible="False"
@@ -132,7 +140,7 @@
             </Grid>
                 </TabItem>
 
-                <TabItem Header="Troubleshooter">
+                <TabItem Header="Troubleshooter" IsEnabled="{Binding AreReportTabsEnabled}">
                     <Grid Margin="0,6" RowDefinitions="Auto,Auto,*,Auto">
                         <TextBlock Grid.Row="0"
                                    Text="{Binding Diagnostics.IssueSummaryText}"
@@ -181,7 +189,7 @@
                     </Grid>
                 </TabItem>
 
-                <TabItem Header="Summary">
+                <TabItem Header="Summary" IsEnabled="{Binding AreReportTabsEnabled}">
                     <Grid Margin="0,6" RowDefinitions="Auto,*">
                         <TextBlock Grid.Row="0"
                                    Text="What this log says about itself"

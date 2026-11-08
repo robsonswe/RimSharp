@@ -112,7 +112,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task LoadAsync_ClassifiesMessagesWithSeverities()
         {
-            var logPath = Path.Combine(_root, "any.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath,
                 "11:04:37 PM Loaded mods\nKey binding conflict: A\nUnhandled exception\n   at Verse.Awake ()\n");
 
@@ -177,7 +177,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task LoadAsync_AccumulatesStatisticsOverAllLines()
         {
-            var logPath = Path.Combine(_root, "any.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath,
                 "Loaded mods\nWarning: one\nWarning: two\n[E] Failed\n[MyMod] Error while resolving\nplain\n");
 
@@ -195,7 +195,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task SelectingWarningsFilter_ShowsOnlyWarnings()
         {
-            var logPath = Path.Combine(_root, "any.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath, "Loaded mods\nWarning: one\nplain\nWarning: two\n");
 
             var vm = CreateViewModel();
@@ -212,7 +212,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task LineFilter_ComposesWithModeFilter()
         {
-            var logPath = Path.Combine(_root, "any.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath,
                 "[Alpha] Error in alpha\n[Beta] Error in beta\n[Alpha] plain info line\n");
 
@@ -232,7 +232,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task LineFilter_IsCaseInsensitive()
         {
-            var logPath = Path.Combine(_root, "any.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath, "[AlphaMod] Warning\n[betamod] Warning\n");
 
             var vm = CreateViewModel();
@@ -247,7 +247,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task Filters_WithNoMatches_ShowEmptyAndStatus()
         {
-            var logPath = Path.Combine(_root, "any.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath, "plain one\nplain two\n");
 
             var vm = CreateViewModel();
@@ -272,7 +272,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task LoadedLogArea_HidesPlaceholder()
         {
-            var logPath = Path.Combine(_root, "any.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath, "plain\n");
 
             var vm = CreateViewModel();
@@ -284,7 +284,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task MultilineMessage_CountsAndDisplaysAsOneEntry()
         {
-            var logPath = Path.Combine(_root, "any.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath,
                 "Error in MyMod: resolving XML\n  at Verse.Foo ()\n  at RimSharp.Bar ()\nplain info\n");
 
@@ -301,7 +301,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task TextFilter_MatchesContentOnContinuationLines()
         {
-            var logPath = Path.Combine(_root, "any.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath, "Wrapped output\n  mentioned Harmony here\nplain info\n");
 
             var vm = CreateViewModel();
@@ -316,7 +316,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task ModeFilter_SeesTheWholeMessage()
         {
-            var logPath = Path.Combine(_root, "any.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath, "Loading scene\n  UnityException: boom\nplain info\n");
 
             var vm = CreateViewModel();
@@ -332,7 +332,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task Refresh_PreservesActiveFilter()
         {
-            var logPath = Path.Combine(_root, "any.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath, "Warning: old\nplain\n");
 
             var vm = CreateViewModel();
@@ -351,7 +351,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task LoadAsync_ShowsLastModifiedTimestamp()
         {
-            var logPath = Path.Combine(_root, "any.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath, "plain\n");
 
             var vm = CreateViewModel();
@@ -375,7 +375,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task LoadFromFileAsync_OpensTheChosenFileAndTracksItAsSource()
         {
-            var logPath = Path.Combine(_root, "shared.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath, "shared line one\nWarning: shared two\n");
             var files = new FakeFileDialogService { OpenResult = (true, logPath) };
             var vm = new LogViewerViewModel(_pathService, fileDialogService: files);
@@ -401,6 +401,208 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
 
             files.LastOpenTitle.Should().Contain("shared export");
             files.LastOpenFilter.Should().Be("Log files and shared exports|*.log;*.txt|All files|*.*");
+        }
+
+        // ── Auto-load format tolerance ──────────────────────────────────────
+
+        [AvaloniaFact]
+        public async Task LoadDefaultAsync_FutureLogFormat_ReadsContentWithReportsLocked()
+        {
+            // The game may change its logging output: the located log still
+            // reads, but nothing can analyze it.
+            _pathService.GetMajorGameVersion().Returns("1.7");
+            var logsFolder = Path.Combine(_root, "Logs");
+            Directory.CreateDirectory(logsFolder);
+            File.WriteAllText(Path.Combine(logsFolder, "Player.log"),
+                "some future logging format line one\nsome future format line two\n[E] whatever\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadDefaultAsync();
+
+            vm.Lines.Should().HaveCount(3);
+            vm.HasInvalidMessage.Should().BeFalse();   // it loaded — not rejected
+            vm.AreReportTabsEnabled.Should().BeFalse(); // but reports stay locked
+            vm.StatusMessage.Should().Contain("format is not recognized");
+            vm.Diagnostics.HasContent.Should().BeFalse();
+        }
+
+        [AvaloniaFact]
+        public async Task LoadDefaultAsync_BinaryGameLog_IsStillRejected()
+        {
+            // The escape hatch is for format changes, not for garbage.
+            _pathService.GetMajorGameVersion().Returns("1.7");
+            var logsFolder = Path.Combine(_root, "Logs");
+            Directory.CreateDirectory(logsFolder);
+            File.WriteAllBytes(Path.Combine(logsFolder, "Player.log"),
+                new byte[] { 0x4D, 0x5A, 0x00, 0x00, 0x00, 0xFF, 0xFE, 0x00, 0x00, 0x00 });
+
+            var vm = CreateViewModel();
+            await vm.LoadDefaultAsync();
+
+            vm.Lines.Should().BeEmpty();
+            vm.InvalidMessage.Should().Contain("not a text log");
+            vm.AreReportTabsEnabled.Should().BeFalse();
+        }
+
+        [AvaloniaFact]
+        public async Task LoadAsync_SameFileHandOpened_IsRejectedInstead()
+        {
+            // The escape hatch is auto-load only: the same future-format file
+            // opened by hand keeps the strict verdict (a file the game's own
+            // name would still admit — that is the name-pass rule).
+            var futurePath = Path.Combine(_root, "future.txt");
+            File.WriteAllText(futurePath, "some future logging format line one\nanother one\n");
+
+            var vm = CreateViewModel();
+
+            await vm.LoadAsync(futurePath); // hand-opened semantics
+            vm.Lines.Should().BeEmpty();
+            vm.HasInvalidMessage.Should().BeTrue();
+
+            await vm.LoadAsync(futurePath, allowUnknownFormat: true);
+            vm.Lines.Should().HaveCount(2);
+            vm.AreReportTabsEnabled.Should().BeFalse();
+        }
+
+        [AvaloniaFact]
+        public async Task Refresh_AfterTolerantAutoLoad_KeepsContentAndLockedReports()
+        {
+            _pathService.GetMajorGameVersion().Returns("1.7");
+            var logsFolder = Path.Combine(_root, "Logs");
+            Directory.CreateDirectory(logsFolder);
+            File.WriteAllText(Path.Combine(logsFolder, "Player.log"),
+                "future format line\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadDefaultAsync();
+
+            await vm.RefreshAsync();
+
+            vm.Lines.Should().HaveCount(1);
+            vm.AreReportTabsEnabled.Should().BeFalse();
+            vm.StatusMessage.Should().Contain("format is not recognized");
+        }
+
+        // ── Open-path validation ────────────────────────────────────────────
+
+        [AvaloniaFact]
+        public void FreshViewModel_LocksTheReportTabs()
+        {
+            // Reports over nothing would be a lie, so the tabs wait for a log.
+            var vm = CreateViewModel();
+
+            vm.AreReportTabsEnabled.Should().BeFalse();
+            vm.Diagnostics.HasContent.Should().BeFalse();
+        }
+
+        [AvaloniaFact]
+        public async Task LoadAsync_MissingFile_KeepsTheReportTabsLocked()
+        {
+            var vm = CreateViewModel();
+            await vm.LoadAsync(Path.Combine(_root, "nope.log"));
+
+            vm.AreReportTabsEnabled.Should().BeFalse();
+            vm.StatusMessage.Should().Contain("not found");
+        }
+
+        [AvaloniaFact]
+        public async Task LoadAsync_AppLogFile_IsInvalidHere()
+        {
+            // App logs belong to the App Logs window, not this viewer.
+            var appLogPath = Path.Combine(_root, "RimSharp_General_20261107.log");
+            File.WriteAllText(appLogPath,
+                "2026-11-07 18:31:56.481 [INFO] [General] hello\n" +
+                "2026-11-07 18:31:57.481 [INFO] [General] world\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(appLogPath);
+
+            vm.Lines.Should().BeEmpty();
+            vm.InvalidMessage.Should().Contain("App Logs window");
+            vm.AreReportTabsEnabled.Should().BeFalse();
+        }
+
+        [AvaloniaFact]
+        public async Task LoadAsync_InvalidFile_LoadsNothingAndExplainsInTheContentArea()
+        {
+            var prosePath = Path.Combine(_root, "notes.txt");
+            File.WriteAllText(prosePath, "Meeting notes for the week\n- Buy milk\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(prosePath);
+
+            vm.Lines.Should().BeEmpty();
+            vm.HasInvalidMessage.Should().BeTrue();
+            vm.InvalidMessage.Should().Contain("doesn't look like a RimWorld Player.log or a shared log upload");
+            vm.ShowLogPlaceholder.Should().BeFalse(); // the explanation replaces the empty hint
+            vm.StatusMessage.Should().Contain("Not a log");
+        }
+
+        [AvaloniaFact]
+        public async Task LoadAsync_InvalidFile_LocksTheReportTabs()
+        {
+            var prosePath = Path.Combine(_root, "notes.txt");
+            File.WriteAllText(prosePath, "Meeting notes for the week\n- Buy milk\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(prosePath);
+
+            vm.AreReportTabsEnabled.Should().BeFalse();
+            vm.Diagnostics.HasContent.Should().BeFalse();
+            vm.Diagnostics.Issues.Should().BeEmpty();
+            vm.Diagnostics.SummaryRows.Should().BeEmpty();
+        }
+
+        [AvaloniaFact]
+        public async Task LoadAsync_BinaryFile_ExplainsItIsNotText()
+        {
+            var binaryPath = Path.Combine(_root, "payload.log");
+            File.WriteAllBytes(binaryPath, new byte[] { 0x4D, 0x5A, 0x00, 0x00, 0x00, 0xFF, 0xFE, 0x00, 0x00 });
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(binaryPath);
+
+            vm.Lines.Should().BeEmpty();
+            vm.InvalidMessage.Should().Contain("not a text log");
+            vm.AreReportTabsEnabled.Should().BeFalse();
+        }
+
+        [AvaloniaFact]
+        public async Task LoadAsync_ValidLog_EnablesReportsAndLoadsContent()
+        {
+            var logPath = Path.Combine(_root, "Player.log");
+            File.WriteAllText(logPath,
+                "=== Waylith log ===\n" +
+                "Started:   2026-11-07 18:31:56.481 +03:00\n" +
+                "2026-11-07 18:31:56.481  INFO [Verse] RimWorld 1.7.5000 rev1275\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            vm.HasInvalidMessage.Should().BeFalse();
+            vm.AreReportTabsEnabled.Should().BeTrue();
+            vm.Lines.Should().NotBeEmpty();
+            vm.Diagnostics.HasContent.Should().BeTrue();
+        }
+
+        [AvaloniaFact]
+        public async Task LoadAsync_InvalidFileAfterValidLoad_ResetsTheReports()
+        {
+            var logPath = Path.Combine(_root, "Player.log");
+            WriteWaylithLog(logPath);
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+            vm.Diagnostics.HasContent.Should().BeTrue();
+
+            var prosePath = Path.Combine(_root, "notes.txt");
+            File.WriteAllText(prosePath, "just some notes\n");
+            await vm.LoadAsync(prosePath);
+
+            // The previous log's findings must not linger behind locked tabs.
+            vm.HasInvalidMessage.Should().BeTrue();
+            vm.Diagnostics.Issues.Should().BeEmpty();
+            vm.Diagnostics.SummaryRows.Should().BeEmpty();
+            vm.Lines.Should().BeEmpty();
         }
 
         [AvaloniaFact]
@@ -477,7 +679,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task CollapseRepeats_MergesConsecutiveIdenticalMessages()
         {
-            var logPath = Path.Combine(_root, "any.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath,
                 "Warning: same dropped stack\nWarning: same dropped stack\nWarning: same dropped stack\nother\n");
 
@@ -497,7 +699,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task CollapseRepeats_DoesNotMergeNonConsecutiveMessages()
         {
-            var logPath = Path.Combine(_root, "any.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath, "Warning: a\nWarning: b\nWarning: a\n");
 
             var vm = CreateViewModel();
@@ -510,7 +712,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task CollapseRepeats_TogglingOffRestoresEveryMessage()
         {
-            var logPath = Path.Combine(_root, "any.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath, "Warning: same\nWarning: same\nother\n");
 
             var vm = CreateViewModel();
@@ -527,7 +729,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task TextFilter_MatchesTheMessageNotTheAnnotation()
         {
-            var logPath = Path.Combine(_root, "any.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath, "Warning: same\nWarning: same\nother\n");
 
             var vm = CreateViewModel();
@@ -541,7 +743,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task Export_WritesTheFilteredViewAndOffersADefaultName()
         {
-            var logPath = Path.Combine(_root, "any.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath, "[Alpha] Error in alpha\n[Beta] Error in beta\nplain\n");
             var files = new FakeFileDialogService();
             var vm = new LogViewerViewModel(_pathService, fileDialogService: files);
@@ -562,7 +764,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task Export_ExportsOnlyWhatTheFilterShows()
         {
-            var logPath = Path.Combine(_root, "any.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath, "Warning: keep\nplain\n");
             var files = new FakeFileDialogService();
             var vm = new LogViewerViewModel(_pathService, fileDialogService: files);
@@ -579,7 +781,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         [AvaloniaFact]
         public async Task Export_CancelledDialog_WritesNothing()
         {
-            var logPath = Path.Combine(_root, "any.log");
+            var logPath = Path.Combine(_root, "output_log.txt");
             File.WriteAllText(logPath, "plain\n");
             var files = new FakeFileDialogService { SaveResult = (false, null) };
             var vm = new LogViewerViewModel(_pathService, fileDialogService: files);
@@ -644,7 +846,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         {
             // The install runs 1.7 (Waylith) but the opened log is a 1.6 (Unity) log.
             _pathService.GetMajorGameVersion().Returns("1.7");
-            var logPath = Path.Combine(_root, "old.log");
+            var logPath = Path.Combine(_root, "Player-prev.log");
             File.WriteAllLines(logPath, new[]
             {
                 "Mono path[0] = 'C:/Program Files (x86)/Steam/steamapps/common/RimWorld/RimWorldWin64_Data/Managed'",
@@ -668,7 +870,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         public async Task Diagnostics_VersionSettlesAnUnrecognizedLog()
         {
             _pathService.GetMajorGameVersion().Returns("1.7");
-            var logPath = Path.Combine(_root, "mystery.log");
+            var logPath = Path.Combine(_root, "Player.log");
             File.WriteAllText(logPath, "nothing recognizable here\n");
 
             var vm = CreateViewModel();

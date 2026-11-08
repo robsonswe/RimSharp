@@ -225,6 +225,55 @@ namespace RimSharp.Features.LogViewer.Services
         }
 
         /// <summary>
+        /// Reads up to <paramref name="maxBytes"/> of a file as decoded text,
+        /// without cutting at line boundaries — used to judge what a file is
+        /// before loading it, where the raw decoded bytes are the evidence.
+        /// </summary>
+        public async Task<LogHeadResult> ReadProbeAsync(
+            string path,
+            int maxBytes,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            {
+                return new LogHeadResult { Found = false };
+            }
+
+            try
+            {
+                var length = new FileInfo(path).Length;
+                var buffer = new byte[Math.Min(length, maxBytes)];
+                using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                var offset = 0;
+                int read;
+                while (offset < buffer.Length &&
+                       (read = await stream.ReadAsync(buffer, offset, buffer.Length - offset, cancellationToken).ConfigureAwait(false)) > 0)
+                {
+                    offset += read;
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+
+                return new LogHeadResult
+                {
+                    Found = true,
+                    Text = new UTF8Encoding(false).GetString(buffer, 0, offset),
+                    FileSize = length,
+                    BytesRead = offset,
+                    CoversWholeFile = offset >= length
+                };
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PlayerLogReader] Probe read failed for '{path}': {ex.Message}");
+                return new LogHeadResult { Found = false };
+            }
+        }
+
+        /// <summary>
         /// Reads the first <paramref name="maxBytes"/> bytes of the file and cuts
         /// at the last complete line, so a message split by the window boundary
         /// is never analyzed half-way. Used by the diagnostics: the startup

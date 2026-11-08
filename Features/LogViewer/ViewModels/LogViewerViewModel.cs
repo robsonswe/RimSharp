@@ -170,8 +170,105 @@ namespace RimSharp.Features.LogViewer.ViewModels
         /// True while no log content has been read at all — the view shows an
         /// empty-state hint inside the log area. A filter that hides every line
         /// of a loaded log does not count; the status message covers that case.
+        /// An invalid file shows its own explanation instead.
         /// </summary>
-        public bool ShowLogPlaceholder => _store.LineCount == 0;
+        public bool ShowLogPlaceholder => _store.LineCount == 0 && !HasInvalidMessage;
+
+        private string _invalidMessage = string.Empty;
+
+        /// <summary>True once a valid log has been loaded; gates the report tabs.</summary>
+        private bool _hasLoadedLog;
+
+        /// <summary>
+        /// Why the current file is not a log the viewer reads, empty when a
+        /// valid log is loaded. The view shows this in the log content area.
+        /// </summary>
+        public string InvalidMessage
+        {
+            get => _invalidMessage;
+            private set
+            {
+                if (SetProperty(ref _invalidMessage, value))
+                {
+                    OnPropertyChanged(nameof(HasInvalidMessage));
+                    OnPropertyChanged(nameof(AreReportTabsEnabled));
+                }
+            }
+        }
+
+        public bool HasInvalidMessage => _invalidMessage.Length > 0;
+
+        /// <summary>
+        /// The report tabs are useful only over a loaded log, so they stay
+        /// locked until one has been read — a fresh viewer and an invalid file
+        /// are both tab-less states, since reports over nothing (or over
+        /// content that was never read) would be a lie.
+        /// </summary>
+        public bool AreReportTabsEnabled => _hasLoadedLog;
+
+        /// <summary>
+        /// Whether the current auto-load tolerates an unrecognized format. Kept
+        /// so Refresh repeats the same kind of load the user last ran.
+        /// </summary>
+        private bool _currentLoadToleratesUnknownFormat;
+
+        /// <summary>
+        /// Reads a bounded head of <paramref name="path"/> and judges whether it
+        /// is a log this viewer reads. The judgment covers every load path —
+        /// hand-opened, located Player.log and source switching alike — because
+        /// a file that is not a log should never reach the content store.
+        /// </summary>
+        /// <summary>
+        /// Reads a bounded head of <paramref name="path"/> and judges what it
+        /// is. The judgment covers every load path — hand-opened, located
+        /// Player.log and source switching alike — because a file that is not a
+        /// log should never reach the content store, except under the
+        /// auto-load escape hatch.
+        /// </summary>
+        private async Task<(LogFileValidation Validation, bool IsBinary)> ValidateAsync(string path)
+        {
+            // A file that isn't there is the read's error to report, not a
+            // validation verdict; the message is never shown because the read
+            // fails first.
+            if (!File.Exists(path))
+            {
+                return (new LogFileValidation(LogFileVerdict.Valid, string.Empty, FormatRecognized: true), false);
+            }
+
+            LogHeadResult probe;
+            try
+            {
+                probe = await _reader.ReadProbeAsync(path, LogFileValidator.ProbeBytes);
+            }
+            catch (Exception)
+            {
+                probe = new LogHeadResult { Found = false };
+            }
+
+            var validation = LogFileValidator.Classify(
+                probe.Found ? probe.Text : null,
+                Path.GetFileName(path));
+            return (validation, probe.Found && LogFileValidator.LooksBinary(probe.Text!));
+        }
+
+        /// <summary>Shows an invalid file: no content, an explanation, locked reports.</summary>
+        private void EnterInvalidState(string message)
+        {
+            _currentPath = null;
+            _envelope = null;
+            _hasLoadedLog = false;
+            InvalidMessage = message;
+            Diagnostics.Reset();
+            OnPropertyChanged(nameof(AreReportTabsEnabled));
+
+            SizeText = string.Empty;
+            ModifiedText = string.Empty;
+            LineCountText = "0 lines";
+            ApplyDisplay();
+            // Set after ApplyDisplay so the explanation is what stays visible.
+            StatusMessage = "Not a log — nothing was loaded.";
+            OnPropertyChanged(nameof(ShowLogPlaceholder));
+        }
 
         private LogFilterOption _selectedFilterOption;
         public LogFilterOption SelectedFilterOption
@@ -233,7 +330,9 @@ namespace RimSharp.Features.LogViewer.ViewModels
                 return;
             }
 
-            await LoadAsync(sources.Current);
+            // Auto-load tolerates an unrecognized format on purpose: the game
+            // may change its logging output, and the text stays readable.
+            await LoadAsync(sources.Current, allowUnknownFormat: true);
         }
 
         /// <summary>Re-reads the current log from the top.</summary>
@@ -245,7 +344,10 @@ namespace RimSharp.Features.LogViewer.ViewModels
                 return;
             }
 
-            await LoadAsync(_currentPath);
+            // Refresh repeats the kind of load that produced what is on screen:
+            // an auto-load that tolerated an unknown format must not re-reject
+            // the same file on refresh.
+            await LoadAsync(_currentPath, _currentLoadToleratesUnknownFormat);
         }
 
         /// <summary>Opens any log file through the file dialog and reads it.</summary>
@@ -308,10 +410,18 @@ namespace RimSharp.Features.LogViewer.ViewModels
         }
 
         /// <summary>Reads any log file (also the path for switching sources).</summary>
-        public async Task LoadAsync(string path)
+        /// <param name="allowUnknownFormat">
+        /// The auto-load escape hatch: the located log still reads when the game
+        /// changes its logging format, with the report tabs locked because the
+        /// content is a format the viewer cannot analyze. Only LoadDefaultAsync
+        /// (the user clicking Load Game Log) asks for this — a hand-picked file
+        /// keeps the strict verdict.
+        /// </param>
+        public async Task LoadAsync(string path, bool allowUnknownFormat = false)
         {
             if (string.IsNullOrWhiteSpace(path)) return;
 
+            _currentLoadToleratesUnknownFormat = allowUnknownFormat;
             IsLoading = true;
             try
             {
@@ -321,8 +431,36 @@ namespace RimSharp.Features.LogViewer.ViewModels
                 RebuildAllLines();
                 ApplyDisplay();
 
-                var probe = await _reader.ReadHeadAsync(path, HugsLogEnvelopeParser.ProbeBytes);
+                // Every load starts with a verdict on the file, from a bounded
+                // head read: a file that is not a log the viewer reads is never
+                // loaded — the content area says why and the report tabs stay
+                // locked, rather than filling the view with prose or binary.
+                // The one exception is the game's own log on auto-load, where a
+                // future format change should still be readable.
                 PathText = path;
+                var (validation, isBinary) = await ValidateAsync(path);
+                var reportsLocked = false;
+                if (validation.Verdict == LogFileVerdict.Invalid)
+                {
+                    if (!allowUnknownFormat || isBinary)
+                    {
+                        EnterInvalidState(validation.Message);
+                        return;
+                    }
+
+                    // Readable text with no recognizable shape: load it, keep
+                    // the reports locked, and say so.
+                    reportsLocked = true;
+                }
+                else if (allowUnknownFormat && !validation.FormatRecognized)
+                {
+                    // The game's own file by name, but a format the viewer
+                    // cannot analyze (a future logging change): readable, not
+                    // reportable.
+                    reportsLocked = true;
+                }
+
+                var probe = await _reader.ReadHeadAsync(path, HugsLogEnvelopeParser.ProbeBytes);
 
                 LogReadResult result;
                 if (HugsLogEnvelopeParser.LooksLikeEnvelope(probe.Text))
@@ -359,12 +497,34 @@ namespace RimSharp.Features.LogViewer.ViewModels
                 }
 
                 _currentPath = path;
+                InvalidMessage = string.Empty;
+                if (reportsLocked)
+                {
+                    // Readable but unanalyzable: the content shows, the reports
+                    // stay locked, and a previous file's findings are cleared.
+                    _hasLoadedLog = false;
+                    Diagnostics.Reset();
+                    OnPropertyChanged(nameof(AreReportTabsEnabled));
+                }
+                else
+                {
+                    _hasLoadedLog = true;
+                    OnPropertyChanged(nameof(AreReportTabsEnabled));
+                }
+
                 RebuildAllLines();
                 ApplyDisplay();
 
                 SizeText = FormatSize(result.FileSize);
                 ModifiedText = FormatModified(path);
                 SyncSources(path, _envelope != null ? "shared export" : null);
+
+                if (reportsLocked)
+                {
+                    StatusMessage = "Loaded — this log's format is not recognized, so the reports are disabled. Only the text is shown.";
+                    return;
+                }
+
                 await RebuildDiagnosticsAsync(path);
                 StatusMessage = _envelope != null
                     ? "Loaded shared log export — the publisher's metadata is summarized on the Summary tab."
@@ -379,6 +539,10 @@ namespace RimSharp.Features.LogViewer.ViewModels
         /// <summary>Shows a failed read: the common failure path for both read modes.</summary>
         private void ShowReadFailure(string path, LogReadResult result)
         {
+            _currentPath = null;
+            _hasLoadedLog = false;
+            InvalidMessage = string.Empty;
+            OnPropertyChanged(nameof(AreReportTabsEnabled));
             SizeText = string.Empty;
             ModifiedText = string.Empty;
             LineCountText = "0 lines";
