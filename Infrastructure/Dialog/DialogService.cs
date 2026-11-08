@@ -25,6 +25,8 @@ using RimSharp.Features.ModManager.Dialogs.Strip;
 using RimSharp.Features.ModManager.Dialogs.ActiveIssues;
 using RimSharp.Features.LogViewer.ViewModels;
 using RimSharp.Features.LogViewer.Views;
+using RimSharp.Features.AppLogs.ViewModels;
+using RimSharp.Features.AppLogs.Views;
 using Avalonia.Platform.Storage;
 
 namespace RimSharp.Infrastructure.Dialog
@@ -231,6 +233,17 @@ namespace RimSharp.Infrastructure.Dialog
         {
             var viewModel = new LogViewerViewModel(_pathService, fileDialogService: _fileDialogService);
             var dialog = new LogViewerView(viewModel);
+            return await ShowDialogInternalAsync<bool>(viewModel, dialog);
+        }
+
+        public async Task<bool> ShowAppLogsAsync()
+        {
+            // The logs directory resolves exactly like the logger's: the
+            // logs_directory setting when present, the app data Logs folder
+            // otherwise.
+            var viewModel = new AppLogsViewModel(_configService, fileDialogService: _fileDialogService);
+            await viewModel.RefreshAsync();
+            var dialog = new AppLogsView(viewModel);
             return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }
 

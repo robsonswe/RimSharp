@@ -61,6 +61,7 @@ namespace RimSharp.AppDir.MainPage
         public ICommand RefreshCommand { get; }
         public ICommand OpenFolderCommand { get; }
         public ICommand AboutCommand { get; }
+        public ICommand AppLogsCommand { get; }
 
         private string _statusMessage = "Ready";
         public string StatusMessage
@@ -200,6 +201,7 @@ namespace RimSharp.AppDir.MainPage
             RefreshCommand = CreateCommand(RefreshData, CanExecuteGlobalActions);
             OpenFolderCommand = CreateCommand<string>(OpenFolder, CanOpenFolder);
             AboutCommand = CreateAsyncCommand(() => _dialogService.ShowAboutDialog(), CanExecuteGlobalActions);
+            AppLogsCommand = CreateAsyncCommand(OpenAppLogs, CanExecuteGlobalActions);
 
             _navigationService.TabSwitchRequested += OnTabSwitchRequested;
         }
@@ -470,10 +472,14 @@ namespace RimSharp.AppDir.MainPage
             }
         }
 
+        /// <summary>Opens the app-logs window from the main menu.</summary>
+        private async Task OpenAppLogs() => await _dialogService.ShowAppLogsAsync();
+
         private async Task OpenSettings()
         {
             var saved = await _dialogService.ShowSettingsDialogAsync();
             if (!saved) return;
+
 
             // Refresh the service caches first so config values the dialog just wrote
             // (game_folder, config_folder, mods_folder override) are actually re-read;

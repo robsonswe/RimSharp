@@ -1,0 +1,153 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+        xmlns:vm="clr-namespace:RimSharp.Features.AppLogs.ViewModels"
+        mc:Ignorable="d"
+        x:Class="RimSharp.Features.AppLogs.Views.AppLogsView"
+        x:DataType="vm:AppLogsViewModel"
+        Title="{Binding Title}"
+        Width="1024"
+        Height="680"
+        CanResize="True"
+        WindowStartupLocation="CenterOwner">
+
+    <dialogs:BaseDialog.MainContent>
+        <Border Classes="panel">
+            <Grid Margin="15,10" RowDefinitions="Auto,Auto,Auto,*">
+                <StackPanel Grid.Row="0" Spacing="2">
+                    <TextBlock Text="App Logs"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource BrushTextPrimary}"/>
+                    <TextBlock Text="Logs RimSharp writes itself — one file per service per day. Pick a service to read its log."
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource BrushTextMuted}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                    <Button Content="Refresh"
+                            Command="{Binding RefreshCommand}"
+                            Classes="btn"
+                            MinWidth="90" Height="30"/>
+                    <Button Content="Export"
+                            Command="{Binding ExportCommand}"
+                            Classes="btn"
+                            MinWidth="80" Height="30"/>
+                    <ComboBox ItemsSource="{Binding LevelFilters}"
+                              SelectedItem="{Binding SelectedLevelFilter, Mode=TwoWay}"
+                              MinWidth="130"
+                              VerticalAlignment="Center">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Label}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBox Width="180"
+                             PlaceholderText="Search..."
+                             TextChanged="OnSearchTextChanged"/>
+                    <CheckBox Content="Collapse repeats"
+                              IsChecked="{Binding CollapseRepeats, Mode=TwoWay}"
+                              VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding LineCountText}"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource BrushTextMuted}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="2" Margin="0,6,0,0" Spacing="2">
+                    <TextBlock Text="{Binding FilePathText}"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource BrushTextMuted}"/>
+                    <TextBlock Text="{Binding StatusMessage}"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource BrushTextMuted}"/>
+                </StackPanel>
+
+                <Grid Grid.Row="3" Margin="0,8,0,0" ColumnDefinitions="260,*">
+                    <Border Grid.Column="0"
+                            Margin="0,0,8,0"
+                            Padding="6"
+                            Background="#FFFFFF"
+                            BorderBrush="{DynamicResource BrushBorderDefault}"
+                            BorderThickness="1"
+                            CornerRadius="4">
+                        <Grid RowDefinitions="Auto,*">
+                            <TextBlock Grid.Row="0"
+                                       Text="Services"
+                                       FontWeight="Bold"
+                                       Margin="2,0,2,6"
+                                       Foreground="{DynamicResource BrushTextPrimary}"/>
+                            <ListBox Grid.Row="1"
+                                     ItemsSource="{Binding Modules}"
+                                     SelectedItem="{Binding SelectedModule, Mode=TwoWay}"
+                                     Background="Transparent">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,4">
+                                            <TextBlock Text="{Binding Header}" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                            <TextBlock Text="{Binding SubHeader}"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource BrushTextMuted}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="1"
+                            Padding="6,4"
+                            Background="#FFFFFF"
+                            BorderBrush="{DynamicResource BrushBorderDefault}"
+                            BorderThickness="1"
+                            CornerRadius="4">
+                        <Grid>
+                            <ProgressBar IsIndeterminate="True"
+                                         IsVisible="{Binding IsLoading}"
+                                         Height="4"
+                                         Margin="0,-4,0,0"
+                                         HorizontalAlignment="Stretch"
+                                         VerticalAlignment="Top"/>
+                            <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                          VerticalScrollBarVisibility="Auto"
+                                          AllowAutoHide="False">
+                                <ItemsControl ItemsSource="{Binding Displayed}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <VirtualizingStackPanel/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding DisplayText}"
+                                                       Foreground="{Binding SeverityBrushKey, Converter={StaticResource ResourceKeyToBrushConverter}}"
+                                                       TextWrapping="NoWrap"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                            <TextBlock Text="No app logs yet — the app writes one log file per service per day."
+                                       IsVisible="{Binding ShowPlaceholder}"
+                                       IsHitTestVisible="False"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource BrushTextMuted}"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Border>
+    </dialogs:BaseDialog.MainContent>
+
+    <dialogs:BaseDialog.ButtonContent>
+        <Button Content="Close"
+                Command="{Binding CloseCommand}"
+                Classes="btn"
+                HorizontalAlignment="Right"
+                MinWidth="100"
+                Height="32"/>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>
