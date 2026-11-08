@@ -98,5 +98,43 @@ namespace RimSharp.Tests.Features.LogViewer.Services
             store.LineCount.Should().Be(1);
             store.Lines[0].Should().Be(new string('b', 900));
         }
+
+        [Fact]
+        public void AppendText_EvictionKeepsExactCountsAcrossManyCompactions()
+        {
+            // The dead prefix compacts in batches; the evicted count and the
+            // retained window's first line number must stay exact regardless,
+            // because the diagnostics merge the head read with the store by
+            // file line number. A 1000-byte cap forces hundreds of compactions.
+            var store = new LogContentStore(maxTotalBytes: 1000);
+            for (var i = 0; i < 20000; i++)
+            {
+                store.AppendText($"line {i}\n");
+            }
+
+            (store.LinesEvicted + store.LineCount).Should().Be(20000);
+            store.FirstRetainedLineNumber.Should().Be(store.LinesEvicted + 1);
+            store.TotalBytes.Should().BeLessThanOrEqualTo(1000);
+            store.Lines[^1].Should().Be("line 19999");
+        }
+
+        [Fact]
+        public void Clear_ResetsEvictionSoAReloadNumbersFromTheFirstLine()
+        {
+            // Regression: a reload (source switch, refresh) reused the previous
+            // file's eviction count, numbering the retained window past the
+            // head read and leaving a hole in the diagnostics' line numbers.
+            var store = new LogContentStore(maxTotalBytes: 1000);
+            store.AppendText(new string('a', 900) + "\n");
+            store.AppendText(new string('b', 900) + "\n");
+            store.LinesEvicted.Should().Be(1);
+
+            store.Clear();
+            store.AppendText("fresh line\nsecond line\n");
+
+            store.LinesEvicted.Should().Be(0);
+            store.FirstRetainedLineNumber.Should().Be(1);
+            store.Lines.Should().Equal("fresh line", "second line");
+        }
     }
 }

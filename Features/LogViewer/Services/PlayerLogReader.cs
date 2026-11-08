@@ -136,6 +136,95 @@ namespace RimSharp.Features.LogViewer.Services
         }
 
         /// <summary>
+        /// Streams a log into <paramref name="store"/> in bounded memory:
+        /// chunks are decoded and appended as they arrive, so a multi-gigabyte
+        /// log costs the store's cap (plus the read buffers), never the file
+        /// size. Every line is still appended exactly once, so the store's
+        /// eviction counters and line numbering stay identical to a whole-file
+        /// read — the capped newest window plus the separately-read head are
+        /// what the viewer and the reports analyze.
+        /// </summary>
+        public async Task<LogReadResult> ReadIntoStoreAsync(
+            string path,
+            LogContentStore store,
+            IProgress<double>? progress = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            {
+                return new LogReadResult { Found = false };
+            }
+
+            try
+            {
+                var length = new FileInfo(path).Length;
+                var readBuffer = new byte[ReadBufferBytes];
+                var charBuffer = new char[CharBufferSize];
+                long consumedBytes;
+
+                using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                var decoder = Encoding.UTF8.GetDecoder();
+
+                var pending = 0;
+                int bytesRead;
+                while ((bytesRead = await stream.ReadAsync(readBuffer, pending, readBuffer.Length - pending, cancellationToken).ConfigureAwait(false)) > 0)
+                {
+                    var available = pending + bytesRead;
+                    decoder.Convert(
+                        readBuffer, 0, available, charBuffer, 0, charBuffer.Length,
+                        flush: false, out var bytesUsed, out var charsUsed, out _);
+
+                    // finalChunk: false keeps a line split across chunks pending
+                    // until its terminator arrives, so no message is ever cut.
+                    store.AppendText(new string(charBuffer, 0, charsUsed), finalChunk: false);
+
+                    if (bytesUsed < available)
+                    {
+                        Array.Copy(readBuffer, bytesUsed, readBuffer, 0, available - bytesUsed);
+                        pending = available - bytesUsed;
+                    }
+                    else
+                    {
+                        pending = 0;
+                    }
+
+                    progress?.Report(length > 0 ? Math.Clamp((double)stream.Position / length, 0, 1) : 1);
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+
+                // Flush any trailing partial sequence and final unterminated line.
+                decoder.Convert(Array.Empty<byte>(), 0, 0, charBuffer, 0, charBuffer.Length,
+                    flush: true, out _, out var flushedChars, out _);
+                if (flushedChars > 0)
+                {
+                    store.AppendText(new string(charBuffer, 0, flushedChars), finalChunk: false);
+                }
+
+                store.AppendText(string.Empty, finalChunk: true);
+
+                consumedBytes = stream.Position - pending;
+                progress?.Report(1);
+
+                return new LogReadResult
+                {
+                    Found = true,
+                    Text = string.Empty,
+                    BytesRead = consumedBytes,
+                    FileSize = length
+                };
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PlayerLogReader] Streaming read failed for '{path}': {ex.Message}");
+                return new LogReadResult { Found = false, ErrorMessage = ex.Message };
+            }
+        }
+
+        /// <summary>
         /// Reads the first <paramref name="maxBytes"/> bytes of the file and cuts
         /// at the last complete line, so a message split by the window boundary
         /// is never analyzed half-way. Used by the diagnostics: the startup

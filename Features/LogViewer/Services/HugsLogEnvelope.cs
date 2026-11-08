@@ -90,6 +90,13 @@ namespace RimSharp.Features.LogViewer.Services
     public static class HugsLogEnvelopeParser
     {
         private const string UploadPrefix = "Log uploaded on ";
+
+        /// <summary>
+        /// How much of a file the viewer reads to decide whether it is a shared
+        /// export. The upload line is the file's first line, so a small window
+        /// settles it without reading the whole file.
+        /// </summary>
+        public const int ProbeBytes = 4096;
         private const string ModsHeader = "Loaded mods:";
         private const string PatchesHeader = "Active Harmony patches:";
         private const string HarmonyVersionsPrefix = "Harmony versions present:";

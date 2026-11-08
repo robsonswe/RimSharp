@@ -321,29 +321,44 @@ namespace RimSharp.Features.LogViewer.ViewModels
                 RebuildAllLines();
                 ApplyDisplay();
 
-                var result = await _reader.ReadAsync(path);
+                var probe = await _reader.ReadHeadAsync(path, HugsLogEnvelopeParser.ProbeBytes);
                 PathText = path;
 
-                if (!result.Found)
+                LogReadResult result;
+                if (HugsLogEnvelopeParser.LooksLikeEnvelope(probe.Text))
                 {
-                    SizeText = string.Empty;
-                    ModifiedText = string.Empty;
-                    LineCountText = "0 lines";
-                    ApplyDisplay();
-                    // Set after ApplyDisplay so the read failure is what stays visible.
-                    StatusMessage = result.ErrorMessage != null
-                        ? $"Could not read the log: {result.ErrorMessage}"
-                        : "Log file not found.";
-                    return;
+                    // A shared export wraps the log in a metadata envelope.
+                    // Exports are small by construction (the publisher trims
+                    // them), so the whole-file read here is cheap; feed the
+                    // store the log body alone, so the display, filters and
+                    // reports all see log content, with the sharer's own line
+                    // numbers.
+                    result = await _reader.ReadAsync(path);
+                    if (!result.Found)
+                    {
+                        ShowReadFailure(path, result);
+                        return;
+                    }
+
+                    _envelope = HugsLogEnvelopeParser.TryParse(result.Text);
+                    _store.AppendText(_envelope?.BodyText ?? result.Text);
+                }
+                else
+                {
+                    // A plain log streams straight into the store in bounded
+                    // memory: a multi-gigabyte file costs the store's cap, not
+                    // the file size, and every line is still seen exactly once
+                    // so eviction counters and line numbering stay exact.
+                    _envelope = null;
+                    result = await _reader.ReadIntoStoreAsync(path, _store);
+                    if (!result.Found)
+                    {
+                        ShowReadFailure(path, result);
+                        return;
+                    }
                 }
 
-                // A shared HugsLib-style export wraps the log in a metadata
-                // envelope: strip it and feed the store the log body alone, so
-                // the display, filters and reports all see log content, and
-                // line numbers stay the sharer's own.
-                _envelope = HugsLogEnvelopeParser.TryParse(result.Text);
                 _currentPath = path;
-                _store.AppendText(_envelope?.BodyText ?? result.Text);
                 RebuildAllLines();
                 ApplyDisplay();
 
@@ -359,6 +374,19 @@ namespace RimSharp.Features.LogViewer.ViewModels
             {
                 IsLoading = false;
             }
+        }
+
+        /// <summary>Shows a failed read: the common failure path for both read modes.</summary>
+        private void ShowReadFailure(string path, LogReadResult result)
+        {
+            SizeText = string.Empty;
+            ModifiedText = string.Empty;
+            LineCountText = "0 lines";
+            ApplyDisplay();
+            // Set after ApplyDisplay so the read failure is what stays visible.
+            StatusMessage = result.ErrorMessage != null
+                ? $"Could not read the log: {result.ErrorMessage}"
+                : "Log file not found.";
         }
 
         private async Task SwitchSourceAsync(LogSourceOption option)

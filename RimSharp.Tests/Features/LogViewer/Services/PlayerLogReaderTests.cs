@@ -56,6 +56,98 @@ namespace RimSharp.Tests.Features.LogViewer.Services
             result.Text.Should().BeEmpty();
         }
 
+        // ── Streaming read (bounded memory for huge logs) ──────────────────
+
+        [Fact]
+        public async Task ReadIntoStoreAsync_MatchesAWholeFileReadLineForLine()
+        {
+            var builder = new StringBuilder();
+            for (var i = 0; i < 4000; i++)
+            {
+                builder.Append("2026-11-07 18:31:56.481 [Verse] message ").Append(i);
+                builder.Append(i % 97 == 0 ? " 日本語の行\n" : " plain tail\n");
+            }
+
+            File.WriteAllText(_path, builder.ToString(), new UTF8Encoding(false));
+            var expected = await new PlayerLogReader().ReadAsync(_path);
+
+            var store = new LogContentStore();
+            var result = await new PlayerLogReader().ReadIntoStoreAsync(_path, store);
+
+            result.Found.Should().BeTrue();
+            result.FileSize.Should().Be(new FileInfo(_path).Length);
+            store.Lines.Should().Equal(expected.Text.TrimEnd('\n').Split('\n'));
+            store.LinesEvicted.Should().Be(0); // 300 KB fits under the cap
+            store.FirstRetainedLineNumber.Should().Be(1);
+            store.Lines.Should().NotContain(l => l.Contains('\uFFFD'));
+        }
+
+        [Fact]
+        public async Task ReadIntoStoreAsync_KeepsAMultiByteCharStraddlingTheChunkBoundary()
+        {
+            // The read buffer is 81920 bytes: place a three-byte character so
+            // it starts at 81919 and is split across two chunk reads. A naive
+            // chunk decode would corrupt it into a replacement character.
+            var line = new string('a', 81919) + "→ tail\n";
+            var content = line + "second line\n";
+            File.WriteAllText(_path, content, new UTF8Encoding(false));
+
+            var store = new LogContentStore();
+            var result = await new PlayerLogReader().ReadIntoStoreAsync(_path, store);
+
+            result.Found.Should().BeTrue();
+            store.Lines.Should().HaveCount(2);
+            store.Lines[0].Should().Be(new string('a', 81919) + "→ tail");
+            store.Lines[1].Should().Be("second line");
+            store.Lines.Should().NotContain(l => l.Contains('\uFFFD'));
+        }
+
+        [Fact]
+        public async Task ReadIntoStoreAsync_KeepsAFinalUnterminatedLine()
+        {
+            File.WriteAllText(_path, "first\nsecond without terminator", new UTF8Encoding(false));
+
+            var store = new LogContentStore();
+            await new PlayerLogReader().ReadIntoStoreAsync(_path, store);
+
+            store.Lines.Should().Equal("first", "second without terminator");
+        }
+
+        [Fact]
+        public async Task ReadIntoStoreAsync_EvictsOverTheCapWithExactNumbering()
+        {
+            // Multi-megabyte content through a kilobyte-scale store: eviction
+            // must count every appended line, exactly as a whole-file read
+            // would, so the diagnostics' head+window merge keeps working.
+            var builder = new StringBuilder();
+            for (var i = 0; i < 20000; i++)
+            {
+                builder.Append("line ").Append(i).Append('\n');
+            }
+
+            File.WriteAllText(_path, builder.ToString(), new UTF8Encoding(false));
+
+            var store = new LogContentStore(maxTotalBytes: 4096);
+            var result = await new PlayerLogReader().ReadIntoStoreAsync(_path, store);
+
+            result.Found.Should().BeTrue();
+            store.LinesEvicted.Should().BeGreaterThan(0);
+            store.FirstRetainedLineNumber.Should().Be(store.LinesEvicted + 1);
+            store.TotalBytes.Should().BeLessThan(4096 + 64);
+            store.Lines[^1].Should().Be("line 19999");
+            store.Lines[0].Should().StartWith("line ");
+        }
+
+        [Fact]
+        public async Task ReadIntoStoreAsync_MissingFileReturnsNotFound()
+        {
+            var store = new LogContentStore();
+            var result = await new PlayerLogReader().ReadIntoStoreAsync(_path, store);
+
+            result.Found.Should().BeFalse();
+            store.Lines.Should().BeEmpty();
+        }
+
         [Fact]
         public async Task ReadTail_AppendsOnlyNewBytes()
         {
