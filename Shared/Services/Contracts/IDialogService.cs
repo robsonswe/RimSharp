@@ -71,6 +71,17 @@ namespace RimSharp.Shared.Services.Contracts
         Task ShowAboutDialog();
 
         /// <summary>
+        /// Modals the standalone Player.log viewer (Utilities menu → Log Viewer).
+        /// </summary>
+        Task<bool> ShowLogViewerAsync();
+
+        /// <summary>
+        /// Modals the app-logs window (Menu → App Logs): the app's own log
+        /// files, one per service per day, read like the Player.log viewer.
+        /// </summary>
+        Task<bool> ShowAppLogsAsync();
+
+        /// <summary>
         /// Modals RimSharp settings dialog (Paths + AI Providers tabs).
         /// Returns true when the user saved changes. When
         /// <paramref name="showAiProviders"/> is false the AI Providers tab
