@@ -1,0 +1,37 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Retune Fluent's item-state brushes to the tan palette.
+
+        App runs FluentTheme under RequestedThemeVariant="Dark", so when a control
+        falls back to Fluent's SystemControl* brushes (item hover, selection,
+        disabled states on ListBoxItem / ComboBoxItem clones) it paints
+        white text on translucent accent backgrounds over our light surfaces —
+        white on white. Every window currently hard-guards these states itself,
+        which is a per-window tax that keeps being rediscovered.
+
+        This dictionary maps those keys onto the app palette once, so Fluent's
+        own state logic produces readable colors by default:
+
+          hover  -> faint tan wash      (30% of BrushBgSelected)
+          press  -> deeper wash         (40%)
+          select -> full tan (BrushBgSelected)
+          text in all states -> dark brown (ColorBrown800)
+          disabled text -> muted brown (ColorBrown400)
+
+        Deliberately NOT overridden: popup/tooltip background chrome keys and
+        foreground base keys used broadly by inputs — the dark popups and the
+        cream-on-dark inputs are part of the current look and those keys are too
+        widely referenced to remap safely. Explicit Foreground values in
+        windows are unaffected by this file in every case.
+    -->
+    <SolidColorBrush x:Key="SystemControlHighlightListLowBrush" Color="#4DF2E4C4"/>
+    <SolidColorBrush x:Key="SystemControlHighlightListMediumBrush" Color="#66F2E4C4"/>
+    <SolidColorBrush x:Key="SystemControlHighlightListAccentLowBrush" Color="#FFE8D8B0"/>
+    <SolidColorBrush x:Key="SystemControlHighlightListAccentMediumBrush" Color="#FFE8D8B0"/>
+    <SolidColorBrush x:Key="SystemControlHighlightListAccentHighBrush" Color="#FFE8D8B0"/>
+    <SolidColorBrush x:Key="SystemControlHighlightAltBaseHighBrush" Color="{StaticResource ColorBrown800}"/>
+    <SolidColorBrush x:Key="SystemControlDisabledBaseMediumLowBrush" Color="{StaticResource ColorBrown400}"/>
+
+</ResourceDictionary>

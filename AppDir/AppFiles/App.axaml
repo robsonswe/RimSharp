@@ -28,6 +28,9 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="avares://RimSharp/Shared/Resources/Colors.axaml"/>
                 <ResourceInclude Source="avares://RimSharp/Shared/Resources/Brushes.axaml"/>
+                <!-- Retune Fluent's item-state brushes to the tan palette; load
+                     after Brushes so the palette values it references resolve. -->
+                <ResourceInclude Source="avares://RimSharp/Shared/Resources/ItemStateBrushes.axaml"/>
                 <ResourceInclude Source="avares://RimSharp/Shared/Resources/Converters.axaml"/>
                 <ResourceInclude Source="avares://RimSharp/Shared/Resources/Fonts.axaml"/>
             </ResourceDictionary.MergedDictionaries>
