@@ -744,7 +744,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 foreach (var candidate in GameExecutableNames.GetLaunchCandidates())
                 {
                     var candidatePath = Path.Combine(gamePath, candidate);
-                    if (File.Exists(candidatePath))
+                    if (File.Exists(candidatePath) || Directory.Exists(candidatePath))
                     {
                         exePath = candidatePath;
                         break;
@@ -757,11 +757,24 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                     return;
                 }
 
-                EnsureExecutable(exePath);
+                // macOS: .app bundle launch via `open -n` (no args forwarding; out of scope for v1)
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) &&
+                    exePath.EndsWith(".app", StringComparison.OrdinalIgnoreCase))
+                {
+                    var launched = TryLaunchMacAppBundle(exePath, gamePath);
+                    if (!launched)
+                    {
+                        await _dialogService.ShowError("Launch Error", "Failed to launch RimWorld.app via 'open' and no valid inner executable was found.");
+                    }
+                }
+                else
+                {
+                    EnsureExecutable(exePath);
 
-                RimSharp.Core.Services.SystemLauncher.LaunchExecutable(
-                    exePath, gamePath,
-                    onError: ex => { });
+                    RimSharp.Core.Services.SystemLauncher.LaunchExecutable(
+                        exePath, gamePath,
+                        onError: ex => { });
+                }
 
                 await Task.Delay(2000);
             }
@@ -902,6 +915,84 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             {
                 // Launch will surface the permission error if chmod fails.
             }
+        }
+
+        /// <summary>
+        /// Test seam for macOS .app bundle launch. Returns (launched, mechanism).
+        /// Mechanism: "open" for `open -n`, "inner" for Contents/MacOS fallback, "none" for failure.
+        /// Tests replace this to avoid spawning real processes.
+        /// </summary>
+        internal static Func<string, string, (bool Launched, string Mechanism)>? MacAppBundleLauncher { get; set; }
+
+        /// <summary>
+        /// Launches a macOS .app bundle via `open -n`. Falls back to the inner
+        /// executable under Contents/MacOS/ if `open` fails or the bundle lacks
+        /// Info.plist. Returns true on success.
+        /// </summary>
+        internal static bool TryLaunchMacAppBundle(string appBundlePath, string workingDirectory)
+        {
+            // Test seam: allow tests to inject behavior without spawning processes
+            if (MacAppBundleLauncher != null)
+            {
+                var (launched, _) = MacAppBundleLauncher(appBundlePath, workingDirectory);
+                return launched;
+            }
+
+            // Try `open -n` first (preferred: launches a new instance even if one is running)
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "open",
+                    Arguments = $"-n \"{appBundlePath}\"",
+                    UseShellExecute = false,
+                    WorkingDirectory = workingDirectory
+                };
+                using var process = Process.Start(psi);
+                if (process != null)
+                {
+                    return true;
+                }
+            }
+            catch (Exception)
+            {
+                // Fall through to inner binary fallback
+            }
+
+            // Fallback: probe Contents/MacOS/ for the main executable
+            var macOsDir = Path.Combine(appBundlePath, "Contents", "MacOS");
+            if (Directory.Exists(macOsDir))
+            {
+                var entries = Directory.GetFiles(macOsDir);
+                foreach (var entry in entries)
+                {
+                    // Skip non-executables (e.g., .dSYM, Info.plist)
+                    if (File.Exists(entry))
+                    {
+                        try
+                        {
+                            EnsureExecutable(entry);
+                            var psi = new ProcessStartInfo
+                            {
+                                FileName = entry,
+                                WorkingDirectory = workingDirectory,
+                                UseShellExecute = false
+                            };
+                            using var process = Process.Start(psi);
+                            if (process != null)
+                            {
+                                return true;
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            // Try next entry
+                        }
+                    }
+                }
+            }
+
+            return false;
         }
     }
 }

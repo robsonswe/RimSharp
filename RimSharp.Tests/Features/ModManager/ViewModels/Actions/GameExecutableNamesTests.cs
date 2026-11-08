@@ -22,6 +22,13 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
         }
 
         [Fact]
+        public void GetLaunchCandidates_ForMacOS_ShouldReturnMacCandidates()
+        {
+            GameExecutableNames.GetLaunchCandidates(OSPlatform.OSX)
+                .Should().Equal("RimWorld.app");
+        }
+
+        [Fact]
         public void GetProcessNames_ForWindows_ShouldBeUnchanged()
         {
             GameExecutableNames.GetProcessNames(OSPlatform.Windows)
@@ -33,6 +40,13 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
         {
             GameExecutableNames.GetProcessNames(OSPlatform.Linux)
                 .Should().Equal("RimWorldWin64", "RimWorld", "RimWorldLinux");
+        }
+
+        [Fact]
+        public void GetProcessNames_ForMacOS_ShouldReturnMacProcessNames()
+        {
+            GameExecutableNames.GetProcessNames(OSPlatform.OSX)
+                .Should().Equal("RimWorld", "RimWorldMac");
         }
     }
 }
