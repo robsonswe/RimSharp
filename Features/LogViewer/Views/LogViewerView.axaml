@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:i="https://github.com/projektanker/icons.avalonia"
         xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
         xmlns:vm="clr-namespace:RimSharp.Features.LogViewer.ViewModels"
         x:Class="RimSharp.Features.LogViewer.Views.LogViewerView"
@@ -10,205 +11,641 @@
         Title="{Binding Title}"
         Width="960"
         Height="640"
+        MinWidth="780"
+        MinHeight="520"
         CanResize="True"
         WindowStartupLocation="CenterOwner">
 
     <dialogs:BaseDialog.MainContent>
         <Border Classes="panel">
-            <TabControl Margin="15,10">
-                <TabItem Header="Log View">
-                    <Grid Margin="0,6" RowDefinitions="Auto,Auto,Auto,Auto,*">
-                <TextBlock Grid.Row="0"
-                           Text="Player.log Viewer"
-                           FontSize="18"
-                           FontWeight="Bold"
-                           Foreground="{DynamicResource BrushTextPrimary}"/>
 
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-                    <Button Content="Load Game Log"
-                            Command="{Binding LoadDefaultCommand}"
-                            Classes="btn"
-                            MinWidth="110" Height="30"/>
-                    <Button Content="Open..."
-                            Command="{Binding LoadFileCommand}"
-                            Classes="btn"
-                            MinWidth="80" Height="30"/>
-                    <Button Content="Export"
-                            Command="{Binding ExportCommand}"
-                            Classes="btn"
-                            MinWidth="80" Height="30"/>
-                    <Button Content="Refresh"
-                            Command="{Binding RefreshCommand}"
-                            Classes="btn"
-                            MinWidth="80" Height="30"/>
-                    <ComboBox ItemsSource="{Binding SourceOptions}"
-                              SelectedItem="{Binding SelectedSourceOption, Mode=TwoWay}"
-                              IsEnabled="{Binding HasMultipleSources}"
-                              MinWidth="200"
-                              VerticalAlignment="Center">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Label}"/>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                    <TextBlock Text="{Binding LineCountText}"
-                               VerticalAlignment="Center"
-                               Foreground="{DynamicResource BrushTextMuted}"/>
-                </StackPanel>
+            <!--
+                Window-local styles. Nothing here leaks into other windows, and the shared
+                theme files are untouched. If any of it should become app-wide later
+                (rows, the log line template), promote it deliberately.
+            -->
+            <Border.Styles>
 
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
-                    <ComboBox ItemsSource="{Binding FilterOptions}"
-                              SelectedItem="{Binding SelectedFilterOption}"
-                              MinWidth="140">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Label}"/>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                    <TextBox Width="180"
-                             PlaceholderText="Search..."
-                             TextChanged="OnLineFilterTextChanged"/>
-                    <CheckBox Content="Collapse repeats"
-                              IsChecked="{Binding CollapseRepeats, Mode=TwoWay}"
-                              VerticalAlignment="Center"/>
-                </StackPanel>
+                <!-- A "sheet": the tan surface that holds a tab's content. Its top edge meets the tab strip. -->
+                <Style Selector="Border.sheet">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgSurface}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                </Style>
 
-                <StackPanel Grid.Row="3" Margin="0,6,0,0" Spacing="2">
-                    <TextBlock Text="{Binding PathText}"
-                               TextWrapping="Wrap"
-                               Foreground="{DynamicResource BrushTextMuted}"/>
-                    <TextBlock Text="{Binding SizeText}"
-                               Foreground="{DynamicResource BrushTextMuted}"/>
-                    <TextBlock Text="{Binding ModifiedText}"
-                               Foreground="{DynamicResource BrushTextMuted}"/>
-                    <TextBlock Text="{Binding StatusMessage}"
-                               TextWrapping="Wrap"
-                               Foreground="{DynamicResource BrushTextMuted}"/>
-                </StackPanel>
+                <!-- Log lines: monospaced, selectable, severity shown as a gutter mark plus text color.
+                     Info lines carry no mark, so the lines that matter are the only ones that light up. -->
+                <Style Selector="ItemsControl.log-lines SelectableTextBlock">
+                    <Setter Property="FontFamily" Value="{DynamicResource RimSharpMonoFontFamily}"/>
+                    <Setter Property="FontSize" Value="12"/>
+                    <Setter Property="TextWrapping" Value="NoWrap"/>
+                </Style>
+                <Style Selector="ItemsControl.log-lines.wrapped SelectableTextBlock">
+                    <Setter Property="TextWrapping" Value="Wrap"/>
+                </Style>
+                <Style Selector="ScrollViewer.log-scroll">
+                    <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
+                    <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+                </Style>
+                <Style Selector="ScrollViewer.log-scroll.wrapped">
+                    <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+                </Style>
+                <Style Selector="Border.log-row.info Border.mark">
+                    <Setter Property="IsVisible" Value="False"/>
+                </Style>
 
-                <Border Grid.Row="4"
-                        Height="300"
-                        Margin="0,8,0,0"
-                        Padding="6,4"
-                        Background="#FFFFFF"
-                        BorderBrush="{DynamicResource BrushBorderDefault}"
-                        BorderThickness="1"
-                        CornerRadius="4">
-                    <Grid>
-                        <ProgressBar IsIndeterminate="True"
-                                     IsVisible="{Binding IsLoading}"
-                                     Height="4"
-                                     Margin="0,-4,0,0"
-                                     HorizontalAlignment="Stretch"
-                                     VerticalAlignment="Top"/>
-                        <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                                      VerticalScrollBarVisibility="Auto"
-                                      AllowAutoHide="False">
-                            <ItemsControl ItemsSource="{Binding Lines}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <VirtualizingStackPanel/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
+                <!-- Selectable list rows (Troubleshooter findings). -->
+                <Style Selector="ListBox.rows">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Padding" Value="0"/>
+                    <!-- Fluent's ListBoxItem theme paints white Foreground (Dark
+                         variant SystemControl brushes) onto any template presenter
+                         named PART_ContentPresenter; inheriting the dark text from
+                         here means no state, theme-led or not, leaves rows unreadable. -->
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+                </Style>
+                <Style Selector="ListBox.rows > ListBoxItem">
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="Margin" Value="0,0,0,5"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="Template">
+                        <ControlTemplate>
+                            <Border Name="Row"
+                                    Background="White"
+                                    BorderBrush="{DynamicResource BrushBorderMuted}"
+                                    BorderThickness="1"
+                                    CornerRadius="3"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter Name="RowPresenter"
+                                                  Content="{TemplateBinding Content}"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  Foreground="{DynamicResource BrushTextStrong}"
+                                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter>
+                </Style>
+                <Style Selector="ListBox.rows > ListBoxItem:pointerover /template/ Border#Row">
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+                </Style>
+                <Style Selector="ListBox.rows > ListBoxItem:selected /template/ Border#Row">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+                </Style>
+
+                <!-- Window-local tab treatment: flat text tabs with an underline.
+                     The shared theme keeps its own tab style for every other window,
+                     so nothing else in the app is restyled by this. -->
+                <Style Selector="TabControl.tabs TabItem">
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+                    <Setter Property="Padding" Value="14,7,14,6"/>
+                    <Setter Property="Margin" Value="0,0,4,0"/>
+                    <Setter Property="FontSize" Value="13"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="Template">
+                        <ControlTemplate>
+                            <Border Name="PART_LayoutRoot"
+                                    Background="Transparent"
+                                    BorderBrush="Transparent"
+                                    BorderThickness="0,0,0,3"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter Name="PART_ContentPresenter"
+                                                  Content="{TemplateBinding Header}"
+                                                  Foreground="{TemplateBinding Foreground}"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter>
+                </Style>
+
+                <!-- Scoped to the tab header's own presenter: an unscoped TabItem
+                     TextBlock selector also matches every TextBlock in the tab's
+                     page (styles match through the logical tree), which turned
+                     the filter popup's items dark-on-dark. -->
+                <Style Selector="TabControl.tabs TabItem /template/ ContentPresenter#PART_ContentPresenter TextBlock">
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+                </Style>
+
+                <Style Selector="TabControl.tabs TabItem:pointerover /template/ Border#PART_LayoutRoot">
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBgAccent}"/>
+                </Style>
+
+                <Style Selector="TabControl.tabs TabItem:selected">
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextBrown950}"/>
+                </Style>
+                <Style Selector="TabControl.tabs TabItem:selected /template/ ContentPresenter#PART_ContentPresenter TextBlock">
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextBrown950}"/>
+                </Style>
+                <Style Selector="TabControl.tabs TabItem:selected /template/ Border#PART_LayoutRoot">
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBgAction}"/>
+                </Style>
+
+                <Style Selector="TabControl.tabs TabItem:disabled">
+                    <Setter Property="Opacity" Value="0.55"/>
+                </Style>
+            </Border.Styles>
+
+            <Grid Margin="10,6,10,10" RowDefinitions="Auto,*">
+
+                <!-- ===== Header: choose a log (left), act on it (right), then say what is loaded ===== -->
+                <Grid Grid.Row="0" Margin="2,0,2,10" RowDefinitions="Auto,Auto" RowSpacing="6">
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <Button Classes="btn"
+                                    Command="{Binding LoadDefaultCommand}"
+                                    Height="30" MinWidth="0" Padding="12,4"
+                                    ToolTip.Tip="Find and read the game’s Player.log">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <i:Icon Value="fa-gamepad" VerticalAlignment="Center" FontSize="14"/>
+                                    <TextBlock Text="Load game log" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="btn"
+                                    Command="{Binding LoadFileCommand}"
+                                    Height="30" MinWidth="0" Padding="12,4"
+                                    ToolTip.Tip="Open a log file or a shared export">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <i:Icon Value="fa-folder-open" VerticalAlignment="Center" FontSize="14"/>
+                                    <TextBlock Text="Open…" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <!-- Only offered when there is a real choice (this session / last session / an opened file). -->
+                            <ComboBox ItemsSource="{Binding SourceOptions}"
+                                      SelectedItem="{Binding SelectedSourceOption, Mode=TwoWay}"
+                                      IsVisible="{Binding HasMultipleSources}"
+                                      MinWidth="210"
+                                      Margin="6,0,0,0"
+                                      VerticalAlignment="Center"
+                                      ToolTip.Tip="Switch between the logs found on this machine">
+                                <ComboBox.ItemTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding DisplayText}"
-                                                   Foreground="{Binding SeverityBrushKey, Converter={StaticResource ResourceKeyToBrushConverter}}"
-                                                   TextWrapping="NoWrap"/>
+                                        <TextBlock Text="{Binding Label}"/>
                                     </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                        <TextBlock Text="{Binding InvalidMessage}"
-                                   IsVisible="{Binding HasInvalidMessage}"
-                                   IsHitTestVisible="False"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"
-                                   TextWrapping="Wrap"
-                                   MaxWidth="420"
-                                   Foreground="{DynamicResource BrushTextWarning}"/>
-                        <TextBlock Text="No log loaded"
-                                   IsVisible="{Binding ShowLogPlaceholder}"
-                                   IsHitTestVisible="False"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"
-                                   Foreground="{DynamicResource BrushTextMuted}"/>
-                    </Grid>
-                </Border>
-            </Grid>
-                </TabItem>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
 
-                <TabItem Header="Troubleshooter" IsEnabled="{Binding AreReportTabsEnabled}">
-                    <Grid Margin="0,6" RowDefinitions="Auto,Auto,*,Auto">
-                        <TextBlock Grid.Row="0"
-                                   Text="{Binding Diagnostics.IssueSummaryText}"
-                                   FontWeight="Bold"
-                                   Foreground="{DynamicResource BrushTextPrimary}"/>
-                        <TextBlock Grid.Row="1"
-                                   Text="Pattern hits over the log, deduplicated and counted; line numbers refer to the log file. This tab explains what the log says — mod-list problems themselves (duplicates, missing dependencies, incompatibilities, load order) are checked live in Maintenance and the Sort button."
-                                   TextWrapping="Wrap"
-                                   Foreground="{DynamicResource BrushTextMuted}"/>
-                        <ListBox Grid.Row="2"
-                                 Margin="0,6,0,0"
-                                 ItemsSource="{Binding Diagnostics.Issues}"
-                                 SelectedItem="{Binding Diagnostics.SelectedIssue, Mode=TwoWay}"
-                                 Background="Transparent">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBlock Text="{Binding SeverityLabel}"
-                                                   Foreground="{Binding SeverityBrushKey, Converter={StaticResource ResourceKeyToBrushConverter}}"
-                                                   Width="70"/>
-                                        <TextBlock Text="{Binding Title}"/>
-                                        <TextBlock Text="{Binding Count}"
-                                                   Foreground="{DynamicResource BrushTextMuted}"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                        <Border Grid.Row="3"
-                                Margin="0,6,0,0"
-                                Padding="8"
-                                BorderBrush="{DynamicResource BrushBorderDefault}"
-                                BorderThickness="1"
-                                CornerRadius="4">
-                            <Grid RowDefinitions="Auto,*">
-                                <TextBlock Grid.Row="0"
-                                           Text="{Binding Diagnostics.IssueDetailTitle}"
-                                           FontWeight="Bold"
-                                           Foreground="{DynamicResource BrushTextPrimary}"/>
-                                <TextBlock Grid.Row="1"
-                                           Margin="0,4,0,0"
-                                           Text="{Binding Diagnostics.IssueDetail}"
-                                           TextWrapping="Wrap"
-                                           Foreground="{DynamicResource BrushTextMuted}"/>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <Button Classes="btn"
+                                    Command="{Binding RefreshCommand}"
+                                    Height="30" MinWidth="0" Padding="12,4"
+                                    ToolTip.Tip="Read the current log again from the top">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <i:Icon Value="fa-rotate-right" VerticalAlignment="Center" FontSize="14"/>
+                                    <TextBlock Text="Refresh" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="btn"
+                                    Command="{Binding ExportCommand}"
+                                    Height="30" MinWidth="0" Padding="12,4"
+                                    ToolTip.Tip="Save the lines currently shown to a text file">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <i:Icon Value="fa-file-export" VerticalAlignment="Center" FontSize="14"/>
+                                    <TextBlock Text="Export" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- What is loaded: path on the left, size and age on the right. -->
+                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding PathText}"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis"
+                                   Foreground="{DynamicResource BrushTextStrong}"
+                                   ToolTip.Tip="{Binding PathText}"/>
+                        <TextBlock Grid.Column="1"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource BrushTextStrong}">
+                            <Run Text="{Binding SizeText}"/><Run Text="    "/><Run Text="{Binding ModifiedText}"/>
+                        </TextBlock>
+                    </Grid>
+                </Grid>
+
+                <!-- ===== Tabs: reports stay locked until a recognized log has been read ===== -->
+                <TabControl Grid.Row="1" Classes="tabs" Padding="0">
+
+                    <!-- LOG VIEW -->
+                    <TabItem>
+                        <TabItem.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <i:Icon Value="fa-list" FontSize="13" VerticalAlignment="Center"/>
+                                <TextBlock Text="Log view" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </TabItem.Header>
+
+                        <Border Classes="sheet" CornerRadius="0,0,3,3" Padding="10">
+                            <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+
+                                <!-- Narrow the log: search, kind of entry, and two display switches -->
+                                <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="14">
+                                    <TextBox Grid.Column="0"
+                                             MinHeight="32"
+                                             VerticalContentAlignment="Center"
+                                             Foreground="{DynamicResource BrushTextOnDark}"
+                                             PlaceholderText="Search the log"
+                                             TextChanged="OnLineFilterTextChanged">
+                                        <TextBox.InnerLeftContent>
+                                            <i:Icon Value="fa-magnifying-glass"
+                                                    FontSize="12"
+                                                    Margin="10,0,0,0"
+                                                    VerticalAlignment="Center"
+                                                    Foreground="{DynamicResource BrushTextPrimary}"/>
+                                        </TextBox.InnerLeftContent>
+                                    </TextBox>
+                                    <ComboBox Grid.Column="1"
+                                              ItemsSource="{Binding FilterOptions}"
+                                              SelectedItem="{Binding SelectedFilterOption}"
+                                              Foreground="{DynamicResource BrushTextOnDark}"
+                                              MinWidth="160"
+                                              VerticalAlignment="Center"
+                                              ToolTip.Tip="Show only one kind of entry">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Label}"/>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <CheckBox Grid.Column="2"
+                                              Content="Collapse repeats"
+                                              IsChecked="{Binding CollapseRepeats, Mode=TwoWay}"
+                                              VerticalAlignment="Center">
+                                        <ToolTip.Tip>
+                                            <TextBlock Text="Merge identical messages that follow each other into one entry"
+                                                       Foreground="{DynamicResource BrushTextOnDark}"/>
+                                        </ToolTip.Tip>
+                                    </CheckBox>
+                                    <CheckBox Grid.Column="3"
+                                              x:Name="WrapLines"
+                                              Content="Wrap lines"
+                                              VerticalAlignment="Center">
+                                        <ToolTip.Tip>
+                                            <TextBlock Text="Wrap long lines instead of scrolling sideways"
+                                                       Foreground="{DynamicResource BrushTextOnDark}"/>
+                                        </ToolTip.Tip>
+                                    </CheckBox>                                </Grid>
+
+                                <!-- The log itself: fills the window now instead of a fixed 300px box -->
+                                <Border Grid.Row="1"
+                                        Background="White"
+                                        BorderBrush="{DynamicResource BrushBorderDefault}"
+                                        BorderThickness="1"
+                                        CornerRadius="3"
+                                        ClipToBounds="True">
+                                    <Grid>
+                                        <ScrollViewer Classes="log-scroll"
+                                                      Classes.wrapped="{Binding #WrapLines.IsChecked}"
+                                                      AllowAutoHide="False">
+                                            <ItemsControl Classes="log-lines"
+                                                          Classes.wrapped="{Binding #WrapLines.IsChecked}"
+                                                          ItemsSource="{Binding Lines}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <VirtualizingStackPanel/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Classes="log-row"
+                                                                Classes.info="{Binding SeverityBrushKey, Converter={StaticResource EqualityConverter}, ConverterParameter=BrushTextMuted}"
+                                                                BorderBrush="{DynamicResource BrushBgSurface}"
+                                                                BorderThickness="0,0,0,1">
+                                                            <Grid>
+                                                                <Border Classes="mark"
+                                                                        Opacity="0.09"
+                                                                        Background="{Binding SeverityBrushKey, Converter={StaticResource ResourceKeyToBrushConverter}}"/>
+                                                                <Border Classes="mark"
+                                                                        Width="3"
+                                                                        HorizontalAlignment="Left"
+                                                                        Background="{Binding SeverityBrushKey, Converter={StaticResource ResourceKeyToBrushConverter}}"/>
+                                                                <SelectableTextBlock Text="{Binding DisplayText}"
+                                                                                     Margin="12,3,8,3"
+                                                                                     Foreground="{Binding SeverityBrushKey, Converter={StaticResource ResourceKeyToBrushConverter}}"/>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+
+                                        <ProgressBar IsIndeterminate="True"
+                                                     IsVisible="{Binding IsLoading}"
+                                                     Height="3"
+                                                     Background="Transparent"
+                                                     Foreground="{DynamicResource BrushBgAction}"
+                                                     HorizontalAlignment="Stretch"
+                                                     VerticalAlignment="Top"/>
+
+                                        <!-- The file was refused: say why, and what to do next -->
+                                        <StackPanel IsVisible="{Binding HasInvalidMessage}"
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center"
+                                                    MaxWidth="440"
+                                                    Spacing="10">
+                                            <i:Icon Value="fa-triangle-exclamation"
+                                                    FontSize="28"
+                                                    HorizontalAlignment="Center"
+                                                    Foreground="{DynamicResource BrushStateWarning}"/>
+                                            <TextBlock Text="This file can’t be read as a log"
+                                                       FontSize="15"
+                                                       FontWeight="SemiBold"
+                                                       HorizontalAlignment="Center"
+                                                       Foreground="{DynamicResource BrushTextStrong}"/>
+                                            <TextBlock Text="{Binding InvalidMessage}"
+                                                       TextWrapping="Wrap"
+                                                       TextAlignment="Center"
+                                                       Foreground="{DynamicResource BrushTextPrimary}"/>
+                                            <Button Classes="btn"
+                                                    Command="{Binding LoadFileCommand}"
+                                                    HorizontalAlignment="Center"
+                                                    Height="30" MinWidth="0" Padding="14,4"
+                                                    Content="Open another file…"/>
+                                        </StackPanel>
+
+                                        <!-- Nothing loaded yet: the empty state is the way in -->
+                                        <StackPanel IsVisible="{Binding ShowLogPlaceholder}"
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center"
+                                                    MaxWidth="420"
+                                                    Spacing="10">
+                                            <i:Icon Value="fa-file-lines"
+                                                    FontSize="30"
+                                                    HorizontalAlignment="Center"
+                                                    Foreground="{DynamicResource BrushBgAccent}"/>
+                                            <TextBlock Text="No log loaded"
+                                                       FontSize="15"
+                                                       FontWeight="SemiBold"
+                                                       HorizontalAlignment="Center"
+                                                       Foreground="{DynamicResource BrushTextStrong}"/>
+                                            <TextBlock Text="Read the game’s Player.log, or open a log file or a shared export."
+                                                       TextWrapping="Wrap"
+                                                       TextAlignment="Center"
+                                                       Foreground="{DynamicResource BrushTextPrimary}"/>
+                                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,4,0,0">
+                                                <Button Classes="btn"
+                                                        Command="{Binding LoadDefaultCommand}"
+                                                        Height="30" MinWidth="0" Padding="14,4"
+                                                        Content="Load game log"/>
+                                                <Button Classes="btn"
+                                                        Command="{Binding LoadFileCommand}"
+                                                        Height="30" MinWidth="0" Padding="14,4"
+                                                        Content="Open…"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Status line: what just happened, and how many lines are showing -->
+                                <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding StatusMessage}"
+                                               FontSize="12"
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource BrushTextPrimary}"/>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding LineCountText}"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource BrushTextStrong}"/>
+                                </Grid>
                             </Grid>
                         </Border>
-                    </Grid>
-                </TabItem>
+                    </TabItem>
 
-                <TabItem Header="Summary" IsEnabled="{Binding AreReportTabsEnabled}">
-                    <Grid Margin="0,6" RowDefinitions="Auto,*">
-                        <TextBlock Grid.Row="0"
-                                   Text="What this log says about itself"
-                                   FontWeight="Bold"
-                                   Foreground="{DynamicResource BrushTextPrimary}"/>
-                        <ItemsControl Grid.Row="1"
-                                      Margin="0,6,0,0"
-                                      ItemsSource="{Binding Diagnostics.SummaryRows}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding}"
+                    <!-- TROUBLESHOOTER -->
+                    <TabItem IsEnabled="{Binding AreReportTabsEnabled}"
+                             ToolTip.ShowOnDisabled="True">
+                        <ToolTip.Tip>
+                            <TextBlock Text="Reports unlock once a recognized log has been read"
+                                       Foreground="{DynamicResource BrushTextOnDark}"/>
+                        </ToolTip.Tip>
+                        <TabItem.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <i:Icon Value="fa-screwdriver-wrench" FontSize="13" VerticalAlignment="Center"/>
+                                <TextBlock Text="Troubleshooter" VerticalAlignment="Center"/>
+                                <Border Background="{DynamicResource BrushBgAction}"
+                                        CornerRadius="9"
+                                        Padding="6,1"
+                                        VerticalAlignment="Center"
+                                        IsVisible="{Binding Diagnostics.HasIssues}">
+                                    <TextBlock Text="{Binding Diagnostics.Issues.Count}"
+                                               FontSize="11"
+                                               FontWeight="Bold"
+                                               Foreground="{DynamicResource BrushTextOnDark}"/>
+                                </Border>
+                            </StackPanel>
+                        </TabItem.Header>
+
+                        <Border Classes="sheet" CornerRadius="0,0,3,3" Padding="10">
+                            <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+
+                                <TextBlock Grid.Row="0"
+                                           Text="{Binding Diagnostics.IssueSummaryText}"
+                                           IsVisible="{Binding Diagnostics.HasIssues}"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource BrushTextStrong}"/>
+
+                                <!-- Findings on the left, the selected one explained on the right -->
+                                <Grid Grid.Row="1"
+                                      ColumnDefinitions="330,*"
+                                      ColumnSpacing="10"
+                                      IsVisible="{Binding Diagnostics.HasIssues}">
+
+                                    <ListBox Grid.Column="0"
+                                             Classes="rows"
+                                             ItemsSource="{Binding Diagnostics.Issues}"
+                                             SelectedItem="{Binding Diagnostics.SelectedIssue, Mode=TwoWay}">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                                    <Border Grid.Column="0"
+                                                            Width="4"
+                                                            CornerRadius="2,0,0,2"
+                                                            Background="{Binding SeverityBrushKey, Converter={StaticResource ResourceKeyToBrushConverter}}"/>
+                                                    <StackPanel Grid.Column="1" Margin="10,7" Spacing="1">
+                                                        <!-- Static so recycled virtualized containers can't strand the lookup. -->
+                                                        <TextBlock Text="{Binding SeverityLabel}"
+                                                                   FontSize="11"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource BrushTextPrimary}"/>
+                                                        <TextBlock Text="{Binding Title}"
+                                                                   TextWrapping="Wrap"
+                                                                   Foreground="{StaticResource BrushTextStrong}"/>
+                                                    </StackPanel>
+                                                    <TextBlock Grid.Column="2"
+                                                               Margin="0,0,10,0"
+                                                               VerticalAlignment="Center"
+                                                               FontWeight="SemiBold"
+                                                               Text="{Binding Count, StringFormat='×{0:N0}'}"
+                                                               Foreground="{StaticResource BrushTextStrong}"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+
+                                    <Border Grid.Column="1"
+                                            Background="White"
+                                            BorderBrush="{DynamicResource BrushBorderDefault}"
+                                            BorderThickness="1"
+                                            CornerRadius="3"
+                                            Padding="18,16">
+                                        <Grid>
+                                            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                                          AllowAutoHide="False"
+                                                          IsVisible="{Binding Diagnostics.SelectedIssue, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                                <StackPanel Spacing="16" MaxWidth="560" HorizontalAlignment="Left">
+                                                    <TextBlock Text="{Binding Diagnostics.SelectedIssue.Title}"
+                                                               FontSize="16"
+                                                               FontWeight="Bold"
+                                                               TextWrapping="Wrap"
+                                                               Foreground="{DynamicResource BrushTextStrong}"/>
+
+                                                    <StackPanel Orientation="Horizontal" Spacing="32">
+                                                        <StackPanel Spacing="1">
+                                                            <TextBlock Text="Severity" FontSize="11" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                <Ellipse Width="9" Height="9" VerticalAlignment="Center"
+                                                                         Fill="{Binding Diagnostics.SelectedIssue.SeverityBrushKey, Converter={StaticResource ResourceKeyToBrushConverter}}"/>
+                                                                <TextBlock Text="{Binding Diagnostics.SelectedIssue.SeverityLabel}"
+                                                                           FontWeight="SemiBold"
+                                                                           Foreground="{DynamicResource BrushTextStrong}"/>
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                        <StackPanel Spacing="1">
+                                                            <TextBlock Text="Occurrences" FontSize="11" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                            <TextBlock Text="{Binding Diagnostics.SelectedIssue.Count, StringFormat='{}{0:N0}'}"
+                                                                       FontWeight="SemiBold"
+                                                                       Foreground="{DynamicResource BrushTextStrong}"/>
+                                                        </StackPanel>
+                                                        <StackPanel Spacing="1">
+                                                            <TextBlock Text="First seen at line" FontSize="11" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                            <TextBlock Text="{Binding Diagnostics.SelectedIssue.FirstLineNumber, StringFormat='{}{0:N0}'}"
+                                                                       FontWeight="SemiBold"
+                                                                       Foreground="{DynamicResource BrushTextStrong}"/>
+                                                        </StackPanel>
+                                                    </StackPanel>
+
+                                                    <StackPanel Spacing="4">
+                                                        <TextBlock Text="What it means" FontWeight="Bold" Foreground="{DynamicResource BrushTextStrong}"/>
+                                                        <SelectableTextBlock Text="{Binding Diagnostics.SelectedIssue.Description}"
+                                                                             TextWrapping="Wrap"
+                                                                             LineHeight="20"
+                                                                             Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                    </StackPanel>
+
+                                                    <StackPanel Spacing="4">
+                                                        <TextBlock Text="What to try" FontWeight="Bold" Foreground="{DynamicResource BrushTextStrong}"/>
+                                                        <SelectableTextBlock Text="{Binding Diagnostics.SelectedIssue.Suggestion}"
+                                                                             TextWrapping="Wrap"
+                                                                             LineHeight="20"
+                                                                             Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </ScrollViewer>
+
+                                            <TextBlock Text="{Binding Diagnostics.IssueDetail}"
+                                                       IsVisible="{Binding Diagnostics.SelectedIssue, Converter={x:Static ObjectConverters.IsNull}}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource BrushTextPrimary}"/>
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+
+                                <!-- A clean log is a result, not an empty screen -->
+                                <StackPanel Grid.Row="0" Grid.RowSpan="2"
+                                            IsVisible="{Binding !Diagnostics.HasIssues}"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            MaxWidth="420"
+                                            Spacing="10">
+                                    <i:Icon Value="fa-circle-check"
+                                            FontSize="30"
+                                            HorizontalAlignment="Center"
+                                            Foreground="{DynamicResource BrushBgSuccess}"/>
+                                    <TextBlock Text="{Binding Diagnostics.IssueSummaryText}"
+                                               FontSize="15"
+                                               FontWeight="SemiBold"
                                                TextWrapping="Wrap"
-                                               Foreground="{DynamicResource BrushTextMuted}"/>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </Grid>
-                </TabItem>
-            </TabControl>
+                                               TextAlignment="Center"
+                                               Foreground="{DynamicResource BrushTextStrong}"/>
+                                    <TextBlock Text="Nothing in this log matched a known problem pattern."
+                                               TextWrapping="Wrap"
+                                               TextAlignment="Center"
+                                               Foreground="{DynamicResource BrushTextPrimary}"/>
+                                </StackPanel>
+
+                                <!-- What this tab can and cannot tell you -->
+                                <StackPanel Grid.Row="2" Spacing="2">
+                                    <TextBlock Text="{Binding Diagnostics.ScopeNote}"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource BrushTextStrong}"/>
+                                    <TextBlock Text="Findings are pattern matches over the log, deduplicated and counted; line numbers refer to the log file. Mod-list problems (duplicates, missing dependencies, incompatibilities, load order) are checked live in Maintenance and by the Sort button."
+                                               FontSize="12"
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource BrushTextPrimary}"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </TabItem>
+
+                    <!-- SUMMARY -->
+                    <TabItem IsEnabled="{Binding AreReportTabsEnabled}"
+                             ToolTip.ShowOnDisabled="True">
+                        <ToolTip.Tip>
+                            <TextBlock Text="Reports unlock once a recognized log has been read"
+                                       Foreground="{DynamicResource BrushTextOnDark}"/>
+                        </ToolTip.Tip>
+                        <TabItem.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <i:Icon Value="fa-clipboard-list" FontSize="13" VerticalAlignment="Center"/>
+                                <TextBlock Text="Summary" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </TabItem.Header>
+
+                        <Border Classes="sheet" CornerRadius="0,0,3,3" Padding="10">
+                            <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                                <TextBlock Grid.Row="0"
+                                           Text="What this log says about itself"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource BrushTextStrong}"/>
+
+                                <Border Grid.Row="1"
+                                        Background="White"
+                                        BorderBrush="{DynamicResource BrushBorderDefault}"
+                                        BorderThickness="1"
+                                        CornerRadius="3"
+                                        ClipToBounds="True">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" AllowAutoHide="False">
+                                        <ItemsControl ItemsSource="{Binding Diagnostics.SummaryRows}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border BorderBrush="{DynamicResource BrushBgSurface}"
+                                                            BorderThickness="0,0,0,1"
+                                                            Padding="16,8">
+                                                        <SelectableTextBlock Text="{Binding}"
+                                                                             TextWrapping="Wrap"
+                                                                             Foreground="{DynamicResource BrushTextStrong}"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </TabItem>
+                </TabControl>
+            </Grid>
         </Border>
     </dialogs:BaseDialog.MainContent>
 

@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:i="https://github.com/projektanker/icons.avalonia"
         xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
         xmlns:vm="clr-namespace:RimSharp.Features.AppLogs.ViewModels"
         mc:Ignorable="d"
@@ -10,86 +11,149 @@
         Title="{Binding Title}"
         Width="1024"
         Height="680"
+        MinWidth="840"
+        MinHeight="520"
         CanResize="True"
         WindowStartupLocation="CenterOwner">
 
     <dialogs:BaseDialog.MainContent>
         <Border Classes="panel">
-            <Grid Margin="15,10" RowDefinitions="Auto,Auto,Auto,*">
-                <StackPanel Grid.Row="0" Spacing="2">
-                    <TextBlock Text="App Logs"
-                               FontSize="18"
-                               FontWeight="Bold"
-                               Foreground="{DynamicResource BrushTextPrimary}"/>
-                    <TextBlock Text="Logs RimSharp writes itself — one file per service per day. Pick a service to read its log."
-                               TextWrapping="Wrap"
-                               Foreground="{DynamicResource BrushTextMuted}"/>
-                </StackPanel>
 
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-                    <Button Content="Refresh"
-                            Command="{Binding RefreshCommand}"
-                            Classes="btn"
-                            MinWidth="90" Height="30"/>
-                    <Button Content="Export"
-                            Command="{Binding ExportCommand}"
-                            Classes="btn"
-                            MinWidth="80" Height="30"/>
-                    <ComboBox ItemsSource="{Binding LevelFilters}"
-                              SelectedItem="{Binding SelectedLevelFilter, Mode=TwoWay}"
-                              MinWidth="130"
-                              VerticalAlignment="Center">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Label}"/>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                    <TextBox Width="180"
-                             PlaceholderText="Search..."
-                             TextChanged="OnSearchTextChanged"/>
-                    <CheckBox Content="Collapse repeats"
-                              IsChecked="{Binding CollapseRepeats, Mode=TwoWay}"
-                              VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding LineCountText}"
+            <!--
+                Window-local styles, shared in spirit with LogViewerView (same sheet, rows and
+                log line treatment) so the two log windows read as one family.
+            -->
+            <Border.Styles>
+                <Style Selector="Border.sheet">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgSurface}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="CornerRadius" Value="3"/>
+                </Style>
+
+                <Style Selector="ItemsControl.log-lines SelectableTextBlock">
+                    <Setter Property="FontFamily" Value="{DynamicResource RimSharpMonoFontFamily}"/>
+                    <Setter Property="FontSize" Value="12"/>
+                    <Setter Property="TextWrapping" Value="NoWrap"/>
+                </Style>
+                <Style Selector="ItemsControl.log-lines.wrapped SelectableTextBlock">
+                    <Setter Property="TextWrapping" Value="Wrap"/>
+                </Style>
+                <Style Selector="ScrollViewer.log-scroll">
+                    <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
+                    <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+                </Style>
+                <Style Selector="ScrollViewer.log-scroll.wrapped">
+                    <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+                </Style>
+                <Style Selector="Border.log-row.info Border.mark">
+                    <Setter Property="IsVisible" Value="False"/>
+                </Style>
+
+                <Style Selector="ListBox.rows">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Padding" Value="0"/>
+                </Style>
+                <Style Selector="ListBox.rows > ListBoxItem">
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="Margin" Value="0,0,0,5"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="Template">
+                        <ControlTemplate>
+                            <Border Name="Row"
+                                    Background="White"
+                                    BorderBrush="{DynamicResource BrushBorderMuted}"
+                                    BorderThickness="1"
+                                    CornerRadius="3"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter Name="PART_ContentPresenter"
+                                                  Content="{TemplateBinding Content}"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter>
+                </Style>
+                <Style Selector="ListBox.rows > ListBoxItem:pointerover /template/ Border#Row">
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+                </Style>
+                <Style Selector="ListBox.rows > ListBoxItem:selected /template/ Border#Row">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+                </Style>
+            </Border.Styles>
+
+            <Grid Margin="10,6,10,10" RowDefinitions="Auto,*" RowSpacing="10">
+
+                <!-- ===== Header: what this window is, and the two actions that apply to it ===== -->
+                <Grid Grid.Row="0" Margin="2,0,2,0" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                    <TextBlock Grid.Column="0"
+                               Text="RimSharp writes one log per service per day. Select a service to read its newest day."
+                               TextWrapping="Wrap"
                                VerticalAlignment="Center"
-                               Foreground="{DynamicResource BrushTextMuted}"/>
-                </StackPanel>
+                               Foreground="{DynamicResource BrushTextStrong}"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <Button Classes="btn"
+                                Command="{Binding RefreshCommand}"
+                                Height="30" MinWidth="0" Padding="12,4"
+                                ToolTip.Tip="Look for new log files and read the selected service again">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <i:Icon Value="fa-rotate-right" VerticalAlignment="Center" FontSize="14"/>
+                                <TextBlock Text="Refresh" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="btn"
+                                Command="{Binding ExportCommand}"
+                                Height="30" MinWidth="0" Padding="12,4"
+                                ToolTip.Tip="Save the messages currently shown to a text file">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <i:Icon Value="fa-file-export" VerticalAlignment="Center" FontSize="14"/>
+                                <TextBlock Text="Export" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
 
-                <StackPanel Grid.Row="2" Margin="0,6,0,0" Spacing="2">
-                    <TextBlock Text="{Binding FilePathText}"
-                               TextWrapping="Wrap"
-                               Foreground="{DynamicResource BrushTextMuted}"/>
-                    <TextBlock Text="{Binding StatusMessage}"
-                               TextWrapping="Wrap"
-                               Foreground="{DynamicResource BrushTextMuted}"/>
-                </StackPanel>
+                <Grid Grid.Row="1" ColumnDefinitions="250,*" ColumnSpacing="10">
 
-                <Grid Grid.Row="3" Margin="0,8,0,0" ColumnDefinitions="260,*">
-                    <Border Grid.Column="0"
-                            Margin="0,0,8,0"
-                            Padding="6"
-                            Background="#FFFFFF"
-                            BorderBrush="{DynamicResource BrushBorderDefault}"
-                            BorderThickness="1"
-                            CornerRadius="4">
-                        <Grid RowDefinitions="Auto,*">
-                            <TextBlock Grid.Row="0"
-                                       Text="Services"
-                                       FontWeight="Bold"
-                                       Margin="2,0,2,6"
-                                       Foreground="{DynamicResource BrushTextPrimary}"/>
+                    <!-- ===== Services: the thing you pick first ===== -->
+                    <Border Grid.Column="0" Classes="sheet" Padding="8">
+                        <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="2,2,2,0">
+                                <TextBlock Grid.Column="0"
+                                           Text="Services"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource BrushTextStrong}"/>
+                                <Border Grid.Column="1"
+                                        Background="{DynamicResource BrushBgAction}"
+                                        CornerRadius="9"
+                                        Padding="6,1"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Modules.Count}"
+                                               FontSize="11"
+                                               FontWeight="Bold"
+                                               Foreground="{DynamicResource BrushTextOnDark}"/>
+                                </Border>
+                            </Grid>
+
                             <ListBox Grid.Row="1"
+                                     Classes="rows"
                                      ItemsSource="{Binding Modules}"
-                                     SelectedItem="{Binding SelectedModule, Mode=TwoWay}"
-                                     Background="Transparent">
+                                     SelectedItem="{Binding SelectedModule, Mode=TwoWay}">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <StackPanel Margin="0,4">
-                                            <TextBlock Text="{Binding Header}" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                        <StackPanel Margin="10,7" Spacing="1">
+                                            <TextBlock Text="{Binding Header}"
+                                                       FontWeight="SemiBold"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource BrushTextStrong}"/>
                                             <TextBlock Text="{Binding SubHeader}"
-                                                       FontSize="11"
-                                                       Foreground="{DynamicResource BrushTextMuted}"/>
+                                                       FontSize="12"
+                                                       Foreground="{DynamicResource BrushTextPrimary}"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
@@ -97,44 +161,146 @@
                         </Grid>
                     </Border>
 
-                    <Border Grid.Column="1"
-                            Padding="6,4"
-                            Background="#FFFFFF"
-                            BorderBrush="{DynamicResource BrushBorderDefault}"
-                            BorderThickness="1"
-                            CornerRadius="4">
-                        <Grid>
-                            <ProgressBar IsIndeterminate="True"
-                                         IsVisible="{Binding IsLoading}"
-                                         Height="4"
-                                         Margin="0,-4,0,0"
-                                         HorizontalAlignment="Stretch"
-                                         VerticalAlignment="Top"/>
-                            <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                                          VerticalScrollBarVisibility="Auto"
-                                          AllowAutoHide="False">
-                                <ItemsControl ItemsSource="{Binding Displayed}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <VirtualizingStackPanel/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
+                    <!-- ===== The selected service's log ===== -->
+                    <Border Grid.Column="1" Classes="sheet" Padding="10">
+                        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+
+                            <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="14">
+                                <TextBox Grid.Column="0"
+                                         MinHeight="32"
+                                         VerticalContentAlignment="Center"
+                                         PlaceholderText="Search messages"
+                                         TextChanged="OnSearchTextChanged">
+                                    <TextBox.InnerLeftContent>
+                                        <i:Icon Value="fa-magnifying-glass"
+                                                FontSize="12"
+                                                Margin="10,0,0,0"
+                                                VerticalAlignment="Center"
+                                                Foreground="{DynamicResource BrushTextPrimary}"/>
+                                    </TextBox.InnerLeftContent>
+                                </TextBox>
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding LevelFilters}"
+                                          SelectedItem="{Binding SelectedLevelFilter, Mode=TwoWay}"
+                                          MinWidth="130"
+                                          VerticalAlignment="Center"
+                                          ToolTip.Tip="Show only one severity">
+                                    <ComboBox.ItemTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="{Binding DisplayText}"
-                                                       Foreground="{Binding SeverityBrushKey, Converter={StaticResource ResourceKeyToBrushConverter}}"
-                                                       TextWrapping="NoWrap"/>
+                                            <TextBlock Text="{Binding Label}"/>
                                         </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
-                            <TextBlock Text="No app logs yet — the app writes one log file per service per day."
-                                       IsVisible="{Binding ShowPlaceholder}"
-                                       IsHitTestVisible="False"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       TextWrapping="Wrap"
-                                       Foreground="{DynamicResource BrushTextMuted}"/>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <CheckBox Grid.Column="2"
+                                          Content="Collapse repeats"
+                                          IsChecked="{Binding CollapseRepeats, Mode=TwoWay}"
+                                          VerticalAlignment="Center"
+                                          ToolTip.Tip="Merge identical messages that follow each other into one entry"/>
+                                <CheckBox Grid.Column="3"
+                                          x:Name="WrapLines"
+                                          Content="Wrap lines"
+                                          VerticalAlignment="Center"
+                                          ToolTip.Tip="Wrap long lines instead of scrolling sideways"/>
+                            </Grid>
+
+                            <Border Grid.Row="1"
+                                    Background="White"
+                                    BorderBrush="{DynamicResource BrushBorderDefault}"
+                                    BorderThickness="1"
+                                    CornerRadius="3"
+                                    ClipToBounds="True">
+                                <Grid>
+                                    <ScrollViewer Classes="log-scroll"
+                                                  Classes.wrapped="{Binding #WrapLines.IsChecked}"
+                                                  AllowAutoHide="False">
+                                        <ItemsControl Classes="log-lines"
+                                                      Classes.wrapped="{Binding #WrapLines.IsChecked}"
+                                                      ItemsSource="{Binding Displayed}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <VirtualizingStackPanel/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Classes="log-row"
+                                                            Classes.info="{Binding SeverityBrushKey, Converter={StaticResource EqualityConverter}, ConverterParameter=BrushTextMuted}"
+                                                            BorderBrush="{DynamicResource BrushBgSurface}"
+                                                            BorderThickness="0,0,0,1">
+                                                        <Grid>
+                                                            <Border Classes="mark"
+                                                                    Opacity="0.09"
+                                                                    Background="{Binding SeverityBrushKey, Converter={StaticResource ResourceKeyToBrushConverter}}"/>
+                                                            <Border Classes="mark"
+                                                                    Width="3"
+                                                                    HorizontalAlignment="Left"
+                                                                    Background="{Binding SeverityBrushKey, Converter={StaticResource ResourceKeyToBrushConverter}}"/>
+                                                            <SelectableTextBlock Text="{Binding DisplayText}"
+                                                                                 Margin="12,3,8,3"
+                                                                                 Foreground="{Binding SeverityBrushKey, Converter={StaticResource ResourceKeyToBrushConverter}}"/>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+
+                                    <ProgressBar IsIndeterminate="True"
+                                                 IsVisible="{Binding IsLoading}"
+                                                 Height="3"
+                                                 Background="Transparent"
+                                                 Foreground="{DynamicResource BrushBgAction}"
+                                                 HorizontalAlignment="Stretch"
+                                                 VerticalAlignment="Top"/>
+
+                                    <StackPanel IsVisible="{Binding ShowPlaceholder}"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                MaxWidth="400"
+                                                Spacing="10">
+                                        <i:Icon Value="fa-file-lines"
+                                                FontSize="30"
+                                                HorizontalAlignment="Center"
+                                                Foreground="{DynamicResource BrushBgAccent}"/>
+                                        <TextBlock Text="No app logs to show"
+                                                   FontSize="15"
+                                                   FontWeight="SemiBold"
+                                                   HorizontalAlignment="Center"
+                                                   Foreground="{DynamicResource BrushTextStrong}"/>
+                                        <TextBlock Text="Messages appear here once a service has written a log for the day."
+                                                   TextWrapping="Wrap"
+                                                   TextAlignment="Center"
+                                                   Foreground="{DynamicResource BrushTextPrimary}"/>
+                                        <Button Classes="btn"
+                                                Command="{Binding RefreshCommand}"
+                                                HorizontalAlignment="Center"
+                                                Height="30" MinWidth="0" Padding="14,4"
+                                                Margin="0,4,0,0"
+                                                Content="Look again"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Status: which file is showing, what just happened, how many messages -->
+                            <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                                <StackPanel Grid.Column="0" Spacing="1">
+                                    <TextBlock Text="{Binding StatusMessage}"
+                                               FontSize="12"
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource BrushTextStrong}"/>
+                                    <TextBlock Text="{Binding FilePathText}"
+                                               FontSize="11"
+                                               TextTrimming="CharacterEllipsis"
+                                               Foreground="{DynamicResource BrushTextPrimary}"
+                                               ToolTip.Tip="{Binding FilePathText}"/>
+                                </StackPanel>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding LineCountText}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Top"
+                                           Foreground="{DynamicResource BrushTextStrong}"/>
+                            </Grid>
                         </Grid>
                     </Border>
                 </Grid>
