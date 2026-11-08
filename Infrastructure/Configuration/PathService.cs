@@ -229,6 +229,17 @@ public string GetConfigPath()
                         return CacheVersion(gamePath, firstLine);
                 }
 
+                // If the game folder is an .app bundle (macOS), probe Contents/Version.txt
+                // and Contents/Resources/Version.txt before falling back to binary metadata.
+                // This runs on all platforms since .app is just a directory name on Windows,
+                // enabling consistent behavior and testability.
+                if (Path.GetFileName(gamePath).EndsWith(".app", StringComparison.OrdinalIgnoreCase))
+                {
+                    var macVersion = ProbeMacOSAppBundleVersion(gamePath);
+                    if (macVersion != null)
+                        return CacheVersion(gamePath, macVersion);
+                }
+
                 // Fallback: version metadata embedded in the game binaries, for builds
                 // that ship without Version.txt.
                 var fallbackVersion = GetVersionFromFileMetadata(gamePath);
@@ -240,6 +251,47 @@ public string GetConfigPath()
             catch (Exception ex)
             {
                 return CacheVersion(gamePath, $"N/A - Error reading version: {ex.Message.Truncate(50)}");
+            }
+        }
+
+        /// <summary>
+        /// Probes for Version.txt in a macOS .app bundle.
+        /// Checks Contents/Version.txt first, then Contents/Resources/Version.txt.
+        /// Returns null if neither exists or content is not a valid version string.
+        /// </summary>
+        internal string? ProbeMacOSAppBundleVersion(string appBundlePath)
+        {
+            try
+            {
+                var contentsPath = Path.Combine(appBundlePath, "Contents");
+                if (!Directory.Exists(contentsPath))
+                    return null;
+
+                // Check Contents/Version.txt
+                var versionFile = Path.Combine(contentsPath, "Version.txt");
+                if (File.Exists(versionFile))
+                {
+                    using var reader = new StreamReader(versionFile);
+                    var firstLine = reader.ReadLine()?.Trim() ?? string.Empty;
+                    if (!string.IsNullOrWhiteSpace(firstLine) && char.IsDigit(firstLine[0]) && firstLine.Contains('.'))
+                        return firstLine;
+                }
+
+                // Check Contents/Resources/Version.txt
+                var resourcesVersionFile = Path.Combine(contentsPath, "Resources", "Version.txt");
+                if (File.Exists(resourcesVersionFile))
+                {
+                    using var reader = new StreamReader(resourcesVersionFile);
+                    var firstLine = reader.ReadLine()?.Trim() ?? string.Empty;
+                    if (!string.IsNullOrWhiteSpace(firstLine) && char.IsDigit(firstLine[0]) && firstLine.Contains('.'))
+                        return firstLine;
+                }
+
+                return null;
+            }
+            catch
+            {
+                return null;
             }
         }
 

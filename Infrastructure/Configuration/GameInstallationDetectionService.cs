@@ -220,7 +220,32 @@ namespace RimSharp.Infrastructure.Configuration
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
-                // macOS: only the default config folder
+                // macOS: enumerate children of ~/Library/Application Support whose name contains "rimworld"
+                var appSupportRoot = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
+                // On macOS, ApplicationData maps to ~/Library/Application Support
+
+                if (Directory.Exists(appSupportRoot))
+                {
+                    try
+                    {
+                        foreach (var childDir in Directory.GetDirectories(appSupportRoot))
+                        {
+                            var childName = Path.GetFileName(childDir);
+                            if (childName.IndexOf("rimworld", StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                var configPath = Path.Combine(childDir, "Config");
+                                if (Directory.Exists(configPath))
+                                {
+                                    results.Add(configPath);
+                                }
+                            }
+                        }
+                    }
+                    catch { }
+                }
+
+                // Also include the explicit default candidate
                 results.Add(GetDefaultConfigFolder());
             }
 
@@ -572,6 +597,16 @@ namespace RimSharp.Infrastructure.Configuration
                 }
             }
 
+            // macOS: Scan /Applications and ~/Applications for RimWorld*.app bundles
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                var appScanResult = ScanMacOSApplicationsForRimWorld();
+                if (!string.IsNullOrEmpty(appScanResult))
+                {
+                    return appScanResult;
+                }
+            }
+
             // 4. Technique 2: Filtered drive-scan fallback (Windows only, last resort)
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -583,6 +618,82 @@ namespace RimSharp.Infrastructure.Configuration
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Scans /Applications and ~/Applications for RimWorld*.app bundles on macOS.
+        /// Validates each with IsRimWorldMacAppBundle. First valid hit wins.
+        /// Exception-safe per candidate. Uses injected roots for testability.
+        /// </summary>
+        internal string? ScanMacOSApplicationsForRimWorld(
+            IEnumerable<string>? appRoots = null,
+            Func<string, IEnumerable<string>>? directoryLister = null)
+        {
+            var roots = appRoots ?? GetMacOSApplicationRoots();
+            var lister = directoryLister ?? ListDirectoriesSafe;
+
+            foreach (var root in roots)
+            {
+                if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root))
+                    continue;
+
+                IEnumerable<string> subDirs;
+                try
+                {
+                    subDirs = lister(root);
+                }
+                catch
+                {
+                    continue;
+                }
+
+                var rimWorldApps = subDirs
+                    .Where(d =>
+                    {
+                        try
+                        {
+                            var name = Path.GetFileName(d);
+                            return name.EndsWith(".app", StringComparison.OrdinalIgnoreCase) &&
+                                   name.StartsWith("RimWorld", StringComparison.OrdinalIgnoreCase);
+                        }
+                        catch
+                        {
+                            return false;
+                        }
+                    })
+                    .OrderBy(d =>
+                    {
+                        var name = Path.GetFileName(d);
+                        if (string.Equals(name, "RimWorld.app", StringComparison.OrdinalIgnoreCase)) return 0;
+                        if (string.Equals(name, "RimWorldMac.app", StringComparison.OrdinalIgnoreCase)) return 1;
+                        return 2;
+                    })
+                    .ThenBy(d => Path.GetFileName(d), StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                foreach (var app in rimWorldApps)
+                {
+                    if (IsRimWorldMacAppBundle(app))
+                    {
+                        return app;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Returns the macOS application roots to scan. Virtual for test injection.
+        /// </summary>
+        protected virtual IEnumerable<string> GetMacOSApplicationRoots()
+        {
+            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            return new[]
+            {
+                "/Applications",
+                Path.Combine(userProfile, "Applications")
+            };
         }
 
         /// <summary>
@@ -813,6 +924,7 @@ namespace RimSharp.Infrastructure.Configuration
         /// both current layouts: RimWorld.exe (1.7 Waylith, self-contained .NET runtime)
         /// and RimWorldWin64.exe (Unity-era 1.5). Exe names are the most mutable signal,
         /// so the list may need a new entry if a future version renames the binary again.
+        /// On macOS, .app bundles are validated via IsRimWorldMacAppBundle.
         /// </summary>
         public bool IsRimWorldInstallation(string? path)
         {
@@ -821,6 +933,13 @@ namespace RimSharp.Infrastructure.Configuration
 
             try
             {
+                // On macOS, if the path is an .app bundle, use the specialized validator
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) &&
+                    Path.GetFileName(path).EndsWith(".app", StringComparison.OrdinalIgnoreCase))
+                {
+                    return IsRimWorldMacAppBundle(path);
+                }
+
                 // 1. Executables — the primary marker
                 string[] executables = new[]
                 {
@@ -923,8 +1042,7 @@ namespace RimSharp.Infrastructure.Configuration
 
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                 {
-                    var macPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Application Support", "Steam");
-                    if (Directory.Exists(macPath)) return macPath;
+                    return FindMacOSSteamRoot();
                 }
 
                 return null;
@@ -935,12 +1053,41 @@ namespace RimSharp.Infrastructure.Configuration
             }
         }
 
+        /// <summary>
+        /// Finds the Steam root on macOS. Returns the path only if it exists AND looks like Steam
+        /// (contains a "steamapps" directory OR config/libraryfolders.vdf OR a "steam.sh" binary).
+        /// </summary>
+        internal string? FindMacOSSteamRoot()
+        {
+            var macPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Application Support", "Steam");
+            if (!Directory.Exists(macPath))
+                return null;
+
+            // Validate it looks like a Steam installation
+            var steamApps = Path.Combine(macPath, "steamapps");
+            var libraryFoldersVdf = Path.Combine(macPath, "config", "libraryfolders.vdf");
+            var steamSh = Path.Combine(macPath, "steam.sh");
+
+            if (Directory.Exists(steamApps) || File.Exists(libraryFoldersVdf) || File.Exists(steamSh))
+            {
+                return macPath;
+            }
+
+            return null;
+        }
+
         private string? FindRimWorldInSteamLibrary(string steamRoot)
         {
             try
             {
                 var mainSteamApps = Path.Combine(steamRoot, "steamapps");
                 if (!Directory.Exists(mainSteamApps)) return null;
+
+                // On macOS, the game is an .app bundle inside the common folder
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                {
+                    return FindRimWorldMacAppInSteamLibrary(mainSteamApps);
+                }
 
                 var defaultGame = Path.Combine(mainSteamApps, "common", "RimWorld");
                 if (IsRimWorldInstallation(defaultGame)) return defaultGame;
@@ -980,6 +1127,134 @@ namespace RimSharp.Infrastructure.Configuration
             catch
             {
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// Finds RimWorld .app bundle in Steam libraries on macOS.
+        /// Enumerates libraries via libraryfolders.vdf and also considers the main steamapps.
+        /// For each library, looks for .app bundles in steamapps/common/RimWorld.
+        /// </summary>
+        internal string? FindRimWorldMacAppInSteamLibrary(string mainSteamApps)
+        {
+            var libraryPaths = new List<string>();
+
+            // Always consider the main steamapps as a library
+            libraryPaths.Add(Path.GetDirectoryName(mainSteamApps) ?? string.Empty);
+
+            // Parse additional libraries from libraryfolders.vdf
+            var libraryFoldersVdf = Path.Combine(Path.GetDirectoryName(mainSteamApps) ?? string.Empty, "config", "libraryfolders.vdf");
+            if (File.Exists(libraryFoldersVdf))
+            {
+                var parsed = ParseLibraryFolders(libraryFoldersVdf);
+                libraryPaths.AddRange(parsed);
+            }
+
+            foreach (var libPath in libraryPaths)
+            {
+                if (string.IsNullOrEmpty(libPath) || !Directory.Exists(libPath))
+                    continue;
+
+                var commonPath = Path.Combine(libPath, "steamapps", "common", "RimWorld");
+                if (!Directory.Exists(commonPath))
+                    continue;
+
+                // Look for .app bundles inside the common/RimWorld directory
+                var appBundle = FindRimWorldAppBundle(commonPath);
+                if (!string.IsNullOrEmpty(appBundle))
+                {
+                    return appBundle;
+                }
+
+                // Fallback: check for RimWorldMac.app directly
+                var fallbackApp = Path.Combine(commonPath, "RimWorldMac.app");
+                if (Directory.Exists(fallbackApp) && IsRimWorldMacAppBundle(fallbackApp))
+                {
+                    return fallbackApp;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Finds a RimWorld .app bundle in the given directory.
+        /// Enumerates immediate children ending with ".app" (case-insensitive).
+        /// Prefers "RimWorld.app", then "RimWorldMac.app", then alphabetical.
+        /// </summary>
+        internal string? FindRimWorldAppBundle(string searchDir)
+        {
+            try
+            {
+                var appDirs = Directory.GetDirectories(searchDir, "*.app", SearchOption.TopDirectoryOnly)
+                    .Where(d => IsRimWorldMacAppBundle(d))
+                    .ToList();
+
+                if (appDirs.Count == 0)
+                    return null;
+
+                // Prefer RimWorld.app, then RimWorldMac.app, then alphabetical
+                var preferred = appDirs.FirstOrDefault(d => string.Equals(Path.GetFileName(d), "RimWorld.app", StringComparison.OrdinalIgnoreCase));
+                if (preferred != null) return preferred;
+
+                preferred = appDirs.FirstOrDefault(d => string.Equals(Path.GetFileName(d), "RimWorldMac.app", StringComparison.OrdinalIgnoreCase));
+                if (preferred != null) return preferred;
+
+                return appDirs.OrderBy(d => Path.GetFileName(d), StringComparer.OrdinalIgnoreCase).First();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Validates that a path is a RimWorld .app bundle on macOS.
+        /// Returns true when: directory name ends with ".app", contains a non-symlink "Contents" directory,
+        /// AND (a) "Contents/Version.txt" exists, OR (b) "Contents/Data" exists, OR (c) bundle-root "Data" exists,
+        /// OR (d) "Contents/Resources/Data" exists. Each probe is exception-safe.
+        /// </summary>
+        internal bool IsRimWorldMacAppBundle(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+                return false;
+
+            try
+            {
+                var dirName = Path.GetFileName(path);
+                if (!dirName.EndsWith(".app", StringComparison.OrdinalIgnoreCase))
+                    return false;
+
+                var contentsPath = Path.Combine(path, "Contents");
+                if (!Directory.Exists(contentsPath))
+                    return false;
+
+                // Check if Contents is a symlink (should be a real directory)
+                var contentsInfo = new DirectoryInfo(contentsPath);
+                if ((contentsInfo.Attributes & FileAttributes.ReparsePoint) != 0)
+                    return false;
+
+                // Check for Version.txt in Contents
+                if (File.Exists(Path.Combine(contentsPath, "Version.txt")))
+                    return true;
+
+                // Check for Contents/Data
+                if (Directory.Exists(Path.Combine(contentsPath, "Data")))
+                    return true;
+
+                // Check for Data at bundle root
+                if (Directory.Exists(Path.Combine(path, "Data")))
+                    return true;
+
+                // Check for Contents/Resources/Data
+                if (Directory.Exists(Path.Combine(contentsPath, "Resources", "Data")))
+                    return true;
+
+                return false;
+            }
+            catch
+            {
+                return false;
             }
         }
 
