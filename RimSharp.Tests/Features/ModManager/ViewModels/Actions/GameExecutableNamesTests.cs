@@ -18,7 +18,7 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
         public void GetLaunchCandidates_ForLinux_ShouldReturnLinuxCandidates()
         {
             GameExecutableNames.GetLaunchCandidates(OSPlatform.Linux)
-                .Should().Equal("RimWorld", "RimWorldLinux", "start_RimWorld.sh");
+                .Should().Equal("RimWorld", "RimWorldLinux64", "RimWorldLinux", "start_RimWorld.sh");
         }
 
         [Fact]
@@ -39,7 +39,7 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
         public void GetProcessNames_ForLinux_ShouldAddLinuxProcessName()
         {
             GameExecutableNames.GetProcessNames(OSPlatform.Linux)
-                .Should().Equal("RimWorldWin64", "RimWorld", "RimWorldLinux");
+                .Should().Equal("RimWorldWin64", "RimWorld", "RimWorldLinux64", "RimWorldLinux");
         }
 
         [Fact]

@@ -32,6 +32,12 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
             // the default stub refuses, per-test overrides set up a valid claim.
             _mockSteamClaimValidator.ValidateAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
                 .Returns(_ => Task.FromResult(SteamClaimValidationResult.Fail("stub rejection")));
+
+            // Default GetModsPathFor behavior: derive <game>\Mods for any game path (non-bundle paths in tests)
+            _mockPathService.GetModsPathFor(Arg.Any<string>())
+                .Returns(callInfo => string.IsNullOrWhiteSpace(callInfo.Arg<string>())
+                    ? string.Empty
+                    : Path.Combine(callInfo.Arg<string>(), "Mods"));
         }
 
         [Fact]

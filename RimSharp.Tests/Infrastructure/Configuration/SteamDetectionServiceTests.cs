@@ -166,4 +166,95 @@ namespace RimSharp.Tests.Infrastructure.Configuration
             act.Should().Throw<ArgumentNullException>();
         }
     }
+
+    public class SteamDetectionServiceMacOSBundleTests : IDisposable
+    {
+        private readonly string _testTempDir;
+
+        public SteamDetectionServiceMacOSBundleTests()
+        {
+            _testTempDir = Path.Combine(Path.GetTempPath(), "RimSharpTests_SteamBundle_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(_testTempDir);
+        }
+
+        public void Dispose()
+        {
+            if (Directory.Exists(_testTempDir))
+            {
+                Directory.Delete(_testTempDir, true);
+            }
+        }
+
+        [Fact]
+        public void GetModsPathForFallback_BundleWithContentsMods_ShouldUseContentsMods()
+        {
+            // Arrange: synthetic .app bundle with Contents/Mods
+            var bundlePath = Path.Combine(_testTempDir, "RimWorld.app");
+            var contentsMods = Path.Combine(bundlePath, "Contents", "Mods");
+            var rootMods = Path.Combine(bundlePath, "Mods");
+            Directory.CreateDirectory(contentsMods);
+            Directory.CreateDirectory(rootMods);
+
+            // Act
+            var result = SteamDetectionService.GetModsPathForFallback(bundlePath);
+
+            // Assert: should prefer Contents/Mods
+            result.Should().Be(contentsMods);
+        }
+
+        [Fact]
+        public void GetModsPathForFallback_BundleWithOnlyRootMods_ShouldUseRootMods()
+        {
+            // Arrange: synthetic .app bundle with only bundle-root Mods
+            var bundlePath = Path.Combine(_testTempDir, "RimWorld.app");
+            var rootMods = Path.Combine(bundlePath, "Mods");
+            Directory.CreateDirectory(rootMods);
+            // Contents/Mods does NOT exist
+
+            // Act
+            var result = SteamDetectionService.GetModsPathForFallback(bundlePath);
+
+            // Assert: should fall back to bundle-root Mods
+            result.Should().Be(rootMods);
+        }
+
+        [Fact]
+        public void GetModsPathForFallback_NonBundlePath_ShouldUseLegacyCombine()
+        {
+            // Arrange: regular (non-.app) game path
+            var gamePath = Path.Combine(_testTempDir, "RimWorld");
+            Directory.CreateDirectory(gamePath);
+
+            // Act
+            var result = SteamDetectionService.GetModsPathForFallback(gamePath);
+
+            // Assert: should be Path.Combine(gamePath, "Mods") (legacy)
+            result.Should().Be(Path.Combine(gamePath, "Mods"));
+        }
+
+        [Fact]
+        public void GetModsPathForFallback_BundleCaseInsensitive_ShouldWork()
+        {
+            // Arrange: .APP extension should be treated as bundle
+            var bundlePath = Path.Combine(_testTempDir, "RimWorld.APP");
+            var contentsMods = Path.Combine(bundlePath, "Contents", "Mods");
+            Directory.CreateDirectory(contentsMods);
+
+            // Act
+            var result = SteamDetectionService.GetModsPathForFallback(bundlePath);
+
+            // Assert
+            result.Should().Be(contentsMods);
+        }
+
+        [Fact]
+        public void GetModsPathForFallback_EmptyPath_ShouldReturnEmpty()
+        {
+            // Act
+            var result = SteamDetectionService.GetModsPathForFallback(string.Empty);
+
+            // Assert
+            result.Should().BeEmpty();
+        }
+    }
 }
