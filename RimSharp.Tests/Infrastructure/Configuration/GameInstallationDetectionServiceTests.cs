@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using FluentAssertions;
 using RimSharp.Infrastructure.Configuration;
 using Xunit;
@@ -279,6 +282,381 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         public void TryFindRimWorldViaManifest_WhenNull_ShouldReturnNull()
         {
             _service.TryFindRimWorldViaManifest(null).Should().BeNull();
+        }
+    }
+
+    /// <summary>
+    /// Tests for the scored config folder selection algorithm.
+    /// Uses a testable subclass to inject custom candidate enumeration via temp directories.
+    /// </summary>
+    public class ConfigFolderScoringTests : IDisposable
+    {
+        private readonly string _tempRoot;
+        private readonly TestableDetectionService _service;
+
+        public ConfigFolderScoringTests()
+        {
+            _tempRoot = Path.Combine(Path.GetTempPath(), "RimSharpConfigTests_" + Guid.NewGuid().ToString("N"));
+            _service = new TestableDetectionService(_tempRoot);
+        }
+
+        public void Dispose()
+        {
+            if (Directory.Exists(_tempRoot))
+            {
+                Directory.Delete(_tempRoot, true);
+            }
+        }
+
+        /// <summary>
+        /// Testable subclass that allows injecting custom config folder candidates.
+        /// </summary>
+        private class TestableDetectionService : GameInstallationDetectionService
+        {
+            private readonly string _testRoot;
+            private readonly List<string> _injectedCandidates = new();
+
+            public TestableDetectionService(string testRoot)
+            {
+                _testRoot = testRoot;
+            }
+
+            public void AddCandidate(string configPath)
+            {
+                _injectedCandidates.Add(configPath);
+            }
+
+            // Override to return injected candidates instead of real filesystem enumeration
+            protected override IEnumerable<string> EnumerateConfigCandidates(string? steamRoot)
+            {
+                return _injectedCandidates.Where(c => Directory.Exists(c));
+            }
+        }
+
+        private static void CreateConfigFolder(string path, bool withModsConfig = true, DateTime? modsConfigTime = null, int saveCount = 0, string userFolderName = "user")
+        {
+            Directory.CreateDirectory(path);
+            if (withModsConfig)
+            {
+                var modsConfigPath = Path.Combine(path, "ModsConfig.xml");
+                File.WriteAllText(modsConfigPath, "<ModsConfig />");
+                if (modsConfigTime.HasValue)
+                {
+                    File.SetLastWriteTimeUtc(modsConfigPath, modsConfigTime.Value);
+                }
+            }
+
+            if (saveCount > 0)
+            {
+                var savesPath = Path.Combine(path, "Saves");
+                Directory.CreateDirectory(savesPath);
+                for (int i = 0; i < saveCount; i++)
+                {
+                    File.WriteAllText(Path.Combine(savesPath, $"save{i}.rws"), "save data");
+                }
+            }
+        }
+
+        [Fact]
+        public void ScoreCandidates_TwoCandidatesWithModsConfig_NewerMtimeWins()
+        {
+            // Arrange
+            var now = DateTime.UtcNow;
+            var candidate1 = Path.Combine(_tempRoot, "Config1");
+            var candidate2 = Path.Combine(_tempRoot, "Config2");
+
+            // Candidate 1: older ModsConfig.xml
+            CreateConfigFolder(candidate1, withModsConfig: true, modsConfigTime: now.AddDays(-5));
+            // Candidate 2: newer ModsConfig.xml
+            CreateConfigFolder(candidate2, withModsConfig: true, modsConfigTime: now.AddHours(-2));
+
+            _service.AddCandidate(candidate1);
+            _service.AddCandidate(candidate2);
+
+            // Act
+            var result = _service.ResolveBestConfigFolder(null);
+
+            // Assert
+            result.Should().Be(candidate2); // Newer mtime should win
+        }
+
+        [Fact]
+        public void ScoreCandidates_CandidateWithModsConfigBeatsEmptyCandidate()
+        {
+            // Arrange
+            var candidate1 = Path.Combine(_tempRoot, "WithModsConfig");
+            var candidate2 = Path.Combine(_tempRoot, "EmptyConfig");
+
+            // Candidate 1: has ModsConfig.xml (old)
+            CreateConfigFolder(candidate1, withModsConfig: true, modsConfigTime: DateTime.UtcNow.AddDays(-30));
+            // Candidate 2: empty directory, no ModsConfig.xml
+            CreateConfigFolder(candidate2, withModsConfig: false);
+
+            _service.AddCandidate(candidate1);
+            _service.AddCandidate(candidate2);
+
+            // Act
+            var result = _service.ResolveBestConfigFolder(null);
+
+            // Assert
+            result.Should().Be(candidate1); // +100 for ModsConfig.xml should beat 0
+        }
+
+        [Fact]
+        public void ScoreCandidates_SavesBonusBeatsEqualRecencyNoSaves()
+        {
+            // Arrange
+            var now = DateTime.UtcNow;
+            var candidate1 = Path.Combine(_tempRoot, "WithSaves");
+            var candidate2 = Path.Combine(_tempRoot, "NoSaves");
+
+            // Both have ModsConfig.xml with same recency
+            CreateConfigFolder(candidate1, withModsConfig: true, modsConfigTime: now.AddHours(-2), saveCount: 5);
+            CreateConfigFolder(candidate2, withModsConfig: true, modsConfigTime: now.AddHours(-2), saveCount: 0);
+
+            _service.AddCandidate(candidate1);
+            _service.AddCandidate(candidate2);
+
+            // Act
+            var result = _service.ResolveBestConfigFolder(null);
+
+            // Assert
+            result.Should().Be(candidate1); // Saves bonus (+20+5) should win
+        }
+
+        [Fact]
+        public void ScoreCandidates_SteamUserFolderBonus()
+        {
+            // Arrange
+            var now = DateTime.UtcNow;
+            // Create paths that simulate the steamuser folder structure
+            // .../users/steamuser/AppData/LocalLow/Ludeon Studios/RimWorld by Ludeon Studios/Config
+            var steamUserConfig = Path.Combine(_tempRoot, "users", "steamuser", "AppData", "LocalLow", "Ludeon Studios", "RimWorld by Ludeon Studios", "Config");
+            var regularUserConfig = Path.Combine(_tempRoot, "users", "regular", "AppData", "LocalLow", "Ludeon Studios", "RimWorld by Ludeon Studios", "Config");
+
+            CreateConfigFolder(steamUserConfig, withModsConfig: true, modsConfigTime: now.AddHours(-2));
+            CreateConfigFolder(regularUserConfig, withModsConfig: true, modsConfigTime: now.AddHours(-2));
+
+            _service.AddCandidate(steamUserConfig);
+            _service.AddCandidate(regularUserConfig);
+
+            // Act
+            var result = _service.ResolveBestConfigFolder(null);
+
+            // Assert
+            result.Should().Be(steamUserConfig); // steamuser bonus (+5) should win
+        }
+
+        [Fact]
+        public void ScoreCandidates_ScoreZeroFallbackToLegacyDefault()
+        {
+            // Arrange - no candidates with ModsConfig.xml or saves
+            var candidate1 = Path.Combine(_tempRoot, "Empty1");
+            var candidate2 = Path.Combine(_tempRoot, "Empty2");
+
+            CreateConfigFolder(candidate1, withModsConfig: false);
+            CreateConfigFolder(candidate2, withModsConfig: false);
+
+            _service.AddCandidate(candidate1);
+            _service.AddCandidate(candidate2);
+
+            // Act
+            var result = _service.ResolveBestConfigFolder(null);
+
+            // Assert - should fall back to legacy default (ResolveConfigFolderForSteamRoot)
+            var legacyDefault = GameInstallationDetectionService.ResolveConfigFolderForSteamRoot(null);
+            result.Should().Be(legacyDefault);
+        }
+
+        [Fact]
+        public void ScoreCandidates_ProtonEnumerationAllAppIds_RecentWinsRegardlessOfAppId()
+        {
+            // Arrange - simulate Proton compatdata with two appids
+            var now = DateTime.UtcNow;
+            var steamRoot = Path.Combine(_tempRoot, "SteamRoot");
+            
+            // AppId 123456 with newer ModsConfig.xml
+            var appId123456Config = Path.Combine(steamRoot, "steamapps", "compatdata", "123456", "pfx", "drive_c", "users", "steamuser", "AppData", "LocalLow", "Ludeon Studios", "RimWorld by Ludeon Studios", "Config");
+            // AppId 294100 with older ModsConfig.xml
+            var appId294100Config = Path.Combine(steamRoot, "steamapps", "compatdata", "294100", "pfx", "drive_c", "users", "steamuser", "AppData", "LocalLow", "Ludeon Studios", "RimWorld by Ludeon Studios", "Config");
+
+            CreateConfigFolder(appId123456Config, withModsConfig: true, modsConfigTime: now.AddHours(-1));
+            CreateConfigFolder(appId294100Config, withModsConfig: true, modsConfigTime: now.AddDays(-2));
+
+            // Use a testable service that overrides enumeration to only return our test candidates
+            var testService = new TestableDetectionService(_tempRoot);
+            testService.AddCandidate(appId123456Config);
+            testService.AddCandidate(appId294100Config);
+            
+            // Act
+            var result = testService.ResolveBestConfigFolder(steamRoot);
+
+            // Assert - the more recent one (appId 123456) should win, not the 294100 one
+            result.Should().Be(appId123456Config);
+        }
+    }
+
+    /// <summary>
+    /// Filtered drive-scan fallback (last-resort installation discovery) and the
+    /// steam-copy layout probe. Driven through the internal testable seams so no
+    /// real drives are touched.
+    /// </summary>
+    public class DetectionFallbackTechniqueTests : IDisposable
+    {
+        private readonly string _tempRoot;
+        private readonly GameInstallationDetectionService _service;
+
+        public DetectionFallbackTechniqueTests()
+        {
+            _tempRoot = Path.Combine(Path.GetTempPath(), "RimSharpDetectionTests_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(_tempRoot);
+            _service = new GameInstallationDetectionService();
+        }
+
+        public void Dispose()
+        {
+            if (Directory.Exists(_tempRoot))
+            {
+                Directory.Delete(_tempRoot, true);
+            }
+        }
+
+        /// <summary>
+        /// Creates a minimal structure IsRimWorldInstallation() accepts:
+        /// a RimWorld executable plus a parsable Version.txt.
+        /// </summary>
+        private static string CreateValidInstall(string dir)
+        {
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Path.Combine(dir, "RimWorldWin64.exe"), "exe");
+            File.WriteAllText(Path.Combine(dir, "Version.txt"), "1.6.4054 rev421");
+            return dir;
+        }
+
+        [Fact]
+        public void DriveScan_FindsInstallInsideGameLikelyDirectoryTree()
+        {
+            // Arrange: root/Games/RimWorld-style tree holding a valid install.
+            var installDir = CreateValidInstall(Path.Combine(_tempRoot, "Games", "RimWorldPort"));
+
+            // Act
+            var found = _service.ScanDrivesForRimWorldGameFolderInternal(new[] { _tempRoot });
+
+            // Assert
+            found.Should().Be(installDir);
+        }
+
+        [Fact]
+        public void DriveScan_DoesNotDescendOutsideGameLikelyDirectoryNames()
+        {
+            // Arrange: install exists but sits outside any descend-list directory.
+            CreateValidInstall(Path.Combine(_tempRoot, "Custom", "RimWorldPort"));
+
+            // Act
+            var found = _service.ScanDrivesForRimWorldGameFolderInternal(new[] { _tempRoot });
+
+            // Assert
+            found.Should().BeNull();
+        }
+
+        [Fact]
+        public void DriveScan_SkipsListedSystemDirectories()
+        {
+            // Arrange: a naive detector walking system dirs would find this;
+            // the skip-list must refuse it.
+            CreateValidInstall(Path.Combine(_tempRoot, "windows", "RimWorldPort"));
+
+            // Act
+            var found = _service.ScanDrivesForRimWorldGameFolderInternal(new[] { _tempRoot });
+
+            // Assert
+            found.Should().BeNull();
+        }
+
+        [Fact]
+        public void DriveScan_RespectsDepthCap()
+        {
+            // Arrange: three nested game-library levels still reach the install...
+            var withinCapRoot = Path.Combine(_tempRoot, "within");
+            Directory.CreateDirectory(withinCapRoot);
+            var shallow = CreateValidInstall(Path.Combine(
+                withinCapRoot, "Games", "Games", "Games", "RimWorldPort"));
+
+            // ...but four do not (max depth 3).
+            var overCapRoot = Path.Combine(_tempRoot, "over");
+            Directory.CreateDirectory(overCapRoot);
+            var tooDeep = Path.Combine(
+                overCapRoot, "Games", "Games", "Games", "Games", "RimWorldPort");
+            CreateValidInstall(tooDeep);
+
+            // Act
+            var foundInScope = _service.ScanDrivesForRimWorldGameFolderInternal(new[] { withinCapRoot });
+            var foundOutOfScope = _service.ScanDrivesForRimWorldGameFolderInternal(new[] { overCapRoot });
+
+            // Assert
+            foundInScope.Should().Be(shallow);
+            foundOutOfScope.Should().BeNull();
+        }
+
+        [Fact]
+        public void DriveScan_IgnoresRimWorldNamedDirWithoutInstallMarkers()
+        {
+            // Arrange: name matches but the probe must reject empty directories.
+            Directory.CreateDirectory(Path.Combine(_tempRoot, "Games", "RimWorldEmpty"));
+
+            // Act
+            var found = _service.ScanDrivesForRimWorldGameFolderInternal(new[] { _tempRoot });
+
+            // Assert
+            found.Should().BeNull();
+        }
+
+        [Fact]
+        public void AppearsToBeSteamCopy_DetectsSteamApiDll()
+        {
+            // Arrange
+            var dir = Path.Combine(_tempRoot, "SomeGameCopy");
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Path.Combine(dir, "steam_api64.dll"), "dll");
+
+            // Act
+            var result = GameInstallationDetectionService.AppearsToBeSteamCopy(dir);
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void AppearsToBeSteamCopy_DetectsSteamappsAncestor()
+        {
+            // Arrange
+            var dir = Path.Combine(_tempRoot, "steamapps", "common", "RimWorld");
+            Directory.CreateDirectory(dir);
+
+            // Act
+            var result = GameInstallationDetectionService.AppearsToBeSteamCopy(dir);
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void AppearsToBeSteamCopy_RejectsPlainFolderAndNull()
+        {
+            // Arrange
+            var dir = Path.Combine(_tempRoot, "PlainFolder");
+            Directory.CreateDirectory(dir);
+
+            // Act
+            var plainResult = GameInstallationDetectionService.AppearsToBeSteamCopy(dir);
+            var nullResult = GameInstallationDetectionService.AppearsToBeSteamCopy(null);
+            var missingResult = GameInstallationDetectionService.AppearsToBeSteamCopy(
+                Path.Combine(_tempRoot, "does", "not", "exist"));
+
+            // Assert
+            plainResult.Should().BeFalse();
+            nullResult.Should().BeFalse();
+            missingResult.Should().BeFalse();
         }
     }
 }
