@@ -101,7 +101,8 @@ namespace RimSharp.Features.LogViewer.ViewModels
             IReadOnlyList<LogDiagnosticLine> lines,
             string? majorGameVersion,
             string? scopeNote = null,
-            LogStats? stats = null)
+            LogStats? stats = null,
+            HugsLogEnvelope? envelope = null)
         {
             var format = LogFormatResolver.Resolve(
                 lines.Select(l => l.Text).ToList(),
@@ -109,7 +110,7 @@ namespace RimSharp.Features.LogViewer.ViewModels
             var summary = LogSummaryAnalyzer.Analyze(lines, format);
 
             FillIssues(summary.Issues);
-            FillSummary(summary, format, scopeNote ?? "Whole log analyzed.", stats);
+            FillSummary(summary, format, scopeNote ?? "Whole log analyzed.", stats, envelope);
 
             HasContent = lines.Count > 0;
             SelectedIssue = Issues.FirstOrDefault();
@@ -127,7 +128,12 @@ namespace RimSharp.Features.LogViewer.ViewModels
             OnPropertyChanged(nameof(IssueSummaryText));
         }
 
-        private void FillSummary(LogSummaryReport summary, LogFileFormat format, string scopeNote, LogStats? stats)
+        private void FillSummary(
+            LogSummaryReport summary,
+            LogFileFormat format,
+            string scopeNote,
+            LogStats? stats,
+            HugsLogEnvelope? envelope)
         {
             SummaryFormat = LogFormatResolver.Label(format);
             SummaryVersion = summary.GameVersion.Length > 0 && summary.GameRevision.Length > 0
@@ -143,7 +149,7 @@ namespace RimSharp.Features.LogViewer.ViewModels
             SummaryRows.Add($"Session started: {(summary.SessionStart.HasValue ? summary.SessionStart.Value.ToString("G", CultureInfo.CurrentCulture) : "not reported")}");
             SummaryRows.Add($"Last entry: {(summary.LastEntryTime.HasValue ? summary.LastEntryTime.Value.ToString("G", CultureInfo.CurrentCulture) : "not reported")}");
             SummaryRows.Add($"Lines scanned: {f(summary.TotalLines)}");
-            SummaryRows.Add($"Mods listed: {f(summary.ModsListed)}");
+            SummaryRows.Add($"Mods listed: {f(envelope?.Mods.Count > 0 ? envelope.Mods.Count : summary.ModsListed)}");
 
             if (stats != null)
             {
@@ -165,8 +171,60 @@ namespace RimSharp.Features.LogViewer.ViewModels
                 SummaryRows.Add($"{memory.Name}: {memory.DisplaySize} ({memory.Source})");
             }
 
+            AddEnvelopeRows(f, envelope);
+
             SummaryRows.Add($"Issue signatures: {f(summary.Issues.Count)}");
             SummaryRows.Add(scopeNote);
+        }
+
+        /// <summary>
+        /// The shared-export block: what the publisher attached in front of the
+        /// log and what it admits doing to it. The Harmony version map is the
+        /// load-bearing part — every Harmony build in that list was loaded into
+        /// the session by the mods carrying it, and old copies beside the
+        /// current one are a known source of "works for some, breaks for others".
+        /// </summary>
+        private void AddEnvelopeRows(Func<int, string> f, HugsLogEnvelope? envelope)
+        {
+            if (envelope == null) return;
+
+            SummaryRows.Add($"Shared export: uploaded {(envelope.UploadedOn.HasValue ? envelope.UploadedOn.Value.ToString("G", CultureInfo.CurrentCulture) : envelope.UploadedOnText ?? "time not reported")}");
+            SummaryRows.Add($"Mod list source: the sharer's publisher roster ({f(envelope.Mods.Count)} mods, with versions and assemblies)");
+
+            if (envelope.HarmonyVersions.Count > 0)
+            {
+                SummaryRows.Add($"Harmony builds: {string.Join(", ", envelope.HarmonyVersions.Select(v => $"{v.Version} ({f(v.Owners.Count)} mods)"))}");
+            }
+
+            if (envelope.PatchMethods.Count > 0)
+            {
+                SummaryRows.Add($"Patched methods: {f(envelope.PatchMethods.Count)} (from the sharer's patch inventory)");
+            }
+
+            if (envelope.HarmonyVersions.Count > 1)
+            {
+                SummaryRows.Add($"Note: {envelope.HarmonyVersions.Count} different Harmony builds are loaded at once — mods carrying old copies can miss fixes or re-break patched methods");
+            }
+
+            if (!string.IsNullOrEmpty(envelope.PlatformInfo))
+            {
+                SummaryRows.Add($"Publisher platform info: {envelope.PlatformInfo}");
+            }
+
+            if (envelope.UploadedPreviousLaunch)
+            {
+                SummaryRows.Add("The uploaded log is from the previous game launch (Player-prev.log), not the session the sharer was in.");
+            }
+
+            if (envelope.BodyTrimmed)
+            {
+                SummaryRows.Add("The publisher trimmed this log at its 10,000-line cap — the end of that session is missing from this file.");
+            }
+
+            if (envelope.PathsScrubbed)
+            {
+                SummaryRows.Add("The publisher scrubbed local paths ([Rimworld_dir]/[Home_dir]) — file paths in this log are redacted.");
+            }
         }
 
         private void ApplyIssueDetail()

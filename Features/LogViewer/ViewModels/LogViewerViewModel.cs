@@ -29,6 +29,7 @@ namespace RimSharp.Features.LogViewer.ViewModels
         private readonly List<LogEntryViewModel> _allEntries = new();
 
         private string? _currentPath;
+        private HugsLogEnvelope? _envelope;
         private bool _isLoading;
         private bool _collapseRepeats = true;
         private bool _syncingSource;
@@ -257,8 +258,8 @@ namespace RimSharp.Features.LogViewer.ViewModels
             }
 
             var (success, path) = await _fileDialogService.ShowOpenFileDialogAsync(
-                "Open a RimWorld log file",
-                "Log files|*.log|All files|*.*");
+                "Open a RimWorld log file or shared export",
+                "Log files and shared exports|*.log;*.txt|All files|*.*");
             if (!success || string.IsNullOrWhiteSpace(path))
             {
                 StatusMessage = "Open cancelled.";
@@ -316,7 +317,9 @@ namespace RimSharp.Features.LogViewer.ViewModels
             {
                 Lines.Clear();
                 _store.Clear();
+                _envelope = null;
                 RebuildAllLines();
+                ApplyDisplay();
 
                 var result = await _reader.ReadAsync(path);
                 PathText = path;
@@ -334,16 +337,23 @@ namespace RimSharp.Features.LogViewer.ViewModels
                     return;
                 }
 
+                // A shared HugsLib-style export wraps the log in a metadata
+                // envelope: strip it and feed the store the log body alone, so
+                // the display, filters and reports all see log content, and
+                // line numbers stay the sharer's own.
+                _envelope = HugsLogEnvelopeParser.TryParse(result.Text);
                 _currentPath = path;
-                _store.AppendText(result.Text);
+                _store.AppendText(_envelope?.BodyText ?? result.Text);
                 RebuildAllLines();
                 ApplyDisplay();
 
                 SizeText = FormatSize(result.FileSize);
                 ModifiedText = FormatModified(path);
-                SyncSources(path);
+                SyncSources(path, _envelope != null ? "shared export" : null);
                 await RebuildDiagnosticsAsync(path);
-                StatusMessage = "Loaded.";
+                StatusMessage = _envelope != null
+                    ? "Loaded shared log export — the publisher's metadata is summarized on the Summary tab."
+                    : "Loaded.";
             }
             finally
             {
@@ -376,20 +386,26 @@ namespace RimSharp.Features.LogViewer.ViewModels
                 head = new LogHeadResult { Found = false };
             }
 
-            var window = LogDiagnosticsWindow.Build(head.Text, _store.FirstRetainedLineNumber, _store.Lines);
+            var window = LogDiagnosticsWindow.Build(
+                HugsLogEnvelopeParser.Strip(head.Text),
+                _store.FirstRetainedLineNumber,
+                _store.Lines);
             Diagnostics.Rebuild(
                 window,
                 _pathService?.GetMajorGameVersion(),
                 LogDiagnosticsWindow.DescribeScope(head.CoversWholeFile, _store.LinesEvicted),
-                Stats);
+                Stats,
+                _envelope);
         }
 
         /// <summary>
         /// Rebuilds the source list from the files that exist right now. With a
         /// loaded path, that path stays selectable even when it is not one of the
         /// located files (a hand-opened log), and the combo follows the load.
+        /// <paramref name="openedFileLabel"/> renames the hand-opened entry when
+        /// the loaded file is a shared export rather than a plain log.
         /// </summary>
-        private void RebuildSourceOptions(string? loadedPath = null)
+        private void RebuildSourceOptions(string? loadedPath = null, string? openedFileLabel = null)
         {
             var resolved = PlayerLogLocator.Resolve(
                 _pathService?.GetConfigPath(),
@@ -409,7 +425,7 @@ namespace RimSharp.Features.LogViewer.ViewModels
             if (loadedPath != null && !options.Any(o => o.Path == loadedPath))
             {
                 options.Insert(0, new LogSourceOption(
-                    Path.GetFileName(loadedPath) + " (opened file)", loadedPath));
+                    Path.GetFileName(loadedPath) + $" ({openedFileLabel ?? "opened file"})", loadedPath));
             }
 
             SourceOptions.Clear();
@@ -444,7 +460,8 @@ namespace RimSharp.Features.LogViewer.ViewModels
             }
         }
 
-        private void SyncSources(string loadedPath) => RebuildSourceOptions(loadedPath);
+        private void SyncSources(string loadedPath, string? openedFileLabel = null) =>
+            RebuildSourceOptions(loadedPath, openedFileLabel);
 
         /// <summary>
         /// Groups stored lines into whole messages once and classifies each, so

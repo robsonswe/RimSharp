@@ -8,6 +8,7 @@ using RimSharp.Features.LogViewer.Services;
 using RimSharp.Features.LogViewer.ViewModels;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Tests.Base;
+using RimSharp.Tests.Features.LogViewer.Services;
 using Xunit;
 
 namespace RimSharp.Tests.Features.LogViewer.ViewModels
@@ -389,6 +390,20 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         }
 
         [AvaloniaFact]
+        public async Task LoadFromFileAsync_OffersTxtSoSharedExportsOpenByDefault()
+        {
+            // Shared log uploads arrive as .txt (paste.gg and "Save as" both
+            // default to it), so the picker's default filter must show them.
+            var files = new FakeFileDialogService { OpenResult = (false, null) };
+            var vm = new LogViewerViewModel(_pathService, fileDialogService: files);
+
+            await vm.LoadFromFileAsync();
+
+            files.LastOpenTitle.Should().Contain("shared export");
+            files.LastOpenFilter.Should().Be("Log files and shared exports|*.log;*.txt|All files|*.*");
+        }
+
+        [AvaloniaFact]
         public async Task SourceSwitcher_ListsPreviousSessionWhenPresent()
         {
             File.WriteAllText(Path.Combine(_root, "Player.log"), "current line\n");
@@ -694,6 +709,77 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
             vm.Diagnostics.IssueDetail.Should().Contain("What it means");
         }
 
+        // ── Shared log exports (HugsLib-family publishers) ──────────────────
+
+        [AvaloniaFact]
+        public async Task LoadAsync_SharedExport_LoadsOnlyTheLogBody()
+        {
+            var exportPath = Path.Combine(_root, "hugslib-share.txt");
+            File.WriteAllText(exportPath, HugsLogEnvelopeTests.SampleUpload);
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(exportPath);
+
+            // The envelope is stripped from the content: no publisher lines
+            // reach the display, filters or reports.
+            vm.Lines.Should().NotBeEmpty();
+            vm.Lines.Should().NotContain(l => l.Text.Contains("Log uploaded on"));
+            vm.Lines.Should().NotContain(l =>
+                l.Text.Contains("Loaded mods:") ||
+                l.Text.Contains("Active Harmony patches:") ||
+                l.Text.Contains("Harmony versions present:"));
+            vm.Lines.Should().Contain(l => l.Text.Contains("Root level exception"));
+            vm.Stats.Errors.Should().Be(1);
+
+            // The body's own line numbers survive, so "first at line N" in the
+            // troubleshooter points into the sharer's log, not the shared file.
+            vm.PathText.Should().Be(exportPath);
+            vm.StatusMessage.Should().Contain("shared log export");
+            vm.SourceOptions[0].Label.Should().Contain("shared export");
+        }
+
+        [AvaloniaFact]
+        public async Task LoadAsync_SharedExport_SummaryCarriesThePublisherMetadata()
+        {
+            var exportPath = Path.Combine(_root, "hugslib-share.txt");
+            File.WriteAllText(exportPath, HugsLogEnvelopeTests.SampleUpload);
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(exportPath);
+            var rows = vm.Diagnostics.SummaryRows;
+
+            // The roster wins over the body scan: the log itself lists no mods.
+            rows.Should().Contain("Mods listed: 5");
+            rows.Should().Contain(r => r.StartsWith("Shared export: uploaded"));
+            rows.Should().Contain(r => r.StartsWith("Mod list source:"));
+            rows.Should().Contain("Harmony builds: 3.0.0.0 (2 mods), 2.4.3.0 (2 mods), 2.3.6.0 (2 mods)");
+            rows.Should().Contain("Patched methods: 3 (from the sharer's patch inventory)");
+            rows.Should().Contain(r => r.Contains("different Harmony builds are loaded at once"));
+            rows.Should().Contain("Publisher platform info: (hidden, use publishing options to include)");
+
+            // Reports still analyze the extracted body.
+            vm.Diagnostics.HasContent.Should().BeTrue();
+            vm.Diagnostics.Issues.Should().Contain(i => i.Title == "Incomplete Mod Metadata");
+        }
+
+        [AvaloniaFact]
+        public async Task LoadAsync_PlainLog_GetsNoExportRows()
+        {
+            var logPath = Path.Combine(_root, "Player.log");
+            File.WriteAllText(logPath,
+                "=== Waylith log ===\n" +
+                "Started:   2026-11-07 18:31:56.481 +03:00\n" +
+                "2026-11-07 18:31:56.481  INFO [Verse] RimWorld 1.7.5000 rev1275\n");
+
+            var vm = CreateViewModel();
+            await vm.LoadAsync(logPath);
+
+            vm.Diagnostics.SummaryRows.Should().NotContain(r => r.StartsWith("Shared export:"));
+            vm.Diagnostics.SummaryRows.Should().NotContain(r => r.StartsWith("Harmony builds:"));
+            vm.StatusMessage.Should().Be("Loaded.");
+            vm.SourceOptions[0].Label.Should().Contain("Player.log");
+        }
+
         private sealed class FakeFileDialogService : IFileDialogService        {
             public (bool Success, string? FilePath) OpenResult { get; set; } = (true, null);
 
@@ -701,8 +787,16 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
 
             public string? LastSaveFileName { get; private set; }
 
-            public Task<(bool Success, string? FilePath)> ShowOpenFileDialogAsync(string title, string filter, string? initialDirectory = null) =>
-                Task.FromResult(OpenResult);
+            public string? LastOpenFilter { get; private set; }
+
+            public string? LastOpenTitle { get; private set; }
+
+            public Task<(bool Success, string? FilePath)> ShowOpenFileDialogAsync(string title, string filter, string? initialDirectory = null)
+            {
+                LastOpenFilter = filter;
+                LastOpenTitle = title;
+                return Task.FromResult(OpenResult);
+            }
 
             public Task<(bool Success, string? FilePath)> ShowSaveFileDialogAsync(
                 string title, string filter, string? initialDirectory = null, string? defaultExtension = null, string? defaultFileName = null)
