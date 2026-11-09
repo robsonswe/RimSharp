@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using RimSharp.Features.LogViewer.Services;
 using Xunit;
+using Xunit.v3;
 
 namespace RimSharp.Tests.Features.LogViewer.Services
 {
@@ -26,7 +27,7 @@ namespace RimSharp.Tests.Features.LogViewer.Services
         {
             File.WriteAllText(_path, "line one\nline two\nline three\n", new UTF8Encoding(false));
 
-            var result = await new PlayerLogReader().ReadAsync(_path);
+            var result = await new PlayerLogReader().ReadAsync(_path, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Found.Should().BeTrue();
             result.Text.Should().Be("line one\nline two\nline three\n");
@@ -40,7 +41,7 @@ namespace RimSharp.Tests.Features.LogViewer.Services
             const string content = "日本語のログ\n二行目\n";
             File.WriteAllText(_path, content, new UTF8Encoding(false));
 
-            var result = await new PlayerLogReader().ReadAsync(_path);
+            var result = await new PlayerLogReader().ReadAsync(_path, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Text.Should().Be(content);
             result.Text.Should().NotContain("\uFFFD");
@@ -50,7 +51,7 @@ namespace RimSharp.Tests.Features.LogViewer.Services
         [Fact]
         public async Task ReadAsync_MissingFileReturnsNotFound()
         {
-            var result = await new PlayerLogReader().ReadAsync(_path);
+            var result = await new PlayerLogReader().ReadAsync(_path, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Found.Should().BeFalse();
             result.Text.Should().BeEmpty();
@@ -69,10 +70,10 @@ namespace RimSharp.Tests.Features.LogViewer.Services
             }
 
             File.WriteAllText(_path, builder.ToString(), new UTF8Encoding(false));
-            var expected = await new PlayerLogReader().ReadAsync(_path);
+            var expected = await new PlayerLogReader().ReadAsync(_path, cancellationToken: TestContext.Current.CancellationToken);
 
             var store = new LogContentStore();
-            var result = await new PlayerLogReader().ReadIntoStoreAsync(_path, store);
+            var result = await new PlayerLogReader().ReadIntoStoreAsync(_path, store, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Found.Should().BeTrue();
             result.FileSize.Should().Be(new FileInfo(_path).Length);
@@ -93,7 +94,7 @@ namespace RimSharp.Tests.Features.LogViewer.Services
             File.WriteAllText(_path, content, new UTF8Encoding(false));
 
             var store = new LogContentStore();
-            var result = await new PlayerLogReader().ReadIntoStoreAsync(_path, store);
+            var result = await new PlayerLogReader().ReadIntoStoreAsync(_path, store, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Found.Should().BeTrue();
             store.Lines.Should().HaveCount(2);
@@ -108,7 +109,7 @@ namespace RimSharp.Tests.Features.LogViewer.Services
             File.WriteAllText(_path, "first\nsecond without terminator", new UTF8Encoding(false));
 
             var store = new LogContentStore();
-            await new PlayerLogReader().ReadIntoStoreAsync(_path, store);
+            await new PlayerLogReader().ReadIntoStoreAsync(_path, store, cancellationToken: TestContext.Current.CancellationToken);
 
             store.Lines.Should().Equal("first", "second without terminator");
         }
@@ -128,7 +129,7 @@ namespace RimSharp.Tests.Features.LogViewer.Services
             File.WriteAllText(_path, builder.ToString(), new UTF8Encoding(false));
 
             var store = new LogContentStore(maxTotalBytes: 4096);
-            var result = await new PlayerLogReader().ReadIntoStoreAsync(_path, store);
+            var result = await new PlayerLogReader().ReadIntoStoreAsync(_path, store, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Found.Should().BeTrue();
             store.LinesEvicted.Should().BeGreaterThan(0);
@@ -142,7 +143,7 @@ namespace RimSharp.Tests.Features.LogViewer.Services
         public async Task ReadIntoStoreAsync_MissingFileReturnsNotFound()
         {
             var store = new LogContentStore();
-            var result = await new PlayerLogReader().ReadIntoStoreAsync(_path, store);
+            var result = await new PlayerLogReader().ReadIntoStoreAsync(_path, store, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Found.Should().BeFalse();
             store.Lines.Should().BeEmpty();
@@ -154,7 +155,7 @@ namespace RimSharp.Tests.Features.LogViewer.Services
             const string initial = "first\n";
             File.WriteAllText(_path, initial, new UTF8Encoding(false));
             var reader = new PlayerLogReader();
-            var full = await reader.ReadAsync(_path);
+            var full = await reader.ReadAsync(_path, cancellationToken: TestContext.Current.CancellationToken);
 
             File.AppendAllText(_path, "second\nthird\n", new UTF8Encoding(false));
             var tail = reader.ReadTail(_path, full.BytesRead);
@@ -169,7 +170,7 @@ namespace RimSharp.Tests.Features.LogViewer.Services
         {
             File.WriteAllText(_path, "only line\n", new UTF8Encoding(false));
             var reader = new PlayerLogReader();
-            var full = await reader.ReadAsync(_path);
+            var full = await reader.ReadAsync(_path, cancellationToken: TestContext.Current.CancellationToken);
 
             var tail = reader.ReadTail(_path, full.BytesRead);
 
@@ -186,7 +187,7 @@ namespace RimSharp.Tests.Features.LogViewer.Services
             const string initial = "日本語\n";
             File.WriteAllText(_path, initial, new UTF8Encoding(false));
             var reader = new PlayerLogReader();
-            var full = await reader.ReadAsync(_path);
+            var full = await reader.ReadAsync(_path, cancellationToken: TestContext.Current.CancellationToken);
 
             File.AppendAllText(_path, "二行目\n", new UTF8Encoding(false));
             var tail = reader.ReadTail(_path, full.BytesRead);
@@ -200,7 +201,7 @@ namespace RimSharp.Tests.Features.LogViewer.Services
         {
             File.WriteAllText(_path, "a fairly long initial log line\n", new UTF8Encoding(false));
             var reader = new PlayerLogReader();
-            var full = await reader.ReadAsync(_path);
+            var full = await reader.ReadAsync(_path, cancellationToken: TestContext.Current.CancellationToken);
 
             File.WriteAllText(_path, "short\n", new UTF8Encoding(false));
 
