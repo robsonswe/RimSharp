@@ -149,5 +149,187 @@ namespace RimSharp.Infrastructure.Configuration
             var protonConfig = BuildProtonConfigPath(steamRoot);
             return (exists ?? Directory.Exists)(protonConfig) ? protonConfig : null;
         }
+
+        /// <summary>
+        /// Enumerates all Proton compatdata config folder candidates for a given Steam root.
+        /// Unlike <see cref="GetProtonConfigFolder"/>, this scans ALL appids under compatdata
+        /// and ALL user folders (skipping "Public" and "Default"), not just the 294100/steamuser path.
+        /// <paramref name="exists"/> allows tests to probe candidates without touching the real filesystem.
+        /// </summary>
+        public static IEnumerable<string> EnumerateProtonConfigCandidates(string? steamRoot, Func<string, bool>? exists = null)
+        {
+            if (string.IsNullOrWhiteSpace(steamRoot))
+            {
+                yield break;
+            }
+
+            var compatDataRoot = Path.Combine(steamRoot, "steamapps", "compatdata");
+            if (!(exists ?? Directory.Exists)(compatDataRoot))
+            {
+                yield break;
+            }
+
+            var directoryExists = exists ?? Directory.Exists;
+            var results = new List<string>();
+
+            try
+            {
+                foreach (var appIdDir in Directory.GetDirectories(compatDataRoot))
+                {
+                    var pfxDriveCUsers = Path.Combine(appIdDir, "pfx", "drive_c", "users");
+                    if (!directoryExists(pfxDriveCUsers))
+                    {
+                        continue;
+                    }
+
+                    foreach (var userDir in Directory.GetDirectories(pfxDriveCUsers))
+                    {
+                        var userName = Path.GetFileName(userDir);
+                        if (string.Equals(userName, "Public", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(userName, "Default", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        var configPath = Path.Combine(userDir, "AppData", "LocalLow", CompanyFolder, ProductFolder, ConfigSubFolder);
+                        if (directoryExists(configPath))
+                        {
+                            results.Add(configPath);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Exception-safe enumeration: ignore any IO errors
+            }
+
+            foreach (var result in results)
+            {
+                yield return result;
+            }
+        }
+
+        /// <summary>
+        /// Wine prefix base directories to scan for RimWorld config folders on Linux.
+        /// </summary>
+        public static IEnumerable<string> GetWinePrefixBases(string userProfile)
+        {
+            return new[]
+            {
+                Path.Combine(userProfile, ".wine"),
+                Path.Combine(userProfile, ".wine32"),
+                Path.Combine(userProfile, ".wine64"),
+                Path.Combine(userProfile, ".local", "share", "lutris", "runners", "wine"),
+                Path.Combine(userProfile, ".local", "share", "lutris", "prefixes"),
+                Path.Combine(userProfile, ".local", "share", "bottles", "bottles"),
+                Path.Combine(userProfile, ".var", "app", "com.usebottles.bottles", "data", "bottles", "bottles"),
+                Path.Combine(userProfile, ".local", "share", "PlayOnLinux", "wineprefix"),
+                Path.Combine(userProfile, ".PlayOnLinux", "wineprefix"),
+                Path.Combine(userProfile, "Games"),
+            };
+        }
+
+        /// <summary>
+        /// Enumerates all Wine prefix config folder candidates.
+        /// Scans each base for drive_c (or pfx/drive_c) and then iterates user folders.
+        /// <paramref name="exists"/> allows tests to probe candidates without touching the real filesystem.
+        /// </summary>
+        public static IEnumerable<string> EnumerateWineConfigCandidates(string userProfile, Func<string, bool>? exists = null)
+        {
+            var directoryExists = exists ?? Directory.Exists;
+            var results = new List<string>();
+
+            foreach (var baseDir in GetWinePrefixBases(userProfile))
+            {
+                if (!directoryExists(baseDir))
+                {
+                    continue;
+                }
+
+                IEnumerable<string> driveCRoots;
+
+                // Check if base itself has drive_c
+                var baseDriveC = Path.Combine(baseDir, "drive_c");
+                if (directoryExists(baseDriveC))
+                {
+                    driveCRoots = new[] { baseDriveC };
+                }
+                else
+                {
+                    // Scan immediate children for drive_c or pfx/drive_c
+                    driveCRoots = EnumerateDriveCRoots(baseDir, directoryExists);
+                }
+
+                foreach (var driveCRoot in driveCRoots)
+                {
+                    var usersRoot = Path.Combine(driveCRoot, "users");
+                    if (!directoryExists(usersRoot))
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        foreach (var userDir in Directory.GetDirectories(usersRoot))
+                        {
+                            var userName = Path.GetFileName(userDir);
+                            if (string.Equals(userName, "Public", StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(userName, "Default", StringComparison.OrdinalIgnoreCase))
+                            {
+                                continue;
+                            }
+
+                            var configPath = Path.Combine(userDir, "AppData", "LocalLow", CompanyFolder, ProductFolder, ConfigSubFolder);
+                            if (directoryExists(configPath))
+                            {
+                                results.Add(configPath);
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Exception-safe enumeration
+                    }
+                }
+            }
+
+            foreach (var result in results)
+            {
+                yield return result;
+            }
+        }
+
+        private static IEnumerable<string> EnumerateDriveCRoots(string baseDir, Func<string, bool> directoryExists)
+        {
+            var results = new List<string>();
+
+            try
+            {
+                foreach (var childDir in Directory.GetDirectories(baseDir))
+                {
+                    var driveC = Path.Combine(childDir, "drive_c");
+                    if (directoryExists(driveC))
+                    {
+                        results.Add(driveC);
+                    }
+
+                    var pfxDriveC = Path.Combine(childDir, "pfx", "drive_c");
+                    if (directoryExists(pfxDriveC))
+                    {
+                        results.Add(pfxDriveC);
+                    }
+                }
+            }
+            catch
+            {
+                // Exception-safe enumeration
+            }
+
+            foreach (var result in results)
+            {
+                yield return result;
+            }
+        }
     }
 }

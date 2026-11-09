@@ -449,7 +449,7 @@ namespace RimSharp.Shared.Services.Implementations
 
         private void LoadCoreMods(string gamePath)
         {
-            var coreModsPath = Path.Combine(gamePath, "Data");
+            var coreModsPath = _pathService.GetGameDataPathFor(gamePath);
             if (!Directory.Exists(coreModsPath)) return;
 
             foreach (var dir in Directory.GetDirectories(coreModsPath))
@@ -479,7 +479,7 @@ namespace RimSharp.Shared.Services.Implementations
 
         private async Task LoadCoreModsAsync(string gamePath, ConcurrentBag<ModItem> mods, IProgress<(int current, int total, string message)>? progress, int startPercent, int endPercent)
         {
-            var coreModsPath = Path.Combine(gamePath, "Data");
+            var coreModsPath = _pathService.GetGameDataPathFor(gamePath);
             if (!Directory.Exists(coreModsPath)) return;
 
             var directories = Directory.GetDirectories(coreModsPath);

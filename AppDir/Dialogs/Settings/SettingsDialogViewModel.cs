@@ -111,7 +111,7 @@ namespace RimSharp.AppDir.Dialogs
                 {
                     try
                     {
-                        return Path.Combine(_gamePath, "Mods");
+                        return _pathService.GetModsPathFor(_gamePath);
                     }
                     catch
                     {
@@ -130,7 +130,7 @@ namespace RimSharp.AppDir.Dialogs
                     {
                         try
                         {
-                            if (_modsFolderPath.Equals(Path.Combine(_gamePath, "Mods"), StringComparison.OrdinalIgnoreCase))
+                            if (_modsFolderPath.Equals(_pathService.GetModsPathFor(_gamePath), StringComparison.OrdinalIgnoreCase))
                             {
                                 _modsFolderPath = string.Empty;
                                 OnPropertyChanged(nameof(ModsFolderPath)); // getter now shows derived
@@ -322,8 +322,8 @@ namespace RimSharp.AppDir.Dialogs
                 if (userInitiatedChange || string.IsNullOrEmpty(GamePath))
                 {
                     GamePath = SteamCandidate.GameFolder;
-                    // Auto-fill mods path when game path is set
-                    ModsFolderPath = Path.Combine(SteamCandidate.GameFolder, "Mods");
+                    // Auto-fill mods path when game path is set — use PathService for bundle-aware derivation
+                    ModsFolderPath = _pathService.GetModsPathFor(SteamCandidate.GameFolder);
                 }
                 if (userInitiatedChange || string.IsNullOrEmpty(ConfigPath))
                 {
@@ -335,8 +335,8 @@ namespace RimSharp.AppDir.Dialogs
                 if (userInitiatedChange || string.IsNullOrEmpty(GamePath))
                 {
                     GamePath = NonSteamCandidate.GameFolder;
-                    // Auto-fill mods path when game path is set
-                    ModsFolderPath = Path.Combine(NonSteamCandidate.GameFolder, "Mods");
+                    // Auto-fill mods path when game path is set — use PathService for bundle-aware derivation
+                    ModsFolderPath = _pathService.GetModsPathFor(NonSteamCandidate.GameFolder);
                 }
                 if (userInitiatedChange || string.IsNullOrEmpty(ConfigPath))
                 {
@@ -465,7 +465,7 @@ namespace RimSharp.AppDir.Dialogs
                 {
                     try
                     {
-                        isAutoSynced = ModsFolderPath.Equals(Path.Combine(GamePath, "Mods"), StringComparison.OrdinalIgnoreCase);
+                        isAutoSynced = ModsFolderPath.Equals(_pathService.GetModsPathFor(GamePath), StringComparison.OrdinalIgnoreCase);
                     }
                     catch
                     {

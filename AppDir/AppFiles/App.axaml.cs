@@ -380,6 +380,7 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IAcfFileParser>(),
                     provider.GetRequiredService<ILoggerService>()));
             services.AddSingleton<ISteamSubscriptionService, SteamSubscriptionService>();
+            services.AddSingleton<ISteamworksInterop>(provider => SteamworksInteropFactory.Create());
             services.AddSingleton<IWorkshopUpdateService>(provider =>
                 new WorkshopUpdateService(
                     provider.GetRequiredService<GameInstance>(),
@@ -409,7 +410,8 @@ namespace RimSharp.AppDir.AppFiles
                 new SteamClaimValidator(
                     provider.GetRequiredService<GameInstallationDetectionService>(),
                     provider.GetRequiredService<ILoggerService>(),
-                    provider.GetRequiredService<GameInstance>()));
+                    provider.GetRequiredService<GameInstance>(),
+                    provider.GetRequiredService<ISteamworksInterop>()));
             services.AddSingleton<IContextMenuAvailabilityService>(provider =>
                 new ContextMenuAvailabilityService(
                     provider.GetRequiredService<ILoggerService>(),

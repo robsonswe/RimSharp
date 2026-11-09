@@ -1,5 +1,6 @@
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Avalonia.Headless.XUnit;
 using FluentAssertions;
@@ -18,6 +19,7 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
         private readonly string _root;
         private readonly string _configFolder;
         private readonly IPathService _pathService = Substitute.For<IPathService>();
+        private readonly OSPlatform? _originalPlatformOverride;
 
         public LogViewerViewModelTests()
         {
@@ -26,10 +28,16 @@ namespace RimSharp.Tests.Features.LogViewer.ViewModels
             _configFolder = Path.Combine(_root, "Config");
             Directory.CreateDirectory(_configFolder);
             _pathService.GetConfigPath().Returns(_configFolder);
+
+            // Pin to Windows so platform-blind tests run the Windows/Linux code path
+            // on ANY host OS (including macOS CI). This mirrors the macOS test class pattern.
+            _originalPlatformOverride = PlayerLogLocator.TestPlatformOverride;
+            PlayerLogLocator.TestPlatformOverride = OSPlatform.Windows;
         }
 
         public void Dispose()
         {
+            PlayerLogLocator.TestPlatformOverride = _originalPlatformOverride;
             try { Directory.Delete(_root, recursive: true); } catch { /* best effort */ }
         }
 

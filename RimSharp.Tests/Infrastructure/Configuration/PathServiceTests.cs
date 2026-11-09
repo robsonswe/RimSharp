@@ -358,4 +358,231 @@ namespace RimSharp.Tests.Infrastructure.Configuration
             secondResult.Should().Be(secondModsDir);
         }
     }
+
+    public class PathServiceMacOSBundleTests : IDisposable
+    {
+        private readonly IConfigService _mockConfigService;
+        private readonly PathService _service;
+        private readonly string _testTempDir;
+
+        public PathServiceMacOSBundleTests()
+        {
+            _mockConfigService = Substitute.For<IConfigService>();
+            _service = new PathService(_mockConfigService);
+            _testTempDir = Path.Combine(Path.GetTempPath(), "RimSharpTests_MacBundle_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(_testTempDir);
+        }
+
+        public void Dispose()
+        {
+            if (Directory.Exists(_testTempDir))
+            {
+                Directory.Delete(_testTempDir, true);
+            }
+        }
+
+        [Fact]
+        public void GetModsPathFor_BundleWithContentsMods_ShouldPickContentsMods()
+        {
+            // Arrange: create a synthetic .app bundle with Contents/Mods
+            var bundlePath = Path.Combine(_testTempDir, "RimWorld.app");
+            var contentsMods = Path.Combine(bundlePath, "Contents", "Mods");
+            var rootMods = Path.Combine(bundlePath, "Mods");
+            Directory.CreateDirectory(contentsMods);
+            Directory.CreateDirectory(rootMods);
+
+            // Act
+            var result = _service.GetModsPathFor(bundlePath);
+
+            // Assert: should prefer Contents/Mods
+            result.Should().Be(contentsMods);
+        }
+
+        [Fact]
+        public void GetModsPathFor_BundleWithOnlyRootMods_ShouldPickRootMods()
+        {
+            // Arrange: create a synthetic .app bundle with only bundle-root Mods
+            var bundlePath = Path.Combine(_testTempDir, "RimWorld.app");
+            var rootMods = Path.Combine(bundlePath, "Mods");
+            Directory.CreateDirectory(rootMods);
+            // Contents/Mods does NOT exist
+
+            // Act
+            var result = _service.GetModsPathFor(bundlePath);
+
+            // Assert: should fall back to bundle-root Mods
+            result.Should().Be(rootMods);
+        }
+
+        [Fact]
+        public void GetModsPathFor_BundleWithNeitherMods_ShouldReturnRootMods()
+        {
+            // Arrange: create a synthetic .app bundle with neither Contents/Mods nor root Mods
+            var bundlePath = Path.Combine(_testTempDir, "RimWorld.app");
+            Directory.CreateDirectory(bundlePath);
+            // Neither Contents/Mods nor root Mods exists
+
+            // Act
+            var result = _service.GetModsPathFor(bundlePath);
+
+            // Assert: deterministic fallback is bundle-root Mods (not Contents/Mods)
+            var expected = Path.Combine(bundlePath, "Mods");
+            result.Should().Be(expected);
+        }
+
+        [Fact]
+        public void GetModsPathFor_NonBundlePath_ShouldReturnLegacyCombine()
+        {
+            // Arrange: regular (non-.app) game path
+            var gamePath = Path.Combine(_testTempDir, "RimWorld");
+            Directory.CreateDirectory(gamePath);
+
+            // Act
+            var result = _service.GetModsPathFor(gamePath);
+
+            // Assert: byte-identical to Path.Combine(gamePath, "Mods")
+            result.Should().Be(Path.Combine(gamePath, "Mods"));
+        }
+
+        [Fact]
+        public void GetModsPathFor_EmptyPath_ShouldReturnEmpty()
+        {
+            // Act
+            var result = _service.GetModsPathFor(string.Empty);
+
+            // Assert
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void GetGameDataPathFor_BundleWithContentsData_ShouldPickContentsData()
+        {
+            // Arrange: create a synthetic .app bundle with Contents/Data
+            var bundlePath = Path.Combine(_testTempDir, "RimWorld.app");
+            var contentsData = Path.Combine(bundlePath, "Contents", "Data");
+            var contentsResourcesData = Path.Combine(bundlePath, "Contents", "Resources", "Data");
+            var rootData = Path.Combine(bundlePath, "Data");
+            Directory.CreateDirectory(contentsData);
+            Directory.CreateDirectory(contentsResourcesData);
+            Directory.CreateDirectory(rootData);
+
+            // Act
+            var result = _service.GetGameDataPathFor(bundlePath);
+
+            // Assert: should prefer Contents/Data (first in priority order)
+            result.Should().Be(contentsData);
+        }
+
+        [Fact]
+        public void GetGameDataPathFor_BundleWithContentsResourcesData_ShouldPickContentsResourcesData()
+        {
+            // Arrange: create a synthetic .app bundle with Contents/Resources/Data (but no Contents/Data)
+            var bundlePath = Path.Combine(_testTempDir, "RimWorld.app");
+            var contentsResourcesData = Path.Combine(bundlePath, "Contents", "Resources", "Data");
+            var rootData = Path.Combine(bundlePath, "Data");
+            Directory.CreateDirectory(contentsResourcesData);
+            Directory.CreateDirectory(rootData);
+            // Contents/Data does NOT exist
+
+            // Act
+            var result = _service.GetGameDataPathFor(bundlePath);
+
+            // Assert: should pick Contents/Resources/Data (second in priority order)
+            result.Should().Be(contentsResourcesData);
+        }
+
+        [Fact]
+        public void GetGameDataPathFor_BundleWithOnlyRootData_ShouldPickRootData()
+        {
+            // Arrange: create a synthetic .app bundle with only bundle-root Data
+            var bundlePath = Path.Combine(_testTempDir, "RimWorld.app");
+            var rootData = Path.Combine(bundlePath, "Data");
+            Directory.CreateDirectory(rootData);
+            // Neither Contents/Data nor Contents/Resources/Data exists
+
+            // Act
+            var result = _service.GetGameDataPathFor(bundlePath);
+
+            // Assert: should pick bundle-root Data (third in priority order)
+            result.Should().Be(rootData);
+        }
+
+        [Fact]
+        public void GetGameDataPathFor_BundleWithNoData_ShouldReturnLegacyFallback()
+        {
+            // Arrange: create a synthetic .app bundle with no Data folders at all
+            var bundlePath = Path.Combine(_testTempDir, "RimWorld.app");
+            Directory.CreateDirectory(bundlePath);
+
+            // Act
+            var result = _service.GetGameDataPathFor(bundlePath);
+
+            // Assert: should return legacy non-checking fallback <game>/Data
+            var expected = Path.Combine(bundlePath, "Data");
+            result.Should().Be(expected);
+        }
+
+        [Fact]
+        public void GetGameDataPathFor_NonBundlePath_ShouldReturnLegacyCombine()
+        {
+            // Arrange: regular (non-.app) game path
+            var gamePath = Path.Combine(_testTempDir, "RimWorld");
+            Directory.CreateDirectory(gamePath);
+
+            // Act
+            var result = _service.GetGameDataPathFor(gamePath);
+
+            // Assert: byte-identical to Path.Combine(gamePath, "Data")
+            result.Should().Be(Path.Combine(gamePath, "Data"));
+        }
+
+        [Fact]
+        public void GetGameDataPathFor_EmptyPath_ShouldReturnEmpty()
+        {
+            // Act
+            var result = _service.GetGameDataPathFor(string.Empty);
+
+            // Assert
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void GetModsPathFor_CaseInsensitiveAppExtension_ShouldWork()
+        {
+            // Arrange: .APP, .App, .aPp should all be treated as bundles
+            var bundlePathUpper = Path.Combine(_testTempDir, "RimWorld.APP");
+            var bundlePathMixed = Path.Combine(_testTempDir, "RimWorld.App");
+            var contentsModsUpper = Path.Combine(bundlePathUpper, "Contents", "Mods");
+            var contentsModsMixed = Path.Combine(bundlePathMixed, "Contents", "Mods");
+            Directory.CreateDirectory(contentsModsUpper);
+            Directory.CreateDirectory(contentsModsMixed);
+
+            // Act
+            var resultUpper = _service.GetModsPathFor(bundlePathUpper);
+            var resultMixed = _service.GetModsPathFor(bundlePathMixed);
+
+            // Assert
+            resultUpper.Should().Be(contentsModsUpper);
+            resultMixed.Should().Be(contentsModsMixed);
+        }
+
+        [Fact]
+        public void GetModsPathFor_DirectoryExistsProbe_UsesTestSeam()
+        {
+            // Arrange: create a bundle but use a custom probe that always returns false
+            var bundlePath = Path.Combine(_testTempDir, "RimWorld.app");
+            var contentsMods = Path.Combine(bundlePath, "Contents", "Mods");
+            Directory.CreateDirectory(contentsMods);
+
+            // Create service with probe that always returns false (simulating missing dirs)
+            var serviceWithFalseProbe = new PathService(_mockConfigService, null, null, _ => false);
+
+            // Act
+            var result = serviceWithFalseProbe.GetModsPathFor(bundlePath);
+
+            // Assert: probe returns false for Contents/Mods, so falls back to root Mods
+            var expected = Path.Combine(bundlePath, "Mods");
+            result.Should().Be(expected);
+        }
+    }
 }

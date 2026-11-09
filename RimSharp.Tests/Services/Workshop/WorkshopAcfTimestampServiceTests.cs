@@ -194,9 +194,13 @@ namespace RimSharp.Tests.Services.Workshop
             File.WriteAllText(_acfPath, GoodAcf);
             var first = CreateService().GetTimestamps(_workshopContentDir);
             first["818773962"].Should().Be(1690000000);
+            var cachedMtime = File.GetLastWriteTimeUtc(_acfPath);
 
-            // Steam rewrote the manifest: new stamp + new LastWriteTimeUtc → re-parse
+            // Steam rewrote the manifest: new stamp + strictly newer LastWriteTimeUtc → re-parse.
+            // The mtime is pinned deliberately: on a busy runner two fast writes can share one
+            // filesystem timestamp quantum, which would make invalidation a coin flip.
             File.WriteAllText(_acfPath, DifferentAcf);
+            File.SetLastWriteTimeUtc(_acfPath, cachedMtime.AddSeconds(1));
 
             var second = CreateService().GetTimestamps(_workshopContentDir);
 
@@ -212,9 +216,13 @@ namespace RimSharp.Tests.Services.Workshop
             var mod = new ModItem { SteamId = "818773962" };
             CreateService().ApplyToMods(new[] { mod }, _workshopContentDir);
             mod.AcfTimeUpdated.Should().Be(1690000000);
+            var cachedMtime = File.GetLastWriteTimeUtc(_acfPath);
 
-            // The item updates via Steam → the manifest is rewritten by the client
+            // The item updates via Steam → the manifest is rewritten by the client.
+            // Pinning the new mtime keeps invalidation deterministic on runners where
+            // two fast writes share one filesystem timestamp quantum.
             File.WriteAllText(_acfPath, DifferentAcf);
+            File.SetLastWriteTimeUtc(_acfPath, cachedMtime.AddSeconds(1));
 
             var freshMod = new ModItem { SteamId = "818773962" };
             CreateService().ApplyToMods(new[] { freshMod }, _workshopContentDir);

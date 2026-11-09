@@ -11,6 +11,7 @@ namespace RimSharp.Infrastructure.Configuration
         private readonly IConfigService _configService;
         private readonly Func<string, string?>? _fileVersionProbe; // Test seam for file-version probing
         private readonly ILoggerService? _logger; // Optional: broken-override warnings (fail-open policy)
+        private readonly Func<string, bool>? _directoryExistsProbe; // Test seam for directory existence probing
         private string? _cachedGamePath;
         private string? _cachedConfigPath;
         private string? _cachedModsPath; // Cache for resolved path
@@ -21,22 +22,29 @@ namespace RimSharp.Infrastructure.Configuration
         private bool _isGamePathResolved = false; // Flag to track if game path has been resolved
 
         public PathService(IConfigService configService)
-            : this(configService, null, null)
+            : this(configService, null, null, null)
         {
         }
 
         // Secondary constructor exists so unit tests can stub out file-version probing.
         public PathService(IConfigService configService, Func<string, string?>? fileVersionProbe)
-            : this(configService, fileVersionProbe, null)
+            : this(configService, fileVersionProbe, null, null)
         {
         }
 
         // Full constructor: path resolution + optional logging for override warnings.
         public PathService(IConfigService configService, Func<string, string?>? fileVersionProbe, ILoggerService? logger)
+            : this(configService, fileVersionProbe, logger, null)
+        {
+        }
+
+        // Full constructor with directory-existence probe seam for macOS bundle tests on Windows CI.
+        public PathService(IConfigService configService, Func<string, string?>? fileVersionProbe, ILoggerService? logger, Func<string, bool>? directoryExistsProbe)
         {
             _configService = configService ?? throw new ArgumentNullException(nameof(configService));
             _fileVersionProbe = fileVersionProbe;
             _logger = logger;
+            _directoryExistsProbe = directoryExistsProbe;
         }
 
         public string GetGamePath()
@@ -94,7 +102,7 @@ namespace RimSharp.Infrastructure.Configuration
                 else
                 {
                     string derivedModsPath = GetModsPathFor(gamePath);
-                    _cachedModsPath = Directory.Exists(derivedModsPath) ? derivedModsPath : string.Empty;
+                    _cachedModsPath = DirectoryExists(derivedModsPath) ? derivedModsPath : string.Empty;
                 }
             }
 
@@ -122,7 +130,84 @@ namespace RimSharp.Infrastructure.Configuration
                 return resolvedOverride;
             }
 
-            return string.IsNullOrEmpty(gamePath) ? string.Empty : Path.Combine(gamePath, "Mods");
+            return string.IsNullOrEmpty(gamePath) ? string.Empty : GetModsPathForCore(gamePath);
+        }
+
+        /// <summary>
+        /// Core derivation logic for mods path, bundle-aware on macOS.
+        /// When gamePath ends with ".app" (case-insensitive, non-empty, directory),
+        /// prefers <game>/Contents/Mods if it exists, else <game>/Mods.
+        /// Non-bundle paths return Path.Combine(gamePath, "Mods") unchanged.
+        /// </summary>
+        internal string GetModsPathForCore(string gamePath)
+        {
+            if (string.IsNullOrEmpty(gamePath))
+                return string.Empty;
+
+            // Check if this is a macOS .app bundle
+            var fileName = Path.GetFileName(gamePath);
+            if (!string.IsNullOrEmpty(fileName) &&
+                fileName.EndsWith(".app", StringComparison.OrdinalIgnoreCase) &&
+                DirectoryExists(gamePath))
+            {
+                // Bundle: prefer Contents/Mods, fallback to bundle-root Mods
+                var contentsMods = Path.Combine(gamePath, "Contents", "Mods");
+                if (DirectoryExists(contentsMods))
+                    return contentsMods;
+
+                var rootMods = Path.Combine(gamePath, "Mods");
+                return rootMods;
+            }
+
+            // Non-bundle: legacy behavior (byte-identical)
+            return Path.Combine(gamePath, "Mods");
+        }
+
+        /// <summary>
+        /// Resolves the game Data folder path for core/DLC mods, bundle-aware on macOS.
+        /// Candidate order: <game>/Contents/Data, <game>/Contents/Resources/Data, <game>/Data.
+        /// Returns the FIRST that exists. If none exist, returns the legacy non-checking
+        /// fallback <game>/Data (preserving current behavior for missing Data folders).
+        /// Empty input returns empty string.
+        /// </summary>
+        public string GetGameDataPathFor(string gamePath)
+        {
+            if (string.IsNullOrEmpty(gamePath))
+                return string.Empty;
+
+            // Check if this is a macOS .app bundle
+            var fileName = Path.GetFileName(gamePath);
+            if (!string.IsNullOrEmpty(fileName) &&
+                fileName.EndsWith(".app", StringComparison.OrdinalIgnoreCase) &&
+                DirectoryExists(gamePath))
+            {
+                // Bundle: check candidates in order
+                var contentsData = Path.Combine(gamePath, "Contents", "Data");
+                if (DirectoryExists(contentsData))
+                    return contentsData;
+
+                var contentsResourcesData = Path.Combine(gamePath, "Contents", "Resources", "Data");
+                if (DirectoryExists(contentsResourcesData))
+                    return contentsResourcesData;
+
+                var rootData = Path.Combine(gamePath, "Data");
+                if (DirectoryExists(rootData))
+                    return rootData;
+
+                // None exist: return legacy non-checking fallback
+                return Path.Combine(gamePath, "Data");
+            }
+
+            // Non-bundle: legacy behavior (no existence check, direct combine)
+            return Path.Combine(gamePath, "Data");
+        }
+
+        /// <summary>
+        /// Directory existence probe with test seam. Defaults to Directory.Exists.
+        /// </summary>
+        private bool DirectoryExists(string path)
+        {
+            return _directoryExistsProbe?.Invoke(path) ?? Directory.Exists(path);
         }
 
         /// <summary>
@@ -229,6 +314,17 @@ public string GetConfigPath()
                         return CacheVersion(gamePath, firstLine);
                 }
 
+                // If the game folder is an .app bundle (macOS), probe Contents/Version.txt
+                // and Contents/Resources/Version.txt before falling back to binary metadata.
+                // This runs on all platforms since .app is just a directory name on Windows,
+                // enabling consistent behavior and testability.
+                if (Path.GetFileName(gamePath).EndsWith(".app", StringComparison.OrdinalIgnoreCase))
+                {
+                    var macVersion = ProbeMacOSAppBundleVersion(gamePath);
+                    if (macVersion != null)
+                        return CacheVersion(gamePath, macVersion);
+                }
+
                 // Fallback: version metadata embedded in the game binaries, for builds
                 // that ship without Version.txt.
                 var fallbackVersion = GetVersionFromFileMetadata(gamePath);
@@ -240,6 +336,47 @@ public string GetConfigPath()
             catch (Exception ex)
             {
                 return CacheVersion(gamePath, $"N/A - Error reading version: {ex.Message.Truncate(50)}");
+            }
+        }
+
+        /// <summary>
+        /// Probes for Version.txt in a macOS .app bundle.
+        /// Checks Contents/Version.txt first, then Contents/Resources/Version.txt.
+        /// Returns null if neither exists or content is not a valid version string.
+        /// </summary>
+        internal string? ProbeMacOSAppBundleVersion(string appBundlePath)
+        {
+            try
+            {
+                var contentsPath = Path.Combine(appBundlePath, "Contents");
+                if (!Directory.Exists(contentsPath))
+                    return null;
+
+                // Check Contents/Version.txt
+                var versionFile = Path.Combine(contentsPath, "Version.txt");
+                if (File.Exists(versionFile))
+                {
+                    using var reader = new StreamReader(versionFile);
+                    var firstLine = reader.ReadLine()?.Trim() ?? string.Empty;
+                    if (!string.IsNullOrWhiteSpace(firstLine) && char.IsDigit(firstLine[0]) && firstLine.Contains('.'))
+                        return firstLine;
+                }
+
+                // Check Contents/Resources/Version.txt
+                var resourcesVersionFile = Path.Combine(contentsPath, "Resources", "Version.txt");
+                if (File.Exists(resourcesVersionFile))
+                {
+                    using var reader = new StreamReader(resourcesVersionFile);
+                    var firstLine = reader.ReadLine()?.Trim() ?? string.Empty;
+                    if (!string.IsNullOrWhiteSpace(firstLine) && char.IsDigit(firstLine[0]) && firstLine.Contains('.'))
+                        return firstLine;
+                }
+
+                return null;
+            }
+            catch
+            {
+                return null;
             }
         }
 

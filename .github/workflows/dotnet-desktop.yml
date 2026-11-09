@@ -20,12 +20,12 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: 8.0.x
 
@@ -65,7 +65,7 @@ jobs:
 
     # Salva o arquivo temporariamente no GitHub Actions
     - name: Upload Windows Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: windows-artifacts
         path: ./win-artifacts/*
@@ -81,12 +81,12 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: 8.0.x
 
@@ -239,26 +239,172 @@ jobs:
 
     # Salva os arquivos temporariamente no GitHub Actions
     - name: Upload Linux Artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: linux-artifacts
         path: ./linux-artifacts/*
         retention-days: 1
 
   # ==========================================
-  # JOB 3: RELEASE
+  # JOB 3: BUILD MACOS
+  # ==========================================
+  build-macos:
+    runs-on: macos-latest
+    env:
+      Project_Path: RimSharp.csproj
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Restore dependencies
+      shell: bash
+      run: dotnet restore RimSharp.sln
+
+    - name: Run unit tests (macOS)
+      shell: bash
+      run: dotnet test RimSharp.Tests/RimSharp.Tests.csproj --framework net8.0 --configuration Release --no-restore
+
+    - name: Install packaging tools (macOS)
+      shell: bash
+      run: |
+        set -euo pipefail
+        brew install imagemagick
+
+    - name: Prepare macOS icon (icns)
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        # Generate iconset from repo-root icon.ico
+        magick icon.ico[0] -resize 512x512 icon_512x512.png
+
+        mkdir -p appicon.iconset
+
+        # Standard Apple iconset sizes (from 512 base, downscale)
+        magick icon_512x512.png -resize 16x16   appicon.iconset/icon_16x16.png
+        magick icon_512x512.png -resize 32x32   appicon.iconset/icon_16x16@2x.png
+        magick icon_512x512.png -resize 32x32   appicon.iconset/icon_32x32.png
+        magick icon_512x512.png -resize 64x64   appicon.iconset/icon_32x32@2x.png
+        magick icon_512x512.png -resize 128x128 appicon.iconset/icon_128x128.png
+        magick icon_512x512.png -resize 256x256 appicon.iconset/icon_128x128@2x.png
+        magick icon_512x512.png -resize 256x256 appicon.iconset/icon_256x256.png
+        magick icon_512x512.png -resize 512x512 appicon.iconset/icon_256x256@2x.png
+        magick icon_512x512.png -resize 512x512 appicon.iconset/icon_512x512.png
+
+        iconutil -c icns appicon.iconset -o RimSharp.icns
+
+    - name: Publish and Package
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        version="${GITHUB_REF_NAME#v}"
+
+        mkdir -p ./macos-artifacts
+
+        for rid in osx-arm64 osx-x64; do
+          dotnet publish "$Project_Path" \
+            -f net8.0 \
+            -r "$rid" \
+            -c Release \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:PublishReadyToRun=true \
+            -p:EnableCompressionInSingleFile=true \
+            -p:Version="${GITHUB_REF_NAME#v}" \
+            --output "./publish-$rid"
+
+          # --- .app bundle ---
+          mkdir -p "./bundle-$rid/RimSharp.app/Contents/MacOS"
+          mkdir -p "./bundle-$rid/RimSharp.app/Contents/Resources"
+
+          # Single-file publish output binary name matches AssemblyName (RimSharp)
+          PUBLISHED_BINARY="./publish-$rid/RimSharp"
+          if [ ! -f "$PUBLISHED_BINARY" ]; then
+            # Fallback: find the single executable in publish output
+            PUBLISHED_BINARY=$(find "./publish-$rid" -maxdepth 1 -type f -perm -u=x | head -n1)
+          fi
+          cp "$PUBLISHED_BINARY" "./bundle-$rid/RimSharp.app/Contents/MacOS/RimSharp"
+          chmod +x "./bundle-$rid/RimSharp.app/Contents/MacOS/RimSharp"
+
+          # Icon
+          cp RimSharp.icns "./bundle-$rid/RimSharp.app/Contents/Resources/RimSharp.icns"
+
+          # Info.plist (unquoted heredoc so $version expands)
+          cat > "./bundle-$rid/RimSharp.app/Contents/Info.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleName</key>
+              <string>RimSharp</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleExecutable</key>
+              <string>RimSharp</string>
+              <key>CFBundleIdentifier</key>
+              <string>io.github.robsonswe.RimSharp</string>
+              <key>CFBundleShortVersionString</key>
+              <string>$version</string>
+              <key>CFBundleVersion</key>
+              <string>$version</string>
+              <key>CFBundleIconFile</key>
+              <string>RimSharp.icns</string>
+              <key>LSMinimumSystemVersion</key>
+              <string>11.0</string>
+              <key>NSHighResolutionCapable</key>
+              <true/>
+          </dict>
+          </plist>
+          EOF
+
+          # Ad-hoc sign (keeps quarantine-time "damaged" reports away)
+          codesign --force --deep -s - "./bundle-$rid/RimSharp.app"
+
+          # Verify shape
+          test -x "./bundle-$rid/RimSharp.app/Contents/MacOS/RimSharp"
+          plutil -lint "./bundle-$rid/RimSharp.app/Contents/Info.plist"
+
+          # --- Tarball (existing) ---
+          mkdir -p tar-root/RimSharp
+          cp -a "./publish-$rid/." tar-root/RimSharp/
+          tar -czf "./macos-artifacts/RimSharp_${rid}_${GITHUB_REF_NAME}.tar.gz" -C tar-root RimSharp
+
+          # --- DMG ---
+          mkdir -p "./dmg-dir-$rid"
+          cp -a "./bundle-$rid/RimSharp.app" "./dmg-dir-$rid/"
+          hdiutil create -volname RimSharp -srcfolder "./dmg-dir-$rid" -ov -format UDZO "./macos-artifacts/RimSharp_${rid}_${GITHUB_REF_NAME}.dmg"
+        done
+
+    - name: Upload macOS Artifacts
+      uses: actions/upload-artifact@v5
+      with:
+        name: macos-artifacts
+        path: ./macos-artifacts/*
+        retention-days: 1
+
+  # ==========================================
+  # JOB 4: RELEASE
   # ==========================================
   release:
-    needs: [build-windows, build-linux]
+    needs: [build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
     steps:
     # 1. Faz o checkout do repositório para ter acesso ao RELEASE_NOTES.md
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     # 2. Baixa todos os binários gerados pelos jobs anteriores
     - name: Download all artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v6
       with:
         path: ./release-assets
         merge-multiple: true

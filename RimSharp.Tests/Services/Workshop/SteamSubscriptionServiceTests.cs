@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -375,6 +376,185 @@ namespace RimSharp.Tests.Services.Workshop
             // Assert
             result.Should().BeFalse();
             _logger.Received().LogWarning(Arg.Is<string>(s => s.Contains("Steamworks not initialized")), "SteamSubscriptionService");
+        }
+
+        // ── Unsupported runtime (macOS) graceful degradation tests ─────────────────
+        // These tests use the TestSteamworksSupportedOverride seam to simulate
+        // the macOS arm64 environment where Steamworks.NET lacks native assets.
+        // The service must return the same failure shapes as "non-Steam installation"
+        // and "not initialized" paths: false/zero/null + log line, no exceptions.
+
+        private SteamSubscriptionService CreateServiceWithSteamworksSupport(bool supported)
+        {
+            var originalOverride = SteamSubscriptionService.TestSteamworksSupportedOverride;
+            SteamSubscriptionService.TestSteamworksSupportedOverride = () => supported;
+            var service = CreateService();
+            SteamSubscriptionService.TestSteamworksSupportedOverride = originalOverride;
+            return service;
+        }
+
+        [Fact]
+        public async Task SubscribeAsync_UnsupportedRuntime_ReturnsFalseAndLogsWarning()
+        {
+            // Arrange
+            var service = CreateServiceWithSteamworksSupport(false);
+
+            // Act
+            var result = await service.SubscribeAsync("123456789", null, TestContext.Current.CancellationToken);
+
+            // Assert
+            result.Should().BeFalse();
+            _logger.Received().LogWarning(Arg.Is<string>(s => s.Contains("Steamworks not supported on this runtime")), "SteamSubscriptionService");
+        }
+
+        [Fact]
+        public async Task UnsubscribeAsync_UnsupportedRuntime_ReturnsFalseAndLogsWarning()
+        {
+            // Arrange
+            var service = CreateServiceWithSteamworksSupport(false);
+
+            // Act
+            var result = await service.UnsubscribeAsync("123456789", null, TestContext.Current.CancellationToken);
+
+            // Assert
+            result.Should().BeFalse();
+            _logger.Received().LogWarning(Arg.Is<string>(s => s.Contains("Steamworks not supported on this runtime")), "SteamSubscriptionService");
+        }
+
+        [Fact]
+        public async Task IsSubscribedAsync_UnsupportedRuntime_ReturnsFalse()
+        {
+            // Arrange
+            var service = CreateServiceWithSteamworksSupport(false);
+
+            // Act
+            var result = await service.IsSubscribedAsync("123456789");
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task GetSubscribedModsAsync_UnsupportedRuntime_ReturnsEmptyList()
+        {
+            // Arrange
+            var service = CreateServiceWithSteamworksSupport(false);
+
+            // Act
+            var result = await service.GetSubscribedModsAsync();
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task RefreshSubscriptionsAsync_UnsupportedRuntime_ReturnsZero()
+        {
+            // Arrange
+            var service = CreateServiceWithSteamworksSupport(false);
+
+            // Act
+            var result = await service.RefreshSubscriptionsAsync(null, TestContext.Current.CancellationToken);
+
+            // Assert
+            result.Should().Be(0);
+        }
+
+        [Fact]
+        public async Task ResubscribeAsync_UnsupportedRuntime_ReturnsZeroAndLogsWarning()
+        {
+            // Arrange
+            var service = CreateServiceWithSteamworksSupport(false);
+
+            // Act
+            var result = await service.ResubscribeAsync(new[] { "123", "456" }, null, TestContext.Current.CancellationToken);
+
+            // Assert
+            result.Should().Be(0);
+            _logger.Received().LogWarning(Arg.Is<string>(s => s.Contains("Steamworks not supported on this runtime")), "SteamSubscriptionService");
+        }
+
+        [Fact]
+        public async Task GetDownloadProgressAsync_UnsupportedRuntime_ReturnsNull()
+        {
+            // Arrange
+            var service = CreateServiceWithSteamworksSupport(false);
+
+            // Act
+            var result = await service.GetDownloadProgressAsync("123456789");
+
+            // Assert
+            result.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task UpdateModAsync_UnsupportedRuntime_ReturnsFalseAndLogsWarning()
+        {
+            // Arrange
+            var service = CreateServiceWithSteamworksSupport(false);
+
+            // Act
+            var result = await service.UpdateModAsync("123456789", null, TestContext.Current.CancellationToken);
+
+            // Assert
+            result.Should().BeFalse();
+            _logger.Received().LogWarning(Arg.Is<string>(s => s.Contains("Steamworks not supported on this runtime")), "SteamSubscriptionService");
+        }
+
+        [Fact]
+        public async Task CheckOwnershipAsync_UnsupportedRuntime_ReturnsFalseAndLogsWarning()
+        {
+            // Arrange
+            var service = CreateServiceWithSteamworksSupport(false);
+
+            // Act
+            var result = await service.CheckOwnershipAsync(TestContext.Current.CancellationToken);
+
+            // Assert
+            result.Should().BeFalse();
+            _logger.Received().LogWarning(Arg.Is<string>(s => s.Contains("Steamworks not supported on this runtime")), "SteamSubscriptionService");
+        }
+
+        [Fact]
+        public async Task VerifyGameFilesAsync_UnsupportedRuntime_ReturnsFalseAndLogsWarning()
+        {
+            // Arrange
+            var service = CreateServiceWithSteamworksSupport(false);
+
+            // Act
+            var result = await service.VerifyGameFilesAsync();
+
+            // Assert
+            result.Should().BeFalse();
+            _logger.Received().LogWarning(Arg.Is<string>(s => s.Contains("Steamworks not supported on this runtime")), "SteamSubscriptionService");
+        }
+
+        [Fact]
+        public void Dispose_UnsupportedRuntime_DoesNotThrow()
+        {
+            // Arrange
+            var service = CreateServiceWithSteamworksSupport(false);
+
+            // Act
+            Action act = () => service.Dispose();
+
+            // Assert
+            act.Should().NotThrow();
+        }
+
+        [Fact]
+        public void Dispose_UnsupportedRuntime_CalledTwice_DoesNotThrow()
+        {
+            // Arrange
+            var service = CreateServiceWithSteamworksSupport(false);
+
+            // Act
+            service.Dispose();
+            Action act = () => service.Dispose();
+
+            // Assert
+            act.Should().NotThrow();
         }
     }
 }

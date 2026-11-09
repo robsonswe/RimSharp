@@ -31,6 +31,16 @@ namespace RimSharp.Shared.Services.Contracts
         /// <returns>The resolved mods folder path (may not exist on disk).</returns>
         string GetModsPathFor(string gamePath);
 
+        /// <summary>
+        /// Resolves the game Data folder path for core/DLC mods, bundle-aware on macOS.
+        /// Candidate order: <game>/Contents/Data, <game>/Contents/Resources/Data, <game>/Data.
+        /// Returns the FIRST that exists. If none exist, returns the legacy non-checking
+        /// fallback <game>/Data (preserving current behavior for missing Data folders).
+        /// Empty input returns empty string.
+        /// </summary>
+        /// <param name="gamePath">The game installation folder to derive from.</param>
+        /// <returns>The resolved Data folder path (may not exist on disk).</returns>
+        string GetGameDataPathFor(string gamePath);
 
 
         /// <summary>
@@ -42,7 +52,7 @@ namespace RimSharp.Shared.Services.Contracts
 
         /// <summary>
 
-/// </summary>
+        /// </summary>
 
         string GetGameVersion();
 
@@ -56,7 +66,7 @@ namespace RimSharp.Shared.Services.Contracts
 
         /// <summary>
 
-/// </summary>
+        /// </summary>
 
         string GetMajorGameVersion();
 
@@ -70,5 +80,3 @@ namespace RimSharp.Shared.Services.Contracts
         void RefreshPaths();
     }
 }
-
-

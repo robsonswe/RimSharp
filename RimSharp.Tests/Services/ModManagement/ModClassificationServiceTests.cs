@@ -242,6 +242,92 @@ namespace RimSharp.Tests.Services.ModManagement
             service.ClassifyMod(Path.Combine(root.Path, "nope"), ModType.Git).Should().Be(ModType.Git);
         }
 
+        [Fact]
+        public void DataMod_BundleWithContentsData_ShouldClassifyAsExpansion()
+        {
+            // Arrange: synthetic .app bundle with Contents/Data
+            using var root = new TempDirectory();
+            var bundlePath = Path.Combine(root.Path, "RimWorld.app");
+            var contentsData = Path.Combine(bundlePath, "Contents", "Data", "Royalty");
+            Directory.CreateDirectory(Path.Combine(contentsData, "About"));
+            File.WriteAllText(Path.Combine(contentsData, "About", "About.xml"),
+                "<ModMetaData><packageId>Ludeon.RimWorld.Royalty</packageId></ModMetaData>");
+
+            var service = CreateService(Path.Combine(root.Path, "Mods"), gameFolder: bundlePath);
+
+            // Act & Assert: mod inside Contents/Data should be classified as Expansion
+            service.ClassifyMod(contentsData).Should().Be(ModType.Expansion);
+        }
+
+        [Fact]
+        public void DataMod_BundleWithContentsResourcesData_ShouldClassifyAsExpansion()
+        {
+            // Arrange: synthetic .app bundle with Contents/Resources/Data
+            using var root = new TempDirectory();
+            var bundlePath = Path.Combine(root.Path, "RimWorld.app");
+            var contentsResourcesData = Path.Combine(bundlePath, "Contents", "Resources", "Data", "Royalty");
+            Directory.CreateDirectory(Path.Combine(contentsResourcesData, "About"));
+            File.WriteAllText(Path.Combine(contentsResourcesData, "About", "About.xml"),
+                "<ModMetaData><packageId>Ludeon.RimWorld.Royalty</packageId></ModMetaData>");
+
+            var service = CreateService(Path.Combine(root.Path, "Mods"), gameFolder: bundlePath);
+
+            // Act & Assert: mod inside Contents/Resources/Data should be classified as Expansion
+            service.ClassifyMod(contentsResourcesData).Should().Be(ModType.Expansion);
+        }
+
+        [Fact]
+        public void DataMod_BundleWithRootData_ShouldClassifyAsExpansion()
+        {
+            // Arrange: synthetic .app bundle with bundle-root Data
+            using var root = new TempDirectory();
+            var bundlePath = Path.Combine(root.Path, "RimWorld.app");
+            var rootData = Path.Combine(bundlePath, "Data", "Royalty");
+            Directory.CreateDirectory(Path.Combine(rootData, "About"));
+            File.WriteAllText(Path.Combine(rootData, "About", "About.xml"),
+                "<ModMetaData><packageId>Ludeon.RimWorld.Royalty</packageId></ModMetaData>");
+
+            var service = CreateService(Path.Combine(root.Path, "Mods"), gameFolder: bundlePath);
+
+            // Act & Assert: mod inside bundle-root Data should be classified as Expansion
+            service.ClassifyMod(rootData).Should().Be(ModType.Expansion);
+        }
+
+        [Fact]
+        public void DataMod_BundleCoreInContentsData_ShouldClassifyAsCore()
+        {
+            // Arrange: synthetic .app bundle with Core in Contents/Data
+            using var root = new TempDirectory();
+            var bundlePath = Path.Combine(root.Path, "RimWorld.app");
+            var corePath = Path.Combine(bundlePath, "Contents", "Data", "Core");
+            Directory.CreateDirectory(corePath);
+            File.WriteAllText(Path.Combine(corePath, "About.xml"),
+                "<ModMetaData><packageId>Ludeon.RimWorld</packageId></ModMetaData>");
+
+            var service = CreateService(Path.Combine(root.Path, "Mods"), gameFolder: bundlePath);
+
+            // Act & Assert: Core in Contents/Data should be classified as Core
+            service.ClassifyMod(corePath).Should().Be(ModType.Core);
+        }
+
+        [Fact]
+        public void DataMod_BundleModInContentsResourcesData_NotMisclassifiedAsWorkshop()
+        {
+            // Arrange: synthetic .app bundle with a mod in Contents/Resources/Data
+            // This mod should NOT be misclassified as Workshop just because it's in a bundle
+            using var root = new TempDirectory();
+            var bundlePath = Path.Combine(root.Path, "RimWorld.app");
+            var modPath = Path.Combine(bundlePath, "Contents", "Resources", "Data", "SomeMod");
+            Directory.CreateDirectory(Path.Combine(modPath, "About"));
+            File.WriteAllText(Path.Combine(modPath, "About", "About.xml"),
+                "<ModMetaData><packageId>some.mod</packageId></ModMetaData>");
+
+            var service = CreateService(Path.Combine(root.Path, "Mods"), gameFolder: bundlePath);
+
+            // Act & Assert: should be Expansion (data mod), not Workshop
+            service.ClassifyMod(modPath).Should().Be(ModType.Expansion);
+        }
+
         private sealed class TempDirectory : IDisposable
         {
             public string Path { get; }

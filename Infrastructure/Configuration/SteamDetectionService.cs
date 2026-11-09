@@ -117,7 +117,7 @@ namespace RimSharp.Infrastructure.Configuration
             // path service was provided (legacy parameterless construction).
             instance.LocalFolder = _pathService != null
                 ? _pathService.GetModsPathFor(instance.GameFolder)
-                : Path.Combine(instance.GameFolder, "Mods");
+                : GetModsPathForFallback(instance.GameFolder);
 
             // Validate and fix any inconsistencies
             instance.ValidateAndFix();
@@ -551,6 +551,37 @@ namespace RimSharp.Infrastructure.Configuration
             {
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Fallback derivation for mods path when IPathService is not available (legacy parameterless construction).
+        /// Bundle-aware on macOS: when gamePath ends with ".app" (case-insensitive, non-empty, directory),
+        /// prefers <game>/Contents/Mods if it exists, else <game>/Mods.
+        /// Non-bundle paths return Path.Combine(gamePath, "Mods") unchanged.
+        /// Mirrors PathService.GetModsPathForCore logic to keep single-writer rule consistent.
+        /// </summary>
+        internal static string GetModsPathForFallback(string gamePath)
+        {
+            if (string.IsNullOrEmpty(gamePath))
+                return string.Empty;
+
+            // Check if this is a macOS .app bundle
+            var fileName = Path.GetFileName(gamePath);
+            if (!string.IsNullOrEmpty(fileName) &&
+                fileName.EndsWith(".app", StringComparison.OrdinalIgnoreCase) &&
+                Directory.Exists(gamePath))
+            {
+                // Bundle: prefer Contents/Mods, fallback to bundle-root Mods
+                var contentsMods = Path.Combine(gamePath, "Contents", "Mods");
+                if (Directory.Exists(contentsMods))
+                    return contentsMods;
+
+                var rootMods = Path.Combine(gamePath, "Mods");
+                return rootMods;
+            }
+
+            // Non-bundle: legacy behavior (byte-identical)
+            return Path.Combine(gamePath, "Mods");
         }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Xml.Linq;
@@ -38,13 +39,16 @@ namespace RimSharp.Services.ModManagement
 
             var modDir = new DirectoryInfo(modPath);
 
-            // First, check if it's in the game Data/ folder (core/DLC)
+            // First, check if it's in the game Data/ folder (core/DLC) — bundle-aware
             if (!string.IsNullOrEmpty(_instance.GameFolder))
             {
-                var dataPath = Path.Combine(_instance.GameFolder, "Data");
-                if (modDir.FullName.StartsWith(dataPath, StringComparison.OrdinalIgnoreCase))
+                var dataPaths = GetGameDataPaths(_instance.GameFolder);
+                foreach (var dataPath in dataPaths)
                 {
-                    return ClassifyDataMod(modPath);
+                    if (modDir.FullName.StartsWith(dataPath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return ClassifyDataMod(modPath);
+                    }
                 }
             }
 
@@ -236,6 +240,33 @@ namespace RimSharp.Services.ModManagement
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Returns the candidate Data folder paths for a game folder, in priority order.
+        /// Bundle-aware on macOS: <game>/Contents/Data, <game>/Contents/Resources/Data, <game>/Data.
+        /// Non-bundle: just <game>/Data.
+        /// Mirrors PathService.GetGameDataPathFor (the canonical derivation) locally because
+        /// the layering leaves ModManagement without an IPathService dependency.
+        /// </summary>
+        private static IEnumerable<string> GetGameDataPaths(string gameFolder)
+        {
+            if (string.IsNullOrEmpty(gameFolder))
+                yield break;
+
+            var fileName = Path.GetFileName(gameFolder);
+            if (!string.IsNullOrEmpty(fileName) &&
+                fileName.EndsWith(".app", StringComparison.OrdinalIgnoreCase) &&
+                Directory.Exists(gameFolder))
+            {
+                yield return Path.Combine(gameFolder, "Contents", "Data");
+                yield return Path.Combine(gameFolder, "Contents", "Resources", "Data");
+                yield return Path.Combine(gameFolder, "Data");
+            }
+            else
+            {
+                yield return Path.Combine(gameFolder, "Data");
+            }
         }
 
         /// <summary>
