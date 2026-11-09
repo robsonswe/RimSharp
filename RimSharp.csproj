@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFrameworks>net8.0-windows;net8.0</TargetFrameworks>
+    <TargetFrameworks>net10.0-windows;net10.0</TargetFrameworks>
     <Nullable>enable</Nullable>
     <ApplicationIcon>icon.ico</ApplicationIcon>
-    <UseWindowsForms Condition="'$(TargetFramework)'=='net8.0-windows'">true</UseWindowsForms>
-    <BuiltInComInteropSupport Condition="'$(TargetFramework)'=='net8.0-windows'">true</BuiltInComInteropSupport>
-    <ApplicationManifest Condition="'$(TargetFramework)'=='net8.0-windows'">app.manifest</ApplicationManifest>
-    <ApplicationHighDpiMode Condition="'$(TargetFramework)'=='net8.0-windows'">PerMonitorV2</ApplicationHighDpiMode>
+    <UseWindowsForms Condition="'$(TargetFramework)'=='net10.0-windows'">true</UseWindowsForms>
+    <BuiltInComInteropSupport Condition="'$(TargetFramework)'=='net10.0-windows'">true</BuiltInComInteropSupport>
+    <ApplicationManifest Condition="'$(TargetFramework)'=='net10.0-windows'">app.manifest</ApplicationManifest>
+    <ApplicationHighDpiMode Condition="'$(TargetFramework)'=='net10.0-windows'">PerMonitorV2</ApplicationHighDpiMode>
     <RootNamespace>RimSharp</RootNamespace>
     <DefaultItemExcludes>$(DefaultItemExcludes);RimSharp.Tests\**</DefaultItemExcludes>
     <!-- Avalonia 12 enables compiled bindings by default; keep 11.x reflection-binding behavior. -->
@@ -47,8 +47,8 @@
     <PackageReference Include="LibGit2Sharp" Version="0.31.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.3" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.3" />
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2365.46" Condition="'$(TargetFramework)'=='net8.0-windows'" />
-    <PackageReference Include="PInvoke.User32" Version="0.7.124" Condition="'$(TargetFramework)'=='net8.0-windows'" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2365.46" Condition="'$(TargetFramework)'=='net10.0-windows'" />
+    <PackageReference Include="PInvoke.User32" Version="0.7.124" Condition="'$(TargetFramework)'=='net10.0-windows'" />
     <PackageReference Include="Optris.Icons.Avalonia" Version="12.0.7" />
     <PackageReference Include="Optris.Icons.Avalonia.FontAwesome" Version="12.0.7" />
     <PackageReference Include="Optris.Icons.Avalonia.MaterialDesign" Version="12.0.7" />
@@ -56,7 +56,7 @@
     <None Include="steam_appid.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <PackageReference Include="System.Management" Version="8.0.0" Condition="'$(TargetFramework)'=='net8.0-windows'" />
+    <PackageReference Include="System.Management" Version="8.0.0" Condition="'$(TargetFramework)'=='net10.0-windows'" />
   </ItemGroup>
 
   <!--
@@ -64,7 +64,7 @@
     named "Steamworks.NET" with the same "Steamworks" namespace, so they cannot coexist.
     - Windows/Linux: the long-standing third-party "Steamworks.NET" 2024.8.0 (SDK 1.60), unchanged.
     - macOS: that package's managed assembly is not deployed for osx-arm64, so use the community
-      "Steamworks.NET.AnyCPU" fork (net8.0 build; 2026.165.3+ targets net10.0 only). It ships the
+      "Steamworks.NET.AnyCPU" fork (net10.0 build; 2026.165.3+ targets net10.0 only). It ships the
       osx-arm64/x64 natives and registers its own native-library resolver.
     The RuntimeIdentifier check covers cross-building a Mac release from another host (-r osx-arm64).
     All Steamworks calls live in Services/Workshop/SteamworksInterop.cs, the only file that sees this API.
@@ -79,10 +79,10 @@
     <PackageReference Include="Steamworks.NET" Version="2024.8.0" />
   </ItemGroup>
   <ItemGroup Condition="'$(UseAnyCpuSteamworks)' == 'true'">
-    <PackageReference Include="Steamworks.NET.AnyCPU" Version="2026.165.2" />
+    <PackageReference Include="Steamworks.NET.AnyCPU" Version="2026.165.3" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)'=='net8.0'">
+  <ItemGroup Condition="'$(TargetFramework)'=='net10.0'">
     <Compile Remove="Features\WorkshopDownloader\Components\Browser\WindowsBrowserFactory.cs" />
     <Compile Remove="Features\WorkshopDownloader\Components\Browser\WindowsBrowserControl.cs" />
     <Compile Remove="Core\Services\WindowsSystemInfoService.cs" />
