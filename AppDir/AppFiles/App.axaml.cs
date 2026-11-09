@@ -42,6 +42,7 @@ using RimSharp.Infrastructure.Workshop.Download.Processing;
 using RimSharp.Infrastructure.Workshop.Download.Models;
 using RimSharp.Services.ModManager;
 using RimSharp.Services.Workshop;
+using RimSharp.Services.ModManagement;
 using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.AppDir.Dialogs;
@@ -387,6 +388,26 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<ILoggerService>(),
                     provider.GetRequiredService<SteamWorkshopApiClient>(),
                     provider.GetRequiredService<ISteamSubscriptionService>())); 
+
+            // Troubleshooting services
+            services.AddSingleton<IGameRecoveryService>(provider =>
+                new GameRecoveryService(
+                    provider.GetRequiredService<GameInstance>(),
+                    provider.GetRequiredService<ILoggerService>(),
+                    provider.GetRequiredService<IPathService>(),
+                    provider.GetRequiredService<ISteamSubscriptionService>()));
+            services.AddSingleton<IModConfigurationService>(provider =>
+                new ModConfigurationService(
+                    provider.GetRequiredService<GameInstance>(),
+                    provider.GetRequiredService<ILoggerService>(),
+                    provider.GetRequiredService<IPathService>(),
+                    provider.GetRequiredService<IFileDialogService>()));
+            services.AddSingleton<ITroubleshootingScanService>(provider =>
+                new TroubleshootingScanService(
+                    provider.GetRequiredService<GameInstance>(),
+                    provider.GetRequiredService<ILoggerService>(),
+                    provider.GetRequiredService<IPathService>(),
+                    provider.GetRequiredService<ISteamSubscriptionService>()));
 
             services.AddSingleton<IModListIOService>(provider =>
             {

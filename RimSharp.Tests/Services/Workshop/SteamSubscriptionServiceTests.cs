@@ -33,15 +33,17 @@ namespace RimSharp.Tests.Services.Workshop
 
         private SteamSubscriptionService CreateService()
         {
-            return new SteamSubscriptionService(_gameInstance, _logger, _apiClient);
+            var pathService = Substitute.For<IPathService>();
+            return new SteamSubscriptionService(_gameInstance, _logger, _apiClient, pathService);
         }
 
         [Fact]
         public async Task GetDownloadProgressAsync_WhenSteamInitFails_ShouldReturnNullAndAttemptInitOnce()
         {
             var initCalls = 0;
+            var pathService = Substitute.For<IPathService>();
             var service = new SteamSubscriptionService(
-                _gameInstance, _logger, _apiClient,
+                _gameInstance, _logger, _apiClient, pathService,
                 steamApiInit: () => { initCalls++; return false; },
                 initRetryCooldown: TimeSpan.FromSeconds(30));
 
@@ -55,8 +57,9 @@ namespace RimSharp.Tests.Services.Workshop
         public async Task GetDownloadProgressAsync_WhenInitFailsAndCooldownActive_ShouldNotRetryImmediately()
         {
             var initCalls = 0;
+            var pathService = Substitute.For<IPathService>();
             var service = new SteamSubscriptionService(
-                _gameInstance, _logger, _apiClient,
+                _gameInstance, _logger, _apiClient, pathService,
                 steamApiInit: () => { initCalls++; return false; },
                 initRetryCooldown: TimeSpan.FromSeconds(30));
 
@@ -70,8 +73,9 @@ namespace RimSharp.Tests.Services.Workshop
         public async Task GetDownloadProgressAsync_WhenInitFailsAndCooldownElapsed_ShouldRetryInit()
         {
             var initCalls = 0;
+            var pathService = Substitute.For<IPathService>();
             var service = new SteamSubscriptionService(
-                _gameInstance, _logger, _apiClient,
+                _gameInstance, _logger, _apiClient, pathService,
                 steamApiInit: () => { initCalls++; return false; },
                 initRetryCooldown: TimeSpan.Zero);
 
@@ -95,7 +99,8 @@ namespace RimSharp.Tests.Services.Workshop
         public void Constructor_NullGameInstance_ThrowsArgumentNullException()
         {
             // Act
-            Action act = () => new SteamSubscriptionService(null!, _logger, _apiClient);
+            var pathService = Substitute.For<IPathService>();
+            Action act = () => new SteamSubscriptionService(null!, _logger, _apiClient, pathService);
 
             // Assert
             act.Should().Throw<ArgumentNullException>().WithParameterName("gameInstance");
@@ -105,7 +110,8 @@ namespace RimSharp.Tests.Services.Workshop
         public void Constructor_NullLogger_ThrowsArgumentNullException()
         {
             // Act
-            Action act = () => new SteamSubscriptionService(_gameInstance, null!, _apiClient);
+            var pathService = Substitute.For<IPathService>();
+            Action act = () => new SteamSubscriptionService(_gameInstance, null!, _apiClient, pathService);
 
             // Assert
             act.Should().Throw<ArgumentNullException>().WithParameterName("logger");
@@ -115,10 +121,21 @@ namespace RimSharp.Tests.Services.Workshop
         public void Constructor_NullApiClient_ThrowsArgumentNullException()
         {
             // Act
-            Action act = () => new SteamSubscriptionService(_gameInstance, _logger, null!);
+            var pathService = Substitute.For<IPathService>();
+            Action act = () => new SteamSubscriptionService(_gameInstance, _logger, null!, pathService);
 
             // Assert
             act.Should().Throw<ArgumentNullException>().WithParameterName("apiClient");
+        }
+
+        [Fact]
+        public void Constructor_NullPathService_ThrowsArgumentNullException()
+        {
+            // Act
+            Action act = () => new SteamSubscriptionService(_gameInstance, _logger, _apiClient, null!);
+
+            // Assert
+            act.Should().Throw<ArgumentNullException>().WithParameterName("pathService");
         }
 
         [Fact]

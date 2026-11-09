@@ -13,7 +13,7 @@ namespace RimSharp.Services.Workshop
 {
     /// <summary>
     /// Client for Steam Workshop API.
-    /// Based on RimSort's ISteamRemoteStorage_GetPublishedFileDetails approach.
+    /// Based on the researched community approach for Steam RemoteStorage API.
     ///
     /// Behavior (per §5.4 / 1.4 hardening):
     /// - Batches published file ID lookups into chunks of MaxBatchSize (300, the Steam API limit).
@@ -32,7 +32,7 @@ namespace RimSharp.Services.Workshop
 
         /// <summary>
         /// HTTP status codes that are considered transient and therefore retryable
-        /// (mirrors RimSort's retryable set: 429, 500, 502, 503, 504).
+        /// (based on the researched community approach: 429, 500, 502, 503, 504).
         /// </summary>
         private static readonly HashSet<HttpStatusCode> RetryableStatusCodes = new()
         {

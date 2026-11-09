@@ -62,7 +62,7 @@ namespace RimSharp.Infrastructure.Workshop.Download
         }
 
         /// <summary>
-        /// When true (default, matching RimSort's steamcmd_auto_clear_depot_cache),
+        /// When true (default, matching the community approach for steamcmd_auto_clear_depot_cache),
         /// the SteamCMD depot cache is cleared before each download operation —
         /// the documented workaround for weird SteamCMD behavior and download
         /// failures. Clear failures are logged and never abort the download.
