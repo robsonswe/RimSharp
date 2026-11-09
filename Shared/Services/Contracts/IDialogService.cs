@@ -90,5 +90,11 @@ namespace RimSharp.Shared.Services.Contracts
         /// confuse users.
         /// </summary>
         Task<bool> ShowSettingsDialogAsync(bool showAiProviders = true);
+
+        /// <summary>
+        /// Modals the Troubleshooting dialog (Help → Troubleshooting…).
+        /// Returns true when the dialog was opened and closed by the user.
+        /// </summary>
+        Task<bool> ShowTroubleshootingDialogAsync();
     }
 }

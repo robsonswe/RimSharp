@@ -130,6 +130,14 @@
                                         </StackPanel>
                                     </MenuItem.Header>
                                 </MenuItem>
+                                <MenuItem Header="Troubleshooting…" Command="{Binding TroubleshootingCommand}" Classes="menu-item">
+                                    <MenuItem.Header>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <i:Icon Value="fa-screwdriver-wrench" VerticalAlignment="Center" FontSize="14"/>
+                                            <TextBlock Text="Troubleshooting…" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
                             </MenuItem>
                         </Menu>
 

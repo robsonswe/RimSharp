@@ -1,0 +1,432 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+              xmlns:i="https://github.com/projektanker/icons.avalonia"
+              xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+              xmlns:vm="clr-namespace:RimSharp.Features.Troubleshooting.ViewModels"
+              xmlns:conv="clr-namespace:RimSharp.Core.Converters.Text"
+              xmlns:convVis="clr-namespace:RimSharp.Core.Converters.Visual"
+              mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+              x:Class="RimSharp.Features.Troubleshooting.Views.TroubleshootingDialogView"
+              x:DataType="vm:TroubleshootingViewModel"
+              x:Name="DialogRoot"
+              Width="900" Height="700"
+              MinWidth="780" MinHeight="520"
+              CanResize="True"
+              WindowStartupLocation="CenterOwner"
+              Title="{Binding Title}">
+
+    <dialogs:BaseDialog.MainContent>
+        <Border Classes="panel">
+            <Border.Styles>
+                <Style Selector="Border.problem-card">
+                    <Setter Property="Background" Value="White"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="CornerRadius" Value="4"/>
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="Margin" Value="0,0,0,10"/>
+                </Style>
+                <Style Selector="Border.problem-card Border#Accent">
+                    <Setter Property="Width" Value="4"/>
+                    <Setter Property="HorizontalAlignment" Value="Left"/>
+                    <Setter Property="VerticalAlignment" Value="Stretch"/>
+                    <Setter Property="CornerRadius" Value="2,0,0,2"/>
+                </Style>
+                <Style Selector="Button.action-btn">
+                    <Setter Property="MinWidth" Value="110"/>
+                    <Setter Property="Height" Value="32"/>
+                    <Setter Property="Padding" Value="10,4"/>
+                </Style>
+                <Style Selector="Button.action-btn:disabled">
+                    <Setter Property="Opacity" Value="0.5"/>
+                </Style>
+                <Style Selector="Button.symptom-btn">
+                    <Setter Property="MinWidth" Value="0"/>
+                    <Setter Property="Height" Value="48"/>
+                    <Setter Property="Padding" Value="12,8"/>
+                    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="CornerRadius" Value="4"/>
+                </Style>
+                <Style Selector="Button.symptom-btn:pointerover">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgPanel}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBgAction}"/>
+                </Style>
+                <Style Selector="Button.symptom-btn:pressed">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgAccent}"/>
+                </Style>
+                <Style Selector="Border.inline-toast">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgSurface}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="CornerRadius" Value="4"/>
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="Margin" Value="0,8,0,0"/>
+                </Style>
+                <Style Selector="Border.inline-toast Border#Accent">
+                    <Setter Property="Width" Value="4"/>
+                    <Setter Property="HorizontalAlignment" Value="Left"/>
+                    <Setter Property="VerticalAlignment" Value="Stretch"/>
+                    <Setter Property="CornerRadius" Value="2,0,0,2"/>
+                </Style>
+                <Style Selector="TextBlock.severity-chip">
+                    <Setter Property="FontSize" Value="10"/>
+                    <Setter Property="FontWeight" Value="Bold"/>
+                    <Setter Property="Padding" Value="4,1"/>
+                    <Setter Property="Background" Value="{DynamicResource BrushBgAccent}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+                </Style>
+                <Style Selector="Button.check-btn">
+                    <Setter Property="MinWidth" Value="180"/>
+                    <Setter Property="Height" Value="36"/>
+                    <Setter Property="Padding" Value="14,6"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </Style>
+                <Style Selector="Button.check-btn:disabled">
+                    <Setter Property="Opacity" Value="0.6"/>
+                </Style>
+                <Style Selector="Button.solution-btn">
+                    <Setter Property="MinWidth" Value="0"/>
+                    <Setter Property="Height" Value="56"/>
+                    <Setter Property="Padding" Value="12,8"/>
+                    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="CornerRadius" Value="4"/>
+                </Style>
+                <Style Selector="Button.solution-btn:pointerover">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgPanel}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBgAction}"/>
+                </Style>
+                <Style Selector="Button.solution-btn:pressed">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgAccent}"/>
+                </Style>
+            </Border.Styles>
+
+            <Border.Resources>
+                <conv:BooleanToIconConverter x:Key="BoolToIconConverter"/>
+                <convVis:BooleanToBrushConverter x:Key="BoolToBrushConverter"/>
+            </Border.Resources>
+
+            <ScrollViewer AllowAutoHide="False" VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="0" Margin="16,16,16,0">
+
+                    <!-- ===== Header ===== -->
+                    <StackPanel Spacing="6" Margin="0,0,0,16">
+                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                            <i:Icon Value="fa-screwdriver-wrench" FontSize="20"
+                                    Foreground="{DynamicResource BrushBgAction}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Title}" FontSize="20" FontWeight="Bold"
+                                       Foreground="{DynamicResource BrushTextStrong}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Text="Pick the problem you're having, then run the checks for that symptom."
+                                   FontSize="13" Foreground="{DynamicResource BrushTextPrimary}"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <!-- ===== State 0: Symptom List ===== -->
+                    <Border IsVisible="{Binding ShowSymptomList}" Margin="0,0,0,16">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="What problem are you having?" FontSize="15" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource BrushTextStrong}"/>
+                            <ItemsControl ItemsSource="{Binding VisibleSymptoms}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:TroubleshootingSymptomDescriptor">
+                                        <Button Classes="symptom-btn"
+                                                Command="{Binding DataContext.SelectSymptomCommand, ElementName=DialogRoot}"
+                                                CommandParameter="{Binding}">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                                <i:Icon Grid.Column="0" Value="fa-circle-question" FontSize="18"
+                                                        Foreground="{DynamicResource BrushBgAction}" VerticalAlignment="Center"/>
+                                                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource BrushTextStrong}"
+                                                               TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding Description}" FontSize="11"
+                                                               Foreground="{DynamicResource BrushTextPrimary}"
+                                                               TextWrapping="Wrap" Opacity="0.9"/>
+                                                </StackPanel>
+                                                <i:Icon Grid.Column="2" Value="fa-chevron-right" FontSize="14"
+                                                        Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ===== State 1: CausesPage (informational) ===== -->
+                    <Border IsVisible="{Binding ShowCausesPage}" Margin="0,0,0,16">
+                        <StackPanel Spacing="16">
+                            <!-- Header with back button -->
+                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                <Button Content="&lt; Back"
+                                        Command="{Binding PickDifferentProblemCommand}"
+                                        Classes="btn" Height="32" Padding="10,4"
+                                        IsVisible="{Binding !IsScanning}"/>
+                                <StackPanel Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding CurrentSymptomTitle}" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource BrushTextStrong}"/>
+                                    <TextBlock Text="{Binding CurrentSymptomDescription}" FontSize="11"
+                                               Foreground="{DynamicResource BrushTextPrimary}" Opacity="0.9"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Possible reasons why this problem is happening -->
+                            <Border Classes="panel" Padding="12" CornerRadius="4"
+                                    BorderBrush="{DynamicResource BrushBorderMuted}" BorderThickness="1">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Possible reasons why this problem is happening:" FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource BrushTextStrong}"/>
+                                    <ItemsControl ItemsSource="{Binding CurrentSymptomCauses}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Padding="10,8" CornerRadius="3"
+                                                        Background="{DynamicResource BrushBgSurface}"
+                                                        BorderBrush="{DynamicResource BrushBorderMuted}" BorderThickness="1">
+                                                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                                        <i:Icon Value="fa-circle-info" FontSize="14"
+                                                                Foreground="{DynamicResource BrushBgAction}" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding}" FontSize="12"
+                                                                   Foreground="{DynamicResource BrushTextPrimary}"
+                                                                   TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Action buttons -->
+                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,8,0,0">
+                                <Button Content="Check this problem"
+                                        Command="{Binding RunChecksCommand}"
+                                        Classes="check-btn btn"
+                                        IsEnabled="{Binding !IsScanning}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ===== State 2: ChecksRunning (light progress only) ===== -->
+                    <Border IsVisible="{Binding ShowChecksRunning}" Margin="0,0,0,16">
+                        <Border Classes="panel" Padding="24" CornerRadius="4"
+                                BorderBrush="{DynamicResource BrushBorderMuted}" BorderThickness="1">
+                            <StackPanel Spacing="16" HorizontalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+                                    <ProgressBar IsIndeterminate="True" Height="20" Width="20"
+                                                 Background="Transparent"
+                                                 Foreground="{DynamicResource BrushBgAction}"/>
+                                    <TextBlock Text="{Binding CurrentSymptomTitle}" FontSize="16" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource BrushTextStrong}"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <TextBlock Text="{Binding ScanCheck}" FontSize="13"
+                                           Foreground="{DynamicResource BrushTextPrimary}"
+                                           HorizontalAlignment="Center" TextWrapping="Wrap"/>
+                                <Button Content="Cancel"
+                                        Command="{Binding PickDifferentProblemCommand}"
+                                        Classes="btn" Height="32" Padding="10,4"
+                                        HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </Border>
+
+                    <!-- ===== State 3: SolutionsPage (checkboxes + fallback) ===== -->
+                    <Border IsVisible="{Binding ShowSolutionsPage}" Margin="0,0,0,16">
+                        <StackPanel Spacing="16">
+
+                            <!-- Header with back button -->
+                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                <Button Content="&lt; Back"
+                                        Command="{Binding PickDifferentProblemCommand}"
+                                        Classes="btn" Height="32" Padding="10,4"
+                                        IsVisible="{Binding !IsScanning}"/>
+                                <StackPanel Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding CurrentSymptomTitle}" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource BrushTextStrong}"/>
+                                    <TextBlock Text="{Binding CurrentSymptomDescription}" FontSize="11"
+                                               Foreground="{DynamicResource BrushTextPrimary}" Opacity="0.9"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- What actually ran (honest record of the last check run) -->
+                            <TextBlock Text="{Binding ChecksSummary}" FontSize="11"
+                                       IsVisible="{Binding HasChecksSummary}"
+                                       Foreground="{DynamicResource BrushTextPrimary}" Opacity="0.85"
+                                       TextWrapping="Wrap"/>
+
+                            <!-- Zero findings note (all copy is VM-driven so it can never
+                                 claim "checks passed" when no checks ran) -->
+                            <Border IsVisible="{Binding !HasFindings}" Classes="panel" Padding="12" CornerRadius="4"
+                                    BorderBrush="{DynamicResource BrushBorderMuted}" BorderThickness="1"
+                                    Background="{DynamicResource BrushBgSurface}">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="{Binding NoFindingsTitle}" FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource BrushTextStrong}"/>
+                                    <TextBlock Text="{Binding NoFindingsNote}" FontSize="12"
+                                               Foreground="{DynamicResource BrushTextPrimary}"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Solutions list with checkboxes -->
+                            <ItemsControl ItemsSource="{Binding SolutionRows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:SolutionRowViewModel">
+                                        <Border Classes="solution-btn"
+                                                Margin="0,0,0,8"
+                                                IsVisible="{Binding IsVisible, Converter={StaticResource NullToBoolConverter}, FallbackValue=True}">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                                <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}"
+                                                          VerticalAlignment="Center"
+                                                          Margin="0,0,8,0"/>
+                                                <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource BrushTextStrong}"/>
+                                                        <Border IsVisible="{Binding IsFindingDriven}" Padding="4,1" CornerRadius="2"
+                                                                Background="{DynamicResource BrushBgAccent}">
+                                                            <TextBlock Text="{Binding SeverityBadge}" FontSize="9" FontWeight="Bold"
+                                                                       Foreground="{DynamicResource BrushTextStrong}"/>
+                                                        </Border>
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding ExplanationText}" FontSize="11"
+                                                               Foreground="{DynamicResource BrushTextPrimary}"
+                                                               TextWrapping="Wrap" Opacity="0.9"/>
+                                                </StackPanel>
+                                                <i:Icon Grid.Column="2" Value="fa-chevron-right" FontSize="14"
+                                                        Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"
+                                                        IsVisible="{Binding !IsSelected}"/>
+                                                <i:Icon Grid.Column="2" Value="fa-check" FontSize="14"
+                                                        Foreground="{DynamicResource BrushBgAction}" VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsSelected}"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Proceed with fixes button -->
+                            <Button Content="Proceed with fixes"
+                                    Command="{Binding ProceedWithFixesCommand}"
+                                    Classes="check-btn btn"
+                                    IsEnabled="{Binding HasSelectedSolutions}"
+                                    HorizontalAlignment="Left"
+                                    Margin="0,16,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ===== State 4: ActionRunning (sequential progress) ===== -->
+                    <Border IsVisible="{Binding ShowActionRunning}" Margin="0,0,0,16">
+                        <Border Classes="panel" Padding="24" CornerRadius="4"
+                                BorderBrush="{DynamicResource BrushBgAction}" BorderThickness="2">
+                            <StackPanel Spacing="16" HorizontalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+                                    <ProgressBar IsIndeterminate="True" Height="20" Width="20"
+                                                 Background="Transparent"
+                                                 Foreground="{DynamicResource BrushBgAction}"/>
+                                    <TextBlock Text="{Binding ActionRunningTitle}" FontSize="16" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource BrushTextStrong}"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <TextBlock Text="Working…" FontSize="13"
+                                           Foreground="{DynamicResource BrushTextPrimary}"
+                                           HorizontalAlignment="Center"/>
+                                <Button Content="Cancel"
+                                        Command="{Binding PickDifferentProblemCommand}"
+                                        Classes="btn" Height="32" Padding="10,4"
+                                        HorizontalAlignment="Center"
+                                        IsEnabled="False"/>
+                            </StackPanel>
+                        </Border>
+                    </Border>
+
+                    <!-- ===== State 5: ActionResults (per-action outcome list) ===== -->
+                    <Border IsVisible="{Binding ShowActionResults}" Margin="0,0,0,16">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="Fixes completed" FontSize="16" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource BrushTextStrong}"
+                                       HorizontalAlignment="Center"/>
+
+                            <ItemsControl ItemsSource="{Binding ActionResults}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ActionResultViewModel">
+                                        <Border Classes="panel" Padding="16" CornerRadius="4"
+                                                BorderBrush="{DynamicResource BrushBorderDefault}" BorderThickness="1"
+                                                Margin="0,0,0,8">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                                <i:Icon Grid.Column="0" Value="{Binding StatusIcon}" FontSize="20"
+                                                        Foreground="{Binding StatusColor, Converter={StaticResource ResourceKeyToBrushConverter}}"
+                                                        VerticalAlignment="Center"/>
+                                                <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding ActionTitle}" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource BrushTextStrong}"/>
+                                                    <TextBlock Text="{Binding Message}" FontSize="11"
+                                                               Foreground="{DynamicResource BrushTextPrimary}"
+                                                               TextWrapping="Wrap" Opacity="0.9"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Text="Facing another issue?" FontSize="13" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource BrushTextPrimary}"
+                                       HorizontalAlignment="Center"/>
+
+                            <Button Content="Pick another problem"
+                                    Command="{Binding DismissActionResultsCommand}"
+                                    Classes="check-btn btn"
+                                    HorizontalAlignment="Center"
+                                    MinWidth="160"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ===== Inline toasts ===== -->
+                    <ItemsControl ItemsSource="{Binding Toasts}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:InlineToastViewModel">
+                                <Border Classes="inline-toast">
+                                    <Grid ColumnDefinitions="4,*,Auto" ColumnSpacing="0">
+                                        <Border Grid.Column="0" Name="Accent"
+                                                Background="{Binding BrushKey, Converter={StaticResource ResourceKeyToBrushConverter}}"/>
+                                        <StackPanel Grid.Column="1" Margin="10,8" Spacing="2">
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource BrushTextStrong}"/>
+                                            <TextBlock Text="{Binding Message}" FontSize="11"
+                                                       Foreground="{DynamicResource BrushTextPrimary}"
+                                                       TextWrapping="Wrap" Opacity="0.9"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="2" Content="✕" FontSize="11"
+                                                Command="{Binding DataContext.DismissToastCommand, ElementName=DialogRoot}"
+                                                CommandParameter="{Binding}"
+                                                Classes="btn" Height="24" MinWidth="24" Width="24"
+                                                VerticalAlignment="Center" Padding="0" Margin="0,8,10,8"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </dialogs:BaseDialog.MainContent>
+
+    <dialogs:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Content="Close" Command="{Binding CloseCommand}"
+                    Classes="btn" Height="32" MinWidth="90"/>
+        </StackPanel>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

@@ -51,10 +51,15 @@ namespace RimSharp.Tests.Services.ModManagement
             _pathService.GetConfigPath().Returns(_gameInstance.ConfigFolder);
             _pathService.GetGamePath().Returns(_gameInstance.GameFolder);
             _pathService.GetModsPath().Returns(_gameInstance.LocalFolder);
+
+            // Tests must never reach the real Steam client.
+            GameRecoveryService.TestProtocolLaunchOverride = _ => Task.FromResult(true);
         }
 
         public void Dispose()
         {
+            GameRecoveryService.TestProtocolLaunchOverride = null;
+
             if (Directory.Exists(_testTempDir))
             {
                 Directory.Delete(_testTempDir, true);

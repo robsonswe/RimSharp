@@ -73,8 +73,8 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private void InitializePlaceholderCommands()
         {
 
-            FixIntegrityCommand = CreateCommand(
-                async () => await _dialogService.ShowInformation("Not Implemented", "Fix integrity: Functionality not yet implemented."),
+            FixIntegrityCommand = CreateAsyncCommand(
+                async () => await _dialogService.ShowTroubleshootingDialogAsync(),
                 () => true,
                 nameof(IsParentLoading));
         }

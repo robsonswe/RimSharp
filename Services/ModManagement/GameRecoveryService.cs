@@ -36,6 +36,27 @@ namespace RimSharp.Services.ModManagement
             _steamSubscriptionService = steamSubscriptionService ?? throw new ArgumentNullException(nameof(steamSubscriptionService));
         }
 
+        /// <summary>
+        /// Test seam: override steam:// protocol launching so tests never
+        /// touch the real Steam client. When null (default), the real
+        /// protocol launcher is used.
+        /// </summary>
+        internal static Func<string, Task<bool>>? TestProtocolLaunchOverride { get; set; }
+
+        /// <summary>
+        /// Launches a steam:// URL. Tests substitute the real launcher via
+        /// TestProtocolLaunchOverride; production code always launches for real.
+        /// </summary>
+        private async Task<bool> LaunchSteamUrlAsync(string url)
+        {
+            if (TestProtocolLaunchOverride != null)
+            {
+                return await TestProtocolLaunchOverride(url).ConfigureAwait(false);
+            }
+
+            return Core.Services.SteamProtocolLauncher.TryOpen(url, _logger);
+        }
+
         /// <inheritdoc />
         public async Task<GameRecoveryResult> ResetGameFilesAsync(CancellationToken cancellationToken = default)
         {
@@ -178,7 +199,7 @@ namespace RimSharp.Services.ModManagement
                     try
                     {
                         var downloadUrl = $"steam://workshop_download_item/294100/{modId}";
-                        Core.Services.SteamProtocolLauncher.TryOpen(downloadUrl, _logger);
+                        await LaunchSteamUrlAsync(downloadUrl);
                         await Task.Delay(100, cancellationToken); // Small delay between launches
                     }
                     catch (Exception ex)

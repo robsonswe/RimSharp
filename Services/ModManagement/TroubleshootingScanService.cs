@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using RimSharp.Features.LogViewer.Services;
 using RimSharp.Features.ModManager.ViewModels.Actions;
 using RimSharp.Infrastructure.Configuration;
 using RimSharp.Shared.Models;
@@ -25,12 +26,19 @@ namespace RimSharp.Services.ModManagement
         private readonly ILoggerService _logger;
         private readonly IPathService _pathService;
         private readonly ISteamSubscriptionService _steamSubscriptionService;
+        private readonly PlayerLogReader _logReader = new();
 
         // Test seams for gating checks
         internal static Func<bool>? TestIsSteamInstallationOverride { get; set; }
         internal static Func<bool>? TestIsWindowsOverride { get; set; }
         internal static Func<string>? TestGameVersionOverride { get; set; }
         internal static Func<IEnumerable<Process>>? TestGetProcessesOverride { get; set; }
+
+        // Test seam for log locator (allows tests to inject temp paths)
+        internal static Func<string?, string?, LogSourcePaths>? TestLogLocatorOverride { get; set; }
+
+        // Test seam for log reader (allows tests to inject head text directly)
+        internal static Func<string, int, CancellationToken, Task<LogHeadResult>>? TestLogReaderOverride { get; set; }
 
         public TroubleshootingScanService(
             GameInstance gameInstance,
@@ -129,6 +137,145 @@ namespace RimSharp.Services.ModManagement
             }
         }
 
+        /// <inheritdoc />
+        public async Task<IReadOnlyList<ScanFinding>> RunChecksAsync(IReadOnlyCollection<string> checkIds, CancellationToken cancellationToken = default)
+        {
+            if (checkIds == null || checkIds.Count == 0)
+            {
+                return Array.Empty<ScanFinding>();
+            }
+
+            _logger.LogInfo($"Troubleshooting targeted scan started for checks: {string.Join(", ", checkIds)}", nameof(TroubleshootingScanService));
+
+            var findings = new List<ScanFinding>();
+            var stopwatch = Stopwatch.StartNew();
+
+            // Determine gate states (same as RunScanAsync)
+            var isSteamInstallation = TestIsSteamInstallationOverride?.Invoke() ?? _gameInstance.IsSteamInstallation;
+            var isWindows = TestIsWindowsOverride?.Invoke() ?? RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+            var gameVersion = TestGameVersionOverride?.Invoke() ?? _pathService.GetGameVersion() ?? "Unknown";
+            var unityCrashHandlerRelevant = IsUnityCrashHandlerRelevant(gameVersion);
+
+            var checkIdSet = new HashSet<string>(checkIds, StringComparer.OrdinalIgnoreCase);
+
+            try
+            {
+                // Check 1: Game path & config path resolve
+                if (checkIdSet.Contains("paths_resolve"))
+                {
+                    findings.Add(CheckPathsResolve());
+                }
+
+                // Check 2: Steam installation detected
+                if (checkIdSet.Contains("steam_installation"))
+                {
+                    findings.Add(CheckSteamInstallation(isSteamInstallation));
+                }
+
+                // Check 3: Game version read
+                if (checkIdSet.Contains("game_version"))
+                {
+                    findings.Add(CheckGameVersion(gameVersion));
+                }
+
+                // Check 4: Player.log / Player-prev.log size
+                if (checkIdSet.Contains("log_file_sizes"))
+                {
+                    findings.Add(await CheckLogFileSizesAsync(cancellationToken));
+                }
+
+                // Check 5: Log signature scan via LogIssueDetector
+                if (checkIdSet.Contains("log_signatures"))
+                {
+                    findings.AddRange(await CheckLogSignaturesAsync(cancellationToken));
+                }
+
+                // Check 6: Running RimWorld processes
+                if (checkIdSet.Contains("running_processes"))
+                {
+                    findings.AddRange(CheckRunningProcesses(isWindows, unityCrashHandlerRelevant));
+                }
+
+                // Check 7: Config folder attributes (Windows only) - gate applies
+                if (checkIdSet.Contains("config_folder_attributes"))
+                {
+                    if (isWindows)
+                    {
+                        findings.Add(await CheckConfigFolderAttributesAsync(cancellationToken));
+                    }
+                    // Else: silently skipped (gate not met), not a failure
+                }
+
+                // Check 8: Mod assembly files present vs referenced
+                if (checkIdSet.Contains("mod_assemblies"))
+                {
+                    findings.Add(await CheckModAssembliesAsync(cancellationToken));
+                }
+
+                // Check 9: Mod_*.xml files integrity
+                if (checkIdSet.Contains("mod_settings_xml"))
+                {
+                    findings.Add(await CheckModSettingsXmlAsync(cancellationToken));
+                }
+
+                // Check 10: Path contains non-ASCII chars
+                if (checkIdSet.Contains("path_compatibility"))
+                {
+                    findings.Add(CheckPathCompatibility());
+                }
+
+                // Steam-gated checks (skipped silently when not Steam)
+                if (isSteamInstallation)
+                {
+                    // Check 11: Workshop content folder present + 0-byte mods
+                    if (checkIdSet.Contains("workshop_mods"))
+                    {
+                        findings.Add(await CheckWorkshopModsAsync(cancellationToken));
+                    }
+
+                    // Check 12: appworkshop_294100.acf vs filesystem cross-reference
+                    if (checkIdSet.Contains("orphaned_workshop_mods"))
+                    {
+                        findings.Add(await CheckOrphanedWorkshopModsAsync(cancellationToken));
+                    }
+
+                    // Check 13: steamapps/downloading + workshop staging dirs
+                    if (checkIdSet.Contains("stuck_downloads"))
+                    {
+                        findings.Add(await CheckStuckDownloadsAsync(cancellationToken));
+                    }
+                }
+                // Else: Steam-gated checks silently skipped when not Steam
+
+                // Check 14: ModsConfig.xml integrity
+                if (checkIdSet.Contains("mods_config_integrity"))
+                {
+                    findings.Add(await CheckModsConfigIntegrityAsync(cancellationToken));
+                }
+
+                // Check 15: Saves folder size
+                if (checkIdSet.Contains("saves_folder_size"))
+                {
+                    findings.Add(await CheckSavesFolderSizeAsync(cancellationToken));
+                }
+
+                stopwatch.Stop();
+                _logger.LogInfo($"Troubleshooting targeted scan completed in {stopwatch.ElapsedMilliseconds}ms with {findings.Count} findings", nameof(TroubleshootingScanService));
+
+                return findings;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInfo("Troubleshooting targeted scan cancelled", nameof(TroubleshootingScanService));
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Troubleshooting targeted scan failed: {ex.Message}", nameof(TroubleshootingScanService));
+                throw;
+            }
+        }
+
         private ScanFinding CheckPathsResolve()
         {
             var issues = new List<string>();
@@ -221,10 +368,131 @@ namespace RimSharp.Services.ModManagement
 
         private async Task<IReadOnlyList<ScanFinding>> CheckLogSignaturesAsync(CancellationToken cancellationToken)
         {
-            // This would integrate with the existing LogIssueDetector pipeline
-            // For now, return empty - the UI layer handles log analysis
-            await Task.CompletedTask;
-            return Array.Empty<ScanFinding>();
+            var findings = new List<ScanFinding>();
+
+            try
+            {
+                // Resolve log paths using the existing locator (testable via TestLogLocatorOverride)
+                var configPath = _pathService.GetConfigPath();
+                var gameVersion = _pathService.GetGameVersion() ?? "Unknown";
+                var majorVersion = Version.TryParse(gameVersion, out var v) ? $"{v.Major}.{v.Minor}" : "Unknown";
+
+                LogSourcePaths logPaths;
+                if (TestLogLocatorOverride != null)
+                {
+                    logPaths = TestLogLocatorOverride(configPath, majorVersion);
+                }
+                else
+                {
+                    logPaths = PlayerLogLocator.Resolve(configPath, majorVersion);
+                }
+
+                // Read head of both current and previous logs (8MB head window matches LogDiagnosticsWindow.HeadBytes)
+                const int headBytes = LogDiagnosticsWindow.HeadBytes;
+                var headTasks = new List<Task<LogHeadResult>>();
+
+                if (logPaths.Current != null)
+                {
+                    if (TestLogReaderOverride != null)
+                    {
+                        headTasks.Add(TestLogReaderOverride(logPaths.Current, headBytes, cancellationToken));
+                    }
+                    else
+                    {
+                        headTasks.Add(_logReader.ReadHeadAsync(logPaths.Current, headBytes, cancellationToken));
+                    }
+                }
+                if (logPaths.Previous != null)
+                {
+                    if (TestLogReaderOverride != null)
+                    {
+                        headTasks.Add(TestLogReaderOverride(logPaths.Previous, headBytes, cancellationToken));
+                    }
+                    else
+                    {
+                        headTasks.Add(_logReader.ReadHeadAsync(logPaths.Previous, headBytes, cancellationToken));
+                    }
+                }
+
+                if (headTasks.Count == 0)
+                {
+                    // No log files found — not a failure, just nothing to analyze
+                    return findings;
+                }
+
+                var headResults = await Task.WhenAll(headTasks);
+
+                // Combine head text from both logs
+                var combinedHeadText = new System.Text.StringBuilder();
+                foreach (var result in headResults)
+                {
+                    if (result.Found && !string.IsNullOrEmpty(result.Text))
+                    {
+                        combinedHeadText.Append(result.Text);
+                    }
+                }
+
+                if (combinedHeadText.Length == 0)
+                {
+                    // Logs exist but are empty/unreadable — not a failure
+                    return findings;
+                }
+
+                // Build diagnostic lines (line-numbered) from the combined head text
+                var diagnosticLines = LogDiagnosticsWindow.Build(
+                    combinedHeadText.ToString(),
+                    storeFirstLineNumber: 1, // No store in scan context; head covers from line 1
+                    storeLines: null);
+
+                if (diagnosticLines.Count == 0)
+                {
+                    return findings;
+                }
+
+                // Run the existing detector pipeline
+                var issues = LogIssueDetector.Analyze(diagnosticLines);
+
+                // Convert each LogDiagnosticIssue to a ScanFinding
+                foreach (var issue in issues)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var severity = issue.Severity switch
+                    {
+                        LogDiagnosticSeverity.Error => ScanSeverity.Error,
+                        LogDiagnosticSeverity.Warning => ScanSeverity.Warning,
+                        _ => ScanSeverity.Info
+                    };
+
+                    findings.Add(new ScanFinding
+                    {
+                        CheckId = "log_signatures",
+                        Passed = false,
+                        Severity = severity,
+                        Title = issue.Title,
+                        Detail = $"{issue.Description}\n\nWhat to try:\n{issue.Suggestion}",
+                        SuggestedActionId = null, // Honesty: no fix action exists for these known log signatures
+                        Metadata = new Dictionary<string, object>
+                        {
+                            ["logSignature"] = true,
+                            ["count"] = issue.Count,
+                            ["firstLineNumber"] = issue.FirstLineNumber,
+                            ["suggestion"] = issue.Suggestion
+                        }
+                    });
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // Read-only check: log warning and return empty — never throw, never report failure finding
+                _logger.LogWarning($"Log signature scan failed: {ex.Message}", nameof(TroubleshootingScanService));
+            }
+
+            return findings;
         }
 
         private IReadOnlyList<ScanFinding> CheckRunningProcesses(bool isWindows, bool unityCrashHandlerRelevant)
@@ -334,20 +602,35 @@ namespace RimSharp.Services.ModManagement
         {
             var missingAssemblies = new List<string>();
             var checkedMods = 0;
+            var totalMods = 0;
+            var bounded = false;
+
+            // Bounded IO: stop after ~2 seconds or 200 mods, whichever comes first
+            var stopwatch = Stopwatch.StartNew();
+            const int MaxModsToCheck = 200;
+            const int MaxTimeMs = 2000;
 
             try
             {
                 // Check local mods
                 if (!string.IsNullOrEmpty(_gameInstance.LocalFolder) && Directory.Exists(_gameInstance.LocalFolder))
                 {
-                    var modDirs = new DirectoryInfo(_gameInstance.LocalFolder).GetDirectories();
+                    var modDirs = new DirectoryInfo(_gameInstance.LocalFolder).EnumerateDirectories();
                     foreach (var modDir in modDirs)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
+                        if (stopwatch.ElapsedMilliseconds > MaxTimeMs || checkedMods >= MaxModsToCheck)
+                        {
+                            bounded = true;
+                            break;
+                        }
+
+                        totalMods++;
                         checkedMods++;
-                        var assemblies = modDir.GetFiles("*.dll", SearchOption.AllDirectories);
+                        var assemblies = modDir.EnumerateFiles("*.dll", SearchOption.AllDirectories);
                         foreach (var asm in assemblies)
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
                             try
                             {
                                 using var fs = File.OpenRead(asm.FullName);
@@ -367,16 +650,24 @@ namespace RimSharp.Services.ModManagement
                 }
 
                 // Check workshop mods
-                if (_gameInstance.IsSteamInstallation && !string.IsNullOrEmpty(_gameInstance.WorkshopFolder) && Directory.Exists(_gameInstance.WorkshopFolder))
+                if (!bounded && _gameInstance.IsSteamInstallation && !string.IsNullOrEmpty(_gameInstance.WorkshopFolder) && Directory.Exists(_gameInstance.WorkshopFolder))
                 {
-                    var modDirs = new DirectoryInfo(_gameInstance.WorkshopFolder).GetDirectories();
+                    var modDirs = new DirectoryInfo(_gameInstance.WorkshopFolder).EnumerateDirectories();
                     foreach (var modDir in modDirs)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
+                        if (stopwatch.ElapsedMilliseconds > MaxTimeMs || checkedMods >= MaxModsToCheck)
+                        {
+                            bounded = true;
+                            break;
+                        }
+
+                        totalMods++;
                         checkedMods++;
-                        var assemblies = modDir.GetFiles("*.dll", SearchOption.AllDirectories);
+                        var assemblies = modDir.EnumerateFiles("*.dll", SearchOption.AllDirectories);
                         foreach (var asm in assemblies)
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
                             try
                             {
                                 using var fs = File.OpenRead(asm.FullName);
@@ -400,15 +691,24 @@ namespace RimSharp.Services.ModManagement
                 _logger.LogWarning($"Failed to check mod assemblies: {ex.Message}", nameof(TroubleshootingScanService));
             }
 
+            var detail = missingAssemblies.Count > 0
+                ? $"{missingAssemblies.Count} missing/inaccessible assemblies in {checkedMods} mods"
+                : $"All assemblies accessible in {checkedMods} mods";
+
+            if (bounded)
+            {
+                detail += $" (scan bounded: {totalMods - checkedMods} more mods not checked)";
+            }
+
             return new ScanFinding
             {
                 CheckId = "mod_assemblies",
                 Passed = missingAssemblies.Count == 0,
                 Severity = missingAssemblies.Count > 0 ? ScanSeverity.Error : ScanSeverity.Info,
                 Title = "Mod assemblies",
-                Detail = missingAssemblies.Count > 0 ? $"{missingAssemblies.Count} missing/inaccessible assemblies in {checkedMods} mods" : $"All assemblies accessible in {checkedMods} mods",
+                Detail = detail,
                 SuggestedActionId = missingAssemblies.Count > 0 ? "scan_missing_assemblies" : null,
-                Metadata = new Dictionary<string, object> { ["missing"] = missingAssemblies, ["checkedMods"] = checkedMods }
+                Metadata = new Dictionary<string, object> { ["missing"] = missingAssemblies, ["checkedMods"] = checkedMods, ["bounded"] = bounded }
             };
         }
 

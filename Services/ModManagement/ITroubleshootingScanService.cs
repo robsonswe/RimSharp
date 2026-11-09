@@ -14,6 +14,13 @@ namespace RimSharp.Services.ModManagement
         /// Runs all applicable scan checks and returns findings.
         /// </summary>
         Task<IReadOnlyList<ScanFinding>> RunScanAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Runs only the checks whose IDs are in <paramref name="checkIds"/>, applying the same
+        /// read-only semantics and OS/Steam/version gates as <see cref="RunScanAsync"/>.
+        /// Gate-unmet checks are skipped silently and are not failures.
+        /// </summary>
+        Task<IReadOnlyList<ScanFinding>> RunChecksAsync(IReadOnlyCollection<string> checkIds, CancellationToken cancellationToken = default);
     }
 
     /// <summary>

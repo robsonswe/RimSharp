@@ -52,6 +52,34 @@ namespace RimSharp.Services.Workshop
         /// </summary>
         internal static Func<bool>? TestSteamworksSupportedOverride { get; set; }
 
+        /// <summary>
+        /// Test seam: override steam:// protocol launching so tests never
+        /// touch the real Steam client. When null (default), the real
+        /// protocol launcher is used.
+        /// </summary>
+        internal static Func<string, Task<bool>>? TestProtocolLaunchOverride { get; set; }
+
+        /// <summary>
+        /// Test seam: override process enumeration so tests never enumerate
+        /// (or risk terminating) real processes. When null (default), all
+        /// running processes are enumerated.
+        /// </summary>
+        internal static Func<IEnumerable<Process>>? TestProcessEnumerationOverride { get; set; }
+
+        /// <summary>
+        /// Launches a steam:// URL. Tests substitute the real launcher via
+        /// TestProtocolLaunchOverride; production code always launches for real.
+        /// </summary>
+        private async Task<bool> LaunchSteamUrlAsync(string url)
+        {
+            if (TestProtocolLaunchOverride != null)
+            {
+                return await TestProtocolLaunchOverride(url).ConfigureAwait(false);
+            }
+
+            return Core.Services.SteamProtocolLauncher.TryOpen(url, _logger);
+        }
+
         /// <summary>Set to "1" to enable (experimental) Steamworks integration on macOS.</summary>
         internal const string MacOsOptInEnvVar = "RIMSHARP_STEAMWORKS_MACOS";
 
@@ -855,7 +883,7 @@ namespace RimSharp.Services.Workshop
 
                 _logger.LogInfo($"Launching Steam file verification for RimWorld (294100)", nameof(SteamSubscriptionService));
 
-                var launched = Core.Services.SteamProtocolLauncher.TryOpen(verifyUrl, _logger);
+                var launched = await LaunchSteamUrlAsync(verifyUrl);
                 if (launched)
                 {
                     _logger.LogInfo("Steam verify game files launched successfully", nameof(SteamSubscriptionService));
@@ -1066,7 +1094,9 @@ namespace RimSharp.Services.Workshop
                 int killedCount = 0;
                 var killedProcesses = new List<string>();
 
-                var processes = Process.GetProcesses();
+                var processes = TestProcessEnumerationOverride != null
+                    ? TestProcessEnumerationOverride()
+                    : Process.GetProcesses();
                 foreach (var process in processes)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -1300,7 +1330,7 @@ namespace RimSharp.Services.Workshop
                     try
                     {
                         var validateUrl = $"steam://validate/{appId}";
-                        var launched = Core.Services.SteamProtocolLauncher.TryOpen(validateUrl, _logger);
+                        var launched = await LaunchSteamUrlAsync(validateUrl);
                         if (launched)
                         {
                             launchCount++;

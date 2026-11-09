@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -44,11 +45,17 @@ namespace RimSharp.Tests.Services.Workshop
             Directory.CreateDirectory(Path.Combine(_testTempDir, "Steam", "steamapps", "downloading"));
             Directory.CreateDirectory(Path.Combine(_testTempDir, "Steam", "steamapps", "workshop", "downloads"));
             Directory.CreateDirectory(Path.Combine(_testTempDir, "Steam", "steamapps", "workshop", "temp", "294100"));
+
+            // Tests must never reach the real Steam client or enumerate real processes.
+            SteamSubscriptionService.TestProtocolLaunchOverride = _ => Task.FromResult(true);
+            SteamSubscriptionService.TestProcessEnumerationOverride = () => Array.Empty<Process>();
         }
 
         public void Dispose()
         {
             SteamSubscriptionService.TestSteamworksSupportedOverride = null;
+            SteamSubscriptionService.TestProtocolLaunchOverride = null;
+            SteamSubscriptionService.TestProcessEnumerationOverride = null;
 
             if (Directory.Exists(_testTempDir))
             {

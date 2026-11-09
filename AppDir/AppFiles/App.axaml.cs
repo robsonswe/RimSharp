@@ -248,7 +248,12 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IFileDialogService>(),
                     provider.GetRequiredService<ILoggerService>(),
                     provider.GetRequiredService<ISteamClaimValidator>(),
-                    provider.GetRequiredService<GameInstallationDetectionService>()
+                    provider.GetRequiredService<GameInstallationDetectionService>(),
+                    provider.GetRequiredService<IGameRecoveryService>(),
+                    provider.GetRequiredService<IModConfigurationService>(),
+                    provider.GetRequiredService<ISteamSubscriptionService>(),
+                    provider.GetRequiredService<ITroubleshootingScanService>(),
+                    provider.GetRequiredService<GameInstance>()
                 ));
             services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
             services.AddSingleton<ISystemInfoService>(provider => SystemInfoServiceFactory.Create());
