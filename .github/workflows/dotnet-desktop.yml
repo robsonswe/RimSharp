@@ -27,7 +27,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: 8.0.x
+        dotnet-version: 10.0.x
 
     - name: Restore dependencies
       run: dotnet restore $env:Solution_Path
@@ -42,7 +42,7 @@ jobs:
       shell: pwsh
       run: |
         dotnet publish $env:Project_Path `
-          -f net8.0-windows `
+          -f net10.0-windows `
           -r win-x64 `
           -c Release `
           --self-contained true `
@@ -88,7 +88,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: 8.0.x
+        dotnet-version: 10.0.x
 
     - name: Restore dependencies
       shell: bash
@@ -96,7 +96,7 @@ jobs:
 
     - name: Run unit tests (Linux)
       shell: bash
-      run: dotnet test RimSharp.Tests/RimSharp.Tests.csproj --framework net8.0 --configuration Release --no-restore
+      run: dotnet test RimSharp.Tests/RimSharp.Tests.csproj --framework net10.0 --configuration Release --no-restore
 
     - name: Install packaging tools
       shell: bash
@@ -113,7 +113,7 @@ jobs:
         package_version="${version//-/.}"
 
         dotnet publish "$Project_Path" \
-          -f net8.0 \
+          -f net10.0 \
           -r linux-x64 \
           -c Release \
           --self-contained true \
@@ -262,7 +262,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: 8.0.x
+        dotnet-version: 10.0.x
 
     - name: Restore dependencies
       shell: bash
@@ -270,7 +270,7 @@ jobs:
 
     - name: Run unit tests (macOS)
       shell: bash
-      run: dotnet test RimSharp.Tests/RimSharp.Tests.csproj --framework net8.0 --configuration Release --no-restore
+      run: dotnet test RimSharp.Tests/RimSharp.Tests.csproj --framework net10.0 --configuration Release --no-restore
 
     - name: Install packaging tools (macOS)
       shell: bash
@@ -312,7 +312,7 @@ jobs:
 
         for rid in osx-arm64 osx-x64; do
           dotnet publish "$Project_Path" \
-            -f net8.0 \
+            -f net10.0 \
             -r "$rid" \
             -c Release \
             --self-contained true \

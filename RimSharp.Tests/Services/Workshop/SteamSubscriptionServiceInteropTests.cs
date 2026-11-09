@@ -200,10 +200,16 @@ namespace RimSharp.Tests.Services.Workshop
             var ex = Record.Exception(() => initialized = interop.Init());
             try
             {
-                ex.Should().NotBeOfType<FileNotFoundException>();
-                ex.Should().NotBeOfType<FileLoadException>();
-                ex.Should().NotBeOfType<BadImageFormatException>();
-                ex.Should().NotBeOfType<TypeLoadException>();
+                // A null exception is the good outcome on a runner without Steam: the native
+                // library resolved and Init simply returned false. Only a real failure has
+                // assertions to make, and they must be checked against the exception we got.
+                if (ex != null)
+                {
+                    ex.Should().NotBeOfType<FileNotFoundException>();
+                    ex.Should().NotBeOfType<FileLoadException>();
+                    ex.Should().NotBeOfType<BadImageFormatException>();
+                    ex.Should().NotBeOfType<TypeLoadException>();
+                }
                 TestContext.Current.SendDiagnosticMessage($"SteamAPI.Init -> {(ex == null ? initialized.ToString() : ex.GetType().Name + ": " + ex.Message)}");
             }
             finally
