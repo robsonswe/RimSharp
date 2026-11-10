@@ -831,7 +831,7 @@ namespace RimSharp.Tests.Services.ModManagement
         #region GetSavesPath
 
         [Fact]
-        public void GetSavesPath_IsTheSavesFolderInsideTheConfigFolder()
+        public void GetSavesPath_IsTheSavesSiblingFolderBesideTheConfigFolder()
         {
             // Arrange
             var configService = Substitute.For<IConfigService>();
@@ -842,7 +842,8 @@ namespace RimSharp.Tests.Services.ModManagement
             string savesPath = pathService.GetSavesPath();
 
             // Assert
-            savesPath.Should().Be(Path.Combine(_configDir, "Saves"));
+            savesPath.Should().Be(Path.Combine(
+                Path.GetDirectoryName(_configDir)!, "Saves"));
         }
 
         #endregion
