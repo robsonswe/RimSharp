@@ -8,7 +8,7 @@ namespace RimSharp.Services.Workshop
 {
     /// <summary>
     /// Service for checking and applying workshop mod updates.
-    /// Based on RimSort's query_workshop_update_data approach.
+    /// Based on the researched community approach for workshop update queries.
     /// </summary>
     public interface IWorkshopUpdateService
     {

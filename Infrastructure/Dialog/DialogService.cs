@@ -12,6 +12,7 @@ using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Infrastructure.Logging;
 using RimSharp.Infrastructure.Configuration;
+using RimSharp.Services.ModManagement;
 using RimSharp.Services.Workshop;
 using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
 using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
@@ -25,6 +26,8 @@ using RimSharp.Features.ModManager.Dialogs.Strip;
 using RimSharp.Features.ModManager.Dialogs.ActiveIssues;
 using RimSharp.Features.LogViewer.ViewModels;
 using RimSharp.Features.LogViewer.Views;
+using RimSharp.Features.Troubleshooting.ViewModels;
+using RimSharp.Features.Troubleshooting.Views;
 using RimSharp.Features.AppLogs.ViewModels;
 using RimSharp.Features.AppLogs.Views;
 using Avalonia.Platform.Storage;
@@ -39,6 +42,13 @@ namespace RimSharp.Infrastructure.Dialog
         private readonly IPathService? _pathService;
         private readonly IEnumerable<IAIProviderClient>? _aiProviders;
         private readonly ILoggerService? _logger;
+        private readonly ISteamClaimValidator? _steamClaimValidator;
+        private readonly GameInstallationDetectionService? _gameInstallationDetectionService;
+        private readonly IGameRecoveryService? _gameRecoveryService;
+        private readonly IModConfigurationService? _modConfigurationService;
+        private readonly ISteamSubscriptionService? _steamSubscriptionService;
+        private readonly ITroubleshootingScanService? _troubleshootingScanService;
+        private readonly Shared.Models.GameInstance? _gameInstance;
         private int _openDialogCount;
         public bool IsAnyDialogOpen => _openDialogCount > 0;
 
@@ -52,7 +62,12 @@ namespace RimSharp.Infrastructure.Dialog
             IFileDialogService? fileDialogService = null,
             ILoggerService? logger = null,
             ISteamClaimValidator? steamClaimValidator = null,
-            GameInstallationDetectionService? gameInstallationDetectionService = null)
+            GameInstallationDetectionService? gameInstallationDetectionService = null,
+            IGameRecoveryService? gameRecoveryService = null,
+            IModConfigurationService? modConfigurationService = null,
+            ISteamSubscriptionService? steamSubscriptionService = null,
+            ITroubleshootingScanService? troubleshootingScanService = null,
+            Shared.Models.GameInstance? gameInstance = null)
         {
             _appUpdaterService = appUpdaterService;
             _configService = configService;
@@ -62,10 +77,12 @@ namespace RimSharp.Infrastructure.Dialog
             _logger = logger;
             _steamClaimValidator = steamClaimValidator;
             _gameInstallationDetectionService = gameInstallationDetectionService;
+            _gameRecoveryService = gameRecoveryService;
+            _modConfigurationService = modConfigurationService;
+            _steamSubscriptionService = steamSubscriptionService;
+            _troubleshootingScanService = troubleshootingScanService;
+            _gameInstance = gameInstance;
         }
-
-        private readonly ISteamClaimValidator? _steamClaimValidator;
-        private readonly GameInstallationDetectionService? _gameInstallationDetectionService;
 
         private void OnPropertyChanged(string propertyName)
         {
@@ -261,6 +278,20 @@ namespace RimSharp.Infrastructure.Dialog
                 dialogService: this,
                 showAiProviders: showAiProviders);
             var dialog = new SettingsDialogView(viewModel);
+            return await ShowDialogInternalAsync<bool>(viewModel, dialog);
+        }
+
+        public async Task<bool> ShowTroubleshootingDialogAsync()
+        {
+            var viewModel = new TroubleshootingViewModel(
+                this,
+                _gameRecoveryService!,
+                _modConfigurationService!,
+                _steamSubscriptionService!,
+                _troubleshootingScanService!,
+                _gameInstance!);
+            await viewModel.InitializeAsync();
+            var dialog = new TroubleshootingDialogView(viewModel);
             return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }
 

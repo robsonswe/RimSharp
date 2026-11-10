@@ -30,7 +30,7 @@ namespace RimSharp.Tests.Features.ModManager.Components.ModDetails
         }
 
         private const string AnchorLine =
-            "[*] Use [url=https://github.com/RimSort/RimSort/releases/latest]RimSort[/url] to sort your mods";
+            "[*] Use [url=https://github.com/example/modmanager/releases/latest]ModManager[/url] to sort your mods";
 
         private const string LinkedBadge =
             "[url=https://steamcommunity.com/sharedfiles/filedetails/changelog/2038940371]" +
@@ -83,8 +83,8 @@ namespace RimSharp.Tests.Features.ModManager.Components.ModDetails
 
             // Assert (failure message prints the whole inline sequence).
             Assert.True(
-                label.Contains("text:RimSort"),
-                $"anchor label should be 'RimSort' but got: [{string.Join(" | ", seq)}]");
+                label.Contains("text:ModManager"),
+                $"anchor label should be 'ModManager' but got: [{string.Join(" | ", seq)}]");
 
             var beforeText = string.Join("", runBefore.Where(s => s.StartsWith("Run '")));
             Assert.True(
@@ -92,11 +92,11 @@ namespace RimSharp.Tests.Features.ModManager.Components.ModDetails
                 $"'Use ' must be BEFORE the link, sequence: [{string.Join(" | ", seq)}]");
 
             // Anchor text itself must not leak into the surrounding Run.
-            Assert.DoesNotContain("RimSort", beforeText);
+            Assert.DoesNotContain("ModManager", beforeText);
 
             var afterText = string.Join("", seq.Skip(buttonIndex + 1).Where(s => s.StartsWith("Run '")));
             Assert.Contains("to sort your mods", afterText);
-            Assert.DoesNotContain("RimSort", afterText);
+            Assert.DoesNotContain("ModManager", afterText);
         }
 
         [AvaloniaFact]

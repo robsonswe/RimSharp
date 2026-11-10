@@ -41,7 +41,7 @@ namespace RimSharp.Tests.Services.Workshop
         };
 
         private SteamSubscriptionService CreateService()
-            => new SteamSubscriptionService(_gameInstance, _logger, _apiClient, interop: _interop);
+            => new SteamSubscriptionService(_gameInstance, _logger, _apiClient, Substitute.For<IPathService>(), interop: _interop);
 
         // ── Behaviour through the seam (runs identically on every OS) ───────────────
 

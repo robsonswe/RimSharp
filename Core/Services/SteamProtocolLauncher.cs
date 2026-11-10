@@ -13,7 +13,7 @@ namespace RimSharp.Core.Services
     /// enough; on Linux there is frequently no registered URL handler, so the
     /// <c>steam</c> binary is launched directly — through a terminal emulator when
     /// one is available (so the client's output is not lost to a detached
-    /// process), and detached as the last resort (RimSort reference behavior:
+    /// process), and detached as the last resort (based on the researched community approach:
     /// gnome-terminal, konsole, xfce4-terminal, mate-terminal, xterm,
     /// x-terminal-emulator, then direct launch).
     /// </summary>

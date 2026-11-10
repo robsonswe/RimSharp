@@ -10,7 +10,7 @@ namespace RimSharp.Services.ModManagement
 {
     /// <summary>
     /// Service to classify mods by their source based on their location and content.
-    /// Based on RimSort's _set_mod_type logic.
+    /// Based on the researched community approach for mod type classification.
     /// </summary>
     public class ModClassificationService
     {

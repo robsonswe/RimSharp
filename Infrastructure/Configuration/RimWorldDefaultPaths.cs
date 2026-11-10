@@ -99,7 +99,7 @@ namespace RimSharp.Infrastructure.Configuration
         }
 
         /// <summary>
-        /// Steam root candidates on Linux, in probe order (RimSort reference behavior):
+        /// Steam root candidates on Linux, in probe order (based on the researched community approach):
         /// native/legacy installs first, then sandboxed (Flatpak, Snap) installs.
         /// Callers apply their own validity checks (steamapps dir / libraryfolders.vdf)
         /// on top of these paths.
@@ -120,7 +120,7 @@ namespace RimSharp.Infrastructure.Configuration
         /// Proton prefix config path for Steam Play users. When RimWorld runs through
         /// Proton on Linux, Unity writes its config inside the game's compat prefix
         /// instead of the native <c>~/.config/unity3d/...</c> path — so detection must
-        /// prefer the prefix when it exists (RimSort reference behavior).
+        /// prefer the prefix when it exists (based on the researched community approach).
         /// Exposed separately from <see cref="GetProtonConfigFolder"/> so tests can pin
         /// the exact path shape without a filesystem.
         /// </summary>

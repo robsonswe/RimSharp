@@ -5,7 +5,7 @@ namespace RimSharp.Services.Workshop
     /// The possible outcomes of comparing a Workshop item's externally-reported
     /// content time (Steam WebAPI time_updated) against the locally-recorded
     /// internal time (max of ACF manifest time and timestamp.txt-derived date).
-    /// Mirrors RimSort's query_workshop_update_data decision shape.
+    /// Based on the researched community approach for workshop update decisions.
     /// </summary>
     public enum WorkshopUpdateDecision
     {

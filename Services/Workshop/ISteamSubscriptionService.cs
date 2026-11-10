@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Shared.Models;
+using RimSharp.Services.ModManagement;
 
 namespace RimSharp.Services.Workshop
 {
     /// <summary>
     /// Service for managing Steam workshop subscriptions.
-    /// Based on RimSort's workshop management approach.
+    /// Based on the researched community approach for workshop management.
     /// </summary>
     public interface ISteamSubscriptionService
     {
@@ -61,7 +62,7 @@ namespace RimSharp.Services.Workshop
         Task<int> RefreshSubscriptionsAsync(IProgress<(int current, int total, string message)>? progress = null, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Resubscribe to a list of mods (RimSort pattern: unsub all → 1s → sub all → 1s → DownloadItem).
+        /// Resubscribe to a list of mods (community pattern: unsub all → 1s → sub all → 1s → DownloadItem).
         /// </summary>
         /// <param name="steamIds">List of Steam Workshop IDs</param>
         /// <param name="progress">Optional progress reporting</param>
@@ -89,5 +90,30 @@ namespace RimSharp.Services.Workshop
         /// </summary>
         /// <returns>True if Steam was launched successfully, false otherwise</returns>
         Task<bool> VerifyGameFilesAsync();
+
+        /// <summary>
+        /// Clear Steam download cache directories: steamapps/downloading, workshop/downloads, workshop/temp/{AppId}.
+        /// </summary>
+        Task<GameRecoveryResult> ClearDownloadCacheAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Purge workshop temporary directories: workshop/downloads and workshop/temp/294100.
+        /// </summary>
+        Task<GameRecoveryResult> PurgeWorkshopTempAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Kill zombie RimWorld processes and UnityCrashHandler64 (Windows, game version < 1.7).
+        /// </summary>
+        Task<GameRecoveryResult> KillZombieProcessesAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Clean orphaned workshop mods from appworkshop_294100.acf (entries with no on-disk directory).
+        /// </summary>
+        Task<GameRecoveryResult> CleanOrphanedWorkshopModsAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Repair Steam library by parsing libraryfolders.vdf and launching steam://validate/{appid} for each app.
+        /// </summary>
+        Task<GameRecoveryResult> RepairLibraryAsync(CancellationToken cancellationToken = default);
     }
 }

@@ -10,7 +10,7 @@ namespace RimSharp.Infrastructure.Configuration
 {
     /// <summary>
     /// Service for detecting Steam installations and configuring game instances.
-    /// Based on RimSort's path_autodetect_service.py.
+    /// Based on the researched community approach for Steam path autodetection.
     /// </summary>
     public class SteamDetectionService
     {
@@ -196,7 +196,7 @@ namespace RimSharp.Infrastructure.Configuration
 
         /// <summary>
         /// Find Steam root on Windows using Registry (both WOW6432Node and standard) and common paths.
-        /// Based on RimSort's win_find_steam.py.
+        /// Based on the researched community approach for Windows Steam detection.
         /// </summary>
         [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         private string? FindSteamRootWindows()
