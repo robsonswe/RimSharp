@@ -162,6 +162,7 @@ public bool IsParentLoading
         public ICommand ImportListCommand { get; private set; } = null!;
         public ICommand ExportListCommand { get; private set; } = null!;
         public ICommand CheckReplacementsCommand { get; private set; } = null!;
+        public ICommand SavesCommand { get; private set; } = null!;
 
         // Mod Actions (Single/Multi)
         public ICommand DeleteModCommand { get; private set; } = null!; 

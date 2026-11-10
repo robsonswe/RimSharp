@@ -253,6 +253,8 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IModConfigurationService>(),
                     provider.GetRequiredService<ISteamSubscriptionService>(),
                     provider.GetRequiredService<ITroubleshootingScanService>(),
+                    provider.GetRequiredService<ISaveHeaderService>(),
+                    provider.GetRequiredService<IModListManager>(),
                     provider.GetRequiredService<GameInstance>()
                 ));
             services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();

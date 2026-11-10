@@ -82,6 +82,13 @@ namespace RimSharp.Shared.Services.Contracts
         Task<bool> ShowAppLogsAsync();
 
         /// <summary>
+        /// Modals the read-only saves dialog: the save files of the game and
+        /// what the current mod list means for them. The dialog never writes,
+        /// moves or deletes a save.
+        /// </summary>
+        Task<bool> ShowSavesDialogAsync();
+
+        /// <summary>
         /// Modals RimSharp settings dialog (Paths + AI Providers tabs).
         /// Returns true when the user saved changes. When
         /// <paramref name="showAiProviders"/> is false the AI Providers tab

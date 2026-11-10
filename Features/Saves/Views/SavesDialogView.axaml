@@ -1,0 +1,475 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:i="https://github.com/projektanker/icons.avalonia"
+        xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+        xmlns:vm="clr-namespace:RimSharp.Features.Saves.ViewModels"
+        mc:Ignorable="d"
+        x:Class="RimSharp.Features.Saves.Views.SavesDialogView"
+        x:DataType="vm:SavesDialogViewModel"
+        Title="{Binding Title}"
+        Width="1000"
+        Height="700"
+        MinWidth="840"
+        MinHeight="520"
+        CanResize="True"
+        WindowStartupLocation="CenterOwner">
+
+    <dialogs:BaseDialog.MainContent>
+        <Border Classes="panel">
+
+            <!--
+                Window-local styles, shared in spirit with the app-logs viewer
+                (same sheet, rows and chips) so the two read as one family.
+            -->
+            <Border.Styles>
+                <Style Selector="Border.sheet">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgSurface}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="CornerRadius" Value="3"/>
+                </Style>
+
+                <Style Selector="Border.card">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgSurface}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="CornerRadius" Value="4"/>
+                    <Setter Property="Padding" Value="14"/>
+                </Style>
+
+                <Style Selector="Border.chip">
+                    <Setter Property="Padding" Value="6,1"/>
+                    <Setter Property="CornerRadius" Value="8"/>
+                    <Setter Property="Background" Value="{DynamicResource BrushStateNeutral}"/>
+                    <Setter Property="VerticalAlignment" Value="Center"/>
+                </Style>
+                <Style Selector="Border.chip TextBlock">
+                    <Setter Property="FontSize" Value="10.5"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextOnDark}"/>
+                </Style>
+
+                <Style Selector="TextBlock.field-label">
+                    <Setter Property="FontSize" Value="11.5"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="VerticalAlignment" Value="Top"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+                </Style>
+                <Style Selector="TextBlock.field-value">
+                    <Setter Property="FontSize" Value="12.5"/>
+                    <Setter Property="TextWrapping" Value="Wrap"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+                </Style>
+
+                <Style Selector="ListBox.rows">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Padding" Value="0"/>
+                </Style>
+                <Style Selector="ListBox.rows > ListBoxItem">
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="Margin" Value="0,0,0,5"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="Template">
+                        <ControlTemplate>
+                            <Border Name="Row"
+                                    Background="{DynamicResource BrushBgSurface}"
+                                    BorderBrush="{DynamicResource BrushBorderMuted}"
+                                    BorderThickness="1"
+                                    CornerRadius="3"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter Name="PART_ContentPresenter"
+                                                  Content="{TemplateBinding Content}"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter>
+                </Style>
+                <Style Selector="ListBox.rows > ListBoxItem:pointerover /template/ Border#Row">
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+                </Style>
+                <Style Selector="ListBox.rows > ListBoxItem:selected /template/ Border#Row">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+                </Style>
+
+                <Style Selector="ToggleButton.ghost">
+                    <Setter Property="Padding" Value="8,4"/>
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+                    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                    <Setter Property="Template">
+                        <ControlTemplate>
+                            <Border Name="Bg" Background="Transparent" CornerRadius="3">
+                                <ContentPresenter Name="PART_ContentPresenter"
+                                                  Content="{TemplateBinding Content}"
+                                                  Padding="{TemplateBinding Padding}"
+                                                  HorizontalContentAlignment="Left"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter>
+                </Style>
+                <Style Selector="ToggleButton.ghost:pointerover /template/ Border#Bg">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgPanel}"/>
+                </Style>
+
+                <Style Selector="Border.spin">
+                    <Style.Animations>
+                        <Animation Duration="0:0:1.2" IterationCount="Infinite">
+                            <KeyFrame Cue="0%">
+                                <Setter Property="RotateTransform.Angle" Value="0"/>
+                            </KeyFrame>
+                            <KeyFrame Cue="100%">
+                                <Setter Property="RotateTransform.Angle" Value="360"/>
+                            </KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+            </Border.Styles>
+
+            <Grid Margin="10,6,10,10" RowDefinitions="Auto,*" RowSpacing="10">
+
+                <!-- ===== Header: what this window is, and the one action that applies to it ===== -->
+                <Grid Grid.Row="0" Margin="2,0,2,0" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <TextBlock Text="Saves"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource BrushTextStrong}"/>
+                        <Border Classes="chip">
+                            <TextBlock Text="{Binding CountText}"/>
+                        </Border>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Classes="ghost"
+                            Command="{Binding RefreshCommand}"
+                            VerticalAlignment="Center"
+                            ToolTip.Tip="Look for new or changed save files">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <i:Icon Value="fa-rotate-right" FontSize="13" VerticalAlignment="Center"/>
+                            <TextBlock Text="Refresh" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <Grid Grid.Row="1" ColumnDefinitions="260,*" ColumnSpacing="10">
+
+                    <!-- ===== Saves: the thing you pick first ===== -->
+                    <Border Grid.Column="0" Classes="sheet" Padding="8">
+                        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+                            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="2,2,2,0">
+                                <TextBlock Grid.Column="0"
+                                           Text="Saves"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource BrushTextStrong}"/>
+                                <Border Grid.Column="1" Classes="chip">
+                                    <TextBlock Text="{Binding CountText}"/>
+                                </Border>
+                            </Grid>
+
+                            <Grid Grid.Row="1">
+                                <ListBox Classes="rows"
+                                         x:Name="SaveList"
+                                         IsVisible="{Binding !IsLoadingList}"
+                                         ItemsSource="{Binding VisibleSaves}"
+                                         SelectedItem="{Binding SelectedSave, Mode=TwoWay}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:SaveRowViewModel">
+                                            <!--
+                                                The row shows the file facts only. The
+                                                compatibility verdict belongs to the
+                                                details panel of the selected save.
+                                            -->
+                                            <StackPanel Margin="10,7" Spacing="1">
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontWeight="SemiBold"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{DynamicResource BrushTextStrong}"/>
+                                                <TextBlock Text="{Binding SecondaryText}"
+                                                           FontSize="12"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Foreground="{DynamicResource BrushTextPrimary}"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+
+                                <ProgressBar IsIndeterminate="True"
+                                             IsVisible="{Binding IsLoadingList}"
+                                             Height="3"
+                                             Background="Transparent"
+                                             Foreground="{DynamicResource BrushBgAction}"
+                                             HorizontalAlignment="Stretch"
+                                             VerticalAlignment="Top"/>
+
+                                <TextBlock Text="Reading save folder…"
+                                           IsVisible="{Binding IsLoadingList}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource BrushTextPrimary}"/>
+
+                                <StackPanel IsVisible="{Binding ShowPlaceholder}"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            MaxWidth="230"
+                                            Spacing="8">
+                                    <i:Icon Value="fa-file-lines"
+                                            FontSize="26"
+                                            HorizontalAlignment="Center"
+                                            Foreground="{DynamicResource BrushBgAccent}"/>
+                                    <TextBlock Text="No saves found"
+                                               FontSize="14"
+                                               FontWeight="SemiBold"
+                                               HorizontalAlignment="Center"
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource BrushTextStrong}"/>
+                                    <TextBlock Text="The save folder is empty. Saves appear here when RimWorld writes one."
+                                               FontSize="11.5"
+                                               TextWrapping="Wrap"
+                                               TextAlignment="Center"
+                                               Foreground="{DynamicResource BrushTextPrimary}"/>
+                                    <Button Content="Look again"
+                                            Command="{Binding RefreshCommand}"
+                                            Classes="btn"
+                                            HorizontalAlignment="Center"
+                                            Height="28" MinWidth="0" Padding="12,4"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- More than eight saves: the rest waits behind the expander. -->
+                            <StackPanel Grid.Row="2" IsVisible="{Binding HasMoreSaves}" Spacing="6">
+                                <ToggleButton Classes="ghost"
+                                              IsChecked="{Binding IsExpanded, Mode=TwoWay}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <i:Icon Value="fa-chevron-right" FontSize="11" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding MoreCountText}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </ToggleButton>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- ===== The selected save ===== -->
+                    <Border Grid.Column="1" Classes="sheet" Padding="10">
+                        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+
+                            <StackPanel Grid.Row="0" Spacing="2" IsVisible="{Binding Details.HasSelection}">
+                                <TextBlock Text="{Binding Details.SaveName}"
+                                           FontSize="16"
+                                           FontWeight="SemiBold"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource BrushTextStrong}"/>
+                                <TextBlock Text="{Binding Details.FilePath}"
+                                           FontSize="11"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{DynamicResource BrushTextPrimary}"
+                                           ToolTip.Tip="{Binding Details.FilePath}"/>
+                            </StackPanel>
+
+                            <Grid Grid.Row="1">
+
+                                <StackPanel IsVisible="{Binding Details.ShowHint}"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            MaxWidth="380"
+                                            Spacing="8">
+                                    <i:Icon Value="fa-circle-info"
+                                            FontSize="24"
+                                            HorizontalAlignment="Center"
+                                            Foreground="{DynamicResource BrushBgAccent}"/>
+                                    <TextBlock Text="Select a save to see its details."
+                                               FontSize="13"
+                                               TextWrapping="Wrap"
+                                               TextAlignment="Center"
+                                               Foreground="{DynamicResource BrushTextPrimary}"/>
+                                </StackPanel>
+
+                                <StackPanel IsVisible="{Binding Details.IsLoading}"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Spacing="8">
+                                    <Border Classes="spin" Width="26" Height="26" HorizontalAlignment="Center" Background="Transparent">
+                                        <i:Icon Value="fa-circle-notch"
+                                                FontSize="24"
+                                                Foreground="{DynamicResource BrushBgAction}"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="Reading this save…"
+                                               FontSize="12.5"
+                                               HorizontalAlignment="Center"
+                                               Foreground="{DynamicResource BrushTextPrimary}"/>
+                                </StackPanel>
+
+                                <StackPanel IsVisible="{Binding Details.HasError}"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            MaxWidth="420"
+                                            Spacing="6">
+                                    <TextBlock Text="{Binding Details.ErrorMessage}"
+                                               FontSize="14"
+                                               FontWeight="SemiBold"
+                                               HorizontalAlignment="Center"
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource BrushStateDanger}"/>
+                                    <TextBlock Text="{Binding Details.ErrorReason}"
+                                               FontSize="12"
+                                               TextWrapping="Wrap"
+                                               TextAlignment="Center"
+                                               Foreground="{DynamicResource BrushTextPrimary}"/>
+                                    <Button Content="Try refreshing"
+                                            Command="{Binding RefreshCommand}"
+                                            Classes="btn"
+                                            HorizontalAlignment="Center"
+                                            Height="28" MinWidth="0" Padding="12,4"/>
+                                </StackPanel>
+
+                                <ScrollViewer IsVisible="{Binding Details.ShowSections}"
+                                              VerticalScrollBarVisibility="Auto">
+                                    <StackPanel Spacing="10">
+
+                                        <!-- Mods and compatibility -->
+                                        <Border Classes="card">
+                                            <StackPanel Spacing="8">
+                                                <TextBlock Text="Mods &amp; compatibility"
+                                                           FontSize="14"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource BrushTextStrong}"/>
+                                                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                                    <Border Classes="chip"
+                                                            Background="{Binding Details.CompatBrushKey, Converter={StaticResource ResourceKeyToBrushConverter}}">
+                                                        <TextBlock Text="{Binding Details.CompatText}"/>
+                                                    </Border>
+                                                    <TextBlock Text="{Binding Details.ModsInSaveText}"
+                                                               FontSize="12"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding Details.CompatNote}"
+                                                           IsVisible="{Binding Details.HasCompatNote}"
+                                                           FontSize="12"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                <TextBlock Text="{Binding Details.DiffSummaryText}"
+                                                           IsVisible="{Binding Details.HasDiff}"
+                                                           FontSize="12"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource BrushTextStrong}"/>
+                                                <TextBlock Text="{Binding Details.AddedModsText}"
+                                                           IsVisible="{Binding Details.HasAddedMods}"
+                                                           FontSize="11.5"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                <TextBlock Text="{Binding Details.RemovedModsText}"
+                                                           IsVisible="{Binding Details.HasRemovedMods}"
+                                                           FontSize="11.5"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                <TextBlock Text="{Binding Details.MissingModsText}"
+                                                           IsVisible="{Binding Details.HasMissingMods}"
+                                                           FontSize="11.5"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{DynamicResource BrushTextPrimary}"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Story -->
+                                        <Border Classes="card">
+                                            <StackPanel Spacing="8">
+                                                <TextBlock Text="Story"
+                                                           FontSize="14"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource BrushTextStrong}"/>
+                                                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
+                                                    <TextBlock Grid.Row="0" Grid.Column="0" Classes="field-label" Text="Scenario"/>
+                                                    <TextBlock Grid.Row="0" Grid.Column="1" Classes="field-value" Text="{Binding Details.ScenarioText}"/>
+                                                    <TextBlock Grid.Row="1" Grid.Column="0" Classes="field-label" Text="Storyteller"/>
+                                                    <TextBlock Grid.Row="1" Grid.Column="1" Classes="field-value" Text="{Binding Details.StorytellerText}"/>
+                                                    <TextBlock Grid.Row="2" Grid.Column="0" Classes="field-label" Text="Difficulty"/>
+                                                    <TextBlock Grid.Row="2" Grid.Column="1" Classes="field-value" Text="{Binding Details.DifficultyText}"/>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Playground -->
+                                        <Border Classes="card">
+                                            <StackPanel Spacing="8">
+                                                <TextBlock Text="Playground"
+                                                           FontSize="14"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource BrushTextStrong}"/>
+                                                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
+                                                    <TextBlock Grid.Row="0" Grid.Column="0" Classes="field-label" Text="In-game date"/>
+                                                    <TextBlock Grid.Row="0" Grid.Column="1" Classes="field-value" Text="{Binding Details.InGameDateText}"/>
+                                                    <TextBlock Grid.Row="1" Grid.Column="0" Classes="field-label" Text="Real play time"/>
+                                                    <TextBlock Grid.Row="1" Grid.Column="1" Classes="field-value" Text="{Binding Details.RealPlayTimeText}"/>
+                                                    <TextBlock Grid.Row="2" Grid.Column="0" Classes="field-label" Text="Starting tile"/>
+                                                    <TextBlock Grid.Row="2" Grid.Column="1" Classes="field-value" Text="{Binding Details.StartingTileText}"/>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Numbers -->
+                                        <Border Classes="card">
+                                            <StackPanel Spacing="8">
+                                                <TextBlock Text="Numbers"
+                                                           FontSize="14"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource BrushTextStrong}"/>
+                                                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
+                                                    <TextBlock Grid.Row="0" Grid.Column="0" Classes="field-label" Text="Game version"/>
+                                                    <TextBlock Grid.Row="0" Grid.Column="1" Classes="field-value" Text="{Binding Details.GameVersionText}"/>
+                                                    <TextBlock Grid.Row="1" Grid.Column="0" Classes="field-label" Text="Wealth total"/>
+                                                    <TextBlock Grid.Row="1" Grid.Column="1" Classes="field-value" Text="{Binding Details.WealthTotalText}"/>
+                                                    <TextBlock Grid.Row="2" Grid.Column="0" Classes="field-label" Text="Items"/>
+                                                    <TextBlock Grid.Row="2" Grid.Column="1" Classes="field-value" Text="{Binding Details.WealthItemsText}"/>
+                                                    <TextBlock Grid.Row="3" Grid.Column="0" Classes="field-label" Text="Buildings"/>
+                                                    <TextBlock Grid.Row="3" Grid.Column="1" Classes="field-value" Text="{Binding Details.WealthBuildingsText}"/>
+                                                    <TextBlock Grid.Row="4" Grid.Column="0" Classes="field-label" Text="Free colonists"/>
+                                                    <TextBlock Grid.Row="4" Grid.Column="1" Classes="field-value" Text="{Binding Details.FreeColonistsText}"/>
+                                                    <TextBlock Grid.Row="5" Grid.Column="0" Classes="field-label" Text="Prisoners"/>
+                                                    <TextBlock Grid.Row="5" Grid.Column="1" Classes="field-value" Text="{Binding Details.PrisonersText}"/>
+                                                    <TextBlock Grid.Row="6" Grid.Column="0" Classes="field-label" Text="Completed research"/>
+                                                    <TextBlock Grid.Row="6" Grid.Column="1" Classes="field-value" Text="{Binding Details.CompletedResearchText}"/>
+                                                    <TextBlock Grid.Row="7" Grid.Column="0" Classes="field-label" Text="Active DLCs"/>
+                                                    <TextBlock Grid.Row="7" Grid.Column="1" Classes="field-value" Text="{Binding Details.ActiveDlcText}"/>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Grid>
+
+                            <!-- Status: what the dialog last did -->
+                            <TextBlock Grid.Row="2"
+                                       Text="{Binding StatusMessage}"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource BrushTextPrimary}"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Border>
+    </dialogs:BaseDialog.MainContent>
+
+    <dialogs:BaseDialog.ButtonContent>
+        <Button Content="Close"
+                Command="{Binding CloseCommand}"
+                Classes="btn"
+                HorizontalAlignment="Right"
+                MinWidth="100"
+                Height="32"/>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>
