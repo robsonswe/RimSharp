@@ -102,9 +102,7 @@ namespace RimSharp.Features.Troubleshooting.ViewModels
                     "reset_steam_workshop_mods",
                     "scan_missing_assemblies",
                     "verify_mod_settings_xml",
-                    "import_mod_list",
-                    "sanitize_core_dlc_order",
-                    "detect_duplicate_mod_ids"
+                    "sanitize_core_dlc_order"
                 },
                 causes: new[]
                 {
@@ -217,8 +215,6 @@ namespace RimSharp.Features.Troubleshooting.ViewModels
                 {
                     "verify_mod_settings_xml",
                     "restore_mods_config_from_backup",
-                    "export_mod_list",
-                    "import_mod_list",
                     "sanitize_core_dlc_order"
                 },
                 causes: new[]

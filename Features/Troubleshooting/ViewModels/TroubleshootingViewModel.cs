@@ -176,7 +176,7 @@ namespace RimSharp.Features.Troubleshooting.ViewModels
                     // No confirmation modal: checking the box and clicking
                     // "Proceed with fixes" IS the authorization (user decision).
 
-                    var result = await ExecuteActionAsync(row.ActionId);
+                    var result = await ExecuteFixAsync(row.ActionId);
 
                     await ThreadHelper.RunOnUIThreadAsync(() =>
                     {
@@ -369,18 +369,12 @@ namespace RimSharp.Features.Troubleshooting.ViewModels
                 "Warn when paths contain non-ASCII characters.", "fa-route", false, false, false);
 
             var modConfig = new ActionSectionViewModel("Mod Configuration", "Manage your mod list and configuration.");
-            AddRow(modConfig, "export_mod_list", "Export Mod List",
-                "Save ModsConfig.xml to a user-selected file.", "fa-file-export", false, false, false);
-            AddRow(modConfig, "import_mod_list", "Import Mod List",
-                "Load ModsConfig.xml from a file (rolling backup kept).", "fa-file-import", false, true, true);
             AddRow(modConfig, "clear_all_mods", "Clear All Mods",
                 "Delete Mods folder contents; reset ModsConfig.xml to vanilla.", "fa-trash", false, true, true);
             AddRow(modConfig, "restore_mods_config_from_backup", "Restore ModsConfig from Backup",
                 "Restore ModsConfig.xml from a rolling backup.", "fa-rotate-left", false, false, false);
             AddRow(modConfig, "sanitize_core_dlc_order", "Sanitize Core & DLC Load Order",
                 "Enforce Core/DLC hierarchy in ModsConfig.xml.", "fa-sort", false, true, false);
-            AddRow(modConfig, "detect_duplicate_mod_ids", "Detect Duplicate Mod IDs",
-                "Find duplicate packageIds across local and workshop mods.", "fa-clone", false, false, false);
             AddRow(modConfig, "analyze_saves_quota", "Analyze Save Folder & Cloud Quota",
                 "Report saves folder size vs Steam Cloud quota.", "fa-folder-tree", false, false, false);
 
@@ -598,6 +592,12 @@ namespace RimSharp.Features.Troubleshooting.ViewModels
         /// <summary>Test seam for the minimum-visible delay (defaults to Task.Delay).</summary>
         internal Func<int, CancellationToken, Task> TestChecksDelayOverride { get; set; } = Task.Delay;
 
+        /// <summary>
+        /// Every fix action runs on a background thread so heavy directory/file
+        /// work can never block the UI. (An earlier version exempted export/import
+        /// because they showed file pickers; those actions are now removed from
+        /// this catalog — the maintenance menu already has them.)
+        /// </summary>
         private void OnSolutionRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(SolutionRowViewModel.IsSelected))
@@ -713,10 +713,8 @@ namespace RimSharp.Features.Troubleshooting.ViewModels
                 "clean_orphaned_workshop_mods" => (true, "clean_orphaned_workshop_mods", "Clean Orphaned Workshop Mods", f.Detail, null),
                 "clear_download_cache" => (true, "clear_download_cache", "Clear Download Cache", f.Detail, null),
                 "purge_workshop_temp" => (true, "purge_workshop_temp", "Purge Workshop Temp/Staging", f.Detail, null),
-                "import_mod_list" => (true, "import_mod_list", "Import Mod List", f.Detail, null),
                 "restore_mods_config_from_backup" => (true, "restore_mods_config_from_backup", "Restore ModsConfig from Backup", f.Detail, null),
                 "analyze_saves_quota" => (true, "analyze_saves_quota", "Analyze Save Folder & Cloud Quota", f.Detail, null),
-                "detect_duplicate_mod_ids" => (true, "detect_duplicate_mod_ids", "Detect Duplicate Mod IDs", f.Detail, null),
                 "sanitize_core_dlc_order" => (true, "sanitize_core_dlc_order", "Sanitize Core & DLC Load Order", f.Detail, null),
                 null => (false, null, null, f.Detail, suggestion),
                 _ => (false, null, null, f.Detail, suggestion)
@@ -740,7 +738,7 @@ namespace RimSharp.Features.Troubleshooting.ViewModels
 
             try
             {
-                var result = await ExecuteActionAsync(actionId);
+                var result = await ExecuteFixAsync(actionId);
 
                 await ThreadHelper.RunOnUIThreadAsync(() =>
                 {
@@ -781,6 +779,14 @@ namespace RimSharp.Features.Troubleshooting.ViewModels
             }
         }
 
+        /// <summary>
+        /// Runs the fix on a background thread. Every action here is catalog-local:
+        /// heavy directory/file work (e.g. the assembly scan froze the app when it
+        /// ran inline) must never execute on the UI thread.
+        /// </summary>
+        private Task<GameRecoveryResult> ExecuteFixAsync(string actionId) =>
+            Task.Run(() => ExecuteActionAsync(actionId));
+
         private async Task<GameRecoveryResult> ExecuteActionAsync(string actionId)
         {
             return actionId switch
@@ -796,12 +802,9 @@ namespace RimSharp.Features.Troubleshooting.ViewModels
                 "scan_missing_assemblies" => await _gameRecovery.ScanMissingAssembliesAsync(),
                 "verify_mod_settings_xml" => await _gameRecovery.VerifyModSettingsXmlAsync(),
                 "check_path_compatibility" => await _gameRecovery.CheckPathCompatibilityAsync(),
-                "export_mod_list" => await WrapModConfig(() => _modConfig.ExportModListAsync()),
-                "import_mod_list" => await WrapModConfig(() => _modConfig.ImportModListAsync()),
                 "clear_all_mods" => await WrapModConfig(() => _modConfig.ClearAllModsAsync()),
                 "restore_mods_config_from_backup" => await WrapModConfig(() => _modConfig.RestoreModsConfigFromBackupAsync("")),
                 "sanitize_core_dlc_order" => await WrapModConfig(() => _modConfig.SanitizeCoreDlcOrderAsync()),
-                "detect_duplicate_mod_ids" => await WrapModConfig(() => _modConfig.DetectDuplicatePackageIdsAsync()),
                 "analyze_saves_quota" => await WrapModConfig(() => _modConfig.AnalyzeSavesQuotaAsync()),
                 "clear_download_cache" => await _steam.ClearDownloadCacheAsync(),
                 "verify_game_files" => await WrapSteamBool(() => _steam.VerifyGameFilesAsync()),

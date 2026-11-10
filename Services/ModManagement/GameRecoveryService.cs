@@ -693,98 +693,121 @@ namespace RimSharp.Services.ModManagement
         }
 
         /// <inheritdoc />
-        public async Task<GameRecoveryResult> ScanMissingAssembliesAsync(CancellationToken cancellationToken = default)
+        public Task<GameRecoveryResult> ScanMissingAssembliesAsync(CancellationToken cancellationToken = default)
         {
             _logger.LogInfo("ScanMissingAssembliesAsync started", nameof(GameRecoveryService));
+
+            // Hard budget so a huge or AV-broken mods folder can never make this
+            // scan take minutes; the result honestly reports what was NOT checked.
+            const int ScanBudgetMs = 30_000;
 
             var missingAssemblies = new List<string>();
             var checkedMods = new List<string>();
 
             try
             {
-                // Check local mods folder
-                if (!string.IsNullOrEmpty(_gameInstance.LocalFolder) && Directory.Exists(_gameInstance.LocalFolder))
+                // Queue every mod directory up front (cheap, no recursion) so the
+                // coverage report can count mods the budget never reached.
+                var queue = new List<(string Prefix, string Name, string Path)>();
+                void EnqueueRoot(string? folder, string prefix)
                 {
-                    var modDirs = new DirectoryInfo(_gameInstance.LocalFolder).GetDirectories();
-                    foreach (var modDir in modDirs)
+                    if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder)) return;
+                    try
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        checkedMods.Add(modDir.Name);
-                        var assemblies = modDir.GetFiles("*.dll", SearchOption.AllDirectories);
-                        foreach (var asm in assemblies)
-                        {
-                            // Check if file is accessible (not quarantined/zero-byte)
-                            try
-                            {
-                                using var fs = File.OpenRead(asm.FullName);
-                                if (fs.Length == 0)
-                                {
-                                    missingAssemblies.Add($"{modDir.Name}/{asm.Name}: Zero-byte assembly (possible AV quarantine)");
-                                }
-                            }
-                            catch (UnauthorizedAccessException)
-                            {
-                                missingAssemblies.Add($"{modDir.Name}/{asm.Name}: Access denied (possible AV quarantine)");
-                            }
-                            catch (IOException)
-                            {
-                                missingAssemblies.Add($"{modDir.Name}/{asm.Name}: I/O error reading assembly");
-                            }
-                        }
+                        foreach (var dir in new DirectoryInfo(folder).GetDirectories())
+                            queue.Add((prefix, dir.Name, dir.FullName));
+                    }
+                    catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+                    {
+                        missingAssemblies.Add($"{prefix}: Access denied while listing the mods folder ({ex.Message})");
                     }
                 }
 
-                // Check workshop mods folder
-                if (_gameInstance.IsSteamInstallation && !string.IsNullOrEmpty(_gameInstance.WorkshopFolder) && Directory.Exists(_gameInstance.WorkshopFolder))
+                EnqueueRoot(_gameInstance.LocalFolder, string.Empty);
+                if (_gameInstance.IsSteamInstallation)
+                    EnqueueRoot(_gameInstance.WorkshopFolder, "workshop/");
+
+                var deadline = Environment.TickCount64 + ScanBudgetMs;
+                var checkedCount = 0;
+
+                foreach (var mod in queue)
                 {
-                    var modDirs = new DirectoryInfo(_gameInstance.WorkshopFolder).GetDirectories();
-                    foreach (var modDir in modDirs)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        checkedMods.Add($"workshop/{modDir.Name}");
-                        var assemblies = modDir.GetFiles("*.dll", SearchOption.AllDirectories);
-                        foreach (var asm in assemblies)
-                        {
-                            try
-                            {
-                                using var fs = File.OpenRead(asm.FullName);
-                                if (fs.Length == 0)
-                                {
-                                    missingAssemblies.Add($"workshop/{modDir.Name}/{asm.Name}: Zero-byte assembly (possible AV quarantine)");
-                                }
-                            }
-                            catch (UnauthorizedAccessException)
-                            {
-                                missingAssemblies.Add($"workshop/{modDir.Name}/{asm.Name}: Access denied (possible AV quarantine)");
-                            }
-                            catch (IOException)
-                            {
-                                missingAssemblies.Add($"workshop/{modDir.Name}/{asm.Name}: I/O error reading assembly");
-                            }
-                        }
-                    }
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (Environment.TickCount64 >= deadline) break;
+                    checkedCount++;
+                    checkedMods.Add(mod.Prefix + mod.Name);
+                    ScanSingleModAssemblies(mod.Path, mod.Prefix, mod.Name, missingAssemblies);
                 }
 
+                var uncheckedCount = queue.Count - checkedCount;
+                var coverage = uncheckedCount > 0
+                    ? $" ({checkedCount} of {queue.Count} mods checked; {uncheckedCount} not scanned within the time budget)"
+                    : string.Empty;
                 var message = missingAssemblies.Count > 0
-                    ? $"Found {missingAssemblies.Count} missing/inaccessible assemblies across {checkedMods.Count} mods."
-                    : "All mod assemblies accessible.";
+                    ? $"Found {missingAssemblies.Count} missing/inaccessible assemblies across {checkedCount} mods{coverage}."
+                    : uncheckedCount > 0
+                        ? $"No missing assemblies found in the {checkedCount} mods checked{coverage}."
+                        : "All mod assemblies accessible.";
 
                 _logger.LogInfo("ScanMissingAssembliesAsync completed", nameof(GameRecoveryService));
-                return GameRecoveryResult.Ok(message, missingAssemblies.Count, new Dictionary<string, object>
+                return Task.FromResult(GameRecoveryResult.Ok(message, missingAssemblies.Count, new Dictionary<string, object>
                 {
                     ["missingAssemblies"] = missingAssemblies,
                     ["checkedMods"] = checkedMods
-                });
+                }));
             }
             catch (OperationCanceledException)
             {
                 _logger.LogInfo("ScanMissingAssembliesAsync cancelled", nameof(GameRecoveryService));
-                return GameRecoveryResult.Fail("Operation cancelled");
+                return Task.FromResult(GameRecoveryResult.Fail("Operation cancelled"));
             }
             catch (Exception ex)
             {
                 _logger.LogError($"ScanMissingAssembliesAsync failed: {ex.Message}", nameof(GameRecoveryService));
-                return GameRecoveryResult.Fail($"Scan failed: {ex.Message}");
+                return Task.FromResult(GameRecoveryResult.Fail($"Scan failed: {ex.Message}"));
+            }
+        }
+
+        /// <summary>
+        /// Walks one mod folder for .dll files without opening any of them:
+        /// zero-byte detection and enumeration use file metadata only, which
+        /// keeps the scan fast and immune to AV-locked files. Unreadable
+        /// subdirectories are reported as access-denied, not fatal.
+        /// </summary>
+        private static void ScanSingleModAssemblies(string modPath, string prefix, string modName, List<string> missingAssemblies)
+        {
+            var pending = new Stack<(string Dir, string Relative)>();
+            pending.Push((modPath, string.Empty));
+
+            while (pending.Count > 0)
+            {
+                var (dirPath, relative) = pending.Pop();
+                string[] dllFiles;
+                string[] subDirs;
+                try
+                {
+                    dllFiles = Directory.GetFiles(dirPath, "*.dll");
+                    subDirs = Directory.GetDirectories(dirPath);
+                }
+                catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+                {
+                    var where = relative.Length == 0 ? modName : $"{modName}/{relative}";
+                    missingAssemblies.Add($"{prefix}{where}: Access denied while scanning ({ex.Message})");
+                    continue;
+                }
+
+                var dirPrefix = $"{prefix}{modName}{(relative.Length == 0 ? string.Empty : "/" + relative)}";
+                foreach (var file in dllFiles)
+                {
+                    if (new FileInfo(file).Length == 0)
+                        missingAssemblies.Add($"{dirPrefix}/{Path.GetFileName(file)}: Zero-byte assembly (possible AV quarantine)");
+                }
+
+                foreach (var sub in subDirs)
+                {
+                    var subName = Path.GetFileName(sub);
+                    pending.Push((sub, relative.Length == 0 ? subName : $"{relative}/{subName}"));
+                }
             }
         }
 

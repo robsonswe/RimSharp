@@ -745,6 +745,61 @@ namespace RimSharp.Tests.Features.Troubleshooting
             clearAllMods!.IsVisible.Should().BeTrue();
         }
 
+        [Fact]
+        public async Task DetectDuplicateModIds_RemovedFromTroubleshooting()
+        {
+            // Duplicate detection already exists in Maintenance > Duplicates —
+            // it must not be duplicated in the troubleshooting catalog.
+            var vm = CreateViewModel();
+            await vm.InitializeAsync(TestContext.Current.CancellationToken);
+
+            vm.Sections.SelectMany(s => s.Actions)
+                .Any(a => a.Id == "detect_duplicate_mod_ids").Should().BeFalse();
+
+            vm.VisibleSymptoms.First(s => s.Id == "mod_not_loading")
+                .RelatedActionIds.Should().NotContain("detect_duplicate_mod_ids");
+        }
+
+        [Fact]
+        public async Task FixActions_RunOffTheUiThread()
+        {
+            // A heavy fix (the missing-assembly scan froze the app when it ran
+            // inline) must never run on the UI thread. The caller thread itself
+            // is not a reliable witness — in tests the command runs on a pool
+            // worker whose id a Task.Run work item can legitimately reuse — so
+            // the command is started from a dedicated thread that models the UI.
+            var vm = CreateViewModel();
+            await vm.InitializeAsync(TestContext.Current.CancellationToken);
+
+            var uiThreadId = 0;
+            var invocationThread = 0;
+            _gameRecovery.ScanMissingAssembliesAsync(Arg.Any<CancellationToken>())
+                .Returns(_ =>
+                {
+                    invocationThread = Thread.CurrentThread.ManagedThreadId;
+                    return Task.FromResult(GameRecoveryResult.Ok("No missing assemblies found."));
+                });
+
+            var cmd = (AsyncDelegateCommand<string?>)vm.RunActionCommand!;
+            Task execTask = null!;
+            var simulatedUiThread = new Thread(() =>
+            {
+                uiThreadId = Thread.CurrentThread.ManagedThreadId;
+                execTask = cmd.ExecuteAsync("scan_missing_assemblies");
+            })
+            {
+                IsBackground = true
+            };
+            simulatedUiThread.Start();
+            simulatedUiThread.Join(10_000);
+
+            await execTask;
+
+            invocationThread.Should().BeGreaterThan(0, "the substitute must have been invoked");
+            invocationThread.Should().NotBe(uiThreadId);
+            await _gameRecovery.Received(1).ScanMissingAssembliesAsync(Arg.Any<CancellationToken>());
+        }
+
         #endregion
 
         #region Suggested-Action Mapping & Honesty Wording
