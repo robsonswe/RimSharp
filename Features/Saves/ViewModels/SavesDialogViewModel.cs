@@ -325,7 +325,12 @@ namespace RimSharp.Features.Saves.ViewModels
                     return;
                 }
 
-                Details.ApplyDetails(details, header.GameVersion);
+                // The DLCs are not in the head window - they are the official
+                // packages the save was played with, taken from its meta block.
+                Details.ApplyDetails(
+                    details with { ActiveDlcNames = ISaveHeaderService.ResolveActiveDlcNames(header.ModIds) },
+                    header.GameVersion);
+
                 StatusMessage = $"Read {row.Name}.";
             }
             catch (OperationCanceledException)

@@ -119,6 +119,8 @@ namespace RimSharp.Tests.Services.ModManagement
             "\t<game>\r\n" +
             "\t\t<currentMapIndex>0</currentMapIndex>\r\n" +
             "\t\t<info>\r\n" +
+            // The element is in the save but is not extracted any more - its
+            // values could not be reconciled with the age of the saves.
             "\t\t\t<realPlayTimeInteracting>11.3429451</realPlayTimeInteracting>\r\n" +
             "\t\t\t<startingTile>43378,0</startingTile>\r\n" +
             "\t\t\t<startingAndOptionalPawns>\r\n" +
@@ -160,61 +162,83 @@ namespace RimSharp.Tests.Services.ModManagement
             "\t\t</researchManager>\r\n";
 
         /// <summary>
-        /// The history block with the auto recorder groups. The records are
-        /// whitespace separated base64 tokens, each one a 4-byte little-endian
-        /// float32 - the last token is the current value of the recorder.
+        /// The history block with the auto recorder groups. The verified shape
+        /// is two levels deep: the group carries the def of the group
+        /// ("Wealth", "Population" - context only), the recorders of the group
+        /// carry the recorder key in their def ("Wealth_Total",
+        /// "FreeColonists"). The records are whitespace separated base64
+        /// tokens, each one a 4-byte little-endian float32 - the last token is
+        /// the current value of the recorder.
+        /// The base64 tokens below are the verified ones; the expected values
+        /// are derived from the encoding (uOZQRg== is 13369.6796875,
+        /// hMcSRg== is 9393.87890625, fyQoRQ== is 2690.281005859375,
+        /// AABAQA== is 3, AAAAAA== is 0).
         /// </summary>
         private const string HistoryBlock =
             "\t\t<history>\r\n" +
             "\t\t\t<autoRecorderGroups>\r\n" +
             "\t\t\t\t<li>\r\n" +
             "\t\t\t\t\t<def>Wealth</def>\r\n" +
-            "\t\t\t\t\t<defName>Wealth_Total</defName>\r\n" +
-            "\t\t\t\t\t<records>AAAAAA== AAAAAA== pEh5Rg==</records>\r\n" +
-            "\t\t\t\t</li>\r\n" +
-            "\t\t\t\t<li>\r\n" +
-            "\t\t\t\t\t<def>Wealth</def>\r\n" +
-            "\t\t\t\t\t<defName>Wealth_Items</defName>\r\n" +
-            "\t\t\t\t\t<records>AAAAAA== hMcSRg==</records>\r\n" +
-            "\t\t\t\t</li>\r\n" +
-            "\t\t\t\t<li>\r\n" +
-            "\t\t\t\t\t<def>Wealth</def>\r\n" +
-            "\t\t\t\t\t<defName>Wealth_Buildings</defName>\r\n" +
-            "\t\t\t\t\t<records>fyQoRQ==</records>\r\n" +
+            "\t\t\t\t\t<recorders>\r\n" +
+            "\t\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t\t<def>Wealth_Total</def>\r\n" +
+            "\t\t\t\t\t\t\t<records>\r\n" +
+            "\t\t\t\t\t\t\t\tuOZQRg==\r\n" +
+            "\t\t\t\t\t\t\t</records>\r\n" +
+            "\t\t\t\t\t\t</li>\r\n" +
+            "\t\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t\t<def>Wealth_Items</def>\r\n" +
+            "\t\t\t\t\t\t\t<records>AAAAAA== hMcSRg==</records>\r\n" +
+            "\t\t\t\t\t\t</li>\r\n" +
+            "\t\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t\t<def>Wealth_Buildings</def>\r\n" +
+            "\t\t\t\t\t\t\t<records>fyQoRQ==</records>\r\n" +
+            "\t\t\t\t\t\t</li>\r\n" +
+            "\t\t\t\t\t</recorders>\r\n" +
             "\t\t\t\t</li>\r\n" +
             "\t\t\t\t<li>\r\n" +
             "\t\t\t\t\t<def>Population</def>\r\n" +
-            "\t\t\t\t\t<defName>FreeColonists</defName>\r\n" +
-            "\t\t\t\t\t<records>AABAQA==</records>\r\n" +
-            "\t\t\t\t</li>\r\n" +
-            "\t\t\t\t<li>\r\n" +
-            "\t\t\t\t\t<def>Prisoners</def>\r\n" +
-            "\t\t\t\t\t<defName>Prisoners</defName>\r\n" +
-            "\t\t\t\t\t<records>AAAAAA==</records>\r\n" +
+            "\t\t\t\t\t<recorders>\r\n" +
+            "\t\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t\t<def>FreeColonists</def>\r\n" +
+            "\t\t\t\t\t\t\t<records>AABAQA==</records>\r\n" +
+            "\t\t\t\t\t\t</li>\r\n" +
+            "\t\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t\t<def>Prisoners</def>\r\n" +
+            "\t\t\t\t\t\t\t<records>AAAAAA==</records>\r\n" +
+            "\t\t\t\t\t\t</li>\r\n" +
+            "\t\t\t\t\t</recorders>\r\n" +
             "\t\t\t\t</li>\r\n" +
             "\t\t\t\t<li>\r\n" +
             "\t\t\t\t\t<def>ColonistMood</def>\r\n" +
-            "\t\t\t\t\t<defName>ColonistMood</defName>\r\n" +
-            "\t\t\t\t\t<records>AAAAgA==</records>\r\n" +
+            "\t\t\t\t\t<recorders>\r\n" +
+            "\t\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t\t<def>ColonistMood</def>\r\n" +
+            "\t\t\t\t\t\t\t<records>AAAAgA==</records>\r\n" +
+            "\t\t\t\t\t\t</li>\r\n" +
+            "\t\t\t\t\t</recorders>\r\n" +
             "\t\t\t\t</li>\r\n" +
             "\t\t\t</autoRecorderGroups>\r\n" +
             "\t\t</history>\r\n";
 
         /// <summary>
-        /// The same history block with a broken base64 token in the wealth total group.
+        /// The same history block with a broken base64 token in the wealth total recorder.
         /// </summary>
         private const string HistoryBlockWithBrokenRecord =
             "\t\t<history>\r\n" +
             "\t\t\t<autoRecorderGroups>\r\n" +
             "\t\t\t\t<li>\r\n" +
             "\t\t\t\t\t<def>Wealth</def>\r\n" +
-            "\t\t\t\t\t<defName>Wealth_Total</defName>\r\n" +
-            "\t\t\t\t\t<records>AAAAAA== not-base64!!</records>\r\n" +
-            "\t\t\t\t</li>\r\n" +
-            "\t\t\t\t<li>\r\n" +
-            "\t\t\t\t\t<def>Wealth</def>\r\n" +
-            "\t\t\t\t\t<defName>Wealth_Items</defName>\r\n" +
-            "\t\t\t\t\t<records>hMcSRg==</records>\r\n" +
+            "\t\t\t\t\t<recorders>\r\n" +
+            "\t\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t\t<def>Wealth_Total</def>\r\n" +
+            "\t\t\t\t\t\t\t<records>AAAAAA== not-base64!!</records>\r\n" +
+            "\t\t\t\t\t\t</li>\r\n" +
+            "\t\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t\t<def>Wealth_Items</def>\r\n" +
+            "\t\t\t\t\t\t\t<records>hMcSRg==</records>\r\n" +
+            "\t\t\t\t\t\t</li>\r\n" +
+            "\t\t\t\t\t</recorders>\r\n" +
             "\t\t\t\t</li>\r\n" +
             "\t\t\t</autoRecorderGroups>\r\n" +
             "\t\t</history>\r\n";
@@ -669,19 +693,93 @@ namespace RimSharp.Tests.Services.ModManagement
             details.TicksGame.Should().Be(12674);
             details.GameStartAbsTick.Should().Be(1500000);
             details.StartingYear.Should().Be(5500);
-            details.RealPlayTimeInteracting.Should().NotBeNull();
-            details.RealPlayTimeInteracting!.Value.Should().BeApproximately(11.3429451, 0.0001);
             details.StartingTile.Should().Be("43378,0");
             details.WealthTotal.Should().NotBeNull();
-            details.WealthTotal!.Value.Should().BeApproximately(15954.16, 0.01);
+            details.WealthTotal!.Value.Should().BeApproximately(13369.6796875, 0.0001); // uOZQRg==
             details.WealthItems.Should().NotBeNull();
-            details.WealthItems!.Value.Should().BeApproximately(9393.879, 0.01);
+            details.WealthItems!.Value.Should().BeApproximately(9393.87890625, 0.0001); // hMcSRg==
             details.WealthBuildings.Should().NotBeNull();
-            details.WealthBuildings!.Value.Should().BeApproximately(2690.281, 0.01);
-            details.FreeColonists.Should().Be(3);
-            details.Prisoners.Should().Be(0);
+            details.WealthBuildings!.Value.Should().BeApproximately(2690.281005859375, 0.0001); // fyQoRQ==
+            details.FreeColonists.Should().Be(3); // AABAQA==
+            details.Prisoners.Should().Be(0); // AAAAAA==
             details.ResearchDefsCompleted.Should().Be(3);
-            details.ActiveDlcClasses.Should().BeEquivalentTo(new[] { "Anomaly", "Ideology" });
+
+            // The DLC list is not read from the head window - the components
+            // block of the fixture carries GameComponent_* entries of mods too.
+            details.ActiveDlcNames.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ReadDetailsAsync_IgnoresTheGameComponentsOfTheHeadWindow()
+        {
+            // Arrange
+            var service = CreateService();
+            string path = WriteSaveFile("Realistic.rws", RealisticHeadSave);
+
+            // Act
+            var details = await service.ReadDetailsAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            details.Should().NotBeNull();
+
+            // Mods register GameComponents as well - they are no DLC signal.
+            details!.ActiveDlcNames.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void ResolveActiveDlcNames_ListsTheOfficialDlcPackagesOnly()
+        {
+            // Act
+            var names = ISaveHeaderService.ResolveActiveDlcNames(new[]
+            {
+                "ludeon.rimworld",
+                "ludeon.rimworld.royalty",
+                "some.mod",
+                "ludeon.rimworld.anomaly"
+            });
+
+            // Assert - the base game is no DLC and unknown ids are ignored.
+            names.Should().BeEquivalentTo(new[] { "Royalty", "Anomaly" });
+        }
+
+        [Fact]
+        public void ResolveActiveDlcNames_IgnoresTheCaseOfThePackageIds()
+        {
+            // Act
+            var names = ISaveHeaderService.ResolveActiveDlcNames(new[] { "Ludeon.RimWorld.Royalty" });
+
+            // Assert
+            names.Should().BeEquivalentTo(new[] { "Royalty" });
+        }
+
+        [Fact]
+        public void ResolveActiveDlcNames_WithoutOfficialDlcPackages_IsEmpty()
+        {
+            // Act + Assert
+            ISaveHeaderService.ResolveActiveDlcNames(Array.Empty<string>()).Should().BeEmpty();
+            ISaveHeaderService.ResolveActiveDlcNames(new[] { "ludeon.rimworld" }).Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ReadDetailsAsync_HeadBiggerThanTheOldFixedCap_IsStillRead()
+        {
+            // Arrange - the head window is marker-defined: the read continues
+            // until <world>, so a head far bigger than the old fixed 512 KB cap
+            // is absorbed as well.
+            var service = CreateService();
+            string padding = new string('x', 600 * 1024);
+            string content = HeadPrefix + HistoryBlock
+                + "\t\t<padding>" + padding + "</padding>\r\n"
+                + HeadSuffix;
+            string path = WriteSaveFile("BigHead.rws", content);
+
+            // Act
+            var details = await service.ReadDetailsAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            details.Should().NotBeNull();
+            details!.ScenarioName.Should().Be("Crashlanded");
+            details.StartingTile.Should().Be("43378,0");
         }
 
         [Fact]
@@ -722,7 +820,7 @@ namespace RimSharp.Tests.Services.ModManagement
             details.Should().NotBeNull();
             details!.WealthTotal.Should().BeNull();
             details.WealthItems.Should().NotBeNull();
-            details.WealthItems!.Value.Should().BeApproximately(9393.879, 0.01);
+            details.WealthItems!.Value.Should().BeApproximately(9393.87890625, 0.0001); // hMcSRg==
             details.ScenarioName.Should().Be("Crashlanded");
         }
 

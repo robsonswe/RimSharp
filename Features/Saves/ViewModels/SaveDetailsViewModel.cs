@@ -39,7 +39,6 @@ namespace RimSharp.Features.Saves.ViewModels
         private string _storytellerText = UnknownValue;
         private string _difficultyText = UnknownValue;
         private string _inGameDateText = UnknownValue;
-        private string _realPlayTimeText = UnknownValue;
         private string _startingTileText = UnknownValue;
         private string _gameVersionText = UnknownValue;
         private string _wealthTotalText = UnknownValue;
@@ -138,9 +137,6 @@ namespace RimSharp.Features.Saves.ViewModels
         /// <summary>The in-game date of the save.</summary>
         public string InGameDateText => _inGameDateText;
 
-        /// <summary>The played time in hours.</summary>
-        public string RealPlayTimeText => _realPlayTimeText;
-
         /// <summary>The tile the colony started on.</summary>
         public string StartingTileText => _startingTileText;
 
@@ -165,7 +161,7 @@ namespace RimSharp.Features.Saves.ViewModels
         /// <summary>The number of completed research projects.</summary>
         public string CompletedResearchText => _completedResearchText;
 
-        /// <summary>The active DLC components, comma separated.</summary>
+        /// <summary>The official DLCs the save was played with, comma separated.</summary>
         public string ActiveDlcText => _activeDlcText;
 
         #endregion
@@ -309,10 +305,6 @@ namespace RimSharp.Features.Saves.ViewModels
                 details.GameStartAbsTick,
                 details.StartingYear));
 
-            _realPlayTimeText = details.RealPlayTimeInteracting.HasValue
-                ? $"{details.RealPlayTimeInteracting.Value:0.0} h"
-                : UnknownValue;
-
             _startingTileText = OrUnknown(details.StartingTile);
 
             _wealthTotalText = FormatNumber(details.WealthTotal);
@@ -331,8 +323,8 @@ namespace RimSharp.Features.Saves.ViewModels
                 ? details.ResearchDefsCompleted.Value.ToString(CultureInfo.CurrentCulture)
                 : UnknownValue;
 
-            _activeDlcText = details.ActiveDlcClasses is { Count: > 0 }
-                ? string.Join(", ", details.ActiveDlcClasses)
+            _activeDlcText = details.ActiveDlcNames is { Count: > 0 }
+                ? string.Join(", ", details.ActiveDlcNames)
                 : UnknownValue;
 
             RaiseFieldChanged();
@@ -391,7 +383,6 @@ namespace RimSharp.Features.Saves.ViewModels
             _storytellerText = UnknownValue;
             _difficultyText = UnknownValue;
             _inGameDateText = UnknownValue;
-            _realPlayTimeText = UnknownValue;
             _startingTileText = UnknownValue;
             _gameVersionText = UnknownValue;
             _wealthTotalText = UnknownValue;
@@ -409,7 +400,6 @@ namespace RimSharp.Features.Saves.ViewModels
             OnPropertyChanged(nameof(StorytellerText));
             OnPropertyChanged(nameof(DifficultyText));
             OnPropertyChanged(nameof(InGameDateText));
-            OnPropertyChanged(nameof(RealPlayTimeText));
             OnPropertyChanged(nameof(StartingTileText));
             OnPropertyChanged(nameof(GameVersionText));
             OnPropertyChanged(nameof(WealthTotalText));

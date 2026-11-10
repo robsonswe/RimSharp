@@ -25,8 +25,11 @@ namespace RimSharp.Services.ModManagement
         Task<SaveHeader?> ReadHeaderAsync(string filePath, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Reads ONLY the head window of a save (the first ~160 KB, which always
-        /// covers the &lt;game&gt; head section) and returns the details it contains.
+        /// Reads ONLY the head window of a save and returns the details it contains.
+        /// The window is defined by the &lt;world&gt; marker: the read continues until
+        /// that marker is found, so heads grow with the content of the save and are
+        /// absorbed automatically. A 64 MB ceiling exists only as a guard against
+        /// pathological or corrupt files - it is no feature-size limit.
         /// Returns null for unreadable, corrupt or truncated files. Fields that the
         /// head window does not contain stay null - the caller shows them as unknown.
         /// </summary>
@@ -100,6 +103,43 @@ namespace RimSharp.Services.ModManagement
 
             return $"Year {startingYear.Value + yearsElapsed}, {season}, day {dayOfSeason}, {hour:00}:00";
         }
+
+        /// <summary>
+        /// The official DLCs a save was played with, derived from the mod ids of
+        /// the save's meta block. The base game ("ludeon.rimworld") is not a DLC
+        /// and is never listed; mod ids that are no official DLC are ignored.
+        /// The order of the names is the order the DLCs are shown in.
+        /// </summary>
+        static IReadOnlyList<string> ResolveActiveDlcNames(IReadOnlyCollection<string> modIds)
+        {
+            // The official DLC package ids, in the order the DLCs are shown.
+            (string PackageId, string Name)[] officialDlc =
+            {
+                ("ludeon.rimworld.royalty", "Royalty"),
+                ("ludeon.rimworld.ideology", "Ideology"),
+                ("ludeon.rimworld.biotech", "Biotech"),
+                ("ludeon.rimworld.anomaly", "Anomaly"),
+                ("ludeon.rimworld.odyssey", "Odyssey")
+            };
+
+            if (modIds.Count == 0)
+            {
+                return Array.Empty<string>();
+            }
+
+            var ids = new HashSet<string>(modIds, StringComparer.OrdinalIgnoreCase);
+
+            var names = new List<string>();
+            foreach ((string packageId, string name) in officialDlc)
+            {
+                if (ids.Contains(packageId))
+                {
+                    names.Add(name);
+                }
+            }
+
+            return names;
+        }
     }
 
     /// <summary>
@@ -160,7 +200,6 @@ namespace RimSharp.Services.ModManagement
     /// <param name="TicksGame">The ticks played in the current session.</param>
     /// <param name="GameStartAbsTick">The absolute tick the colony started at.</param>
     /// <param name="StartingYear">The year the colony started in.</param>
-    /// <param name="RealPlayTimeInteracting">The played time in hours.</param>
     /// <param name="StartingTile">The tile the colony started on.</param>
     /// <param name="WealthTotal">The total wealth of the colony.</param>
     /// <param name="WealthItems">The wealth held in items.</param>
@@ -168,12 +207,16 @@ namespace RimSharp.Services.ModManagement
     /// <param name="FreeColonists">The number of free colonists.</param>
     /// <param name="Prisoners">The number of prisoners.</param>
     /// <param name="ResearchDefsCompleted">The number of completed research projects.</param>
-    /// <param name="ActiveDlcClasses">The active DLC components, without the "GameComponent_" prefix.</param>
+    /// <param name="ActiveDlcNames">
+    /// The official DLCs the save was played with ("Royalty", "Ideology", ...).
+    /// The head window does not carry that list - it is derived from the mod
+    /// ids of the save's meta block and filled in by the caller.
+    /// </param>
     public sealed record SaveDetails(
         string? ScenarioName, string? StorytellerDef, string? DifficultyDef,
         int? TicksGame, long? GameStartAbsTick, int? StartingYear,
-        double? RealPlayTimeInteracting, string? StartingTile,
+        string? StartingTile,
         double? WealthTotal, double? WealthItems, double? WealthBuildings,
         int? FreeColonists, int? Prisoners,
-        int? ResearchDefsCompleted, IReadOnlyList<string> ActiveDlcClasses);
+        int? ResearchDefsCompleted, IReadOnlyList<string> ActiveDlcNames);
 }

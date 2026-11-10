@@ -408,13 +408,11 @@
                                                            FontSize="14"
                                                            FontWeight="SemiBold"
                                                            Foreground="{DynamicResource BrushTextStrong}"/>
-                                                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
+                                                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto" RowSpacing="6">
                                                     <TextBlock Grid.Row="0" Grid.Column="0" Classes="field-label" Text="In-game date"/>
                                                     <TextBlock Grid.Row="0" Grid.Column="1" Classes="field-value" Text="{Binding Details.InGameDateText}"/>
-                                                    <TextBlock Grid.Row="1" Grid.Column="0" Classes="field-label" Text="Real play time"/>
-                                                    <TextBlock Grid.Row="1" Grid.Column="1" Classes="field-value" Text="{Binding Details.RealPlayTimeText}"/>
-                                                    <TextBlock Grid.Row="2" Grid.Column="0" Classes="field-label" Text="Starting tile"/>
-                                                    <TextBlock Grid.Row="2" Grid.Column="1" Classes="field-value" Text="{Binding Details.StartingTileText}"/>
+                                                    <TextBlock Grid.Row="1" Grid.Column="0" Classes="field-label" Text="Starting tile"/>
+                                                    <TextBlock Grid.Row="1" Grid.Column="1" Classes="field-value" Text="{Binding Details.StartingTileText}"/>
                                                 </Grid>
                                             </StackPanel>
                                         </Border>

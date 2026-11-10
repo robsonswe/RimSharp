@@ -326,7 +326,7 @@ namespace RimSharp.Tests.Features.Saves
 
             _saveHeaderService.ReadDetailsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
                 .Returns(new SaveDetails(
-                    null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null,
                     null, null, null, null, null, null, Array.Empty<string>()));
 
             var vm = CreateViewModel();
@@ -338,7 +338,6 @@ namespace RimSharp.Tests.Features.Saves
             vm.Details.StorytellerText.Should().Be("—");
             vm.Details.DifficultyText.Should().Be("—");
             vm.Details.InGameDateText.Should().Be("—");
-            vm.Details.RealPlayTimeText.Should().Be("—");
             vm.Details.StartingTileText.Should().Be("—");
             vm.Details.WealthTotalText.Should().Be("—");
             vm.Details.WealthItemsText.Should().Be("—");
@@ -355,7 +354,7 @@ namespace RimSharp.Tests.Features.Saves
             SetModContext(installed: new[] { "mod.alpha" }, active: new[] { "mod.alpha" });
 
             var save = Entry("Colony", DateTime.UtcNow);
-            SetHeader(save, "mod.alpha");
+            SetHeader(save, "mod.alpha", "ludeon.rimworld.anomaly", "ludeon.rimworld.royalty");
 
             _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
                 .Returns(new List<SaveFileEntry> { save });
@@ -364,10 +363,10 @@ namespace RimSharp.Tests.Features.Saves
                 .Returns(new SaveDetails(
                     "Crashland", "Cassandra", "Rough",
                     100, 200, 5500,
-                    11.3429451, "43378,0",
+                    "43378,0",
                     15954.16, 14946.57, 1007.59,
                     5, 1, 12,
-                    new[] { "Anomaly", "Ideology" }));
+                    Array.Empty<string>()));
 
             var vm = CreateViewModel();
             await vm.RefreshAsync(TestContext.Current.CancellationToken);
@@ -382,13 +381,14 @@ namespace RimSharp.Tests.Features.Saves
             vm.Details.StorytellerText.Should().Be("Cassandra");
             vm.Details.DifficultyText.Should().Be("Rough");
             vm.Details.InGameDateText.Should().Be("Year 5500, Spring, day 1, 00:00");
-            vm.Details.RealPlayTimeText.Should().Be($"{11.3429451.ToString("0.0", CultureInfo.CurrentCulture)} h");
             vm.Details.StartingTileText.Should().Be("43378,0");
             vm.Details.WealthTotalText.Should().Be(15954.16.ToString("N0", CultureInfo.CurrentCulture));
             vm.Details.FreeColonistsText.Should().Be("5");
             vm.Details.PrisonersText.Should().Be("1");
             vm.Details.CompletedResearchText.Should().Be("12");
-            vm.Details.ActiveDlcText.Should().Be("Anomaly, Ideology");
+
+            // The DLCs come from the mod ids of the save's meta block.
+            vm.Details.ActiveDlcText.Should().Be("Royalty, Anomaly");
         }
 
         [AvaloniaFact]
@@ -497,7 +497,7 @@ namespace RimSharp.Tests.Features.Saves
             vm.Details.HasError.Should().BeFalse();
 
             pending.SetResult(new SaveDetails(
-                null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 null, null, null, null, null, null, Array.Empty<string>()));
             await (vm.LoadTask ?? Task.CompletedTask);
 

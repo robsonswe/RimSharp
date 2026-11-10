@@ -19,9 +19,12 @@ namespace RimSharp.Services.ModManagement
     /// Two read scopes exist, both streaming and both bounded:
     ///  - the &lt;meta&gt; block (game version + mod lists), capped at 4 MB and stopped
     ///    at &lt;/meta&gt;, so the huge &lt;game&gt; block is never touched;
-    ///  - the head window of the file (the first ~160 KB), which always covers the
-    ///    &lt;game&gt; head section and stops at &lt;world&gt;, so the map and world
-    ///    payloads (the vast majority of the file) are never touched.
+    ///  - the head window of the file, which ends at &lt;world&gt; - the window is
+    ///    defined by that marker, so heads grow with the content of the save
+    ///    and are absorbed automatically. A 64 MB ceiling guards against
+    ///    pathological or corrupt files (and gzip expansion); it is no
+    ///    feature-size limit. The map and world payloads (the vast majority of
+    ///    the file) are never touched.
     ///
     /// Saves are never written, moved or deleted by this service.
     /// </summary>
@@ -30,8 +33,14 @@ namespace RimSharp.Services.ModManagement
         /// <summary>Default cap of the accumulated &lt;meta&gt; window (4 MB).</summary>
         internal const int DefaultMetaCapBytes = 4 * 1024 * 1024;
 
-        /// <summary>Default cap of the accumulated head window (160 KB).</summary>
-        internal const int DefaultDetailsCapBytes = 160 * 1024;
+        /// <summary>
+        /// The hard ceiling of the accumulated head window (64 MB). The window
+        /// itself is marker-defined - the read ends at &lt;world&gt;. This ceiling
+        /// only stops pathological or corrupt files (and gzip bombs): a real
+        /// save head is orders of magnitude smaller, so every valid save is
+        /// read whole.
+        /// </summary>
+        internal const int MaxHeadWindowBytes = 64 * 1024 * 1024;
 
         /// <summary>Size of a single read chunk (64 KB).</summary>
         internal const int ChunkSize = 64 * 1024;
@@ -54,7 +63,7 @@ namespace RimSharp.Services.ModManagement
         internal int? TestMetaCapBytes { get; set; }
 
         /// <summary>
-        /// Test seam: overrides the cap of the head window (default 160 KB).
+        /// Test seam: overrides the ceiling of the head window (default 64 MB).
         /// </summary>
         internal int? TestDetailsCapBytes { get; set; }
 
@@ -185,9 +194,9 @@ namespace RimSharp.Services.ModManagement
                     return null;
                 }
 
-                int capBytes = TestDetailsCapBytes ?? DefaultDetailsCapBytes;
+                int maxBytes = TestDetailsCapBytes ?? MaxHeadWindowBytes;
                 HeadWindow? window = await Task.Run(
-                        () => ReadWindowCore(filePath, capBytes, WorldStartMarker, ignoreCase: false, cancellationToken),
+                        () => ReadWindowCore(filePath, maxBytes, WorldStartMarker, ignoreCase: false, cancellationToken),
                         cancellationToken).ConfigureAwait(false);
 
                 if (window is null)
@@ -305,6 +314,10 @@ namespace RimSharp.Services.ModManagement
         public static string? FormatInGameDate(int? ticksGame, long? gameStartAbsTick, int? startingYear)
             => ISaveHeaderService.FormatInGameDate(ticksGame, gameStartAbsTick, startingYear);
 
+        /// <inheritdoc />
+        public static IReadOnlyList<string> ResolveActiveDlcNames(IReadOnlyCollection<string> modIds)
+            => ISaveHeaderService.ResolveActiveDlcNames(modIds);
+
         #region Streaming core
 
         private enum HeadStop
@@ -328,21 +341,21 @@ namespace RimSharp.Services.ModManagement
         }
 
         /// <summary>
-        /// Reads at most <paramref name="capBytes"/> bytes from the head of a file and
+        /// Reads at most <paramref name="maxBytes"/> bytes from the head of a file and
         /// stops as soon as the marker appears in the accumulated window.
         /// Gzip files are detected by their magic bytes and decompressed on the fly -
         /// only the head is ever decompressed.
         /// Returns null when the file cannot be opened or read.
         /// </summary>
-        private HeadWindow? ReadWindowCore(string filePath, int capBytes, byte[] marker,
+        private HeadWindow? ReadWindowCore(string filePath, int maxBytes, byte[] marker,
             bool ignoreCase, CancellationToken cancellationToken)
         {
-            if (capBytes <= 0)
+            if (maxBytes <= 0)
             {
                 return null;
             }
 
-            byte[] buffer = new byte[Math.Min(capBytes, ChunkSize * 2)];
+            byte[] buffer = new byte[Math.Min(maxBytes, ChunkSize * 2)];
             int length = 0;
 
             try
@@ -367,11 +380,11 @@ namespace RimSharp.Services.ModManagement
                 {
                     byte[] chunk = new byte[ChunkSize];
 
-                    while (length < capBytes)
+                    while (length < maxBytes)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
 
-                        int wanted = Math.Min(chunk.Length, capBytes - length);
+                        int wanted = Math.Min(chunk.Length, maxBytes - length);
                         int read = source.Read(chunk, 0, wanted);
                         if (read <= 0)
                         {
@@ -380,7 +393,7 @@ namespace RimSharp.Services.ModManagement
 
                         if (length + read > buffer.Length)
                         {
-                            int newSize = (int)Math.Min((long)capBytes,
+                            int newSize = (int)Math.Min((long)maxBytes,
                                 Math.Max((long)buffer.Length * 2, length + (long)read));
                             Array.Resize(ref buffer, newSize);
                         }
@@ -408,7 +421,7 @@ namespace RimSharp.Services.ModManagement
                     {
                         Bytes = buffer,
                         Length = length,
-                        Stop = length >= capBytes ? HeadStop.CapReached : HeadStop.EndOfFile
+                        Stop = length >= maxBytes ? HeadStop.CapReached : HeadStop.EndOfFile
                     };
                 }
                 finally
@@ -536,7 +549,6 @@ namespace RimSharp.Services.ModManagement
             XElement? info = ParseFragment(ExtractElementXml(head, "info"));
             XElement? history = ParseFragment(ExtractElementXml(head, "history"));
             XElement? researchManager = ParseFragment(ExtractElementXml(head, "researchManager"));
-            XElement? components = ParseFragment(ExtractElementXml(head, "components"));
 
             double? wealthTotal = null;
             double? wealthItems = null;
@@ -549,41 +561,54 @@ namespace RimSharp.Services.ModManagement
             {
                 foreach (XElement group in recorderGroups.Elements("li"))
                 {
-                    string? key = ResolveRecorderKey(group);
-                    if (key is null)
+                    // The group def ("Wealth", "Population", ...) is context only -
+                    // the recorder key lives in the group's recorders.
+                    XElement? recorders = group.Element("recorders");
+                    if (recorders is null)
                     {
                         continue;
                     }
 
-                    XElement? records = group.Element("records");
-                    if (records is null)
+                    foreach (XElement recorder in recorders.Elements("li"))
                     {
-                        continue;
-                    }
+                        string? key = ResolveRecorderKey(recorder);
+                        if (key is null)
+                        {
+                            continue;
+                        }
 
-                    double? value = DecodeLastRecord(records.Value);
-                    if (value is null)
-                    {
-                        continue; // Broken record - the field stays unknown.
-                    }
+                        XElement? records = recorder.Element("records");
+                        if (records is null)
+                        {
+                            continue;
+                        }
 
-                    switch (key)
-                    {
-                        case "Wealth_Total":
-                            wealthTotal = value;
-                            break;
-                        case "Wealth_Items":
-                            wealthItems = value;
-                            break;
-                        case "Wealth_Buildings":
-                            wealthBuildings = value;
-                            break;
-                        case "FreeColonists":
-                            freeColonists = (int)Math.Round(value.Value, MidpointRounding.AwayFromZero);
-                            break;
-                        case "Prisoners":
-                            prisoners = (int)Math.Round(value.Value, MidpointRounding.AwayFromZero);
-                            break;
+                        double? value = DecodeLastRecord(records.Value);
+                        if (value is null)
+                        {
+                            continue; // Broken record - the field stays unknown.
+                        }
+
+                        switch (key)
+                        {
+                            case "Wealth_Total":
+                                wealthTotal = value;
+                                break;
+                            case "Wealth_Items":
+                                wealthItems = value;
+                                break;
+                            case "Wealth_Buildings":
+                                wealthBuildings = value;
+                                break;
+                            case "FreeColonists":
+                                // The recorder stores whole numbers - the float is
+                                // rounded to the nearest one (midpoint to even).
+                                freeColonists = (int)Math.Round(value.Value, MidpointRounding.ToEven);
+                                break;
+                            case "Prisoners":
+                                prisoners = (int)Math.Round(value.Value, MidpointRounding.ToEven);
+                                break;
+                        }
                     }
                 }
             }
@@ -595,25 +620,8 @@ namespace RimSharp.Services.ModManagement
                 researchDefsCompleted = researchKeys.Elements("li").Count();
             }
 
-            var activeDlcClasses = new List<string>();
-            if (components is not null)
-            {
-                foreach (XElement component in components.Elements("li"))
-                {
-                    string? className = component.Attribute("Class")?.Value;
-                    if (string.IsNullOrEmpty(className) || !className.StartsWith("GameComponent_", StringComparison.Ordinal))
-                    {
-                        continue;
-                    }
-
-                    string dlc = className.Substring("GameComponent_".Length);
-                    if (dlc.Length > 0 && !activeDlcClasses.Contains(dlc))
-                    {
-                        activeDlcClasses.Add(dlc);
-                    }
-                }
-            }
-
+            // The DLC list is not read from the head window: it is derived from
+            // the mod ids of the meta block and filled in by the caller.
             return new SaveDetails(
                 TrimmedValue(scenario?.Element("name")),
                 TrimmedValue(storyteller?.Element("def")),
@@ -621,7 +629,6 @@ namespace RimSharp.Services.ModManagement
                 ParseInt(tickManager?.Element("ticksGame")),
                 ParseLong(tickManager?.Element("gameStartAbsTick")),
                 ParseInt(tickManager?.Element("startingYear")),
-                ParseDouble(info?.Element("realPlayTimeInteracting")),
                 TrimmedValue(info?.Element("startingTile")),
                 wealthTotal,
                 wealthItems,
@@ -629,7 +636,7 @@ namespace RimSharp.Services.ModManagement
                 freeColonists,
                 prisoners,
                 researchDefsCompleted,
-                activeDlcClasses);
+                Array.Empty<string>());
         }
 
         /// <summary>
@@ -649,31 +656,31 @@ namespace RimSharp.Services.ModManagement
         }
 
         /// <summary>
-        /// Resolves the recorder key of a group. Depending on the game version the key
-        /// lives in a &lt;defName&gt; element or in a def attribute; older layouts only
-        /// have a &lt;def&gt; element.
+        /// Resolves the key of a recorder. In the verified layout the key is the
+        /// def of the recorder element inside the group's recorders; older
+        /// layouts carry it in a defName element or attribute.
         /// </summary>
-        private static string? ResolveRecorderKey(XElement group)
+        private static string? ResolveRecorderKey(XElement recorder)
         {
-            string? key = TrimmedValue(group.Element("defName"));
+            string? key = TrimmedValue(recorder.Element("def"));
             if (!string.IsNullOrEmpty(key))
             {
                 return key;
             }
 
-            key = TrimmedValue(group.Attribute("defName"));
+            key = TrimmedValue(recorder.Element("defName"));
             if (!string.IsNullOrEmpty(key))
             {
                 return key;
             }
 
-            key = TrimmedValue(group.Attribute("def"));
+            key = TrimmedValue(recorder.Attribute("defName"));
             if (!string.IsNullOrEmpty(key))
             {
                 return key;
             }
 
-            return TrimmedValue(group.Element("def"));
+            return TrimmedValue(recorder.Attribute("def"));
         }
 
         /// <summary>
