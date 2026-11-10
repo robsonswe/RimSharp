@@ -414,6 +414,12 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IPathService>(),
                     provider.GetRequiredService<ISteamSubscriptionService>()));
 
+            // Save management services (read-only)
+            services.AddSingleton<ISaveHeaderService>(provider =>
+                new SaveHeaderService(
+                    provider.GetRequiredService<IPathService>(),
+                    provider.GetRequiredService<ILoggerService>()));
+
             services.AddSingleton<IModListIOService>(provider =>
             {
                 return new ModListIOService(

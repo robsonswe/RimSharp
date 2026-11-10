@@ -267,6 +267,16 @@ public string GetConfigPath()
             return _cachedConfigPath;
         }
 
+        /// <summary>
+        /// Resolves the saves folder of the game: the "Saves" folder inside the
+        /// RimWorld config folder. Single writer rule: every reader of the saves
+        /// folder goes through this method, never through a direct Path.Combine.
+        /// </summary>
+        public string GetSavesPath()
+        {
+            return Path.Combine(GetConfigPath(), "Saves");
+        }
+
         public string GetGameVersion()
         {
             // Game version depends on Game Path

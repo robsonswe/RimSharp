@@ -51,6 +51,16 @@ namespace RimSharp.Shared.Services.Contracts
         string GetConfigPath();
 
         /// <summary>
+        /// Resolves the saves folder of the game: the "Saves" folder inside the
+        /// RimWorld config folder (Path.Combine(configPath, "Saves")).
+        /// Single writer rule: every reader of the saves folder goes through this
+        /// method, never through a direct Path.Combine.
+        /// Note: an unresolved config path yields the relative "Saves" name -
+        /// callers check Directory.Exists before using the result.
+        /// </summary>
+        string GetSavesPath();
+
+        /// <summary>
 
         /// </summary>
 
