@@ -127,6 +127,38 @@ namespace RimSharp.Tests.Features.Saves
         private int DetailReads()
             => _saveHeaderService.ReceivedCalls().Count(call => call.GetMethodInfo().Name == nameof(ISaveHeaderService.ReadDetailsAsync));
 
+        /// <summary>Counts the colonist name scans the dialog did.</summary>
+        private int ColonistNameScans()
+            => _saveHeaderService.ReceivedCalls().Count(call => call.GetMethodInfo().Name == nameof(ISaveHeaderService.ReadColonistNamesAsync));
+
+        /// <summary>The details of a save that could be read.</summary>
+        private static SaveDetails ReadableDetails()
+            => new SaveDetails(
+                "Crashland", "Cassandra", "Rough",
+                100, 200, 5500,
+                "43378,0", "Spring",
+                "Maia Octus", "danielle",
+                "PlayerTribe",
+                "Five lost tribespeople attempt to rebuild.",
+                "Your tribe was destroyed by the great blood machines.",
+                false,
+                Array.Empty<string>());
+
+        /// <summary>A colonist of the test save.</summary>
+        private static SaveColonist Colonist(
+            string first, string? nick, string? last,
+            string? gender = null,
+            string? xenotype = null,
+            double? biologicalAge = null,
+            IReadOnlyList<string>? traits = null,
+            IReadOnlyList<SaveColonistSkill>? skills = null,
+            IReadOnlyList<SaveColonistCondition>? conditions = null)
+            => new SaveColonist(
+                first, nick, last, gender, xenotype, biologicalAge,
+                traits ?? Array.Empty<string>(),
+                skills ?? Array.Empty<SaveColonistSkill>(),
+                conditions ?? Array.Empty<SaveColonistCondition>());
+
         #endregion
 
         [AvaloniaFact]
@@ -326,8 +358,10 @@ namespace RimSharp.Tests.Features.Saves
 
             _saveHeaderService.ReadDetailsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
                 .Returns(new SaveDetails(
-                    null, null, null, null, null, null, null,
-                    null, null, null, null, null, null, Array.Empty<string>()));
+                    null, null, null, null, null, null,
+                    null, null, null, null, null, null,
+                    null, null,
+                    Array.Empty<string>()));
 
             var vm = CreateViewModel();
             await vm.RefreshAsync(TestContext.Current.CancellationToken);
@@ -335,16 +369,15 @@ namespace RimSharp.Tests.Features.Saves
 
             vm.Details.GameVersionText.Should().Be("1.7.4990 rev1065");
             vm.Details.ScenarioText.Should().Be("—");
+            vm.Details.ScenarioSummaryText.Should().Be("—");
+            vm.Details.ScenarioDescriptionText.Should().Be("—");
             vm.Details.StorytellerText.Should().Be("—");
             vm.Details.DifficultyText.Should().Be("—");
+            vm.Details.FactionTypeText.Should().Be("—");
+            vm.Details.WorldNameText.Should().Be("—");
+            vm.Details.WorldSeedText.Should().Be("—");
+            vm.Details.PlanetModeText.Should().Be("—");
             vm.Details.InGameDateText.Should().Be("—");
-            vm.Details.StartingTileText.Should().Be("—");
-            vm.Details.WealthTotalText.Should().Be("—");
-            vm.Details.WealthItemsText.Should().Be("—");
-            vm.Details.WealthBuildingsText.Should().Be("—");
-            vm.Details.FreeColonistsText.Should().Be("—");
-            vm.Details.PrisonersText.Should().Be("—");
-            vm.Details.CompletedResearchText.Should().Be("—");
             vm.Details.ActiveDlcText.Should().Be("—");
         }
 
@@ -363,9 +396,12 @@ namespace RimSharp.Tests.Features.Saves
                 .Returns(new SaveDetails(
                     "Crashland", "Cassandra", "Rough",
                     100, 200, 5500,
-                    "43378,0",
-                    15954.16, 14946.57, 1007.59,
-                    5, 1, 12,
+                    "43378,0", "Spring",
+                    "Maia Octus", "danielle",
+                    "PlayerTribe",
+                    "Five lost tribespeople attempt to rebuild.",
+                    "Your tribe was destroyed by the great blood machines.",
+                    false,
                     Array.Empty<string>()));
 
             var vm = CreateViewModel();
@@ -378,14 +414,19 @@ namespace RimSharp.Tests.Features.Saves
             vm.Details.FilePath.Should().Be(save.Path);
 
             vm.Details.ScenarioText.Should().Be("Crashland");
+            vm.Details.ScenarioSummaryText.Should().Be("Five lost tribespeople attempt to rebuild.");
+            vm.Details.ScenarioDescriptionText.Should().Be("Your tribe was destroyed by the great blood machines.");
             vm.Details.StorytellerText.Should().Be("Cassandra");
             vm.Details.DifficultyText.Should().Be("Rough");
-            vm.Details.InGameDateText.Should().Be("Year 5500, Spring, day 1, 00:00");
-            vm.Details.StartingTileText.Should().Be("43378,0");
-            vm.Details.WealthTotalText.Should().Be(15954.16.ToString("N0", CultureInfo.CurrentCulture));
-            vm.Details.FreeColonistsText.Should().Be("5");
-            vm.Details.PrisonersText.Should().Be("1");
-            vm.Details.CompletedResearchText.Should().Be("12");
+            vm.Details.FactionTypeText.Should().Be("Tribe");
+            vm.Details.WorldNameText.Should().Be("Maia Octus");
+            vm.Details.WorldSeedText.Should().Be("danielle");
+            vm.Details.PlanetModeText.Should().Be("No");
+
+            // The date follows the game's own calendar: the quadrum (the game
+            // has no season calendar), the day of the quadrum, the hour - and
+            // the season the game itself reported for the save.
+            vm.Details.InGameDateText.Should().Be("Year 5500, Aprimay, day 1, 00:07, Spring");
 
             // The DLCs come from the mod ids of the save's meta block.
             vm.Details.ActiveDlcText.Should().Be("Royalty, Anomaly");
@@ -497,8 +538,10 @@ namespace RimSharp.Tests.Features.Saves
             vm.Details.HasError.Should().BeFalse();
 
             pending.SetResult(new SaveDetails(
-                null, null, null, null, null, null, null,
-                null, null, null, null, null, null, Array.Empty<string>()));
+                null, null, null, null, null, null,
+                null, null, null, null, null, null,
+                null, null,
+                Array.Empty<string>()));
             await (vm.LoadTask ?? Task.CompletedTask);
 
             vm.Details.IsLoading.Should().BeFalse();
@@ -629,6 +672,426 @@ namespace RimSharp.Tests.Features.Saves
             {
                 commands.Should().NotContain(name => name.Contains(forbidden, StringComparison.OrdinalIgnoreCase));
             }
+
+            // The scan path is read-only as well: the service only reads.
+            var serviceMethods = typeof(ISaveHeaderService)
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .Select(method => method.Name)
+                .ToList();
+
+            foreach (var forbidden in new[] { "Delete", "Rename", "Export", "Import", "Write", "Move", "Copy", "Backup" })
+            {
+                serviceMethods.Should().NotContain(name => name.Contains(forbidden, StringComparison.OrdinalIgnoreCase));
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task SelectingASave_ScansTheColonistNamesOnce()
+        {
+            SetModContext(installed: new[] { "mod.alpha" }, active: new[] { "mod.alpha" });
+
+            var save = Entry("Colony", DateTime.UtcNow);
+            SetHeader(save, "mod.alpha");
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { save });
+
+            _saveHeaderService.ReadDetailsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(ReadableDetails());
+
+            _saveHeaderService.ReadColonistNamesAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(new List<SaveColonist>
+                {
+                    Colonist("Hayden", "Hayhouse", "Simons"),
+                    Colonist("Kelux", null, "Hybridge")
+                });
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+            await (vm.ColonistNamesTask ?? Task.CompletedTask);
+
+            // The selection alone starts the scan - exactly once.
+            ColonistNameScans().Should().Be(1);
+            _ = _saveHeaderService.Received(1).ReadColonistNamesAsync(save.Path, Arg.Any<CancellationToken>());
+
+            vm.Details.Colonists.Should().HaveCount(2);
+            vm.Details.Colonists[0].NameText.Should().Be("Hayden \"Hayhouse\" Simons");
+            vm.Details.Colonists[1].NameText.Should().Be("Kelux Hybridge");
+            vm.Details.HasColonistNames.Should().BeTrue();
+            vm.Details.ColonistNamesLoaded.Should().BeTrue();
+            vm.Details.HasColonistNamesNote.Should().BeFalse();
+        }
+
+        [AvaloniaFact]
+        public async Task TheColonists_ShowTheirAgeTraitsSkillsAndConditions()
+        {
+            SetModContext(installed: new[] { "mod.alpha" }, active: new[] { "mod.alpha" });
+
+            var save = Entry("Colony", DateTime.UtcNow);
+            SetHeader(save, "mod.alpha");
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { save });
+
+            _saveHeaderService.ReadDetailsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(ReadableDetails());
+
+            _saveHeaderService.ReadColonistNamesAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(new List<SaveColonist>
+                {
+                    Colonist("Hayden", "Hayhouse", "Simons",
+                        gender: "Female",
+                        xenotype: "Baseliner",
+                        biologicalAge: 27.6,
+                        traits: new[] { "Kind", "Jealous" },
+                        skills: new[]
+                        {
+                            new SaveColonistSkill("Shooting", 11, "Major"),
+                            new SaveColonistSkill("Plants", 0, null)
+                        },
+                        conditions: new[]
+                        {
+                            new SaveColonistCondition("Stab", 3d, "Hediff_Injury", "LowPain"),
+                            new SaveColonistCondition("BadBack", 0.33d, "HediffWithComps", null)
+                        })
+                });
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+            await (vm.ColonistNamesTask ?? Task.CompletedTask);
+
+            SaveColonistItemViewModel colonist = vm.Details.Colonists[0];
+
+            // The gender and the xenotype are their own compact lines.
+            colonist.HasGender.Should().BeTrue();
+            colonist.GenderText.Should().Be("Gender: Female");
+            colonist.HasXenotype.Should().BeTrue();
+            colonist.XenotypeText.Should().Be("Xenotype: Baseliner");
+
+            // The years are full years: the game truncates the ticks towards
+            // zero (27.6 years are 27, not 28).
+            colonist.HasAge.Should().BeTrue();
+            colonist.AgeText.Should().Be("Age: 27");
+
+            colonist.HasTraits.Should().BeTrue();
+            colonist.TraitsText.Should().Be("Traits: Kind, Jealous");
+
+            // The passion is marked: "++" for a major one, nothing for none.
+            colonist.HasSkills.Should().BeTrue();
+            colonist.SkillsText.Should().Be("Skills: Shooting 11++, Plants 0");
+
+            // The severity of an injury is points, the other one a percentage.
+            colonist.HasConditions.Should().BeTrue();
+            colonist.ConditionsText.Should().Be("Conditions: Stab (severity 3, LowPain), BadBack (33%)");
+        }
+
+        [AvaloniaFact]
+        public async Task TheColonists_CarryNoStatusSuffix()
+        {
+            SetModContext(installed: new[] { "mod.alpha" }, active: new[] { "mod.alpha" });
+
+            var save = Entry("Colony", DateTime.UtcNow);
+            SetHeader(save, "mod.alpha");
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { save });
+
+            _saveHeaderService.ReadDetailsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(ReadableDetails());
+
+            _saveHeaderService.ReadColonistNamesAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(new List<SaveColonist>
+                {
+                    Colonist("Meredith", "Latch", "Abernathy", gender: "Female")
+                });
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+            await (vm.ColonistNamesTask ?? Task.CompletedTask);
+
+            // Every pawn stays in the list - but none of them is labeled: the
+            // name line carries the name and nothing else.
+            SaveColonistItemViewModel colonist = vm.Details.Colonists[0];
+            colonist.NameText.Should().Be("Meredith \"Latch\" Abernathy");
+            colonist.NameText.Should().NotContain("slave");
+        }
+
+        [AvaloniaFact]
+        public async Task AColonistWithoutData_HasNoLinesForIt()
+        {
+            SetModContext(installed: new[] { "mod.alpha" }, active: new[] { "mod.alpha" });
+
+            var save = Entry("Colony", DateTime.UtcNow);
+            SetHeader(save, "mod.alpha");
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { save });
+
+            _saveHeaderService.ReadDetailsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(ReadableDetails());
+
+            _saveHeaderService.ReadColonistNamesAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(new List<SaveColonist> { Colonist("Kiriko", null, "O'Connell") });
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+            await (vm.ColonistNamesTask ?? Task.CompletedTask);
+
+            // A line without data is left out - only the name is shown. The
+            // gender is the exception: a human always has one.
+            SaveColonistItemViewModel colonist = vm.Details.Colonists[0];
+            colonist.NameText.Should().Be("Kiriko O'Connell");
+            colonist.HasXenotype.Should().BeFalse();
+            colonist.XenotypeText.Should().BeEmpty();
+            colonist.HasAge.Should().BeFalse();
+            colonist.AgeText.Should().BeEmpty();
+            colonist.HasTraits.Should().BeFalse();
+            colonist.HasSkills.Should().BeFalse();
+            colonist.HasConditions.Should().BeFalse();
+        }
+
+        [AvaloniaFact]
+        public async Task TheColonistBlocks_ShowTheGender()
+        {
+            SetModContext(installed: new[] { "mod.alpha" }, active: new[] { "mod.alpha" });
+
+            var save = Entry("Colony", DateTime.UtcNow);
+            SetHeader(save, "mod.alpha");
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { save });
+
+            _saveHeaderService.ReadDetailsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(ReadableDetails());
+
+            // The scribe omits the gender element when the value equals its
+            // default - the parser reads such a pawn as male.
+            _saveHeaderService.ReadColonistNamesAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(new List<SaveColonist> { Colonist("Tobias", "Toby", "Ytterstad", gender: "Male") });
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+            await (vm.ColonistNamesTask ?? Task.CompletedTask);
+
+            SaveColonistItemViewModel colonist = vm.Details.Colonists[0];
+            colonist.HasGender.Should().BeTrue();
+            colonist.GenderText.Should().Be("Gender: Male");
+        }
+
+        [AvaloniaFact]
+        public async Task TheColonistNames_AreReadInTheBackground_AndDoNotBlockTheDetails()
+        {
+            SetModContext(installed: new[] { "mod.alpha" }, active: new[] { "mod.alpha" });
+
+            var save = Entry("Colony", DateTime.UtcNow);
+            SetHeader(save, "mod.alpha");
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { save });
+
+            _saveHeaderService.ReadDetailsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(ReadableDetails());
+
+            var pending = new TaskCompletionSource<IReadOnlyList<SaveColonist>>();
+            _saveHeaderService.ReadColonistNamesAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(pending.Task);
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+
+            // The details are already shown - the scan runs behind them.
+            vm.Details.ScenarioText.Should().Be("Crashland");
+            vm.Details.IsLoadingColonistNames.Should().BeTrue();
+            vm.Details.Colonists.Should().BeEmpty();
+
+            pending.SetResult(new List<SaveColonist>
+            {
+                Colonist("Hayden", "Hayhouse", "Simons")
+            });
+            await (vm.ColonistNamesTask ?? Task.CompletedTask);
+
+            vm.Details.Colonists.Should().HaveCount(1);
+            vm.Details.Colonists[0].NameText.Should().Be("Hayden \"Hayhouse\" Simons");
+            vm.Details.IsLoadingColonistNames.Should().BeFalse();
+        }
+
+        [AvaloniaFact]
+        public async Task ChangingTheSelectionMidScan_DropsTheStaleResult()
+        {
+            SetModContext(installed: new[] { "mod.alpha" }, active: new[] { "mod.alpha" });
+
+            var first = Entry("First", DateTime.UtcNow);
+            var second = Entry("Second", DateTime.UtcNow.AddMinutes(-1));
+            SetHeader(first, "mod.alpha");
+            SetHeader(second, "mod.alpha");
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { first, second });
+
+            _saveHeaderService.ReadDetailsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(ReadableDetails());
+
+            var pendingFirst = new TaskCompletionSource<IReadOnlyList<SaveColonist>>();
+            var pendingSecond = new TaskCompletionSource<IReadOnlyList<SaveColonist>>();
+            _saveHeaderService.ReadColonistNamesAsync(first.Path, Arg.Any<CancellationToken>())
+                .Returns(pendingFirst.Task);
+            _saveHeaderService.ReadColonistNamesAsync(second.Path, Arg.Any<CancellationToken>())
+                .Returns(pendingSecond.Task);
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+            Task? firstScan = vm.ColonistNamesTask;
+
+            // The user picks the other save while the first scan still runs.
+            vm.SelectedSave = vm.Saves[1];
+            await (vm.LoadTask ?? Task.CompletedTask);
+
+            // The new selection scans on its own.
+            ColonistNameScans().Should().Be(2);
+
+            // The result of the first scan arrives late - it is dropped.
+            pendingFirst.SetResult(new List<SaveColonist>
+            {
+                Colonist("Hayden", "Hayhouse", "Simons")
+            });
+            await (firstScan ?? Task.CompletedTask);
+
+            vm.Details.Colonists.Should().BeEmpty();
+            vm.Details.ColonistNamesLoaded.Should().BeFalse();
+            vm.Details.IsLoadingColonistNames.Should().BeTrue();
+
+            // The scan of the new save still delivers its own result.
+            pendingSecond.SetResult(new List<SaveColonist>
+            {
+                Colonist("Kiriko", null, "O'Connell")
+            });
+            await (vm.ColonistNamesTask ?? Task.CompletedTask);
+
+            vm.Details.Colonists.Should().HaveCount(1);
+            vm.Details.Colonists[0].NameText.Should().Be("Kiriko O'Connell");
+        }
+
+        [AvaloniaFact]
+        public async Task SelectingAnotherSave_ResetsTheColonistNames()
+        {
+            SetModContext(installed: new[] { "mod.alpha" }, active: new[] { "mod.alpha" });
+
+            var first = Entry("First", DateTime.UtcNow);
+            var second = Entry("Second", DateTime.UtcNow.AddMinutes(-1));
+            SetHeader(first, "mod.alpha");
+            SetHeader(second, "mod.alpha");
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { first, second });
+
+            _saveHeaderService.ReadDetailsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(ReadableDetails());
+
+            var pendingSecond = new TaskCompletionSource<IReadOnlyList<SaveColonist>>();
+            _saveHeaderService.ReadColonistNamesAsync(first.Path, Arg.Any<CancellationToken>())
+                .Returns(new List<SaveColonist> { Colonist("Hayden", "Hayhouse", "Simons") });
+            _saveHeaderService.ReadColonistNamesAsync(second.Path, Arg.Any<CancellationToken>())
+                .Returns(pendingSecond.Task);
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+            await (vm.ColonistNamesTask ?? Task.CompletedTask);
+
+            vm.Details.Colonists.Should().HaveCount(1);
+
+            // Another save is selected - the names of the old one are gone.
+            vm.SelectedSave = vm.Saves[1];
+            await (vm.LoadTask ?? Task.CompletedTask);
+
+            vm.Details.Colonists.Should().BeEmpty();
+            vm.Details.ColonistNamesLoaded.Should().BeFalse();
+            vm.Details.ShowColonistNamesUnknown.Should().BeFalse();
+            vm.Details.IsLoadingColonistNames.Should().BeTrue();
+        }
+
+        [AvaloniaFact]
+        public async Task AnEmptyScan_SaysSoHonestly()
+        {
+            SetModContext(installed: new[] { "mod.alpha" }, active: new[] { "mod.alpha" });
+
+            var save = Entry("Empty", DateTime.UtcNow);
+            SetHeader(save, "mod.alpha");
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { save });
+
+            _saveHeaderService.ReadDetailsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(ReadableDetails());
+
+            _saveHeaderService.ReadColonistNamesAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(new List<SaveColonist>());
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+            await (vm.ColonistNamesTask ?? Task.CompletedTask);
+
+            ColonistNameScans().Should().Be(1);
+            vm.Details.Colonists.Should().BeEmpty();
+            vm.Details.HasColonistNames.Should().BeFalse();
+            vm.Details.ColonistNamesLoaded.Should().BeTrue();
+            vm.Details.ColonistNamesNote.Should().Be("No human pawns found.");
+            vm.Details.ShowColonistNamesUnknown.Should().BeFalse();
+        }
+
+        [AvaloniaFact]
+        public async Task ASaveThatCannotBeRead_IsNotScanned()
+        {
+            SetModContext(installed: new[] { "mod.alpha" }, active: new[] { "mod.alpha" });
+
+            // No header is registered - the save cannot be read at all.
+            var save = Entry("Broken", DateTime.UtcNow);
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { save });
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+
+            // An unreadable save is not scanned - the section stays unknown.
+            ColonistNameScans().Should().Be(0);
+            vm.Details.HasError.Should().BeTrue();
+            vm.Details.ShowColonistNamesUnknown.Should().BeTrue();
+        }
+
+        [AvaloniaFact]
+        public async Task ASaveWithOnlyAHeader_IsNotScanned()
+        {
+            SetModContext(installed: new[] { "mod.alpha" }, active: new[] { "mod.alpha" });
+
+            var save = Entry("HeaderOnly", DateTime.UtcNow);
+            SetHeader(save, "mod.alpha");
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { save });
+
+            // The head window could not be read - only the header is there.
+            _saveHeaderService.ReadDetailsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns((SaveDetails?)null);
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+
+            // The save did not parse - no whole file read is spent on it, the
+            // section shows the honest em dash like every other unknown field.
+            ColonistNameScans().Should().Be(0);
+            vm.Details.ShowSections.Should().BeTrue();
+            vm.Details.ShowColonistNamesUnknown.Should().BeTrue();
         }
     }
 }

@@ -50,6 +50,11 @@ namespace RimSharp.Features.Saves.ViewModels
         private bool _rebuildingVisibleRows;
         private string _statusMessage = "Reading save folder…";
 
+        // The scan of the colonist names: it runs in the background while a
+        // save is selected and a new selection supersedes the running one.
+        private CancellationTokenSource? _colonistScanCancellation;
+        private int _colonistScanGeneration;
+
         public SavesDialogViewModel(
             ISaveHeaderService saveHeaderService,
             IModListManager? modListManager = null)
@@ -136,6 +141,9 @@ namespace RimSharp.Features.Saves.ViewModels
 
                 if (value == null)
                 {
+                    // Nothing is selected any more - a scan that is still
+                    // running must not land on the empty panel.
+                    CancelColonistNamesScan();
                     Details.Clear();
                     LoadTask = Task.CompletedTask;
                     return;
@@ -150,6 +158,13 @@ namespace RimSharp.Features.Saves.ViewModels
         /// the view ignores it (the read updates the state).
         /// </summary>
         public Task? LoadTask { get; private set; }
+
+        /// <summary>
+        /// The scan for the colonist names. It runs in the background while a
+        /// save is selected. Tests await this instead of sleeping; the view
+        /// ignores it (the scan updates the state).
+        /// </summary>
+        public Task? ColonistNamesTask { get; private set; }
 
         /// <summary>The details panel of the selected save.</summary>
         public SaveDetailsViewModel Details { get; } = new();
@@ -286,6 +301,10 @@ namespace RimSharp.Features.Saves.ViewModels
         /// <summary>Reads the header of the selected save and fills the details.</summary>
         private async Task LoadSelectedAsync(SaveRowViewModel row, CancellationToken cancellationToken)
         {
+            // A new selection supersedes the scan that is still running: the
+            // names of the old save must never land on the new one.
+            CancelColonistNamesScan();
+
             Details.BeginLoading(row.Name, row.Path);
             StatusMessage = "Reading this save…";
 
@@ -332,6 +351,10 @@ namespace RimSharp.Features.Saves.ViewModels
                     header.GameVersion);
 
                 StatusMessage = $"Read {row.Name}.";
+
+                // The save is readable - the colonists are read in the background.
+                // The details above are already shown; the scan never delays them.
+                StartColonistNamesScan(row, cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -354,6 +377,93 @@ namespace RimSharp.Features.Saves.ViewModels
             {
                 Details.EndLoading();
             }
+        }
+
+        /// <summary>
+        /// Starts the scan for the colonists. The scan is a whole file read -
+        /// it runs in the background and never delays the details.
+        /// The user asked for it by selecting the save.
+        /// </summary>
+        private void StartColonistNamesScan(SaveRowViewModel row, CancellationToken cancellationToken)
+        {
+            // A scan that is still running belongs to the previous selection.
+            CancelColonistNamesScan();
+
+            int generation = _colonistScanGeneration;
+
+            _colonistScanCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            Details.BeginColonistNamesLoad();
+
+            ColonistNamesTask = RunColonistNamesScanAsync(row, generation,
+                _colonistScanCancellation.Token);
+        }
+
+        /// <summary>
+        /// Runs the scan and puts the names into the panel - but only when the
+        /// scan still belongs to the selected save.
+        /// </summary>
+        private async Task RunColonistNamesScanAsync(SaveRowViewModel row, int generation,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var names = await _saveHeaderService.ReadColonistNamesAsync(row.Path, cancellationToken);
+                var found = names ?? Array.Empty<SaveColonist>();
+
+                // The selection changed while the scan ran - the result belongs
+                // to a save that is no longer shown and is dropped.
+                if (generation != _colonistScanGeneration)
+                {
+                    return;
+                }
+
+                if (!string.Equals(row.Path, SelectedSave?.Path, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                // The names are shown in the Colonists section - the status line
+                // keeps what the read of the save said.
+                Details.ApplyColonistNames(found);
+            }
+            catch (OperationCanceledException)
+            {
+                // The dialog was closed or another save was selected.
+            }
+            catch (Exception)
+            {
+                if (generation != _colonistScanGeneration)
+                {
+                    return;
+                }
+
+                // The scan failed - the section says so instead of showing a
+                // made-up name.
+                Details.ApplyColonistNames(Array.Empty<SaveColonist>());
+            }
+        }
+
+        /// <summary>
+        /// Cancels the scan that is still running. Every result of a cancelled
+        /// scan is dropped - it belongs to a save that is no longer shown.
+        /// </summary>
+        private void CancelColonistNamesScan()
+        {
+            try
+            {
+                _colonistScanCancellation?.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Already gone - nothing to cancel.
+            }
+
+            _colonistScanCancellation?.Dispose();
+            _colonistScanCancellation = null;
+
+            // The generation counts the selections - a result of an older
+            // generation is never applied.
+            _colonistScanGeneration++;
         }
 
         /// <summary>Fills the compatibility block of the details panel.</summary>
@@ -434,6 +544,9 @@ namespace RimSharp.Features.Saves.ViewModels
         {
             if (disposing)
             {
+                // The dialog is closed - a scan that is still running is stopped.
+                CancelColonistNamesScan();
+
                 try
                 {
                     _cancellation.Cancel();

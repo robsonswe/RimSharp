@@ -119,14 +119,20 @@ namespace RimSharp.Tests.Services.ModManagement
             "\t<game>\r\n" +
             "\t\t<currentMapIndex>0</currentMapIndex>\r\n" +
             "\t\t<info>\r\n" +
-            // The element is in the save but is not extracted any more - its
+            // The play time is in the save but is not extracted any more - its
             // values could not be reconciled with the age of the saves.
             "\t\t\t<realPlayTimeInteracting>11.3429451</realPlayTimeInteracting>\r\n" +
+            // The planet tile of the colony: it feeds the calendar (the game
+            // derives the longitude and the latitude from it).
             "\t\t\t<startingTile>43378,0</startingTile>\r\n" +
             "\t\t\t<startingAndOptionalPawns>\r\n" +
             "\t\t\t\t<li>Thing_Human136</li>\r\n" +
             "\t\t\t</startingAndOptionalPawns>\r\n" +
             "\t\t</info>\r\n" +
+            // The season the game itself reported for the save.
+            "\t\t<dateNotifier>\r\n" +
+            "\t\t\t<lastSeason>Spring</lastSeason>\r\n" +
+            "\t\t</dateNotifier>\r\n" +
             "\t\t<rules>\r\n" +
             "\t\t\t<disallowedBuildings />\r\n" +
             "\t\t\t<disallowedDesignatorTypes />\r\n" +
@@ -134,10 +140,17 @@ namespace RimSharp.Tests.Services.ModManagement
             "\t\t<scenario>\r\n" +
             "\t\t\t<name>Crashlanded</name>\r\n" +
             "\t\t\t<summary>Three crashlanded survivors.</summary>\r\n" +
+            "\t\t\t<description>The three of you awake in your cryptosleep sarcophagi.</description>\r\n" +
             "\t\t\t<playerFaction>\r\n" +
             "\t\t\t\t<def>PlayerFaction</def>\r\n" +
             "\t\t\t\t<factionDef>PlayerColony</factionDef>\r\n" +
             "\t\t\t</playerFaction>\r\n" +
+            "\t\t\t<parts>\r\n" +
+            "\t\t\t\t<li Class=\"ScenPart_PlanetLayer\">\r\n" +
+            "\t\t\t\t\t<def>PlanetLayer</def>\r\n" +
+            "\t\t\t\t\t<layer>Orbit</layer>\r\n" +
+            "\t\t\t\t</li>\r\n" +
+            "\t\t\t</parts>\r\n" +
             "\t\t</scenario>\r\n" +
             "\t\t<tickManager>\r\n" +
             "\t\t\t<ticksGame>12674</ticksGame>\r\n" +
@@ -150,102 +163,12 @@ namespace RimSharp.Tests.Services.ModManagement
             "\t\t\t\t<def>Rough</def>\r\n" +
             "\t\t\t</difficulty>\r\n" +
             "\t\t\t<incidentQueue />\r\n" +
-            "\t\t</storyteller>\r\n" +
-            "\t\t<researchManager>\r\n" +
-            "\t\t\t<progress>\r\n" +
-            "\t\t\t\t<keys>\r\n" +
-            "\t\t\t\t\t<li>Electricity</li>\r\n" +
-            "\t\t\t\t\t<li>Microelectronics</li>\r\n" +
-            "\t\t\t\t\t<li>Multi-analyzer</li>\r\n" +
-            "\t\t\t\t</keys>\r\n" +
-            "\t\t\t</progress>\r\n" +
-            "\t\t</researchManager>\r\n";
-
-        /// <summary>
-        /// The history block with the auto recorder groups. The verified shape
-        /// is two levels deep: the group carries the def of the group
-        /// ("Wealth", "Population" - context only), the recorders of the group
-        /// carry the recorder key in their def ("Wealth_Total",
-        /// "FreeColonists"). The records are whitespace separated base64
-        /// tokens, each one a 4-byte little-endian float32 - the last token is
-        /// the current value of the recorder.
-        /// The base64 tokens below are the verified ones; the expected values
-        /// are derived from the encoding (uOZQRg== is 13369.6796875,
-        /// hMcSRg== is 9393.87890625, fyQoRQ== is 2690.281005859375,
-        /// AABAQA== is 3, AAAAAA== is 0).
-        /// </summary>
-        private const string HistoryBlock =
-            "\t\t<history>\r\n" +
-            "\t\t\t<autoRecorderGroups>\r\n" +
-            "\t\t\t\t<li>\r\n" +
-            "\t\t\t\t\t<def>Wealth</def>\r\n" +
-            "\t\t\t\t\t<recorders>\r\n" +
-            "\t\t\t\t\t\t<li>\r\n" +
-            "\t\t\t\t\t\t\t<def>Wealth_Total</def>\r\n" +
-            "\t\t\t\t\t\t\t<records>\r\n" +
-            "\t\t\t\t\t\t\t\tuOZQRg==\r\n" +
-            "\t\t\t\t\t\t\t</records>\r\n" +
-            "\t\t\t\t\t\t</li>\r\n" +
-            "\t\t\t\t\t\t<li>\r\n" +
-            "\t\t\t\t\t\t\t<def>Wealth_Items</def>\r\n" +
-            "\t\t\t\t\t\t\t<records>AAAAAA== hMcSRg==</records>\r\n" +
-            "\t\t\t\t\t\t</li>\r\n" +
-            "\t\t\t\t\t\t<li>\r\n" +
-            "\t\t\t\t\t\t\t<def>Wealth_Buildings</def>\r\n" +
-            "\t\t\t\t\t\t\t<records>fyQoRQ==</records>\r\n" +
-            "\t\t\t\t\t\t</li>\r\n" +
-            "\t\t\t\t\t</recorders>\r\n" +
-            "\t\t\t\t</li>\r\n" +
-            "\t\t\t\t<li>\r\n" +
-            "\t\t\t\t\t<def>Population</def>\r\n" +
-            "\t\t\t\t\t<recorders>\r\n" +
-            "\t\t\t\t\t\t<li>\r\n" +
-            "\t\t\t\t\t\t\t<def>FreeColonists</def>\r\n" +
-            "\t\t\t\t\t\t\t<records>AABAQA==</records>\r\n" +
-            "\t\t\t\t\t\t</li>\r\n" +
-            "\t\t\t\t\t\t<li>\r\n" +
-            "\t\t\t\t\t\t\t<def>Prisoners</def>\r\n" +
-            "\t\t\t\t\t\t\t<records>AAAAAA==</records>\r\n" +
-            "\t\t\t\t\t\t</li>\r\n" +
-            "\t\t\t\t\t</recorders>\r\n" +
-            "\t\t\t\t</li>\r\n" +
-            "\t\t\t\t<li>\r\n" +
-            "\t\t\t\t\t<def>ColonistMood</def>\r\n" +
-            "\t\t\t\t\t<recorders>\r\n" +
-            "\t\t\t\t\t\t<li>\r\n" +
-            "\t\t\t\t\t\t\t<def>ColonistMood</def>\r\n" +
-            "\t\t\t\t\t\t\t<records>AAAAgA==</records>\r\n" +
-            "\t\t\t\t\t\t</li>\r\n" +
-            "\t\t\t\t\t</recorders>\r\n" +
-            "\t\t\t\t</li>\r\n" +
-            "\t\t\t</autoRecorderGroups>\r\n" +
-            "\t\t</history>\r\n";
-
-        /// <summary>
-        /// The same history block with a broken base64 token in the wealth total recorder.
-        /// </summary>
-        private const string HistoryBlockWithBrokenRecord =
-            "\t\t<history>\r\n" +
-            "\t\t\t<autoRecorderGroups>\r\n" +
-            "\t\t\t\t<li>\r\n" +
-            "\t\t\t\t\t<def>Wealth</def>\r\n" +
-            "\t\t\t\t\t<recorders>\r\n" +
-            "\t\t\t\t\t\t<li>\r\n" +
-            "\t\t\t\t\t\t\t<def>Wealth_Total</def>\r\n" +
-            "\t\t\t\t\t\t\t<records>AAAAAA== not-base64!!</records>\r\n" +
-            "\t\t\t\t\t\t</li>\r\n" +
-            "\t\t\t\t\t\t<li>\r\n" +
-            "\t\t\t\t\t\t\t<def>Wealth_Items</def>\r\n" +
-            "\t\t\t\t\t\t\t<records>hMcSRg==</records>\r\n" +
-            "\t\t\t\t\t\t</li>\r\n" +
-            "\t\t\t\t\t</recorders>\r\n" +
-            "\t\t\t\t</li>\r\n" +
-            "\t\t\t</autoRecorderGroups>\r\n" +
-            "\t\t</history>\r\n";
+            "\t\t</storyteller>\r\n";
 
         /// <summary>
         /// The tail of the head: the components block and the beginning of the world
-        /// block (which is never parsed - the reader stops in front of it).
+        /// block. The world block opens the info block that carries the name and the
+        /// seed of the world - the reader reads up to the tag that closes it.
         /// </summary>
         private const string HeadSuffix =
             "\t\t<components>\r\n" +
@@ -259,6 +182,8 @@ namespace RimSharp.Tests.Services.ModManagement
             "\t\t<world>\r\n" +
             "\t\t\t<info>\r\n" +
             "\t\t\t\t<name>Castor</name>\r\n" +
+            "\t\t\t\t<planetCoverage>0.300000012</planetCoverage>\r\n" +
+            "\t\t\t\t<seedString>gray</seedString>\r\n" +
             "\t\t\t</info>\r\n" +
             "\t\t</world>\r\n" +
             "\t</game>\r\n" +
@@ -266,30 +191,200 @@ namespace RimSharp.Tests.Services.ModManagement
 
         /// <summary>
         /// A realistic head: the verified two-tab structure of the game block with
-        /// scenario, storyteller, tick manager, history, research and components.
+        /// scenario, storyteller, tick manager and components.
         /// </summary>
-        private const string RealisticHeadSave = HeadPrefix + HistoryBlock + HeadSuffix;
+        private const string RealisticHeadSave = HeadPrefix + HeadSuffix;
 
         /// <summary>
-        /// The same head without the history block.
+        /// A head that carries none of the elements the new fields come from:
+        /// no scenario summary, no description, no faction, no parts and no name
+        /// in the world info. Every new field has to stay unknown then.
         /// </summary>
-        private const string HeadWithoutHistorySave = HeadPrefix + HeadSuffix;
+        private const string BareHeadSave =
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n" +
+            "<savegame>\r\n" +
+            "\t<meta>\r\n" +
+            "\t\t<gameVersion>1.7.4990 rev1065</gameVersion>\r\n" +
+            "\t\t<modIds>\r\n" +
+            "\t\t\t<li>ludeon.rimworld</li>\r\n" +
+            "\t\t</modIds>\r\n" +
+            "\t\t<modNames>\r\n" +
+            "\t\t\t<li>RimWorld</li>\r\n" +
+            "\t\t</modNames>\r\n" +
+            "\t</meta>\r\n" +
+            "\t<game>\r\n" +
+            "\t\t<scenario>\r\n" +
+            "\t\t\t<name>Crashlanded</name>\r\n" +
+            "\t\t</scenario>\r\n" +
+            "\t\t<world>\r\n" +
+            "\t\t\t<info>\r\n" +
+            "\t\t\t\t<planetCoverage>0.300000012</planetCoverage>\r\n" +
+            "\t\t\t</info>\r\n" +
+            "\t\t</world>\r\n" +
+            "\t</game>\r\n" +
+            "</savegame>";
 
         /// <summary>
-        /// A head that stops in the middle of the history block.
+        /// A human pawn with a gender but without a xenotype - the xenotype
+        /// line is left out then.
+        /// </summary>
+        private const string HumanPawnHayden =
+            "\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t<thing Class=\"Pawn\">\r\n" +
+            "\t\t\t\t\t\t\t<def>Human</def>\r\n" +
+            "\t\t\t\t\t\t\t<id>Human136</id>\r\n" +
+            "\t\t\t\t\t\t\t<faction>Faction_10</faction>\r\n" +
+            "\t\t\t\t\t\t\t<kindDef>Colonist</kindDef>\r\n" +
+            "\t\t\t\t\t\t\t<gender>Male</gender>\r\n" +
+            "\t\t\t\t\t\t\t<name Class=\"NameTriple\">\r\n" +
+            "\t\t\t\t\t\t\t\t<first>Hayden</first>\r\n" +
+            "\t\t\t\t\t\t\t\t<nick>Hayhouse</nick>\r\n" +
+            "\t\t\t\t\t\t\t\t<last>Simons</last>\r\n" +
+            "\t\t\t\t\t\t\t</name>\r\n" +
+            "\t\t\t\t\t\t</thing>\r\n" +
+            "\t\t\t\t\t</li>\r\n";
+
+        /// <summary>
+        /// A human pawn whose nick is empty - the name is shown with what the
+        /// save carries.
+        /// </summary>
+        private const string HumanPawnKelux =
+            "\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t<thing Class=\"Pawn\">\r\n" +
+            "\t\t\t\t\t\t\t<def>Human</def>\r\n" +
+            "\t\t\t\t\t\t\t<id>Human204</id>\r\n" +
+            "\t\t\t\t\t\t\t<kindDef>Colonist</kindDef>\r\n" +
+            "\t\t\t\t\t\t\t<name Class=\"NameTriple\">\r\n" +
+            "\t\t\t\t\t\t\t\t<first>Kelux</first>\r\n" +
+            "\t\t\t\t\t\t\t\t<nick />\r\n" +
+            "\t\t\t\t\t\t\t\t<last>Hybridge</last>\r\n" +
+            "\t\t\t\t\t\t\t</name>\r\n" +
+            "\t\t\t\t\t\t</thing>\r\n" +
+            "\t\t\t\t\t</li>\r\n";
+
+        /// <summary>
+        /// A human pawn whose name is written as an element with the parts as
+        /// attributes.
+        /// </summary>
+        private const string HumanPawnTobias =
+            "\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t<thing Class=\"Pawn\">\r\n" +
+            "\t\t\t\t\t\t\t<def>Human</def>\r\n" +
+            "\t\t\t\t\t\t\t<id>Human313</id>\r\n" +
+            "\t\t\t\t\t\t\t<nameTriple first=\"Tobias\" nick=\"Toby\" last=\"Ytterstad\" />\r\n" +
+            "\t\t\t\t\t\t</thing>\r\n" +
+            "\t\t\t\t\t</li>\r\n";
+
+        /// <summary>
+        /// A pawn of another species - it is no colonist.
+        /// </summary>
+        private const string AnimalPawn =
+            "\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t<thing Class=\"Pawn\">\r\n" +
+            "\t\t\t\t\t\t\t<def>Dog</def>\r\n" +
+            "\t\t\t\t\t\t\t<id>Dog12</id>\r\n" +
+            "\t\t\t\t\t\t</thing>\r\n" +
+            "\t\t\t\t\t</li>\r\n";
+
+        /// <summary>
+        /// A human pawn with everything a save carries for a colonist: a nick,
+        /// a gender, a xenotype, an age tracker, traits (a vanilla one, a mod
+        /// one and a gene derived one), skills (a vanilla one with a passion,
+        /// one without a level and a mod one), conditions (an injury, a
+        /// condition with a fraction and a mod one).
+        /// The age ticks are the measured ones of a real pawn: 97 421 354
+        /// ticks are 27.061 years and a birth tick of -259 073 116 against
+        /// the absolute tick 3 049 546 484 are 919.061 years - the game shows
+        /// 27 and 919.
+        /// </summary>
+        private const string HumanPawnFull =
+            "\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t<thing Class=\"Pawn\">\r\n" +
+            "\t\t\t\t\t\t\t<def>Human</def>\r\n" +
+            "\t\t\t\t\t\t\t<id>Human263</id>\r\n" +
+            "\t\t\t\t\t\t\t<faction>Faction_10</faction>\r\n" +
+            "\t\t\t\t\t\t\t<kindDef>Colonist</kindDef>\r\n" +
+            "\t\t\t\t\t\t\t<gender>Female</gender>\r\n" +
+            "\t\t\t\t\t\t\t<genes>\r\n" +
+            "\t\t\t\t\t\t\t\t<xenogenes />\r\n" +
+            "\t\t\t\t\t\t\t\t<xenotype>Baseliner</xenotype>\r\n" +
+            "\t\t\t\t\t\t\t</genes>\r\n" +
+            "\t\t\t\t\t\t\t<name Class=\"NameTriple\">\r\n" +
+            "\t\t\t\t\t\t\t\t<first>Hayden</first>\r\n" +
+            "\t\t\t\t\t\t\t\t<nick>Hayhouse</nick>\r\n" +
+            "\t\t\t\t\t\t\t\t<last>Simons</last>\r\n" +
+            "\t\t\t\t\t\t\t</name>\r\n" +
+            "\t\t\t\t\t\t\t<story>\r\n" +
+            "\t\t\t\t\t\t\t\t<traits>\r\n" +
+            "\t\t\t\t\t\t\t\t\t<allTraits>\r\n" +
+            "\t\t\t\t\t\t\t\t\t\t<li><def>Kind</def><sourceGene>null</sourceGene><suppressedBy>null</suppressedBy></li>\r\n" +
+            "\t\t\t\t\t\t\t\t\t\t<li><def>VFEP_WarcasketTrait</def><sourceGene>null</sourceGene><suppressedBy>null</suppressedBy></li>\r\n" +
+            "\t\t\t\t\t\t\t\t\t\t<li><def>SpeedOffset</def><sourceGene>Gene_201</sourceGene><suppressedBy>null</suppressedBy></li>\r\n" +
+            "\t\t\t\t\t\t\t\t\t</allTraits>\r\n" +
+            "\t\t\t\t\t\t\t\t</traits>\r\n" +
+            "\t\t\t\t\t\t\t</story>\r\n" +
+            "\t\t\t\t\t\t\t<ageTracker>\r\n" +
+            "\t\t\t\t\t\t\t\t<ageBiologicalTicks>97421354</ageBiologicalTicks>\r\n" +
+            "\t\t\t\t\t\t\t\t<birthAbsTicks>-259073116</birthAbsTicks>\r\n" +
+            "\t\t\t\t\t\t\t</ageTracker>\r\n" +
+            "\t\t\t\t\t\t\t<skills>\r\n" +
+            "\t\t\t\t\t\t\t\t<skills>\r\n" +
+            "\t\t\t\t\t\t\t\t\t<li><def>Shooting</def><level>11</level><passion>Major</passion></li>\r\n" +
+            "\t\t\t\t\t\t\t\t\t<li><def>Melee</def><level>13</level><passion>Minor</passion></li>\r\n" +
+            "\t\t\t\t\t\t\t\t\t<li><def>Plants</def></li>\r\n" +
+            "\t\t\t\t\t\t\t\t\t<li><def>VFEModdedSkill</def><level>5</level></li>\r\n" +
+            "\t\t\t\t\t\t\t\t</skills>\r\n" +
+            "\t\t\t\t\t\t\t</skills>\r\n" +
+            "\t\t\t\t\t\t\t<guest>\r\n" +
+            // The join status is in the save but is not read any more - the
+            // recorded values did not match the colony of the tester.
+            "\t\t\t\t\t\t\t\t<hostFaction>null</hostFaction>\r\n" +
+            "\t\t\t\t\t\t\t\t<joinStatus>JoinAsSlave</joinStatus>\r\n" +
+            "\t\t\t\t\t\t\t</guest>\r\n" +
+            "\t\t\t\t\t\t\t<healthTracker>\r\n" +
+            "\t\t\t\t\t\t\t\t<hediffSet>\r\n" +
+            "\t\t\t\t\t\t\t\t\t<hediffs>\r\n" +
+            "\t\t\t\t\t\t\t\t\t\t<li Class=\"Hediff_Injury\"><def>Stab</def><severity>3</severity><painCategory>LowPain</painCategory></li>\r\n" +
+            "\t\t\t\t\t\t\t\t\t\t<li Class=\"HediffWithComps\"><def>BadBack</def><severity>0.33</severity></li>\r\n" +
+            "\t\t\t\t\t\t\t\t\t\t<li Class=\"Hediff_Addiction\"><def>VFEI2_RoyalJellyAddiction</def><severity>0.66</severity></li>\r\n" +
+            "\t\t\t\t\t\t\t\t\t</hediffs>\r\n" +
+            "\t\t\t\t\t\t\t\t</hediffSet>\r\n" +
+            "\t\t\t\t\t\t\t</healthTracker>\r\n" +
+            "\t\t\t\t\t\t</thing>\r\n" +
+            "\t\t\t\t\t</li>\r\n";
+
+        /// <summary>
+        /// A head that stops in the middle of the scenario block.
         /// </summary>
         private const string TruncatedHeadSave =
             HeadPrefix +
-            "\t\t<history>\r\n" +
-            "\t\t\t<autoRecorderGroups>\r\n" +
-            "\t\t\t\t<li>\r\n" +
-            "\t\t\t\t\t<def>Wealth</def>\r\n";
+            "\t\t<scenario>\r\n" +
+            "\t\t\t<name>Crashlanded</name>\r\n";
 
         private string WriteSaveFile(string name, string content, bool withBom = true)
         {
             string path = Path.Combine(_savesDir, name);
             File.WriteAllText(path, content, new UTF8Encoding(withBom));
             return path;
+        }
+
+        /// <summary>
+        /// Builds a save whose map holds the given pawn blocks.
+        /// </summary>
+        private static string BuildSaveWithPawns(params string[] pawns)
+        {
+            return "<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n" +
+                   "<savegame>\r\n" +
+                   "\t<game>\r\n" +
+                   "\t\t<maps>\r\n" +
+                   "\t\t\t<map>\r\n" +
+                   "\t\t\t\t<mapPawns>\r\n" +
+                   string.Concat(pawns) +
+                   "\t\t\t\t</mapPawns>\r\n" +
+                   "\t\t\t</map>\r\n" +
+                   "\t\t</maps>\r\n" +
+                   "\t</game>\r\n" +
+                   "</savegame>";
         }
 
         private string WriteGzipSaveFile(string name, string content)
@@ -693,20 +788,128 @@ namespace RimSharp.Tests.Services.ModManagement
             details.TicksGame.Should().Be(12674);
             details.GameStartAbsTick.Should().Be(1500000);
             details.StartingYear.Should().Be(5500);
+
+            // The planet tile of the colony and the season the game reported.
             details.StartingTile.Should().Be("43378,0");
-            details.WealthTotal.Should().NotBeNull();
-            details.WealthTotal!.Value.Should().BeApproximately(13369.6796875, 0.0001); // uOZQRg==
-            details.WealthItems.Should().NotBeNull();
-            details.WealthItems!.Value.Should().BeApproximately(9393.87890625, 0.0001); // hMcSRg==
-            details.WealthBuildings.Should().NotBeNull();
-            details.WealthBuildings!.Value.Should().BeApproximately(2690.281005859375, 0.0001); // fyQoRQ==
-            details.FreeColonists.Should().Be(3); // AABAQA==
-            details.Prisoners.Should().Be(0); // AAAAAA==
-            details.ResearchDefsCompleted.Should().Be(3);
+            details.ReportedSeason.Should().Be("Spring");
+
+            // The world name and the seed sit behind the <world> marker.
+            details.WorldName.Should().Be("Castor");
+            details.WorldSeed.Should().Be("gray");
+
+            // The scenario carries the story of the colony.
+            details.PlayerFactionType.Should().Be("PlayerColony");
+            details.ScenarioSummary.Should().Be("Three crashlanded survivors.");
+            details.ScenarioDescription.Should().Be("The three of you awake in your cryptosleep sarcophagi.");
+            details.IsPlanetMode.Should().BeTrue();
 
             // The DLC list is not read from the head window - the components
             // block of the fixture carries GameComponent_* entries of mods too.
             details.ActiveDlcNames.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ReadDetailsAsync_WithoutTheNewElements_LeavesEveryNewFieldNull()
+        {
+            // Arrange
+            var service = CreateService();
+            string path = WriteSaveFile("Bare.rws", BareHeadSave);
+
+            // Act
+            var details = await service.ReadDetailsAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            details.Should().NotBeNull();
+
+            // Nothing is invented - a field the save does not carry stays empty.
+            details!.WorldName.Should().BeNull();
+            details.WorldSeed.Should().BeNull();
+            details.PlayerFactionType.Should().BeNull();
+            details.ScenarioSummary.Should().BeNull();
+            details.ScenarioDescription.Should().BeNull();
+            details.IsPlanetMode.Should().BeNull();
+
+            // The fields that were there before are still read.
+            details.ScenarioName.Should().Be("Crashlanded");
+        }
+
+        [Fact]
+        public async Task ReadDetailsAsync_TheWorldInfoIsReadBehindTheWorldMarker()
+        {
+            // Arrange - the name and the seed of the world sit behind the
+            // <world> marker, in the info block that follows it.
+            var service = CreateService();
+            string path = WriteSaveFile("World.rws", RealisticHeadSave);
+
+            // Act
+            var details = await service.ReadDetailsAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            details.Should().NotBeNull();
+            details!.WorldName.Should().Be("Castor");
+            details.WorldSeed.Should().Be("gray");
+        }
+
+        [Fact]
+        public async Task ReadDetailsAsync_TheWorldInfoIsRead_HoweverBigItGrows()
+        {
+            // Arrange - the info block behind the marker grows: the read has
+            // to follow it instead of stopping at a fixed budget.
+            var service = CreateService();
+            string filler = new string('x', 4096);
+            string content =
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n" +
+                "<savegame>\r\n" +
+                "\t<game>\r\n" +
+                "\t\t<world>\r\n" +
+                "\t\t\t<info>\r\n" +
+                "\t\t\t\t<filler>" + filler + "</filler>\r\n" +
+                "\t\t\t\t<name>Faraway</name>\r\n" +
+                "\t\t\t\t<seedString>deep</seedString>\r\n" +
+                "\t\t\t</info>\r\n" +
+                "\t\t</world>\r\n" +
+                "\t</game>\r\n" +
+                "</savegame>";
+            string path = WriteSaveFile("BigWorld.rws", content);
+
+            // Act
+            var details = await service.ReadDetailsAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            details.Should().NotBeNull();
+            details!.WorldName.Should().Be("Faraway");
+            details.WorldSeed.Should().Be("deep");
+        }
+
+        [Fact]
+        public async Task ReadDetailsAsync_TheScenarioParts_SayWhetherTheColonyIsOnAPlanet()
+        {
+            // Arrange - a scenario without the planet layer part.
+            var service = CreateService();
+            string content =
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n" +
+                "<savegame>\r\n" +
+                "\t<game>\r\n" +
+                "\t\t<scenario>\r\n" +
+                "\t\t\t<name>Crashlanded</name>\r\n" +
+                "\t\t\t<parts>\r\n" +
+                "\t\t\t\t<li Class=\"ScenPart_ConfigPage_ConfigureStartingPawns\">\r\n" +
+                "\t\t\t\t\t<pawnCount>5</pawnCount>\r\n" +
+                "\t\t\t\t</li>\r\n" +
+                "\t\t\t</parts>\r\n" +
+                "\t\t</scenario>\r\n" +
+                "\t</game>\r\n" +
+                "</savegame>";
+            string path = WriteSaveFile("NoPlanet.rws", content);
+
+            // Act
+            var details = await service.ReadDetailsAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            details.Should().NotBeNull();
+
+            // The parts are there - the planet layer is not.
+            details!.IsPlanetMode.Should().BeFalse();
         }
 
         [Fact]
@@ -768,7 +971,7 @@ namespace RimSharp.Tests.Services.ModManagement
             // is absorbed as well.
             var service = CreateService();
             string padding = new string('x', 600 * 1024);
-            string content = HeadPrefix + HistoryBlock
+            string content = HeadPrefix
                 + "\t\t<padding>" + padding + "</padding>\r\n"
                 + HeadSuffix;
             string path = WriteSaveFile("BigHead.rws", content);
@@ -779,49 +982,7 @@ namespace RimSharp.Tests.Services.ModManagement
             // Assert
             details.Should().NotBeNull();
             details!.ScenarioName.Should().Be("Crashlanded");
-            details.StartingTile.Should().Be("43378,0");
-        }
-
-        [Fact]
-        public async Task ReadDetailsAsync_HeadWithoutHistory_LeavesWealthFieldsNull()
-        {
-            // Arrange
-            var service = CreateService();
-            string path = WriteSaveFile("NoHistory.rws", HeadWithoutHistorySave);
-
-            // Act
-            var details = await service.ReadDetailsAsync(path, TestContext.Current.CancellationToken);
-
-            // Assert
-            details.Should().NotBeNull();
-            details!.ScenarioName.Should().Be("Crashlanded");
-            details.StorytellerDef.Should().Be("Cassandra");
-            details.DifficultyDef.Should().Be("Rough");
-            details.StartingTile.Should().Be("43378,0");
-            details.ResearchDefsCompleted.Should().Be(3);
-            details.WealthTotal.Should().BeNull();
-            details.WealthItems.Should().BeNull();
-            details.WealthBuildings.Should().BeNull();
-            details.FreeColonists.Should().BeNull();
-            details.Prisoners.Should().BeNull();
-        }
-
-        [Fact]
-        public async Task ReadDetailsAsync_BrokenBase64Record_LeavesThatFieldNull()
-        {
-            // Arrange
-            var service = CreateService();
-            string path = WriteSaveFile("BrokenRecord.rws", HeadPrefix + HistoryBlockWithBrokenRecord + HeadSuffix);
-
-            // Act
-            var details = await service.ReadDetailsAsync(path, TestContext.Current.CancellationToken);
-
-            // Assert
-            details.Should().NotBeNull();
-            details!.WealthTotal.Should().BeNull();
-            details.WealthItems.Should().NotBeNull();
-            details.WealthItems!.Value.Should().BeApproximately(9393.87890625, 0.0001); // hMcSRg==
-            details.ScenarioName.Should().Be("Crashlanded");
+            details.StartingYear.Should().Be(5500);
         }
 
         [Fact]
@@ -870,42 +1031,292 @@ namespace RimSharp.Tests.Services.ModManagement
 
         #endregion
 
+        #region ReadColonistNamesAsync
+
+        [Fact]
+        public async Task ReadColonistNamesAsync_FindsTheHumanPawns()
+        {
+            // Arrange - a human pawn, a human pawn without a nick and a pawn of
+            // another species.
+            var service = CreateService();
+            string path = WriteSaveFile("Pawns.rws",
+                BuildSaveWithPawns(HumanPawnHayden, AnimalPawn, HumanPawnKelux));
+
+            // Act
+            var colonists = await service.ReadColonistNamesAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            colonists.Should().HaveCount(2);
+            colonists[0].First.Should().Be("Hayden");
+            colonists[0].Nick.Should().Be("Hayhouse");
+            colonists[0].Last.Should().Be("Simons");
+            colonists[0].DisplayName.Should().Be("Hayden \"Hayhouse\" Simons");
+            colonists[0].Gender.Should().Be("Male");
+
+            // The pawn without a xenotype carries none.
+            colonists[0].Xenotype.Should().BeNull();
+
+            // The pawn without a nick is shown with what the save carries.
+            colonists[1].First.Should().Be("Kelux");
+            colonists[1].Nick.Should().BeNull();
+            colonists[1].Last.Should().Be("Hybridge");
+            colonists[1].DisplayName.Should().Be("Kelux Hybridge");
+
+            // A pawn without a gender element is male: the scribe omits the
+            // element when the value equals its default.
+            colonists[1].Gender.Should().Be("Male");
+        }
+
+        [Fact]
+        public async Task ReadColonistNamesAsync_ReadsTheNameWhosePartsAreAttributes()
+        {
+            // Arrange
+            var service = CreateService();
+            string path = WriteSaveFile("Attributes.rws", BuildSaveWithPawns(HumanPawnTobias));
+
+            // Act
+            var colonists = await service.ReadColonistNamesAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            colonists.Should().HaveCount(1);
+            colonists[0].First.Should().Be("Tobias");
+            colonists[0].Nick.Should().Be("Toby");
+            colonists[0].Last.Should().Be("Ytterstad");
+            colonists[0].DisplayName.Should().Be("Tobias \"Toby\" Ytterstad");
+        }
+
+        [Fact]
+        public async Task ReadColonistNamesAsync_ReadsTheVanillaDataOfAPawn()
+        {
+            // Arrange
+            var service = CreateService();
+            string path = WriteSaveFile("Full.rws", BuildSaveWithPawns(HumanPawnFull));
+
+            // Act
+            var colonists = await service.ReadColonistNamesAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            colonists.Should().HaveCount(1);
+            SaveColonist colonist = colonists[0];
+
+            // The gender and the xenotype are read as the save records them.
+            colonist.Gender.Should().Be("Female");
+            colonist.Xenotype.Should().Be("Baseliner");
+
+            // The ages: 97 421 354 ticks are 27.061 years. Only the biological
+            // age is read - the chronological one is the game's internal
+            // logic only.
+            colonist.AgeBiologicalYears.Should().NotBeNull();
+            colonist.AgeBiologicalYears!.Value.Should().BeApproximately(27.061, 0.001);
+
+            // Only the vanilla trait is kept - the mod trait and the gene
+            // derived one are dropped.
+            colonist.Traits.Should().Equal("Kind");
+
+            // Only the vanilla skills are kept. The level the save omits is 0,
+            // the passion the save omits is none.
+            colonist.Skills.Should().HaveCount(3);
+            colonist.Skills[0].Def.Should().Be("Shooting");
+            colonist.Skills[0].Level.Should().Be(11);
+            colonist.Skills[0].Passion.Should().Be("Major");
+            colonist.Skills[1].Def.Should().Be("Melee");
+            colonist.Skills[1].Level.Should().Be(13);
+            colonist.Skills[1].Passion.Should().Be("Minor");
+            colonist.Skills[2].Def.Should().Be("Plants");
+            colonist.Skills[2].Level.Should().Be(0);
+            colonist.Skills[2].Passion.Should().BeNull();
+
+            // Only the vanilla conditions are kept - the mod one is dropped.
+            colonist.Conditions.Should().HaveCount(2);
+            colonist.Conditions[0].Def.Should().Be("Stab");
+            colonist.Conditions[0].Severity.Should().Be(3);
+            colonist.Conditions[0].Class.Should().Be("Hediff_Injury");
+            colonist.Conditions[0].PainCategory.Should().Be("LowPain");
+            colonist.Conditions[1].Def.Should().Be("BadBack");
+            colonist.Conditions[1].Severity.Should().BeApproximately(0.33, 0.0001);
+            colonist.Conditions[1].Class.Should().Be("HediffWithComps");
+            colonist.Conditions[1].PainCategory.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task ReadColonistNamesAsync_WithoutHumanPawns_ReturnsAnEmptyList()
+        {
+            // Arrange
+            var service = CreateService();
+            string path = WriteSaveFile("NoHumans.rws", BuildSaveWithPawns(AnimalPawn));
+
+            // Act
+            var colonists = await service.ReadColonistNamesAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            colonists.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ReadColonistNamesAsync_MissingFile_ReturnsAnEmptyList()
+        {
+            // Arrange
+            var service = CreateService();
+            string path = Path.Combine(_savesDir, "DoesNotExist.rws");
+
+            // Act
+            var colonists = await service.ReadColonistNamesAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            colonists.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ReadColonistNamesAsync_PreCancelledToken_Throws()
+        {
+            // Arrange
+            var service = CreateService();
+            string path = WriteSaveFile("Pawns.rws", BuildSaveWithPawns(HumanPawnHayden));
+            using var cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+
+            // Act
+            Func<Task> act = async () => await service.ReadColonistNamesAsync(path, cancellation.Token);
+
+            // Assert
+            await act.Should().ThrowAsync<OperationCanceledException>();
+        }
+
+        [Fact]
+        public async Task ReadColonistNamesAsync_FindsTheHumansOfABigFile()
+        {
+            // Arrange - the humans sit at the very end of the file: the scan
+            // has to read the whole file to find them.
+            var service = CreateService();
+            string filler = new string('x', 3 * 1024 * 1024);
+            string content =
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n" +
+                "<savegame>\r\n" +
+                "\t<game>\r\n" +
+                "\t\t<maps>\r\n" +
+                "\t\t\t<map>\r\n" +
+                "\t\t\t\t<mapPawns>\r\n" +
+                filler +
+                HumanPawnHayden +
+                "\t\t\t\t</mapPawns>\r\n" +
+                "\t\t\t</map>\r\n" +
+                "\t\t</maps>\r\n" +
+                "\t</game>\r\n" +
+                "</savegame>";
+            string path = WriteSaveFile("Big.rws", content);
+
+            // Act
+            var colonists = await service.ReadColonistNamesAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            colonists.Should().HaveCount(1);
+            colonists[0].DisplayName.Should().Be("Hayden \"Hayhouse\" Simons");
+        }
+
+        #endregion
+
         #region FormatInGameDate
 
         [Fact]
         public void FormatInGameDate_FormatsTheDocumentedExample()
         {
-            // Act
+            // Act - 1 512 674 ticks: the fifth twelfth (Jugust), the 11th day
+            // of the quadrum, 05:04 (the game's own calendar math).
             string? formatted = ISaveHeaderService.FormatInGameDate(12674, 1500000, 5500);
 
             // Assert
-            formatted.Should().Be("Year 5500, Summer, day 11, 05:00");
+            formatted.Should().Be("Year 5500, Jugust, day 11, 05:04");
         }
 
         [Fact]
-        public void FormatInGameDate_RollsOverIntoTheNextSeason()
+        public void FormatInGameDate_RollsOverIntoTheNextQuadrum()
         {
-            // Act
-            string? lastDayOfSpring = ISaveHeaderService.FormatInGameDate(899999, 0, 5500);
-            string? firstDayOfSummer = ISaveHeaderService.FormatInGameDate(900000, 0, 5500);
+            // Act - the twelfth of a quadrum is 300 000 ticks long.
+            string? lastDayOfAprimay = ISaveHeaderService.FormatInGameDate(899999, 0, 5500);
+            string? firstDayOfJugust = ISaveHeaderService.FormatInGameDate(900000, 0, 5500);
 
             // Assert
-            lastDayOfSpring.Should().Be("Year 5500, Spring, day 15, 23:00");
-            firstDayOfSummer.Should().Be("Year 5500, Summer, day 1, 00:00");
+            lastDayOfAprimay.Should().Be("Year 5500, Aprimay, day 15, 23:59");
+            firstDayOfJugust.Should().Be("Year 5500, Jugust, day 1, 00:00");
         }
 
         [Fact]
-        public void FormatInGameDate_SeasonWrapsWithYearCarry()
+        public void FormatInGameDate_TheYearCarriesIntoTheNextOne()
         {
-            // Act - the first minute of the second year (Saves' seasons wrap per year)
+            // Act - the first minute of the second year (the game counts the
+            // twelfths of the year, not the seasons).
             string? firstOfSecondYear = ISaveHeaderService.FormatInGameDate(3_600_000, 0, 5500);
 
             // and the last minute of the first year
             string? lastOfFirstYear = ISaveHeaderService.FormatInGameDate(3_599_999, 0, 5500);
 
             // Assert
-            firstOfSecondYear.Should().Be("Year 5501, Spring, day 1, 00:00");
-            lastOfFirstYear.Should().Be("Year 5500, Winter, day 15, 23:00");
+            firstOfSecondYear.Should().Be("Year 5501, Aprimay, day 1, 00:00");
+            lastOfFirstYear.Should().Be("Year 5500, Decembary, day 15, 23:59");
+        }
+
+        [Fact]
+        public void FormatInGameDate_NamesTheFourQuadrumsOfTheYear()
+        {
+            // Act - the first twelfth of each quadrum of the year.
+            string? aprimay = ISaveHeaderService.FormatInGameDate(0, 0, 5501);
+            string? jugust = ISaveHeaderService.FormatInGameDate(900_000, 0, 5501);
+            string? septober = ISaveHeaderService.FormatInGameDate(1_800_000, 0, 5501);
+            string? decembary = ISaveHeaderService.FormatInGameDate(2_700_000, 0, 5501);
+
+            // Assert - the names of the game's own Quadrum enum.
+            aprimay.Should().Be("Year 5501, Aprimay, day 1, 00:00");
+            jugust.Should().Be("Year 5501, Jugust, day 1, 00:00");
+            septober.Should().Be("Year 5501, Septober, day 1, 00:00");
+            decembary.Should().Be("Year 5501, Decembary, day 1, 00:00");
+        }
+
+        [Fact]
+        public void FormatInGameDate_ShowsTheSeasonTheGameReported()
+        {
+            // Act - the season is a climate value: the save carries the game's
+            // own answer (the reported season of the date notifier).
+            string? withSeason = ISaveHeaderService.FormatInGameDate(12674, 1500000, 5500,
+                startingTile: "43378,0", reportedSeason: "PermanentSummer");
+            string? withoutSeason = ISaveHeaderService.FormatInGameDate(12674, 1500000, 5500,
+                startingTile: "43378,0");
+
+            // Assert
+            withSeason.Should().Be("Year 5500, Jugust, day 11, 05:04, Permanent Summer");
+            withoutSeason.Should().Be("Year 5500, Jugust, day 11, 05:04");
+        }
+
+        [Fact]
+        public void FormatInGameDate_At_TheLongitudeShiftsTheLocalTicks()
+        {
+            // Act - the tile of the colony cannot be resolved by a reader, so
+            // the date falls back to the absolute ticks. A known longitude
+            // shifts them: 180 degrees are 12 time zones, 12 hours.
+            string? withoutShift = ISaveHeaderService.FormatInGameDate(100, 0, 5500);
+            string? withShift = ISaveHeaderService.FormatInGameDateAt(100, 0, 5500, longitude: 180f);
+
+            // Assert - the shift is 12 hours (180 degrees are 12 time zones).
+            withoutShift.Should().Be("Year 5500, Aprimay, day 1, 00:02");
+            withShift.Should().Be("Year 5500, Aprimay, day 1, 12:02");
+        }
+
+        [Fact]
+        public void FormatInGameDate_TheSameForTheTileShapesOfBothGameVersions()
+        {
+            // Act - 1.7 writes a planet tile ("tileId,layerId"), 1.5 a plain
+            // tile id. Neither of them carries a position, so the date is the
+            // same: the calendar and the longitude shift are identical in both
+            // versions (1.5: RimWorld/GenDate.cs).
+            string? withPlanetTile = ISaveHeaderService.FormatInGameDate(12674, 1500000, 5500,
+                startingTile: "43378,0");
+            string? withPlainTile = ISaveHeaderService.FormatInGameDate(12674, 1500000, 5500,
+                startingTile: "43378");
+            string? withoutTile = ISaveHeaderService.FormatInGameDate(12674, 1500000, 5500);
+
+            // Assert
+            withPlanetTile.Should().Be("Year 5500, Jugust, day 11, 05:04");
+            withPlainTile.Should().Be(withPlanetTile);
+            withoutTile.Should().Be(withPlanetTile);
         }
 
         [Fact]

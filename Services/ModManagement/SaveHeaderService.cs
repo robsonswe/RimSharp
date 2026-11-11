@@ -21,10 +21,15 @@ namespace RimSharp.Services.ModManagement
     ///    at &lt;/meta&gt;, so the huge &lt;game&gt; block is never touched;
     ///  - the head window of the file, which ends at &lt;world&gt; - the window is
     ///    defined by that marker, so heads grow with the content of the save
-    ///    and are absorbed automatically. A 64 MB ceiling guards against
-    ///    pathological or corrupt files (and gzip expansion); it is no
-    ///    feature-size limit. The map and world payloads (the vast majority of
-    ///    the file) are never touched.
+    ///    and are absorbed automatically. The read does not stop AT the marker:
+    ///    it continues until the &lt;/info&gt; tag that closes the world info
+    ///    block right behind it, because that block carries the world name and
+    ///    the world seed. A 64 MB ceiling guards against pathological or
+    ///    corrupt files (and gzip expansion); it is no feature-size limit. The
+    ///    map and world payloads (the vast majority of the file) are never touched.
+    ///
+    /// A third, separate scope exists: the whole-file scan for the colonist
+    /// names. It is never run on its own - the user asks for it explicitly.
     ///
     /// Saves are never written, moved or deleted by this service.
     /// </summary>
@@ -35,18 +40,22 @@ namespace RimSharp.Services.ModManagement
 
         /// <summary>
         /// The hard ceiling of the accumulated head window (64 MB). The window
-        /// itself is marker-defined - the read ends at &lt;world&gt;. This ceiling
-        /// only stops pathological or corrupt files (and gzip bombs): a real
-        /// save head is orders of magnitude smaller, so every valid save is
-        /// read whole.
+        /// itself is marker-defined - the read ends at the &lt;/info&gt; tag behind
+        /// the &lt;world&gt; marker. This ceiling only stops pathological or corrupt
+        /// files (and gzip bombs): a real save head is orders of magnitude
+        /// smaller, so every valid save is read whole.
         /// </summary>
         internal const int MaxHeadWindowBytes = 64 * 1024 * 1024;
 
         /// <summary>Size of a single read chunk (64 KB).</summary>
         internal const int ChunkSize = 64 * 1024;
 
+        /// <summary>Size of a single chunk of the colonist name scan (1 MB).</summary>
+        internal const int ColonistScanChunkBytes = 1024 * 1024;
+
         private static readonly byte[] MetaEndMarker = Encoding.ASCII.GetBytes("</meta>");
         private static readonly byte[] WorldStartMarker = Encoding.ASCII.GetBytes("<world");
+        private static readonly byte[] WorldInfoEndMarker = Encoding.ASCII.GetBytes("</info>");
 
         private readonly IPathService _pathService;
         private readonly ILoggerService _logger;
@@ -136,7 +145,7 @@ namespace RimSharp.Services.ModManagement
 
                 int capBytes = TestMetaCapBytes ?? DefaultMetaCapBytes;
                 HeadWindow? window = await Task.Run(
-                        () => ReadWindowCore(filePath, capBytes, MetaEndMarker, ignoreCase: true, cancellationToken),
+                        () => ReadWindowCore(filePath, capBytes, MetaEndMarker, tailMarker: null, ignoreCase: true, cancellationToken),
                         cancellationToken).ConfigureAwait(false);
 
                 if (window is null)
@@ -152,7 +161,7 @@ namespace RimSharp.Services.ModManagement
                     return null;
                 }
 
-                string text = DecodeText(window.Bytes, window.Length);
+                string text = DecodeText(window.Bytes, 0, window.Length);
                 XElement? meta = ExtractMeta(text);
                 if (meta is null)
                 {
@@ -196,7 +205,7 @@ namespace RimSharp.Services.ModManagement
 
                 int maxBytes = TestDetailsCapBytes ?? MaxHeadWindowBytes;
                 HeadWindow? window = await Task.Run(
-                        () => ReadWindowCore(filePath, maxBytes, WorldStartMarker, ignoreCase: false, cancellationToken),
+                        () => ReadWindowCore(filePath, maxBytes, WorldStartMarker, WorldInfoEndMarker, ignoreCase: false, cancellationToken),
                         cancellationToken).ConfigureAwait(false);
 
                 if (window is null)
@@ -206,15 +215,24 @@ namespace RimSharp.Services.ModManagement
                 }
 
                 byte[] headBytes;
+                string worldTail = string.Empty;
                 if (window.Stop == HeadStop.MarkerFound)
                 {
                     // The head ends where <world> begins - the window stays in the head.
                     headBytes = window.Bytes.Take(window.MarkerOffset).ToArray();
+
+                    // The read continues behind the marker until the </info> tag
+                    // closes the world info block - that block carries the world
+                    // name and the world seed.
+                    if (window.TailOffset > window.MarkerOffset)
+                    {
+                        worldTail = DecodeText(window.Bytes, window.MarkerOffset, window.TailOffset - window.MarkerOffset);
+                    }
                 }
                 else if (window.Stop == HeadStop.EndOfFile)
                 {
                     // The whole file was read - it must be a complete document.
-                    string wholeFile = DecodeText(window.Bytes, window.Length).TrimEnd();
+                    string wholeFile = DecodeText(window.Bytes, 0, window.Length).TrimEnd();
                     if (!wholeFile.EndsWith("</savegame>", StringComparison.OrdinalIgnoreCase))
                     {
                         _logger.LogWarning($"ReadDetailsAsync: '{filePath}' is truncated", nameof(SaveHeaderService));
@@ -230,14 +248,14 @@ namespace RimSharp.Services.ModManagement
                     return null;
                 }
 
-                string head = DecodeText(headBytes, headBytes.Length);
+                string head = DecodeText(headBytes, 0, headBytes.Length);
                 if (!ContainsTagStart(head, "game"))
                 {
                     _logger.LogWarning($"ReadDetailsAsync: '{filePath}' has no game block", nameof(SaveHeaderService));
                     return null;
                 }
 
-                SaveDetails details = ParseDetails(head);
+                SaveDetails details = ParseDetails(head, worldTail);
                 _logger.LogInfo("ReadDetailsAsync completed", nameof(SaveHeaderService));
                 return details;
             }
@@ -249,6 +267,38 @@ namespace RimSharp.Services.ModManagement
             {
                 _logger.LogWarning($"ReadDetailsAsync failed for '{filePath}': {ex.Message}", nameof(SaveHeaderService));
                 return null;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<IReadOnlyList<SaveColonist>> ReadColonistNamesAsync(string filePath,
+            CancellationToken cancellationToken = default)
+        {
+            _logger.LogInfo("ReadColonistNamesAsync started", nameof(SaveHeaderService));
+
+            try
+            {
+                if (string.IsNullOrWhiteSpace(filePath))
+                {
+                    return Array.Empty<SaveColonist>();
+                }
+
+                var colonists = await Task.Run(
+                        () => ScanColonists(filePath, cancellationToken),
+                        cancellationToken)
+                    .ConfigureAwait(false);
+
+                _logger.LogInfo($"ReadColonistNamesAsync completed: {colonists.Count} colonist(s)", nameof(SaveHeaderService));
+                return colonists;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"ReadColonistNamesAsync failed for '{filePath}': {ex.Message}", nameof(SaveHeaderService));
+                return Array.Empty<SaveColonist>();
             }
         }
 
@@ -338,17 +388,27 @@ namespace RimSharp.Services.ModManagement
             public int Length { get; init; }
             public HeadStop Stop { get; init; }
             public int MarkerOffset { get; init; } = -1;
+
+            /// <summary>
+            /// The end of the tail behind the marker - the position just after
+            /// the closing tag the tail marker ended at. -1 when the tail was
+            /// not found (the file ended or the cap was reached first).
+            /// </summary>
+            public int TailOffset { get; init; } = -1;
         }
 
         /// <summary>
         /// Reads at most <paramref name="maxBytes"/> bytes from the head of a file and
-        /// stops as soon as the marker appears in the accumulated window.
+        /// stops as soon as the marker appears in the accumulated window. When a tail
+        /// marker is given, the read does not stop at the marker: it continues until
+        /// the tail marker appears behind it - that is how the world info block right
+        /// behind the &lt;world&gt; marker is read.
         /// Gzip files are detected by their magic bytes and decompressed on the fly -
         /// only the head is ever decompressed.
         /// Returns null when the file cannot be opened or read.
         /// </summary>
         private HeadWindow? ReadWindowCore(string filePath, int maxBytes, byte[] marker,
-            bool ignoreCase, CancellationToken cancellationToken)
+            byte[]? tailMarker, bool ignoreCase, CancellationToken cancellationToken)
         {
             if (maxBytes <= 0)
             {
@@ -357,6 +417,13 @@ namespace RimSharp.Services.ModManagement
 
             byte[] buffer = new byte[Math.Min(maxBytes, ChunkSize * 2)];
             int length = 0;
+
+            // The positions the markers are searched from. Both only move
+            // forward, so every byte of the window is looked at once.
+            int markerSearchFrom = 0;
+            int tailSearchFrom = 0;
+            int markerOffset = -1;
+            int tailOffset = -1;
 
             try
             {
@@ -401,20 +468,65 @@ namespace RimSharp.Services.ModManagement
                         Array.Copy(chunk, 0, buffer, length, read);
                         length += read;
 
-                        // Only the freshly added bytes are searched (plus a small overlap
-                        // so a marker spanning two chunks is still found).
-                        int searchFrom = Math.Max(0, length - read - (marker.Length - 1));
-                        int markerIndex = IndexOfBytes(buffer, length, marker, searchFrom, ignoreCase);
-                        if (markerIndex >= 0)
+                        // The stop marker: the head ends where it appears.
+                        if (markerOffset < 0)
                         {
-                            return new HeadWindow
+                            markerOffset = IndexOfBytes(buffer, length, marker, markerSearchFrom, ignoreCase);
+                            markerSearchFrom = Math.Max(markerSearchFrom, length - marker.Length + 1);
+
+                            if (markerOffset >= 0)
                             {
-                                Bytes = buffer,
-                                Length = length,
-                                Stop = HeadStop.MarkerFound,
-                                MarkerOffset = markerIndex
-                            };
+                                if (tailMarker is null)
+                                {
+                                    return new HeadWindow
+                                    {
+                                        Bytes = buffer,
+                                        Length = length,
+                                        Stop = HeadStop.MarkerFound,
+                                        MarkerOffset = markerOffset,
+                                        TailOffset = -1
+                                    };
+                                }
+
+                                // The tail is searched behind the marker only - the
+                                // info block of the game block closes long before it.
+                                tailSearchFrom = markerOffset;
+                            }
                         }
+
+                        // The tail marker: the window continues until it closes.
+                        if (markerOffset >= 0 && tailOffset < 0 && tailMarker is not null)
+                        {
+                            int tailIndex = IndexOfBytes(buffer, length, tailMarker, tailSearchFrom, ignoreCase);
+                            tailSearchFrom = Math.Max(tailSearchFrom, length - tailMarker.Length + 1);
+
+                            if (tailIndex >= 0)
+                            {
+                                tailOffset = tailIndex + tailMarker.Length;
+                                return new HeadWindow
+                                {
+                                    Bytes = buffer,
+                                    Length = length,
+                                    Stop = HeadStop.MarkerFound,
+                                    MarkerOffset = markerOffset,
+                                    TailOffset = tailOffset
+                                };
+                            }
+                        }
+                    }
+
+                    if (markerOffset >= 0)
+                    {
+                        // The head itself is complete - only the tail behind the
+                        // marker is missing (the file ended or the cap was reached).
+                        return new HeadWindow
+                        {
+                            Bytes = buffer,
+                            Length = length,
+                            Stop = HeadStop.MarkerFound,
+                            MarkerOffset = markerOffset,
+                            TailOffset = tailOffset
+                        };
                     }
 
                     return new HeadWindow
@@ -484,15 +596,15 @@ namespace RimSharp.Services.ModManagement
             return -1;
         }
 
-        private static string DecodeText(byte[] buffer, int length)
+        private static string DecodeText(byte[] buffer, int offset, int length)
         {
-            int offset = 0;
-            if (length >= 3 && buffer[0] == 0xEF && buffer[1] == 0xBB && buffer[2] == 0xBF)
+            if (offset == 0 && length >= 3 && buffer[0] == 0xEF && buffer[1] == 0xBB && buffer[2] == 0xBF)
             {
                 offset = 3; // UTF-8 BOM
+                length -= 3;
             }
 
-            return Encoding.UTF8.GetString(buffer, offset, length - offset);
+            return Encoding.UTF8.GetString(buffer, offset, length);
         }
 
         #endregion
@@ -541,83 +653,42 @@ namespace RimSharp.Services.ModManagement
 
         #region Head window parsing
 
-        private static SaveDetails ParseDetails(string head)
+        private static SaveDetails ParseDetails(string head, string worldTail)
         {
             XElement? scenario = ParseFragment(ExtractElementXml(head, "scenario"));
             XElement? storyteller = ParseFragment(ExtractElementXml(head, "storyteller"));
             XElement? tickManager = ParseFragment(ExtractElementXml(head, "tickManager"));
             XElement? info = ParseFragment(ExtractElementXml(head, "info"));
-            XElement? history = ParseFragment(ExtractElementXml(head, "history"));
-            XElement? researchManager = ParseFragment(ExtractElementXml(head, "researchManager"));
+            XElement? dateNotifier = ParseFragment(ExtractElementXml(head, "dateNotifier"));
 
-            double? wealthTotal = null;
-            double? wealthItems = null;
-            double? wealthBuildings = null;
-            int? freeColonists = null;
-            int? prisoners = null;
+            // The world info block sits behind the <world> marker - the head
+            // window reads up to the </info> tag that closes it.
+            XElement? worldInfo = ParseFragment(ExtractElementXml(worldTail, "info"));
 
-            XElement? recorderGroups = history?.Element("autoRecorderGroups");
-            if (recorderGroups is not null)
+            // The scenario carries the story of the colony: the summary, the
+            // description, the faction of the player and the parts that say
+            // whether the colony plays on a planet.
+            string? scenarioSummary = TrimmedValue(scenario?.Element("summary"));
+            string? scenarioDescription = TrimmedValue(scenario?.Element("description"));
+            string? playerFactionType = TrimmedValue(scenario?.Element("playerFaction")?.Element("factionDef"));
+
+            bool? isPlanetMode = null;
+            XElement? scenarioParts = scenario?.Element("parts");
+            if (scenarioParts is not null)
             {
-                foreach (XElement group in recorderGroups.Elements("li"))
+                bool planetLayer = false;
+                foreach (XElement part in scenarioParts.Elements("li"))
                 {
-                    // The group def ("Wealth", "Population", ...) is context only -
-                    // the recorder key lives in the group's recorders.
-                    XElement? recorders = group.Element("recorders");
-                    if (recorders is null)
+                    string? partClass = TrimmedValue(part.Attribute("Class"));
+
+                    if (string.Equals(partClass, "ScenPart_PlanetLayer", StringComparison.Ordinal))
                     {
-                        continue;
-                    }
-
-                    foreach (XElement recorder in recorders.Elements("li"))
-                    {
-                        string? key = ResolveRecorderKey(recorder);
-                        if (key is null)
-                        {
-                            continue;
-                        }
-
-                        XElement? records = recorder.Element("records");
-                        if (records is null)
-                        {
-                            continue;
-                        }
-
-                        double? value = DecodeLastRecord(records.Value);
-                        if (value is null)
-                        {
-                            continue; // Broken record - the field stays unknown.
-                        }
-
-                        switch (key)
-                        {
-                            case "Wealth_Total":
-                                wealthTotal = value;
-                                break;
-                            case "Wealth_Items":
-                                wealthItems = value;
-                                break;
-                            case "Wealth_Buildings":
-                                wealthBuildings = value;
-                                break;
-                            case "FreeColonists":
-                                // The recorder stores whole numbers - the float is
-                                // rounded to the nearest one (midpoint to even).
-                                freeColonists = (int)Math.Round(value.Value, MidpointRounding.ToEven);
-                                break;
-                            case "Prisoners":
-                                prisoners = (int)Math.Round(value.Value, MidpointRounding.ToEven);
-                                break;
-                        }
+                        planetLayer = true;
                     }
                 }
-            }
 
-            int? researchDefsCompleted = null;
-            XElement? researchKeys = researchManager?.Element("progress")?.Element("keys");
-            if (researchKeys is not null)
-            {
-                researchDefsCompleted = researchKeys.Elements("li").Count();
+                // The parts are there - the planet layer is either there or not.
+                isPlanetMode = planetLayer;
             }
 
             // The DLC list is not read from the head window: it is derived from
@@ -630,12 +701,13 @@ namespace RimSharp.Services.ModManagement
                 ParseLong(tickManager?.Element("gameStartAbsTick")),
                 ParseInt(tickManager?.Element("startingYear")),
                 TrimmedValue(info?.Element("startingTile")),
-                wealthTotal,
-                wealthItems,
-                wealthBuildings,
-                freeColonists,
-                prisoners,
-                researchDefsCompleted,
+                TrimmedValue(dateNotifier?.Element("lastSeason")),
+                TrimmedValue(worldInfo?.Element("name")),
+                TrimmedValue(worldInfo?.Element("seedString")),
+                playerFactionType,
+                scenarioSummary,
+                scenarioDescription,
+                isPlanetMode,
                 Array.Empty<string>());
         }
 
@@ -653,75 +725,6 @@ namespace RimSharp.Services.ModManagement
             }
 
             return TrimmedValue(difficulty.Element("def")) ?? TrimmedValue(difficulty);
-        }
-
-        /// <summary>
-        /// Resolves the key of a recorder. In the verified layout the key is the
-        /// def of the recorder element inside the group's recorders; older
-        /// layouts carry it in a defName element or attribute.
-        /// </summary>
-        private static string? ResolveRecorderKey(XElement recorder)
-        {
-            string? key = TrimmedValue(recorder.Element("def"));
-            if (!string.IsNullOrEmpty(key))
-            {
-                return key;
-            }
-
-            key = TrimmedValue(recorder.Element("defName"));
-            if (!string.IsNullOrEmpty(key))
-            {
-                return key;
-            }
-
-            key = TrimmedValue(recorder.Attribute("defName"));
-            if (!string.IsNullOrEmpty(key))
-            {
-                return key;
-            }
-
-            return TrimmedValue(recorder.Attribute("def"));
-        }
-
-        /// <summary>
-        /// Decodes the last record of a recorder group: the records are whitespace
-        /// separated base64 tokens, each one a 4-byte little-endian float32.
-        /// The last token is the current value of the recorder.
-        /// </summary>
-        private static double? DecodeLastRecord(string records)
-        {
-            if (string.IsNullOrWhiteSpace(records))
-            {
-                return null;
-            }
-
-            string[] tokens = records.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-            if (tokens.Length == 0)
-            {
-                return null;
-            }
-
-            byte[] bytes;
-            try
-            {
-                bytes = Convert.FromBase64String(tokens[^1]);
-            }
-            catch (FormatException)
-            {
-                return null;
-            }
-
-            if (bytes.Length != 4)
-            {
-                return null;
-            }
-
-            if (!BitConverter.IsLittleEndian)
-            {
-                Array.Reverse(bytes);
-            }
-
-            return BitConverter.ToSingle(bytes, 0);
         }
 
         private static string? TrimmedValue(XElement? element)
@@ -768,17 +771,6 @@ namespace RimSharp.Services.ModManagement
             }
 
             return long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out long parsed) ? parsed : null;
-        }
-
-        private static double? ParseDouble(XElement? element)
-        {
-            string? value = TrimmedValue(element);
-            if (value is null)
-            {
-                return null;
-            }
-
-            return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double parsed) ? parsed : null;
         }
 
         /// <summary>
@@ -927,6 +919,642 @@ namespace RimSharp.Services.ModManagement
             {
                 return null;
             }
+        }
+
+        #endregion
+
+        #region Colonist scan
+
+        /// <summary>
+        /// The ticks of a RimWorld year (60 in-game days). Verified against the
+        /// game's own ages of the pawns (6/6 on both axes).
+        /// </summary>
+        internal const long TicksPerYear = 3_600_000;
+
+        /// <summary>
+        /// The gender a human pawn has when the save does not name one. The
+        /// scribe omits the element when the value equals its default - and
+        /// the default of a human is Male (corpus evidence: 16 explicit
+        /// "Female", 0 explicit "Male", 10 absent, every one of them a
+        /// male-name pawn).
+        /// </summary>
+        private const string DefaultHumanGender = "Male";
+
+        /// <summary>
+        /// The vanilla skills of a pawn. The whole-file skill set of the
+        /// measured saves is exactly these twelve - no mod skill was ever
+        /// seen - so everything else is dropped.
+        /// </summary>
+        private static readonly string[] VanillaSkillDefs =
+        {
+            "Animals", "Artistic", "Construction", "Cooking", "Crafting", "Intellectual",
+            "Medicine", "Melee", "Mining", "Plants", "Shooting", "Social"
+        };
+
+        /// <summary>
+        /// Scans the whole file for the human pawns and returns what each of
+        /// them carries. The file is streamed in 1 MB chunks - it is never held
+        /// in memory as a whole. Only the human pawns are of interest: the game
+        /// writes every pawn as a thing, and only the humans carry a human def
+        /// right behind the thing tag.
+        /// The file is only read.
+        /// </summary>
+        private static IReadOnlyList<SaveColonist> ScanColonists(string filePath,
+            CancellationToken cancellationToken)
+        {
+            var colonists = new List<SaveColonist>();
+
+            using var file = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite,
+                64 * 1024, useAsync: false);
+
+            var decoder = Encoding.UTF8.GetDecoder();
+            byte[] byteBuffer = new byte[ColonistScanChunkBytes];
+            char[] charBuffer = new char[ColonistScanChunkBytes + 8];
+
+            string buffer = string.Empty;
+            int scan = 0;
+            bool endOfFile = false;
+
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (!endOfFile)
+                {
+                    int read = file.Read(byteBuffer, 0, byteBuffer.Length);
+                    if (read <= 0)
+                    {
+                        endOfFile = true;
+
+                        // The last characters may be an incomplete sequence.
+                        int flushed = decoder.GetChars(Array.Empty<byte>(), 0, 0, charBuffer, 0, true);
+                        if (flushed > 0)
+                        {
+                            buffer += new string(charBuffer, 0, flushed);
+                        }
+                    }
+                    else
+                    {
+                        int charCount = decoder.GetChars(byteBuffer, 0, read, charBuffer, 0, false);
+                        if (charCount > 0)
+                        {
+                            buffer += new string(charBuffer, 0, charCount);
+                        }
+                    }
+                }
+
+                bool progressed = false;
+
+                while (true)
+                {
+                    int thingStart = IndexOfThingTag(buffer, scan);
+                    if (thingStart < 0)
+                    {
+                        // The tail that could still be the start of a tag is kept.
+                        scan = Math.Max(scan, buffer.Length - 32);
+                        break;
+                    }
+
+                    int tagEnd = buffer.IndexOf('>', thingStart);
+                    if (tagEnd < 0)
+                    {
+                        break; // The tag is not complete yet - more data is needed.
+                    }
+
+                    string tag = buffer.Substring(thingStart, tagEnd - thingStart + 1);
+                    if (!IsPawnTag(tag))
+                    {
+                        scan = tagEnd + 1;
+                        progressed = true;
+                        continue;
+                    }
+
+                    int blockEnd = FindThingBlockEnd(buffer, tagEnd + 1);
+                    if (blockEnd < 0)
+                    {
+                        break; // The block is not complete yet - more data is needed.
+                    }
+
+                    string block = buffer.Substring(thingStart, blockEnd - thingStart);
+                    if (IsHumanPawn(block))
+                    {
+                        SaveColonist? colonist = ParseColonist(block);
+                        if (colonist is not null)
+                        {
+                            colonists.Add(colonist);
+                        }
+                    }
+
+                    scan = blockEnd;
+                    progressed = true;
+                }
+
+                if (endOfFile && !progressed)
+                {
+                    break;
+                }
+
+                // The consumed part of the buffer is dropped - only the tail
+                // that is still needed is kept.
+                if (scan > 0)
+                {
+                    buffer = buffer.Substring(scan);
+                    scan = 0;
+                }
+            }
+
+            return colonists;
+        }
+
+        /// <summary>
+        /// Finds the next thing tag ("&lt;thing", never "&lt;thingDef" or
+        /// "&lt;things&gt;") at or after the given position.
+        /// </summary>
+        private static int IndexOfThingTag(string buffer, int startIndex)
+        {
+            int position = Math.Max(0, startIndex);
+
+            while (position < buffer.Length)
+            {
+                int open = buffer.IndexOf("<thing", position, StringComparison.Ordinal);
+                if (open < 0)
+                {
+                    return -1;
+                }
+
+                int after = open + "<thing".Length;
+                if (after >= buffer.Length)
+                {
+                    return -1;
+                }
+
+                char delimiter = buffer[after];
+                if (delimiter == '>' || delimiter == '/' || char.IsWhiteSpace(delimiter))
+                {
+                    return open;
+                }
+
+                position = open + 1;
+            }
+
+            return -1;
+        }
+
+        /// <summary>True when the tag opens a pawn thing.</summary>
+        private static bool IsPawnTag(string tag)
+            => tag.Contains("Class=\"Pawn\"", StringComparison.Ordinal);
+
+        /// <summary>
+        /// Finds the end of a thing block: the tag that closes it. Things do
+        /// not nest in a save, but the counter keeps the scan honest anyway.
+        /// Returns -1 when the block is not complete in the buffer.
+        /// </summary>
+        private static int FindThingBlockEnd(string buffer, int from)
+        {
+            int depth = 1;
+            int position = from;
+
+            while (position < buffer.Length)
+            {
+                int open = buffer.IndexOf('<', position);
+                if (open < 0)
+                {
+                    return -1;
+                }
+
+                if (open + 1 < buffer.Length && buffer[open + 1] == '/')
+                {
+                    int close = buffer.IndexOf('>', open);
+                    if (close < 0)
+                    {
+                        return -1;
+                    }
+
+                    if (string.Equals(buffer.Substring(open + 2, close - open - 2).Trim(), "thing",
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        depth--;
+                        if (depth == 0)
+                        {
+                            return close + 1;
+                        }
+                    }
+
+                    position = close + 1;
+                    continue;
+                }
+
+                int tagEnd = buffer.IndexOf('>', open);
+                if (tagEnd < 0)
+                {
+                    return -1;
+                }
+
+                string tag = buffer.Substring(open + 1, tagEnd - open - 1);
+                if (!tag.TrimEnd().EndsWith("/", StringComparison.Ordinal)
+                    && string.Equals(TagName(tag), "thing", StringComparison.OrdinalIgnoreCase))
+                {
+                    depth++;
+                }
+
+                position = tagEnd + 1;
+            }
+
+            return -1;
+        }
+
+        /// <summary>The name of a tag: the text before the first space.</summary>
+        private static string TagName(string tag)
+        {
+            string trimmed = tag.Trim();
+            int separator = trimmed.IndexOfAny(new[] { ' ', '\t', '\r', '\n' });
+            return separator < 0 ? trimmed : trimmed.Substring(0, separator);
+        }
+
+        /// <summary>
+        /// True when the thing block holds a human: the human def follows the
+        /// thing tag directly. Every other pawn (an animal) carries its own
+        /// def there.
+        /// </summary>
+        private static bool IsHumanPawn(string block)
+        {
+            int tagEnd = block.IndexOf('>');
+            if (tagEnd < 0)
+            {
+                return false;
+            }
+
+            int position = tagEnd + 1;
+            while (position < block.Length && char.IsWhiteSpace(block[position]))
+            {
+                position++;
+            }
+
+            return block.IndexOf("<def>Human</def>", position, StringComparison.Ordinal) == position;
+        }
+
+        /// <summary>
+        /// Reads everything a human pawn carries: the name, the join status,
+        /// the ages, the vanilla traits, the vanilla skills and the vanilla
+        /// conditions. Everything is read from the block the scan already
+        /// holds - there is no extra file access.
+        /// Returns null when the block carries no name at all.
+        /// </summary>
+        private static SaveColonist? ParseColonist(string block)
+        {
+            XElement? pawn = TryParseFragment(block);
+
+            if (pawn is null)
+            {
+                // The block did not parse - the name is still worth reading.
+                SaveColonistNameParts? fallback = ExtractColonistNameParts(block);
+                return fallback is null
+                    ? null
+                    : new SaveColonist(fallback.First, fallback.Nick, fallback.Last, null, null, null,
+                        Array.Empty<string>(), Array.Empty<SaveColonistSkill>(), Array.Empty<SaveColonistCondition>());
+            }
+
+            SaveColonistNameParts? names = ExtractNameParts(pawn) ?? ExtractColonistNameParts(block);
+            if (names is null)
+            {
+                return null;
+            }
+
+            // The gender is read as the save records it. The scribe omits the
+            // element when the value equals its default - and the default of
+            // a human is Male (corpus evidence: 16 explicit "Female", 0
+            // explicit "Male", 10 absent, every one of them a male-name pawn).
+            string? gender = ElementValue(pawn.Element("gender")) ?? DefaultHumanGender;
+
+            // The xenotype (race) - it sits in the gene block of the pawn. A
+            // save without Biotech content has no genes block at all, then
+            // the line stays empty.
+            string? xenotype = ElementValue(pawn.Element("genes")?.Element("xenotype"));
+            if (xenotype is not null && IsModNamespace(xenotype))
+            {
+                // A mod xenotype is not shown: the vanilla-only policy holds
+                // for it as well.
+                xenotype = null;
+            }
+
+            return new SaveColonist(
+                names.First,
+                names.Nick,
+                names.Last,
+                gender,
+                xenotype,
+                ReadBiologicalAge(pawn),
+                ReadTraits(pawn),
+                ReadSkills(pawn),
+                ReadConditions(pawn));
+        }
+
+        /// <summary>Parses a fragment of a save - null when it is not valid XML.</summary>
+        private static XElement? TryParseFragment(string fragment)
+        {
+            try
+            {
+                return XElement.Parse(fragment);
+            }
+            catch (XmlException)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// The name parts of a pawn: the game writes them as the children of
+        /// the name element; a name triple with the parts as attributes is
+        /// read as well. A part the save does not carry stays empty.
+        /// </summary>
+        private static SaveColonistNameParts? ExtractNameParts(XElement pawn)
+        {
+            XElement? name = pawn.Element("name");
+            if (name is not null)
+            {
+                string? first = TrimmedValue(name.Element("first"));
+                string? nick = TrimmedValue(name.Element("nick"));
+                string? last = TrimmedValue(name.Element("last"));
+
+                if (first is not null || nick is not null || last is not null)
+                {
+                    return new SaveColonistNameParts(first, nick, last);
+                }
+            }
+
+            XElement? triple = pawn.Descendants("nameTriple").FirstOrDefault();
+            if (triple is not null)
+            {
+                string? first = TrimmedValue(triple.Attribute("first"));
+                string? nick = TrimmedValue(triple.Attribute("nick"));
+                string? last = TrimmedValue(triple.Attribute("last"));
+
+                if (first is not null || nick is not null || last is not null)
+                {
+                    return new SaveColonistNameParts(first, nick, last);
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// The name parts of a pawn block, read without parsing the XML - the
+        /// fallback for a block that does not parse.
+        /// </summary>
+        private static SaveColonistNameParts? ExtractColonistNameParts(string block)
+        {
+            int nameStart = block.IndexOf("<name Class=\"NameTriple\"", StringComparison.Ordinal);
+            if (nameStart >= 0)
+            {
+                int open = block.IndexOf('>', nameStart);
+                if (open >= 0)
+                {
+                    int close = block.IndexOf("</name>", open, StringComparison.Ordinal);
+                    string inner = close >= 0
+                        ? block.Substring(open + 1, close - open - 1)
+                        : block.Substring(open + 1);
+
+                    string? first = ExtractElementText(inner, "first");
+                    string? nick = ExtractElementText(inner, "nick");
+                    string? last = ExtractElementText(inner, "last");
+
+                    if (first is not null || nick is not null || last is not null)
+                    {
+                        return new SaveColonistNameParts(first, nick, last);
+                    }
+                }
+            }
+
+            int tripleStart = block.IndexOf("<nameTriple", StringComparison.Ordinal);
+            if (tripleStart >= 0)
+            {
+                int end = block.IndexOf('>', tripleStart);
+                if (end >= 0)
+                {
+                    string tag = block.Substring(tripleStart, end - tripleStart + 1);
+
+                    string? first = ExtractAttributeValue(tag, "first");
+                    string? nick = ExtractAttributeValue(tag, "nick");
+                    string? last = ExtractAttributeValue(tag, "last");
+
+                    if (first is not null || nick is not null || last is not null)
+                    {
+                        return new SaveColonistNameParts(first, nick, last);
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// The biological age of a pawn in years (the age of the body). The
+        /// chronological age (the time that existed) is not read: the game uses
+        /// it in its internal logic only - every player-facing screen of the
+        /// game shows the biological age.
+        /// </summary>
+        private static double? ReadBiologicalAge(XElement pawn)
+        {
+            XElement? ageTracker = pawn.Element("ageTracker");
+            if (ageTracker is null)
+            {
+                return null;
+            }
+
+            if (long.TryParse(TrimmedValue(ageTracker.Element("ageBiologicalTicks")), NumberStyles.Integer,
+                    CultureInfo.InvariantCulture, out long biologicalTicks))
+            {
+                return biologicalTicks / (double)TicksPerYear;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// The text of an element. The game writes the literal "null" for an
+        /// absent value - that is read as no value at all.
+        /// </summary>
+        private static string? ElementValue(XElement? element)
+        {
+            string? value = TrimmedValue(element);
+            return value is not null && string.Equals(value, "null", StringComparison.OrdinalIgnoreCase)
+                ? null
+                : value;
+        }
+
+        /// <summary>
+        /// The traits of a pawn - the vanilla ones only. A trait whose def
+        /// carries a mod namespace ("Something_") is dropped, and so is a
+        /// gene-derived trait (its source gene is set).
+        /// </summary>
+        private static IReadOnlyList<string> ReadTraits(XElement pawn)
+        {
+            var traits = new List<string>();
+
+            XElement? allTraits = pawn.Element("story")?.Element("traits")?.Element("allTraits");
+            if (allTraits is null)
+            {
+                return traits;
+            }
+
+            foreach (XElement trait in allTraits.Elements("li"))
+            {
+                string? def = TrimmedValue(trait.Element("def"));
+                if (def is null || IsModNamespace(def))
+                {
+                    continue;
+                }
+
+                // A gene-derived trait is not a trait the player chose - and a
+                // gene can come from a mod.
+                if (ElementValue(trait.Element("sourceGene")) is not null)
+                {
+                    continue;
+                }
+
+                traits.Add(def);
+            }
+
+            return traits;
+        }
+
+        /// <summary>
+        /// The skills of a pawn - the twelve vanilla ones only. A skill the
+        /// save does not list has the level 0, a passion the save does not
+        /// list is none.
+        /// </summary>
+        private static IReadOnlyList<SaveColonistSkill> ReadSkills(XElement pawn)
+        {
+            var skills = new List<SaveColonistSkill>();
+
+            XElement? skillList = pawn.Element("skills")?.Element("skills");
+            if (skillList is null)
+            {
+                return skills;
+            }
+
+            foreach (XElement skill in skillList.Elements("li"))
+            {
+                string? def = TrimmedValue(skill.Element("def"));
+                if (def is null || !VanillaSkillDefs.Contains(def, StringComparer.Ordinal))
+                {
+                    continue;
+                }
+
+                int level = 0;
+                if (int.TryParse(TrimmedValue(skill.Element("level")), NumberStyles.Integer,
+                        CultureInfo.InvariantCulture, out int parsedLevel))
+                {
+                    level = parsedLevel;
+                }
+
+                skills.Add(new SaveColonistSkill(def, level, TrimmedValue(skill.Element("passion"))));
+            }
+
+            return skills;
+        }
+
+        /// <summary>
+        /// The conditions (hediffs) of a pawn - the vanilla ones only. A
+        /// condition whose def carries a mod namespace ("Something_") is
+        /// dropped. Note: the body part of an injury is not derivable from the
+        /// save, so it is never shown.
+        /// </summary>
+        private static IReadOnlyList<SaveColonistCondition> ReadConditions(XElement pawn)
+        {
+            var conditions = new List<SaveColonistCondition>();
+
+            XElement? hediffs = pawn.Element("healthTracker")?.Element("hediffSet")?.Element("hediffs");
+            if (hediffs is null)
+            {
+                return conditions;
+            }
+
+            foreach (XElement hediff in hediffs.Elements("li"))
+            {
+                string? def = TrimmedValue(hediff.Element("def"));
+                if (def is null || IsModNamespace(def))
+                {
+                    continue;
+                }
+
+                double? severity = null;
+                if (double.TryParse(TrimmedValue(hediff.Element("severity")), NumberStyles.Float,
+                        CultureInfo.InvariantCulture, out double parsedSeverity))
+                {
+                    severity = parsedSeverity;
+                }
+
+                conditions.Add(new SaveColonistCondition(
+                    def,
+                    severity,
+                    TrimmedValue(hediff.Attribute("Class")),
+                    ElementValue(hediff.Element("painCategory"))));
+            }
+
+            return conditions;
+        }
+
+        /// <summary>
+        /// True when a def carries a mod namespace ("Something_"). The rule
+        /// caught the only mod trait and the only mod hediff of the measured
+        /// saves. It is not a guarantee: a mod can ship an un-prefixed def
+        /// (the backstories of the measured saves do exactly that) - that is
+        /// why nothing else is read from a def but its name.
+        /// </summary>
+        private static bool IsModNamespace(string def)
+            => ModNamespacePattern.IsMatch(def);
+
+        private static readonly System.Text.RegularExpressions.Regex ModNamespacePattern =
+            new("^[A-Za-z0-9]+_", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        /// <summary>The name parts of a pawn.</summary>
+        private sealed record SaveColonistNameParts(string? First, string? Nick, string? Last);
+
+        /// <summary>
+        /// Reads the text of an element. An empty element (or a self-closing
+        /// one) has no text - the value stays empty.
+        /// </summary>
+        private static string? ExtractElementText(string xml, string elementName)
+        {
+            string open = "<" + elementName + ">";
+            int start = xml.IndexOf(open, StringComparison.Ordinal);
+            if (start < 0)
+            {
+                return null;
+            }
+
+            string close = "</" + elementName + ">";
+            int end = xml.IndexOf(close, start, StringComparison.Ordinal);
+            if (end < 0)
+            {
+                return null;
+            }
+
+            string value = xml.Substring(start + open.Length, end - start - open.Length).Trim();
+            return value.Length == 0 ? null : value;
+        }
+
+        /// <summary>Reads the value of an attribute of a tag.</summary>
+        private static string? ExtractAttributeValue(string tag, string attributeName)
+        {
+            string marker = attributeName + "=\"";
+            int start = tag.IndexOf(marker, StringComparison.Ordinal);
+            if (start < 0)
+            {
+                return null;
+            }
+
+            start += marker.Length;
+            int end = tag.IndexOf('"', start);
+            if (end < 0)
+            {
+                return null;
+            }
+
+            string value = tag.Substring(start, end - start).Trim();
+            return value.Length == 0 ? null : value;
         }
 
         #endregion

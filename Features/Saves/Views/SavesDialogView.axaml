@@ -380,6 +380,12 @@
                                                            FontSize="11.5"
                                                            TextWrapping="Wrap"
                                                            Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto" RowSpacing="6">
+                                                    <TextBlock Grid.Row="0" Grid.Column="0" Classes="field-label" Text="Game version"/>
+                                                    <TextBlock Grid.Row="0" Grid.Column="1" Classes="field-value" Text="{Binding Details.GameVersionText}"/>
+                                                    <TextBlock Grid.Row="1" Grid.Column="0" Classes="field-label" Text="Active DLCs"/>
+                                                    <TextBlock Grid.Row="1" Grid.Column="1" Classes="field-value" Text="{Binding Details.ActiveDlcText}"/>
+                                                </Grid>
                                             </StackPanel>
                                         </Border>
 
@@ -390,58 +396,109 @@
                                                            FontSize="14"
                                                            FontWeight="SemiBold"
                                                            Foreground="{DynamicResource BrushTextStrong}"/>
-                                                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
+                                                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
                                                     <TextBlock Grid.Row="0" Grid.Column="0" Classes="field-label" Text="Scenario"/>
                                                     <TextBlock Grid.Row="0" Grid.Column="1" Classes="field-value" Text="{Binding Details.ScenarioText}"/>
                                                     <TextBlock Grid.Row="1" Grid.Column="0" Classes="field-label" Text="Storyteller"/>
                                                     <TextBlock Grid.Row="1" Grid.Column="1" Classes="field-value" Text="{Binding Details.StorytellerText}"/>
                                                     <TextBlock Grid.Row="2" Grid.Column="0" Classes="field-label" Text="Difficulty"/>
                                                     <TextBlock Grid.Row="2" Grid.Column="1" Classes="field-value" Text="{Binding Details.DifficultyText}"/>
+                                                    <TextBlock Grid.Row="3" Grid.Column="0" Classes="field-label" Text="Faction type"/>
+                                                    <TextBlock Grid.Row="3" Grid.Column="1" Classes="field-value" Text="{Binding Details.FactionTypeText}"/>
+                                                    <TextBlock Grid.Row="4" Grid.Column="0" Classes="field-label" Text="World name"/>
+                                                    <TextBlock Grid.Row="4" Grid.Column="1" Classes="field-value" Text="{Binding Details.WorldNameText}"/>
+                                                    <TextBlock Grid.Row="5" Grid.Column="0" Classes="field-label" Text="World seed"/>
+                                                    <TextBlock Grid.Row="5" Grid.Column="1" Classes="field-value" Text="{Binding Details.WorldSeedText}"/>
+                                                    <TextBlock Grid.Row="6" Grid.Column="0" Classes="field-label" Text="Planet mode"/>
+                                                    <TextBlock Grid.Row="6" Grid.Column="1" Classes="field-value" Text="{Binding Details.PlanetModeText}"/>
+                                                    <TextBlock Grid.Row="7" Grid.Column="0" Classes="field-label" Text="In-game date"/>
+                                                    <TextBlock Grid.Row="7" Grid.Column="1" Classes="field-value" Text="{Binding Details.InGameDateText}"/>
+                                                    <TextBlock Grid.Row="8" Grid.Column="0" Classes="field-label" Text="Summary"/>
+                                                    <TextBlock Grid.Row="8" Grid.Column="1" Classes="field-value" Text="{Binding Details.ScenarioSummaryText}"/>
+                                                    <TextBlock Grid.Row="9" Grid.Column="0" Classes="field-label" Text="Description"/>
+                                                    <TextBlock Grid.Row="9" Grid.Column="1" Classes="field-value" Text="{Binding Details.ScenarioDescriptionText}"/>
                                                 </Grid>
                                             </StackPanel>
                                         </Border>
 
-                                        <!-- Playground -->
+                                        <!--
+                                            The colonist names live deep inside the
+                                            save - they are read in the background
+                                            while the save is selected.
+                                        -->
                                         <Border Classes="card">
                                             <StackPanel Spacing="8">
-                                                <TextBlock Text="Playground"
+                                                <TextBlock Text="Colonists"
                                                            FontSize="14"
                                                            FontWeight="SemiBold"
                                                            Foreground="{DynamicResource BrushTextStrong}"/>
-                                                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto" RowSpacing="6">
-                                                    <TextBlock Grid.Row="0" Grid.Column="0" Classes="field-label" Text="In-game date"/>
-                                                    <TextBlock Grid.Row="0" Grid.Column="1" Classes="field-value" Text="{Binding Details.InGameDateText}"/>
-                                                    <TextBlock Grid.Row="1" Grid.Column="0" Classes="field-label" Text="Starting tile"/>
-                                                    <TextBlock Grid.Row="1" Grid.Column="1" Classes="field-value" Text="{Binding Details.StartingTileText}"/>
-                                                </Grid>
-                                            </StackPanel>
-                                        </Border>
-
-                                        <!-- Numbers -->
-                                        <Border Classes="card">
-                                            <StackPanel Spacing="8">
-                                                <TextBlock Text="Numbers"
-                                                           FontSize="14"
-                                                           FontWeight="SemiBold"
-                                                           Foreground="{DynamicResource BrushTextStrong}"/>
-                                                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
-                                                    <TextBlock Grid.Row="0" Grid.Column="0" Classes="field-label" Text="Game version"/>
-                                                    <TextBlock Grid.Row="0" Grid.Column="1" Classes="field-value" Text="{Binding Details.GameVersionText}"/>
-                                                    <TextBlock Grid.Row="1" Grid.Column="0" Classes="field-label" Text="Wealth total"/>
-                                                    <TextBlock Grid.Row="1" Grid.Column="1" Classes="field-value" Text="{Binding Details.WealthTotalText}"/>
-                                                    <TextBlock Grid.Row="2" Grid.Column="0" Classes="field-label" Text="Items"/>
-                                                    <TextBlock Grid.Row="2" Grid.Column="1" Classes="field-value" Text="{Binding Details.WealthItemsText}"/>
-                                                    <TextBlock Grid.Row="3" Grid.Column="0" Classes="field-label" Text="Buildings"/>
-                                                    <TextBlock Grid.Row="3" Grid.Column="1" Classes="field-value" Text="{Binding Details.WealthBuildingsText}"/>
-                                                    <TextBlock Grid.Row="4" Grid.Column="0" Classes="field-label" Text="Free colonists"/>
-                                                    <TextBlock Grid.Row="4" Grid.Column="1" Classes="field-value" Text="{Binding Details.FreeColonistsText}"/>
-                                                    <TextBlock Grid.Row="5" Grid.Column="0" Classes="field-label" Text="Prisoners"/>
-                                                    <TextBlock Grid.Row="5" Grid.Column="1" Classes="field-value" Text="{Binding Details.PrisonersText}"/>
-                                                    <TextBlock Grid.Row="6" Grid.Column="0" Classes="field-label" Text="Completed research"/>
-                                                    <TextBlock Grid.Row="6" Grid.Column="1" Classes="field-value" Text="{Binding Details.CompletedResearchText}"/>
-                                                    <TextBlock Grid.Row="7" Grid.Column="0" Classes="field-label" Text="Active DLCs"/>
-                                                    <TextBlock Grid.Row="7" Grid.Column="1" Classes="field-value" Text="{Binding Details.ActiveDlcText}"/>
-                                                </Grid>
+                                                <TextBlock Text="Reading colonists…"
+                                                           IsVisible="{Binding Details.IsLoadingColonistNames}"
+                                                           FontSize="12"
+                                                           Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                <TextBlock Text="{Binding Details.ColonistNamesUnknownText}"
+                                                           IsVisible="{Binding Details.ShowColonistNamesUnknown}"
+                                                           Classes="field-value"/>
+                                                <ItemsControl ItemsSource="{Binding Details.Colonists}"
+                                                              IsVisible="{Binding Details.HasColonistNames}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="vm:SaveColonistItemViewModel">
+                                                            <!--
+                                                                One colonist: the name, then the
+                                                                lines the save carries for that
+                                                                pawn. A line without data is left
+                                                                out.
+                                                            -->
+                                                            <StackPanel Spacing="1" Margin="0,0,0,10">
+                                                                <TextBlock Text="{Binding NameText}"
+                                                                           FontSize="12.5"
+                                                                           FontWeight="SemiBold"
+                                                                           TextWrapping="Wrap"
+                                                                           Foreground="{DynamicResource BrushTextStrong}"/>
+                                                                <TextBlock Text="{Binding GenderText}"
+                                                                           IsVisible="{Binding HasGender}"
+                                                                           FontSize="11.5"
+                                                                           TextWrapping="Wrap"
+                                                                           Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                                <TextBlock Text="{Binding XenotypeText}"
+                                                                           IsVisible="{Binding HasXenotype}"
+                                                                           FontSize="11.5"
+                                                                           TextWrapping="Wrap"
+                                                                           Foreground="{DynamicResource BrushTextPrimary}"
+                                                                           ToolTip.Tip="Xenotype def name as recorded; Baseliner is the plain-human default — the line only appears in saves that record xenotypes (Biotech-era saves)."/>
+                                                                <TextBlock Text="{Binding AgeText}"
+                                                                           IsVisible="{Binding HasAge}"
+                                                                           FontSize="11.5"
+                                                                           TextWrapping="Wrap"
+                                                                           Foreground="{DynamicResource BrushTextPrimary}"
+                                                                           ToolTip.Tip="Age in years — biological (body) and chronological (time existed, can exceed biological via cryptosleep/ancient romps), computed from the ticks the save records."/>
+                                                                <TextBlock Text="{Binding TraitsText}"
+                                                                           IsVisible="{Binding HasTraits}"
+                                                                           FontSize="11.5"
+                                                                           TextWrapping="Wrap"
+                                                                           Foreground="{DynamicResource BrushTextPrimary}"
+                                                                           ToolTip.Tip="Traits as the save records them (def names), vanilla-filtered."/>
+                                                                <TextBlock Text="{Binding SkillsText}"
+                                                                           IsVisible="{Binding HasSkills}"
+                                                                           FontSize="11.5"
+                                                                           TextWrapping="Wrap"
+                                                                           Foreground="{DynamicResource BrushTextPrimary}"
+                                                                           ToolTip.Tip="Skills as the save records them (def names and levels). A passion is marked with + (minor) or ++ (major)."/>
+                                                                <TextBlock Text="{Binding ConditionsText}"
+                                                                           IsVisible="{Binding HasConditions}"
+                                                                           FontSize="11.5"
+                                                                           TextWrapping="Wrap"
+                                                                           Foreground="{DynamicResource BrushTextPrimary}"
+                                                                           ToolTip.Tip="Conditions as recorded (def names); severity units differ between injuries (points) and other conditions (percent)."/>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <TextBlock Text="{Binding Details.ColonistNamesNote}"
+                                                           IsVisible="{Binding Details.HasColonistNamesNote}"
+                                                           FontSize="12"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{DynamicResource BrushTextPrimary}"/>
                                             </StackPanel>
                                         </Border>
 

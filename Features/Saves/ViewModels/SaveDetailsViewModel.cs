@@ -1,8 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
+using System.Collections.ObjectModel;
 using RimSharp.AppDir.AppFiles;
 using RimSharp.Services.ModManagement;
 
@@ -10,13 +9,16 @@ namespace RimSharp.Features.Saves.ViewModels
 {
     /// <summary>
     /// The details panel of the saves dialog: the compatibility verdict, the
-    /// story, the playground and the numbers of the selected save. Every field
+    /// story and the colonists of the selected save. Every field
     /// the save does not carry shows an em dash - a value is never invented.
     /// </summary>
     public sealed class SaveDetailsViewModel : ViewModelBase
     {
         /// <summary>Shown for every field the save does not carry.</summary>
         public const string UnknownValue = "—";
+
+        /// <summary>Shown when the scan found no human pawn at all.</summary>
+        public const string NoColonistsText = "No human pawns found.";
 
         private bool _hasSelection;
         private bool _isLoading;
@@ -36,18 +38,21 @@ namespace RimSharp.Features.Saves.ViewModels
         private string _missingModsText = string.Empty;
 
         private string _scenarioText = UnknownValue;
+        private string _scenarioSummaryText = UnknownValue;
+        private string _scenarioDescriptionText = UnknownValue;
         private string _storytellerText = UnknownValue;
         private string _difficultyText = UnknownValue;
+        private string _factionTypeText = UnknownValue;
+        private string _worldNameText = UnknownValue;
+        private string _worldSeedText = UnknownValue;
+        private string _planetModeText = UnknownValue;
         private string _inGameDateText = UnknownValue;
-        private string _startingTileText = UnknownValue;
         private string _gameVersionText = UnknownValue;
-        private string _wealthTotalText = UnknownValue;
-        private string _wealthItemsText = UnknownValue;
-        private string _wealthBuildingsText = UnknownValue;
-        private string _freeColonistsText = UnknownValue;
-        private string _prisonersText = UnknownValue;
-        private string _completedResearchText = UnknownValue;
         private string _activeDlcText = UnknownValue;
+
+        private bool _colonistNamesLoaded;
+        private bool _isLoadingColonistNames;
+        private string _colonistNamesNote = string.Empty;
 
         #region State
 
@@ -128,41 +133,76 @@ namespace RimSharp.Features.Saves.ViewModels
         /// <summary>The scenario the colony was started with.</summary>
         public string ScenarioText => _scenarioText;
 
+        /// <summary>The short summary of the scenario.</summary>
+        public string ScenarioSummaryText => _scenarioSummaryText;
+
+        /// <summary>The description of the scenario.</summary>
+        public string ScenarioDescriptionText => _scenarioDescriptionText;
+
         /// <summary>The storyteller of the colony.</summary>
         public string StorytellerText => _storytellerText;
 
         /// <summary>The difficulty of the colony.</summary>
         public string DifficultyText => _difficultyText;
 
+        /// <summary>The kind of the player faction ("Colony", "Tribe").</summary>
+        public string FactionTypeText => _factionTypeText;
+
+        /// <summary>The name of the world the colony lives on.</summary>
+        public string WorldNameText => _worldNameText;
+
+        /// <summary>The seed of the world.</summary>
+        public string WorldSeedText => _worldSeedText;
+
+        /// <summary>Whether the colony plays on a planet.</summary>
+        public string PlanetModeText => _planetModeText;
+
         /// <summary>The in-game date of the save.</summary>
         public string InGameDateText => _inGameDateText;
-
-        /// <summary>The tile the colony started on.</summary>
-        public string StartingTileText => _startingTileText;
 
         /// <summary>The game version the save was written by.</summary>
         public string GameVersionText => _gameVersionText;
 
-        /// <summary>The total wealth of the colony.</summary>
-        public string WealthTotalText => _wealthTotalText;
-
-        /// <summary>The wealth held in items.</summary>
-        public string WealthItemsText => _wealthItemsText;
-
-        /// <summary>The wealth held in buildings.</summary>
-        public string WealthBuildingsText => _wealthBuildingsText;
-
-        /// <summary>The number of free colonists.</summary>
-        public string FreeColonistsText => _freeColonistsText;
-
-        /// <summary>The number of prisoners.</summary>
-        public string PrisonersText => _prisonersText;
-
-        /// <summary>The number of completed research projects.</summary>
-        public string CompletedResearchText => _completedResearchText;
-
         /// <summary>The official DLCs the save was played with, comma separated.</summary>
         public string ActiveDlcText => _activeDlcText;
+
+        #endregion
+
+        #region Colonist names
+
+        /// <summary>
+        /// The colonists of the selected save - empty until the scan of the
+        /// save has finished. The names live deep inside the save, so they are
+        /// read in the background while the save is selected.
+        /// </summary>
+        public ObservableCollection<SaveColonistItemViewModel> Colonists { get; } = new();
+
+        /// <summary>True when the scan found at least one human pawn.</summary>
+        public bool HasColonistNames => Colonists.Count > 0;
+
+        /// <summary>True when the scan has finished - also when it found nothing.</summary>
+        public bool ColonistNamesLoaded => _colonistNamesLoaded;
+
+        /// <summary>True while the scan is running.</summary>
+        public bool IsLoadingColonistNames => _isLoadingColonistNames;
+
+        /// <summary>The note under the names - empty while nothing was scanned.</summary>
+        public string ColonistNamesNote => _colonistNamesNote;
+
+        /// <summary>True when there is a note to show.</summary>
+        public bool HasColonistNamesNote => _colonistNamesNote.Length > 0;
+
+        /// <summary>
+        /// The placeholder of a save whose names were not read - the honest
+        /// em dash, like every other field the save does not carry.
+        /// </summary>
+        public string ColonistNamesUnknownText => UnknownValue;
+
+        /// <summary>
+        /// True when the names are not known - the save could not be read, so
+        /// no scan was started.
+        /// </summary>
+        public bool ShowColonistNamesUnknown => !_colonistNamesLoaded && !_isLoadingColonistNames;
 
         #endregion
 
@@ -297,37 +337,89 @@ namespace RimSharp.Features.Saves.ViewModels
             }
 
             _scenarioText = OrUnknown(details.ScenarioName);
+            _scenarioSummaryText = OrUnknown(details.ScenarioSummary);
+            _scenarioDescriptionText = OrUnknown(details.ScenarioDescription);
             _storytellerText = OrUnknown(details.StorytellerDef);
             _difficultyText = OrUnknown(details.DifficultyDef);
+            _factionTypeText = FormatFactionType(details.PlayerFactionType);
+            _worldNameText = OrUnknown(details.WorldName);
+            _worldSeedText = OrUnknown(details.WorldSeed);
+            _planetModeText = details.IsPlanetMode.HasValue
+                ? (details.IsPlanetMode.Value ? "Yes" : "No")
+                : UnknownValue;
 
             _inGameDateText = OrUnknown(ISaveHeaderService.FormatInGameDate(
                 details.TicksGame,
                 details.GameStartAbsTick,
-                details.StartingYear));
-
-            _startingTileText = OrUnknown(details.StartingTile);
-
-            _wealthTotalText = FormatNumber(details.WealthTotal);
-            _wealthItemsText = FormatNumber(details.WealthItems);
-            _wealthBuildingsText = FormatNumber(details.WealthBuildings);
-
-            _freeColonistsText = details.FreeColonists.HasValue
-                ? details.FreeColonists.Value.ToString(CultureInfo.CurrentCulture)
-                : UnknownValue;
-
-            _prisonersText = details.Prisoners.HasValue
-                ? details.Prisoners.Value.ToString(CultureInfo.CurrentCulture)
-                : UnknownValue;
-
-            _completedResearchText = details.ResearchDefsCompleted.HasValue
-                ? details.ResearchDefsCompleted.Value.ToString(CultureInfo.CurrentCulture)
-                : UnknownValue;
+                details.StartingYear,
+                details.StartingTile,
+                details.ReportedSeason));
 
             _activeDlcText = details.ActiveDlcNames is { Count: > 0 }
                 ? string.Join(", ", details.ActiveDlcNames)
                 : UnknownValue;
 
             RaiseFieldChanged();
+        }
+
+        /// <summary>
+        /// Prepares the panel for the colonist name scan - the section shows
+        /// that it is reading while the scan runs.
+        /// </summary>
+        internal void BeginColonistNamesLoad()
+        {
+            _isLoadingColonistNames = true;
+            _colonistNamesNote = string.Empty;
+
+            OnPropertyChanged(nameof(IsLoadingColonistNames));
+            OnPropertyChanged(nameof(ShowColonistNamesUnknown));
+            OnPropertyChanged(nameof(HasColonistNamesNote));
+            OnPropertyChanged(nameof(ColonistNamesNote));
+        }
+
+        /// <summary>
+        /// Fills the colonists the scan found. A scan that found nothing says
+        /// so - it never shows a made-up name.
+        /// </summary>
+        internal void ApplyColonistNames(IReadOnlyList<SaveColonist> colonists)
+        {
+            _isLoadingColonistNames = false;
+            _colonistNamesLoaded = true;
+
+            Colonists.Clear();
+            foreach (SaveColonist colonist in colonists)
+            {
+                Colonists.Add(new SaveColonistItemViewModel(colonist));
+            }
+
+            _colonistNamesNote = Colonists.Count == 0 ? NoColonistsText : string.Empty;
+
+            OnPropertyChanged(nameof(IsLoadingColonistNames));
+            OnPropertyChanged(nameof(ColonistNamesLoaded));
+            OnPropertyChanged(nameof(HasColonistNames));
+            OnPropertyChanged(nameof(ShowColonistNamesUnknown));
+            OnPropertyChanged(nameof(HasColonistNamesNote));
+            OnPropertyChanged(nameof(ColonistNamesNote));
+        }
+
+        /// <summary>
+        /// Drops the colonists - a new save is selected, so the colonists of
+        /// the old one must not stay on screen.
+        /// </summary>
+        internal void ResetColonistNames()
+        {
+            _isLoadingColonistNames = false;
+            _colonistNamesLoaded = false;
+            _colonistNamesNote = string.Empty;
+
+            Colonists.Clear();
+
+            OnPropertyChanged(nameof(IsLoadingColonistNames));
+            OnPropertyChanged(nameof(ColonistNamesLoaded));
+            OnPropertyChanged(nameof(HasColonistNames));
+            OnPropertyChanged(nameof(ShowColonistNamesUnknown));
+            OnPropertyChanged(nameof(HasColonistNamesNote));
+            OnPropertyChanged(nameof(ColonistNamesNote));
         }
 
         /// <summary>Clears the panel - nothing is selected any more.</summary>
@@ -380,41 +472,57 @@ namespace RimSharp.Features.Saves.ViewModels
             _missingModsText = string.Empty;
 
             _scenarioText = UnknownValue;
+            _scenarioSummaryText = UnknownValue;
+            _scenarioDescriptionText = UnknownValue;
             _storytellerText = UnknownValue;
             _difficultyText = UnknownValue;
+            _factionTypeText = UnknownValue;
+            _worldNameText = UnknownValue;
+            _worldSeedText = UnknownValue;
+            _planetModeText = UnknownValue;
             _inGameDateText = UnknownValue;
-            _startingTileText = UnknownValue;
             _gameVersionText = UnknownValue;
-            _wealthTotalText = UnknownValue;
-            _wealthItemsText = UnknownValue;
-            _wealthBuildingsText = UnknownValue;
-            _freeColonistsText = UnknownValue;
-            _prisonersText = UnknownValue;
-            _completedResearchText = UnknownValue;
             _activeDlcText = UnknownValue;
+
+            ResetColonistNames();
         }
 
         private void RaiseFieldChanged()
         {
             OnPropertyChanged(nameof(ScenarioText));
+            OnPropertyChanged(nameof(ScenarioSummaryText));
+            OnPropertyChanged(nameof(ScenarioDescriptionText));
             OnPropertyChanged(nameof(StorytellerText));
             OnPropertyChanged(nameof(DifficultyText));
+            OnPropertyChanged(nameof(FactionTypeText));
+            OnPropertyChanged(nameof(WorldNameText));
+            OnPropertyChanged(nameof(WorldSeedText));
+            OnPropertyChanged(nameof(PlanetModeText));
             OnPropertyChanged(nameof(InGameDateText));
-            OnPropertyChanged(nameof(StartingTileText));
             OnPropertyChanged(nameof(GameVersionText));
-            OnPropertyChanged(nameof(WealthTotalText));
-            OnPropertyChanged(nameof(WealthItemsText));
-            OnPropertyChanged(nameof(WealthBuildingsText));
-            OnPropertyChanged(nameof(FreeColonistsText));
-            OnPropertyChanged(nameof(PrisonersText));
-            OnPropertyChanged(nameof(CompletedResearchText));
             OnPropertyChanged(nameof(ActiveDlcText));
         }
 
         private static string OrUnknown(string? value)
             => string.IsNullOrWhiteSpace(value) ? UnknownValue : value;
 
-        private static string FormatNumber(double? value)
-            => value.HasValue ? value.Value.ToString("N0", CultureInfo.CurrentCulture) : UnknownValue;
+        /// <summary>
+        /// Formats the faction of the player. The save carries the def of the
+        /// faction; the label the player knows it by is used.
+        /// </summary>
+        private static string FormatFactionType(string? factionDef)
+        {
+            if (string.IsNullOrWhiteSpace(factionDef))
+            {
+                return UnknownValue;
+            }
+
+            return factionDef.Trim() switch
+            {
+                "PlayerColony" => "Colony",
+                "PlayerTribe" => "Tribe",
+                _ => factionDef.Trim()
+            };
+        }
     }
 }
