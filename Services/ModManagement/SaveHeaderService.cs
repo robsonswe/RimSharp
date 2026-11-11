@@ -53,9 +53,23 @@ namespace RimSharp.Services.ModManagement
         /// <summary>Size of a single chunk of the colonist name scan (1 MB).</summary>
         internal const int ColonistScanChunkBytes = 1024 * 1024;
 
+        /// <summary>
+        /// The ceiling of the player-faction pre-pass of the colonist scan. The
+        /// faction manager of the measured saves sits at ~0.9 MB (the
+        /// &lt;world&gt; block opens at 74-200 KB), far before the maps, so the
+        /// pre-pass stops long before it in every real save. The ceiling only
+        /// stops a pathological or corrupt file that carries no player faction
+        /// at all.
+        /// </summary>
+        internal const int PlayerFactionScanCapBytes = 64 * 1024 * 1024;
+
         private static readonly byte[] MetaEndMarker = Encoding.ASCII.GetBytes("</meta>");
         private static readonly byte[] WorldStartMarker = Encoding.ASCII.GetBytes("<world");
         private static readonly byte[] WorldInfoEndMarker = Encoding.ASCII.GetBytes("</info>");
+
+        /// <summary>The tags that open and close the faction list of a save.</summary>
+        private const string AllFactionsOpenTag = "<allFactions>";
+        private const string AllFactionsCloseTag = "</allFactions>";
 
         private readonly IPathService _pathService;
         private readonly ILoggerService _logger;
@@ -957,11 +971,24 @@ namespace RimSharp.Services.ModManagement
         /// in memory as a whole. Only the human pawns are of interest: the game
         /// writes every pawn as a thing, and only the humans carry a human def
         /// right behind the thing tag.
+        /// A map's thing list holds every map thing, so the marker alone would
+        /// catch raiders, guests, traders and prisoners as well. The player
+        /// faction is therefore resolved first and only the living members of
+        /// the colony - the colonists and the slaves - are kept. A save whose
+        /// player faction cannot be resolved lists nobody.
         /// The file is only read.
         /// </summary>
         private static IReadOnlyList<SaveColonist> ScanColonists(string filePath,
             CancellationToken cancellationToken)
         {
+            // Without the faction of the player no pawn can be classified, and
+            // an unclassifiable save is never guessed at.
+            string? playerFactionId = ResolvePlayerFactionId(filePath, cancellationToken);
+            if (playerFactionId is null)
+            {
+                return Array.Empty<SaveColonist>();
+            }
+
             var colonists = new List<SaveColonist>();
 
             using var file = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite,
@@ -1036,7 +1063,7 @@ namespace RimSharp.Services.ModManagement
                     }
 
                     string block = buffer.Substring(thingStart, blockEnd - thingStart);
-                    if (IsHumanPawn(block))
+                    if (IsHumanPawn(block) && IsColonyMember(block, playerFactionId))
                     {
                         SaveColonist? colonist = ParseColonist(block);
                         if (colonist is not null)
@@ -1064,6 +1091,197 @@ namespace RimSharp.Services.ModManagement
             }
 
             return colonists;
+        }
+
+        /// <summary>
+        /// Resolves the id of the player faction - "Faction_" plus the loadID
+        /// of the PlayerColony/PlayerTribe faction - with a bounded pre-pass
+        /// over the head of the file. Every pawn writes its faction as that id,
+        /// so it is the only way to tell a colonist from a raider, a guest, a
+        /// trader or a prisoner.
+        /// The read stops as soon as the id is resolved (the faction manager of
+        /// the measured saves sits at ~0.9 MB, far before the maps) and on
+        /// cancellation.
+        /// Returns null when the save carries no player faction with a loadID:
+        /// the caller then lists nobody - an unclassifiable save is never
+        /// guessed at. A faction whose loadID equals the scribe default is
+        /// written without the element at all (measured: the loadID-0
+        /// OutlanderCivil faction of New Arrivals4), and such a player faction
+        /// cannot be resolved either.
+        /// The file is only read.
+        /// </summary>
+        private static string? ResolvePlayerFactionId(string filePath,
+            CancellationToken cancellationToken)
+        {
+            using var file = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite,
+                64 * 1024, useAsync: false);
+
+            var decoder = Encoding.UTF8.GetDecoder();
+            byte[] byteBuffer = new byte[ColonistScanChunkBytes];
+            char[] charBuffer = new char[ColonistScanChunkBytes + 8];
+
+            // The window holds what is still interesting: the tail that could
+            // be the start of the "<allFactions>" marker before it is found,
+            // the faction list itself behind it. Everything before the list is
+            // dropped, so the window stays small.
+            string window = string.Empty;
+            int cursor = 0;
+            bool listFound = false;
+            long total = 0;
+            bool endOfFile = false;
+
+            while (!endOfFile)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                int read = file.Read(byteBuffer, 0, byteBuffer.Length);
+                if (read <= 0)
+                {
+                    endOfFile = true;
+
+                    // The last characters may be an incomplete sequence.
+                    int flushed = decoder.GetChars(Array.Empty<byte>(), 0, 0, charBuffer, 0, true);
+                    if (flushed > 0)
+                    {
+                        window += new string(charBuffer, 0, flushed);
+                    }
+                }
+                else
+                {
+                    total += read;
+                    int charCount = decoder.GetChars(byteBuffer, 0, read, charBuffer, 0, false);
+                    if (charCount > 0)
+                    {
+                        window += new string(charBuffer, 0, charCount);
+                    }
+                }
+
+                if (!listFound)
+                {
+                    int listStart = window.IndexOf(AllFactionsOpenTag, StringComparison.Ordinal);
+                    if (listStart < 0)
+                    {
+                        // The tail that could still be the start of the marker
+                        // is kept - the rest of the head is not interesting.
+                        if (window.Length >= AllFactionsOpenTag.Length)
+                        {
+                            window = window.Substring(window.Length - AllFactionsOpenTag.Length + 1);
+                        }
+
+                        if (total > PlayerFactionScanCapBytes)
+                        {
+                            return null;
+                        }
+
+                        continue;
+                    }
+
+                    // The list itself is the only thing that is read to the end.
+                    window = window.Substring(listStart);
+                    cursor = AllFactionsOpenTag.Length;
+                    listFound = true;
+                }
+
+                // The items of the list are walked one by one. A faction item
+                // that carries no player def is dropped behind the cursor, so
+                // every character of the list is looked at once.
+                while (true)
+                {
+                    int listEnd = window.IndexOf(AllFactionsCloseTag, cursor, StringComparison.Ordinal);
+                    int item = window.IndexOf("<li", cursor, StringComparison.Ordinal);
+
+                    if (item >= 0 && (listEnd < 0 || item < listEnd))
+                    {
+                        int itemEnd = FindListItemEnd(window, item);
+                        if (itemEnd < 0)
+                        {
+                            break; // The item is not complete yet - more data is needed.
+                        }
+
+                        string? loadId = PlayerFactionLoadId(window, item, itemEnd);
+                        if (loadId is not null)
+                        {
+                            return "Faction_" + loadId;
+                        }
+
+                        cursor = itemEnd;
+                        continue;
+                    }
+
+                    if (listEnd >= 0)
+                    {
+                        // The list ended without a player faction.
+                        return null;
+                    }
+
+                    break; // More data is needed.
+                }
+
+                if (total > PlayerFactionScanCapBytes)
+                {
+                    return null;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// The index behind the end of the list item that opens at the given
+        /// position: behind its closing tag, or behind the tag itself when the
+        /// item is empty. Returns -1 when the item is not complete yet.
+        /// </summary>
+        private static int FindListItemEnd(string buffer, int itemStart)
+        {
+            int tagEnd = buffer.IndexOf('>', itemStart);
+            if (tagEnd < 0)
+            {
+                return -1;
+            }
+
+            if (buffer[tagEnd - 1] == '/')
+            {
+                return tagEnd + 1; // An empty item.
+            }
+
+            int close = buffer.IndexOf("</li>", tagEnd, StringComparison.Ordinal);
+            return close < 0 ? -1 : close + "</li>".Length;
+        }
+
+        /// <summary>
+        /// The loadID of the player faction inside the given list item, or null
+        /// when the item is no player faction or carries no loadID. The defs of
+        /// the player faction are exactly "PlayerColony" and "PlayerTribe".
+        /// The loadID is read behind the def and only inside the item, so a
+        /// loadID that belongs to the next faction is never taken.
+        /// </summary>
+        private static string? PlayerFactionLoadId(string window, int itemStart, int itemEnd)
+        {
+            int def = window.IndexOf("<def>PlayerColony</def>", itemStart, StringComparison.Ordinal);
+            if (def < 0 || def >= itemEnd)
+            {
+                def = window.IndexOf("<def>PlayerTribe</def>", itemStart, StringComparison.Ordinal);
+                if (def < 0 || def >= itemEnd)
+                {
+                    return null;
+                }
+            }
+
+            int loadId = window.IndexOf("<loadID>", def, StringComparison.Ordinal);
+            if (loadId < 0 || loadId >= itemEnd)
+            {
+                return null;
+            }
+
+            int textStart = loadId + "<loadID>".Length;
+            int textEnd = window.IndexOf("</loadID>", textStart, StringComparison.Ordinal);
+            if (textEnd < 0 || textEnd > itemEnd)
+            {
+                return null;
+            }
+
+            string id = window.Substring(textStart, textEnd - textStart).Trim();
+            return id.Length == 0 ? null : id;
         }
 
         /// <summary>
@@ -1191,6 +1409,106 @@ namespace RimSharp.Services.ModManagement
             }
 
             return block.IndexOf("<def>Human</def>", position, StringComparison.Ordinal) == position;
+        }
+
+        /// <summary>
+        /// True when the pawn block is a living member of the colony - a
+        /// colonist or a slave. Three filters, all read from the block the scan
+        /// already holds (no extra file access):
+        /// F1 the pawn carries the faction of the player. A raider, a guest, a
+        ///    visitor, a trader and a quest lodger keep their own faction, and
+        ///    a pawn without a faction element carries none at all.
+        /// F2 the pawn is not held by another faction. The scribe writes the
+        ///    literal "null" for an absent reference, and a pawn without the
+        ///    element carries no host faction either. A prisoner and a held
+        ///    colonist carry a real one.
+        /// F3 the pawn is no prisoner. The status element is omitted when it
+        ///    equals its default, so only the explicit spelling is rejected.
+        /// A slave carries the faction of the player and no host faction
+        /// (Pawn_GuestTracker.SetFaction), so it passes all three.
+        /// The map assertion is belt-and-braces: the inner pawn of a corpse is
+        /// a loadID reference, never a nested &lt;thing Class="Pawn"&gt; (M6),
+        /// so a matched block is never a corpse - but every serialized map
+        /// thing writes its map reference, and a block without one is not
+        /// accepted.
+        /// The join status is deliberately not read: it is the recruitment
+        /// intent, not the status of the pawn.
+        /// </summary>
+        private static bool IsColonyMember(string block, string playerFactionId)
+        {
+            // F1 - the faction of the player.
+            if (!string.Equals(BlockElementText(block, "faction"), playerFactionId, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            // F2 - not held by another faction.
+            if (BlockElementText(block, "hostFaction") is not null)
+            {
+                return false;
+            }
+
+            // F3 - no prisoner.
+            if (block.Contains("<guestStatus>Prisoner</guestStatus>", StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            // The defensive corpse assertion (M6).
+            return block.Contains("<map>", StringComparison.Ordinal)
+                || block.Contains("<map ", StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// The text of the first element with the given name inside a pawn
+        /// block, read without parsing the XML. Null when the element is
+        /// absent, when the scribe wrote it as an empty self-closing tag
+        /// (IsNull="True"), or when it carries the literal "null" - the game
+        /// writes that literal for an absent reference.
+        /// </summary>
+        private static string? BlockElementText(string block, string elementName)
+        {
+            string open = "<" + elementName;
+            int position = block.IndexOf(open, StringComparison.Ordinal);
+
+            while (position >= 0)
+            {
+                int afterTag = position + open.Length;
+                if (afterTag < block.Length && block[afterTag] != '>' && !char.IsWhiteSpace(block[afterTag]))
+                {
+                    // A longer element name that starts the same way.
+                    position = block.IndexOf(open, position + 1, StringComparison.Ordinal);
+                    continue;
+                }
+
+                int tagEnd = block.IndexOf('>', afterTag);
+                if (tagEnd < 0)
+                {
+                    return null;
+                }
+
+                if (block[tagEnd - 1] == '/')
+                {
+                    return null; // An empty element: <faction IsNull="True" />
+                }
+
+                string close = "</" + elementName + ">";
+                int end = block.IndexOf(close, tagEnd, StringComparison.Ordinal);
+                if (end < 0)
+                {
+                    return null;
+                }
+
+                string value = block.Substring(tagEnd + 1, end - tagEnd - 1).Trim();
+                if (value.Length == 0 || string.Equals(value, "null", StringComparison.OrdinalIgnoreCase))
+                {
+                    return null;
+                }
+
+                return value;
+            }
+
+            return null;
         }
 
         /// <summary>

@@ -233,6 +233,7 @@ namespace RimSharp.Tests.Services.ModManagement
             "\t\t\t\t\t\t<thing Class=\"Pawn\">\r\n" +
             "\t\t\t\t\t\t\t<def>Human</def>\r\n" +
             "\t\t\t\t\t\t\t<id>Human136</id>\r\n" +
+            "\t\t\t\t\t\t\t<map>0</map>\r\n" +
             "\t\t\t\t\t\t\t<faction>Faction_10</faction>\r\n" +
             "\t\t\t\t\t\t\t<kindDef>Colonist</kindDef>\r\n" +
             "\t\t\t\t\t\t\t<gender>Male</gender>\r\n" +
@@ -241,6 +242,12 @@ namespace RimSharp.Tests.Services.ModManagement
             "\t\t\t\t\t\t\t\t<nick>Hayhouse</nick>\r\n" +
             "\t\t\t\t\t\t\t\t<last>Simons</last>\r\n" +
             "\t\t\t\t\t\t\t</name>\r\n" +
+            "\t\t\t\t\t\t\t<guest>\r\n" +
+            "\t\t\t\t\t\t\t\t<hostFaction>null</hostFaction>\r\n" +
+            "\t\t\t\t\t\t\t\t<slaveFaction>null</slaveFaction>\r\n" +
+            "\t\t\t\t\t\t\t\t<joinStatus>JoinAsColonist</joinStatus>\r\n" +
+            "\t\t\t\t\t\t\t\t<interactionMode>MaintainOnly</interactionMode>\r\n" +
+            "\t\t\t\t\t\t\t</guest>\r\n" +
             "\t\t\t\t\t\t</thing>\r\n" +
             "\t\t\t\t\t</li>\r\n";
 
@@ -253,12 +260,20 @@ namespace RimSharp.Tests.Services.ModManagement
             "\t\t\t\t\t\t<thing Class=\"Pawn\">\r\n" +
             "\t\t\t\t\t\t\t<def>Human</def>\r\n" +
             "\t\t\t\t\t\t\t<id>Human204</id>\r\n" +
+            "\t\t\t\t\t\t\t<map>0</map>\r\n" +
+            "\t\t\t\t\t\t\t<faction>Faction_10</faction>\r\n" +
             "\t\t\t\t\t\t\t<kindDef>Colonist</kindDef>\r\n" +
             "\t\t\t\t\t\t\t<name Class=\"NameTriple\">\r\n" +
             "\t\t\t\t\t\t\t\t<first>Kelux</first>\r\n" +
             "\t\t\t\t\t\t\t\t<nick />\r\n" +
             "\t\t\t\t\t\t\t\t<last>Hybridge</last>\r\n" +
             "\t\t\t\t\t\t\t</name>\r\n" +
+            "\t\t\t\t\t\t\t<guest>\r\n" +
+            "\t\t\t\t\t\t\t\t<hostFaction>null</hostFaction>\r\n" +
+            "\t\t\t\t\t\t\t\t<slaveFaction>null</slaveFaction>\r\n" +
+            "\t\t\t\t\t\t\t\t<joinStatus>JoinAsColonist</joinStatus>\r\n" +
+            "\t\t\t\t\t\t\t\t<interactionMode>MaintainOnly</interactionMode>\r\n" +
+            "\t\t\t\t\t\t\t</guest>\r\n" +
             "\t\t\t\t\t\t</thing>\r\n" +
             "\t\t\t\t\t</li>\r\n";
 
@@ -271,7 +286,15 @@ namespace RimSharp.Tests.Services.ModManagement
             "\t\t\t\t\t\t<thing Class=\"Pawn\">\r\n" +
             "\t\t\t\t\t\t\t<def>Human</def>\r\n" +
             "\t\t\t\t\t\t\t<id>Human313</id>\r\n" +
+            "\t\t\t\t\t\t\t<map>0</map>\r\n" +
+            "\t\t\t\t\t\t\t<faction>Faction_10</faction>\r\n" +
             "\t\t\t\t\t\t\t<nameTriple first=\"Tobias\" nick=\"Toby\" last=\"Ytterstad\" />\r\n" +
+            "\t\t\t\t\t\t\t<guest>\r\n" +
+            "\t\t\t\t\t\t\t\t<hostFaction>null</hostFaction>\r\n" +
+            "\t\t\t\t\t\t\t\t<slaveFaction>null</slaveFaction>\r\n" +
+            "\t\t\t\t\t\t\t\t<joinStatus>JoinAsColonist</joinStatus>\r\n" +
+            "\t\t\t\t\t\t\t\t<interactionMode>MaintainOnly</interactionMode>\r\n" +
+            "\t\t\t\t\t\t\t</guest>\r\n" +
             "\t\t\t\t\t\t</thing>\r\n" +
             "\t\t\t\t\t</li>\r\n";
 
@@ -302,6 +325,7 @@ namespace RimSharp.Tests.Services.ModManagement
             "\t\t\t\t\t\t<thing Class=\"Pawn\">\r\n" +
             "\t\t\t\t\t\t\t<def>Human</def>\r\n" +
             "\t\t\t\t\t\t\t<id>Human263</id>\r\n" +
+            "\t\t\t\t\t\t\t<map>0</map>\r\n" +
             "\t\t\t\t\t\t\t<faction>Faction_10</faction>\r\n" +
             "\t\t\t\t\t\t\t<kindDef>Colonist</kindDef>\r\n" +
             "\t\t\t\t\t\t\t<gender>Female</gender>\r\n" +
@@ -337,9 +361,13 @@ namespace RimSharp.Tests.Services.ModManagement
             "\t\t\t\t\t\t\t</skills>\r\n" +
             "\t\t\t\t\t\t\t<guest>\r\n" +
             // The join status is in the save but is not read any more - the
-            // recorded values did not match the colony of the tester.
+            // recorded values did not match the colony of the tester. It is
+            // the recruitment intent, not the status of the pawn: a free
+            // colonist carries JoinAsSlave as well.
             "\t\t\t\t\t\t\t\t<hostFaction>null</hostFaction>\r\n" +
+            "\t\t\t\t\t\t\t\t<slaveFaction>null</slaveFaction>\r\n" +
             "\t\t\t\t\t\t\t\t<joinStatus>JoinAsSlave</joinStatus>\r\n" +
+            "\t\t\t\t\t\t\t\t<interactionMode>MaintainOnly</interactionMode>\r\n" +
             "\t\t\t\t\t\t\t</guest>\r\n" +
             "\t\t\t\t\t\t\t<healthTracker>\r\n" +
             "\t\t\t\t\t\t\t\t<hediffSet>\r\n" +
@@ -350,6 +378,257 @@ namespace RimSharp.Tests.Services.ModManagement
             "\t\t\t\t\t\t\t\t\t</hediffs>\r\n" +
             "\t\t\t\t\t\t\t\t</hediffSet>\r\n" +
             "\t\t\t\t\t\t\t</healthTracker>\r\n" +
+            "\t\t\t\t\t\t</thing>\r\n" +
+            "\t\t\t\t\t</li>\r\n";
+
+        /// <summary>
+        /// The faction list of a save, in the measured shape: the player
+        /// faction (PlayerColony, loadID 10) behind two outlander factions.
+        /// The first faction carries no loadID element at all - the scribe
+        /// omits it when it equals its default - and the player faction writes
+        /// it right behind its def. The pawns write their faction as "Faction_"
+        /// plus that loadID.
+        /// </summary>
+        private const string AllFactionsWithPlayer =
+            "\t\t<world>\r\n" +
+            "\t\t\t<factionManager>\r\n" +
+            "\t\t\t\t<allFactions>\r\n" +
+            "\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t<leader>Thing_Human68</leader>\r\n" +
+            "\t\t\t\t\t\t<def>OutlanderCivil</def>\r\n" +
+            "\t\t\t\t\t\t<name>Southwestern Daan</name>\r\n" +
+            "\t\t\t\t\t\t<randomKey>1903439751</randomKey>\r\n" +
+            "\t\t\t\t\t\t<relations>\r\n" +
+            "\t\t\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t\t\t<other>Faction_10</other>\r\n" +
+            "\t\t\t\t\t\t\t</li>\r\n" +
+            "\t\t\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t\t\t<other>Faction_7</other>\r\n" +
+            "\t\t\t\t\t\t\t\t<kind>Hostile</kind>\r\n" +
+            "\t\t\t\t\t\t\t\t<goodwill>-80</goodwill>\r\n" +
+            "\t\t\t\t\t\t\t</li>\r\n" +
+            "\t\t\t\t\t\t</relations>\r\n" +
+            "\t\t\t\t\t\t<questTags IsNull=\"True\" />\r\n" +
+            "\t\t\t\t\t</li>\r\n" +
+            "\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t<leader>null</leader>\r\n" +
+            "\t\t\t\t\t\t<def>PlayerColony</def>\r\n" +
+            "\t\t\t\t\t\t<loadID>10</loadID>\r\n" +
+            "\t\t\t\t\t\t<randomKey>1594890563</randomKey>\r\n" +
+            "\t\t\t\t\t\t<relations>\r\n" +
+            "\t\t\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t\t\t<other>Faction_0</other>\r\n" +
+            "\t\t\t\t\t\t\t</li>\r\n" +
+            "\t\t\t\t\t\t</relations>\r\n" +
+            "\t\t\t\t\t</li>\r\n" +
+            "\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t<leader>Thing_Human77</leader>\r\n" +
+            "\t\t\t\t\t\t<def>OutlanderRough</def>\r\n" +
+            "\t\t\t\t\t\t<name>East Lanhiuay</name>\r\n" +
+            "\t\t\t\t\t\t<loadID>7</loadID>\r\n" +
+            "\t\t\t\t\t\t<randomKey>1796941324</randomKey>\r\n" +
+            "\t\t\t\t\t</li>\r\n" +
+            "\t\t\t\t</allFactions>\r\n" +
+            "\t\t\t</factionManager>\r\n" +
+            "\t\t</world>\r\n";
+
+        /// <summary>
+        /// A faction list without a player faction: the colony of the save
+        /// cannot be told from any other faction, so no pawn can be classified.
+        /// </summary>
+        private const string AllFactionsWithoutPlayer =
+            "\t\t<world>\r\n" +
+            "\t\t\t<factionManager>\r\n" +
+            "\t\t\t\t<allFactions>\r\n" +
+            "\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t<leader>Thing_Human68</leader>\r\n" +
+            "\t\t\t\t\t\t<def>OutlanderCivil</def>\r\n" +
+            "\t\t\t\t\t\t<name>Southwestern Daan</name>\r\n" +
+            "\t\t\t\t\t\t<loadID>7</loadID>\r\n" +
+            "\t\t\t\t\t\t<randomKey>1903439751</randomKey>\r\n" +
+            "\t\t\t\t\t</li>\r\n" +
+            "\t\t\t\t</allFactions>\r\n" +
+            "\t\t\t</factionManager>\r\n" +
+            "\t\t</world>\r\n";
+
+        /// <summary>
+        /// A human pawn of another faction - a raider. It keeps its own
+        /// faction, so it is no member of the colony.
+        /// </summary>
+        private const string HumanPawnRaider =
+            "\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t<thing Class=\"Pawn\">\r\n" +
+            "\t\t\t\t\t\t\t<def>Human</def>\r\n" +
+            "\t\t\t\t\t\t\t<id>Human401</id>\r\n" +
+            "\t\t\t\t\t\t\t<map>0</map>\r\n" +
+            "\t\t\t\t\t\t\t<faction>Faction_7</faction>\r\n" +
+            "\t\t\t\t\t\t\t<kindDef>Villager</kindDef>\r\n" +
+            "\t\t\t\t\t\t\t<name Class=\"NameTriple\">\r\n" +
+            "\t\t\t\t\t\t\t\t<first>Rudir</first>\r\n" +
+            "\t\t\t\t\t\t\t\t<nick>Rud</nick>\r\n" +
+            "\t\t\t\t\t\t\t\t<last>Kogen</last>\r\n" +
+            "\t\t\t\t\t\t\t</name>\r\n" +
+            "\t\t\t\t\t\t</thing>\r\n" +
+            "\t\t\t\t\t</li>\r\n";
+
+        /// <summary>
+        /// A visitor of the colony: a human of another faction that the colony
+        /// hosts. It keeps its own faction and carries a host faction.
+        /// </summary>
+        private const string HumanPawnGuest =
+            "\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t<thing Class=\"Pawn\">\r\n" +
+            "\t\t\t\t\t\t\t<def>Human</def>\r\n" +
+            "\t\t\t\t\t\t\t<id>Human402</id>\r\n" +
+            "\t\t\t\t\t\t\t<map>0</map>\r\n" +
+            "\t\t\t\t\t\t\t<faction>Faction_7</faction>\r\n" +
+            "\t\t\t\t\t\t\t<kindDef>Villager</kindDef>\r\n" +
+            "\t\t\t\t\t\t\t<name Class=\"NameTriple\">\r\n" +
+            "\t\t\t\t\t\t\t\t<first>Gesa</first>\r\n" +
+            "\t\t\t\t\t\t\t\t<nick>Ges</nick>\r\n" +
+            "\t\t\t\t\t\t\t\t<last>Arrim</last>\r\n" +
+            "\t\t\t\t\t\t\t</name>\r\n" +
+            "\t\t\t\t\t\t\t<guest>\r\n" +
+            "\t\t\t\t\t\t\t\t<hostFaction>Faction_10</hostFaction>\r\n" +
+            "\t\t\t\t\t\t\t\t<slaveFaction>null</slaveFaction>\r\n" +
+            "\t\t\t\t\t\t\t\t<joinStatus>JoinAsGuest</joinStatus>\r\n" +
+            "\t\t\t\t\t\t\t\t<interactionMode>MaintainOnly</interactionMode>\r\n" +
+            "\t\t\t\t\t\t\t</guest>\r\n" +
+            "\t\t\t\t\t\t</thing>\r\n" +
+            "\t\t\t\t\t</li>\r\n";
+
+        /// <summary>
+        /// A prisoner of the colony: a human of another faction that the
+        /// colony holds. It keeps its own faction and carries the colony as
+        /// its host faction.
+        /// </summary>
+        private const string HumanPawnPrisoner =
+            "\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t<thing Class=\"Pawn\">\r\n" +
+            "\t\t\t\t\t\t\t<def>Human</def>\r\n" +
+            "\t\t\t\t\t\t\t<id>Human403</id>\r\n" +
+            "\t\t\t\t\t\t\t<map>0</map>\r\n" +
+            "\t\t\t\t\t\t\t<faction>Faction_7</faction>\r\n" +
+            "\t\t\t\t\t\t\t<kindDef>Villager</kindDef>\r\n" +
+            "\t\t\t\t\t\t\t<name Class=\"NameTriple\">\r\n" +
+            "\t\t\t\t\t\t\t\t<first>Pirit</first>\r\n" +
+            "\t\t\t\t\t\t\t\t<nick>Piri</nick>\r\n" +
+            "\t\t\t\t\t\t\t\t<last>Masur</last>\r\n" +
+            "\t\t\t\t\t\t\t</name>\r\n" +
+            "\t\t\t\t\t\t\t<guest>\r\n" +
+            "\t\t\t\t\t\t\t\t<hostFaction>Faction_10</hostFaction>\r\n" +
+            "\t\t\t\t\t\t\t\t<slaveFaction>null</slaveFaction>\r\n" +
+            "\t\t\t\t\t\t\t\t<guestStatus>Prisoner</guestStatus>\r\n" +
+            "\t\t\t\t\t\t\t\t<joinStatus>JoinAsColonist</joinStatus>\r\n" +
+            "\t\t\t\t\t\t\t\t<interactionMode>MaintainOnly</interactionMode>\r\n" +
+            "\t\t\t\t\t\t\t</guest>\r\n" +
+            "\t\t\t\t\t\t</thing>\r\n" +
+            "\t\t\t\t\t</li>\r\n";
+
+        /// <summary>
+        /// A colonist that raiders hold: it carries the faction of the colony
+        /// and another faction as its host faction.
+        /// </summary>
+        private const string HumanPawnHeldColonist =
+            "\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t<thing Class=\"Pawn\">\r\n" +
+            "\t\t\t\t\t\t\t<def>Human</def>\r\n" +
+            "\t\t\t\t\t\t\t<id>Human404</id>\r\n" +
+            "\t\t\t\t\t\t\t<map>0</map>\r\n" +
+            "\t\t\t\t\t\t\t<faction>Faction_10</faction>\r\n" +
+            "\t\t\t\t\t\t\t<kindDef>Colonist</kindDef>\r\n" +
+            "\t\t\t\t\t\t\t<name Class=\"NameTriple\">\r\n" +
+            "\t\t\t\t\t\t\t\t<first>Hella</first>\r\n" +
+            "\t\t\t\t\t\t\t\t<nick>Hel</nick>\r\n" +
+            "\t\t\t\t\t\t\t\t<last>Vrast</last>\r\n" +
+            "\t\t\t\t\t\t\t</name>\r\n" +
+            "\t\t\t\t\t\t\t<guest>\r\n" +
+            "\t\t\t\t\t\t\t\t<hostFaction>Faction_7</hostFaction>\r\n" +
+            "\t\t\t\t\t\t\t\t<slaveFaction>null</slaveFaction>\r\n" +
+            "\t\t\t\t\t\t\t\t<joinStatus>JoinAsColonist</joinStatus>\r\n" +
+            "\t\t\t\t\t\t\t\t<interactionMode>MaintainOnly</interactionMode>\r\n" +
+            "\t\t\t\t\t\t\t</guest>\r\n" +
+            "\t\t\t\t\t\t</thing>\r\n" +
+            "\t\t\t\t\t</li>\r\n";
+
+        /// <summary>
+        /// A prisoner that carries the faction of the colony and no host
+        /// faction - the shape a mod can produce. Only the prisoner status
+        /// rejects it.
+        /// </summary>
+        private const string HumanPawnPrisonerOfTheColony =
+            "\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t<thing Class=\"Pawn\">\r\n" +
+            "\t\t\t\t\t\t\t<def>Human</def>\r\n" +
+            "\t\t\t\t\t\t\t<id>Human405</id>\r\n" +
+            "\t\t\t\t\t\t\t<map>0</map>\r\n" +
+            "\t\t\t\t\t\t\t<faction>Faction_10</faction>\r\n" +
+            "\t\t\t\t\t\t\t<kindDef>Villager</kindDef>\r\n" +
+            "\t\t\t\t\t\t\t<name Class=\"NameTriple\">\r\n" +
+            "\t\t\t\t\t\t\t\t<first>Otta</first>\r\n" +
+            "\t\t\t\t\t\t\t\t<nick>Ott</nick>\r\n" +
+            "\t\t\t\t\t\t\t\t<last>Renk</last>\r\n" +
+            "\t\t\t\t\t\t\t</name>\r\n" +
+            "\t\t\t\t\t\t\t<guest>\r\n" +
+            "\t\t\t\t\t\t\t\t<hostFaction>null</hostFaction>\r\n" +
+            "\t\t\t\t\t\t\t\t<slaveFaction>null</slaveFaction>\r\n" +
+            "\t\t\t\t\t\t\t\t<guestStatus>Prisoner</guestStatus>\r\n" +
+            "\t\t\t\t\t\t\t\t<joinStatus>JoinAsColonist</joinStatus>\r\n" +
+            "\t\t\t\t\t\t\t\t<interactionMode>MaintainOnly</interactionMode>\r\n" +
+            "\t\t\t\t\t\t\t</guest>\r\n" +
+            "\t\t\t\t\t\t</thing>\r\n" +
+            "\t\t\t\t\t</li>\r\n";
+
+        /// <summary>
+        /// A slave of the colony: it carries the faction of the colony and no
+        /// host faction (Pawn_GuestTracker.SetFaction forces the host faction
+        /// of a slave to null), and its status element says Slave. It is a
+        /// living member of the colony and is kept.
+        /// </summary>
+        private const string HumanPawnSlave =
+            "\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t<thing Class=\"Pawn\">\r\n" +
+            "\t\t\t\t\t\t\t<def>Human</def>\r\n" +
+            "\t\t\t\t\t\t\t<id>Human406</id>\r\n" +
+            "\t\t\t\t\t\t\t<map>0</map>\r\n" +
+            "\t\t\t\t\t\t\t<faction>Faction_10</faction>\r\n" +
+            "\t\t\t\t\t\t\t<kindDef>Slave</kindDef>\r\n" +
+            "\t\t\t\t\t\t\t<gender>Female</gender>\r\n" +
+            "\t\t\t\t\t\t\t<name Class=\"NameTriple\">\r\n" +
+            "\t\t\t\t\t\t\t\t<first>Miel</first>\r\n" +
+            "\t\t\t\t\t\t\t\t<nick>Mie</nick>\r\n" +
+            "\t\t\t\t\t\t\t\t<last>Orind</last>\r\n" +
+            "\t\t\t\t\t\t\t</name>\r\n" +
+            "\t\t\t\t\t\t\t<guest>\r\n" +
+            "\t\t\t\t\t\t\t\t<hostFaction>null</hostFaction>\r\n" +
+            "\t\t\t\t\t\t\t\t<slaveFaction>null</slaveFaction>\r\n" +
+            "\t\t\t\t\t\t\t\t<guestStatus>Slave</guestStatus>\r\n" +
+            "\t\t\t\t\t\t\t\t<joinStatus>JoinAsSlave</joinStatus>\r\n" +
+            "\t\t\t\t\t\t\t\t<interactionMode>MaintainOnly</interactionMode>\r\n" +
+            "\t\t\t\t\t\t\t</guest>\r\n" +
+            "\t\t\t\t\t\t</thing>\r\n" +
+            "\t\t\t\t\t</li>\r\n";
+
+        /// <summary>
+        /// A corpse on the map, in the measured shape: its inner pawn is a
+        /// bare loadID reference, never a nested pawn thing, so the scan
+        /// cannot match it (M6).
+        /// </summary>
+        private const string HumanCorpse =
+            "\t\t\t\t\t<li>\r\n" +
+            "\t\t\t\t\t\t<thing Class=\"Corpse\">\r\n" +
+            "\t\t\t\t\t\t\t<def>Corpse_Human</def>\r\n" +
+            "\t\t\t\t\t\t\t<id>Corpse_Human4621</id>\r\n" +
+            "\t\t\t\t\t\t\t<map>0</map>\r\n" +
+            "\t\t\t\t\t\t\t<pos>(66, 0, 209)</pos>\r\n" +
+            "\t\t\t\t\t\t\t<timeOfDeath>-16993438</timeOfDeath>\r\n" +
+            "\t\t\t\t\t\t\t<innerContainer>\r\n" +
+            "\t\t\t\t\t\t\t\t<maxStacks>1</maxStacks>\r\n" +
+            "\t\t\t\t\t\t\t\t<contentsLookMode>Reference</contentsLookMode>\r\n" +
+            "\t\t\t\t\t\t\t\t<innerList>\r\n" +
+            "\t\t\t\t\t\t\t\t\t<li>Thing_Human4616</li>\r\n" +
+            "\t\t\t\t\t\t\t\t</innerList>\r\n" +
+            "\t\t\t\t\t\t\t</innerContainer>\r\n" +
             "\t\t\t\t\t\t</thing>\r\n" +
             "\t\t\t\t\t</li>\r\n";
 
@@ -369,13 +648,22 @@ namespace RimSharp.Tests.Services.ModManagement
         }
 
         /// <summary>
-        /// Builds a save whose map holds the given pawn blocks.
+        /// Builds a save whose map holds the given pawn blocks and whose head
+        /// carries the faction list with the player faction.
         /// </summary>
         private static string BuildSaveWithPawns(params string[] pawns)
+            => BuildSave(AllFactionsWithPlayer, pawns);
+
+        /// <summary>
+        /// Builds a save with the given faction list in its head whose map
+        /// holds the given pawn blocks.
+        /// </summary>
+        private static string BuildSave(string factionList, params string[] pawns)
         {
             return "<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n" +
                    "<savegame>\r\n" +
                    "\t<game>\r\n" +
+                   factionList +
                    "\t\t<maps>\r\n" +
                    "\t\t\t<map>\r\n" +
                    "\t\t\t\t<mapPawns>\r\n" +
@@ -1193,6 +1481,7 @@ namespace RimSharp.Tests.Services.ModManagement
                 "<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n" +
                 "<savegame>\r\n" +
                 "\t<game>\r\n" +
+                AllFactionsWithPlayer +
                 "\t\t<maps>\r\n" +
                 "\t\t\t<map>\r\n" +
                 "\t\t\t\t<mapPawns>\r\n" +
@@ -1204,6 +1493,158 @@ namespace RimSharp.Tests.Services.ModManagement
                 "\t</game>\r\n" +
                 "</savegame>";
             string path = WriteSaveFile("Big.rws", content);
+
+            // Act
+            var colonists = await service.ReadColonistNamesAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            colonists.Should().HaveCount(1);
+            colonists[0].DisplayName.Should().Be("Hayden \"Hayhouse\" Simons");
+        }
+
+        [Fact]
+        public async Task ReadColonistNamesAsync_KeepsOnlyTheLivingMembersOfTheColony()
+        {
+            // Arrange - a colonist, a slave, a raider, a visitor, a prisoner,
+            // a colonist that raiders hold, a prisoner that carries the faction
+            // of the colony, a pawn of another species and a corpse. Only the
+            // colonist and the slave are living members of the colony.
+            var service = CreateService();
+            string path = WriteSaveFile("Colony.rws", BuildSaveWithPawns(
+                HumanPawnHayden, HumanPawnSlave, HumanPawnRaider, HumanPawnGuest,
+                HumanPawnPrisoner, HumanPawnHeldColonist, HumanPawnPrisonerOfTheColony,
+                AnimalPawn, HumanCorpse));
+
+            // Act
+            var colonists = await service.ReadColonistNamesAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            colonists.Should().HaveCount(2);
+            colonists[0].DisplayName.Should().Be("Hayden \"Hayhouse\" Simons");
+            colonists[1].DisplayName.Should().Be("Miel \"Mie\" Orind");
+        }
+
+        [Fact]
+        public async Task ReadColonistNamesAsync_KeepsTheSlaves()
+        {
+            // Arrange - a slave carries the faction of the colony, no host
+            // faction and the status Slave.
+            var service = CreateService();
+            string path = WriteSaveFile("Slave.rws", BuildSaveWithPawns(HumanPawnSlave));
+
+            // Act
+            var colonists = await service.ReadColonistNamesAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            colonists.Should().HaveCount(1);
+            colonists[0].DisplayName.Should().Be("Miel \"Mie\" Orind");
+        }
+
+        [Fact]
+        public async Task ReadColonistNamesAsync_DropsThePawnsOfAnotherFaction()
+        {
+            // Arrange - a raider and a visitor: both keep their own faction.
+            var service = CreateService();
+            string path = WriteSaveFile("Foreigners.rws",
+                BuildSaveWithPawns(HumanPawnRaider, HumanPawnGuest));
+
+            // Act
+            var colonists = await service.ReadColonistNamesAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            colonists.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ReadColonistNamesAsync_DropsThePawnsTheColonyHolds()
+        {
+            // Arrange - a prisoner, a colonist that raiders hold and a prisoner
+            // that carries the faction of the colony: all of them are held by
+            // another faction or are prisoners.
+            var service = CreateService();
+            string path = WriteSaveFile("Held.rws", BuildSaveWithPawns(
+                HumanPawnPrisoner, HumanPawnHeldColonist, HumanPawnPrisonerOfTheColony));
+
+            // Act
+            var colonists = await service.ReadColonistNamesAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            colonists.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ReadColonistNamesAsync_DoesNotMatchACorpse()
+        {
+            // Arrange - the inner pawn of a corpse is a loadID reference, never
+            // a nested pawn thing (M6).
+            var service = CreateService();
+            string path = WriteSaveFile("Corpse.rws", BuildSaveWithPawns(HumanCorpse));
+
+            // Act
+            var colonists = await service.ReadColonistNamesAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            colonists.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ReadColonistNamesAsync_WithoutAPlayerFaction_ListsNobody()
+        {
+            // Arrange - the faction list carries no PlayerColony and no
+            // PlayerTribe, so no pawn can be classified. The honesty policy
+            // holds: an unclassifiable save lists nobody.
+            var service = CreateService();
+            string path = WriteSaveFile("NoPlayerFaction.rws",
+                BuildSave(AllFactionsWithoutPlayer, HumanPawnHayden, HumanPawnSlave));
+
+            // Act
+            var colonists = await service.ReadColonistNamesAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            colonists.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ReadColonistNamesAsync_WithoutAFactionList_ListsNobody()
+        {
+            // Arrange - a save whose head carries no faction list at all.
+            var service = CreateService();
+            string path = WriteSaveFile("NoFactionList.rws",
+                BuildSave(string.Empty, HumanPawnHayden, HumanPawnSlave));
+
+            // Act
+            var colonists = await service.ReadColonistNamesAsync(path, TestContext.Current.CancellationToken);
+
+            // Assert
+            colonists.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ReadColonistNamesAsync_FindsTheColonyWhenTheFactionListSitsBehindAChunkBoundary()
+        {
+            // Arrange - the faction list sits at ~1 MB, so the pre-pass reads
+            // more than one chunk and the "<allFactions>" marker itself is
+            // split by the chunk boundary (the scan chunk is 1 MB). The file
+            // starts with the three bytes of the BOM.
+            var service = CreateService();
+            string head = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n" +
+                          "<savegame>\r\n" +
+                          "\t<game>\r\n";
+            string filler = new string('x', 1024 * 1024 - head.Length - 3 - 6);
+            string content =
+                head +
+                filler +
+                AllFactionsWithPlayer +
+                "\t\t<maps>\r\n" +
+                "\t\t\t<map>\r\n" +
+                "\t\t\t\t<mapPawns>\r\n" +
+                HumanPawnHayden +
+                "\t\t\t\t</mapPawns>\r\n" +
+                "\t\t\t</map>\r\n" +
+                "\t\t</maps>\r\n" +
+                "\t</game>\r\n" +
+                "</savegame>";
+            string path = WriteSaveFile("Boundary.rws", content);
 
             // Act
             var colonists = await service.ReadColonistNamesAsync(path, TestContext.Current.CancellationToken);
