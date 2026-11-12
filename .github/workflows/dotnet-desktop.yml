@@ -283,24 +283,65 @@ jobs:
       run: |
         set -euo pipefail
 
-        # Generate iconset from repo-root icon.ico
-        magick icon.ico[0] -resize 512x512 icon_512x512.png
+        # Log what is inside the .ico (frame sizes) to make failures debuggable
+        magick identify icon.ico
 
-        mkdir -p appicon.iconset
+        # Use the largest frame in the .ico instead of blindly taking frame 0
+        idx=$(magick identify -format "%w %s\n" icon.ico | sort -k1,1nr | head -1 | awk '{print $2}')
 
-        # Standard Apple iconset sizes (from 512 base, downscale)
-        magick icon_512x512.png -resize 16x16   appicon.iconset/icon_16x16.png
-        magick icon_512x512.png -resize 32x32   appicon.iconset/icon_16x16@2x.png
-        magick icon_512x512.png -resize 32x32   appicon.iconset/icon_32x32.png
-        magick icon_512x512.png -resize 64x64   appicon.iconset/icon_32x32@2x.png
-        magick icon_512x512.png -resize 128x128 appicon.iconset/icon_128x128.png
-        magick icon_512x512.png -resize 256x256 appicon.iconset/icon_128x128@2x.png
-        magick icon_512x512.png -resize 256x256 appicon.iconset/icon_256x256.png
-        magick icon_512x512.png -resize 512x512 appicon.iconset/icon_256x256@2x.png
-        magick icon_512x512.png -resize 512x512 appicon.iconset/icon_512x512.png
-        magick icon_512x512.png -resize 1024x1024 appicon.iconset/icon_512x512@2x.png
+        # Square 1024x1024 master: transparent padding, 8-bit RGBA, sRGB, 72 DPI
+        magick "icon.ico[$idx]" -background none -resize 1024x1024 \
+          -gravity center -extent 1024x1024 \
+          -colorspace sRGB -units PixelsPerInch -density 72 \
+          PNG32:icon_1024.png
 
-        iconutil -c icns appicon.iconset -o RimSharp.icns
+        build_with_magick() {
+          rm -rf appicon.iconset && mkdir appicon.iconset
+          mk() { # mk <pixels> <filename>
+            magick icon_1024.png -resize "${1}x${1}" -background none \
+              -gravity center -extent "${1}x${1}" \
+              -colorspace sRGB -units PixelsPerInch -density 72 \
+              "PNG32:appicon.iconset/$2"
+          }
+          mk 16   icon_16x16.png
+          mk 32   icon_16x16@2x.png
+          mk 32   icon_32x32.png
+          mk 64   icon_32x32@2x.png
+          mk 128  icon_128x128.png
+          mk 256  icon_128x128@2x.png
+          mk 256  icon_256x256.png
+          mk 512  icon_256x256@2x.png
+          mk 512  icon_512x512.png
+          mk 1024 icon_512x512@2x.png
+        }
+
+        build_with_sips() {
+          rm -rf appicon.iconset && mkdir appicon.iconset
+          for spec in \
+            16:icon_16x16.png      32:icon_16x16@2x.png \
+            32:icon_32x32.png      64:icon_32x32@2x.png \
+            128:icon_128x128.png   256:icon_128x128@2x.png \
+            256:icon_256x256.png   512:icon_256x256@2x.png \
+            512:icon_512x512.png   1024:icon_512x512@2x.png; do
+            sips -z "${spec%%:*}" "${spec%%:*}" icon_1024.png \
+              --out "appicon.iconset/${spec#*:}" >/dev/null
+          done
+        }
+
+        build_with_magick
+
+        # Diagnostics: exact dimensions, bit depth and color type of every file
+        file appicon.iconset/*.png
+        sips -g pixelWidth -g pixelHeight appicon.iconset/*.png
+
+        if ! iconutil -c icns appicon.iconset -o RimSharp.icns; then
+          echo "::warning::iconutil rejected the ImageMagick PNGs, retrying with sips"
+          build_with_sips
+          file appicon.iconset/*.png
+          iconutil -c icns appicon.iconset -o RimSharp.icns
+        fi
+
+        ls -l RimSharp.icns
 
     - name: Publish and Package
       shell: bash
