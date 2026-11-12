@@ -276,7 +276,7 @@ namespace RimSharp.Tests.Features.Saves
             vm.Details.ModsInSaveText.Should().Be("Mods in save: 2");
             vm.Details.HasUninstalledMods.Should().BeTrue();
             vm.Details.UninstalledModsText.Should().Be("Uninstalled: mod.gone");
-            vm.Details.DiffSummaryText.Should().Be("0 added, 1 removed");
+            vm.Details.DiffSummaryText.Should().Be("1 removed");
         }
 
         [AvaloniaFact]
@@ -298,15 +298,15 @@ namespace RimSharp.Tests.Features.Saves
 
             // The default list is the save's own: the active-but-not-saved mod
             // is not in it, and no row carries a status tag.
-            vm.Details.OtherMods.Should().HaveCount(3);
-            vm.Details.OtherMods.Select(row => row.PackageId)
+            vm.Details.ModRows.Should().HaveCount(3);
+            vm.Details.ModRows.Select(row => row.PackageId)
                 .Should().Equal("mod.alpha", "mod.beta", "mod.gone");
-            vm.Details.OtherMods.Should().OnlyContain(row => !row.HasStatus);
+            vm.Details.ModRows.Should().OnlyContain(row => !row.HasStatus);
             vm.Details.HasDiff.Should().BeTrue();
         }
 
         [AvaloniaFact]
-        public async Task TheDifferencesView_TagsTheSavesModsAndListsTheActiveOnes()
+        public async Task TheDifferencesView_ShowsTheCurrentListFirst_AndThenTheSaveOnlyMods()
         {
             SetModContext(
                 installed: new[] { "mod.alpha", "mod.beta", "mod.delta" },
@@ -324,21 +324,62 @@ namespace RimSharp.Tests.Features.Saves
 
             vm.Details.ShowDifferences = true;
 
-            // The differences view is the save's list tagged, plus the mods
-            // that are active now but not in the save.
-            vm.Details.OtherMods.Should().HaveCount(4);
-            vm.Details.OtherMods.Select(row => (row.PackageId, row.StatusText))
+            // The differences view is the current list in its current order,
+            // tagged, then the mods the save has but the list no longer does,
+            // in the order of the save.
+            vm.Details.ModRows.Should().HaveCount(4);
+            vm.Details.ModRows.Select(row => (row.PackageId, row.StatusText))
                 .Should().Equal(
                     ("mod.alpha", string.Empty),
+                    ("mod.delta", "Added"),
                     ("mod.beta", "Removed"),
-                    ("mod.gone", "Uninstalled"),
-                    ("mod.delta", "Added"));
+                    ("mod.gone", "Uninstalled"));
 
             // Back to the save's own list: the tags and the added mod leave.
             vm.Details.ShowDifferences = false;
-            vm.Details.OtherMods.Select(row => row.PackageId)
+            vm.Details.ModRows.Select(row => row.PackageId)
                 .Should().Equal("mod.alpha", "mod.beta", "mod.gone");
-            vm.Details.OtherMods.Should().OnlyContain(row => !row.HasStatus);
+            vm.Details.ModRows.Should().OnlyContain(row => !row.HasStatus);
+        }
+
+        [AvaloniaFact]
+        public async Task AReorderedSave_TagsTheMovedModsInTheDifferencesView()
+        {
+            SetModContext(
+                installed: new[] { "mod.alpha", "mod.beta", "mod.gamma", "mod.delta" },
+                active: new[] { "mod.delta", "mod.alpha", "mod.beta", "mod.gamma" });
+
+            var save = Entry("Order", DateTime.UtcNow);
+            SetHeader(save, "mod.alpha", "mod.beta", "mod.gamma", "mod.delta");
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { save });
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+
+            // The last mod moved to the front - the save differs, so the
+            // differences view is available.
+            vm.Details.HasDiff.Should().BeTrue();
+            vm.Details.DiffSummaryText.Should().Be("3 reordered");
+
+            vm.Details.ShowDifferences = true;
+
+            // The rows follow the current list; the moved mod and the two mods
+            // whose neighbours changed carry the Reordered tag.
+            vm.Details.ModRows.Select(row => (row.PackageId, row.StatusText))
+                .Should().Equal(
+                    ("mod.delta", "Reordered"),
+                    ("mod.alpha", "Reordered"),
+                    ("mod.beta", string.Empty),
+                    ("mod.gamma", "Reordered"));
+
+            // The default view stays the save's own order, untagged.
+            vm.Details.ShowDifferences = false;
+            vm.Details.ModRows.Select(row => row.PackageId)
+                .Should().Equal("mod.alpha", "mod.beta", "mod.gamma", "mod.delta");
+            vm.Details.ModRows.Should().OnlyContain(row => !row.HasStatus);
         }
 
         [AvaloniaFact]

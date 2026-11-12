@@ -972,7 +972,7 @@ namespace RimSharp.Tests.Services.ModManagement
         }
 
         [Fact]
-        public void Compare_SameMods_ReturnsCompatible()
+        public void Compare_SameModsInTheSameOrder_ReturnsCompatible()
         {
             // Arrange
             var service = CreateService();
@@ -981,11 +981,29 @@ namespace RimSharp.Tests.Services.ModManagement
 
             // Act
             var result = service.Compare(header,
-                new[] { "Test.Mod.Beta", "TEST.MOD.ALPHA" },
+                new[] { "Test.Mod.Alpha", "TEST.MOD.BETA" },
                 new[] { "test.mod.alpha", "test.mod.beta", "test.mod.gamma" });
 
             // Assert
             result.Should().Be(SaveCompat.Compatible);
+        }
+
+        [Fact]
+        public void Compare_SameModsInADifferentOrder_ReturnsChanged()
+        {
+            // Arrange
+            var service = CreateService();
+            var header = new SaveHeader("Colony", "C:\\saves\\Colony.rws", "1.7.4990",
+                new[] { "test.mod.alpha", "test.mod.beta" }, Array.Empty<string>(), Array.Empty<string>());
+
+            // The save records its mods in load order - the same mods in a
+            // different order are a different list.
+            var result = service.Compare(header,
+                new[] { "test.mod.beta", "test.mod.alpha" },
+                new[] { "test.mod.alpha", "test.mod.beta" });
+
+            // Assert
+            result.Should().Be(SaveCompat.Changed);
         }
 
         [Fact]
@@ -1031,11 +1049,46 @@ namespace RimSharp.Tests.Services.ModManagement
                 new[] { "test.mod.alpha", "test.mod.beta" }, Array.Empty<string>(), Array.Empty<string>());
 
             // Act
-            var (added, removed) = service.Diff(header, new[] { "test.mod.alpha", "test.mod.delta", "test.mod.gamma" });
+            var (added, removed, _) = service.Diff(header, new[] { "test.mod.alpha", "test.mod.delta", "test.mod.gamma" });
 
             // Assert
             added.Should().Equal("test.mod.delta", "test.mod.gamma");
             removed.Should().Equal("test.mod.beta");
+        }
+
+        [Fact]
+        public void Diff_ReturnsTheReorderedModsInTheOrderOfTheSave()
+        {
+            // Arrange
+            var service = CreateService();
+            var header = new SaveHeader("Colony", "C:\\saves\\Colony.rws", "1.7.4990",
+                new[] { "test.mod.alpha", "test.mod.beta", "test.mod.gamma", "test.mod.delta" },
+                Array.Empty<string>(), Array.Empty<string>());
+
+            // The last mod moved to the front. Judged by their neighbours among
+            // the shared mods: beta kept the mods around it, alpha lost the
+            // empty spot before it, gamma lost the delta behind it and delta
+            // moved next to nothing it knew.
+            var (_, _, reordered) = service.Diff(header,
+                new[] { "test.mod.delta", "test.mod.alpha", "test.mod.beta", "test.mod.gamma" });
+
+            // Assert
+            reordered.Should().Equal("test.mod.alpha", "test.mod.gamma", "test.mod.delta");
+        }
+
+        [Fact]
+        public void Diff_SameModsInTheSameOrder_ReturnsNoReorderedMods()
+        {
+            // Arrange
+            var service = CreateService();
+            var header = new SaveHeader("Colony", "C:\\saves\\Colony.rws", "1.7.4990",
+                new[] { "test.mod.alpha", "test.mod.beta" }, Array.Empty<string>(), Array.Empty<string>());
+
+            // Act
+            var (_, _, reordered) = service.Diff(header, new[] { "test.mod.alpha", "test.mod.beta" });
+
+            // Assert
+            reordered.Should().BeEmpty();
         }
 
         [Fact]
@@ -1047,7 +1100,7 @@ namespace RimSharp.Tests.Services.ModManagement
                 new[] { "Test.Mod.Alpha" }, Array.Empty<string>(), Array.Empty<string>());
 
             // Act
-            var (added, removed) = service.Diff(header, new[] { "test.mod.alpha" });
+            var (added, removed, _) = service.Diff(header, new[] { "test.mod.alpha" });
 
             // Assert
             added.Should().BeEmpty();

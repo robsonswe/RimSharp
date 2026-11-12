@@ -686,12 +686,14 @@
                                     <!--
                                         ===== Mods & compatibility =====
                                         Last, because a mod list can be very long. The default view is
-                                        the save's own list, exactly as it was recorded - bare, because
-                                        what each mod differs from is only interesting when looked for.
-                                        The "show differences" view tags the rows (Added, Removed,
-                                        Uninstalled) and lists the mods that are active now but not in
-                                        the save. The core game and the DLCs sit in the same list:
-                                        adding or removing a DLC makes the game warn just like a mod does.
+                                        the save's own list, exactly as it was recorded, in its load
+                                        order - bare, because what each mod differs from is only
+                                        interesting when looked for. The "show differences" view shows
+                                        the current list in its current order, tagged (Added, Reordered),
+                                        followed by the save-only mods (Removed, Uninstalled) in the
+                                        order of the save. Core game and DLCs are entries of the same
+                                        list: adding or removing a DLC makes the game warn just like a
+                                        mod does.
                                     -->
                                     <Border Classes="card">
                                         <Grid ColumnDefinitions="5,*">
@@ -747,20 +749,14 @@
                                                               IsChecked="{Binding Details.ShowDifferences, Mode=TwoWay}"/>
                                                 </Grid>
 
-                                                <StackPanel Spacing="2" IsVisible="{Binding Details.HasOfficialMods}">
-                                                    <TextBlock Classes="field-label" Text="RimWorld &amp; DLC" Margin="0,0,0,2"/>
-                                                    <ItemsControl ItemsSource="{Binding Details.OfficialMods}"
-                                                                  ItemTemplate="{StaticResource ModRowTemplate}"/>
-                                                </StackPanel>
-
-                                                <StackPanel Spacing="2" IsVisible="{Binding Details.HasOtherMods}">
+                                                <StackPanel Spacing="2" IsVisible="{Binding Details.HasModRows}">
                                                     <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,2">
                                                         <TextBlock Classes="field-label" VerticalAlignment="Center" Text="Mods"/>
                                                         <Border Classes="chip">
-                                                            <TextBlock Text="{Binding Details.OtherMods.Count}"/>
+                                                            <TextBlock Text="{Binding Details.ModRows.Count}"/>
                                                         </Border>
                                                     </StackPanel>
-                                                    <ItemsControl ItemsSource="{Binding Details.OtherMods}"
+                                                    <ItemsControl ItemsSource="{Binding Details.ModRows}"
                                                                   ItemTemplate="{StaticResource ModRowTemplate}"/>
                                                 </StackPanel>
                                             </StackPanel>

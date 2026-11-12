@@ -319,6 +319,7 @@ namespace RimSharp.Features.Saves.ViewModels
                         0,
                         Array.Empty<string>(),
                         Array.Empty<string>(),
+                        Array.Empty<string>(),
                         Array.Empty<string>());
 
                     // A file that vanished between the listing and the click is
@@ -365,6 +366,7 @@ namespace RimSharp.Features.Saves.ViewModels
                 Details.ApplyCompat(
                     SaveCompat.Unreadable,
                     0,
+                    Array.Empty<string>(),
                     Array.Empty<string>(),
                     Array.Empty<string>(),
                     Array.Empty<string>());
@@ -471,39 +473,39 @@ namespace RimSharp.Features.Saves.ViewModels
         {
             var (active, installed) = ResolveModContext();
 
-            var diff = _saveHeaderService.Diff(header, active);
-            IReadOnlyList<string>? added = diff.Added;
-            IReadOnlyList<string>? removed = diff.Removed;
+            var (added, removed, reordered) = _saveHeaderService.Diff(header, active);
             added ??= Array.Empty<string>();
             removed ??= Array.Empty<string>();
+            reordered ??= Array.Empty<string>();
 
             var installedIds = new HashSet<string>(installed, StringComparer.OrdinalIgnoreCase);
             var saveIds = header.ModIds ?? Array.Empty<string>();
             var missing = saveIds.Where(id => !installedIds.Contains(id)).ToList();
 
-            Details.ApplyCompat(compat, saveIds.Count, added, removed, missing);
-            (var modSaveList, var modDiffList) = BuildModEntries(header, active, installed, added);
+            Details.ApplyCompat(compat, saveIds.Count, added, removed, reordered, missing);
+            (var modSaveList, var modDiffList) = BuildModEntries(header, active, installed, reordered);
             Details.ApplyModEntries(modSaveList, modDiffList);
         }
 
         /// <summary>
-        /// Builds both views of the mod card from the save's entries: the save's
-        /// own list as it was recorded - shown by default, bare, without the
-        /// status tags - and the differences view: the same entries tagged
-        /// (added / removed / uninstalled) plus the mods that are active now but
-        /// not in the save. A save whose mod list is not known cannot be judged -
-        /// the added entries stay out of both lists.
+        /// Builds both views of the mod card - one list, in load order, core game
+        /// and DLCs included: the save's own list as it was recorded (the default
+        /// view, bare, without the status tags) and the differences view: the
+        /// current list in its current order, tagged, followed by the mods that
+        /// the save has but the current list no longer does. A save whose mod
+        /// list is not known cannot be judged - nothing is tagged then.
         /// </summary>
         private (IReadOnlyList<SaveModItemViewModel> SaveList,
             IReadOnlyList<SaveModItemViewModel> DiffList) BuildModEntries(
             SaveHeader header,
             IReadOnlyCollection<string> active,
             IReadOnlyCollection<string> installed,
-            IReadOnlyList<string> added)
+            IReadOnlyList<string> reordered)
         {
             bool canJudge = installed.Count > 0;
             var activeSet = new HashSet<string>(active, StringComparer.OrdinalIgnoreCase);
             var installedSet = new HashSet<string>(installed, StringComparer.OrdinalIgnoreCase);
+            var reorderedSet = new HashSet<string>(reordered, StringComparer.OrdinalIgnoreCase);
             var installedNames = ResolveInstalledNames();
 
             var ids = header.ModIds ?? Array.Empty<string>();
@@ -511,7 +513,12 @@ namespace RimSharp.Features.Saves.ViewModels
             var workshopIds = header.ModSteamIds ?? Array.Empty<string>();
 
             var saveList = new List<SaveModItemViewModel>(ids.Count);
-            var diffList = new List<SaveModItemViewModel>(ids.Count + added.Count);
+            var diffList = new List<SaveModItemViewModel>(ids.Count + active.Count);
+
+            // The facts the save recorded, by id - the differences view walks
+            // the current list and looks the save's facts up for shared mods.
+            var saveFacts = new Dictionary<string, (string Name, string? WorkshopId)>(
+                StringComparer.OrdinalIgnoreCase);
 
             for (int i = 0; i < ids.Count; i++)
             {
@@ -524,24 +531,65 @@ namespace RimSharp.Features.Saves.ViewModels
                     : (installedNames.TryGetValue(id, out var installedName) ? installedName : id);
 
                 string? workshopId = i < workshopIds.Count ? workshopIds[i] : null;
+                saveFacts[id] = (name, workshopId);
 
                 SaveModState state = !canJudge ? SaveModState.Unknown
+                    : reorderedSet.Contains(id) ? SaveModState.Reordered
                     : activeSet.Contains(id) ? SaveModState.Matches
                     : installedSet.Contains(id) ? SaveModState.Removed
                     : SaveModState.Uninstalled;
 
-                // The default view shows the save's own mods, untagged; the
-                // differences view tags them.
+                // The default view shows the save's own mods in the save's
+                // order, untagged; the differences view tags them.
                 saveList.Add(new SaveModItemViewModel(name, id, workshopId, state, showsStatus: false));
-                diffList.Add(new SaveModItemViewModel(name, id, workshopId, state));
+
+                if (!canJudge)
+                {
+                    // Nothing to compare against - the differences view is the
+                    // same rows, in the unknown state.
+                    diffList.Add(new SaveModItemViewModel(name, id, workshopId, SaveModState.Unknown));
+                }
             }
 
             if (canJudge)
             {
-                foreach (string id in added)
+                // The differences view opens with the current list, in its
+                // current load order: a mod not in the save is added, a shared
+                // one is reordered or matches.
+                foreach (string id in active)
                 {
-                    string name = installedNames.TryGetValue(id, out var installedName) ? installedName : id;
-                    diffList.Add(new SaveModItemViewModel(name, id, null, SaveModState.Added));
+                    if (string.IsNullOrWhiteSpace(id) || !activeSet.Contains(id))
+                    {
+                        continue;
+                    }
+
+                    if (!saveFacts.TryGetValue(id, out var facts))
+                    {
+                        string addedName = installedNames.TryGetValue(id, out var addedNameValue)
+                            ? addedNameValue : id;
+                        diffList.Add(new SaveModItemViewModel(addedName, id, null, SaveModState.Added));
+                        continue;
+                    }
+
+                    SaveModState state = reorderedSet.Contains(id)
+                        ? SaveModState.Reordered : SaveModState.Matches;
+                    diffList.Add(new SaveModItemViewModel(facts.Name, id, facts.WorkshopId, state));
+                }
+
+                // Then the mods the save has but the current list no longer
+                // does, in the order of the save.
+                for (int i = 0; i < ids.Count; i++)
+                {
+                    string id = ids[i];
+                    if (string.IsNullOrWhiteSpace(id) || activeSet.Contains(id))
+                    {
+                        continue;
+                    }
+
+                    var facts = saveFacts[id];
+                    SaveModState state = installedSet.Contains(id)
+                        ? SaveModState.Removed : SaveModState.Uninstalled;
+                    diffList.Add(new SaveModItemViewModel(facts.Name, id, facts.WorkshopId, state));
                 }
             }
 

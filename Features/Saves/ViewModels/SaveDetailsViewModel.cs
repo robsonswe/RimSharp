@@ -134,20 +134,15 @@ namespace RimSharp.Features.Saves.ViewModels
         public string CompatSummaryText => _compatSummaryText;
 
         /// <summary>
-        /// The core game and the official DLCs of the save (plus the ones that
-        /// are active now but not in the save). They are part of the same
-        /// comparison as the mods - adding or removing a DLC makes the game warn.
+        /// The mod list of the save - or the differences view - as one list in
+        /// load order. The core game and the official DLCs are entries like any
+        /// other: adding or removing a DLC makes the game warn just like a mod
+        /// does, and the order is the order the game loads them in.
         /// </summary>
-        public ObservableCollection<SaveModItemViewModel> OfficialMods { get; } = new();
-
-        /// <summary>The mods of the save (plus the ones that are active now but not in the save), in the save's order.</summary>
-        public ObservableCollection<SaveModItemViewModel> OtherMods { get; } = new();
-
-        /// <summary>True when there are official entries to list.</summary>
-        public bool HasOfficialMods => OfficialMods.Count > 0;
+        public ObservableCollection<SaveModItemViewModel> ModRows { get; } = new();
 
         /// <summary>True when there are mod entries to list.</summary>
-        public bool HasOtherMods => OtherMods.Count > 0;
+        public bool HasModRows => ModRows.Count > 0;
 
         #endregion
 
@@ -291,6 +286,7 @@ namespace RimSharp.Features.Saves.ViewModels
             int modsInSave,
             IReadOnlyList<string> added,
             IReadOnlyList<string> removed,
+            IReadOnlyList<string> reordered,
             IReadOnlyList<string> missing)
         {
             _compatBrushKey = compat switch
@@ -321,7 +317,7 @@ namespace RimSharp.Features.Saves.ViewModels
             _modsInSaveText = $"Mods in save: {modsInSave}";
 
             bool showDiff = compat is SaveCompat.Changed or SaveCompat.Uninstalled;
-            _diffSummaryText = showDiff ? $"{added.Count} added, {removed.Count} removed" : string.Empty;
+            _diffSummaryText = showDiff ? BuildDiffSummary(added.Count, removed.Count, reordered.Count) : string.Empty;
 
             _addedModsText = showDiff && added.Count > 0 ? $"Added: {string.Join(", ", added)}" : string.Empty;
             _removedModsText = showDiff && removed.Count > 0 ? $"Removed: {string.Join(", ", removed)}" : string.Empty;
@@ -342,6 +338,28 @@ namespace RimSharp.Features.Saves.ViewModels
             OnPropertyChanged(nameof(UninstalledModsText));
             OnPropertyChanged(nameof(HasUninstalledMods));
             OnPropertyChanged(nameof(CompatSummaryText));
+        }
+
+        /// <summary>"{N} added, {N} removed, {N} reordered" - only the counts that are not zero.</summary>
+        private static string BuildDiffSummary(int added, int removed, int reordered)
+        {
+            var parts = new List<string>(3);
+            if (added > 0)
+            {
+                parts.Add($"{added} added");
+            }
+
+            if (removed > 0)
+            {
+                parts.Add($"{removed} removed");
+            }
+
+            if (reordered > 0)
+            {
+                parts.Add($"{reordered} reordered");
+            }
+
+            return string.Join(", ", parts);
         }
 
         /// <summary>
@@ -375,27 +393,20 @@ namespace RimSharp.Features.Saves.ViewModels
             }
         }
 
-        /// <summary>Rebuilds the two lists from the entries of the active view, in the order of the save.</summary>
+        /// <summary>Fills the one mod list from the entries of the active view, in their order.</summary>
         private void RebuildModLists()
         {
             List<SaveModItemViewModel> source = _showDifferences ? _diffModEntries : _saveModEntries;
 
-            OfficialMods.Clear();
-            OtherMods.Clear();
+            ModRows.Clear();
 
-            // OrderBy is stable: the mods keep the order of the save.
-            foreach (var entry in source.Where(entry => entry.IsOfficial).OrderBy(entry => entry.OfficialRank))
+            // The source is built in load order - it is copied as it is.
+            foreach (var entry in source)
             {
-                OfficialMods.Add(entry);
+                ModRows.Add(entry);
             }
 
-            foreach (var entry in source.Where(entry => !entry.IsOfficial))
-            {
-                OtherMods.Add(entry);
-            }
-
-            OnPropertyChanged(nameof(HasOfficialMods));
-            OnPropertyChanged(nameof(HasOtherMods));
+            OnPropertyChanged(nameof(HasModRows));
         }
 
         /// <summary>Ends the read - the sections are shown from now on.</summary>
@@ -570,8 +581,7 @@ namespace RimSharp.Features.Saves.ViewModels
             _saveModEntries = new List<SaveModItemViewModel>();
             _diffModEntries = new List<SaveModItemViewModel>();
             _showDifferences = false;
-            OfficialMods.Clear();
-            OtherMods.Clear();
+            ModRows.Clear();
 
             ResetColonistNames();
         }
@@ -591,8 +601,7 @@ namespace RimSharp.Features.Saves.ViewModels
             OnPropertyChanged(nameof(GameVersionText));
             OnPropertyChanged(nameof(ActiveDlcText));
             OnPropertyChanged(nameof(CompatSummaryText));
-            OnPropertyChanged(nameof(HasOfficialMods));
-            OnPropertyChanged(nameof(HasOtherMods));
+            OnPropertyChanged(nameof(HasModRows));
         }
 
         private static string OrUnknown(string? value)

@@ -343,12 +343,19 @@ namespace RimSharp.Services.ModManagement
                 return SaveCompat.Changed;
             }
 
+            // The save records its mods in load order - a different order is a
+            // different list, even when the mods are exactly the same.
+            if (!AreSameOrder(header.ModIds, activeModIds))
+            {
+                return SaveCompat.Changed;
+            }
+
             return SaveCompat.Compatible;
         }
 
         /// <inheritdoc />
-        public (IReadOnlyList<string> Added, IReadOnlyList<string> Removed) Diff(SaveHeader header,
-            IReadOnlyCollection<string> activeModIds)
+        public (IReadOnlyList<string> Added, IReadOnlyList<string> Removed, IReadOnlyList<string> Reordered) Diff(
+            SaveHeader header, IReadOnlyCollection<string> activeModIds)
         {
             ArgumentNullException.ThrowIfNull(header);
 
@@ -363,8 +370,99 @@ namespace RimSharp.Services.ModManagement
                 .OrderBy(id => id, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(id => id, StringComparer.Ordinal)
                 .ToList();
+            var reordered = ComputeReorderedIds(header.ModIds, activeModIds);
 
-            return (added, removed);
+            return (added, removed, reordered);
+        }
+
+        /// <summary>
+        /// True when the two lists hold the same mods in the same order, compared
+        /// without regard to case - the way the game treats package ids.
+        /// </summary>
+        private static bool AreSameOrder(IReadOnlyList<string>? saveIds, IReadOnlyCollection<string>? activeIds)
+        {
+            int saveCount = saveIds?.Count ?? 0;
+            int activeCount = activeIds?.Count ?? 0;
+            if (saveCount != activeCount)
+            {
+                return false;
+            }
+
+            if (saveIds == null || activeIds == null)
+            {
+                return true;
+            }
+
+            var activeList = activeIds as IReadOnlyList<string> ?? activeIds.ToList();
+            for (int i = 0; i < saveIds.Count; i++)
+            {
+                if (!string.Equals(saveIds[i], activeList[i], StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// The mods whose load-order position differs between the save and the
+        /// active list, judged by their neighbours: a mod is reordered when the
+        /// mods around it - among the mods both lists share - are not the same.
+        /// Adding or removing a mod only marks the mods directly beside the
+        /// change, not every mod after it.
+        /// </summary>
+        private static IReadOnlyList<string> ComputeReorderedIds(
+            IReadOnlyList<string>? saveIds, IReadOnlyCollection<string>? activeIds)
+        {
+            if (saveIds == null || activeIds == null)
+            {
+                return Array.Empty<string>();
+            }
+
+            var activeSet = ToIdSet(activeIds);
+            var saveSet = ToIdSet(saveIds);
+
+            // Only the mods the two lists share have a comparable position; the
+            // rest is added or removed and has a state of its own.
+            var saveCommon = saveIds.Where(id => id != null && activeSet.Contains(id)).ToList();
+            var activeCommon = activeIds.Where(id => id != null && saveSet.Contains(id)).ToList();
+            if (saveCommon.Count != activeCommon.Count)
+            {
+                // The sets agree but the filtered lists do not - duplicate or
+                // case-mixed ids. Without a reliable pairing nothing is judged.
+                return Array.Empty<string>();
+            }
+
+            // The position of every shared mod in the active list.
+            var activeIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < activeCommon.Count; i++)
+            {
+                activeIndex.TryAdd(activeCommon[i], i);
+            }
+
+            var reordered = new List<string>();
+            for (int i = 0; i < saveCommon.Count; i++)
+            {
+                if (!activeIndex.TryGetValue(saveCommon[i], out int j))
+                {
+                    continue; // Unreachable when the counts agree - kept for safety.
+                }
+
+                string? savePrev = i > 0 ? saveCommon[i - 1] : null;
+                string? saveNext = i + 1 < saveCommon.Count ? saveCommon[i + 1] : null;
+                string? activePrev = j > 0 ? activeCommon[j - 1] : null;
+                string? activeNext = j + 1 < activeCommon.Count ? activeCommon[j + 1] : null;
+
+                bool sameBefore = string.Equals(savePrev, activePrev, StringComparison.OrdinalIgnoreCase);
+                bool sameAfter = string.Equals(saveNext, activeNext, StringComparison.OrdinalIgnoreCase);
+                if (!sameBefore || !sameAfter)
+                {
+                    reordered.Add(saveCommon[i]);
+                }
+            }
+
+            return reordered;
         }
 
         /// <summary>

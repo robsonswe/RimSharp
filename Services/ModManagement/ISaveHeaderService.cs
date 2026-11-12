@@ -61,7 +61,8 @@ namespace RimSharp.Services.ModManagement
         /// currently installed mod lists.
         /// A save without recorded mods is <see cref="SaveCompat.Unknown"/>;
         /// a save referencing mods that are not installed is <see cref="SaveCompat.Uninstalled"/>;
-        /// a save whose mod set differs from the active set is <see cref="SaveCompat.Changed"/>;
+        /// a save whose mod set differs from the active set, or whose load order
+        /// differs from the active order, is <see cref="SaveCompat.Changed"/>;
         /// otherwise the save is <see cref="SaveCompat.Compatible"/>.
         /// </summary>
         SaveCompat Compare(SaveHeader header,
@@ -71,10 +72,13 @@ namespace RimSharp.Services.ModManagement
         /// <summary>
         /// Lists the mods that are active now but were not in the save (added) and the
         /// mods that were in the save but are not active now (removed). Both lists are
-        /// sorted; the comparison ignores case.
+        /// sorted; the comparison ignores case. The third list holds the mods that are
+        /// in the save and active now but whose load-order position differs - a mod
+        /// is reordered when the mods around it, among the mods both lists share,
+        /// are not the same. It is returned in the order of the save's list.
         /// </summary>
-        (IReadOnlyList<string> Added, IReadOnlyList<string> Removed) Diff(SaveHeader header,
-            IReadOnlyCollection<string> activeModIds);
+        (IReadOnlyList<string> Added, IReadOnlyList<string> Removed, IReadOnlyList<string> Reordered) Diff(
+            SaveHeader header, IReadOnlyCollection<string> activeModIds);
 
         /// <summary>
         /// Formats the in-game date of a save the way the game does it: the
