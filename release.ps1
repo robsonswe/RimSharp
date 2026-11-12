@@ -168,7 +168,7 @@ function Build-GroupedNotes {
             $prNumber = [int]$matches[1]
             $branch = $matches[2]
         }
-        [pscustomobject]@{ Hash = $parts[0]; Subject = $parts[1]; PrNumber = $prNumber; Branch = $branch }
+        [pscustomobject]@{ Hash = $parts[0].Substring(0, [Math]::Min(8, $parts[0].Length)); Subject = $parts[1]; PrNumber = $prNumber; Branch = $branch }
     })
 
     $prMerges = @($mainline | Where-Object { $_.PrNumber -gt 0 })
@@ -183,12 +183,13 @@ function Build-GroupedNotes {
 
         # The PR's own commits: reachable from the branch tip (second parent)
         # but not from the mainline before the merge (first parent).
-        $branchRaw = & git log --no-merges --format='%s' "$($merge.Hash)^1..$($merge.Hash)^2" 2>$null
+        $branchRaw = & git log --no-merges --format='%h%x09%s' "$($merge.Hash)^1..$($merge.Hash)^2" 2>$null
         if (-not $branchRaw) { continue }
 
         $index = 0
         $commits = @($branchRaw | ForEach-Object {
-            [pscustomobject]@{ Subject = $_; Index = $index++ }
+            $parts = $_ -split "`t", 2
+            [pscustomobject]@{ Hash = $parts[0]; Subject = $parts[1]; Index = $index++ }
         })
 
         $title = $titles[$prNumber]
@@ -198,7 +199,7 @@ function Build-GroupedNotes {
             if ($merge.Branch) { $title += " ($($merge.Branch))" }
         }
 
-        $sections.Add("#### $title (#$prNumber)`n" + (($commits | ForEach-Object { "- $($_.Subject)" }) -join "`n"))
+        $sections.Add("#### $title (#$prNumber)`n" + (($commits | ForEach-Object { "- $($_.Hash) $($_.Subject)" }) -join "`n"))
     }
 
     # Commits that landed on main directly, without a PR: everything on the
@@ -207,7 +208,7 @@ function Build-GroupedNotes {
     $directCommits = @(
         for ($i = $mainline.Count - 1; $i -ge 0; $i--) {
             if ($mainline[$i].PrNumber -eq 0 -and $mainline[$i].Subject -notmatch '^Release: v') {
-                [pscustomobject]@{ Subject = $mainline[$i].Subject; Index = $mainline.Count - $i }
+                [pscustomobject]@{ Hash = $mainline[$i].Hash; Subject = $mainline[$i].Subject; Index = $mainline.Count - $i }
             }
         }
     )
@@ -219,7 +220,7 @@ function Build-GroupedNotes {
             if ($ofType.Count -eq 0) { continue }
 
             $label = $type
-            $bullets = ($ofType | Sort-Object Index | ForEach-Object { "- $(Get-CommitSubject $_.Subject)" }) -join "`n"
+            $bullets = ($ofType | Sort-Object Index | ForEach-Object { "- $($_.Hash) $(Get-CommitSubject $_.Subject)" }) -join "`n"
             $grouped.Add("*$label*`n$bullets")
         }
 
