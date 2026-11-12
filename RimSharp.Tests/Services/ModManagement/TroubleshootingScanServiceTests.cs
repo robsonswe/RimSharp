@@ -52,6 +52,7 @@ namespace RimSharp.Tests.Services.ModManagement
             Directory.CreateDirectory(Path.Combine(_gameInstance.WorkshopFolder, "..", "..", "..")); // steamapps
 
             _pathService.GetConfigPath().Returns(_gameInstance.ConfigFolder);
+            _pathService.GetSavesPath().Returns(Path.Combine(_gameInstance.ConfigFolder!, "Saves"));
             _pathService.GetGamePath().Returns(_gameInstance.GameFolder);
             _pathService.GetModsPath().Returns(_gameInstance.LocalFolder);
             _pathService.GetMajorGameVersion().Returns("1.5");

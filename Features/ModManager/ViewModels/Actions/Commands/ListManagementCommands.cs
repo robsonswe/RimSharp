@@ -53,6 +53,23 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 execute: ExecuteCheckReplacements,
                 canExecute: CanExecuteSimpleCommands, // Uses HasValidPaths
                 observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) }); // Already correctly observes both
+
+            // The saves dialog only reads - it never writes a save file.
+            SavesCommand = CreateAsyncCommand(
+                ExecuteShowSaves,
+                CanExecuteSimpleCommands,
+                observedProperties: new[] { nameof(IsParentLoading), nameof(HasValidPaths) });
+        }
+
+        /// <summary>
+        /// Opens the read-only saves dialog: the save files of the game and
+        /// what the current mod list means for them. The dialog gets the import
+        /// pipeline, so it can offer to apply a save's mod list to the active
+        /// one - the save itself is still only ever read.
+        /// </summary>
+        private async Task ExecuteShowSaves()
+        {
+            await RunOnUIThreadAsync(async () => await _dialogService.ShowSavesDialogAsync(_ioService));
         }
 
         private bool CanExecuteSaveMods()

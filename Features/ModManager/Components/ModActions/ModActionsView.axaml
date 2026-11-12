@@ -146,6 +146,8 @@
 
         <!-- Right: IO Actions -->
         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+            <Button Content="Saves" Command="{Binding SavesCommand}" Classes="btn" MinWidth="90"
+                    ToolTip.Tip="Look at the save files of this game - read only, nothing is changed"/>
             <Button Content="Import list" Command="{Binding ImportListCommand}" Classes="btn" MinWidth="90"/>
             <Button Content="Export list" Command="{Binding ExportListCommand}" Classes="btn" MinWidth="90"/>
 

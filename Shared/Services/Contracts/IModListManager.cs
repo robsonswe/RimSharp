@@ -43,7 +43,18 @@ namespace RimSharp.Shared.Services.Contracts
 
         IEnumerable<ModIssue> GetActiveModIssues();
 
-        void Initialize(IEnumerable<ModItem> allAvailableMods, IEnumerable<string> activeModPackageIds);
+        /// <summary>
+        /// Rebuilds the whole state from the available mods and the given
+        /// active package ids.
+        /// </summary>
+        /// <param name="activeListModified">
+        /// Whether the new active list is a change the user still has to save:
+        /// false when the list was read from ModsConfig.xml (the app starting
+        /// up), true when it came from somewhere else (an import). The flag is
+        /// what the ModManager uses to decide whether its Save button becomes
+        /// available - it is never guessed, the caller declares it.
+        /// </param>
+        void Initialize(IEnumerable<ModItem> allAvailableMods, IEnumerable<string> activeModPackageIds, bool activeListModified = false);
         void ActivateMod(ModItem mod);
         void ActivateModAt(ModItem mod, int index);
         void DeactivateMod(ModItem mod);

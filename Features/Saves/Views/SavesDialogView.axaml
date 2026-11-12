@@ -1,0 +1,808 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:i="https://github.com/projektanker/icons.avalonia"
+        xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+        xmlns:vm="clr-namespace:RimSharp.Features.Saves.ViewModels"
+        mc:Ignorable="d"
+        x:Class="RimSharp.Features.Saves.Views.SavesDialogView"
+        x:DataType="vm:SavesDialogViewModel"
+        Title="{Binding Title}"
+        Width="1000"
+        Height="700"
+        MinWidth="840"
+        MinHeight="520"
+        CanResize="True"
+        WindowStartupLocation="CenterOwner">
+
+    <dialogs:BaseDialog.MainContent>
+        <Border Classes="panel">
+
+            <!--
+                Two panes, one idea each:
+                  left  - pick a save (file facts only, newest first)
+                  right - what that save is. The header answers the first
+                          question ("will it work with my mods?") and gives
+                          the at-a-glance facts; the scrolling body holds
+                          the detail: mods, story, colonists.
+                The colonists arrive after everything else, so they sit last
+                and carry their own loading state.
+            -->
+            <Border.Resources>
+                <!-- A light wash over the parchment, for things set into a surface. -->
+                <SolidColorBrush x:Key="BrushInset" Color="#2EFFFFFF"/>
+                <!-- A rule that separates without shouting. -->
+                <SolidColorBrush x:Key="BrushHairline" Color="#558B7A64"/>
+
+                <!--
+                    One line of the mod list: name, package id, and a status tag
+                    only when the mod differs from the active ones. The tag column
+                    has a fixed width so the other columns line up row to row.
+                -->
+                <DataTemplate x:Key="ModRowTemplate" x:DataType="vm:SaveModItemViewModel">
+                    <Border BorderBrush="{DynamicResource BrushHairline}"
+                            BorderThickness="0,0,0,1"
+                            Padding="0,5"
+                            ToolTip.Tip="{Binding ToolTipText}">
+                        <Grid ColumnDefinitions="1.2*,*,86" ColumnSpacing="12">
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding Name}"
+                                       FontSize="12.5"
+                                       TextTrimming="CharacterEllipsis"
+                                       Foreground="{DynamicResource BrushTextStrong}"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding PackageId}"
+                                       FontSize="11"
+                                       FontFamily="{DynamicResource RimSharpMonoFontFamily}"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       Foreground="{DynamicResource BrushTextPrimary}"/>
+                            <StackPanel Grid.Column="2"
+                                        Orientation="Horizontal"
+                                        Spacing="6"
+                                        VerticalAlignment="Center"
+                                        IsVisible="{Binding HasStatus}">
+                                <Ellipse Width="7" Height="7"
+                                         VerticalAlignment="Center"
+                                         Fill="{Binding StatusBrushKey, Converter={StaticResource ResourceKeyToBrushConverter}}"/>
+                                <TextBlock Text="{Binding StatusText}"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource BrushTextStrong}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </Border.Resources>
+
+            <Border.Styles>
+                <Style Selector="Border.sheet">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgSurface}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="CornerRadius" Value="3"/>
+                </Style>
+
+                <!-- The one boxed section: mods & compatibility, accented by the verdict. -->
+                <Style Selector="Border.card">
+                    <Setter Property="Background" Value="{DynamicResource BrushInset}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderMuted}"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="CornerRadius" Value="4"/>
+                    <Setter Property="ClipToBounds" Value="True"/>
+                </Style>
+
+                <!-- One colonist, set into the section. -->
+                <Style Selector="Border.tile">
+                    <Setter Property="Width" Value="268"/>
+                    <Setter Property="Margin" Value="0,0,8,8"/>
+                    <Setter Property="Padding" Value="12,10"/>
+                    <Setter Property="CornerRadius" Value="4"/>
+                    <Setter Property="Background" Value="{DynamicResource BrushInset}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushHairline}"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                </Style>
+
+                <!-- Section header: icon, title, optional count, with a rule underneath. -->
+                <Style Selector="Border.section-head">
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushHairline}"/>
+                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                    <Setter Property="Padding" Value="0,0,0,6"/>
+                </Style>
+                <Style Selector="TextBlock.section-title">
+                    <Setter Property="FontSize" Value="14"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="VerticalAlignment" Value="Center"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+                </Style>
+
+                <Style Selector="Border.chip">
+                    <Setter Property="Padding" Value="6,1"/>
+                    <Setter Property="CornerRadius" Value="8"/>
+                    <Setter Property="Background" Value="{DynamicResource BrushStateNeutral}"/>
+                    <Setter Property="VerticalAlignment" Value="Center"/>
+                </Style>
+                <Style Selector="Border.chip TextBlock">
+                    <Setter Property="FontSize" Value="10.5"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextBrown950}"/>
+                </Style>
+
+                <!-- A label over its value; the unit of every facts grid. -->
+                <Style Selector="TextBlock.field-label">
+                    <Setter Property="FontSize" Value="11"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+                </Style>
+                <Style Selector="TextBlock.field-value">
+                    <Setter Property="FontSize" Value="12.5"/>
+                    <Setter Property="TextWrapping" Value="Wrap"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+                </Style>
+                <Style Selector="TextBlock.note">
+                    <Setter Property="FontSize" Value="12"/>
+                    <Setter Property="TextWrapping" Value="Wrap"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+                </Style>
+                <Style Selector="TextBlock.line, SelectableTextBlock.line">
+                    <Setter Property="FontSize" Value="11.5"/>
+                    <Setter Property="TextWrapping" Value="Wrap"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+                </Style>
+
+                <!-- The save list -->
+                <Style Selector="ListBox.rows">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Padding" Value="0"/>
+                </Style>
+                <Style Selector="ListBox.rows > ListBoxItem">
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="Margin" Value="0,0,0,5"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="Template">
+                        <ControlTemplate>
+                            <Border Name="Row"
+                                    Background="{DynamicResource BrushInset}"
+                                    BorderBrush="{DynamicResource BrushHairline}"
+                                    BorderThickness="1"
+                                    CornerRadius="3"
+                                    ClipToBounds="True"
+                                    Padding="{TemplateBinding Padding}">
+                                <Grid ColumnDefinitions="3,*">
+                                    <!-- The selection edge -->
+                                    <Border Name="Accent" Grid.Column="0" Background="Transparent"/>
+                                    <ContentPresenter Name="PART_ContentPresenter"
+                                                      Grid.Column="1"
+                                                      Content="{TemplateBinding Content}"
+                                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                                </Grid>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter>
+                </Style>
+                <Style Selector="ListBox.rows > ListBoxItem:pointerover /template/ Border#Row">
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderMuted}"/>
+                </Style>
+                <Style Selector="ListBox.rows > ListBoxItem:selected /template/ Border#Row">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderStrong}"/>
+                </Style>
+                <Style Selector="ListBox.rows > ListBoxItem:selected /template/ Border#Accent">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgAction}"/>
+                </Style>
+                <!-- Small icon-only button (refresh) -->
+                <Style Selector="Button.icon-btn">
+                    <Setter Property="Width" Value="28"/>
+                    <Setter Property="Height" Value="28"/>
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+                    <Setter Property="Template">
+                        <ControlTemplate>
+                            <Border Name="Bg" Background="{TemplateBinding Background}" CornerRadius="3">
+                                <ContentPresenter Name="PART_ContentPresenter"
+                                                  Content="{TemplateBinding Content}"
+                                                  HorizontalContentAlignment="Center"
+                                                  VerticalContentAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter>
+                </Style>
+                <Style Selector="Button.icon-btn:pointerover /template/ Border#Bg">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgPanel}"/>
+                </Style>
+                <Style Selector="Button.icon-btn:pressed /template/ Border#Bg">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+                </Style>
+                <Style Selector="Button.icon-btn:disabled">
+                    <Setter Property="Opacity" Value="0.45"/>
+                </Style>
+
+                <!-- Expander toggle -->
+                <Style Selector="ToggleButton.ghost">
+                    <Setter Property="Padding" Value="8,5"/>
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+                    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                    <Setter Property="Template">
+                        <ControlTemplate>
+                            <Border Name="Bg" Background="Transparent" CornerRadius="3">
+                                <ContentPresenter Name="PART_ContentPresenter"
+                                                  Content="{TemplateBinding Content}"
+                                                  Padding="{TemplateBinding Padding}"
+                                                  HorizontalContentAlignment="Left"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter>
+                </Style>
+                <!--
+                    Fluent paints the content presenter of a ToggleButton in every state
+                    (a dark fill and a white foreground once it is checked). The expander
+                    draws its own hover wash on Border#Bg, so the presenter stays clear.
+                -->
+                <Style Selector="ToggleButton.ghost /template/ ContentPresenter#PART_ContentPresenter,
+                                ToggleButton.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                                ToggleButton.ghost:pressed /template/ ContentPresenter#PART_ContentPresenter,
+                                ToggleButton.ghost:checked /template/ ContentPresenter#PART_ContentPresenter,
+                                ToggleButton.ghost:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                                ToggleButton.ghost:checked:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+                </Style>
+                <Style Selector="ToggleButton.ghost:pointerover /template/ Border#Bg">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgPanel}"/>
+                </Style>
+                <!-- The chevron turns to show the list is open. -->
+                <Style Selector="ToggleButton.ghost:checked i|Icon.chev">
+                    <Setter Property="RenderTransform" Value="rotate(90deg)"/>
+                </Style>
+
+                <Style Selector="Border.spin">
+                    <Style.Animations>
+                        <Animation Duration="0:0:1.2" IterationCount="Infinite">
+                            <KeyFrame Cue="0%">
+                                <Setter Property="RotateTransform.Angle" Value="0"/>
+                            </KeyFrame>
+                            <KeyFrame Cue="100%">
+                                <Setter Property="RotateTransform.Angle" Value="360"/>
+                            </KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+            </Border.Styles>
+
+            <Grid Margin="2" ColumnDefinitions="272,*" ColumnSpacing="10">
+
+                <!-- ===================== Left: pick a save ===================== -->
+                <Border Grid.Column="0" Classes="sheet" Padding="8">
+                    <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+
+                        <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8" Margin="4,0,0,0">
+                            <TextBlock Grid.Column="0"
+                                       Text="Saves"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource BrushTextStrong}"/>
+                            <Border Grid.Column="1" Classes="chip">
+                                <TextBlock Text="{Binding CountText}"/>
+                            </Border>
+                            <Button Grid.Column="3"
+                                    Classes="icon-btn"
+                                    Command="{Binding RefreshCommand}"
+                                    ToolTip.Tip="Look for new or changed save files">
+                                <i:Icon Value="fa-rotate-right" FontSize="13"/>
+                            </Button>
+                        </Grid>
+
+                        <Grid Grid.Row="1">
+                            <ListBox Classes="rows"
+                                     x:Name="SaveList"
+                                     IsVisible="{Binding !IsLoadingList}"
+                                     ItemsSource="{Binding VisibleSaves}"
+                                     SelectedItem="{Binding SelectedSave, Mode=TwoWay}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:SaveRowViewModel">
+                                        <!--
+                                            File facts only: the name, the size, and when
+                                            the file was last written. The compatibility
+                                            verdict belongs to the details of the selected save.
+                                        -->
+                                        <Grid Margin="10,8,10,8"
+                                              ColumnDefinitions="*,Auto"
+                                              RowDefinitions="Auto,Auto"
+                                              ColumnSpacing="8"
+                                              RowSpacing="2">
+                                            <TextBlock Grid.Row="0" Grid.Column="0"
+                                                       Text="{Binding Name}"
+                                                       FontWeight="SemiBold"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource BrushTextStrong}"/>
+                                            <TextBlock Grid.Row="0" Grid.Column="1"
+                                                       Text="{Binding SizeText}"
+                                                       FontSize="11"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource BrushTextPrimary}"/>
+                                            <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                                        Orientation="Horizontal"
+                                                        Spacing="5"
+                                                        ToolTip.Tip="Last modified">
+                                                <i:Icon Value="fa-clock"
+                                                        FontSize="10"
+                                                        VerticalAlignment="Center"
+                                                        Foreground="{DynamicResource BrushBgAccent}"/>
+                                                <TextBlock Text="{Binding ModifiedText}"
+                                                           FontSize="12"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Foreground="{DynamicResource BrushTextPrimary}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <ProgressBar IsIndeterminate="True"
+                                         IsVisible="{Binding IsLoadingList}"
+                                         Height="3"
+                                         Background="Transparent"
+                                         Foreground="{DynamicResource BrushBgAction}"
+                                         HorizontalAlignment="Stretch"
+                                         VerticalAlignment="Top"/>
+
+                            <TextBlock Text="Reading save folder…"
+                                       IsVisible="{Binding IsLoadingList}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource BrushTextPrimary}"/>
+
+                            <StackPanel IsVisible="{Binding ShowPlaceholder}"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        MaxWidth="230"
+                                        Spacing="8">
+                                <i:Icon Value="fa-file-lines"
+                                        FontSize="26"
+                                        HorizontalAlignment="Center"
+                                        Foreground="{DynamicResource BrushBgAccent}"/>
+                                <TextBlock Text="No saves found"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           HorizontalAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource BrushTextStrong}"/>
+                                <TextBlock Text="The save folder is empty. Saves appear here when RimWorld writes one."
+                                           FontSize="11.5"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center"
+                                           Foreground="{DynamicResource BrushTextPrimary}"/>
+                                <Button Content="Look again"
+                                        Command="{Binding RefreshCommand}"
+                                        Classes="btn"
+                                        HorizontalAlignment="Center"
+                                        Height="28" MinWidth="0" Padding="12,4"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- More than eight saves: the rest waits behind the expander. -->
+                        <ToggleButton Grid.Row="2"
+                                      Classes="ghost"
+                                      IsVisible="{Binding HasMoreSaves}"
+                                      IsChecked="{Binding IsExpanded, Mode=TwoWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <i:Icon Classes="chev" Value="fa-chevron-right" FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding MoreCountText}"
+                                           IsVisible="{Binding !IsExpanded}"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Text="Show fewer"
+                                           IsVisible="{Binding IsExpanded}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </ToggleButton>
+                    </Grid>
+                </Border>
+
+                <!-- ===================== Right: the selected save ===================== -->
+                <Border Grid.Column="1" Classes="sheet">
+                    <Grid RowDefinitions="Auto,*">
+
+                        <!--
+                            Header. It stays put while the body scrolls, so the
+                            verdict and the key facts are never scrolled away.
+                        -->
+                        <Border Grid.Row="0"
+                                IsVisible="{Binding Details.HasSelection}"
+                                Padding="16,14,16,12"
+                                BorderBrush="{DynamicResource BrushHairline}"
+                                BorderThickness="0,0,0,1">
+                            <StackPanel Spacing="12">
+                                <StackPanel Spacing="3">
+                                    <TextBlock Text="{Binding Details.SaveName}"
+                                               FontSize="18"
+                                               FontWeight="SemiBold"
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource BrushTextStrong}"/>
+                                    <SelectableTextBlock Text="{Binding Details.FilePath}"
+                                                         FontSize="11"
+                                                         TextTrimming="CharacterEllipsis"
+                                                         Foreground="{DynamicResource BrushTextPrimary}"
+                                                         ToolTip.Tip="{Binding Details.FilePath}"/>
+                                </StackPanel>
+
+                                <!-- At a glance: the two facts people check first. The DLCs are part of the mod list below. -->
+                                <Grid IsVisible="{Binding Details.ShowSections}"
+                                      ColumnDefinitions="*,Auto"
+                                      ColumnSpacing="32">
+                                    <StackPanel Grid.Column="0" Spacing="1">
+                                        <TextBlock Classes="field-label" Text="In-game date"/>
+                                        <TextBlock Classes="field-value" Text="{Binding Details.InGameDateText}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Spacing="1">
+                                        <TextBlock Classes="field-label" Text="Game version"/>
+                                        <TextBlock Classes="field-value" Text="{Binding Details.GameVersionText}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Body -->
+                        <Grid Grid.Row="1" Margin="16,0,6,0">
+
+                            <!-- Nothing selected -->
+                            <StackPanel IsVisible="{Binding Details.ShowHint}"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        MaxWidth="380"
+                                        Spacing="8">
+                                <i:Icon Value="fa-circle-info"
+                                        FontSize="24"
+                                        HorizontalAlignment="Center"
+                                        Foreground="{DynamicResource BrushBgAccent}"/>
+                                <TextBlock Text="Select a save to see its details."
+                                           FontSize="13"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center"
+                                           Foreground="{DynamicResource BrushTextPrimary}"/>
+                            </StackPanel>
+
+                            <!-- Reading the header of the selected save -->
+                            <StackPanel IsVisible="{Binding Details.IsLoading}"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Spacing="8">
+                                <Border Classes="spin" Width="26" Height="26" HorizontalAlignment="Center" Background="Transparent">
+                                    <i:Icon Value="fa-circle-notch"
+                                            FontSize="24"
+                                            Foreground="{DynamicResource BrushBgAction}"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Reading this save…"
+                                           FontSize="12.5"
+                                           HorizontalAlignment="Center"
+                                           Foreground="{DynamicResource BrushTextPrimary}"/>
+                            </StackPanel>
+
+                            <!-- The save could not be read -->
+                            <StackPanel IsVisible="{Binding Details.HasError}"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        MaxWidth="420"
+                                        Spacing="8">
+                                <i:Icon Value="fa-triangle-exclamation"
+                                        FontSize="26"
+                                        HorizontalAlignment="Center"
+                                        Foreground="{DynamicResource BrushStateDanger}"/>
+                                <TextBlock Text="{Binding Details.ErrorMessage}"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           HorizontalAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource BrushStateDanger}"/>
+                                <TextBlock Text="{Binding Details.ErrorReason}"
+                                           FontSize="12"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center"
+                                           Foreground="{DynamicResource BrushTextPrimary}"/>
+                                <Button Content="Try refreshing"
+                                        Command="{Binding RefreshCommand}"
+                                        Classes="btn"
+                                        HorizontalAlignment="Center"
+                                        Height="28" MinWidth="0" Padding="12,4"/>
+                            </StackPanel>
+
+                            <ScrollViewer IsVisible="{Binding Details.ShowSections}"
+                                          VerticalScrollBarVisibility="Auto">
+                                <StackPanel Spacing="18" Margin="0,12,10,12">
+
+                                    <!-- ===== Story ===== -->
+                                    <StackPanel Spacing="10">
+                                        <Border Classes="section-head">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <i:Icon Value="fa-book-open"
+                                                        FontSize="13"
+                                                        VerticalAlignment="Center"
+                                                        Foreground="{DynamicResource BrushBgAccent}"/>
+                                                <TextBlock Classes="section-title" Text="Story"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- How the game was set up, then the world it runs on. -->
+                                        <Grid ColumnDefinitions="*,*,*,*"
+                                              RowDefinitions="Auto,Auto"
+                                              ColumnSpacing="14"
+                                              RowSpacing="12">
+                                            <StackPanel Grid.Row="0" Grid.Column="0" Spacing="1">
+                                                <TextBlock Classes="field-label" Text="Scenario"/>
+                                                <TextBlock Classes="field-value" Text="{Binding Details.ScenarioText}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="0" Grid.Column="1" Spacing="1">
+                                                <TextBlock Classes="field-label" Text="Storyteller"/>
+                                                <TextBlock Classes="field-value" Text="{Binding Details.StorytellerText}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="0" Grid.Column="2" Spacing="1">
+                                                <TextBlock Classes="field-label" Text="Difficulty"/>
+                                                <TextBlock Classes="field-value" Text="{Binding Details.DifficultyText}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="0" Grid.Column="3" Spacing="1">
+                                                <TextBlock Classes="field-label" Text="Faction type"/>
+                                                <TextBlock Classes="field-value" Text="{Binding Details.FactionTypeText}"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Row="1" Grid.Column="0" Spacing="1">
+                                                <TextBlock Classes="field-label" Text="World name"/>
+                                                <TextBlock Classes="field-value" Text="{Binding Details.WorldNameText}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="1" Grid.Column="1" Spacing="1">
+                                                <TextBlock Classes="field-label" Text="World seed"/>
+                                                <TextBlock Classes="field-value" Text="{Binding Details.WorldSeedText}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Row="1" Grid.Column="2" Spacing="1">
+                                                <TextBlock Classes="field-label" Text="Planet mode"/>
+                                                <TextBlock Classes="field-value" Text="{Binding Details.PlanetModeText}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- The scenario's own words get the full width. -->
+                                        <StackPanel Spacing="1">
+                                            <TextBlock Classes="field-label" Text="Summary"/>
+                                            <TextBlock Classes="field-value" Text="{Binding Details.ScenarioSummaryText}"/>
+                                        </StackPanel>
+                                        <StackPanel Spacing="1">
+                                            <TextBlock Classes="field-label" Text="Description"/>
+                                            <TextBlock Classes="field-value" Text="{Binding Details.ScenarioDescriptionText}"/>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!--
+                                        ===== Colonists =====
+                                        The names live deep inside the save - they are read in
+                                        the background while the save is selected, so this
+                                        section fills in after everything above is already shown.
+                                    -->
+                                    <StackPanel Spacing="10">
+                                        <Border Classes="section-head">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <i:Icon Value="fa-users"
+                                                        FontSize="13"
+                                                        VerticalAlignment="Center"
+                                                        Foreground="{DynamicResource BrushBgAccent}"/>
+                                                <TextBlock Classes="section-title" Text="Colonists"/>
+                                                <Border Classes="chip" IsVisible="{Binding Details.HasColonistNames}">
+                                                    <TextBlock Text="{Binding Details.Colonists.Count}"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <StackPanel Orientation="Horizontal"
+                                                    Spacing="8"
+                                                    IsVisible="{Binding Details.IsLoadingColonistNames}">
+                                            <Border Classes="spin" Width="14" Height="14" Background="Transparent" VerticalAlignment="Center">
+                                                <i:Icon Value="fa-circle-notch"
+                                                        FontSize="13"
+                                                        Foreground="{DynamicResource BrushBgAction}"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"/>
+                                            </Border>
+                                            <TextBlock Classes="note"
+                                                       VerticalAlignment="Center"
+                                                       Text="Reading colonists…"/>
+                                        </StackPanel>
+
+                                        <TextBlock Classes="field-value"
+                                                   Text="{Binding Details.ColonistNamesUnknownText}"
+                                                   IsVisible="{Binding Details.ShowColonistNamesUnknown}"/>
+
+                                        <ItemsControl ItemsSource="{Binding Details.Colonists}"
+                                                      IsVisible="{Binding Details.HasColonistNames}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel Orientation="Horizontal"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:SaveColonistItemViewModel">
+                                                    <!--
+                                                        One colonist: the name, then the lines the
+                                                        save carries for that pawn. A line without
+                                                        data is left out.
+                                                    -->
+                                                    <Border Classes="tile">
+                                                        <StackPanel Spacing="4">
+                                                            <TextBlock Text="{Binding NameText}"
+                                                                       FontSize="13"
+                                                                       FontWeight="SemiBold"
+                                                                       TextWrapping="Wrap"
+                                                                       Foreground="{DynamicResource BrushTextStrong}"/>
+
+                                                            <!-- The short facts share one wrapping line. -->
+                                                            <WrapPanel Orientation="Horizontal">
+                                                                <TextBlock Classes="line"
+                                                                           Margin="0,0,12,0"
+                                                                           Text="{Binding GenderText}"
+                                                                           IsVisible="{Binding HasGender}"/>
+                                                                <TextBlock Classes="line"
+                                                                           Margin="0,0,12,0"
+                                                                           Text="{Binding XenotypeText}"
+                                                                           IsVisible="{Binding HasXenotype}"
+                                                                           ToolTip.Tip="Xenotype def name as recorded; Baseliner is the plain-human default — the line only appears in saves that record xenotypes (Biotech-era saves)."/>
+                                                                <TextBlock Classes="line"
+                                                                           Margin="0,0,12,0"
+                                                                           Text="{Binding AgeText}"
+                                                                           IsVisible="{Binding HasAge}"
+                                                                           ToolTip.Tip="Age in years — biological (body) and chronological (time existed, can exceed biological via cryptosleep/ancient romps), computed from the ticks the save records."/>
+                                                            </WrapPanel>
+
+                                                            <TextBlock Classes="line"
+                                                                       Text="{Binding TraitsText}"
+                                                                       IsVisible="{Binding HasTraits}"
+                                                                       ToolTip.Tip="Traits as the save records them (def names), vanilla-filtered."/>
+                                                            <TextBlock Classes="line"
+                                                                       Text="{Binding SkillsText}"
+                                                                       IsVisible="{Binding HasSkills}"
+                                                                       ToolTip.Tip="Skills as the save records them (def names and levels). A passion is marked with + (minor) or ++ (major)."/>
+                                                            <TextBlock Classes="line"
+                                                                       Text="{Binding ConditionsText}"
+                                                                       IsVisible="{Binding HasConditions}"
+                                                                       ToolTip.Tip="Conditions as recorded (def names); severity units differ between injuries (points) and other conditions (percent)."/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <TextBlock Classes="note"
+                                                   Text="{Binding Details.ColonistNamesNote}"
+                                                   IsVisible="{Binding Details.HasColonistNamesNote}"/>
+                                    </StackPanel>
+
+                                    <!--
+                                        ===== Mods & compatibility =====
+                                        Last, because a mod list can be very long. The default view is
+                                        the save's own list, exactly as it was recorded, in its load
+                                        order - bare, because what each mod differs from is only
+                                        interesting when looked for. The "show differences" view shows
+                                        the current list in its current order, tagged (Added, Reordered),
+                                        followed by the save-only mods (Removed, Uninstalled) in the
+                                        order of the save. Core game and DLCs are entries of the same
+                                        list: adding or removing a DLC makes the game warn just like a
+                                        mod does.
+                                    -->
+                                    <Border Classes="card">
+                                        <Grid ColumnDefinitions="5,*">
+                                            <!-- The edge carries the verdict colour. -->
+                                            <Border Grid.Column="0"
+                                                    Background="{Binding Details.CompatBrushKey, Converter={StaticResource ResourceKeyToBrushConverter}}"/>
+
+                                            <StackPanel Grid.Column="1" Margin="14,12,14,14" Spacing="12">
+                                                <StackPanel Spacing="4">
+                                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                                        <i:Icon Value="fa-puzzle-piece"
+                                                                FontSize="13"
+                                                                VerticalAlignment="Center"
+                                                                Foreground="{DynamicResource BrushBgAccent}"/>
+                                                        <TextBlock Classes="section-title" Text="Mods &amp; compatibility"/>
+                                                    </StackPanel>
+                                                    <WrapPanel Orientation="Horizontal">
+                                                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,14,0">
+                                                            <Ellipse Width="9" Height="9"
+                                                                     VerticalAlignment="Center"
+                                                                     Fill="{Binding Details.CompatBrushKey, Converter={StaticResource ResourceKeyToBrushConverter}}"/>
+                                                            <TextBlock Classes="field-value"
+                                                                       VerticalAlignment="Center"
+                                                                       Text="{Binding Details.CompatSummaryText}"/>
+                                                        </StackPanel>
+                                                        <TextBlock Classes="field-value"
+                                                                   FontWeight="SemiBold"
+                                                                   VerticalAlignment="Center"
+                                                                   Text="{Binding Details.DiffSummaryText}"
+                                                                   IsVisible="{Binding Details.HasDiff}"/>
+                                                    </WrapPanel>
+                                                </StackPanel>
+
+                                                <Border Height="1" Background="{DynamicResource BrushHairline}"/>
+
+                                                <TextBlock Classes="note"
+                                                           Text="{Binding Details.CompatNote}"
+                                                           IsVisible="{Binding Details.HasCompatNote}"/>
+
+                                                <!-- Only where there is something to compare: the save's
+                                                     list becomes the differences view for as long as it
+                                                     is checked. The import sits next to it, because it
+                                                     exists for the same reason - the two lists differ. -->
+                                                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
+                                                    <TextBlock Grid.Column="0"
+                                                               Classes="field-value"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding Details.ModsInSaveText}"/>
+                                                    <CheckBox Grid.Column="1"
+                                                              Content="Show differences"
+                                                              FontSize="12"
+                                                              Foreground="{DynamicResource BrushTextStrong}"
+                                                              IsVisible="{Binding Details.HasDiff}"
+                                                              IsChecked="{Binding Details.ShowDifferences, Mode=TwoWay}"/>
+                                                    <Button Grid.Column="2"
+                                                            Content="Import list"
+                                                            Command="{Binding ImportListCommand}"
+                                                            Classes="btn"
+                                                            Height="28"
+                                                            MinWidth="0"
+                                                            Padding="12,4"
+                                                            IsVisible="{Binding CanImportSaveList}"
+                                                            ToolTip.Tip="Apply this save's mod list to your active mod list - the save's mods, in the save's load order.&#xa;Only offered while the two lists differ. Mods the save uses that are not installed are offered for download.&#xa;The save file itself is only read, never written."/>
+                                                </Grid>
+
+                                                <!-- Why the button is there - and why it is not, once the lists match. -->
+                                                <TextBlock Classes="note"
+                                                           IsVisible="{Binding CanImportSaveList}"
+                                                           Text="Your active mod list differs from this save's. Import list replaces your active list with this save's, in the save's load order - the save itself is only read."/>
+
+                                                <StackPanel Spacing="2" IsVisible="{Binding Details.HasModRows}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,2">
+                                                        <TextBlock Classes="field-label" VerticalAlignment="Center" Text="Mods"/>
+                                                        <Border Classes="chip">
+                                                            <TextBlock Text="{Binding Details.ModRows.Count}"/>
+                                                        </Border>
+                                                    </StackPanel>
+                                                    <ItemsControl ItemsSource="{Binding Details.ModRows}"
+                                                                  ItemTemplate="{StaticResource ModRowTemplate}"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+    </dialogs:BaseDialog.MainContent>
+
+    <!-- Footer: what the dialog last did, and the one way out. -->
+    <dialogs:BaseDialog.ButtonContent>
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+            <TextBlock Grid.Column="0"
+                       Text="{Binding StatusMessage}"
+                       FontSize="12"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       Foreground="{DynamicResource BrushTextPrimary}"
+                       ToolTip.Tip="{Binding StatusMessage}"/>
+            <Button Grid.Column="1"
+                    Content="Close"
+                    Command="{Binding CloseCommand}"
+                    Classes="btn"
+                    MinWidth="100"
+                    Height="32"/>
+        </Grid>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

@@ -267,6 +267,21 @@ public string GetConfigPath()
             return _cachedConfigPath;
         }
 
+        /// <summary>
+        /// Resolves the saves folder of the game: the "Saves" SIBLING folder of
+        /// the config folder ("...\RimWorld by Ludeon Studios\Saves" beside
+        /// "...\Config"). Single writer rule: every reader of the saves folder
+        /// goes through this method, never through a direct Path.Combine.
+        /// </summary>
+        public string GetSavesPath()
+        {
+            string configPath = GetConfigPath();
+            string configRoot = Path.GetDirectoryName(configPath) ?? string.Empty;
+            return string.IsNullOrEmpty(configRoot)
+                ? string.Empty
+                : Path.Combine(configRoot, "Saves");
+        }
+
         public string GetGameVersion()
         {
             // Game version depends on Game Path

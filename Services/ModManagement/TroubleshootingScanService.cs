@@ -1104,7 +1104,7 @@ namespace RimSharp.Services.ModManagement
             }
 
             const long WarningThreshold = 500 * 1024 * 1024; // 500 MB
-            var savesPath = Path.Combine(configPath, "Saves");
+            var savesPath = _pathService.GetSavesPath();
 
             if (!Directory.Exists(savesPath))
             {

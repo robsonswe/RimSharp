@@ -47,7 +47,20 @@ namespace RimSharp.Features.ModManager.Services.Management
 
         public IEnumerable<ModIssue> GetActiveModIssues() => _activeModIssues;
 
-        public void Initialize(IEnumerable<ModItem> allAvailableMods, IEnumerable<string> activeModPackageIds)
+        /// <summary>
+        /// Rebuilds the whole state from the available mods and the given
+        /// active package ids. Core is force-included at the top of the active
+        /// list when the caller dropped it.
+        /// </summary>
+        /// <param name="activeListModified">
+        /// Whether the new active list is a change the user still has to save.
+        /// The app's own start reads the list from ModsConfig.xml and passes
+        /// false; an import passes true, because the list it applies is not
+        /// what is on disk. The flag is forwarded to <see cref="ListChanged"/>
+        /// so the ModManager can flag the unsaved change.
+        /// </param>
+        public void Initialize(IEnumerable<ModItem> allAvailableMods, IEnumerable<string> activeModPackageIds,
+            bool activeListModified = false)
         {
             if (allAvailableMods == null) throw new ArgumentNullException(nameof(allAvailableMods));
 
@@ -105,7 +118,7 @@ namespace RimSharp.Features.ModManager.Services.Management
             _orderService.Initialize(initialActiveModsForOrder);
             RecalculateActiveModIssues();
 
-            RaiseListChanged(false); 
+            RaiseListChanged(activeListModified);
             Debug.WriteLine($"ModListManager Initialized: {_orderService.VirtualActiveMods.Count} active, {_stateTracker.AllInactiveMods.Count} inactive.");
         }
 

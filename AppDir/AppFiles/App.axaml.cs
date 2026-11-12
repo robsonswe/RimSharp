@@ -253,6 +253,8 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IModConfigurationService>(),
                     provider.GetRequiredService<ISteamSubscriptionService>(),
                     provider.GetRequiredService<ITroubleshootingScanService>(),
+                    provider.GetRequiredService<ISaveHeaderService>(),
+                    provider.GetRequiredService<IModListManager>(),
                     provider.GetRequiredService<GameInstance>()
                 ));
             services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
@@ -413,6 +415,12 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<ILoggerService>(),
                     provider.GetRequiredService<IPathService>(),
                     provider.GetRequiredService<ISteamSubscriptionService>()));
+
+            // Save management services (read-only)
+            services.AddSingleton<ISaveHeaderService>(provider =>
+                new SaveHeaderService(
+                    provider.GetRequiredService<IPathService>(),
+                    provider.GetRequiredService<ILoggerService>()));
 
             services.AddSingleton<IModListIOService>(provider =>
             {

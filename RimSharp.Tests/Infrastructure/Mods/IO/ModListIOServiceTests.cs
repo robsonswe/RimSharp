@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using FluentAssertions;
 using NSubstitute;
+using RimSharp.AppDir.Dialogs;
 using RimSharp.Infrastructure.Mods.IO;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
@@ -109,7 +110,95 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
 
             await service.ImportModListAsync();
 
-            _mockModListManager.Received(1).Initialize(Arg.Any<IEnumerable<ModItem>>(), Arg.Is<IEnumerable<string>>(en => en.Contains("m1")));
+            _mockModListManager.Received(1).Initialize(
+                Arg.Any<IEnumerable<ModItem>>(),
+                Arg.Is<IEnumerable<string>>(en => en.Contains("m1")),
+                Arg.Any<bool>());
+        }
+
+        [Fact]
+        public async Task ImportModListAsync_WithAKnownList_AppliesItWithoutAFileDialog()
+        {
+            var service = CreateService();
+
+            var availableMods = new List<ModItem> { new ModItem { PackageId = "m1" }, new ModItem { PackageId = "m2" } };
+            _mockModListManager.GetAllMods().Returns(availableMods);
+
+            await service.ImportModListAsync(new List<string> { "m1", "m3" }, "Colony");
+
+            // No picker: the list is already known.
+            await _mockDialogService.DidNotReceive().ShowOpenFileDialogAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+
+            // The installed mods are applied, in the order they were given.
+            _mockModListManager.Received(1).Initialize(
+                Arg.Any<IEnumerable<ModItem>>(),
+                Arg.Is<IEnumerable<string>>(ids => ids.SequenceEqual(new[] { "m1" })),
+                // The list came from outside the app - it is a change the user
+                // still has to save.
+                Arg.Is<bool>(activeListModified => activeListModified));
+
+            // The mod that is not installed is offered for download, not
+            // dropped silently - the same offer the file import makes.
+            await _mockDialogService.Received(1).ShowConfirmationAsync(
+                Arg.Is<string>(title => title.Contains("Import Partially Successful")),
+                Arg.Is<string>(message => message.Contains("m3")),
+                Arg.Any<bool>());
+        }
+
+        [Fact]
+        public async Task ImportModListAsync_WithAKnownList_ReportsTheSuccess_WhenNothingIsMissing()
+        {
+            var service = CreateService();
+
+            var availableMods = new List<ModItem> { new ModItem { PackageId = "m1" } };
+            _mockModListManager.GetAllMods().Returns(availableMods);
+
+            await service.ImportModListAsync(new List<string> { "m1" }, "Colony");
+
+            await _mockDialogService.Received(1).ShowInformation(
+                Arg.Is<string>(title => title.Contains("Import Successful")),
+                Arg.Is<string>(message => message.Contains("Colony") && message.Contains("1 active mods")));
+
+            // Nothing is missing, so nothing is offered for download.
+            await _mockDialogService.DidNotReceive().ShowConfirmationAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>());
+        }
+
+        [Fact]
+        public async Task ImportModListAsync_WithMissingMods_ReportsWhatStayedOut_WhenTheDownloadIsDeclined()
+        {
+            var service = CreateService();
+
+            var availableMods = new List<ModItem> { new ModItem { PackageId = "m1" } };
+            _mockModListManager.GetAllMods().Returns(availableMods);
+            _mockDialogService.ShowConfirmationAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>())
+                .Returns(MessageDialogResult.Cancel);
+
+            await service.ImportModListAsync(new List<string> { "m1", "m3" }, "Colony");
+
+            // The decline must not be dressed up as a success: the applied
+            // list is incomplete and the message says exactly by how much.
+            await _mockDialogService.Received(1).ShowInformation(
+                Arg.Is<string>(title => title.Contains("Imported with missing mods")),
+                Arg.Is<string>(message => message.Contains("1 of the 2 mods of Colony") && message.Contains("stay inactive")));
+
+            // No false success on top of it.
+            await _mockDialogService.DidNotReceive().ShowInformation(
+                Arg.Is<string>(title => title.Contains("Import Successful")),
+                Arg.Any<string>());
+        }
+
+        [Fact]
+        public async Task ImportModListAsync_WithAnEmptyList_DoesNothing()
+        {
+            var service = CreateService();
+
+            await service.ImportModListAsync(Array.Empty<string>(), "Colony");
+
+            _mockModListManager.DidNotReceive().Initialize(
+                Arg.Any<IEnumerable<ModItem>>(), Arg.Any<IEnumerable<string>>(), Arg.Any<bool>());
+            await _mockDialogService.DidNotReceive().ShowInformation(Arg.Any<string>(), Arg.Any<string>());
         }
     }
 }

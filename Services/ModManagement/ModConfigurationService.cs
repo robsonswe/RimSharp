@@ -655,7 +655,7 @@ namespace RimSharp.Services.ModManagement
                     return ModConfigurationResult.Fail("Config folder not found");
                 }
 
-                var savesPath = Path.Combine(configPath, "Saves");
+                var savesPath = _pathService.GetSavesPath();
                 if (!Directory.Exists(savesPath))
                 {
                     return ModConfigurationResult.Ok("Saves folder not found", 0, new Dictionary<string, object> { ["sizeBytes"] = 0L, ["sizeMB"] = 0, ["fileCount"] = 0 });

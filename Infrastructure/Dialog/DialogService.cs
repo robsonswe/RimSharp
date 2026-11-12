@@ -30,6 +30,8 @@ using RimSharp.Features.Troubleshooting.ViewModels;
 using RimSharp.Features.Troubleshooting.Views;
 using RimSharp.Features.AppLogs.ViewModels;
 using RimSharp.Features.AppLogs.Views;
+using RimSharp.Features.Saves.ViewModels;
+using RimSharp.Features.Saves.Views;
 using Avalonia.Platform.Storage;
 
 namespace RimSharp.Infrastructure.Dialog
@@ -48,6 +50,8 @@ namespace RimSharp.Infrastructure.Dialog
         private readonly IModConfigurationService? _modConfigurationService;
         private readonly ISteamSubscriptionService? _steamSubscriptionService;
         private readonly ITroubleshootingScanService? _troubleshootingScanService;
+        private readonly ISaveHeaderService? _saveHeaderService;
+        private readonly IModListManager? _modListManager;
         private readonly Shared.Models.GameInstance? _gameInstance;
         private int _openDialogCount;
         public bool IsAnyDialogOpen => _openDialogCount > 0;
@@ -67,6 +71,8 @@ namespace RimSharp.Infrastructure.Dialog
             IModConfigurationService? modConfigurationService = null,
             ISteamSubscriptionService? steamSubscriptionService = null,
             ITroubleshootingScanService? troubleshootingScanService = null,
+            ISaveHeaderService? saveHeaderService = null,
+            IModListManager? modListManager = null,
             Shared.Models.GameInstance? gameInstance = null)
         {
             _appUpdaterService = appUpdaterService;
@@ -81,6 +87,8 @@ namespace RimSharp.Infrastructure.Dialog
             _modConfigurationService = modConfigurationService;
             _steamSubscriptionService = steamSubscriptionService;
             _troubleshootingScanService = troubleshootingScanService;
+            _saveHeaderService = saveHeaderService;
+            _modListManager = modListManager;
             _gameInstance = gameInstance;
         }
 
@@ -261,6 +269,20 @@ namespace RimSharp.Infrastructure.Dialog
             var viewModel = new AppLogsViewModel(_configService, fileDialogService: _fileDialogService);
             await viewModel.RefreshAsync();
             var dialog = new AppLogsView(viewModel);
+            return await ShowDialogInternalAsync<bool>(viewModel, dialog);
+        }
+
+        /// <summary>
+        /// Modals the read-only saves dialog: the save files of the game and
+        /// what the current mod list means for them. Nothing is ever written.
+        /// </summary>
+        public async Task<bool> ShowSavesDialogAsync(IModListIOService? modListIOService = null)
+        {
+            if (_saveHeaderService == null) return false;
+
+            var viewModel = new SavesDialogViewModel(_saveHeaderService, _modListManager, modListIOService, this);
+            await viewModel.RefreshAsync();
+            var dialog = new SavesDialogView(viewModel);
             return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }
 
