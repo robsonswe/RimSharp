@@ -580,7 +580,12 @@ namespace RimSharp.Features.Saves.ViewModels
             _compatSummaryText = string.Empty;
             _saveModEntries = new List<SaveModItemViewModel>();
             _diffModEntries = new List<SaveModItemViewModel>();
-            _showDifferences = false;
+
+            // Through the property, never through the field: the checkbox on
+            // the dialog keeps the user's click until it hears the change, and
+            // a silent field write would leave it checked over the next save.
+            ShowDifferences = false;
+
             ModRows.Clear();
 
             ResetColonistNames();

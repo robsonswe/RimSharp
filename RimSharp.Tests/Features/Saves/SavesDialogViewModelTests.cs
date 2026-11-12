@@ -401,6 +401,41 @@ namespace RimSharp.Tests.Features.Saves
         }
 
         [AvaloniaFact]
+        public async Task SelectingAnotherSave_RaisesTheDifferencesToggle_WhenItWasLeftChecked()
+        {
+            // The checkbox keeps the user's click until it hears a change - a
+            // silent field reset would leave it checked over the next save.
+            SetModContext(installed: new[] { "mod.alpha" }, active: new[] { "mod.alpha" });
+
+            var differing = Entry("Diff", DateTime.UtcNow);
+            SetHeader(differing, "mod.alpha", "mod.gone");
+            var other = Entry("Other", DateTime.UtcNow.AddMinutes(1));
+            SetHeader(other, "mod.alpha", "mod.beta");
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { other, differing });
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+
+            vm.SelectedSave = vm.Saves.First(row => row.Name == "Diff");
+            await (vm.LoadTask ?? Task.CompletedTask);
+            vm.Details.ShowDifferences = true;
+
+            var raised = new List<string?>();
+            vm.Details.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+            vm.SelectedSave = vm.Saves.First(row => row.Name == "Other");
+            await (vm.LoadTask ?? Task.CompletedTask);
+
+            // The toggle is off - and the checkbox heard it.
+            vm.Details.ShowDifferences.Should().BeFalse();
+            raised.Should().Contain(nameof(SaveDetailsViewModel.ShowDifferences));
+            vm.Details.ModRows.Should().OnlyContain(row => !row.HasStatus);
+        }
+
+        [AvaloniaFact]
         public async Task ASelectionWithAnUnreadableHeader_ShowsTheUnreadableState()
         {
             SetModContext(installed: new[] { "mod.alpha" }, active: new[] { "mod.alpha" });
