@@ -380,33 +380,35 @@ jobs:
           # Icon
           cp RimSharp.icns "./bundle-$rid/RimSharp.app/Contents/Resources/RimSharp.icns"
 
-          # Info.plist (unquoted heredoc so $version expands)
+          # Info.plist (unquoted heredoc so $version expands).
+          # NOTE: heredoc body and EOF must sit at the run block's base indent (8 spaces),
+          # so that after YAML strips it they start at column 0 for bash.
           cat > "./bundle-$rid/RimSharp.app/Contents/Info.plist" <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>CFBundleName</key>
-              <string>RimSharp</string>
-              <key>CFBundlePackageType</key>
-              <string>APPL</string>
-              <key>CFBundleExecutable</key>
-              <string>RimSharp</string>
-              <key>CFBundleIdentifier</key>
-              <string>io.github.robsonswe.RimSharp</string>
-              <key>CFBundleShortVersionString</key>
-              <string>$version</string>
-              <key>CFBundleVersion</key>
-              <string>$version</string>
-              <key>CFBundleIconFile</key>
-              <string>RimSharp.icns</string>
-              <key>LSMinimumSystemVersion</key>
-              <string>11.0</string>
-              <key>NSHighResolutionCapable</key>
-              <true/>
-          </dict>
-          </plist>
-          EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleName</key>
+            <string>RimSharp</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleExecutable</key>
+            <string>RimSharp</string>
+            <key>CFBundleIdentifier</key>
+            <string>io.github.robsonswe.RimSharp</string>
+            <key>CFBundleShortVersionString</key>
+            <string>$version</string>
+            <key>CFBundleVersion</key>
+            <string>$version</string>
+            <key>CFBundleIconFile</key>
+            <string>RimSharp.icns</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>11.0</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+        </dict>
+        </plist>
+        EOF
 
           # Ad-hoc sign (keeps quarantine-time "damaged" reports away)
           codesign --force --deep -s - "./bundle-$rid/RimSharp.app"
