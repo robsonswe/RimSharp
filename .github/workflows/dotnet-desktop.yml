@@ -298,6 +298,7 @@ jobs:
         magick icon_512x512.png -resize 256x256 appicon.iconset/icon_256x256.png
         magick icon_512x512.png -resize 512x512 appicon.iconset/icon_256x256@2x.png
         magick icon_512x512.png -resize 512x512 appicon.iconset/icon_512x512.png
+        magick icon_512x512.png -resize 1024x1024 appicon.iconset/icon_512x512@2x.png
 
         iconutil -c icns appicon.iconset -o RimSharp.icns
 
