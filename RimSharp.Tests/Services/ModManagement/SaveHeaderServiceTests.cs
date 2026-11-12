@@ -1006,7 +1006,7 @@ namespace RimSharp.Tests.Services.ModManagement
         }
 
         [Fact]
-        public void Compare_SaveModNotInstalled_ReturnsMissing()
+        public void Compare_SaveModNotInstalled_ReturnsUninstalled()
         {
             // Arrange
             var service = CreateService();
@@ -1019,7 +1019,7 @@ namespace RimSharp.Tests.Services.ModManagement
                 new[] { "test.mod.alpha" });
 
             // Assert
-            result.Should().Be(SaveCompat.Missing);
+            result.Should().Be(SaveCompat.Uninstalled);
         }
 
         [Fact]

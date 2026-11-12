@@ -251,18 +251,18 @@ namespace RimSharp.Tests.Features.Saves
 
             vm.Details.HasSelection.Should().BeTrue();
             vm.Details.HasError.Should().BeFalse();
-            vm.Details.CompatText.Should().Be("Unknown");
+            vm.Details.CompatSummaryText.Should().Be("Can't be compared");
             vm.Details.CompatNote.Should().Be("No mods recorded in this save — compatibility can't be judged.");
             vm.Details.ModsInSaveText.Should().Be("Mods in save: 0");
             vm.Details.HasDiff.Should().BeFalse();
         }
 
         [AvaloniaFact]
-        public async Task ASelectionWithAMissingMod_ShowsTheMissingVerdictAndTheMissingIds()
+        public async Task ASelectionWithAnUninstalledMod_ShowsTheUninstalledVerdictAndTheUninstalledIds()
         {
             SetModContext(installed: new[] { "mod.alpha" }, active: new[] { "mod.alpha" });
 
-            var save = Entry("Missing", DateTime.UtcNow);
+            var save = Entry("Uninstalled", DateTime.UtcNow);
             SetHeader(save, "mod.alpha", "mod.gone");
 
             _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
@@ -272,11 +272,73 @@ namespace RimSharp.Tests.Features.Saves
             await vm.RefreshAsync(TestContext.Current.CancellationToken);
             await (vm.LoadTask ?? Task.CompletedTask);
 
-            vm.Details.CompatText.Should().Be("Missing");
+            vm.Details.CompatSummaryText.Should().Be("Differs - some mods are not installed");
             vm.Details.ModsInSaveText.Should().Be("Mods in save: 2");
-            vm.Details.HasMissingMods.Should().BeTrue();
-            vm.Details.MissingModsText.Should().Be("Missing: mod.gone");
+            vm.Details.HasUninstalledMods.Should().BeTrue();
+            vm.Details.UninstalledModsText.Should().Be("Uninstalled: mod.gone");
             vm.Details.DiffSummaryText.Should().Be("0 added, 1 removed");
+        }
+
+        [AvaloniaFact]
+        public async Task TheModCardDefaultsToTheSavesOwnList_WithoutTheStatusTags()
+        {
+            SetModContext(
+                installed: new[] { "mod.alpha", "mod.beta", "mod.delta" },
+                active: new[] { "mod.alpha", "mod.delta" });
+
+            var save = Entry("Own", DateTime.UtcNow);
+            SetHeader(save, "mod.alpha", "mod.beta", "mod.gone");
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { save });
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+
+            // The default list is the save's own: the active-but-not-saved mod
+            // is not in it, and no row carries a status tag.
+            vm.Details.OtherMods.Should().HaveCount(3);
+            vm.Details.OtherMods.Select(row => row.PackageId)
+                .Should().Equal("mod.alpha", "mod.beta", "mod.gone");
+            vm.Details.OtherMods.Should().OnlyContain(row => !row.HasStatus);
+            vm.Details.HasDiff.Should().BeTrue();
+        }
+
+        [AvaloniaFact]
+        public async Task TheDifferencesView_TagsTheSavesModsAndListsTheActiveOnes()
+        {
+            SetModContext(
+                installed: new[] { "mod.alpha", "mod.beta", "mod.delta" },
+                active: new[] { "mod.alpha", "mod.delta" });
+
+            var save = Entry("Diff", DateTime.UtcNow);
+            SetHeader(save, "mod.alpha", "mod.beta", "mod.gone");
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { save });
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+
+            vm.Details.ShowDifferences = true;
+
+            // The differences view is the save's list tagged, plus the mods
+            // that are active now but not in the save.
+            vm.Details.OtherMods.Should().HaveCount(4);
+            vm.Details.OtherMods.Select(row => (row.PackageId, row.StatusText))
+                .Should().Equal(
+                    ("mod.alpha", string.Empty),
+                    ("mod.beta", "Removed"),
+                    ("mod.gone", "Uninstalled"),
+                    ("mod.delta", "Added"));
+
+            // Back to the save's own list: the tags and the added mod leave.
+            vm.Details.ShowDifferences = false;
+            vm.Details.OtherMods.Select(row => row.PackageId)
+                .Should().Equal("mod.alpha", "mod.beta", "mod.gone");
+            vm.Details.OtherMods.Should().OnlyContain(row => !row.HasStatus);
         }
 
         [AvaloniaFact]
@@ -297,7 +359,7 @@ namespace RimSharp.Tests.Features.Saves
             vm.Details.HasError.Should().BeTrue();
             vm.Details.ErrorMessage.Should().Be("Could not read this save.");
             vm.Details.ErrorReason.Should().Be("The save is corrupt or in a format this reader can't parse.");
-            vm.Details.CompatText.Should().Be("Unreadable");
+            vm.Details.CompatSummaryText.Should().Be("Could not be read");
             vm.Details.ShowSections.Should().BeFalse();
         }
 
@@ -318,7 +380,7 @@ namespace RimSharp.Tests.Features.Saves
             await vm.RefreshAsync(TestContext.Current.CancellationToken);
             await (vm.LoadTask ?? Task.CompletedTask);
 
-            vm.Details.CompatText.Should().Be("Changed");
+            vm.Details.CompatSummaryText.Should().Be("Differs from your active mods and DLCs");
             vm.Details.ModsInSaveText.Should().Be("Mods in save: 2");
             vm.Details.DiffSummaryText.Should().Be("2 added, 2 removed");
             vm.Details.AddedModsText.Should().Be("Added: mod.beta, mod.delta");
@@ -342,7 +404,7 @@ namespace RimSharp.Tests.Features.Saves
             await vm.RefreshAsync(TestContext.Current.CancellationToken);
             await (vm.LoadTask ?? Task.CompletedTask);
 
-            vm.Details.CompatText.Should().Be("Compatible");
+            vm.Details.CompatSummaryText.Should().Be("Matches your active mods and DLCs");
         }
 
         [AvaloniaFact]

@@ -482,6 +482,92 @@ namespace RimSharp.Features.Saves.ViewModels
             var missing = saveIds.Where(id => !installedIds.Contains(id)).ToList();
 
             Details.ApplyCompat(compat, saveIds.Count, added, removed, missing);
+            (var modSaveList, var modDiffList) = BuildModEntries(header, active, installed, added);
+            Details.ApplyModEntries(modSaveList, modDiffList);
+        }
+
+        /// <summary>
+        /// Builds both views of the mod card from the save's entries: the save's
+        /// own list as it was recorded - shown by default, bare, without the
+        /// status tags - and the differences view: the same entries tagged
+        /// (added / removed / uninstalled) plus the mods that are active now but
+        /// not in the save. A save whose mod list is not known cannot be judged -
+        /// the added entries stay out of both lists.
+        /// </summary>
+        private (IReadOnlyList<SaveModItemViewModel> SaveList,
+            IReadOnlyList<SaveModItemViewModel> DiffList) BuildModEntries(
+            SaveHeader header,
+            IReadOnlyCollection<string> active,
+            IReadOnlyCollection<string> installed,
+            IReadOnlyList<string> added)
+        {
+            bool canJudge = installed.Count > 0;
+            var activeSet = new HashSet<string>(active, StringComparer.OrdinalIgnoreCase);
+            var installedSet = new HashSet<string>(installed, StringComparer.OrdinalIgnoreCase);
+            var installedNames = ResolveInstalledNames();
+
+            var ids = header.ModIds ?? Array.Empty<string>();
+            var savedNames = header.ModNames ?? Array.Empty<string>();
+            var workshopIds = header.ModSteamIds ?? Array.Empty<string>();
+
+            var saveList = new List<SaveModItemViewModel>(ids.Count);
+            var diffList = new List<SaveModItemViewModel>(ids.Count + added.Count);
+
+            for (int i = 0; i < ids.Count; i++)
+            {
+                string id = ids[i];
+
+                // The three lists are parallel but may differ in length: each is
+                // read with a bounds check, never padded.
+                string name = i < savedNames.Count && !string.IsNullOrWhiteSpace(savedNames[i])
+                    ? savedNames[i]
+                    : (installedNames.TryGetValue(id, out var installedName) ? installedName : id);
+
+                string? workshopId = i < workshopIds.Count ? workshopIds[i] : null;
+
+                SaveModState state = !canJudge ? SaveModState.Unknown
+                    : activeSet.Contains(id) ? SaveModState.Matches
+                    : installedSet.Contains(id) ? SaveModState.Removed
+                    : SaveModState.Uninstalled;
+
+                // The default view shows the save's own mods, untagged; the
+                // differences view tags them.
+                saveList.Add(new SaveModItemViewModel(name, id, workshopId, state, showsStatus: false));
+                diffList.Add(new SaveModItemViewModel(name, id, workshopId, state));
+            }
+
+            if (canJudge)
+            {
+                foreach (string id in added)
+                {
+                    string name = installedNames.TryGetValue(id, out var installedName) ? installedName : id;
+                    diffList.Add(new SaveModItemViewModel(name, id, null, SaveModState.Added));
+                }
+            }
+
+            return (saveList, diffList);
+        }
+
+        /// <summary>The display names of the installed mods, by package id - for mods the save recorded no name for.</summary>
+        private Dictionary<string, string> ResolveInstalledNames()
+        {
+            var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (_modListManager == null)
+            {
+                return names;
+            }
+
+            foreach (var mod in _modListManager.GetAllMods())
+            {
+                if (string.IsNullOrWhiteSpace(mod.PackageId) || string.IsNullOrWhiteSpace(mod.Name))
+                {
+                    continue;
+                }
+
+                names.TryAdd(mod.PackageId, mod.Name);
+            }
+
+            return names;
         }
 
         /// <summary>

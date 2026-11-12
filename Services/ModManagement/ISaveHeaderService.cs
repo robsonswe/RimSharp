@@ -60,7 +60,7 @@ namespace RimSharp.Services.ModManagement
         /// Compares the mods recorded in a save against the currently active and the
         /// currently installed mod lists.
         /// A save without recorded mods is <see cref="SaveCompat.Unknown"/>;
-        /// a save referencing mods that are not installed is <see cref="SaveCompat.Missing"/>;
+        /// a save referencing mods that are not installed is <see cref="SaveCompat.Uninstalled"/>;
         /// a save whose mod set differs from the active set is <see cref="SaveCompat.Changed"/>;
         /// otherwise the save is <see cref="SaveCompat.Compatible"/>.
         /// </summary>
@@ -317,7 +317,7 @@ namespace RimSharp.Services.ModManagement
         Changed,
 
         /// <summary>The save uses mods that are not installed anymore.</summary>
-        Missing,
+        Uninstalled,
 
         /// <summary>The save records no mods - compatibility cannot be judged.</summary>
         Unknown,

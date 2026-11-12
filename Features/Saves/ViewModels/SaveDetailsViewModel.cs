@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using RimSharp.AppDir.AppFiles;
 using RimSharp.Services.ModManagement;
 
@@ -28,14 +29,17 @@ namespace RimSharp.Features.Saves.ViewModels
         private string _saveName = string.Empty;
         private string _filePath = string.Empty;
 
-        private string _compatText = string.Empty;
         private string _compatBrushKey = "BrushStateNeutral";
         private string _compatNote = string.Empty;
         private string _modsInSaveText = string.Empty;
         private string _diffSummaryText = string.Empty;
         private string _addedModsText = string.Empty;
         private string _removedModsText = string.Empty;
-        private string _missingModsText = string.Empty;
+        private string _uninstalledModsText = string.Empty;
+        private string _compatSummaryText = string.Empty;
+        private bool _showDifferences;
+        private List<SaveModItemViewModel> _saveModEntries = new();
+        private List<SaveModItemViewModel> _diffModEntries = new();
 
         private string _scenarioText = UnknownValue;
         private string _scenarioSummaryText = UnknownValue;
@@ -87,10 +91,7 @@ namespace RimSharp.Features.Saves.ViewModels
 
         #region Mods and compatibility
 
-        /// <summary>The badge label of the selected save.</summary>
-        public string CompatText => _compatText;
-
-        /// <summary>The palette key the badge is painted with.</summary>
+        /// <summary>The palette key the verdict is painted with.</summary>
         public string CompatBrushKey => _compatBrushKey;
 
         /// <summary>The honest note for the states that cannot be judged.</summary>
@@ -121,10 +122,32 @@ namespace RimSharp.Features.Saves.ViewModels
         public bool HasRemovedMods => _removedModsText.Length > 0;
 
         /// <summary>The mod ids the save uses that are not installed anymore.</summary>
-        public string MissingModsText => _missingModsText;
+        public string UninstalledModsText => _uninstalledModsText;
 
-        /// <summary>True when there are missing mods to list.</summary>
-        public bool HasMissingMods => _missingModsText.Length > 0;
+        /// <summary>True when there are uninstalled mods to list.</summary>
+        public bool HasUninstalledMods => _uninstalledModsText.Length > 0;
+
+        /// <summary>
+        /// The one-line verdict shown while the mods section is closed: whether
+        /// the save matches the active mods and DLCs, or differs from them.
+        /// </summary>
+        public string CompatSummaryText => _compatSummaryText;
+
+        /// <summary>
+        /// The core game and the official DLCs of the save (plus the ones that
+        /// are active now but not in the save). They are part of the same
+        /// comparison as the mods - adding or removing a DLC makes the game warn.
+        /// </summary>
+        public ObservableCollection<SaveModItemViewModel> OfficialMods { get; } = new();
+
+        /// <summary>The mods of the save (plus the ones that are active now but not in the save), in the save's order.</summary>
+        public ObservableCollection<SaveModItemViewModel> OtherMods { get; } = new();
+
+        /// <summary>True when there are official entries to list.</summary>
+        public bool HasOfficialMods => OfficialMods.Count > 0;
+
+        /// <summary>True when there are mod entries to list.</summary>
+        public bool HasOtherMods => OtherMods.Count > 0;
 
         #endregion
 
@@ -231,7 +254,6 @@ namespace RimSharp.Features.Saves.ViewModels
             OnPropertyChanged(nameof(FilePath));
             OnPropertyChanged(nameof(ShowHint));
             OnPropertyChanged(nameof(ShowSections));
-            OnPropertyChanged(nameof(CompatText));
             OnPropertyChanged(nameof(CompatBrushKey));
             OnPropertyChanged(nameof(CompatNote));
             OnPropertyChanged(nameof(HasCompatNote));
@@ -242,8 +264,8 @@ namespace RimSharp.Features.Saves.ViewModels
             OnPropertyChanged(nameof(HasAddedMods));
             OnPropertyChanged(nameof(RemovedModsText));
             OnPropertyChanged(nameof(HasRemovedMods));
-            OnPropertyChanged(nameof(MissingModsText));
-            OnPropertyChanged(nameof(HasMissingMods));
+            OnPropertyChanged(nameof(UninstalledModsText));
+            OnPropertyChanged(nameof(HasUninstalledMods));
             RaiseFieldChanged();
         }
 
@@ -271,12 +293,11 @@ namespace RimSharp.Features.Saves.ViewModels
             IReadOnlyList<string> removed,
             IReadOnlyList<string> missing)
         {
-            _compatText = compat.ToString();
             _compatBrushKey = compat switch
             {
                 SaveCompat.Compatible => "BrushStateSuccess",
                 SaveCompat.Changed => "BrushStateWarning",
-                SaveCompat.Missing => "BrushStateWarning",
+                SaveCompat.Uninstalled => "BrushStateWarning",
                 SaveCompat.Unreadable => "BrushStateDanger",
                 _ => "BrushStateNeutral"
             };
@@ -288,18 +309,26 @@ namespace RimSharp.Features.Saves.ViewModels
                 _ => string.Empty
             };
 
+            _compatSummaryText = compat switch
+            {
+                SaveCompat.Compatible => "Matches your active mods and DLCs",
+                SaveCompat.Changed => "Differs from your active mods and DLCs",
+                SaveCompat.Uninstalled => "Differs - some mods are not installed",
+                SaveCompat.Unreadable => "Could not be read",
+                _ => "Can't be compared"
+            };
+
             _modsInSaveText = $"Mods in save: {modsInSave}";
 
-            bool showDiff = compat is SaveCompat.Changed or SaveCompat.Missing;
+            bool showDiff = compat is SaveCompat.Changed or SaveCompat.Uninstalled;
             _diffSummaryText = showDiff ? $"{added.Count} added, {removed.Count} removed" : string.Empty;
 
             _addedModsText = showDiff && added.Count > 0 ? $"Added: {string.Join(", ", added)}" : string.Empty;
             _removedModsText = showDiff && removed.Count > 0 ? $"Removed: {string.Join(", ", removed)}" : string.Empty;
-            _missingModsText = compat == SaveCompat.Missing && missing.Count > 0
-                ? $"Missing: {string.Join(", ", missing)}"
+            _uninstalledModsText = compat == SaveCompat.Uninstalled && missing.Count > 0
+                ? $"Uninstalled: {string.Join(", ", missing)}"
                 : string.Empty;
 
-            OnPropertyChanged(nameof(CompatText));
             OnPropertyChanged(nameof(CompatBrushKey));
             OnPropertyChanged(nameof(CompatNote));
             OnPropertyChanged(nameof(HasCompatNote));
@@ -310,8 +339,63 @@ namespace RimSharp.Features.Saves.ViewModels
             OnPropertyChanged(nameof(HasAddedMods));
             OnPropertyChanged(nameof(RemovedModsText));
             OnPropertyChanged(nameof(HasRemovedMods));
-            OnPropertyChanged(nameof(MissingModsText));
-            OnPropertyChanged(nameof(HasMissingMods));
+            OnPropertyChanged(nameof(UninstalledModsText));
+            OnPropertyChanged(nameof(HasUninstalledMods));
+            OnPropertyChanged(nameof(CompatSummaryText));
+        }
+
+        /// <summary>
+        /// Fills the mod card with the two views of the save's mods: the save's
+        /// own list (the default view) and the differences view.
+        /// </summary>
+        internal void ApplyModEntries(
+            IReadOnlyList<SaveModItemViewModel> saveEntries,
+            IReadOnlyList<SaveModItemViewModel> diffEntries)
+        {
+            _saveModEntries = saveEntries.ToList();
+            _diffModEntries = diffEntries.ToList();
+            ShowDifferences = false;
+            RebuildModLists();
+        }
+
+        /// <summary>
+        /// Switches the lists between the save's own mods (default) and the
+        /// differences view - the save's mods tagged, plus the mods that are
+        /// active now but not in the save.
+        /// </summary>
+        public bool ShowDifferences
+        {
+            get => _showDifferences;
+            set
+            {
+                if (_showDifferences == value) return;
+                _showDifferences = value;
+                OnPropertyChanged(nameof(ShowDifferences));
+                RebuildModLists();
+            }
+        }
+
+        /// <summary>Rebuilds the two lists from the entries of the active view, in the order of the save.</summary>
+        private void RebuildModLists()
+        {
+            List<SaveModItemViewModel> source = _showDifferences ? _diffModEntries : _saveModEntries;
+
+            OfficialMods.Clear();
+            OtherMods.Clear();
+
+            // OrderBy is stable: the mods keep the order of the save.
+            foreach (var entry in source.Where(entry => entry.IsOfficial).OrderBy(entry => entry.OfficialRank))
+            {
+                OfficialMods.Add(entry);
+            }
+
+            foreach (var entry in source.Where(entry => !entry.IsOfficial))
+            {
+                OtherMods.Add(entry);
+            }
+
+            OnPropertyChanged(nameof(HasOfficialMods));
+            OnPropertyChanged(nameof(HasOtherMods));
         }
 
         /// <summary>Ends the read - the sections are shown from now on.</summary>
@@ -444,7 +528,6 @@ namespace RimSharp.Features.Saves.ViewModels
             OnPropertyChanged(nameof(FilePath));
             OnPropertyChanged(nameof(ShowHint));
             OnPropertyChanged(nameof(ShowSections));
-            OnPropertyChanged(nameof(CompatText));
             OnPropertyChanged(nameof(CompatBrushKey));
             OnPropertyChanged(nameof(CompatNote));
             OnPropertyChanged(nameof(HasCompatNote));
@@ -455,21 +538,20 @@ namespace RimSharp.Features.Saves.ViewModels
             OnPropertyChanged(nameof(HasAddedMods));
             OnPropertyChanged(nameof(RemovedModsText));
             OnPropertyChanged(nameof(HasRemovedMods));
-            OnPropertyChanged(nameof(MissingModsText));
-            OnPropertyChanged(nameof(HasMissingMods));
+            OnPropertyChanged(nameof(UninstalledModsText));
+            OnPropertyChanged(nameof(HasUninstalledMods));
             RaiseFieldChanged();
         }
 
         private void ResetFields()
         {
-            _compatText = string.Empty;
             _compatBrushKey = "BrushStateNeutral";
             _compatNote = string.Empty;
             _modsInSaveText = string.Empty;
             _diffSummaryText = string.Empty;
             _addedModsText = string.Empty;
             _removedModsText = string.Empty;
-            _missingModsText = string.Empty;
+            _uninstalledModsText = string.Empty;
 
             _scenarioText = UnknownValue;
             _scenarioSummaryText = UnknownValue;
@@ -483,6 +565,13 @@ namespace RimSharp.Features.Saves.ViewModels
             _inGameDateText = UnknownValue;
             _gameVersionText = UnknownValue;
             _activeDlcText = UnknownValue;
+
+            _compatSummaryText = string.Empty;
+            _saveModEntries = new List<SaveModItemViewModel>();
+            _diffModEntries = new List<SaveModItemViewModel>();
+            _showDifferences = false;
+            OfficialMods.Clear();
+            OtherMods.Clear();
 
             ResetColonistNames();
         }
@@ -501,6 +590,9 @@ namespace RimSharp.Features.Saves.ViewModels
             OnPropertyChanged(nameof(InGameDateText));
             OnPropertyChanged(nameof(GameVersionText));
             OnPropertyChanged(nameof(ActiveDlcText));
+            OnPropertyChanged(nameof(CompatSummaryText));
+            OnPropertyChanged(nameof(HasOfficialMods));
+            OnPropertyChanged(nameof(HasOtherMods));
         }
 
         private static string OrUnknown(string? value)

@@ -335,7 +335,7 @@ namespace RimSharp.Services.ModManagement
 
             if (saveIds.Any(id => !installedIds.Contains(id)))
             {
-                return SaveCompat.Missing;
+                return SaveCompat.Uninstalled;
             }
 
             if (!saveIds.SetEquals(activeIds))
