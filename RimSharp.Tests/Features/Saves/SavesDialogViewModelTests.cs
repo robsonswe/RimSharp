@@ -10,6 +10,7 @@ using System.Windows.Input;
 using Avalonia.Headless.XUnit;
 using FluentAssertions;
 using NSubstitute;
+using RimSharp.AppDir.Dialogs;
 using RimSharp.Features.Saves.ViewModels;
 using RimSharp.Infrastructure.Configuration;
 using RimSharp.Services.ModManagement;
@@ -29,6 +30,8 @@ namespace RimSharp.Tests.Features.Saves
     {
         private readonly ISaveHeaderService _saveHeaderService = Substitute.For<ISaveHeaderService>();
         private readonly IModListManager _modListManager = Substitute.For<IModListManager>();
+        private readonly IModListIOService _ioService = Substitute.For<IModListIOService>();
+        private readonly IDialogService _dialogService = Substitute.For<IDialogService>();
         private readonly ILoggerService _logger = Substitute.For<ILoggerService>();
         private readonly IPathService _pathService = Substitute.For<IPathService>();
         private readonly SaveHeaderService _realService;
@@ -68,6 +71,11 @@ namespace RimSharp.Tests.Features.Saves
             _modListManager.GetAllMods().Returns(Array.Empty<ModItem>());
             _modListManager.VirtualActiveMods.Returns(new List<(ModItem Mod, int LoadOrder)>());
 
+            // The import confirmation is answered with yes by default - the
+            // declined path is its own test below.
+            _dialogService.ShowConfirmationAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>())
+                .Returns(MessageDialogResult.OK);
+
             // Every test starts without a remembered selection.
             SavesDialogViewModel.LastSelectedPath = null;
         }
@@ -80,6 +88,10 @@ namespace RimSharp.Tests.Features.Saves
         #region Helpers
 
         private SavesDialogViewModel CreateViewModel()
+            => new(_saveHeaderService, _modListManager, _ioService, _dialogService);
+
+        /// <summary>The dialog without the import pipeline - the read-only minimum.</summary>
+        private SavesDialogViewModel CreateViewModelWithoutImport()
             => new(_saveHeaderService, _modListManager);
 
         /// <summary>Sets the installed and the active mods the saves are compared against.</summary>
@@ -88,6 +100,12 @@ namespace RimSharp.Tests.Features.Saves
             _modListManager.GetAllMods()
                 .Returns(installed.Select(id => new ModItem { PackageId = id }).ToList());
 
+            SetActiveMods(active);
+        }
+
+        /// <summary>Replaces the active mods the saves are compared against.</summary>
+        private void SetActiveMods(params string[] active)
+        {
             var activeMods = new List<(ModItem Mod, int LoadOrder)>();
             for (int i = 0; i < active.Length; i++)
             {
@@ -760,7 +778,7 @@ namespace RimSharp.Tests.Features.Saves
         }
 
         [AvaloniaFact]
-        public void TheDialog_ExposesNoCommandThatWrites()
+        public void TheDialog_ExposesNoCommandThatWritesASave()
         {
             var commands = typeof(SavesDialogViewModel)
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -771,7 +789,11 @@ namespace RimSharp.Tests.Features.Saves
             commands.Should().Contain("RefreshCommand");
             commands.Should().Contain("CloseCommand");
 
-            foreach (var forbidden in new[] { "Delete", "Rename", "Export", "Import", "Write", "Move", "Copy", "Backup" })
+            // The import applies the save's list to the app's active mod list -
+            // it never touches a save file, so it is allowed to exist.
+            commands.Should().Contain("ImportListCommand");
+
+            foreach (var forbidden in new[] { "Delete", "Rename", "Export", "Write", "Move", "Copy", "Backup" })
             {
                 commands.Should().NotContain(name => name.Contains(forbidden, StringComparison.OrdinalIgnoreCase));
             }
@@ -786,6 +808,185 @@ namespace RimSharp.Tests.Features.Saves
             {
                 serviceMethods.Should().NotContain(name => name.Contains(forbidden, StringComparison.OrdinalIgnoreCase));
             }
+        }
+
+        [AvaloniaFact]
+        public async Task TheImportButton_IsOnlyOfferedWhileTheListsDiffer()
+        {
+            SetModContext(
+                installed: new[] { "mod.alpha", "mod.beta" },
+                active: new[] { "mod.alpha", "mod.beta" });
+
+            var save = Entry("Colony", DateTime.UtcNow);
+            SetHeader(save, "mod.alpha", "mod.beta");
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { save });
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+
+            // The save's list is the active list - there is nothing to import.
+            vm.Details.HasDiff.Should().BeFalse();
+            vm.CanImportSaveList.Should().BeFalse();
+            vm.ImportListCommand.CanExecute(null).Should().BeFalse();
+
+            // The active list changes under the dialog - the save differs now,
+            // and the button appears with it.
+            SetActiveMods("mod.alpha");
+            vm.SelectedSave = null;
+            vm.SelectedSave = vm.Saves[0];
+            await (vm.LoadTask ?? Task.CompletedTask);
+
+            vm.Details.HasDiff.Should().BeTrue();
+            vm.CanImportSaveList.Should().BeTrue();
+            vm.ImportListCommand.CanExecute(null).Should().BeTrue();
+        }
+
+        [AvaloniaFact]
+        public async Task TheImportButton_IsNotOfferedWithoutTheImportPipeline()
+        {
+            SetModContext(
+                installed: new[] { "mod.alpha", "mod.beta" },
+                active: new[] { "mod.alpha" });
+
+            var save = Entry("Colony", DateTime.UtcNow);
+            SetHeader(save, "mod.alpha", "mod.beta");
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { save });
+
+            var vm = CreateViewModelWithoutImport();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+
+            // The lists differ, but there is no pipeline to apply them with -
+            // the dialog stays purely read-only.
+            vm.Details.HasDiff.Should().BeTrue();
+            vm.CanImportSaveList.Should().BeFalse();
+            vm.ImportListCommand.CanExecute(null).Should().BeFalse();
+        }
+
+        [AvaloniaFact]
+        public async Task ImportingTheSavesList_AppliesTheSavesLoadOrder_ToTheActiveList()
+        {
+            SetModContext(
+                installed: new[] { "mod.alpha", "mod.beta", "mod.gamma" },
+                active: new[] { "mod.gamma" });
+
+            var save = Entry("Colony", DateTime.UtcNow);
+            SetHeader(save, "mod.alpha", "mod.beta", "mod.gamma");
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { save });
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+
+            vm.ImportListCommand.Execute(null);
+            await (vm.ImportTask ?? Task.CompletedTask);
+
+            // The click alone is not the authorization - the confirmation ran
+            // before anything was applied.
+            await _dialogService.Received(1).ShowConfirmationAsync(
+                Arg.Is<string>(title => title.Contains("Import list")),
+                Arg.Is<string>(message => message.Contains("Colony") && message.Contains("3 mods")),
+                Arg.Any<bool>());
+
+            // The save's own list, in the save's own load order - and the save
+            // it came from, so the result dialogs can name it.
+            await _ioService.Received(1).ImportModListAsync(
+                Arg.Is<IReadOnlyList<string>>(ids => ids.SequenceEqual(new[] { "mod.alpha", "mod.beta", "mod.gamma" })),
+                Arg.Is<string>(label => label == "Colony"));
+        }
+
+        [AvaloniaFact]
+        public async Task ImportingTheSavesList_RefreshesTheComparison_SoAGoneDifferenceIsGone()
+        {
+            SetModContext(
+                installed: new[] { "mod.alpha", "mod.beta" },
+                active: new[] { "mod.beta" });
+
+            var save = Entry("Colony", DateTime.UtcNow);
+            SetHeader(save, "mod.alpha", "mod.beta");
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { save });
+
+            // The import applies the save's list - the active list becomes the
+            // save's list, exactly like the real pipeline does.
+            _ioService.When(x => x.ImportModListAsync(Arg.Any<IReadOnlyList<string>>(), Arg.Any<string>()))
+                .Do(_ => SetActiveMods("mod.alpha", "mod.beta"));
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+
+            vm.Details.HasDiff.Should().BeTrue();
+            vm.CanImportSaveList.Should().BeTrue();
+
+            vm.ImportListCommand.Execute(null);
+            await (vm.ImportTask ?? Task.CompletedTask);
+
+            // The comparison is redone against the new active list: the save
+            // matches now, so the difference - and the button with it - is gone.
+            vm.Details.HasDiff.Should().BeFalse();
+            vm.Details.CompatSummaryText.Should().Be("Matches your active mods and DLCs");
+            vm.CanImportSaveList.Should().BeFalse();
+            vm.ImportListCommand.CanExecute(null).Should().BeFalse();
+            vm.StatusMessage.Should().Contain("now matches your active mods");
+        }
+
+        [AvaloniaFact]
+        public async Task DecliningTheImportConfirmation_LeavesTheActiveListAlone()
+        {
+            SetModContext(installed: new[] { "mod.alpha" }, active: new[] { "mod.alpha" });
+
+            var save = Entry("Colony", DateTime.UtcNow);
+            SetHeader(save, "mod.alpha", "mod.beta");
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { save });
+
+            // The click alone is not the authorization: the dialog asks, and
+            // the answer here is no.
+            _dialogService.ShowConfirmationAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>())
+                .Returns(MessageDialogResult.Cancel);
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+
+            vm.ImportListCommand.Execute(null);
+            await (vm.ImportTask ?? Task.CompletedTask);
+
+            // Nothing was applied and the dialog said so.
+            await _ioService.DidNotReceive().ImportModListAsync(
+                Arg.Any<IReadOnlyList<string>>(), Arg.Any<string>());
+            vm.StatusMessage.Should().Contain("cancelled");
+            vm.StatusMessage.Should().Contain("unchanged");
+        }
+
+        [AvaloniaFact]
+        public async Task ASaveThatRecordsNoMods_HasNothingToImport()
+        {
+            SetModContext(installed: new[] { "mod.alpha" }, active: new[] { "mod.alpha" });
+
+            var save = Entry("Nomods", DateTime.UtcNow);
+            SetHeader(save);
+
+            _saveHeaderService.ListSavesAsync(Arg.Any<CancellationToken>())
+                .Returns(new List<SaveFileEntry> { save });
+
+            var vm = CreateViewModel();
+            await vm.RefreshAsync(TestContext.Current.CancellationToken);
+            await (vm.LoadTask ?? Task.CompletedTask);
+
+            vm.Details.HasDiff.Should().BeFalse();
+            vm.CanImportSaveList.Should().BeFalse();
+            vm.ImportListCommand.CanExecute(null).Should().BeFalse();
         }
 
         [AvaloniaFact]

@@ -276,11 +276,11 @@ namespace RimSharp.Infrastructure.Dialog
         /// Modals the read-only saves dialog: the save files of the game and
         /// what the current mod list means for them. Nothing is ever written.
         /// </summary>
-        public async Task<bool> ShowSavesDialogAsync()
+        public async Task<bool> ShowSavesDialogAsync(IModListIOService? modListIOService = null)
         {
             if (_saveHeaderService == null) return false;
 
-            var viewModel = new SavesDialogViewModel(_saveHeaderService, _modListManager);
+            var viewModel = new SavesDialogViewModel(_saveHeaderService, _modListManager, modListIOService, this);
             await viewModel.RefreshAsync();
             var dialog = new SavesDialogView(viewModel);
             return await ShowDialogInternalAsync<bool>(viewModel, dialog);

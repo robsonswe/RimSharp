@@ -111,7 +111,7 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
 
             await _mockDataService.Received(1).LoadAllModsAsync(Arg.Any<IProgress<(int current, int total, string message)>>());
             _mockDataService.Received(1).LoadActiveModIdsFromConfig();
-            _mockModListManager.Received(1).Initialize(mods, activeIds);
+            _mockModListManager.Received(1).Initialize(mods, activeIds, Arg.Any<bool>());
             _mockFilterService.Received(1).UpdateCollections(Arg.Any<IEnumerable<(ModItem Mod, int LoadOrder)>>(), Arg.Any<IEnumerable<ModItem>>());
         }
 
@@ -128,7 +128,7 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels
             for (int i = 0; i < 500 && vm.IsLoading; i++) await Task.Delay(10, TestContext.Current.CancellationToken);
 
             await _mockDataService.Received(1).LoadAllModsAsync(Arg.Any<IProgress<(int current, int total, string message)>>());
-            _mockModListManager.Received(1).Initialize(Arg.Any<List<ModItem>>(), Arg.Any<List<string>>());
+            _mockModListManager.Received(1).Initialize(Arg.Any<List<ModItem>>(), Arg.Any<List<string>>(), Arg.Any<bool>());
         }
 
         [Fact]

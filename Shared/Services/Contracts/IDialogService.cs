@@ -86,7 +86,12 @@ namespace RimSharp.Shared.Services.Contracts
         /// what the current mod list means for them. The dialog never writes,
         /// moves or deletes a save.
         /// </summary>
-        Task<bool> ShowSavesDialogAsync();
+        /// <param name="modListIOService">
+        /// The import pipeline the dialog's "Import list" button uses to apply
+        /// a save's mod list to the active one. Without it the button is not
+        /// offered - the dialog stays purely read-only.
+        /// </param>
+        Task<bool> ShowSavesDialogAsync(IModListIOService? modListIOService = null);
 
         /// <summary>
         /// Modals RimSharp settings dialog (Paths + AI Providers tabs).

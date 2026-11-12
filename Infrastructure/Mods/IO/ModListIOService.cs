@@ -77,6 +77,33 @@ namespace RimSharp.Infrastructure.Mods.IO
                 var activeModIds = await ParseModListFileAsync(filePath);
                 if (activeModIds is null || !activeModIds.Any())
                     return;
+
+                // The file is read here; everything after it is the shared
+                // pipeline, so a list that comes from anywhere else behaves
+                // exactly the same.
+                await ImportModListAsync(activeModIds, Path.GetFileName(filePath));
+            }
+            catch (Exception ex)
+            {
+                await _dialogService.ShowError("Import Error", $"An unexpected error occurred during import: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Applies a mod list that is already known - the saves dialog hands
+        /// over the mod list a save was played with. The behaviour is the one
+        /// of the file import minus the picker: the mods that are not
+        /// installed are computed and offered for download, the installed ones
+        /// are applied in the order they were given, and the same result
+        /// dialogs are shown.
+        /// </summary>
+        public async Task ImportModListAsync(IReadOnlyList<string> orderedModIds, string sourceLabel)
+        {
+            try
+            {
+                if (orderedModIds == null || orderedModIds.Count == 0)
+                    return;
+
                 var allMods = _modListManager.GetAllMods().ToList();
 
                 var availableModIds = allMods
@@ -84,18 +111,21 @@ namespace RimSharp.Infrastructure.Mods.IO
                     .Select(m => m.PackageId!.ToLowerInvariant())
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-                var missingModIds = activeModIds
+                var missingModIds = orderedModIds
                     .Where(id => !availableModIds.Contains(id))
                     .ToList();
 
                 // Only pass available mod IDs to the manager
-                var availableActiveModIds = activeModIds
+                var availableActiveModIds = orderedModIds
                     .Where(id => availableModIds.Contains(id))
                     .ToList();
 
-                await Task.Run(() => _modListManager.Initialize(allMods, availableActiveModIds));
+                // The list came from outside the app, so it is not what
+                // ModsConfig.xml holds: the ModManager flags it as unsaved
+                // and the user saves it consciously.
+                await Task.Run(() => _modListManager.Initialize(allMods, availableActiveModIds, activeListModified: true));
 
-                await DisplayImportResultsAsync(Path.GetFileName(filePath), availableActiveModIds.Count, missingModIds);
+                await DisplayImportResultsAsync(sourceLabel, availableActiveModIds.Count, missingModIds);
             }
             catch (Exception ex)
             {
@@ -189,20 +219,25 @@ namespace RimSharp.Infrastructure.Mods.IO
             await Task.Run(() => doc.Save(filePath));
         }
 
-        private async Task DisplayImportResultsAsync(string fileName, int importedCount, List<string> missingModIds)
+        private async Task DisplayImportResultsAsync(string sourceLabel, int importedCount, List<string> missingModIds)
         {
             if (missingModIds.Count == 0)
             {
                 await _dialogService.ShowInformation(
                     "Import Successful",
-                    $"Successfully imported mod list from {fileName} with {importedCount} active mods.");
+                    $"Successfully imported mod list from {sourceLabel} with {importedCount} active mods.");
                 return;
             }
 
+            // The applied list is incomplete: the counts say so before anything
+            // is asked, and whatever the user answers, no message may claim a
+            // full success.
+            int totalCount = importedCount + missingModIds.Count;
+
             var messageBuilder = new System.Text.StringBuilder();
-            messageBuilder.AppendLine($"RimSharp imported {fileName} list.");
-            messageBuilder.AppendLine($"Successfully activated {importedCount} installed mods.");
-            messageBuilder.AppendLine("Do you want to try downloading the following missing mods?");
+            messageBuilder.AppendLine($"The mod list of {sourceLabel} holds {totalCount} mods.");
+            messageBuilder.AppendLine($"{importedCount} of them are installed and were activated in the list.");
+            messageBuilder.AppendLine($"The {missingModIds.Count} below are not installed and are not in the list:");
             messageBuilder.AppendLine();
 
             foreach (var modId in missingModIds)
@@ -211,11 +246,12 @@ namespace RimSharp.Infrastructure.Mods.IO
             }
 
             messageBuilder.AppendLine();
+            messageBuilder.AppendLine("Do you want to try downloading the missing mods now?");
 
             var confirmResult = await _dialogService.ShowConfirmationAsync(
                 "Import Partially Successful",
                 messageBuilder.ToString(),
-                showCancel: true); 
+                showCancel: true);
 
             if (confirmResult == MessageDialogResult.OK || confirmResult == MessageDialogResult.Yes)
             {
@@ -226,8 +262,10 @@ namespace RimSharp.Infrastructure.Mods.IO
             {
                 _logger.LogInfo("User declined to download missing mods from import.", nameof(ModListIOService));
                 await _dialogService.ShowInformation(
-                    "Import Successful",
-                    $"Successfully imported mod list from {fileName} with {importedCount} active mods.");
+                    "Imported with missing mods",
+                    $"The active list holds {importedCount} of the {totalCount} mods of {sourceLabel}. " +
+                    $"The {missingModIds.Count} missing mods stay inactive until they are installed - " +
+                    "import the list again once they are.");
             }
         }
 

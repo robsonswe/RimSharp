@@ -39,6 +39,37 @@ namespace RimSharp.Tests.Features.ModManager.Services.Management
         }
 
         [Fact]
+        public void Initialize_ReportsTheListAsUnmodified_WhenItWasReadFromTheConfig()
+        {
+            var mod1 = new ModItem { Name = "Mod 1", PackageId = "mod1" };
+
+            ModListChangedEventArgs? raised = null;
+            _manager.ListChanged += (_, e) => raised = e;
+
+            // The app's own start: the list is what ModsConfig.xml holds.
+            _manager.Initialize(new[] { mod1 }, new[] { "mod1" });
+
+            raised.Should().NotBeNull();
+            raised!.ActiveListModified.Should().BeFalse();
+        }
+
+        [Fact]
+        public void Initialize_ReportsTheListAsModified_WhenTheCallerSaysSo()
+        {
+            var mod1 = new ModItem { Name = "Mod 1", PackageId = "mod1" };
+
+            ModListChangedEventArgs? raised = null;
+            _manager.ListChanged += (_, e) => raised = e;
+
+            // An import: the list is not what is on disk, so the user still
+            // has to save it.
+            _manager.Initialize(new[] { mod1 }, new[] { "mod1" }, activeListModified: true);
+
+            raised.Should().NotBeNull();
+            raised!.ActiveListModified.Should().BeTrue();
+        }
+
+        [Fact]
         public void ActivateMod_ShouldMoveFromInactiveToActive()
         {
 

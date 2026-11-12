@@ -735,8 +735,9 @@
 
                                                 <!-- Only where there is something to compare: the save's
                                                      list becomes the differences view for as long as it
-                                                     is checked. -->
-                                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                                     is checked. The import sits next to it, because it
+                                                     exists for the same reason - the two lists differ. -->
+                                                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
                                                     <TextBlock Grid.Column="0"
                                                                Classes="field-value"
                                                                VerticalAlignment="Center"
@@ -747,7 +748,21 @@
                                                               Foreground="{DynamicResource BrushTextStrong}"
                                                               IsVisible="{Binding Details.HasDiff}"
                                                               IsChecked="{Binding Details.ShowDifferences, Mode=TwoWay}"/>
+                                                    <Button Grid.Column="2"
+                                                            Content="Import list"
+                                                            Command="{Binding ImportListCommand}"
+                                                            Classes="btn"
+                                                            Height="28"
+                                                            MinWidth="0"
+                                                            Padding="12,4"
+                                                            IsVisible="{Binding CanImportSaveList}"
+                                                            ToolTip.Tip="Apply this save's mod list to your active mod list - the save's mods, in the save's load order.&#xa;Only offered while the two lists differ. Mods the save uses that are not installed are offered for download.&#xa;The save file itself is only read, never written."/>
                                                 </Grid>
+
+                                                <!-- Why the button is there - and why it is not, once the lists match. -->
+                                                <TextBlock Classes="note"
+                                                           IsVisible="{Binding CanImportSaveList}"
+                                                           Text="Your active mod list differs from this save's. Import list replaces your active list with this save's, in the save's load order - the save itself is only read."/>
 
                                                 <StackPanel Spacing="2" IsVisible="{Binding Details.HasModRows}">
                                                     <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,2">

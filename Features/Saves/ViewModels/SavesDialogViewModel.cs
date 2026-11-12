@@ -3,6 +3,8 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -18,7 +20,8 @@ namespace RimSharp.Features.Saves.ViewModels
     /// Drives the read-only saves dialog: the list of save files and the
     /// details of the selected save. The list is built from the file metadata
     /// alone - a save is parsed only when it is selected. The dialog never
-    /// writes, moves or deletes a save.
+    /// writes, moves or deletes a save. The one thing it does change is the
+    /// app's own active mod list, and only when the user asks for it.
     /// </summary>
     public class SavesDialogViewModel : DialogViewModelBase<bool>
     {
@@ -41,12 +44,15 @@ namespace RimSharp.Features.Saves.ViewModels
 
         private readonly ISaveHeaderService _saveHeaderService;
         private readonly IModListManager? _modListManager;
+        private readonly IModListIOService? _modListIOService;
+        private readonly IDialogService? _dialogService;
         private readonly CancellationTokenSource _cancellation = new();
         private readonly CancellationToken _token;
 
         private SaveRowViewModel? _selectedSave;
         private bool _isLoadingList;
         private bool _isExpanded;
+        private bool _isImporting;
         private bool _rebuildingVisibleRows;
         private string _statusMessage = "Reading save folder…";
 
@@ -57,17 +63,38 @@ namespace RimSharp.Features.Saves.ViewModels
 
         public SavesDialogViewModel(
             ISaveHeaderService saveHeaderService,
-            IModListManager? modListManager = null)
+            IModListManager? modListManager = null,
+            IModListIOService? modListIOService = null,
+            IDialogService? dialogService = null)
             : base("Saves")
         {
             _saveHeaderService = saveHeaderService ?? throw new ArgumentNullException(nameof(saveHeaderService));
             _modListManager = modListManager;
+            _modListIOService = modListIOService;
+            _dialogService = dialogService;
             _token = _cancellation.Token;
 
             RefreshCommand = CreateAsyncCommand(
                 () => RefreshAsync(_token),
                 () => !IsLoadingList,
                 nameof(IsLoadingList));
+
+            // The import is offered only while the save's list differs from
+            // the active one - the button says so and the command agrees.
+            ImportListCommand = CreateAsyncCommand(
+                () =>
+                {
+                    Task import = ExecuteImportListAsync();
+                    ImportTask = import;
+                    return import;
+                },
+                CanImportList,
+                nameof(CanImportSaveList),
+                nameof(IsImporting));
+
+            // The details panel owns the verdict, the dialog owns the button
+            // that acts on it - so the change of the verdict is forwarded.
+            Details.PropertyChanged += OnDetailsPropertyChanged;
         }
 
         #region Collections
@@ -89,6 +116,12 @@ namespace RimSharp.Features.Saves.ViewModels
         /// <summary>Reloads the save folder.</summary>
         public ICommand RefreshCommand { get; }
 
+        /// <summary>
+        /// Applies the mod list of the selected save to the app's active mod
+        /// list. Only available while the two lists differ.
+        /// </summary>
+        public ICommand ImportListCommand { get; }
+
         /// <summary>True while the save folder is being read.</summary>
         public bool IsLoadingList
         {
@@ -98,6 +131,21 @@ namespace RimSharp.Features.Saves.ViewModels
 
         /// <summary>True when the folder holds no save at all.</summary>
         public bool ShowPlaceholder => !IsLoadingList && Saves.Count == 0;
+
+        /// <summary>True while the mod list of the selected save is being imported.</summary>
+        public bool IsImporting
+        {
+            get => _isImporting;
+            private set => SetProperty(ref _isImporting, value);
+        }
+
+        /// <summary>
+        /// True when the "Import list" button belongs on screen: the save's mod
+        /// list differs from the active one, and the import pipeline is there to
+        /// apply it. A save that matches the active list has nothing to import -
+        /// the button stays away instead of offering a no-op.
+        /// </summary>
+        public bool CanImportSaveList => _modListIOService != null && Details.HasDiff;
 
         /// <summary>True when there are more saves than the inline list shows.</summary>
         public bool HasMoreSaves => ExpandedSaves.Count > 0;
@@ -165,6 +213,12 @@ namespace RimSharp.Features.Saves.ViewModels
         /// ignores it (the scan updates the state).
         /// </summary>
         public Task? ColonistNamesTask { get; private set; }
+
+        /// <summary>
+        /// The import of the selected save's mod list. Tests await this instead
+        /// of sleeping; the view ignores it (the import updates the state).
+        /// </summary>
+        public Task? ImportTask { get; private set; }
 
         /// <summary>The details panel of the selected save.</summary>
         public SaveDetailsViewModel Details { get; } = new();
@@ -488,6 +542,106 @@ namespace RimSharp.Features.Saves.ViewModels
         }
 
         /// <summary>
+        /// Applies the mod list of the selected save to the app's active mod
+        /// list: the save's mods, in the save's load order. The save itself is
+        /// only ever read - the import touches the app's active list, exactly
+        /// like the ModManager's own import does, and it goes through the same
+        /// pipeline (missing mods are offered for download, never dropped).
+        /// </summary>
+        private async Task ExecuteImportListAsync()
+        {
+            if (_modListIOService == null) return;
+
+            var row = SelectedSave;
+            if (row == null) return;
+
+            // The header was read when the save was selected - it comes
+            // from the cache, the file is not read a second time.
+            var header = await GetHeaderAsync(row.Path, _token);
+            if (header == null || header.ModIds == null || header.ModIds.Count == 0)
+            {
+                // A save that records no mods has no list to apply.
+                StatusMessage = $"{row.Name} records no mod list to import.";
+                return;
+            }
+
+            // The file import can still be cancelled in its picker - this one
+            // applies the moment the button is clicked, so the click alone is
+            // not the authorization. The dialog asks before the active list
+            // is replaced.
+            if (_dialogService != null)
+            {
+                var confirmed = await _dialogService.ShowConfirmationAsync(
+                    "Import list",
+                    $"Replace your active mod list with the mod list of {row.Name}?\n\n" +
+                    $"{header.ModIds.Count} mods will be activated in the save's load order. " +
+                    "Mods the save uses that are not installed are not activated — the import offers to download them.\n\n" +
+                    "The list is replaced in the app now; save it in the ModManager to keep it.",
+                    showCancel: true);
+
+                if (confirmed != MessageDialogResult.OK && confirmed != MessageDialogResult.Yes)
+                {
+                    StatusMessage = "The import was cancelled — your active list is unchanged.";
+                    return;
+                }
+            }
+
+            IsImporting = true;
+            StatusMessage = $"Importing the mod list of {row.Name}…";
+
+            try
+            {
+                await _modListIOService.ImportModListAsync(header.ModIds, row.Name);
+
+                // The active list is a different one now - the comparison of
+                // the selected save is redone against it, so a difference the
+                // import removed is gone from the panel (and the button with
+                // it, once the two lists match).
+                RecomputeCompat(header);
+
+                StatusMessage = Details.HasDiff
+                    ? $"Imported the mod list of {row.Name} — the lists still differ."
+                    : $"Imported the mod list of {row.Name} — it now matches your active mods.";
+            }
+            catch (Exception ex)
+            {
+                // The import pipeline reports its own failures; this is the
+                // safety net for anything it let through.
+                Debug.WriteLine($"Error importing the mod list of {row.Name}: {ex}");
+                StatusMessage = "The import failed — see the log for details.";
+            }
+            finally
+            {
+                IsImporting = false;
+            }
+        }
+
+        /// <summary>Redoes the compatibility block of a save against the active list as it is now.</summary>
+        private void RecomputeCompat(SaveHeader header)
+        {
+            ApplyCompatSection(header, ComputeCompat(header));
+        }
+
+        /// <summary>
+        /// Whether the import can run: the pipeline is there, the save's list
+        /// differs from the active one, and no import is already running.
+        /// </summary>
+        private bool CanImportList() => !IsImporting && CanImportSaveList;
+
+        /// <summary>
+        /// Forwards the one property of the details panel the dialog's own
+        /// state depends on: whether the save's list differs from the active
+        /// one is what the import button is gated on.
+        /// </summary>
+        private void OnDetailsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(SaveDetailsViewModel.HasDiff))
+            {
+                OnPropertyChanged(nameof(CanImportSaveList));
+            }
+        }
+
+        /// <summary>
         /// Builds both views of the mod card - one list, in load order, core game
         /// and DLCs included: the save's own list as it was recorded (the default
         /// view, bare, without the status tags) and the differences view: the
@@ -680,6 +834,8 @@ namespace RimSharp.Features.Saves.ViewModels
             {
                 // The dialog is closed - a scan that is still running is stopped.
                 CancelColonistNamesScan();
+
+                Details.PropertyChanged -= OnDetailsPropertyChanged;
 
                 try
                 {
