@@ -72,11 +72,6 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
         private void InitializePlaceholderCommands()
         {
-
-            FixIntegrityCommand = CreateAsyncCommand(
-                async () => await _dialogService.ShowTroubleshootingDialogAsync(),
-                () => true,
-                nameof(IsParentLoading));
         }
 
         private bool CanExecuteCheckIncompatibilities() => !IsParentLoading && _modListManager.VirtualActiveMods.Any();

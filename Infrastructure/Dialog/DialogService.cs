@@ -26,8 +26,6 @@ using RimSharp.Features.ModManager.Dialogs.Strip;
 using RimSharp.Features.ModManager.Dialogs.ActiveIssues;
 using RimSharp.Features.LogViewer.ViewModels;
 using RimSharp.Features.LogViewer.Views;
-using RimSharp.Features.Troubleshooting.ViewModels;
-using RimSharp.Features.Troubleshooting.Views;
 using RimSharp.Features.AppLogs.ViewModels;
 using RimSharp.Features.AppLogs.Views;
 using RimSharp.Features.Saves.ViewModels;
@@ -46,10 +44,7 @@ namespace RimSharp.Infrastructure.Dialog
         private readonly ILoggerService? _logger;
         private readonly ISteamClaimValidator? _steamClaimValidator;
         private readonly GameInstallationDetectionService? _gameInstallationDetectionService;
-        private readonly IGameRecoveryService? _gameRecoveryService;
-        private readonly IModConfigurationService? _modConfigurationService;
         private readonly ISteamSubscriptionService? _steamSubscriptionService;
-        private readonly ITroubleshootingScanService? _troubleshootingScanService;
         private readonly ISaveHeaderService? _saveHeaderService;
         private readonly IModListManager? _modListManager;
         private readonly Shared.Models.GameInstance? _gameInstance;
@@ -67,10 +62,7 @@ namespace RimSharp.Infrastructure.Dialog
             ILoggerService? logger = null,
             ISteamClaimValidator? steamClaimValidator = null,
             GameInstallationDetectionService? gameInstallationDetectionService = null,
-            IGameRecoveryService? gameRecoveryService = null,
-            IModConfigurationService? modConfigurationService = null,
             ISteamSubscriptionService? steamSubscriptionService = null,
-            ITroubleshootingScanService? troubleshootingScanService = null,
             ISaveHeaderService? saveHeaderService = null,
             IModListManager? modListManager = null,
             Shared.Models.GameInstance? gameInstance = null)
@@ -83,10 +75,7 @@ namespace RimSharp.Infrastructure.Dialog
             _logger = logger;
             _steamClaimValidator = steamClaimValidator;
             _gameInstallationDetectionService = gameInstallationDetectionService;
-            _gameRecoveryService = gameRecoveryService;
-            _modConfigurationService = modConfigurationService;
             _steamSubscriptionService = steamSubscriptionService;
-            _troubleshootingScanService = troubleshootingScanService;
             _saveHeaderService = saveHeaderService;
             _modListManager = modListManager;
             _gameInstance = gameInstance;
@@ -300,20 +289,6 @@ namespace RimSharp.Infrastructure.Dialog
                 dialogService: this,
                 showAiProviders: showAiProviders);
             var dialog = new SettingsDialogView(viewModel);
-            return await ShowDialogInternalAsync<bool>(viewModel, dialog);
-        }
-
-        public async Task<bool> ShowTroubleshootingDialogAsync()
-        {
-            var viewModel = new TroubleshootingViewModel(
-                this,
-                _gameRecoveryService!,
-                _modConfigurationService!,
-                _steamSubscriptionService!,
-                _troubleshootingScanService!,
-                _gameInstance!);
-            await viewModel.InitializeAsync();
-            var dialog = new TroubleshootingDialogView(viewModel);
             return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }
 

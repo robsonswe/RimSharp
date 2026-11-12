@@ -90,30 +90,5 @@ namespace RimSharp.Services.Workshop
         /// </summary>
         /// <returns>True if Steam was launched successfully, false otherwise</returns>
         Task<bool> VerifyGameFilesAsync();
-
-        /// <summary>
-        /// Clear Steam download cache directories: steamapps/downloading, workshop/downloads, workshop/temp/{AppId}.
-        /// </summary>
-        Task<GameRecoveryResult> ClearDownloadCacheAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Purge workshop temporary directories: workshop/downloads and workshop/temp/294100.
-        /// </summary>
-        Task<GameRecoveryResult> PurgeWorkshopTempAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Kill zombie RimWorld processes and UnityCrashHandler64 (Windows, game version < 1.7).
-        /// </summary>
-        Task<GameRecoveryResult> KillZombieProcessesAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Clean orphaned workshop mods from appworkshop_294100.acf (entries with no on-disk directory).
-        /// </summary>
-        Task<GameRecoveryResult> CleanOrphanedWorkshopModsAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Repair Steam library by parsing libraryfolders.vdf and launching steam://validate/{appid} for each app.
-        /// </summary>
-        Task<GameRecoveryResult> RepairLibraryAsync(CancellationToken cancellationToken = default);
     }
 }

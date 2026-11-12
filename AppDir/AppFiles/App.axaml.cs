@@ -249,10 +249,7 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<ILoggerService>(),
                     provider.GetRequiredService<ISteamClaimValidator>(),
                     provider.GetRequiredService<GameInstallationDetectionService>(),
-                    provider.GetRequiredService<IGameRecoveryService>(),
-                    provider.GetRequiredService<IModConfigurationService>(),
                     provider.GetRequiredService<ISteamSubscriptionService>(),
-                    provider.GetRequiredService<ITroubleshootingScanService>(),
                     provider.GetRequiredService<ISaveHeaderService>(),
                     provider.GetRequiredService<IModListManager>(),
                     provider.GetRequiredService<GameInstance>()
@@ -395,26 +392,6 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<ILoggerService>(),
                     provider.GetRequiredService<SteamWorkshopApiClient>(),
                     provider.GetRequiredService<ISteamSubscriptionService>())); 
-
-            // Troubleshooting services
-            services.AddSingleton<IGameRecoveryService>(provider =>
-                new GameRecoveryService(
-                    provider.GetRequiredService<GameInstance>(),
-                    provider.GetRequiredService<ILoggerService>(),
-                    provider.GetRequiredService<IPathService>(),
-                    provider.GetRequiredService<ISteamSubscriptionService>()));
-            services.AddSingleton<IModConfigurationService>(provider =>
-                new ModConfigurationService(
-                    provider.GetRequiredService<GameInstance>(),
-                    provider.GetRequiredService<ILoggerService>(),
-                    provider.GetRequiredService<IPathService>(),
-                    provider.GetRequiredService<IFileDialogService>()));
-            services.AddSingleton<ITroubleshootingScanService>(provider =>
-                new TroubleshootingScanService(
-                    provider.GetRequiredService<GameInstance>(),
-                    provider.GetRequiredService<ILoggerService>(),
-                    provider.GetRequiredService<IPathService>(),
-                    provider.GetRequiredService<ISteamSubscriptionService>()));
 
             // Save management services (read-only)
             services.AddSingleton<ISaveHeaderService>(provider =>

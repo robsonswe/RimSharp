@@ -62,7 +62,6 @@ namespace RimSharp.AppDir.MainPage
         public ICommand OpenFolderCommand { get; }
         public ICommand AboutCommand { get; }
         public ICommand AppLogsCommand { get; }
-        public ICommand TroubleshootingCommand { get; }
 
         private string _statusMessage = "Ready";
         public string StatusMessage
@@ -203,7 +202,6 @@ namespace RimSharp.AppDir.MainPage
             OpenFolderCommand = CreateCommand<string>(OpenFolder, CanOpenFolder);
             AboutCommand = CreateAsyncCommand(() => _dialogService.ShowAboutDialog(), CanExecuteGlobalActions);
             AppLogsCommand = CreateAsyncCommand(OpenAppLogs, CanExecuteGlobalActions);
-            TroubleshootingCommand = CreateAsyncCommand(OpenTroubleshooting, CanExecuteGlobalActions);
 
             _navigationService.TabSwitchRequested += OnTabSwitchRequested;
         }
@@ -476,9 +474,6 @@ namespace RimSharp.AppDir.MainPage
 
         /// <summary>Opens the app-logs window from the main menu.</summary>
         private async Task OpenAppLogs() => await _dialogService.ShowAppLogsAsync();
-
-        /// <summary>Opens the Troubleshooting dialog from the main menu.</summary>
-        private async Task OpenTroubleshooting() => await _dialogService.ShowTroubleshootingDialogAsync();
 
         private async Task OpenSettings()
         {
