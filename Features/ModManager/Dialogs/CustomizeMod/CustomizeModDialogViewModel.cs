@@ -94,7 +94,6 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         private readonly bool _originalLoadBottom;
         private readonly List<string> _originalSupportedVersions;
         private readonly string? _originalExternalUrl;
-        private readonly string? _originalTags;
 
 // Original mod properties (display-only)
         public bool HasOriginalLoadBottom => _originalLoadBottom;
@@ -230,12 +229,12 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             _originalExternalUrl = string.IsNullOrEmpty(_customInfo.ExternalUrl) ?
                 mod.ExternalUrl : null;
 
-            _originalTags = string.IsNullOrEmpty(_customInfo.Tags) ?
-                mod.Tags : null;
-
             IsFavorite = _customInfo.Favorite ?? false;
             ExternalUrl = _customInfo.ExternalUrl ?? mod.ExternalUrl ?? "";
-            Tags = _customInfo.Tags ?? mod.Tags ?? "";
+            // The editable Tags box holds ONLY user-defined tags: Steam tags are
+            // read-only, live in the merged view (details panel / tag filter),
+            // and must never leak into this box to be persisted as user data.
+            Tags = _customInfo.Tags ?? "";
             SupportedVersions = string.Join(", ", _customInfo.SupportedVersions ?? new List<string>());
 
             // Setup LoadBottom

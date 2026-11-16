@@ -158,6 +158,14 @@ namespace RimSharp.Shared.Models
 
         public string Tags { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Raw automatic Workshop tags (only "Translation"/"Scenario"), read from
+        /// the mod's RimSharp.json cache. This is the read-only Steam layer, kept
+        /// separate from the merged <see cref="Tags"/> display string
+        /// (user ∪ Steam) that the details panel and tag filter consume.
+        /// </summary>
+        public List<string> SteamTags { get; set; } = new List<string>();
+
         public string LocalUpdateDate => UpdateDate ?? "N/A";
         public DateTime LocalUpdateDateTime 
         {

@@ -1148,6 +1148,27 @@ namespace RimSharp.Shared.Services.Implementations
                             {
                                 mod.SteamName = steamNameNode.GetString() ?? string.Empty;
                             }
+                            if (cacheDoc.RootElement.TryGetProperty("Tags", out var steamTagsNode) &&
+                                steamTagsNode.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var tagElement in steamTagsNode.EnumerateArray())
+                                {
+                                    if (tagElement.ValueKind == JsonValueKind.String)
+                                    {
+                                        var tagValue = tagElement.GetString();
+                                        if (!string.IsNullOrWhiteSpace(tagValue))
+                                        {
+                                            mod.SteamTags.Add(tagValue.Trim());
+                                        }
+                                    }
+                                }
+                            }
+                            // Seed the merged display string from the automatic Steam
+                            // tags so the details panel and the tag filter surface them
+                            // even when the user has no custom tags. ModCustomService
+                            // unions user tags on top of this at apply time, so a fresh
+                            // parse on every load keeps the merge idempotent.
+                            mod.Tags = string.Join(", ", mod.SteamTags);
                         }
                         catch (Exception ex)
                         {

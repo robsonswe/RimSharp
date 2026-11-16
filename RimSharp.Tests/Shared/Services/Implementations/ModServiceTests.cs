@@ -137,6 +137,74 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             mods.Should().ContainSingle(m => m.PackageId == "Ludeon.RimWorld");
             mods.Should().NotContain(m => m.PackageId == "bad.mod" || m.Name == "BadMod");
         }
+
+        [Fact]
+        public async Task LoadModsAsync_ReadsSteamTagsFromCacheAndSeedsTagsString()
+        {
+            var modDir = Path.Combine(_modsPath, "TranslatedMod");
+            var aboutDir = Path.Combine(modDir, "About");
+            Directory.CreateDirectory(aboutDir);
+
+            var aboutXml = @"<?xml version='1.0' encoding='utf-8'?>
+<ModMetaData>
+    <name>Translated Mod</name>
+    <packageId>test.translated</packageId>
+    <author>Someone</author>
+    <supportedVersions>
+        <li>1.5</li>
+    </supportedVersions>
+</ModMetaData>";
+            File.WriteAllText(Path.Combine(aboutDir, "About.xml"), aboutXml);
+
+            // RimSharp.json lives in the mod ROOT (next to About/), as written
+            // by WorkshopDescriptionService.
+            var cacheJson = @"{
+    ""SteamId"": ""2557451735"",
+    ""SteamName"": ""Translated Mod"",
+    ""SteamDescription"": ""A translation."",
+    ""Source"": ""steamapi"",
+    ""Tags"": [ ""Translation"", ""Scenario"" ]
+}";
+            File.WriteAllText(Path.Combine(modDir, "RimSharp.json"), cacheJson);
+
+            var service = CreateService();
+            await service.LoadModsAsync();
+            var mods = service.GetLoadedMods().ToList();
+
+            var parsed = mods.Single(m => m.PackageId == "test.translated");
+            parsed.SteamTags.Should().BeEquivalentTo(new[] { "Translation", "Scenario" });
+            // Tags is seeded from the Steam tags so the details panel and the
+            // tag filter see them even without user-defined tags.
+            parsed.Tags.Should().Be("Translation, Scenario");
+            parsed.TagList.Should().BeEquivalentTo(new[] { "Translation", "Scenario" });
+        }
+
+        [Fact]
+        public async Task LoadModsAsync_WhenCacheHasNoTagsProperty_LeavesTagsEmpty()
+        {
+            var modDir = Path.Combine(_modsPath, "NoTagsMod");
+            var aboutDir = Path.Combine(modDir, "About");
+            Directory.CreateDirectory(aboutDir);
+
+            var aboutXml = @"<?xml version='1.0' encoding='utf-8'?>
+<ModMetaData>
+    <name>No Tags Mod</name>
+    <packageId>test.notags</packageId>
+</ModMetaData>";
+            File.WriteAllText(Path.Combine(aboutDir, "About.xml"), aboutXml);
+
+            // Cache without a Tags array (older schema) must be handled gracefully.
+            File.WriteAllText(Path.Combine(modDir, "RimSharp.json"),
+                @"{ ""SteamId"": ""123"", ""SteamName"": ""No Tags Mod"" }");
+
+            var service = CreateService();
+            await service.LoadModsAsync();
+            var mods = service.GetLoadedMods().ToList();
+
+            var parsed = mods.Single(m => m.PackageId == "test.notags");
+            parsed.SteamTags.Should().BeEmpty();
+            parsed.Tags.Should().BeEmpty();
+        }
     }
 
     public class ModServiceMacOSBundleTests : IDisposable

@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -45,7 +46,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task<bool> SaveCacheAsync(string steamId, string modFolderPath, string plainText, string source, string? steamName = null, CancellationToken ct = default)
+        public async Task<bool> SaveCacheAsync(string steamId, string modFolderPath, string plainText, string source, string? steamName = null, CancellationToken ct = default, List<string>? tags = null)
         {
             if (string.IsNullOrWhiteSpace(steamId) || string.IsNullOrWhiteSpace(modFolderPath) ||
                 string.IsNullOrWhiteSpace(plainText))
@@ -63,6 +64,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 SteamId = steamId,
                 SteamDescription = plainText,
                 SteamName = steamName ?? string.Empty,
+                Tags = FilterRetainedWorkshopTags(tags),
                 Source = source,
                 FetchedUtc = DateTimeOffset.UtcNow
             };
@@ -95,7 +97,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 return null;
             }
 
-            (string Description, string Source, string? Title)? extraction =
+            (string Description, string Source, string? Title, List<string> Tags)? extraction =
                 await ExtractViaSteamApiAsync(steamId, ct).ConfigureAwait(false)
                 ?? await ExtractViaHtmlAsync(steamId, ct).ConfigureAwait(false);
 
@@ -105,12 +107,12 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 return null;
             }
 
-            await SaveCacheAsync(steamId, modFolderPath, extraction.Value.Description, extraction.Value.Source, extraction.Value.Title, ct).ConfigureAwait(false);
+            await SaveCacheAsync(steamId, modFolderPath, extraction.Value.Description, extraction.Value.Source, extraction.Value.Title, ct, extraction.Value.Tags).ConfigureAwait(false);
             return extraction.Value.Description;
         }
 
         /// <summary>Extractor 1 — Steam Web API (structured, preferred).</summary>
-        private async Task<(string Description, string Source, string? Title)?> ExtractViaSteamApiAsync(string steamId, CancellationToken ct)
+        private async Task<(string Description, string Source, string? Title, List<string> Tags)?> ExtractViaSteamApiAsync(string steamId, CancellationToken ct)
         {
             try
             {
@@ -125,7 +127,8 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                     : detail.DetailedDescription;
                 if (string.IsNullOrWhiteSpace(raw)) return null;
 
-                return (CleanHtml(raw), "steamapi", detail.Title);
+                var tags = FilterRetainedWorkshopTags(detail.Tags.Select(t => t.Tag));
+                return (CleanHtml(raw), "steamapi", detail.Title, tags);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -135,7 +138,7 @@ namespace RimSharp.Features.WorkshopDownloader.Services
         }
 
         /// <summary>Extractor 2 — Workshop item page HTML scrape (fallback).</summary>
-        private async Task<(string Description, string Source, string? Title)?> ExtractViaHtmlAsync(string steamId, CancellationToken ct)
+        private async Task<(string Description, string Source, string? Title, List<string> Tags)?> ExtractViaHtmlAsync(string steamId, CancellationToken ct)
         {
             try
             {
@@ -149,13 +152,74 @@ namespace RimSharp.Features.WorkshopDownloader.Services
                 var title = ExtractWorkshopItemTitle(html);
                 if (string.IsNullOrWhiteSpace(raw) || raw.Length < 40) return null;
 
-                return (CleanHtml(raw), "html", title);
+                var tags = FilterRetainedWorkshopTags(ExtractWorkshopTagValuesFromHtml(html));
+                return (CleanHtml(raw), "html", title, tags);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogWarning($"Workshop description: HTML extractor failed for {steamId}: {ex.Message}", nameof(WorkshopDescriptionService));
                 return null;
             }
+        }
+
+        /// <summary>
+        /// The only Workshop tags worth persisting. Version-like tags ("1.6",
+        /// "1.5", …) are pure noise for RimSharp's purposes, so everything else
+        /// the Steam API / HTML page reports is discarded.
+        /// </summary>
+        private static readonly HashSet<string> RetainedWorkshopTags =
+            new(StringComparer.OrdinalIgnoreCase) { "Translation", "Scenario" };
+
+        /// <summary>
+        /// Workshop item pages link each tag as an anchor whose href carries
+        /// <c>requiredtags[]=Tag</c>. The brackets are URL-encoded
+        /// (<c>%5B%5D</c>) on the live page and params are joined with
+        /// <c>&</c>; the capture stops at the next <c>&</c>/quote/angle
+        /// bracket so both forms are handled by one pattern.
+        /// </summary>
+        private static readonly Regex WorkshopTagHrefRegex = new Regex(
+            @"requiredtags(?:%5B%5D|\[\])=([^&""'<>]+)",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        /// <summary>
+        /// Extracts the raw tag values from a Workshop item page's tag anchors
+        /// (the <c>requiredtags[]=…</c> href params), URL-decoding each capture.
+        /// No filtering is applied here — see <see cref="FilterRetainedWorkshopTags"/>.
+        /// </summary>
+        internal static IEnumerable<string> ExtractWorkshopTagValuesFromHtml(string html)
+        {
+            if (string.IsNullOrEmpty(html)) yield break;
+
+            foreach (Match match in WorkshopTagHrefRegex.Matches(html))
+            {
+                var value = match.Groups[1].Value;
+                if (string.IsNullOrWhiteSpace(value)) continue;
+                yield return WebUtility.UrlDecode(value);
+            }
+        }
+
+        /// <summary>
+        /// Keeps only the retained tags ("Translation"/"Scenario", matched
+        /// case-insensitively), trimming and de-duplicating them while
+        /// preserving first-seen order and original casing. Null/empty input
+        /// yields an empty list.
+        /// </summary>
+        internal static List<string> FilterRetainedWorkshopTags(IEnumerable<string?>? tags)
+        {
+            var result = new List<string>();
+            if (tags is null) return result;
+
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var tag in tags)
+            {
+                if (string.IsNullOrWhiteSpace(tag)) continue;
+                var trimmed = tag.Trim();
+                if (RetainedWorkshopTags.Contains(trimmed) && seen.Add(trimmed))
+                {
+                    result.Add(trimmed);
+                }
+            }
+            return result;
         }
 
         private static string? ExtractWorkshopItemTitle(string html)

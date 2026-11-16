@@ -81,6 +81,44 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         }
 
         [Fact]
+        public async Task ApplyCustomInfoToMods_MergesSteamTagsWithCustomTags_CaseInsensitiveAndIdempotent()
+        {
+            var service = new ModCustomService(_testTempDir, _mockLogger);
+            var info = new ModCustomInfo { Tags = "translation, must have" };
+            await service.SaveCustomModInfoAsync("test.mod", info);
+
+            // Simulate the post-parse state: ModService seeded Tags from SteamTags.
+            var mod = new ModItem { PackageId = "test.mod", Name = "Test Mod" };
+            mod.SteamTags.Add("Translation");
+            mod.Tags = string.Join(", ", mod.SteamTags); // "Translation"
+
+            service.ApplyCustomInfoToMods(new[] { mod });
+            // "translation" dedupes against the Steam "Translation" (case-insensitive);
+            // the user's extra tag is appended.
+            mod.Tags.Should().Be("Translation, must have");
+
+            // Repeated application is stable — no duplication, no drift.
+            service.ApplyCustomInfoToMods(new[] { mod });
+            mod.Tags.Should().Be("Translation, must have");
+            service.ApplyCustomInfoToMods(new[] { mod });
+            mod.Tags.Should().Be("Translation, must have");
+        }
+
+        [Fact]
+        public async Task ApplyCustomInfoToMods_UserTagsOnly_WhenNoSteamTags_Unchanged()
+        {
+            var service = new ModCustomService(_testTempDir, _mockLogger);
+            var info = new ModCustomInfo { Tags = "gameplay, qol" };
+            await service.SaveCustomModInfoAsync("test.mod", info);
+
+            var mod = new ModItem { PackageId = "test.mod", Name = "Test Mod" };
+
+            service.ApplyCustomInfoToMods(new[] { mod });
+
+            mod.Tags.Should().Be("gameplay, qol");
+        }
+
+        [Fact]
         public async Task RemoveCustomModInfoAsync_ShouldUpdateFile()
         {
 
