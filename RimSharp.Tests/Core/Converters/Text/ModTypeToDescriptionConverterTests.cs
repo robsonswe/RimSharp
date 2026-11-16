@@ -17,12 +17,12 @@ namespace RimSharp.Tests.Core.Converters.Text
 
         [Theory]
         [InlineData(ModType.Core, "Core Game")]
-        [InlineData(ModType.Expansion, "Expansion/DLC")]
-        [InlineData(ModType.Workshop, "Workshop Mod")]
-        [InlineData(ModType.Tracked, "Tracked for updates (downloaded copy)")]
-        [InlineData(ModType.Git, "Git Repository")]
-        [InlineData(ModType.Untracked, "Local copy (not tracked for updates)")]
-        [InlineData((ModType)999, "Unknown Mod Type")]
+        [InlineData(ModType.Expansion, "DLC")]
+        [InlineData(ModType.Workshop, "Workshop")]
+        [InlineData(ModType.Tracked, "Local (Tracked)")]
+        [InlineData(ModType.Git, "Local (Git)")]
+        [InlineData(ModType.Untracked, "Local (Untracked)")]
+        [InlineData((ModType)999, "Unknown")]
         [InlineData(null, "")]
         [InlineData("not a mod type", "")]
         public void Convert_ShouldReturnCorrectDescription(object? value, string expected)

@@ -47,7 +47,7 @@
      <convText:BooleanToTextConverter x:Key="BooleanToTextConverter"/>
      <convText:ListToStringConverter x:Key="ListToStringConverter"/>
      <convText:ModTypeToDescriptionConverter x:Key="ModTypeToDescriptionConverter"/>
-     <convText:ModTypeToInitialConverter x:Key="ModTypeToInitialConverter"/>
+     <convText:ModTypeToIconConverter x:Key="ModTypeToIconConverter"/>
      <convText:VersionSupportConverter x:Key="VersionSupportConverter"/>
      <convText:ConditionalTextConverter x:Key="ConditionalTextConverter"/>
      <convText:StringToUriConverter x:Key="StringToUriConverter"/>
@@ -70,8 +70,8 @@
      <convVisual:DarkenColorConverter x:Key="DarkenColorConverter"/>
      <convVisual:UpdateStatusToColorConverter x:Key="UpdateStatusToColorConverter"/>
      <convVisual:ModTypeToColorConverter x:Key="ModTypeToColorConverter"/>
-     <convVisual:ModTypeToForegroundConverter x:Key="ModTypeToForegroundConverter"/>
-     <convVisual:ModWeightConverter x:Key="ModWeightConverter"/>
+      <convVisual:ModTypeToForegroundConverter x:Key="ModTypeToForegroundConverter"/>
+      <convVisual:ModWeightConverter x:Key="ModWeightConverter"/>
      <convVisual:BooleanToDoubleConverter x:Key="BooleanToDoubleConverter"/>
      <convVisual:BooleanToThicknessConverter x:Key="BooleanToThicknessConverter"/>
 </ResourceDictionary>

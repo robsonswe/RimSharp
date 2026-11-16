@@ -14,12 +14,12 @@ namespace RimSharp.Core.Converters.Text
                 return type switch
                 {
                     ModType.Core => "Core Game",
-                    ModType.Expansion => "Expansion/DLC",
-                    ModType.Workshop => "Workshop Mod",
-                    ModType.Tracked => "Tracked for updates (downloaded copy)",
-                    ModType.Git => "Git Repository",
-                    ModType.Untracked => "Local copy (not tracked for updates)",
-                    _ => "Unknown Mod Type"
+                    ModType.Expansion => "DLC",
+                    ModType.Workshop => "Workshop",
+                    ModType.Tracked => "Local (Tracked)",
+                    ModType.Git => "Local (Git)",
+                    ModType.Untracked => "Local (Untracked)",
+                    _ => "Unknown"
                 };
             }
             return "";

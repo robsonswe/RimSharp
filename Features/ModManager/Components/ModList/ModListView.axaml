@@ -131,18 +131,6 @@
             </Setter>
         </Style>
 
-        <!-- Badge Styles -->
-        <Style Selector="Border.Badge">
-            <Setter Property="Width" Value="24"/>
-            <Setter Property="Height" Value="22"/>
-            <Setter Property="CornerRadius" Value="4"/>
-            <Setter Property="Margin" Value="0,0,4,0"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Background" Value="{DynamicResource BrushBgAction}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderStrong}"/>
-        </Style>
-
         <!-- Filter Button Styles -->
         <Style Selector="Button.FilterButtonStyle">
             <Setter Property="Width" Value="60"/>
@@ -249,13 +237,28 @@
                                     Background="Transparent"
                                     Margin="{Binding IsFavorite, Converter={StaticResource BooleanToThicknessConverter}, ConverterParameter='2,0,0,0|5,0,0,0'}">
                                 <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <!-- Badge with ToolTip -->
-                                    <Border Grid.Column="0" Classes="Badge"
-                                            Background="{Binding ModType, Converter={StaticResource ModTypeToColorConverter}}">
-                                        <TextBlock Text="{Binding ModType, Converter={StaticResource ModTypeToInitialConverter}}"
-                                                   VerticalAlignment="Center" HorizontalAlignment="Center"
-                                                   FontSize="11" FontWeight="Bold"
-                                                   Foreground="{Binding ModType, Converter={StaticResource ModTypeToForegroundConverter}}"/>
+                                    <!-- Chamfered type badge with centered icon and ToolTip -->
+                                    <Grid Grid.Column="0"
+                                          Width="18" Height="18"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,4,0"
+                                          UseLayoutRounding="True">
+                                        <!-- Symmetrical chamfered slab (3px corners) -->
+                                        <Path Width="18" Height="18"
+                                              Data="M 3,0 L 15,0 L 18,3 L 18,15 L 15,18 L 3,18 L 0,15 L 0,3 Z"
+                                              Stretch="Fill"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Fill="{Binding ModType, Converter={StaticResource ModTypeToColorConverter}}"
+                                              Stroke="{DynamicResource BrushBorderStrong}"
+                                              StrokeThickness="1"/>
+                                        <!-- Font-glyph icon: the Viewbox zeroes out typographic
+                                             baseline/leading so the glyph centers geometrically -->
+                                        <Viewbox Width="10" Height="10"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <i:Icon Value="{Binding ModType, Converter={StaticResource ModTypeToIconConverter}}"
+                                                    FontSize="24"
+                                                    Foreground="{Binding ModType, Converter={StaticResource ModTypeToForegroundConverter}}"/>
+                                        </Viewbox>
                                         <ToolTip.Tip>
                                             <ToolTip>
                                                 <StackPanel>
@@ -278,7 +281,7 @@
                                                 </StackPanel>
                                             </ToolTip>
                                         </ToolTip.Tip>
-                                    </Border>
+                                    </Grid>
 
                                     <!-- Mod Name -->
                                     <TextBlock Grid.Column="1" Text="{Binding DisplayName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"

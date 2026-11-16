@@ -278,10 +278,10 @@ namespace RimSharp.Services.ModManagement
             {
                 ModType.Core => "Core Game",
                 ModType.Expansion => "DLC",
-                ModType.Workshop => "Steam Workshop",
-                ModType.Tracked => "Tracked",
-                ModType.Git => "Git",
-                ModType.Untracked => "Untracked",
+                ModType.Workshop => "Workshop",
+                ModType.Tracked => "Local (Tracked)",
+                ModType.Git => "Local (Git)",
+                ModType.Untracked => "Local (Untracked)",
                 _ => "Unknown"
             };
         }
