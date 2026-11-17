@@ -259,5 +259,92 @@ namespace RimSharp.Tests.Infrastructure.Configuration
 
             File.ReadAllText(Path.Combine(target, "db", "db.json")).Should().Be("newer-live-data");
         }
+
+        [Fact]
+        public void MigrateCuratedDataLayoutCore_WhenDbDirMissing_ShouldBeNoOp()
+        {
+            var dataRoot = Path.Combine(_tempRoot, "data");
+
+            AppDataPaths.MigrateCuratedDataLayoutCore(dataRoot);
+
+            Directory.Exists(Path.Combine(dataRoot, "Rules")).Should().BeFalse();
+            Directory.Exists(Path.Combine(dataRoot, "db")).Should().BeFalse();
+        }
+
+        [Fact]
+        public void MigrateCuratedDataLayoutCore_WhenDbDirEmpty_ShouldBeNoOp()
+        {
+            var dataRoot = Path.Combine(_tempRoot, "data");
+            Directory.CreateDirectory(Path.Combine(dataRoot, "db"));
+
+            AppDataPaths.MigrateCuratedDataLayoutCore(dataRoot);
+
+            Directory.Exists(Path.Combine(dataRoot, "Rules")).Should().BeFalse();
+            Directory.Exists(Path.Combine(dataRoot, "db")).Should().BeFalse("an empty retired folder is pruned");
+        }
+
+        [Fact]
+        public void MigrateCuratedDataLayoutCore_ShouldMoveCuratedFilesIntoPerCategoryLayout()
+        {
+            var dataRoot = Path.Combine(_tempRoot, "data");
+            var dbDir = Path.Combine(dataRoot, "db");
+            Directory.CreateDirectory(dbDir);
+            File.WriteAllText(Path.Combine(dbDir, "rules.json"), @"{ ""rules"": {} }");
+            File.WriteAllText(Path.Combine(dbDir, "replacements.json"), @"{ ""mods"": {} }");
+            File.WriteAllText(Path.Combine(dbDir, "db.json"), @"{ ""mods"": {} }");
+
+            AppDataPaths.MigrateCuratedDataLayoutCore(dataRoot);
+
+            File.Exists(Path.Combine(dataRoot, "Rules", "RimSharp", "rules.json")).Should().BeTrue();
+            File.ReadAllText(Path.Combine(dataRoot, "Rules", "RimSharp", "rules.json")).Should().Be(@"{ ""rules"": {} }");
+            File.Exists(Path.Combine(dataRoot, "Replacements", "RimSharp", "replacements.json")).Should().BeTrue();
+            File.Exists(Path.Combine(dataRoot, "ModInfo", "RimSharp", "db.json")).Should().BeTrue();
+            Directory.Exists(dbDir).Should().BeFalse("Data/db is retired once every curated file moved out");
+        }
+
+        [Fact]
+        public void MigrateCuratedDataLayoutCore_WhenTargetAlreadyExists_ShouldDeleteStaleSource()
+        {
+            var dataRoot = Path.Combine(_tempRoot, "data");
+            var dbDir = Path.Combine(dataRoot, "db");
+            Directory.CreateDirectory(dbDir);
+            File.WriteAllText(Path.Combine(dbDir, "rules.json"), "stale");
+            Directory.CreateDirectory(Path.Combine(dataRoot, "Rules", "RimSharp"));
+            File.WriteAllText(Path.Combine(dataRoot, "Rules", "RimSharp", "rules.json"), "live");
+
+            AppDataPaths.MigrateCuratedDataLayoutCore(dataRoot);
+
+            File.ReadAllText(Path.Combine(dataRoot, "Rules", "RimSharp", "rules.json")).Should().Be("live");
+            File.Exists(Path.Combine(dbDir, "rules.json")).Should().BeFalse("a surviving stale source would be re-migrated on every startup");
+        }
+
+        [Fact]
+        public void MigrateCuratedDataLayoutCore_ShouldDeleteObsoleteManifest()
+        {
+            var dataRoot = Path.Combine(_tempRoot, "data");
+            var dbDir = Path.Combine(dataRoot, "db");
+            Directory.CreateDirectory(dbDir);
+            File.WriteAllText(Path.Combine(dbDir, "manifest.json"), "{}");
+
+            AppDataPaths.MigrateCuratedDataLayoutCore(dataRoot);
+
+            File.Exists(Path.Combine(dbDir, "manifest.json")).Should().BeFalse();
+            Directory.Exists(dbDir).Should().BeFalse();
+        }
+
+        [Fact]
+        public void MigrateCuratedDataLayoutCore_ShouldKeepUnrelatedFilesInDbDir()
+        {
+            var dataRoot = Path.Combine(_tempRoot, "data");
+            var dbDir = Path.Combine(dataRoot, "db");
+            Directory.CreateDirectory(dbDir);
+            File.WriteAllText(Path.Combine(dbDir, "rules.json"), "rules");
+            File.WriteAllText(Path.Combine(dbDir, "user-note.txt"), "keep me");
+
+            AppDataPaths.MigrateCuratedDataLayoutCore(dataRoot);
+
+            File.Exists(Path.Combine(dbDir, "user-note.txt")).Should().BeTrue("only app-managed curated files are touched");
+            Directory.Exists(dbDir).Should().BeTrue("a non-empty retired folder is left in place");
+        }
     }
 }

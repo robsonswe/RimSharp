@@ -31,7 +31,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             Directory.CreateDirectory(_testTempDir);
 
             _tempDbPath = Path.Combine(_testTempDir, "replacements.json");
-            _mockDataUpdateService.GetDataFilePath("replacements.json").Returns(_tempDbPath);
+            _mockDataUpdateService.GetExternalFilePath("Replacements", "RimSharp", "replacements.json").Returns(_tempDbPath);
 
             _tempRepoPath = Path.Combine(_testTempDir, "repo", "replacements.json");
             _mockDataUpdateService.GetExternalFilePath("Replacements", "UseThisInstead", "replacements.json").Returns(_tempRepoPath);

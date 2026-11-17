@@ -22,7 +22,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.Rules
             _rulesFilePath = Path.Combine(_tempDir, "rules.json");
 
             _mockDataUpdateService = Substitute.For<IDataUpdateService>();
-            _mockDataUpdateService.GetDataFilePath("rules.json").Returns(_rulesFilePath);
+            _mockDataUpdateService.GetExternalFilePath("Rules", "RimSharp", "rules.json").Returns(_rulesFilePath);
         }
 
         public void Dispose()

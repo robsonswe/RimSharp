@@ -26,7 +26,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             _mockLogger = Substitute.For<ILoggerService>();
             
             _tempDbPath = Path.Combine(Path.GetTempPath(), "RimSharpTests_db_" + Guid.NewGuid().ToString("N") + ".json");
-            _mockDataUpdateService.GetDataFilePath("db.json").Returns(_tempDbPath);
+            _mockDataUpdateService.GetExternalFilePath("ModInfo", "RimSharp", "db.json").Returns(_tempDbPath);
 
             _service = new ModDictionaryService(_mockPathService, _mockDataUpdateService, _mockLogger);
         }

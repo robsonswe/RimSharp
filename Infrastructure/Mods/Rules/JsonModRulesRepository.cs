@@ -23,7 +23,7 @@ namespace RimSharp.Infrastructure.Mods.Rules
             if (dataUpdateService == null)
                 throw new ArgumentNullException(nameof(dataUpdateService));
 
-            _rulesFilePath = dataUpdateService.GetDataFilePath(RulesFileName);
+            _rulesFilePath = dataUpdateService.GetExternalFilePath("Rules", "RimSharp", RulesFileName);
 
             _rulesDirectoryPath = Path.GetDirectoryName(_rulesFilePath);
 

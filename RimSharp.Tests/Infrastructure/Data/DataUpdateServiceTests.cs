@@ -5,6 +5,8 @@ using System.IO.Compression;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -43,19 +45,25 @@ namespace RimSharp.Tests.Infrastructure.Data
         }
 
         [Fact]
-        public async Task CheckForAndApplyUpdatesAsync_WhenNoLocalManifest_ShouldDownloadAll()
+        public async Task CheckForAndApplyUpdatesAsync_WhenFilesMissing_ShouldDownloadAllIntoMappedDestinations()
         {
 
-            var manifestJson = @"{ ""version"": ""1.0"", ""files"": { ""rules"": { ""path"": ""rules.json"" } } }";
             var rulesJson = @"{ ""rules"": [] }";
+            var replacementsJson = @"{ ""mods"": {} }";
+            var dbJson = @"{ ""mods"": {} }";
+            var manifestJson = BuildManifest(rulesJson, replacementsJson, dbJson);
 
             _httpHandler.OnRequest = req =>
             {
                 var uri = req.RequestUri?.ToString() ?? "";
                 if (uri.EndsWith("manifest.json"))
                     return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(manifestJson) };
-                if (uri.EndsWith("rules.json"))
+                if (uri.EndsWith("db/rules.json"))
                     return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(rulesJson) };
+                if (uri.EndsWith("db/replacements.json"))
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(replacementsJson) };
+                if (uri.EndsWith("db/db.json"))
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(dbJson) };
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             };
 
@@ -64,76 +72,179 @@ namespace RimSharp.Tests.Infrastructure.Data
 
             await service.CheckForAndApplyUpdatesAsync(progress, CancellationToken.None);
 
-            File.Exists(Path.Combine(_testTempDir, "Data", "db", "manifest.json")).Should().BeTrue();
-            File.Exists(Path.Combine(_testTempDir, "Data", "db", "rules.json")).Should().BeTrue();
-            File.ReadAllText(Path.Combine(_testTempDir, "Data", "db", "rules.json")).Should().Be(rulesJson);
+            var rulesPath = Path.Combine(_testTempDir, "Data", "Rules", "RimSharp", "rules.json");
+            var replacementsPath = Path.Combine(_testTempDir, "Data", "Replacements", "RimSharp", "replacements.json");
+            var dbPath = Path.Combine(_testTempDir, "Data", "ModInfo", "RimSharp", "db.json");
+
+            File.Exists(rulesPath).Should().BeTrue();
+            File.ReadAllText(rulesPath).Should().Be(rulesJson);
+            File.Exists(replacementsPath).Should().BeTrue();
+            File.ReadAllText(replacementsPath).Should().Be(replacementsJson);
+            File.Exists(dbPath).Should().BeTrue();
+            File.ReadAllText(dbPath).Should().Be(dbJson);
+
+            // The local manifest is abolished: it must never be written anywhere.
+            Directory.Exists(Path.Combine(_testTempDir, "Data", "db")).Should().BeFalse();
         }
 
         [Fact]
-        public async Task CheckForAndApplyUpdatesAsync_WhenManifestMatches_ShouldSkipDownload()
+        public async Task CheckForAndApplyUpdatesAsync_WhenAllHashesMatch_ShouldNotDownloadAnything()
         {
 
-            var manifestJson = @"{ ""version"": ""1.0"", ""files"": {} }";
-            
-            // Setup local manifest
-            var localDbDir = Path.Combine(_testTempDir, "Data", "db");
-            Directory.CreateDirectory(localDbDir);
-            File.WriteAllText(Path.Combine(localDbDir, "manifest.json"), manifestJson);
+            var rulesJson = @"{ ""rules"": [] }";
+            var replacementsJson = @"{ ""mods"": {} }";
+            var dbJson = @"{ ""mods"": {} }";
+            var manifestJson = BuildManifest(rulesJson, replacementsJson, dbJson);
 
-            _httpHandler.OnRequest = req => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(manifestJson) };
+            // Pre-write the three destinations with content matching the manifest SHAs.
+            WriteCuratedFile("Rules", rulesJson);
+            WriteCuratedFile("Replacements", replacementsJson);
+            WriteCuratedFile("ModInfo", dbJson);
+
+            var requestedUrls = new List<string>();
+            _httpHandler.OnRequest = req =>
+            {
+                var uri = req.RequestUri?.ToString() ?? "";
+                requestedUrls.Add(uri);
+                if (uri.EndsWith("manifest.json"))
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(manifestJson) };
+                // Any curated payload request would be a bug: everything matches.
+                return new HttpResponseMessage(HttpStatusCode.InternalServerError);
+            };
 
             var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient);
             var progress = Substitute.For<IProgress<DataUpdateProgress>>();
 
             await service.CheckForAndApplyUpdatesAsync(progress, CancellationToken.None);
 
-            _mockLogger.Received(1).LogInfo(Arg.Is<string>(s => s != null && s.Contains("up to date")), Arg.Any<string>());
+            File.ReadAllText(CuratedPath("Rules")).Should().Be(rulesJson);
+            File.ReadAllText(CuratedPath("Replacements")).Should().Be(replacementsJson);
+            File.ReadAllText(CuratedPath("ModInfo")).Should().Be(dbJson);
+            requestedUrls.Should().NotContain(u => u.EndsWith("db/rules.json"));
+            requestedUrls.Should().NotContain(u => u.EndsWith("db/replacements.json"));
+            requestedUrls.Should().NotContain(u => u.EndsWith("db/db.json"));
         }
 
         [Fact]
-        public void Constructor_WhenRulesDbMissingAndBundledExists_ShouldSeedFromBundledPlaceholders()
+        public async Task CheckForAndApplyUpdatesAsync_WhenOneHashMismatches_ShouldDownloadOnlyThatFile()
         {
 
-            var bundledDir = Path.Combine(_testTempDir, "bundled", "Data", "db");
-            Directory.CreateDirectory(bundledDir);
-            File.WriteAllText(Path.Combine(bundledDir, "manifest.json"), "{}");
-            File.WriteAllText(Path.Combine(bundledDir, "rules.json"), @"{ ""rules"": [] }");
+            var rulesJson = @"{ ""rules"": [] }";
+            var replacementsJson = @"{ ""mods"": {} }";
+            var staleReplacementsJson = @"{ ""mods"": { ""stale"": {} } }";
+            var dbJson = @"{ ""mods"": {} }";
+            var manifestJson = BuildManifest(rulesJson, replacementsJson, dbJson);
 
-            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient, bundledDir);
+            // rules and db already match; replacements holds stale content.
+            WriteCuratedFile("Rules", rulesJson);
+            WriteCuratedFile("ModInfo", dbJson);
+            WriteCuratedFile("Replacements", staleReplacementsJson);
 
-            var seededDir = Path.Combine(_testTempDir, "Data", "db");
-            Directory.Exists(seededDir).Should().BeTrue();
-            File.Exists(Path.Combine(seededDir, "manifest.json")).Should().BeTrue();
-            File.Exists(Path.Combine(seededDir, "rules.json")).Should().BeTrue();
-            File.ReadAllText(Path.Combine(seededDir, "rules.json")).Should().Be(@"{ ""rules"": [] }");
+            var requestedUrls = new List<string>();
+            _httpHandler.OnRequest = req =>
+            {
+                var uri = req.RequestUri?.ToString() ?? "";
+                requestedUrls.Add(uri);
+                if (uri.EndsWith("manifest.json"))
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(manifestJson) };
+                if (uri.EndsWith("db/replacements.json"))
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(replacementsJson) };
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            };
+
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient);
+            var progress = Substitute.For<IProgress<DataUpdateProgress>>();
+
+            await service.CheckForAndApplyUpdatesAsync(progress, CancellationToken.None);
+
+            File.ReadAllText(CuratedPath("Replacements")).Should().Be(replacementsJson);
+            File.ReadAllText(CuratedPath("Rules")).Should().Be(rulesJson);
+            File.ReadAllText(CuratedPath("ModInfo")).Should().Be(dbJson);
+            requestedUrls.Should().Contain(u => u.EndsWith("db/replacements.json"));
+            requestedUrls.Should().NotContain(u => u.EndsWith("db/rules.json"));
+            requestedUrls.Should().NotContain(u => u.EndsWith("db/db.json"));
         }
 
         [Fact]
-        public void Constructor_WhenRulesDbAlreadyPopulated_ShouldNotOverwriteFromBundled()
+        public async Task CheckForAndApplyUpdatesAsync_WhenManifestHasUnknownKey_ShouldSkipIt()
         {
 
-            var bundledDir = Path.Combine(_testTempDir, "bundled", "Data", "db");
-            Directory.CreateDirectory(bundledDir);
-            File.WriteAllText(Path.Combine(bundledDir, "rules.json"), @"{ ""rules"": [] }");
+            var rulesJson = @"{ ""rules"": [] }";
+            var manifestJson = @"{
+                ""version"": ""1.0"",
+                ""files"": {
+                    ""rules"": { ""path"": ""db/rules.json"", ""sha"": """ + Sha256Hex(rulesJson) + @""" },
+                    ""futureThing"": { ""path"": ""db/future.json"", ""sha"": ""deadbeef"" }
+                }
+            }";
 
-            var existingDbDir = Path.Combine(_testTempDir, "Data", "db");
-            Directory.CreateDirectory(existingDbDir);
-            File.WriteAllText(Path.Combine(existingDbDir, "rules.json"), @"{ ""rules"": [""existing""] }");
+            var requestedUrls = new List<string>();
+            _httpHandler.OnRequest = req =>
+            {
+                var uri = req.RequestUri?.ToString() ?? "";
+                requestedUrls.Add(uri);
+                if (uri.EndsWith("manifest.json"))
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(manifestJson) };
+                if (uri.EndsWith("db/rules.json"))
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(rulesJson) };
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            };
 
-            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient, bundledDir);
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient);
+            var progress = Substitute.For<IProgress<DataUpdateProgress>>();
 
-            File.ReadAllText(Path.Combine(existingDbDir, "rules.json")).Should().Be(@"{ ""rules"": [""existing""] }");
+            // An unmapped entry must be skipped, not fatal.
+            await service.CheckForAndApplyUpdatesAsync(progress, CancellationToken.None);
+
+            File.ReadAllText(CuratedPath("Rules")).Should().Be(rulesJson);
+            requestedUrls.Should().NotContain(u => u.EndsWith("db/future.json"));
+            _mockLogger.Received().LogWarning(
+                Arg.Is<string>(s => s != null && s.Contains("Unknown curated manifest entry")),
+                Arg.Any<string>());
         }
 
         [Fact]
-        public void Constructor_WhenBundledMissing_ShouldStillCreateEmptyRulesDb()
+        public void Constructor_WhenCuratedDataMissingAndBundledExists_ShouldSeedFromBundledPlaceholders()
         {
 
-            var missingBundled = Path.Combine(_testTempDir, "does-not-exist", "Data", "db");
+            var bundledRoot = Path.Combine(_testTempDir, "bundled");
+            WriteBundledFile(bundledRoot, "ModInfo", @"{ ""mods"": {} }");
+            WriteBundledFile(bundledRoot, "Rules", @"{ ""rules"": [] }");
+            WriteBundledFile(bundledRoot, "Replacements", @"{ ""mods"": {} }");
+
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient, bundledRoot);
+
+            File.Exists(CuratedPath("Rules")).Should().BeTrue();
+            File.ReadAllText(CuratedPath("Rules")).Should().Be(@"{ ""rules"": [] }");
+            File.Exists(CuratedPath("Replacements")).Should().BeTrue();
+            File.Exists(CuratedPath("ModInfo")).Should().BeTrue();
+        }
+
+        [Fact]
+        public void Constructor_WhenCuratedDataExists_ShouldNotOverwriteFromBundled()
+        {
+
+            var bundledRoot = Path.Combine(_testTempDir, "bundled");
+            WriteBundledFile(bundledRoot, "Rules", @"{ ""rules"": [] }");
+
+            WriteCuratedFile("Rules", @"{ ""rules"": [""existing""] }");
+
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient, bundledRoot);
+
+            File.ReadAllText(CuratedPath("Rules")).Should().Be(@"{ ""rules"": [""existing""] }");
+        }
+
+        [Fact]
+        public void Constructor_WhenBundledMissing_ShouldNotSeedAnything()
+        {
+
+            var missingBundled = Path.Combine(_testTempDir, "does-not-exist");
 
             var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient, missingBundled);
 
-            Directory.Exists(Path.Combine(_testTempDir, "Data", "db")).Should().BeTrue();
+            File.Exists(CuratedPath("Rules")).Should().BeFalse();
+            File.Exists(CuratedPath("Replacements")).Should().BeFalse();
+            File.Exists(CuratedPath("ModInfo")).Should().BeFalse();
         }
 
         [Fact]
@@ -226,14 +337,9 @@ namespace RimSharp.Tests.Infrastructure.Data
         }
 
         [Fact]
-        public async Task CheckForAndApplyUpdatesAsync_WhenManifestUnchanged_ShouldStillSyncUseThisInstead()
+        public async Task CheckForAndApplyUpdatesAsync_WhenCuratedFilesUpToDate_ShouldStillSyncUseThisInstead()
         {
             var manifestJson = @"{ ""version"": ""1.0"", ""files"": {} }";
-
-            // Local manifest identical to remote -> the curated flow short-circuits.
-            var localDbDir = Path.Combine(_testTempDir, "Data", "db");
-            Directory.CreateDirectory(localDbDir);
-            File.WriteAllText(Path.Combine(localDbDir, "manifest.json"), manifestJson);
 
             var replacementsJson = @"{ ""rules"": [ { ""oldWorkshopId"": ""123"" } ] }";
             var compressed = Gzip(replacementsJson);
@@ -412,6 +518,47 @@ namespace RimSharp.Tests.Infrastructure.Data
             var dir = Path.Combine(_testTempDir, "Data", "Versions", "NoVersionWarning");
             File.Exists(Path.Combine(dir, "1.9", "ModIdsToFix.xml")).Should().BeTrue("a game major above the seed must extend the candidates");
             File.Exists(Path.Combine(dir, "1.8", "ModIdsToFix.xml")).Should().BeTrue("the installed mod's version dirs must extend the candidates");
+        }
+
+        private static string Sha256Hex(string content)
+        {
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(content)));
+        }
+
+        /// <summary>Builds a remote manifest listing all three curated files.</summary>
+        private static string BuildManifest(string rulesJson, string replacementsJson, string dbJson)
+        {
+            return @"{
+                ""version"": ""1.0"",
+                ""files"": {
+                    ""rules"": { ""path"": ""db/rules.json"", ""sha"": """ + Sha256Hex(rulesJson) + @""" },
+                    ""replacements"": { ""path"": ""db/replacements.json"", ""sha"": """ + Sha256Hex(replacementsJson) + @""" },
+                    ""dictionary"": { ""path"": ""db/db.json"", ""sha"": """ + Sha256Hex(dbJson) + @""" }
+                }
+            }";
+        }
+
+        /// <summary>Runtime destination of a curated file under the test data root.</summary>
+        private string CuratedPath(string category)
+        {
+            var fileName = category == "Rules" ? "rules.json" : category == "Replacements" ? "replacements.json" : "db.json";
+            return Path.Combine(_testTempDir, "Data", category, "RimSharp", fileName);
+        }
+
+        private void WriteCuratedFile(string category, string content)
+        {
+            var path = CuratedPath(category);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, content);
+        }
+
+        /// <summary>Writes a bundled placeholder mirroring the runtime layout.</summary>
+        private void WriteBundledFile(string bundledRoot, string category, string content)
+        {
+            var fileName = category == "Rules" ? "rules.json" : category == "Replacements" ? "replacements.json" : "db.json";
+            var path = Path.Combine(bundledRoot, "Data", category, "RimSharp", fileName);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, content);
         }
 
         private static byte[] Gzip(string content)

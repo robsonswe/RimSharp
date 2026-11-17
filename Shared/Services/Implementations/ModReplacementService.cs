@@ -187,13 +187,14 @@ namespace RimSharp.Shared.Services.Implementations
         }
 
         /// <summary>
-        /// Loads replacement data from the replacements.json file.
+        /// Loads replacement data from the curated database at
+        /// Data/Replacements/RimSharp/replacements.json.
         /// Populates the provided dictionary. Ensures directory and file exist.
         /// </summary>
         /// <returns>The number of items successfully loaded from JSON.</returns>
         private int LoadFromJson(Dictionary<string, ModReplacementInfo> targetDictionary)
         {
-            var jsonFilePath = _dataUpdateService.GetDataFilePath(DatabaseReplacementsFileName);
+            var jsonFilePath = _dataUpdateService.GetExternalFilePath("Replacements", "RimSharp", DatabaseReplacementsFileName);
             var dbDirectoryPath = Path.GetDirectoryName(jsonFilePath);
             int count = 0;
 

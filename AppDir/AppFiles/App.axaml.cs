@@ -111,6 +111,13 @@ namespace RimSharp.AppDir.AppFiles
                 // ModCustomService and friends see the renamed location.
                 AppDataPaths.MigrateRenamedDataFolder();
 
+                // One-time migration of the curated RimSharpDB files into the
+                // per-category layout (Rules/RimSharp, Replacements/RimSharp,
+                // ModInfo/RimSharp) and removal of the obsolete local
+                // manifest.json. Runs before services are built so consumers
+                // only see the new locations.
+                AppDataPaths.MigrateCuratedDataLayout();
+
                 var services = new ServiceCollection();
                 ConfigureServices(services);
                 ServiceProvider = services.BuildServiceProvider();

@@ -228,6 +228,100 @@ namespace RimSharp.Infrastructure.Configuration
             }
         }
 
+        /// <summary>
+        /// One-time migration of the curated RimSharpDB files from the retired
+        /// flat Data/db layout into the per-category layout
+        /// (Rules/RimSharp/rules.json, Replacements/RimSharp/replacements.json,
+        /// ModInfo/RimSharp/db.json) and removal of the obsolete local
+        /// manifest.json: the whole-manifest change gate was replaced by
+        /// per-file SHA-256 verification against the remote manifest, which is
+        /// never stored locally. Runs on every platform at startup, before
+        /// services are built, so consumers only ever see the new locations.
+        /// All migrated files are app-managed curated data, never user data.
+        /// Failures are reported and skipped so startup can continue.
+        /// </summary>
+        public static void MigrateCuratedDataLayout()
+        {
+            MigrateCuratedDataLayoutCore(Path.Combine(DataDirectory, "Data"));
+        }
+
+        internal static void MigrateCuratedDataLayoutCore(string dataRoot)
+        {
+            try
+            {
+                var legacyDbDir = Path.Combine(dataRoot, "db");
+                if (!Directory.Exists(legacyDbDir)) return;
+
+                var items = new (string Source, string Target)[]
+                {
+                    (Path.Combine(legacyDbDir, "rules.json"), Path.Combine(dataRoot, "Rules", "RimSharp", "rules.json")),
+                    (Path.Combine(legacyDbDir, "replacements.json"), Path.Combine(dataRoot, "Replacements", "RimSharp", "replacements.json")),
+                    (Path.Combine(legacyDbDir, "db.json"), Path.Combine(dataRoot, "ModInfo", "RimSharp", "db.json")),
+                };
+
+                foreach (var (source, target) in items)
+                {
+                    try
+                    {
+                        if (!File.Exists(source)) continue;
+
+                        if (File.Exists(target))
+                        {
+                            // The new location already holds a (synced) copy, so
+                            // the legacy duplicate is stale. It must go: a
+                            // surviving source would be re-migrated on every
+                            // later startup and could revert live data.
+                            File.Delete(source);
+                            Console.WriteLine($"[RimSharp] Removed stale curated file '{source}' (already present at '{target}').");
+                            continue;
+                        }
+
+                        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                        File.Move(source, target);
+                        Console.WriteLine($"[RimSharp] Migrated curated file: {source} -> {target}");
+                    }
+                    catch (Exception fileEx)
+                    {
+                        Console.WriteLine($"[RimSharp] Could not migrate curated file '{source}': {fileEx.Message}");
+                    }
+                }
+
+                // The local manifest.json was the whole-manifest change gate; it
+                // is obsolete now that every file is verified by SHA-256.
+                var legacyManifest = Path.Combine(legacyDbDir, "manifest.json");
+                if (File.Exists(legacyManifest))
+                {
+                    try
+                    {
+                        File.Delete(legacyManifest);
+                        Console.WriteLine($"[RimSharp] Removed obsolete local manifest: {legacyManifest}");
+                    }
+                    catch (Exception manifestEx)
+                    {
+                        Console.WriteLine($"[RimSharp] Could not remove obsolete manifest '{legacyManifest}': {manifestEx.Message}");
+                    }
+                }
+
+                // Data/db is retired entirely: prune it once it is empty.
+                try
+                {
+                    if (!Directory.EnumerateFileSystemEntries(legacyDbDir).Any())
+                    {
+                        Directory.Delete(legacyDbDir);
+                        Console.WriteLine($"[RimSharp] Removed retired data folder: {legacyDbDir}");
+                    }
+                }
+                catch (Exception dirEx)
+                {
+                    Console.WriteLine($"[RimSharp] Could not remove retired data folder '{legacyDbDir}': {dirEx.Message}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[RimSharp] Could not migrate the curated data layout: {ex.Message}");
+            }
+        }
+
         private static void MigrateLegacyItem(string legacyPath, string targetPath)
         {
             // Nothing to migrate, or the target already exists (never overwrite).

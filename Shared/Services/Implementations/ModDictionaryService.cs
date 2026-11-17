@@ -138,7 +138,7 @@ namespace RimSharp.Shared.Services.Implementations
 
         private int LoadFromJson(Dictionary<string, ModDictionaryEntry> targetDictionary)
         {
-            var jsonFilePath = _dataUpdateService.GetDataFilePath(DatabaseDictionaryFileName);
+            var jsonFilePath = _dataUpdateService.GetExternalFilePath("ModInfo", "RimSharp", DatabaseDictionaryFileName);
             var dbDirectoryPath = Path.GetDirectoryName(jsonFilePath);
             int count = 0;
 

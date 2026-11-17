@@ -20,9 +20,8 @@ namespace RimSharp.Infrastructure.Data
     {
         private readonly ILoggerService _logger;
         private readonly HttpClient _httpClient;
-        private readonly string _localRulesPath;
         private readonly string _dataRootPath;
-        private readonly string _bundledRulesSource;
+        private readonly string _bundledDataSource;
         private readonly string _remoteManifestUrl = "https://raw.githubusercontent.com/robsonswe/RimSharpDB/main/manifest.json";
         private readonly string _remoteBaseUrl = "https://raw.githubusercontent.com/robsonswe/RimSharpDB/main/";
         private readonly string _useThisInsteadUrl = "https://raw.githubusercontent.com/emipa606/UseThisInstead/main/replacements.json.gz";
@@ -34,17 +33,43 @@ namespace RimSharp.Infrastructure.Data
         // layout; unknown versions are fetched dynamically instead.
         private static readonly string[] NoVersionWarningFallbackVersions = { "1.3", "1.4", "1.5", "1.6", "1.7" };
 
+        /// <summary>
+        /// Destination of each curated manifest entry (the key in the manifest's
+        /// "files" object) within the runtime data layout: every curated data file
+        /// lives at Data/<category>/RimSharp/<file>. The manifest
+        /// describes repo-side locations only; the app owns where files land.
+        /// </summary>
+        private static readonly Dictionary<string, string> CuratedFileDestinationNames = new(StringComparer.Ordinal)
+        {
+            ["rules"] = Path.Combine("Rules", "RimSharp", "rules.json"),
+            ["replacements"] = Path.Combine("Replacements", "RimSharp", "replacements.json"),
+            ["dictionary"] = Path.Combine("ModInfo", "RimSharp", "db.json"),
+        };
+
+        /// <summary>
+        /// Bundled placeholder files that ship next to the executable, paired
+        /// with their runtime destination (both relative to their respective
+        /// roots). The bundled layout mirrors the runtime layout so a fresh
+        /// install starts with valid empty JSON at every curated location.
+        /// </summary>
+        private static readonly (string BundledRelative, string LocalRelative)[] BundledSeedFiles =
+        {
+            (Path.Combine("Data", "ModInfo", "RimSharp", "db.json"), Path.Combine("ModInfo", "RimSharp", "db.json")),
+            (Path.Combine("Data", "Rules", "RimSharp", "rules.json"), Path.Combine("Rules", "RimSharp", "rules.json")),
+            (Path.Combine("Data", "Replacements", "RimSharp", "replacements.json"), Path.Combine("Replacements", "RimSharp", "replacements.json")),
+        };
+
         public DataUpdateService(ILoggerService logger, string appBasePath, HttpClient httpClient, GameInstance? gameInstance = null)
-            : this(logger, appBasePath, httpClient, Path.Combine(AppDataPaths.BaseDirectory, "Data", "db"), gameInstance)
+            : this(logger, appBasePath, httpClient, AppDataPaths.BaseDirectory, gameInstance)
         {
         }
 
-        internal DataUpdateService(ILoggerService logger, string appBasePath, HttpClient httpClient, string bundledRulesSource, GameInstance? gameInstance = null)
+        internal DataUpdateService(ILoggerService logger, string appBasePath, HttpClient httpClient, string bundledDataSource, GameInstance? gameInstance = null)
         {
             _gameInstance = gameInstance;
             _logger = logger;
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-            _bundledRulesSource = bundledRulesSource;
+            _bundledDataSource = bundledDataSource;
 
             if (!_httpClient.DefaultRequestHeaders.Contains("User-Agent"))
             {
@@ -53,62 +78,64 @@ namespace RimSharp.Infrastructure.Data
 
             // Store data in a reliable, user-specific location
             _dataRootPath = Path.Combine(appBasePath, "Data");
-            _localRulesPath = Path.Combine(_dataRootPath, "db");
 
             SeedFromBundledPlaceholders();
-
-            Directory.CreateDirectory(_localRulesPath);
         }
 
         /// <summary>
-        /// First-run seeding: when the writable Data/db does not exist yet
-        /// (e.g. fresh XDG data directory on Linux), copy the bundled
-        /// placeholder files that ship next to the executable
-        /// ("&lt;BaseDirectory&gt;/Data/db") into the writable location.
-        /// On Windows the writable location IS the exe-side directory, so
-        /// this is a no-op there.
+        /// First-run seeding: copy the bundled placeholder files that ship next
+        /// to the executable ("&lt;BaseDirectory&gt;/Data/...") into the writable
+        /// data location, mirroring the runtime layout. Seeding is per-file and
+        /// copy-if-missing: an existing local file (synced or user-edited) is
+        /// never overwritten, and a missing file is healed independently of the
+        /// others. On Windows the writable location IS the exe-side directory,
+        /// so this is a no-op there.
         /// </summary>
         private void SeedFromBundledPlaceholders()
         {
             try
             {
-                if (Directory.Exists(_localRulesPath) && Directory.EnumerateFiles(_localRulesPath).Any())
+                int seeded = 0;
+
+                foreach (var (bundledRelative, localRelative) in BundledSeedFiles)
                 {
-                    return; // Already populated.
+                    var bundledPath = Path.Combine(_bundledDataSource, bundledRelative);
+                    if (!File.Exists(bundledPath))
+                    {
+                        continue;
+                    }
+
+                    var localPath = Path.Combine(_dataRootPath, localRelative);
+
+                    // Never copy a file onto itself (Windows case, where the
+                    // bundled root and the data root are the same directory).
+                    if (string.Equals(
+                            Path.GetFullPath(bundledPath),
+                            Path.GetFullPath(localPath),
+                            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    if (File.Exists(localPath))
+                    {
+                        continue; // Already present: never overwrite live data.
+                    }
+
+                    Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
+                    File.Copy(bundledPath, localPath, overwrite: false);
+                    seeded++;
                 }
 
-                var bundledDir = _bundledRulesSource;
-                if (!Directory.Exists(bundledDir))
+                if (seeded > 0)
                 {
-                    return;
+                    _logger.LogInfo($"Seeded {seeded} bundled placeholder file(s) into the data layout: {_bundledDataSource} -> {_dataRootPath}", nameof(DataUpdateService));
                 }
-
-                // Never copy a directory onto itself (Windows case).
-                if (string.Equals(
-                        Path.GetFullPath(bundledDir),
-                        Path.GetFullPath(_localRulesPath),
-                        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
-                {
-                    return;
-                }
-
-                Directory.CreateDirectory(_localRulesPath);
-                foreach (var file in Directory.GetFiles(bundledDir))
-                {
-                    File.Copy(file, Path.Combine(_localRulesPath, Path.GetFileName(file)), overwrite: false);
-                }
-
-                _logger.LogInfo($"Seeded Data/db from bundled placeholders: {bundledDir} -> {_localRulesPath}", nameof(DataUpdateService));
             }
             catch (Exception ex)
             {
-                _logger.LogWarning($"Failed to seed Data/db from bundled placeholders: {ex.Message}", nameof(DataUpdateService));
+                _logger.LogWarning($"Failed to seed bundled placeholders: {ex.Message}", nameof(DataUpdateService));
             }
-        }
-
-        public string GetDataFilePath(string fileName)
-        {
-            return Path.Combine(_localRulesPath, fileName);
         }
 
         public string GetExternalFilePath(string category, string source, string fileName)
@@ -123,55 +150,73 @@ namespace RimSharp.Infrastructure.Data
 
             try
             {
-                // 1. Download the remote manifest
+                // 1. Fetch the remote manifest. It is never stored locally: the
+                //    per-file SHA-256 comparison below is the only update gate,
+                //    which also self-heals a partially synced data folder.
                 var remoteManifestJson = await _httpClient.GetStringAsync(_remoteManifestUrl, cancellationToken)
                     .ConfigureAwait(false);
 
                 var remoteManifest = JsonDocument.Parse(remoteManifestJson);
                 cancellationToken.ThrowIfCancellationRequested();
                 progress.Report(new DataUpdateProgress { Message = "Comparing versions...", Percentage = 20 });
-                string localManifestPath = GetDataFilePath("manifest.json");
-                if (File.Exists(localManifestPath))
-                {
-                    var localManifestJson = await File.ReadAllTextAsync(localManifestPath, cancellationToken)
-                        .ConfigureAwait(false);
 
-                    if (localManifestJson == remoteManifestJson)
-                    {
-                        _logger.LogInfo("Data files are up to date.", nameof(DataUpdateService));
-                        progress.Report(new DataUpdateProgress { Message = "Already up to date!", Percentage = 100 });
-                        await Task.Delay(500, cancellationToken).ConfigureAwait(false);
-                        return;
-                    }
-                }
-
-                // 3. Download files listed in the manifest
-                var filesToDownload = remoteManifest.RootElement.GetProperty("files").EnumerateObject().ToList();
-                int fileCount = filesToDownload.Count;
+                // 2. Verify every curated file against the manifest's SHA-256
+                //    and download only the missing or mismatched ones.
+                var curatedFiles = remoteManifest.RootElement.GetProperty("files").EnumerateObject().ToList();
+                int fileCount = curatedFiles.Count;
                 int filesDownloaded = 0;
 
-                foreach (var fileProperty in filesToDownload)
+                foreach (var fileProperty in curatedFiles)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+
+                    string key = fileProperty.Name;
+                    if (!CuratedFileDestinationNames.TryGetValue(key, out var destinationRelative))
+                    {
+                        _logger.LogWarning($"Unknown curated manifest entry '{key}' - no destination mapped, skipping.", nameof(DataUpdateService));
+                        continue;
+                    }
+
+                    string destination = Path.Combine(_dataRootPath, destinationRelative);
+                    string? expectedSha = fileProperty.Value.TryGetProperty("sha", out var shaElement)
+                        ? shaElement.GetString()
+                        : null;
+
+                    if (File.Exists(destination) &&
+                        !string.IsNullOrEmpty(expectedSha) &&
+                        await IsFileHashMatchingAsync(destination, expectedSha, cancellationToken).ConfigureAwait(false))
+                    {
+                        _logger.LogDebug($"Curated file up to date: '{destination}'", nameof(DataUpdateService));
+                        continue;
+                    }
+
                     string relativePath = fileProperty.Value.GetProperty("path").GetString() ?? throw new InvalidOperationException("Invalid manifest: file path missing.");
                     string fileName = Path.GetFileName(relativePath);
 
-                    int currentProgress = 30 + (int)((double)filesDownloaded / fileCount * 60);
+                    int currentProgress = 25 + (int)((double)filesDownloaded / Math.Max(fileCount, 1) * 60);
                     progress.Report(new DataUpdateProgress { Message = $"Downloading {fileName}...", Percentage = currentProgress });
 
                     string remoteFileUrl = _remoteBaseUrl + relativePath;
                     var fileContent = await _httpClient.GetStringAsync(remoteFileUrl, cancellationToken)
                         .ConfigureAwait(false);
 
-                    await File.WriteAllTextAsync(GetDataFilePath(fileName), fileContent, cancellationToken)
+                    Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                    await File.WriteAllTextAsync(destination, fileContent, cancellationToken)
                         .ConfigureAwait(false);
                     filesDownloaded++;
-                }
-                progress.Report(new DataUpdateProgress { Message = "Finalizing...", Percentage = 95 });
-                await File.WriteAllTextAsync(localManifestPath, remoteManifestJson, cancellationToken)
-                    .ConfigureAwait(false);
 
-                _logger.LogInfo("Data files updated successfully.", nameof(DataUpdateService));
+                    _logger.LogInfo($"Curated file updated: '{remoteFileUrl}' -> '{destination}'", nameof(DataUpdateService));
+                }
+
+                if (filesDownloaded == 0)
+                {
+                    _logger.LogInfo("Curated data files are up to date.", nameof(DataUpdateService));
+                }
+                else
+                {
+                    _logger.LogInfo($"Data files updated successfully ({filesDownloaded} of {fileCount} curated files downloaded).", nameof(DataUpdateService));
+                }
+
                 progress.Report(new DataUpdateProgress { Message = "Update Complete!", Percentage = 100 });
                 await Task.Delay(500, cancellationToken).ConfigureAwait(false);
             }
@@ -194,6 +239,18 @@ namespace RimSharp.Infrastructure.Data
                 await SyncExternalSourcesAsync(cancellationToken).ConfigureAwait(false);
             }
         }
+        /// <summary>
+        /// Computes the SHA-256 of a local file and compares it (case-insensitive)
+        /// with the manifest's expected hex hash.
+        /// </summary>
+        private static async Task<bool> IsFileHashMatchingAsync(string filePath, string expectedSha, CancellationToken cancellationToken)
+        {
+            await using var stream = File.OpenRead(filePath);
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            var hash = await sha256.ComputeHashAsync(stream, cancellationToken).ConfigureAwait(false);
+            return string.Equals(Convert.ToHexString(hash), expectedSha, StringComparison.OrdinalIgnoreCase);
+        }
+
         /// <summary>
         /// Syncs every external community source. Each source is isolated:
         /// one failing (offline, moved, 404) never blocks the others or the
