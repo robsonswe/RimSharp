@@ -303,7 +303,8 @@ namespace RimSharp.AppDir.AppFiles
                    new DataUpdateService(
                        provider.GetRequiredService<ILoggerService>(),
                        provider.GetRequiredService<string>(), 
-                       provider.GetRequiredService<IHttpClientFactory>().CreateClient()
+                       provider.GetRequiredService<IHttpClientFactory>().CreateClient(),
+                       gameInstance: provider.GetRequiredService<GameInstance>()
                    )
                );
 

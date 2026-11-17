@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
@@ -9,6 +10,7 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using NSubstitute;
 using RimSharp.Infrastructure.Data;
+using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using Xunit;
 
@@ -289,6 +291,127 @@ namespace RimSharp.Tests.Infrastructure.Data
             var snapshotPath = Path.Combine(_testTempDir, "Data", "Replacements", "UseThisInstead", "replacements.json");
             File.Exists(snapshotPath).Should().BeTrue("a curated failure must not skip the external sync");
             File.ReadAllText(snapshotPath).Should().Be(replacementsJson);
+        }
+
+        [Fact]
+        public async Task CheckForAndApplyUpdatesAsync_ShouldSyncNoVersionWarningFromDiscoveredTree()
+        {
+            var manifestJson = @"{ ""version"": ""1.0"", ""files"": {} }";
+            var treeJson = @"{ ""tree"": [
+                { ""path"": ""1.4"", ""type"": ""tree"" },
+                { ""path"": ""1.6"", ""type"": ""tree"" },
+                { ""path"": ""About"", ""type"": ""tree"" },
+                { ""path"": ""README.md"", ""type"": ""blob"" }
+            ] }";
+
+            _httpHandler.OnRequest = req =>
+            {
+                var url = req.RequestUri!.ToString();
+                if (url.EndsWith("trees/main"))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(treeJson) };
+                }
+                if (url.Contains("NoVersionWarning/main/1.4/"))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("<ModIdsToFix><li>mod.a</li></ModIdsToFix>") };
+                }
+                if (url.Contains("NoVersionWarning/main/1.6/"))
+                {
+                    var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("<ModIdsToFix><li>mod.b</li></ModIdsToFix>") };
+                    response.Headers.ETag = EntityTagHeaderValue.Parse("\"nvw16\"");
+                    return response;
+                }
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(manifestJson) };
+            };
+
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient);
+            var progress = Substitute.For<IProgress<DataUpdateProgress>>();
+
+            await service.CheckForAndApplyUpdatesAsync(progress, CancellationToken.None);
+
+            var dir = Path.Combine(_testTempDir, "Data", "Versions", "NoVersionWarning");
+            File.Exists(Path.Combine(dir, "1.4", "ModIdsToFix.xml")).Should().BeTrue();
+            File.Exists(Path.Combine(dir, "1.6", "ModIdsToFix.xml")).Should().BeTrue();
+            File.Exists(Path.Combine(dir, "1.6", "ModIdsToFix.xml") + ".etag").Should().BeTrue();
+            // Non-version entries in the tree must not become fetches.
+            File.Exists(Path.Combine(dir, "About")).Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task CheckForAndApplyUpdatesAsync_WhenTreeDiscoveryFails_ShouldUseFallbackVersions()
+        {
+            var manifestJson = @"{ ""version"": ""1.0"", ""files"": {} }";
+            var fetchedVersions = new List<string>();
+
+            _httpHandler.OnRequest = req =>
+            {
+                var url = req.RequestUri!.ToString();
+                if (url.EndsWith("trees/main"))
+                {
+                    // Discovery unreachable (e.g. rate limited).
+                    return new HttpResponseMessage(HttpStatusCode.NotFound);
+                }
+                var match = System.Text.RegularExpressions.Regex.Match(url, @"NoVersionWarning/main/(\d+\.\d+)/");
+                if (match.Success)
+                {
+                    fetchedVersions.Add(match.Groups[1].Value);
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("<ModIdsToFix></ModIdsToFix>") };
+                }
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(manifestJson) };
+            };
+
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient);
+            var progress = Substitute.For<IProgress<DataUpdateProgress>>();
+
+            await service.CheckForAndApplyUpdatesAsync(progress, CancellationToken.None);
+
+            var dir = Path.Combine(_testTempDir, "Data", "Versions", "NoVersionWarning");
+            File.Exists(Path.Combine(dir, "1.5", "ModIdsToFix.xml")).Should().BeTrue("the fallback list must still fetch when discovery fails");
+            fetchedVersions.Should().Contain(new[] { "1.3", "1.4", "1.5", "1.6", "1.7" });
+        }
+
+        [Fact]
+        public async Task CheckForAndApplyUpdatesAsync_GameAndModNewerThanSeed_ShouldExtendOfflineCandidates()
+        {
+            // Game on 1.9, installed NoVersionWarning mod already has 1.8:
+            // the offline candidate list must reach both, seed never truncates.
+            var gameDir = Path.Combine(_testTempDir, "game");
+            Directory.CreateDirectory(gameDir);
+            File.WriteAllText(Path.Combine(gameDir, "Version.txt"), "1.9.100 rev1");
+
+            var modsDir = Path.Combine(_testTempDir, "mods");
+            Directory.CreateDirectory(Path.Combine(modsDir, "2599504692", "1.8"));
+
+            var gameInstance = new GameInstance { GameFolder = gameDir, LocalFolder = modsDir };
+
+            var manifestJson = @"{ ""version"": ""1.0"", ""files"": {} }";
+            _httpHandler.OnRequest = req =>
+            {
+                var url = req.RequestUri!.ToString();
+                if (url.EndsWith("trees/main"))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.NotFound);
+                }
+                if (url.Contains("NoVersionWarning/main/1.9/"))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("<ModIdsToFix><li>mod.game19</li></ModIdsToFix>") };
+                }
+                if (url.Contains("NoVersionWarning/main/1.8/"))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("<ModIdsToFix><li>mod.mod18</li></ModIdsToFix>") };
+                }
+                // 1.3-1.7 not served: must be logged and skipped, not fatal.
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(manifestJson) };
+            };
+
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient, gameInstance);
+            var progress = Substitute.For<IProgress<DataUpdateProgress>>();
+
+            await service.CheckForAndApplyUpdatesAsync(progress, CancellationToken.None);
+
+            var dir = Path.Combine(_testTempDir, "Data", "Versions", "NoVersionWarning");
+            File.Exists(Path.Combine(dir, "1.9", "ModIdsToFix.xml")).Should().BeTrue("a game major above the seed must extend the candidates");
+            File.Exists(Path.Combine(dir, "1.8", "ModIdsToFix.xml")).Should().BeTrue("the installed mod's version dirs must extend the candidates");
         }
 
         private static byte[] Gzip(string content)
