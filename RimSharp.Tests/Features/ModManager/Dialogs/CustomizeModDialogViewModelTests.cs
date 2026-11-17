@@ -93,6 +93,67 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
 
             await _mockModService.Received(1).SaveCustomModInfoAsync("test.mod", Arg.Is<ModCustomInfo>(info => info.Favorite == true));
         }
+
+        [Fact]
+        public void Constructor_ShouldMirrorLoadTopFromCustomInfo()
+        {
+            var mod = new ModItem { Name = "Test Mod", PackageId = "test.mod" };
+            var customInfo = new ModCustomInfo
+            {
+                LoadTop = new LoadBottomRule { Value = true, Comment = new List<string> { "tier 1 please" } }
+            };
+
+            var vm = new CustomizeModDialogViewModel(mod, customInfo, _mockModService, _mockDialogService);
+
+            vm.LoadTop.Should().BeTrue();
+            vm.LoadTopComment.Should().Be("tier 1 please");
+            vm.CanCustomizeLoadTop.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Constructor_WhenModAlreadyLoadsTop_ShouldBlockCustomization()
+        {
+            var mod = new ModItem { Name = "Test Mod", PackageId = "test.mod", LoadTop = true };
+
+            var vm = new CustomizeModDialogViewModel(mod, new ModCustomInfo(), _mockModService, _mockDialogService);
+
+            vm.HasOriginalLoadTop.Should().BeTrue();
+            vm.CanCustomizeLoadTop.Should().BeFalse();
+            vm.LoadTop.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task SaveCommand_ShouldPersistLoadTop()
+        {
+            var mod = new ModItem { Name = "Test Mod", PackageId = "test.mod" };
+            var vm = new CustomizeModDialogViewModel(mod, new ModCustomInfo(), _mockModService, _mockDialogService);
+            vm.LoadTop = true;
+            vm.LoadTopComment = "tier 1 please";
+
+            vm.SaveCommand.Execute(null);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
+
+            await _mockModService.Received(1).SaveCustomModInfoAsync(
+                "test.mod",
+                Arg.Is<ModCustomInfo>(info =>
+                    info.LoadTop != null &&
+                    info.LoadTop.Value &&
+                    info.LoadTop.Comment.Contains("tier 1 please")));
+        }
+
+        [Fact]
+        public async Task SaveCommand_WhenLoadTopUnchecked_ShouldNotPersistLoadTop()
+        {
+            var mod = new ModItem { Name = "Test Mod", PackageId = "test.mod" };
+            var vm = new CustomizeModDialogViewModel(mod, new ModCustomInfo(), _mockModService, _mockDialogService);
+
+            vm.SaveCommand.Execute(null);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
+
+            await _mockModService.Received(1).SaveCustomModInfoAsync(
+                "test.mod",
+                Arg.Is<ModCustomInfo>(info => info.LoadTop == null));
+        }
     }
 }
 

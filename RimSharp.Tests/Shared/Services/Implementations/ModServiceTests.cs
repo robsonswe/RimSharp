@@ -205,6 +205,35 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             parsed.SteamTags.Should().BeEmpty();
             parsed.Tags.Should().BeEmpty();
         }
+
+        [Fact]
+        public async Task ReapplyRulesAsync_ShouldRefreshAndReapplyRulesAndCustomInfo()
+        {
+            var modDir = Path.Combine(_modsPath, "TestMod");
+            var aboutDir = Path.Combine(modDir, "About");
+            Directory.CreateDirectory(aboutDir);
+            File.WriteAllText(Path.Combine(aboutDir, "About.xml"), @"<?xml version='1.0' encoding='utf-8'?>
+<ModMetaData>
+    <name>Test Mod Name</name>
+    <packageId>test.mod.id</packageId>
+    <supportedVersions>
+        <li>1.5</li>
+    </supportedVersions>
+</ModMetaData>");
+
+            var service = CreateService();
+            await service.LoadModsAsync();
+            var loadedBefore = service.GetLoadedMods().Count();
+
+            await service.ReapplyRulesAsync();
+
+            // The rules cache is refreshed (registry re-read) and both layers
+            // are re-applied onto the SAME mod instances - no rescan.
+            _mockRulesService.Received(1).RefreshRules();
+            _mockRulesService.Received(2).ApplyRulesToMods(Arg.Any<IEnumerable<ModItem>>());
+            _mockCustomService.Received(2).ApplyCustomInfoToMods(Arg.Any<IEnumerable<ModItem>>());
+            service.GetLoadedMods().Should().HaveCount(loadedBefore);
+        }
     }
 
     public class ModServiceMacOSBundleTests : IDisposable
@@ -409,6 +438,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             coreMod.Should().NotBeNull();
             coreMod!.Path.Should().Be(corePath);
         }
+
     }
 }
 

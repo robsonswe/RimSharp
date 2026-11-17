@@ -25,6 +25,12 @@ namespace RimSharp.Shared.Models
         public LoadBottomRule? LoadBottom { get; set; }
 
         /// <summary>
+        /// Custom load top rule defined by the user (mirrors
+        /// <see cref="LoadBottom"/> at the other end of the load order).
+        /// </summary>
+        public LoadBottomRule? LoadTop { get; set; }
+
+        /// <summary>
 
         /// </summary>
         [JsonConverter(typeof(StringOrStringListConverter))]

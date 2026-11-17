@@ -265,7 +265,8 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<ISteamSubscriptionService>(),
                     provider.GetRequiredService<ISaveHeaderService>(),
                     provider.GetRequiredService<IModListManager>(),
-                    provider.GetRequiredService<GameInstance>()
+                    provider.GetRequiredService<GameInstance>(),
+                    provider.GetRequiredService<IRuleSourceManager>()
                 ));
             services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
             services.AddSingleton<ISystemInfoService>(provider => SystemInfoServiceFactory.Create());
@@ -306,14 +307,20 @@ namespace RimSharp.AppDir.AppFiles
             });
 
 
+            // Rule database source registry (shared singleton: the settings dialog edits
+            // it, the repository merges from it, the data sync fetches from it).
+            services.AddSingleton<ModRuleSourceRegistry>(provider =>
+                new ModRuleSourceRegistry(provider.GetRequiredService<IConfigService>()));
+
             services.AddSingleton<IDataUpdateService>(provider =>
                    new DataUpdateService(
                        provider.GetRequiredService<ILoggerService>(),
-                       provider.GetRequiredService<string>(), 
+                       provider.GetRequiredService<string>(),
                        provider.GetRequiredService<IHttpClientFactory>().CreateClient(),
-                       gameInstance: provider.GetRequiredService<GameInstance>()
+                       gameInstance: provider.GetRequiredService<GameInstance>(),
+                       ruleSourceRegistry: provider.GetRequiredService<ModRuleSourceRegistry>()
                    )
-               );
+                );
 
             services.AddSingleton<IPathService, PathService>(provider =>
                 new PathService(provider.GetRequiredService<IConfigService>(), null, provider.GetRequiredService<ILoggerService>()));
@@ -331,7 +338,18 @@ namespace RimSharp.AppDir.AppFiles
                 return pathSettings;
             });
             services.AddSingleton<IModRulesRepository>(provider =>
-                new JsonModRulesRepository(provider.GetRequiredService<IDataUpdateService>()));
+                new JsonModRulesRepository(
+                    provider.GetRequiredService<IDataUpdateService>(),
+                    provider.GetRequiredService<ModRuleSourceRegistry>(),
+                    provider.GetRequiredService<ILoggerService>()));
+
+            services.AddSingleton<IRuleSourceManager>(provider =>
+                new RuleSourceManager(
+                    provider.GetRequiredService<ModRuleSourceRegistry>(),
+                    provider.GetRequiredService<IModRulesRepository>(),
+                    provider.GetRequiredService<IModService>(),
+                    provider.GetRequiredService<IDataUpdateService>(),
+                    provider.GetRequiredService<ILoggerService>()));
 
             services.AddSingleton<IModRulesService, ModRulesService>();
             services.AddSingleton<IModCustomService>(provider =>

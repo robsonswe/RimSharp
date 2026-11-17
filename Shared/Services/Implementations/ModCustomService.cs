@@ -232,6 +232,8 @@ namespace RimSharp.Shared.Services.Implementations
 
             if (customInfo.LoadBottom?.Value == true) mod.LoadBottom = true;
 
+            if (customInfo.LoadTop?.Value == true) mod.LoadTop = true;
+
             if (customInfo.IncompatibleWith != null)
             {
                 foreach (var entry in customInfo.IncompatibleWith)
@@ -249,6 +251,7 @@ namespace RimSharp.Shared.Services.Implementations
             if (customInfo.IncompatibleWith?.Count == 0) customInfo.IncompatibleWith = null!;
             if (customInfo.SupportedVersions?.Count == 0) customInfo.SupportedVersions = null!;
             if (customInfo.LoadBottom != null && customInfo.LoadBottom.Value == false) customInfo.LoadBottom = null!;
+            if (customInfo.LoadTop != null && customInfo.LoadTop.Value == false) customInfo.LoadTop = null!;
             if (customInfo.Favorite == false) customInfo.Favorite = null!;
 
             customInfo.SupportedVersions?.RemoveAll(string.IsNullOrWhiteSpace);
@@ -276,6 +279,7 @@ namespace RimSharp.Shared.Services.Implementations
             cleanupDepRule(customInfo.LoadAfter);
             cleanupIncompRule(customInfo.IncompatibleWith);
             if (customInfo.LoadBottom != null && customInfo.LoadBottom.Comment?.Count == 0) customInfo.LoadBottom.Comment = null!;
+            if (customInfo.LoadTop != null && customInfo.LoadTop.Comment?.Count == 0) customInfo.LoadTop.Comment = null!;
         }
 
         private class ModsCustomRootInternal

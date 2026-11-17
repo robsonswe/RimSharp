@@ -9,6 +9,14 @@ namespace RimSharp.Shared.Models
     {
         public Dictionary<string, ModDependencyRule> LoadBefore { get; set; } = new();
         public Dictionary<string, ModDependencyRule> LoadAfter { get; set; } = new();
+
+        /// <summary>
+        /// Rule pinning the mod to the TOP of the load order (treated as a
+        /// tier-1 mod by the sorter). Mirrors <see cref="LoadBottom"/>; the
+        /// upstream community database spells it "loadTop".
+        /// </summary>
+        public LoadBottomRule? LoadTop { get; set; }
+
         public LoadBottomRule? LoadBottom { get; set; }
         public Dictionary<string, ModIncompatibilityRule> Incompatibilities { get; set; } = new();
 

@@ -126,6 +126,56 @@ namespace RimSharp.Tests.Infrastructure.Mods.Sorting
         }
 
         [Fact]
+        public void TopologicalSort_LoadTopMod_ShouldBeInTierOne()
+        {
+            // Mirrors the LoadBottom tier-3 split at the other end: a LoadTop
+            // mod joins the tier-1 starting set ("Should be Treated as Tier-1
+            // mod"). Core always precedes everything (implicit dependency), so
+            // the expected order is Core, the LoadTop mod, then tier 2.
+            var xmlExtensions = new ModItem
+            {
+                Name = "XmlExtensions",
+                PackageId = "imranfish.xmlextensions",
+                ModType = ModType.Workshop,
+                LoadTop = true
+            };
+            var core = new ModItem { Name = "Core", PackageId = "Ludeon.RimWorld", ModType = ModType.Core };
+            var modA = new ModItem { Name = "Mod A", PackageId = "modA", ModType = ModType.Workshop };
+            var mods = new List<ModItem> { modA, core, xmlExtensions };
+
+            var result = _sorter.TopologicalSort(mods, TestContext.Current.CancellationToken);
+
+            result.IsSuccess.Should().BeTrue();
+            result.SortedMods.Select(m => m.PackageId).Should().Equal(
+                "Ludeon.RimWorld", "imranfish.xmlextensions", "modA");
+        }
+
+        [Fact]
+        public void TopologicalSort_LoadTopMod_ShouldPullItsPrerequisitesIntoTierOne()
+        {
+            // A mod the LoadTop mod must load after is pulled into tier 1 with
+            // it (the tier-1 starting set walks the mod's in-edges).
+            var prerequisite = new ModItem { Name = "Prerequisite", PackageId = "some.prereq", ModType = ModType.Workshop };
+            var xmlExtensions = new ModItem
+            {
+                Name = "XmlExtensions",
+                PackageId = "imranfish.xmlextensions",
+                ModType = ModType.Workshop,
+                LoadTop = true,
+                LoadAfter = new List<string> { "some.prereq" }
+            };
+            var core = new ModItem { Name = "Core", PackageId = "Ludeon.RimWorld", ModType = ModType.Core };
+            var modA = new ModItem { Name = "Mod A", PackageId = "modA", ModType = ModType.Workshop };
+            var mods = new List<ModItem> { modA, core, xmlExtensions, prerequisite };
+
+            var result = _sorter.TopologicalSort(mods, TestContext.Current.CancellationToken);
+
+            result.IsSuccess.Should().BeTrue();
+            result.SortedMods.Select(m => m.PackageId).Should().Equal(
+                "Ludeon.RimWorld", "some.prereq", "imranfish.xmlextensions", "modA");
+        }
+
+        [Fact]
         public void TopologicalSort_ChainDependencies_ShouldRespectFullChain()
         {
             // A must come before B, B must come before C

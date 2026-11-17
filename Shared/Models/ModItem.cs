@@ -131,7 +131,50 @@ namespace RimSharp.Shared.Models
         public bool IsTechnicalDetailsVisible => ModType != ModType.Core && ModType != ModType.Expansion;
 
         public bool LoadBottom { get; set; }
+
+        /// <summary>
+        /// True when a rule database pins this mod to the TOP of the load order
+        /// (tier-1 slot in <c>ModDependencySorter</c>). Mirrors
+        /// <see cref="LoadBottom"/>.
+        /// </summary>
+        public bool LoadTop { get; set; }
+
         public string PreviewImagePath { get; set; } = string.Empty;
+
+        // --- Rules-database provenance -------------------------------------
+        // Tracks which parts of the load-order state were contributed by the
+        // rules database layer (as opposed to About.xml or custom edits), so a
+        // live re-merge (registry change / source refresh) can strip exactly
+        // the stale database contributions before re-applying. Without this,
+        // union-add application is not idempotent and a removed source's rules
+        // would linger on the mod forever.
+        /// <summary>
+        /// PackageIds this mod's <see cref="LoadBefore"/> list received from the
+        /// rules database layer (never from About.xml or custom edits).
+        /// </summary>
+        public HashSet<string> DatabaseLoadBefore { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// PackageIds this mod's <see cref="LoadAfter"/> list received from the
+        /// rules database layer (never from About.xml or custom edits).
+        /// </summary>
+        public HashSet<string> DatabaseLoadAfter { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// PackageIds this mod's <see cref="IncompatibleWith"/> map received
+        /// from the rules database layer (never from About.xml or custom edits).
+        /// </summary>
+        public HashSet<string> DatabaseIncompatibleWith { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// True when the rules database layer last wrote <see cref="LoadBottom"/>.
+        /// </summary>
+        public bool DatabaseLoadBottom { get; set; }
+
+        /// <summary>
+        /// True when the rules database layer last wrote <see cref="LoadTop"/>.
+        /// </summary>
+        public bool DatabaseLoadTop { get; set; }
 
         public bool IsSupportedRW { get; set; }
 

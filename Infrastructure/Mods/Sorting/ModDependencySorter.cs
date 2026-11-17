@@ -90,7 +90,18 @@ namespace RimSharp.Infrastructure.Mods.Sorting
 
                 _logger.LogDebug("Partitioning mods into tiers.");
                 ct.ThrowIfCancellationRequested();
-                var tierOneMods = GetTierMods(allMods, fullGraph, TierOnePackageIds, findDependencies: true, ct);
+                // LoadTop mirrors LoadBottom at the other end: a mod flagged by
+                // the rules database joins the tier-1 starting set ("Should be
+                // Treated as Tier-1 mod"), pulling its dependencies up with it.
+                var tierOneStartingSet = new HashSet<string>(TierOnePackageIds, StringComparer.OrdinalIgnoreCase);
+                foreach (var mod in allMods)
+                {
+                    if (mod.LoadTop && !string.IsNullOrEmpty(mod.PackageId))
+                    {
+                        tierOneStartingSet.Add(mod.PackageId);
+                    }
+                }
+                var tierOneMods = GetTierMods(allMods, fullGraph, tierOneStartingSet, findDependencies: true, ct);
 
                 ct.ThrowIfCancellationRequested();
                 var tierThreeStartingSet = allMods

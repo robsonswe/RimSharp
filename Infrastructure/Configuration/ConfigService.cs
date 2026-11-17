@@ -23,6 +23,7 @@ namespace RimSharp.Infrastructure.Configuration
             "openrouter_api_key",
             "ai_model",
             "update_channel", // <- Adicionado aqui
+            "rules_db_sources", // JSON array of rule database sources (priority order)
         };
 
         private readonly string _configPath;

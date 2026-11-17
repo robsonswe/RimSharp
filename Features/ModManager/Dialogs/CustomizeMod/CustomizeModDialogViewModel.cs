@@ -92,11 +92,13 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         private readonly List<string> _originalLoadAfter;
         private readonly List<string> _originalIncompatibilities;
         private readonly bool _originalLoadBottom;
+        private readonly bool _originalLoadTop;
         private readonly List<string> _originalSupportedVersions;
         private readonly string? _originalExternalUrl;
 
 // Original mod properties (display-only)
         public bool HasOriginalLoadBottom => _originalLoadBottom;
+        public bool HasOriginalLoadTop => _originalLoadTop;
         public List<string> OriginalLoadBeforeItems => _originalLoadBefore;
         public List<string> OriginalDependenciesItems => _originalDependencies;
         public List<string> OriginalLoadAfterItems => _originalLoadAfter;
@@ -152,6 +154,23 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         {
             get => _loadBottomComment;
             set => SetProperty(ref _loadBottomComment, value);
+        }
+
+        // LoadTop custom options (mirror of LoadBottom at the other end)
+        public bool CanCustomizeLoadTop => !HasOriginalLoadTop;
+
+        private bool _loadTop;
+        public bool LoadTop
+        {
+            get => _loadTop;
+            set => SetProperty(ref _loadTop, value);
+        }
+
+        private string _loadTopComment = string.Empty;
+        public string LoadTopComment
+        {
+            get => _loadTopComment;
+            set => SetProperty(ref _loadTopComment, value);
         }
 
         // Collection properties for rules
@@ -222,6 +241,9 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             _originalLoadBottom = mod.LoadBottom &&
                 (_customInfo.LoadBottom == null || !_customInfo.LoadBottom.Value);
 
+            _originalLoadTop = mod.LoadTop &&
+                (_customInfo.LoadTop == null || !_customInfo.LoadTop.Value);
+
             _originalSupportedVersions = mod.SupportedVersionStrings
                 .Where(v => !(_customInfo.SupportedVersions?.Contains(v) ?? false))
                 .ToList();
@@ -240,6 +262,11 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             // Setup LoadBottom
             LoadBottom = !HasOriginalLoadBottom && (_customInfo.LoadBottom?.Value ?? false);
             LoadBottomComment = string.Join(", ", _customInfo.LoadBottom?.Comment ?? Enumerable.Empty<string>());
+
+            // Setup LoadTop (mirror of LoadBottom)
+            LoadTop = !HasOriginalLoadTop && (_customInfo.LoadTop?.Value ?? false);
+            LoadTopComment = string.Join(", ", _customInfo.LoadTop?.Comment ?? Enumerable.Empty<string>());
+
             InitializeRuleCollections();
 
             // Setup commands
@@ -341,6 +368,13 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                     {
                         Value = true,
                         Comment = ParseCommaSeparatedList(LoadBottomComment)
+                    }
+                    : null,
+                LoadTop = CanCustomizeLoadTop && LoadTop
+                    ? new LoadBottomRule
+                    {
+                        Value = true,
+                        Comment = ParseCommaSeparatedList(LoadTopComment)
                     }
                     : null,
                 LoadBefore = ConvertToDependencyRules(CustomLoadBefore),

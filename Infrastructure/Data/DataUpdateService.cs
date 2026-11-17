@@ -11,6 +11,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Infrastructure.Configuration;
+using RimSharp.Infrastructure.Mods.Rules;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 
@@ -28,6 +29,7 @@ namespace RimSharp.Infrastructure.Data
         private readonly string _noVersionWarningBaseUrl = "https://raw.githubusercontent.com/emipa606/NoVersionWarning/main";
         private readonly GameInstance? _gameInstance;
         private readonly string _noVersionWarningTreeUrl = "https://api.github.com/repos/emipa606/NoVersionWarning/git/trees/main";
+        private readonly ModRuleSourceRegistry? _ruleSourceRegistry;
         // Fallback version list used when the repository tree cannot be
         // discovered (offline, rate-limited). Mirrors the repo's current
         // layout; unknown versions are fetched dynamically instead.
@@ -59,17 +61,18 @@ namespace RimSharp.Infrastructure.Data
             (Path.Combine("Data", "Replacements", "RimSharp", "replacements.json"), Path.Combine("Replacements", "RimSharp", "replacements.json")),
         };
 
-        public DataUpdateService(ILoggerService logger, string appBasePath, HttpClient httpClient, GameInstance? gameInstance = null)
-            : this(logger, appBasePath, httpClient, AppDataPaths.BaseDirectory, gameInstance)
+        public DataUpdateService(ILoggerService logger, string appBasePath, HttpClient httpClient, GameInstance? gameInstance = null, ModRuleSourceRegistry? ruleSourceRegistry = null)
+            : this(logger, appBasePath, httpClient, AppDataPaths.BaseDirectory, gameInstance, ruleSourceRegistry)
         {
         }
 
-        internal DataUpdateService(ILoggerService logger, string appBasePath, HttpClient httpClient, string bundledDataSource, GameInstance? gameInstance = null)
+        internal DataUpdateService(ILoggerService logger, string appBasePath, HttpClient httpClient, string bundledDataSource, GameInstance? gameInstance = null, ModRuleSourceRegistry? ruleSourceRegistry = null)
         {
             _gameInstance = gameInstance;
             _logger = logger;
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _bundledDataSource = bundledDataSource;
+            _ruleSourceRegistry = ruleSourceRegistry;
 
             if (!_httpClient.DefaultRequestHeaders.Contains("User-Agent"))
             {
@@ -237,6 +240,14 @@ namespace RimSharp.Infrastructure.Data
                 // try block; a curated failure must not skip them either).
                 // SyncExternalSourcesAsync isolates each source's failures.
                 await SyncExternalSourcesAsync(cancellationToken).ConfigureAwait(false);
+
+                // User-configured rule database sources (community rules and
+                // any repoFile source the user added). The curated RimSharpDB
+                // entry is skipped here: the SHA-gated sync above owns its file.
+                if (_ruleSourceRegistry != null)
+                {
+                    await SyncRuleSourcesAsync(null, cancellationToken).ConfigureAwait(false);
+                }
             }
         }
         /// <summary>
@@ -249,6 +260,180 @@ namespace RimSharp.Infrastructure.Data
             using var sha256 = System.Security.Cryptography.SHA256.Create();
             var hash = await sha256.ComputeHashAsync(stream, cancellationToken).ConfigureAwait(false);
             return string.Equals(Convert.ToHexString(hash), expectedSha, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Syncs every enabled repoFile rule database source from the registry
+        /// (the curated RimSharpDB entry is excluded: its file is owned by the
+        /// SHA-gated curated sync above). Each source is isolated: one failing
+        /// (offline, moved, 404) never blocks the others or the startup flow.
+        /// localFile sources are never fetched — they are read from disk as-is.
+        /// </summary>
+        public async Task SyncRuleSourcesAsync(IProgress<DataUpdateProgress>? progress, CancellationToken cancellationToken)
+        {
+            if (_ruleSourceRegistry == null)
+            {
+                return;
+            }
+
+            foreach (var source in _ruleSourceRegistry.GetEnabledSources())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (string.Equals(source.Id, ModRuleSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase))
+                {
+                    // The curated file is synced by the SHA-gated flow; fetching
+                    // it here would duplicate (and could fight) that sync.
+                    continue;
+                }
+
+                if (source.Type != ModRuleSourceType.RepoFile)
+                {
+                    _logger.LogDebug($"Rule source '{source.Id}' is a local file; no network sync needed.", nameof(DataUpdateService));
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(source.Url))
+                {
+                    _logger.LogWarning($"Rule source '{source.Id}' has no URL configured; skipping its sync.", nameof(DataUpdateService));
+                    continue;
+                }
+
+                var localPath = GetRuleSourceFilePath(source);
+                if (localPath == null)
+                {
+                    _logger.LogWarning($"Could not derive a cache file name for rule source '{source.Id}' ('{source.Url}'); skipping its sync.", nameof(DataUpdateService));
+                    continue;
+                }
+
+                try
+                {
+                    progress?.Report(new DataUpdateProgress { Message = $"Updating {source.Name}..." });
+                    _logger.LogInfo($"Syncing rule source '{source.Id}' from '{source.Url}'...", nameof(DataUpdateService));
+                    await SyncTextFileAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    // Isolated failure: a broken source must never block the
+                    // other sources or the startup flow.
+                    _logger.LogWarning($"Could not sync rule source '{source.Id}': {ex.Message}", nameof(DataUpdateService));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Manual refresh of a single rule source from the settings UI
+        /// ("Update now"). Uses the same conditional GET as the startup sync,
+        /// so an unchanged source answers 304 and keeps its cache.
+        /// </summary>
+        public async Task RefreshRuleSourceAsync(string sourceId, CancellationToken cancellationToken)
+        {
+            if (_ruleSourceRegistry == null)
+            {
+                return;
+            }
+
+            var source = _ruleSourceRegistry.Find(sourceId);
+            if (source == null)
+            {
+                _logger.LogWarning($"Cannot refresh unknown rule source '{sourceId}'.", nameof(DataUpdateService));
+                return;
+            }
+
+            if (string.Equals(source.Id, ModRuleSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogInfo($"Rule source '{sourceId}' is the curated database; it updates with the regular data update check.", nameof(DataUpdateService));
+                return;
+            }
+
+            if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
+            {
+                _logger.LogInfo($"Rule source '{sourceId}' is a local file; nothing to fetch.", nameof(DataUpdateService));
+                return;
+            }
+
+            var localPath = GetRuleSourceFilePath(source);
+            if (localPath == null)
+            {
+                _logger.LogWarning($"Could not derive a cache file name for rule source '{sourceId}' ('{source.Url}').", nameof(DataUpdateService));
+                return;
+            }
+
+            try
+            {
+                _logger.LogInfo($"Refreshing rule source '{sourceId}' from '{source.Url}'...", nameof(DataUpdateService));
+                await SyncTextFileAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Could not refresh rule source '{sourceId}': {ex.Message}", nameof(DataUpdateService));
+                throw new InvalidOperationException($"Could not update '{source.Name}'. Please check the URL and your internet connection.", ex);
+            }
+        }
+
+        /// <summary>
+        /// Manual refresh of every enabled repoFile rule source from the
+        /// settings UI ("Update all").
+        /// </summary>
+        public async Task RefreshAllRuleSourcesAsync(CancellationToken cancellationToken)
+        {
+            if (_ruleSourceRegistry == null)
+            {
+                return;
+            }
+
+            foreach (var source in _ruleSourceRegistry.GetEnabledSources())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (string.Equals(source.Id, ModRuleSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
+                {
+                    continue;
+                }
+
+                var localPath = GetRuleSourceFilePath(source);
+                if (localPath == null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    _logger.LogInfo($"Refreshing rule source '{source.Id}' from '{source.Url}'...", nameof(DataUpdateService));
+                    await SyncTextFileAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    // Per-source isolation: one dead source must not abort the rest.
+                    _logger.LogWarning($"Could not refresh rule source '{source.Id}': {ex.Message}", nameof(DataUpdateService));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Cache location of a rule source file: Data/Rules/<sourceId>/<file
+        /// name from the URL>. Mirrors the path resolution in
+        /// JsonModRulesRepository so sync and load always agree.
+        /// </summary>
+        private string? GetRuleSourceFilePath(ModRuleSourceRecord source)
+        {
+            if (string.IsNullOrWhiteSpace(source.Url) || !Uri.TryCreate(source.Url, UriKind.Absolute, out var uri))
+            {
+                return null;
+            }
+
+            var fileName = Path.GetFileName(uri.AbsolutePath);
+            if (string.IsNullOrEmpty(fileName))
+            {
+                return null;
+            }
+
+            return GetExternalFilePath("Rules", source.Id, Uri.UnescapeDataString(fileName));
         }
 
         /// <summary>

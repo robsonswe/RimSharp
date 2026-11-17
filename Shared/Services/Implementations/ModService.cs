@@ -392,6 +392,33 @@ namespace RimSharp.Shared.Services.Implementations
         }
 
         /// <summary>
+        /// Live re-merge: re-reads the (possibly changed) rules database and
+        /// re-applies it plus the custom-info layer to the already-loaded mods.
+        /// The rules service strips its previous provenance-tracked
+        /// contributions first, so a removed or disabled source's rules
+        /// actually disappear; the custom layer is re-applied afterwards
+        /// because it is idempotent and owns the final say on conflicts.
+        /// </summary>
+        public async Task ReapplyRulesAsync()
+        {
+            _logger.LogInfo("Re-applying rule database changes to the loaded mods...", nameof(ModService));
+
+            await Task.Run(() =>
+            {
+                _rulesService.RefreshRules();
+                _rulesService.ApplyRulesToMods(_allMods);
+                _customService.ApplyCustomInfoToMods(_allMods);
+
+                foreach (var mod in _allMods)
+                {
+                    mod.IsSupportedRW = IsVersionSupported(_currentMajorVersion, mod.SupportedVersions) || !mod.SupportedVersions.Any();
+                }
+            }).ConfigureAwait(false);
+
+            _logger.LogInfo($"Rule re-merge complete for {_allMods.Count} mods.", nameof(ModService));
+        }
+
+        /// <summary>
         /// Applies locally-recorded Workshop timestamps (appworkshop_294100.acf) onto
         /// the freshly scanned mod list, keyed by SteamId. No-op when no timestamp
         /// service was injected (hand-built ModService instances in tests) or when

@@ -60,6 +60,15 @@ Task CreateTimestampFilesAsync(string modDirectoryPath, string steamId, string p
         /// <param name="packageId">The package ID of the mod.</param>
         /// <returns>A <see cref="Task"/> representing the asynchronous remove operation.</returns>
         Task RemoveCustomModInfoAsync(string packageId);
+
+        /// <summary>
+        /// Re-applies the rules database and the custom-info layer to the
+        /// already-loaded mods and recomputes version support — the live
+        /// re-merge used after a rule source registry change or refresh, so
+        /// removed/disabled sources' contributions disappear without a restart
+        /// or rescan.
+        /// </summary>
+        Task ReapplyRulesAsync();
     }
 }
 

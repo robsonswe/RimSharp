@@ -48,6 +48,7 @@ namespace RimSharp.Infrastructure.Dialog
         private readonly ISaveHeaderService? _saveHeaderService;
         private readonly IModListManager? _modListManager;
         private readonly Shared.Models.GameInstance? _gameInstance;
+        private readonly IRuleSourceManager? _ruleSourceManager;
         private int _openDialogCount;
         public bool IsAnyDialogOpen => _openDialogCount > 0;
 
@@ -65,7 +66,8 @@ namespace RimSharp.Infrastructure.Dialog
             ISteamSubscriptionService? steamSubscriptionService = null,
             ISaveHeaderService? saveHeaderService = null,
             IModListManager? modListManager = null,
-            Shared.Models.GameInstance? gameInstance = null)
+            Shared.Models.GameInstance? gameInstance = null,
+            IRuleSourceManager? ruleSourceManager = null)
         {
             _appUpdaterService = appUpdaterService;
             _configService = configService;
@@ -79,6 +81,7 @@ namespace RimSharp.Infrastructure.Dialog
             _saveHeaderService = saveHeaderService;
             _modListManager = modListManager;
             _gameInstance = gameInstance;
+            _ruleSourceManager = ruleSourceManager;
         }
 
         private void OnPropertyChanged(string propertyName)
@@ -287,7 +290,8 @@ namespace RimSharp.Infrastructure.Dialog
                 _steamClaimValidator!,
                 _gameInstallationDetectionService!,
                 dialogService: this,
-                showAiProviders: showAiProviders);
+                showAiProviders: showAiProviders,
+                ruleSourceManager: _ruleSourceManager);
             var dialog = new SettingsDialogView(viewModel);
             return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }

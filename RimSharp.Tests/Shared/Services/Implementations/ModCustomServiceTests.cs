@@ -132,6 +132,50 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             string content = File.ReadAllText(_modsJsonPath);
             content.Should().NotContain("test.mod");
         }
+
+        [Fact]
+        public async Task ApplyCustomInfoToMods_ShouldApplyLoadTop()
+        {
+            var service = new ModCustomService(_testTempDir, _mockLogger);
+            var info = new ModCustomInfo { LoadTop = new LoadBottomRule { Value = true } };
+            await service.SaveCustomModInfoAsync("test.mod", info);
+
+            var mod = new ModItem { PackageId = "test.mod" };
+
+            service.ApplyCustomInfoToMods(new[] { mod });
+
+            mod.LoadTop.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task SaveCustomModInfoAsync_ShouldRoundTripLoadTop()
+        {
+            var service = new ModCustomService(_testTempDir, _mockLogger);
+            var info = new ModCustomInfo
+            {
+                LoadTop = new LoadBottomRule { Value = true, Comment = new List<string> { "tier 1 please" } }
+            };
+
+            await service.SaveCustomModInfoAsync("test.mod", info);
+
+            var reloaded = service.GetCustomModInfo("test.mod");
+            reloaded!.LoadTop.Should().NotBeNull();
+            reloaded.LoadTop!.Value.Should().BeTrue();
+            reloaded.LoadTop.Comment.Should().Contain("tier 1 please");
+        }
+
+        [Fact]
+        public async Task SaveCustomModInfoAsync_WhenLoadTopFalse_ShouldCleanItUp()
+        {
+            var service = new ModCustomService(_testTempDir, _mockLogger);
+
+            await service.SaveCustomModInfoAsync("test.mod", new ModCustomInfo
+            {
+                LoadTop = new LoadBottomRule { Value = false }
+            });
+
+            service.GetCustomModInfo("test.mod")!.LoadTop.Should().BeNull();
+        }
     }
 }
 

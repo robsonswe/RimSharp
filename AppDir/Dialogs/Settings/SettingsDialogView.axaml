@@ -231,6 +231,92 @@
                     </Border>
                 </TabItem>
 
+            <!-- TAB 4: RULE DATABASES -->
+                <TabItem Header="Rule Databases">
+                    <Border Classes="panel-subtle">
+                        <StackPanel Margin="15" Spacing="12">
+
+                            <TextBlock TextWrapping="Wrap" FontSize="12"
+                                       Foreground="{DynamicResource BrushTextStrong}"
+                                       Text="Rule databases are merged in priority order: the first source that carries a rule for a mod wins, and order rules from every source are combined. Changes apply immediately - no restart needed."/>
+
+                            <ItemsControl ItemsSource="{Binding RuleSources}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:RuleSourceRowViewModel">
+                                        <Border BorderBrush="{DynamicResource BrushBorderDefault}"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="10,8"
+                                                Margin="0,0,0,8">
+                                            <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto" ColumnSpacing="8">
+                                                <CheckBox Grid.Row="0" Grid.Column="0"
+                                                          IsChecked="{Binding Enabled, Mode=TwoWay}"
+                                                          VerticalAlignment="Center"
+                                                          ToolTip.Tip="Enable or disable this source"/>
+                                                <TextBlock Grid.Row="0" Grid.Column="1"
+                                                           Text="{Binding Name}"
+                                                           FontWeight="Bold" FontSize="13"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Foreground="{DynamicResource BrushTextStrong}"/>
+                                                <TextBlock Grid.Row="0" Grid.Column="2"
+                                                           Text="{Binding TypeBadge}"
+                                                           FontSize="11" FontStyle="Italic"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource BrushTextSecondary}"/>
+
+                                                <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                                         Text="{Binding Location, Mode=TwoWay}"
+                                                         Classes="input"
+                                                         MinHeight="28"
+                                                         IsEnabled="{Binding !IsCurated}"
+                                                         ToolTip.Tip="{Binding Location}"/>
+                                                <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                                                    <Button Content="Edit" Command="{Binding EditLocationCommand}"
+                                                            Classes="btn" Padding="8,4"
+                                                            IsEnabled="{Binding !IsCurated}"/>
+                                                    <Button Content="Update" Command="{Binding UpdateNowCommand}"
+                                                            Classes="btn" Padding="8,4"/>
+                                                </StackPanel>
+
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
+                                                           Text="{Binding Id}"
+                                                           FontSize="10"
+                                                           Margin="30,2,0,0"
+                                                           Foreground="{DynamicResource BrushTextMuted}"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Button Content="Add remote" Command="{Binding AddRemoteRuleSourceCommand}"
+                                        Classes="btn" Padding="10,4"/>
+                                <Button Content="Add local file" Command="{Binding AddLocalRuleSourceCommand}"
+                                        Classes="btn" Padding="10,4"/>
+                                <Button Content="Remove" Command="{Binding RemoveRuleSourceCommand}"
+                                        Classes="btn" Padding="10,4"/>
+                                <Button Content="Move up" Command="{Binding MoveRuleSourceUpCommand}"
+                                        Classes="btn" Padding="10,4"/>
+                                <Button Content="Move down" Command="{Binding MoveRuleSourceDownCommand}"
+                                        Classes="btn" Padding="10,4"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Button Content="Update all" Command="{Binding UpdateAllRuleSourcesCommand}"
+                                        Classes="btn" Padding="10,4"/>
+                                <Button Content="Reset to defaults" Command="{Binding ResetRuleSourcesCommand}"
+                                        Classes="btn" Padding="10,4"/>
+                            </StackPanel>
+
+                            <TextBlock Text="{Binding RuleSourcesStatus}"
+                                       TextWrapping="Wrap" FontSize="11"
+                                       Foreground="{DynamicResource BrushTextSecondary}"/>
+                        </StackPanel>
+                    </Border>
+                </TabItem>
+
             </TabControl>
         </Border>
     </dialogs:BaseDialog.MainContent>

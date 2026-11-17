@@ -1,11 +1,13 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using RimSharp.AppDir.AppFiles;
+using RimSharp.Infrastructure.Mods.Rules;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Shared.Models;
 using RimSharp.Infrastructure.Configuration;
@@ -56,6 +58,151 @@ namespace RimSharp.AppDir.Dialogs
         }
     }
 
+    /// <summary>
+    /// One row of the "Rule Databases" settings section: an editable snapshot
+    /// of a <see cref="ModRuleSourceRecord"/>. The dialog works on these rows
+    /// and only writes back to the shared registry on Save.
+    /// </summary>
+    public class RuleSourceRowViewModel : ViewModelBase
+    {
+        private readonly IRuleSourceManager? _ruleSourceManager;
+        private readonly IDialogService? _dialogService;
+        private readonly IFileDialogService? _fileDialogService;
+
+        public RuleSourceRowViewModel(
+            ModRuleSourceRecord record,
+            IRuleSourceManager? ruleSourceManager = null,
+            IDialogService? dialogService = null,
+            IFileDialogService? fileDialogService = null)
+        {
+            Record = record ?? throw new ArgumentNullException(nameof(record));
+            _ruleSourceManager = ruleSourceManager;
+            _dialogService = dialogService;
+            _fileDialogService = fileDialogService;
+
+            EditLocationCommand = CreateAsyncCommand(() => EditLocationAsync(this));
+            UpdateNowCommand = CreateAsyncCommand(() => UpdateNowAsync(this));
+        }
+
+        public ModRuleSourceRecord Record { get; }
+
+        public string Id => Record.Id;
+
+        private string _name = string.Empty;
+        public string Name
+        {
+            get => _name;
+            set => SetProperty(ref _name, value);
+        }
+
+        private bool _enabled = true;
+        public bool Enabled
+        {
+            get => _enabled;
+            set => SetProperty(ref _enabled, value);
+        }
+
+        private string _url = string.Empty;
+        public string Url
+        {
+            get => _url;
+            set
+            {
+                if (SetProperty(ref _url, value))
+                {
+                    OnPropertyChanged(nameof(Location));
+                }
+            }
+        }
+
+        private string _localPath = string.Empty;
+        public string LocalPath
+        {
+            get => _localPath;
+            set
+            {
+                if (SetProperty(ref _localPath, value))
+                {
+                    OnPropertyChanged(nameof(Location));
+                }
+            }
+        }
+
+        public bool IsRepoFile => Record.Type == ModRuleSourceType.RepoFile;
+        public bool IsLocalFile => Record.Type == ModRuleSourceType.LocalFile;
+
+        /// <summary>
+        /// True for the curated RimSharpDB entry: its file is owned by the
+        /// SHA-gated curated sync, so its URL is neither editable nor fetched
+        /// by the registry sync.
+        /// </summary>
+        public bool IsCurated => string.Equals(Record.Id, ModRuleSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>"Remote file" / "Local file" badge text.</summary>
+        public string TypeBadge => IsLocalFile ? "Local file" : "Remote file";
+
+        /// <summary>
+        /// The URL (remote) or path (local) shown/edited in the row; writes are
+        /// routed to the matching backing property. The curated entry shows a
+        /// placeholder instead: its file is owned by the SHA-gated sync.
+        /// </summary>
+        public string Location
+        {
+            get => IsCurated
+                ? "(synced with the curated RimSharpDB update)"
+                : IsLocalFile ? LocalPath : Url;
+            set
+            {
+                if (IsCurated) return;
+                if (IsLocalFile) LocalPath = value; else Url = value;
+            }
+        }
+
+        public ICommand EditLocationCommand { get; }
+        public ICommand UpdateNowCommand { get; }
+
+        private async Task EditLocationAsync(RuleSourceRowViewModel row)
+        {
+            if (row.IsLocalFile)
+            {
+                if (_fileDialogService == null) return;
+                var (success, path) = await _fileDialogService.ShowOpenFileDialogAsync(
+                    "Select Rules File", "JSON files|*.json|All files|*.*", row.LocalPath);
+                if (success && !string.IsNullOrWhiteSpace(path))
+                {
+                    row.LocalPath = path;
+                    row.OnPropertyChanged(nameof(Location));
+                }
+                return;
+            }
+
+            if (_dialogService == null) return;
+            var (result, input) = await _dialogService.ShowInputDialogAsync(
+                "Rule Database URL",
+                $"Raw file URL for '{row.Name}':",
+                row.Url);
+            if (result == MessageDialogResult.OK && !string.IsNullOrWhiteSpace(input))
+            {
+                row.Url = input.Trim();
+                row.OnPropertyChanged(nameof(Location));
+            }
+        }
+
+        private async Task UpdateNowAsync(RuleSourceRowViewModel row)
+        {
+            if (_ruleSourceManager == null) return;
+            try
+            {
+                await _ruleSourceManager.RefreshSourceAsync(row.Id);
+            }
+            catch (Exception)
+            {
+                // RefreshSourceAsync already isolates per-source failures; surface
+                // nothing extra here (the manager logs).
+            }
+        }
+    }
+
     public class SettingsDialogViewModel : DialogViewModelBase<bool>
     {
         private const string GameFolderKey = "game_folder";
@@ -75,6 +222,7 @@ namespace RimSharp.AppDir.Dialogs
         private readonly GameInstallationDetectionService _gameInstallationDetectionService;
         private readonly IDialogService? _dialogService;
         private readonly ILoggerService _logger;
+        private readonly IRuleSourceManager? _ruleSourceManager;
 
         private string _gamePath = string.Empty;
         public string GamePath { get => _gamePath; set
@@ -235,6 +383,45 @@ namespace RimSharp.AppDir.Dialogs
         public IReadOnlyList<AiProviderSettingsRow> Providers { get; }
         public bool ShowAiProviders { get; }
 
+        // --- Rule Databases section -----------------------------------------
+        /// <summary>Editable snapshot of the rule source registry (priority order).</summary>
+        public ObservableCollection<RuleSourceRowViewModel> RuleSources { get; } = new();
+
+        private RuleSourceRowViewModel? _selectedRuleSource;
+        public RuleSourceRowViewModel? SelectedRuleSource
+        {
+            get => _selectedRuleSource;
+            set
+            {
+                if (SetProperty(ref _selectedRuleSource, value))
+                {
+                    OnPropertyChanged(nameof(CanRemoveRuleSource));
+                    OnPropertyChanged(nameof(CanMoveRuleSourceUp));
+                    OnPropertyChanged(nameof(CanMoveRuleSourceDown));
+                }
+            }
+        }
+
+        public bool CanRemoveRuleSource => SelectedRuleSource != null;
+        public bool CanMoveRuleSourceUp => SelectedRuleSource != null && RuleSources.IndexOf(SelectedRuleSource) > 0;
+        public bool CanMoveRuleSourceDown => SelectedRuleSource != null && RuleSources.IndexOf(SelectedRuleSource) >= 0 && RuleSources.IndexOf(SelectedRuleSource) < RuleSources.Count - 1;
+
+        private string _ruleSourcesStatus = string.Empty;
+        /// <summary>Status line under the rule source list ("rules as of ...", update results).</summary>
+        public string RuleSourcesStatus
+        {
+            get => _ruleSourcesStatus;
+            private set => SetProperty(ref _ruleSourcesStatus, value);
+        }
+
+        public ICommand AddRemoteRuleSourceCommand { get; }
+        public ICommand AddLocalRuleSourceCommand { get; }
+        public ICommand RemoveRuleSourceCommand { get; }
+        public ICommand MoveRuleSourceUpCommand { get; }
+        public ICommand MoveRuleSourceDownCommand { get; }
+        public ICommand UpdateAllRuleSourcesCommand { get; }
+        public ICommand ResetRuleSourcesCommand { get; }
+
         public SettingsDialogViewModel(
             IConfigService configService,
             IPathService pathService,
@@ -244,7 +431,8 @@ namespace RimSharp.AppDir.Dialogs
             ISteamClaimValidator steamClaimValidator,
             GameInstallationDetectionService gameInstallationDetectionService,
             IDialogService? dialogService = null,
-            bool showAiProviders = true)
+            bool showAiProviders = true,
+            IRuleSourceManager? ruleSourceManager = null)
         : base("RimSharp Settings")
         {
             _configService = configService ?? throw new ArgumentNullException(nameof(configService));
@@ -254,6 +442,7 @@ namespace RimSharp.AppDir.Dialogs
             _dialogService = dialogService;
             _steamClaimValidator = steamClaimValidator ?? throw new ArgumentNullException(nameof(steamClaimValidator));
             _gameInstallationDetectionService = gameInstallationDetectionService ?? throw new ArgumentNullException(nameof(gameInstallationDetectionService));
+            _ruleSourceManager = ruleSourceManager;
             ShowAiProviders = showAiProviders;
 
             _gamePath = _configService.GetConfigValue(GameFolderKey) ?? string.Empty;
@@ -278,6 +467,168 @@ namespace RimSharp.AppDir.Dialogs
             ValidateSteamClaimCommand = CreateCommand(ValidateSteamClaimNow);
             SaveCommand = CreateCommand(Save);
             CancelCommand = CreateCommand(() => CloseDialog(false));
+
+            // Rule Databases section: snapshot the registry into editable rows.
+            LoadRuleSources();
+            AddRemoteRuleSourceCommand = CreateAsyncCommand(AddRemoteRuleSourceAsync);
+            AddLocalRuleSourceCommand = CreateAsyncCommand(AddLocalRuleSourceAsync);
+            RemoveRuleSourceCommand = CreateCommand(RemoveRuleSource, () => CanRemoveRuleSource, nameof(SelectedRuleSource));
+            MoveRuleSourceUpCommand = CreateCommand(MoveRuleSourceUp, () => CanMoveRuleSourceUp, nameof(SelectedRuleSource));
+            MoveRuleSourceDownCommand = CreateCommand(MoveRuleSourceDown, () => CanMoveRuleSourceDown, nameof(SelectedRuleSource));
+            UpdateAllRuleSourcesCommand = CreateAsyncCommand(UpdateAllRuleSourcesAsync);
+            ResetRuleSourcesCommand = CreateCommand(ResetRuleSources);
+        }
+
+        /// <summary>
+        /// Snapshots the shared registry into editable rows. The dialog edits
+        /// the snapshot; the real registry is only written on Save.
+        /// </summary>
+        private void LoadRuleSources()
+        {
+            RuleSources.Clear();
+            if (_ruleSourceManager == null) return;
+
+            foreach (var record in _ruleSourceManager.Registry.Sources)
+            {
+                RuleSources.Add(CreateRow(record));
+            }
+
+            RefreshRuleSourcesStatus();
+        }
+
+        private RuleSourceRowViewModel CreateRow(ModRuleSourceRecord record)
+        {
+            var row = new RuleSourceRowViewModel(record, _ruleSourceManager, _dialogService, _fileDialogService)
+            {
+                Name = record.Name,
+                Enabled = record.Enabled,
+                Url = record.Url ?? string.Empty,
+                LocalPath = record.LocalPath ?? string.Empty
+            };
+            return row;
+        }
+
+        private void RefreshRuleSourcesStatus()
+        {
+            if (_ruleSourceManager == null)
+            {
+                RuleSourcesStatus = string.Empty;
+                return;
+            }
+
+            var timestamp = _ruleSourceManager.EffectiveTimestamp;
+            var asOf = timestamp.HasValue
+                ? DateTimeOffset.FromUnixTimeSeconds(timestamp.Value).ToLocalTime().ToString("d")
+                : "unknown";
+            RuleSourcesStatus = $"Rules as of {asOf}. Higher entries win when sources overlap.";
+        }
+
+        private async Task AddRemoteRuleSourceAsync()
+        {
+            if (_ruleSourceManager == null || _dialogService == null) return;
+
+            var (result, input) = await _dialogService.ShowInputDialogAsync(
+                "Add Rule Database",
+                "Raw file URL of the rules JSON (e.g. a GitHub raw link):",
+                "https://raw.githubusercontent.com/");
+            if (result != MessageDialogResult.OK || string.IsNullOrWhiteSpace(input)) return;
+
+            var url = input.Trim();
+            var id = BuildUniqueSourceId(Path.GetFileNameWithoutExtension(GetUrlPath(url)));
+            RuleSources.Add(CreateRow(new ModRuleSourceRecord
+            {
+                Id = id,
+                Name = id,
+                Type = ModRuleSourceType.RepoFile,
+                Url = url,
+                Enabled = true
+            }));
+        }
+
+        private async Task AddLocalRuleSourceAsync()
+        {
+            if (_ruleSourceManager == null || _fileDialogService == null) return;
+
+            var (success, path) = await _fileDialogService.ShowOpenFileDialogAsync(
+                "Add Local Rules File", "JSON files|*.json|All files|*.*");
+            if (!success || string.IsNullOrWhiteSpace(path)) return;
+
+            var id = BuildUniqueSourceId(Path.GetFileNameWithoutExtension(path));
+            RuleSources.Add(CreateRow(new ModRuleSourceRecord
+            {
+                Id = id,
+                Name = id,
+                Type = ModRuleSourceType.LocalFile,
+                LocalPath = path,
+                Enabled = true
+            }));
+        }
+
+        private void RemoveRuleSource()
+        {
+            if (SelectedRuleSource == null) return;
+            RuleSources.Remove(SelectedRuleSource);
+            SelectedRuleSource = null;
+        }
+
+        private void MoveRuleSourceUp()
+        {
+            if (SelectedRuleSource == null) return;
+            var index = RuleSources.IndexOf(SelectedRuleSource);
+            if (index <= 0) return;
+            RuleSources.Move(index - 1, index);
+            SelectedRuleSource = RuleSources[index - 1];
+        }
+
+        private void MoveRuleSourceDown()
+        {
+            if (SelectedRuleSource == null) return;
+            var index = RuleSources.IndexOf(SelectedRuleSource);
+            if (index < 0 || index >= RuleSources.Count - 1) return;
+            RuleSources.Move(index, index + 1);
+            SelectedRuleSource = RuleSources[index + 1];
+        }
+
+        private void ResetRuleSources()
+        {
+            if (_ruleSourceManager == null) return;
+            RuleSources.Clear();
+            foreach (var record in ModRuleSourceRegistry.CreateDefaults())
+            {
+                RuleSources.Add(CreateRow(record));
+            }
+        }
+
+        private async Task UpdateAllRuleSourcesAsync()
+        {
+            if (_ruleSourceManager == null) return;
+
+            RuleSourcesStatus = "Updating rule databases...";
+            try
+            {
+                await _ruleSourceManager.RefreshAllAsync();
+                RefreshRuleSourcesStatus();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Rule database update failed: {ex.Message}", nameof(SettingsDialogViewModel));
+                RuleSourcesStatus = "Update failed. Check the URLs and your internet connection.";
+            }
+        }
+
+        private static string GetUrlPath(string url) =>
+            Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.AbsolutePath : url;
+
+        private string BuildUniqueSourceId(string baseId)
+        {
+            var id = string.IsNullOrWhiteSpace(baseId) ? "source" : baseId;
+            var candidate = id;
+            int suffix = 2;
+            while (RuleSources.Any(r => string.Equals(r.Id, candidate, StringComparison.OrdinalIgnoreCase)))
+            {
+                candidate = $"{id}-{suffix++}";
+            }
+            return candidate;
         }
 
         private void LoadSettings()
@@ -524,6 +875,25 @@ namespace RimSharp.AppDir.Dialogs
             foreach (var row in Providers)
             {
                 row.WriteBack();
+            }
+
+            // Rule databases: write the edited snapshot back to the shared
+            // registry, persist it and re-merge the rules onto the loaded mods
+            // (live — a removed/disabled source's rules disappear without a
+            // restart).
+            if (_ruleSourceManager != null)
+            {
+                _ruleSourceManager.Registry.ReplaceAll(RuleSources.Select(row => new ModRuleSourceRecord
+                {
+                    Id = row.Record.Id,
+                    Name = string.IsNullOrWhiteSpace(row.Name) ? row.Record.Id : row.Name.Trim(),
+                    Type = row.Record.Type,
+                    Url = row.IsRepoFile ? (string.IsNullOrWhiteSpace(row.Url) ? null : row.Url.Trim()) : null,
+                    LocalPath = row.IsLocalFile ? (string.IsNullOrWhiteSpace(row.LocalPath) ? null : row.LocalPath.Trim()) : null,
+                    Enabled = row.Enabled,
+                    Bundled = row.Record.Bundled
+                }));
+                _ruleSourceManager.CommitRegistryChanges();
             }
 
             _configService.SaveConfig();
