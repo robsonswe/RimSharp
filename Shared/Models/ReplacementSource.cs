@@ -11,9 +11,15 @@ namespace RimSharp.Shared.Models
         Database,
 
         /// <summary>
-
+        /// Information loaded from the locally installed 'Use This Instead' mod.
         /// </summary>
-        UseThisInstead
+        UseThisInstead,
+
+        /// <summary>
+        /// Information loaded from the emipa606/UseThisInstead GitHub repository
+        /// snapshot kept in the app data directory.
+        /// </summary>
+        UseThisInsteadRepo
     }
 }
 

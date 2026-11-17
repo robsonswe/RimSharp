@@ -80,13 +80,110 @@ namespace RimSharp.Shared.Services.Implementations
         {
             var results = new Dictionary<string, ModReplacementInfo>(StringComparer.OrdinalIgnoreCase);
 
-            int dbCount = LoadFromJson(results);
-            _logger.LogDebug($"Loaded {dbCount} replacements from JSON database.", nameof(ModReplacementService));
-
+            // Priority order: the locally installed mod first, the community
+            // repository snapshot second, our curated database last.
             int utiCount = LoadFromUseThisInsteadXml(results);
-            _logger.LogDebug($"Loaded {utiCount} new replacements from 'Use This Instead' XMLs (duplicates ignored).", nameof(ModReplacementService));
+            _logger.LogDebug($"Loaded {utiCount} replacements from 'Use This Instead' mod folder.", nameof(ModReplacementService));
+
+            int repoCount = LoadFromUseThisInsteadRepository(results);
+            _logger.LogDebug($"Loaded {repoCount} replacements from 'Use This Instead' repository snapshot.", nameof(ModReplacementService));
+
+            int dbCount = LoadFromJson(results);
+            _logger.LogDebug($"Loaded {dbCount} replacements from JSON database (gaps only).", nameof(ModReplacementService));
 
             return results;
+        }
+
+        /// <summary>
+        /// Loads replacement rules from the emipa606/UseThisInstead GitHub
+        /// snapshot kept by the data updater at
+        /// Data/Replacements/UseThisInstead/replacements.json. Rules whose key
+        /// was already provided by a higher-priority source are skipped.
+        /// </summary>
+        private int LoadFromUseThisInsteadRepository(Dictionary<string, ModReplacementInfo> targetDictionary)
+        {
+            var snapshotPath = _dataUpdateService.GetExternalFilePath("Replacements", "UseThisInstead", "replacements.json");
+
+            if (!File.Exists(snapshotPath))
+            {
+                _logger.LogInfo($"'Use This Instead' repository snapshot not found at '{snapshotPath}'. Skipping (no successful data sync yet).", nameof(ModReplacementService));
+                return 0;
+            }
+
+            try
+            {
+                _logger.LogDebug($"Parsing 'Use This Instead' repository snapshot: '{snapshotPath}'", nameof(ModReplacementService));
+                using var doc = JsonDocument.Parse(File.ReadAllText(snapshotPath));
+                if (!doc.RootElement.TryGetProperty("rules", out var rules))
+                {
+                    _logger.LogWarning($"Repository snapshot '{snapshotPath}' has no 'rules' array.", nameof(ModReplacementService));
+                    return 0;
+                }
+
+                return ParseReplacementsRules(rules, targetDictionary, ReplacementSource.UseThisInsteadRepo);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogException(ex, $"Unexpected error loading 'Use This Instead' repository snapshot from '{snapshotPath}'.", nameof(ModReplacementService));
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// Parses the upstream "rules[]" shape shared by the Use This Instead
+        /// mod (mod-folder replacements.json) and the GitHub repository
+        /// snapshot. Only adds entries whose key is not already present
+        /// (first-source-wins).
+        /// </summary>
+        private static int ParseReplacementsRules(JsonElement rules, Dictionary<string, ModReplacementInfo> targetDictionary, ReplacementSource source)
+        {
+            int count = 0;
+
+            foreach (var rule in rules.EnumerateArray())
+            {
+                // A single malformed rule must not discard the whole snapshot.
+                try
+                {
+                    var info = new ModReplacementInfo
+                    {
+                        SteamId = GetString(rule, "oldWorkshopId"),
+                        ReplacementSteamId = GetString(rule, "newWorkshopId"),
+                        Author = GetString(rule, "oldAuthor"),
+                        ReplacementAuthor = GetString(rule, "newAuthor"),
+                        ModId = GetString(rule, "oldPackageId"),
+                        ReplacementModId = GetString(rule, "newPackageId"),
+                        ModName = GetString(rule, "oldName"),
+                        ReplacementName = GetString(rule, "newName"),
+                        Versions = rule.TryGetProperty("oldVersions", out var oldVersions) ? JoinVersions(oldVersions) : string.Empty,
+                        ReplacementVersions = rule.TryGetProperty("newVersions", out var newVersions) ? JoinVersions(newVersions) : string.Empty,
+                        Source = source
+                    };
+
+                    string key = info.SteamId?.Trim().ToLowerInvariant()!;
+                    if (string.IsNullOrEmpty(key))
+                    {
+                        key = $"packageid_{info.ModId?.Trim().ToLowerInvariant() ?? Guid.NewGuid().ToString()}";
+                    }
+
+                    if (targetDictionary.TryAdd(key, info))
+                    {
+                        count++;
+                    }
+                }
+                catch (Exception)
+                {
+                    // Skipped: one bad rule does not invalidate the snapshot.
+                }
+            }
+
+            return count;
+        }
+
+        private static string GetString(JsonElement rule, string propertyName)
+        {
+            return rule.TryGetProperty(propertyName, out var value)
+                ? value.GetString() ?? string.Empty
+                : string.Empty;
         }
 
         /// <summary>
@@ -143,7 +240,11 @@ namespace RimSharp.Shared.Services.Implementations
 
                         if (targetDictionary.ContainsKey(key))
                         {
-                            _logger.LogWarning($"Duplicate key '{key}' detected in '{jsonFilePath}'. Overwriting previous entry.", nameof(ModReplacementService));
+                            // Curated database is the lowest-priority source: a
+                            // key already claimed by the mod folder or the
+                            // community snapshot keeps its higher-priority entry.
+                            _logger.LogDebug($"Key '{key}' already provided by a higher-priority source; skipping curated entry in '{jsonFilePath}'.", nameof(ModReplacementService));
+                            continue;
                         }
 
                         info.ModId = info.ModId?.Trim().ToLowerInvariant() ?? string.Empty;
@@ -222,24 +323,7 @@ namespace RimSharp.Shared.Services.Implementations
                         using var doc = JsonDocument.Parse(jsonText);
                         if (doc.RootElement.TryGetProperty("rules", out var rules))
                         {
-                            foreach (var rule in rules.EnumerateArray())
-                            {
-                                var info = new ModReplacementInfo
-                                {
-                                    SteamId = rule.GetProperty("oldWorkshopId").GetString() ?? string.Empty,
-                                    ReplacementSteamId = rule.GetProperty("newWorkshopId").GetString() ?? string.Empty,
-                                    Author = rule.GetProperty("oldAuthor").GetString() ?? string.Empty,
-                                    ReplacementAuthor = rule.GetProperty("newAuthor").GetString() ?? string.Empty,
-                                    ModId = rule.GetProperty("oldPackageId").GetString() ?? string.Empty,
-                                    ReplacementModId = rule.GetProperty("newPackageId").GetString() ?? string.Empty,
-                                    ModName = rule.TryGetProperty("oldName", out var oldName) ? (oldName.GetString() ?? string.Empty) : string.Empty,
-                                    ReplacementName = rule.TryGetProperty("newName", out var newName) ? (newName.GetString() ?? string.Empty) : string.Empty,
-                                    Versions = rule.TryGetProperty("oldVersions", out var oldVersions) ? JoinVersions(oldVersions) : string.Empty,
-                                    ReplacementVersions = rule.TryGetProperty("newVersions", out var newVersions) ? JoinVersions(newVersions) : string.Empty
-                                };
-                                targetDictionary.TryAdd(info.SteamId.ToLowerInvariant(), info);
-                                count++;
-                            }
+                            count = ParseReplacementsRules(rules, targetDictionary, ReplacementSource.UseThisInstead);
                         }
                         _logger.LogInfo($"Loaded {count} replacements from '{jsonPath}'.", nameof(ModReplacementService));
                         return count;

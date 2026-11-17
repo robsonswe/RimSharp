@@ -18,6 +18,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         private readonly ILoggerService _mockLogger;
         private readonly string _testTempDir;
         private readonly string _tempDbPath;
+        private readonly string _tempRepoPath;
         private readonly ModReplacementService _service;
 
         public ModReplacementServiceTests()
@@ -31,6 +32,9 @@ namespace RimSharp.Tests.Shared.Services.Implementations
 
             _tempDbPath = Path.Combine(_testTempDir, "replacements.json");
             _mockDataUpdateService.GetDataFilePath("replacements.json").Returns(_tempDbPath);
+
+            _tempRepoPath = Path.Combine(_testTempDir, "repo", "replacements.json");
+            _mockDataUpdateService.GetExternalFilePath("Replacements", "UseThisInstead", "replacements.json").Returns(_tempRepoPath);
 
             _service = new ModReplacementService(_mockPathService, _mockDataUpdateService, _mockLogger);
         }
@@ -46,6 +50,12 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         private void WriteJsonDb(string json)
         {
             File.WriteAllText(_tempDbPath, json);
+        }
+
+        private void WriteRepositorySnapshot(string json)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_tempRepoPath)!);
+            File.WriteAllText(_tempRepoPath, json);
         }
 
         [Fact]
@@ -113,7 +123,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         }
 
         [Fact]
-        public void JsonDb_ShouldHavePriorityOverXml()
+        public void UseThisInsteadMod_ShouldHavePriorityOverJsonDb()
         {
 
             var modsPath = Path.Combine(_testTempDir, "Mods");
@@ -130,6 +140,89 @@ namespace RimSharp.Tests.Shared.Services.Implementations
     <ReplacementModId>xml-replacement</ReplacementModId>
 </ModReplacement>");
 
+            WriteJsonDb(@"{
+                ""mods"": {
+                    ""rule1"": { ""steamId"": ""123"", ""modId"": ""mod1"", ""replacementModId"": ""json-replacement"" }
+                }
+            }");
+
+            var result = _service.GetAllReplacements();
+
+            result.Should().ContainKey("123");
+            result["123"].ReplacementModId.Should().Be("xml-replacement");
+            result["123"].Source.Should().Be(ReplacementSource.UseThisInstead);
+        }
+
+        [Fact]
+        public void RepositorySnapshot_ShouldHavePriorityOverJsonDb()
+        {
+            WriteJsonDb(@"{
+                ""mods"": {
+                    ""rule1"": { ""steamId"": ""123"", ""modId"": ""mod1"", ""replacementModId"": ""json-replacement"" }
+                }
+            }");
+            WriteRepositorySnapshot(@"{
+                ""rules"": [
+                    { ""oldWorkshopId"": ""123"", ""newWorkshopId"": ""456"", ""oldPackageId"": ""mod1"", ""newPackageId"": ""repo.replacement"" }
+                ]
+            }");
+
+            var result = _service.GetAllReplacements();
+
+            result.Should().ContainKey("123");
+            result["123"].ReplacementModId.Should().Be("repo.replacement");
+            result["123"].Source.Should().Be(ReplacementSource.UseThisInsteadRepo);
+        }
+
+        [Fact]
+        public void UseThisInsteadMod_ShouldHavePriorityOverRepositorySnapshot()
+        {
+            var modsPath = Path.Combine(_testTempDir, "Mods");
+            Directory.CreateDirectory(modsPath);
+            _mockPathService.GetModsPath().Returns(modsPath);
+            var utiModPath = Path.Combine(modsPath, "3396308787");
+            var replacementsPath = Path.Combine(utiModPath, "Replacements");
+            Directory.CreateDirectory(replacementsPath);
+
+            File.WriteAllText(Path.Combine(replacementsPath, "test.xml"), @"
+<ModReplacement>
+    <ModId>mod1</ModId>
+    <SteamId>123</SteamId>
+    <ReplacementModId>xml-replacement</ReplacementModId>
+</ModReplacement>");
+            WriteJsonDb(@"{ ""mods"": {} }");
+            WriteRepositorySnapshot(@"{
+                ""rules"": [
+                    { ""oldWorkshopId"": ""123"", ""newWorkshopId"": ""456"", ""oldPackageId"": ""mod1"", ""newPackageId"": ""repo.replacement"" }
+                ]
+            }");
+
+            var result = _service.GetAllReplacements();
+
+            result.Should().ContainKey("123");
+            result["123"].ReplacementModId.Should().Be("xml-replacement");
+            result["123"].Source.Should().Be(ReplacementSource.UseThisInstead);
+        }
+
+        [Fact]
+        public void RepositorySnapshot_ShouldFillGapsWhenJsonDbHasNoEntry()
+        {
+            WriteJsonDb(@"{ ""mods"": {} }");
+            WriteRepositorySnapshot(@"{
+                ""rules"": [
+                    { ""oldWorkshopId"": ""789"", ""newWorkshopId"": ""1010"", ""oldPackageId"": ""other.mod"", ""newPackageId"": ""repo.replacement"" }
+                ]
+            }");
+
+            var result = _service.GetAllReplacements();
+
+            result.Should().ContainKey("789");
+            result["789"].ReplacementModId.Should().Be("repo.replacement");
+        }
+
+        [Fact]
+        public void RepositorySnapshot_MissingFile_ShouldNotThrowAndFallThroughToJsonDb()
+        {
             WriteJsonDb(@"{
                 ""mods"": {
                     ""rule1"": { ""steamId"": ""123"", ""modId"": ""mod1"", ""replacementModId"": ""json-replacement"" }

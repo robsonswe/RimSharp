@@ -1,7 +1,9 @@
 using System;
 using System.IO;
+using System.IO.Compression;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -130,6 +132,174 @@ namespace RimSharp.Tests.Infrastructure.Data
             var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient, missingBundled);
 
             Directory.Exists(Path.Combine(_testTempDir, "Data", "db")).Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task CheckForAndApplyUpdatesAsync_ShouldSyncUseThisInsteadGzipAndStoreEtag()
+        {
+            var manifestJson = @"{ ""version"": ""1.0"", ""files"": {} }";
+            var replacementsJson = @"{ ""rules"": [ { ""oldWorkshopId"": ""123"" } ] }";
+            var compressed = Gzip(replacementsJson);
+
+            _httpHandler.OnRequest = req =>
+            {
+                if (req.RequestUri!.ToString().EndsWith("manifest.json"))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent(manifestJson)
+                    };
+                }
+                if (req.RequestUri!.ToString().EndsWith("replacements.json.gz"))
+                {
+                    var response = new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new ByteArrayContent(compressed)
+                    };
+                    response.Headers.ETag = EntityTagHeaderValue.Parse("\"abc123\"");
+                    return response;
+                }
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            };
+
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient);
+            var progress = Substitute.For<IProgress<DataUpdateProgress>>();
+
+            await service.CheckForAndApplyUpdatesAsync(progress, CancellationToken.None);
+
+            var snapshotPath = Path.Combine(_testTempDir, "Data", "Replacements", "UseThisInstead", "replacements.json");
+            var etagPath = snapshotPath + ".etag";
+
+            File.Exists(snapshotPath).Should().BeTrue();
+            File.ReadAllText(snapshotPath).Should().Be(replacementsJson);
+            File.Exists(etagPath).Should().BeTrue();
+            File.ReadAllText(etagPath).Should().Contain("abc123");
+        }
+
+        [Fact]
+        public async Task CheckForAndApplyUpdatesAsync_WhenUseThisInsteadEtagMatches_ShouldNotRewriteSnapshot()
+        {
+            var manifestJson = @"{ ""version"": ""1.0"", ""files"": {} }";
+            var replacementsJson = @"{ ""rules"": [ { ""oldWorkshopId"": ""123"" } ] }";
+            var compressed = Gzip(replacementsJson);
+
+            var snapshotDir = Path.Combine(_testTempDir, "Data", "Replacements", "UseThisInstead");
+            Directory.CreateDirectory(snapshotDir);
+            File.WriteAllText(Path.Combine(snapshotDir, "replacements.json"), "previous-content");
+            File.WriteAllText(Path.Combine(snapshotDir, "replacements.json") + ".etag", "\"abc123\"");
+
+            _httpHandler.OnRequest = req =>
+            {
+                var url = req.RequestUri!.ToString();
+                if (url.EndsWith("manifest.json"))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent(manifestJson)
+                    };
+                }
+                if (url.EndsWith("replacements.json.gz"))
+                {
+                    // Conditional request honored: unchanged source answers 304.
+                    if (req.Headers.IfNoneMatch.Count > 0)
+                    {
+                        return new HttpResponseMessage(HttpStatusCode.NotModified);
+                    }
+                    var response = new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new ByteArrayContent(compressed)
+                    };
+                    response.Headers.ETag = EntityTagHeaderValue.Parse("\"abc123\"");
+                    return response;
+                }
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            };
+
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient);
+            var progress = Substitute.For<IProgress<DataUpdateProgress>>();
+
+            await service.CheckForAndApplyUpdatesAsync(progress, CancellationToken.None);
+
+            File.ReadAllText(Path.Combine(snapshotDir, "replacements.json")).Should().Be("previous-content");
+        }
+
+        [Fact]
+        public async Task CheckForAndApplyUpdatesAsync_WhenManifestUnchanged_ShouldStillSyncUseThisInstead()
+        {
+            var manifestJson = @"{ ""version"": ""1.0"", ""files"": {} }";
+
+            // Local manifest identical to remote -> the curated flow short-circuits.
+            var localDbDir = Path.Combine(_testTempDir, "Data", "db");
+            Directory.CreateDirectory(localDbDir);
+            File.WriteAllText(Path.Combine(localDbDir, "manifest.json"), manifestJson);
+
+            var replacementsJson = @"{ ""rules"": [ { ""oldWorkshopId"": ""123"" } ] }";
+            var compressed = Gzip(replacementsJson);
+
+            _httpHandler.OnRequest = req =>
+            {
+                if (req.RequestUri!.ToString().EndsWith("replacements.json.gz"))
+                {
+                    var response = new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new ByteArrayContent(compressed)
+                    };
+                    response.Headers.ETag = EntityTagHeaderValue.Parse("\"abc123\"");
+                    return response;
+                }
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(manifestJson) };
+            };
+
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient);
+            var progress = Substitute.For<IProgress<DataUpdateProgress>>();
+
+            await service.CheckForAndApplyUpdatesAsync(progress, CancellationToken.None);
+
+            var snapshotPath = Path.Combine(_testTempDir, "Data", "Replacements", "UseThisInstead", "replacements.json");
+            File.Exists(snapshotPath).Should().BeTrue("the external sync must run even when the curated manifest is unchanged");
+            File.ReadAllText(snapshotPath).Should().Be(replacementsJson);
+        }
+
+        [Fact]
+        public async Task CheckForAndApplyUpdatesAsync_WhenCuratedSyncFails_ShouldStillSyncUseThisInstead()
+        {
+            // Curated endpoint unreachable (e.g. private repository) -> the
+            // curated flow throws, but external community sources must still sync.
+            var replacementsJson = @"{ ""rules"": [ { ""oldWorkshopId"": ""123"" } ] }";
+            var compressed = Gzip(replacementsJson);
+
+            _httpHandler.OnRequest = req =>
+            {
+                if (req.RequestUri!.ToString().EndsWith("replacements.json.gz"))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new ByteArrayContent(compressed)
+                    };
+                }
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            };
+
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient);
+            var progress = Substitute.For<IProgress<DataUpdateProgress>>();
+
+            Func<Task> act = () => service.CheckForAndApplyUpdatesAsync(progress, CancellationToken.None);
+
+            await act.Should().ThrowAsync<InvalidOperationException>();
+            var snapshotPath = Path.Combine(_testTempDir, "Data", "Replacements", "UseThisInstead", "replacements.json");
+            File.Exists(snapshotPath).Should().BeTrue("a curated failure must not skip the external sync");
+            File.ReadAllText(snapshotPath).Should().Be(replacementsJson);
+        }
+
+        private static byte[] Gzip(string content)
+        {
+            using var output = new MemoryStream();
+            using (var gzip = new GZipStream(output, CompressionMode.Compress, leaveOpen: true))
+            using (var writer = new StreamWriter(gzip))
+            {
+                writer.Write(content);
+            }
+            return output.ToArray();
         }
 
         private class MockHttpMessageHandler : HttpMessageHandler

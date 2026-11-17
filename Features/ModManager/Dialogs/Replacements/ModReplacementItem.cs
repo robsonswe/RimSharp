@@ -82,6 +82,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
             {
                 ReplacementSource.Database => VersionSource.Database,
                 ReplacementSource.UseThisInstead => VersionSource.Mlie,
+                ReplacementSource.UseThisInsteadRepo => VersionSource.Mlie,
                 _ => VersionSource.Database
             };
         }

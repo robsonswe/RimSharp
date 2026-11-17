@@ -1,7 +1,10 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.IO.Compression;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,9 +18,11 @@ namespace RimSharp.Infrastructure.Data
         private readonly ILoggerService _logger;
         private readonly HttpClient _httpClient;
         private readonly string _localRulesPath;
+        private readonly string _dataRootPath;
         private readonly string _bundledRulesSource;
         private readonly string _remoteManifestUrl = "https://raw.githubusercontent.com/robsonswe/RimSharpDB/main/manifest.json";
         private readonly string _remoteBaseUrl = "https://raw.githubusercontent.com/robsonswe/RimSharpDB/main/";
+        private readonly string _useThisInsteadUrl = "https://raw.githubusercontent.com/emipa606/UseThisInstead/main/replacements.json.gz";
 
         public DataUpdateService(ILoggerService logger, string appBasePath, HttpClient httpClient)
             : this(logger, appBasePath, httpClient, Path.Combine(AppDataPaths.BaseDirectory, "Data", "db"))
@@ -36,7 +41,8 @@ namespace RimSharp.Infrastructure.Data
             }
 
             // Store data in a reliable, user-specific location
-            _localRulesPath = Path.Combine(appBasePath, "Data", "db");
+            _dataRootPath = Path.Combine(appBasePath, "Data");
+            _localRulesPath = Path.Combine(_dataRootPath, "db");
 
             SeedFromBundledPlaceholders();
 
@@ -92,6 +98,11 @@ namespace RimSharp.Infrastructure.Data
         public string GetDataFilePath(string fileName)
         {
             return Path.Combine(_localRulesPath, fileName);
+        }
+
+        public string GetExternalFilePath(string category, string source, string fileName)
+        {
+            return Path.Combine(_dataRootPath, category, source, fileName);
         }
 
         public async Task CheckForAndApplyUpdatesAsync(IProgress<DataUpdateProgress> progress, CancellationToken cancellationToken)
@@ -163,6 +174,97 @@ namespace RimSharp.Infrastructure.Data
                 _logger.LogException(ex, "Failed to update data files. Using cached version.", nameof(DataUpdateService));
                 throw new InvalidOperationException("Failed to download rule updates. Please check your internet connection.", ex);
             }
+            finally
+            {
+                // External community sources sync on every startup, regardless
+                // of the curated outcome (unchanged manifest short-circuits the
+                // try block; a curated failure must not skip them either).
+                // SyncUseThisInsteadAsync isolates its own failures.
+                await SyncUseThisInsteadAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        /// <summary>
+        /// Syncs the community "Use This Instead" replacement snapshot from the
+        /// emipa606/UseThisInstead GitHub repository into
+        /// Data/Replacements/UseThisInstead/replacements.json. Uses conditional
+        /// requests (ETag / Last-Modified) so unchanged files are not rewritten.
+        /// The .gz is fetched because it is ~8x smaller than the plain JSON.
+        /// </summary>
+        private async Task SyncUseThisInsteadAsync(CancellationToken cancellationToken)
+        {
+            var localJsonPath = GetExternalFilePath("Replacements", "UseThisInstead", "replacements.json");
+
+            try
+            {
+                _logger.LogInfo("Syncing 'Use This Instead' repository snapshot...", nameof(DataUpdateService));
+                await SyncGzippedJsonAsync(_useThisInsteadUrl, localJsonPath, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                // Isolated failure: a broken external source must never block
+                // the curated-data sync or startup.
+                _logger.LogWarning($"Could not sync 'Use This Instead' repository snapshot: {ex.Message}", nameof(DataUpdateService));
+            }
+        }
+
+        /// <summary>
+        /// Conditional-downloads a gzipped JSON file and writes the decompressed
+        /// JSON to <paramref name="localJsonPath"/>. A validator (ETag, else
+        /// Last-Modified) is persisted next to the file as "<file>.etag";
+        /// when the server answers 304 Not Modified the local file is left
+        /// untouched.
+        /// </summary>
+        private async Task SyncGzippedJsonAsync(string url, string localJsonPath, CancellationToken cancellationToken)
+        {
+            var localDir = Path.GetDirectoryName(localJsonPath)!;
+            Directory.CreateDirectory(localDir);
+            var validatorPath = localJsonPath + ".etag";
+
+            string? validator = File.Exists(validatorPath)
+                ? await File.ReadAllTextAsync(validatorPath, cancellationToken).ConfigureAwait(false)
+                : null;
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            if (!string.IsNullOrWhiteSpace(validator))
+            {
+                if (validator.StartsWith("W/") || validator.StartsWith("\""))
+                {
+                    request.Headers.IfNoneMatch.Add(EntityTagHeaderValue.Parse(validator));
+                }
+                else if (DateTimeOffset.TryParse(validator, out var lastModified))
+                {
+                    request.Headers.IfModifiedSince = lastModified;
+                }
+            }
+
+            using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+            if (response.StatusCode == HttpStatusCode.NotModified)
+            {
+                _logger.LogInfo($"External source up to date: '{url}'", nameof(DataUpdateService));
+                return;
+            }
+
+            response.EnsureSuccessStatusCode();
+
+            var compressed = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+            string json;
+            await using (var gzip = new GZipStream(new MemoryStream(compressed), CompressionMode.Decompress))
+            using (var reader = new StreamReader(gzip))
+            {
+                json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            await File.WriteAllTextAsync(localJsonPath, json, cancellationToken).ConfigureAwait(false);
+
+            var newValidator = response.Headers.ETag?.ToString()
+                ?? response.Content.Headers.LastModified?.ToString("R");
+            if (!string.IsNullOrEmpty(newValidator))
+            {
+                await File.WriteAllTextAsync(validatorPath, newValidator, cancellationToken).ConfigureAwait(false);
+            }
+
+            _logger.LogInfo($"External source updated: '{url}' -> '{localJsonPath}'", nameof(DataUpdateService));
         }
     }
 }
