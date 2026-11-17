@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Linq;
 using System.IO;
 
 namespace RimSharp.Infrastructure.Configuration
@@ -89,7 +90,11 @@ namespace RimSharp.Infrastructure.Configuration
                     ("config.cfg", ConfigDirectory),
                     ("SteamCMD_Data", DataDirectory),
                     ("Logs", DataDirectory),
-                    ("Data", DataDirectory),
+                    // Historically the data folder was named "Rules"; keep it
+                    // listed so an install that never migrated to XDG still
+                    // gets its Rules folder moved next to the others, where
+                    // MigrateRenamedDataFolder then renames it to "Data".
+                    ("Rules", DataDirectory),
                     ("Lists", DataDirectory),
                 };
 
@@ -121,7 +126,10 @@ namespace RimSharp.Infrastructure.Configuration
         ///   - target already exists (e.g. the new build's bundled placeholders
         ///     were copied before startup): merge - the user's files from the
         ///     old location overwrite bundled placeholders, subdirectories are
-        ///     moved in when absent.
+        ///     moved in when absent. Every successfully copied file is removed
+        ///     from the source and empty source directories are pruned, so the
+        ///     migration completes: a surviving stale source must never be
+        ///     re-merged on later startups, where it would revert live data.
         /// Failures are reported and skipped so startup can continue.
         /// </summary>
         public static void MigrateRenamedDataFolder()
@@ -154,12 +162,62 @@ namespace RimSharp.Infrastructure.Configuration
                 // The old location held the user's live working files; anything
                 // already in the target is a freshly-copied bundled placeholder
                 // ({} etc.). User data therefore wins on every merge conflict.
+                // This must be a true move, not a copy: if the source folder
+                // survived, every later startup would re-merge its stale copies
+                // over the live data (synced db files, edited custom mods).
+                // Files are deleted only after their copy succeeded; failures
+                // on one item are logged and skipped so startup can continue.
+                var sourceDirs = Directory.GetDirectories(source, "*", SearchOption.AllDirectories);
+
                 foreach (var sourceFile in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
                 {
                     var relative = Path.GetRelativePath(source, sourceFile);
                     var nestedTarget = Path.Combine(target, relative);
-                    Directory.CreateDirectory(Path.GetDirectoryName(nestedTarget)!);
-                    File.Copy(sourceFile, nestedTarget, overwrite: true);
+                    try
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(nestedTarget)!);
+                        File.Copy(sourceFile, nestedTarget, overwrite: true);
+                        File.Delete(sourceFile);
+                    }
+                    catch (Exception fileEx)
+                    {
+                        Console.WriteLine($"[RimSharp] Could not migrate file '{sourceFile}': {fileEx.Message}");
+                    }
+                }
+
+                // Carry over empty directories too (deepest first), then prune
+                // the emptied source tree bottom-up. The source itself is only
+                // removed when completely empty - nothing is lost on failure.
+                foreach (var sourceDir in sourceDirs)
+                {
+                    Directory.CreateDirectory(Path.Combine(target, Path.GetRelativePath(source, sourceDir)));
+                }
+
+                foreach (var sourceDir in sourceDirs.OrderByDescending(d => d.Length))
+                {
+                    try
+                    {
+                        if (!Directory.EnumerateFileSystemEntries(sourceDir).Any())
+                        {
+                            Directory.Delete(sourceDir);
+                        }
+                    }
+                    catch (Exception dirEx)
+                    {
+                        Console.WriteLine($"[RimSharp] Could not prune directory '{sourceDir}': {dirEx.Message}");
+                    }
+                }
+
+                try
+                {
+                    if (!Directory.EnumerateFileSystemEntries(source).Any())
+                    {
+                        Directory.Delete(source);
+                    }
+                }
+                catch (Exception cleanupEx)
+                {
+                    Console.WriteLine($"[RimSharp] Could not remove emptied source '{source}': {cleanupEx.Message}");
                 }
 
                 Console.WriteLine($"[RimSharp] Merged legacy 'Rules' data folder into '{target}' (user data preserved).");

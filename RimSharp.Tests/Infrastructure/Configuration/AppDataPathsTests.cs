@@ -197,7 +197,7 @@ namespace RimSharp.Tests.Infrastructure.Configuration
         }
 
         [Fact]
-        public void MigrateRenamedDataFolderCore_WhenTargetExists_ShouldOverwritePlaceholders()
+        public void MigrateRenamedDataFolderCore_WhenTargetExists_ShouldOverwritePlaceholdersAndRemoveSource()
         {
             var source = Path.Combine(_tempRoot, "rules");
             var target = Path.Combine(_tempRoot, "data");
@@ -209,6 +209,7 @@ namespace RimSharp.Tests.Infrastructure.Configuration
             AppDataPaths.MigrateRenamedDataFolderCore(source, target);
 
             File.ReadAllText(Path.Combine(target, "db", "db.json")).Should().Be("user-data");
+            Directory.Exists(source).Should().BeFalse("a surviving stale source would revert live data on later startups");
         }
 
         [Fact]
@@ -225,6 +226,38 @@ namespace RimSharp.Tests.Infrastructure.Configuration
 
             File.Exists(Path.Combine(target, "Custom", "Keep.json")).Should().BeTrue();
             File.Exists(Path.Combine(target, "Custom", "Mods.json")).Should().BeTrue();
+            Directory.Exists(source).Should().BeFalse();
+        }
+
+        [Fact]
+        public void MigrateRenamedDataFolderCore_ShouldCarryOverEmptySubdirectories()
+        {
+            var source = Path.Combine(_tempRoot, "rules");
+            var target = Path.Combine(_tempRoot, "data");
+            Directory.CreateDirectory(Path.Combine(source, "Custom", "some.mod"));
+
+            AppDataPaths.MigrateRenamedDataFolderCore(source, target);
+
+            Directory.Exists(Path.Combine(target, "Custom", "some.mod")).Should().BeTrue();
+            Directory.Exists(source).Should().BeFalse();
+        }
+
+        [Fact]
+        public void MigrateRenamedDataFolderCore_AfterMergeCompletes_ShouldBeIdempotent()
+        {
+            var source = Path.Combine(_tempRoot, "rules");
+            var target = Path.Combine(_tempRoot, "data");
+            Directory.CreateDirectory(Path.Combine(source, "db"));
+            File.WriteAllText(Path.Combine(source, "db", "db.json"), "user-data");
+
+            AppDataPaths.MigrateRenamedDataFolderCore(source, target);
+
+            // Second run: source no longer exists, and newer live data in the
+            // target (written after the first run) is left untouched.
+            File.WriteAllText(Path.Combine(target, "db", "db.json"), "newer-live-data");
+            AppDataPaths.MigrateRenamedDataFolderCore(source, target);
+
+            File.ReadAllText(Path.Combine(target, "db", "db.json")).Should().Be("newer-live-data");
         }
     }
 }
