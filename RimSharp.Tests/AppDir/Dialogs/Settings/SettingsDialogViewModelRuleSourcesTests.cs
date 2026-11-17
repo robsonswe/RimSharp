@@ -98,10 +98,10 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
 
             var curated = vm.RuleSources[0];
             curated.IsCurated.Should().BeTrue();
-            curated.Location.Should().Contain("curated RimSharpDB");
+            curated.Location.Should().BeEmpty();
 
             curated.Location = "https://example.invalid/hijack.json";
-            curated.Location.Should().Contain("curated RimSharpDB");
+            curated.Location.Should().BeEmpty();
         }
 
         [Fact]
@@ -174,9 +174,10 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
         public void ResetRuleSources_ShouldRestoreDefaults()
         {
             var vm = CreateViewModel(new NullConfigService(), _mockRuleSourceManager);
-            vm.SelectedRuleSource = vm.RuleSources[0];
+            vm.SelectedRuleSource = vm.RuleSources[1]; // community source (not locked)
             vm.RemoveRuleSourceCommand.Execute(null);
             vm.RuleSources.Should().ContainSingle();
+            vm.RuleSources[0].Id.Should().Be(ModRuleSourceRegistry.CuratedSourceId);
 
             vm.ResetRuleSourcesCommand.Execute(null);
 
@@ -187,8 +188,8 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
         public async Task AddRemoteRuleSource_ShouldAppendARowWithTheUrl()
         {
             var dialogService = Substitute.For<IDialogService>();
-            dialogService.ShowInputDialogAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>())
-                .Returns(Task.FromResult((MessageDialogResult.OK, "https://example.invalid/myRules.json")));
+            dialogService.ShowRuleSourceEditorDialogAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>())
+                .Returns(Task.FromResult((MessageDialogResult.OK, "My Rules", "https://example.invalid/myRules.json")));
 
             var vm = CreateViewModel(new NullConfigService(), _mockRuleSourceManager, dialogService);
 
@@ -198,27 +199,9 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
             vm.RuleSources.Should().HaveCount(3);
             var added = vm.RuleSources.Last();
             added.Url.Should().Be("https://example.invalid/myRules.json");
+            added.Name.Should().Be("My Rules");
             added.IsRepoFile.Should().BeTrue();
             added.Id.Should().Be("myRules");
-        }
-
-        [Fact]
-        public async Task AddLocalRuleSource_ShouldAppendALocalRow()
-        {
-            var fileDialog = Substitute.For<IFileDialogService>();
-            fileDialog.ShowOpenFileDialogAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>())
-                .Returns(Task.FromResult((true, (string?)@"D:\rules\localRules.json")));
-
-            var vm = CreateViewModel(new NullConfigService(), _mockRuleSourceManager, null, fileDialog);
-
-            vm.AddLocalRuleSourceCommand.Execute(null);
-            await Task.Delay(100, TestContext.Current.CancellationToken);
-
-            vm.RuleSources.Should().HaveCount(3);
-            var added = vm.RuleSources.Last();
-            added.IsLocalFile.Should().BeTrue();
-            added.LocalPath.Should().Be(@"D:\rules\localRules.json");
-            added.TypeBadge.Should().Be("Local file");
         }
 
         private sealed class NullConfigService : IConfigService

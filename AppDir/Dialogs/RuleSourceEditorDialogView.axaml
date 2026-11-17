@@ -1,0 +1,51 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+        xmlns:vmDialogs="clr-namespace:RimSharp.AppDir.Dialogs"
+        x:Class="RimSharp.AppDir.Dialogs.RuleSourceEditorDialogView"
+        mc:Ignorable="d"
+        x:DataType="vmDialogs:RuleSourceEditorDialogViewModel"
+        Title="{Binding Title}"
+        SizeToContent="Height"
+        Width="500" MinWidth="400" MaxWidth="650"
+        CanResize="False">
+
+    <dialogs:BaseDialog.MainContent>
+        <Border Classes="panel">
+            <StackPanel Margin="15,10" Spacing="10">
+                <TextBlock Text="{Binding Message}"
+                           TextWrapping="Wrap"
+                           FontSize="14"
+                           Foreground="{DynamicResource BrushTextStrong}"/>
+
+                <TextBlock Text="Name" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}"/>
+                <TextBox Text="{Binding Name, Mode=TwoWay}"
+                         FontSize="14" Padding="5"
+                         BorderBrush="{DynamicResource BrushBorderDefault}"
+                         BorderThickness="1"/>
+
+                <TextBlock Text="URL" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}"/>
+                <TextBox Text="{Binding Url, Mode=TwoWay}"
+                         FontSize="14" Padding="5"
+                         BorderBrush="{DynamicResource BrushBorderDefault}"
+                         BorderThickness="1"/>
+            </StackPanel>
+        </Border>
+    </dialogs:BaseDialog.MainContent>
+
+    <dialogs:BaseDialog.ButtonContent>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Content="OK"
+                    Command="{Binding OkCommand}"
+                    Classes="btn-success"
+                    IsVisible="{Binding ShowOkButton}"/>
+
+            <Button Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    Classes="btn-danger"
+                    IsVisible="{Binding ShowCancelButton}"/>
+        </StackPanel>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

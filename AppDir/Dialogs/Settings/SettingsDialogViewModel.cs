@@ -82,6 +82,7 @@ namespace RimSharp.AppDir.Dialogs
 
             EditLocationCommand = CreateAsyncCommand(() => EditLocationAsync(this));
             UpdateNowCommand = CreateAsyncCommand(() => UpdateNowAsync(this));
+            ToggleEnabledCommand = CreateCommand(() => Enabled = !Enabled);
         }
 
         public ModRuleSourceRecord Record { get; }
@@ -141,6 +142,30 @@ namespace RimSharp.AppDir.Dialogs
         /// <summary>"Remote file" / "Local file" badge text.</summary>
         public string TypeBadge => IsLocalFile ? "Local file" : "Remote file";
 
+        /// <summary>True when this source is locked (built-in curated RimSharpDB).</summary>
+        public bool Locked => Record.Locked;
+
+        /// <summary>"built-in" badge text shown on locked rows.</summary>
+        public string LockedBadge => Locked ? "built-in" : string.Empty;
+
+        /// <summary>
+        /// Per-source "rules as of" date (short date) derived from that
+        /// source's upstream timestamp, or empty when the source provides none
+        /// (e.g. the curated file, which carries no timestamp).
+        /// </summary>
+        public string RulesAsOf
+        {
+            get
+            {
+                if (_ruleSourceManager == null) return string.Empty;
+                if (!_ruleSourceManager.SourceTimestamps.TryGetValue(Record.Id, out var ts) || ts <= 0)
+                {
+                    return string.Empty;
+                }
+                return DateTimeOffset.FromUnixTimeSeconds(ts).ToLocalTime().ToString("d");
+            }
+        }
+
         /// <summary>
         /// The URL (remote) or path (local) shown/edited in the row; writes are
         /// routed to the matching backing property. The curated entry shows a
@@ -149,7 +174,7 @@ namespace RimSharp.AppDir.Dialogs
         public string Location
         {
             get => IsCurated
-                ? "(synced with the curated RimSharpDB update)"
+                ? string.Empty
                 : IsLocalFile ? LocalPath : Url;
             set
             {
@@ -160,6 +185,7 @@ namespace RimSharp.AppDir.Dialogs
 
         public ICommand EditLocationCommand { get; }
         public ICommand UpdateNowCommand { get; }
+        public ICommand ToggleEnabledCommand { get; }
 
         private async Task EditLocationAsync(RuleSourceRowViewModel row)
         {
@@ -177,14 +203,19 @@ namespace RimSharp.AppDir.Dialogs
             }
 
             if (_dialogService == null) return;
-            var (result, input) = await _dialogService.ShowInputDialogAsync(
-                "Rule Database URL",
-                $"Raw file URL for '{row.Name}':",
+            var (result, name, url) = await _dialogService.ShowRuleSourceEditorDialogAsync(
+                "Edit Rule Database",
+                $"Edit the name and URL for '{row.Name}':",
+                row.Name,
                 row.Url);
-            if (result == MessageDialogResult.OK && !string.IsNullOrWhiteSpace(input))
+            if (result == MessageDialogResult.OK)
             {
-                row.Url = input.Trim();
-                row.OnPropertyChanged(nameof(Location));
+                if (!string.IsNullOrWhiteSpace(name)) row.Name = name.Trim();
+                if (!string.IsNullOrWhiteSpace(url))
+                {
+                    row.Url = url.Trim();
+                    row.OnPropertyChanged(nameof(Location));
+                }
             }
         }
 
@@ -402,7 +433,7 @@ namespace RimSharp.AppDir.Dialogs
             }
         }
 
-        public bool CanRemoveRuleSource => SelectedRuleSource != null;
+        public bool CanRemoveRuleSource => SelectedRuleSource != null && !SelectedRuleSource.Locked;
         public bool CanMoveRuleSourceUp => SelectedRuleSource != null && RuleSources.IndexOf(SelectedRuleSource) > 0;
         public bool CanMoveRuleSourceDown => SelectedRuleSource != null && RuleSources.IndexOf(SelectedRuleSource) >= 0 && RuleSources.IndexOf(SelectedRuleSource) < RuleSources.Count - 1;
 
@@ -415,7 +446,6 @@ namespace RimSharp.AppDir.Dialogs
         }
 
         public ICommand AddRemoteRuleSourceCommand { get; }
-        public ICommand AddLocalRuleSourceCommand { get; }
         public ICommand RemoveRuleSourceCommand { get; }
         public ICommand MoveRuleSourceUpCommand { get; }
         public ICommand MoveRuleSourceDownCommand { get; }
@@ -471,10 +501,21 @@ namespace RimSharp.AppDir.Dialogs
             // Rule Databases section: snapshot the registry into editable rows.
             LoadRuleSources();
             AddRemoteRuleSourceCommand = CreateAsyncCommand(AddRemoteRuleSourceAsync);
-            AddLocalRuleSourceCommand = CreateAsyncCommand(AddLocalRuleSourceAsync);
-            RemoveRuleSourceCommand = CreateCommand(RemoveRuleSource, () => CanRemoveRuleSource, nameof(SelectedRuleSource));
-            MoveRuleSourceUpCommand = CreateCommand(MoveRuleSourceUp, () => CanMoveRuleSourceUp, nameof(SelectedRuleSource));
-            MoveRuleSourceDownCommand = CreateCommand(MoveRuleSourceDown, () => CanMoveRuleSourceDown, nameof(SelectedRuleSource));
+            RemoveRuleSourceCommand = CreateCommand<RuleSourceRowViewModel>(RemoveRuleSource, r =>
+            {
+                var t = r ?? SelectedRuleSource;
+                return t != null && !t.Locked;
+            }, nameof(SelectedRuleSource));
+            MoveRuleSourceUpCommand = CreateCommand<RuleSourceRowViewModel>(MoveRuleSourceUp, r =>
+            {
+                var t = r ?? SelectedRuleSource;
+                return t != null && RuleSources.IndexOf(t) > 0;
+            }, nameof(SelectedRuleSource));
+            MoveRuleSourceDownCommand = CreateCommand<RuleSourceRowViewModel>(MoveRuleSourceDown, r =>
+            {
+                var t = r ?? SelectedRuleSource;
+                return t != null && RuleSources.IndexOf(t) >= 0 && RuleSources.IndexOf(t) < RuleSources.Count - 1;
+            }, nameof(SelectedRuleSource));
             UpdateAllRuleSourcesCommand = CreateAsyncCommand(UpdateAllRuleSourcesAsync);
             ResetRuleSourcesCommand = CreateCommand(ResetRuleSources);
         }
@@ -527,63 +568,50 @@ namespace RimSharp.AppDir.Dialogs
         {
             if (_ruleSourceManager == null || _dialogService == null) return;
 
-            var (result, input) = await _dialogService.ShowInputDialogAsync(
+            var (result, name, url) = await _dialogService.ShowRuleSourceEditorDialogAsync(
                 "Add Rule Database",
-                "Raw file URL of the rules JSON (e.g. a GitHub raw link):",
+                "Enter a display name and the raw file URL of the rules JSON (e.g. a GitHub raw link).",
+                "My Rule Database",
                 "https://raw.githubusercontent.com/");
-            if (result != MessageDialogResult.OK || string.IsNullOrWhiteSpace(input)) return;
+            if (result != MessageDialogResult.OK || string.IsNullOrWhiteSpace(url)) return;
 
-            var url = input.Trim();
+            url = url.Trim();
             var id = BuildUniqueSourceId(Path.GetFileNameWithoutExtension(GetUrlPath(url)));
+            var displayName = string.IsNullOrWhiteSpace(name) ? id : name.Trim();
+
             RuleSources.Add(CreateRow(new ModRuleSourceRecord
             {
                 Id = id,
-                Name = id,
+                Name = displayName,
                 Type = ModRuleSourceType.RepoFile,
                 Url = url,
                 Enabled = true
             }));
         }
 
-        private async Task AddLocalRuleSourceAsync()
+        private void RemoveRuleSource(RuleSourceRowViewModel? row)
         {
-            if (_ruleSourceManager == null || _fileDialogService == null) return;
-
-            var (success, path) = await _fileDialogService.ShowOpenFileDialogAsync(
-                "Add Local Rules File", "JSON files|*.json|All files|*.*");
-            if (!success || string.IsNullOrWhiteSpace(path)) return;
-
-            var id = BuildUniqueSourceId(Path.GetFileNameWithoutExtension(path));
-            RuleSources.Add(CreateRow(new ModRuleSourceRecord
-            {
-                Id = id,
-                Name = id,
-                Type = ModRuleSourceType.LocalFile,
-                LocalPath = path,
-                Enabled = true
-            }));
-        }
-
-        private void RemoveRuleSource()
-        {
-            if (SelectedRuleSource == null) return;
-            RuleSources.Remove(SelectedRuleSource);
+            var target = row ?? SelectedRuleSource;
+            if (target == null || target.Locked) return;
+            RuleSources.Remove(target);
             SelectedRuleSource = null;
         }
 
-        private void MoveRuleSourceUp()
+        private void MoveRuleSourceUp(RuleSourceRowViewModel? row)
         {
-            if (SelectedRuleSource == null) return;
-            var index = RuleSources.IndexOf(SelectedRuleSource);
+            var target = row ?? SelectedRuleSource;
+            if (target == null) return;
+            var index = RuleSources.IndexOf(target);
             if (index <= 0) return;
             RuleSources.Move(index - 1, index);
             SelectedRuleSource = RuleSources[index - 1];
         }
 
-        private void MoveRuleSourceDown()
+        private void MoveRuleSourceDown(RuleSourceRowViewModel? row)
         {
-            if (SelectedRuleSource == null) return;
-            var index = RuleSources.IndexOf(SelectedRuleSource);
+            var target = row ?? SelectedRuleSource;
+            if (target == null) return;
+            var index = RuleSources.IndexOf(target);
             if (index < 0 || index >= RuleSources.Count - 1) return;
             RuleSources.Move(index, index + 1);
             SelectedRuleSource = RuleSources[index + 1];
@@ -592,11 +620,8 @@ namespace RimSharp.AppDir.Dialogs
         private void ResetRuleSources()
         {
             if (_ruleSourceManager == null) return;
-            RuleSources.Clear();
-            foreach (var record in ModRuleSourceRegistry.CreateDefaults())
-            {
-                RuleSources.Add(CreateRow(record));
-            }
+            _ruleSourceManager.Registry.ResetToDefaults();
+            LoadRuleSources();
         }
 
         private async Task UpdateAllRuleSourcesAsync()

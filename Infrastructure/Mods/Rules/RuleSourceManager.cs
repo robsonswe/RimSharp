@@ -1,4 +1,5 @@
 #nullable enable
+using System.Collections.Generic;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -38,6 +39,8 @@ namespace RimSharp.Infrastructure.Mods.Rules
         public ModRuleSourceRegistry Registry => _registry;
 
         public long? EffectiveTimestamp => _repository.EffectiveTimestamp;
+
+        public IReadOnlyDictionary<string, long> SourceTimestamps => _repository.SourceTimestamps;
 
         /// <summary>
         /// Persists the registry and re-merges. The re-application runs on the

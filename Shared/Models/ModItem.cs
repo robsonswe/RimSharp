@@ -147,24 +147,29 @@ namespace RimSharp.Shared.Models
         // live re-merge (registry change / source refresh) can strip exactly
         // the stale database contributions before re-applying. Without this,
         // union-add application is not idempotent and a removed source's rules
-        // would linger on the mod forever.
+        // would linger on the mod forever. Each tracked target also carries
+        // the SOURCE ID that claimed it, so the UI can label every row with
+        // its origin (rule source display name vs "About.xml" vs "Custom").
         /// <summary>
         /// PackageIds this mod's <see cref="LoadBefore"/> list received from the
-        /// rules database layer (never from About.xml or custom edits).
+        /// rules database layer (never from About.xml or custom edits), mapped
+        /// to the Id of the rule source that claimed each target.
         /// </summary>
-        public HashSet<string> DatabaseLoadBefore { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, string> DatabaseLoadBefore { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// PackageIds this mod's <see cref="LoadAfter"/> list received from the
-        /// rules database layer (never from About.xml or custom edits).
+        /// rules database layer (never from About.xml or custom edits), mapped
+        /// to the Id of the rule source that claimed each target.
         /// </summary>
-        public HashSet<string> DatabaseLoadAfter { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, string> DatabaseLoadAfter { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// PackageIds this mod's <see cref="IncompatibleWith"/> map received
-        /// from the rules database layer (never from About.xml or custom edits).
+        /// from the rules database layer (never from About.xml or custom edits),
+        /// mapped to the Id of the rule source that claimed each target.
         /// </summary>
-        public HashSet<string> DatabaseIncompatibleWith { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, string> DatabaseIncompatibleWith { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// True when the rules database layer last wrote <see cref="LoadBottom"/>.
@@ -172,9 +177,47 @@ namespace RimSharp.Shared.Models
         public bool DatabaseLoadBottom { get; set; }
 
         /// <summary>
+        /// Id of the rule source whose rules last wrote
+        /// <see cref="DatabaseLoadBottom"/> (null when the database layer did
+        /// not write the flag on the last application).
+        /// </summary>
+        public string? DatabaseLoadBottomSource { get; set; }
+
+        /// <summary>
         /// True when the rules database layer last wrote <see cref="LoadTop"/>.
         /// </summary>
         public bool DatabaseLoadTop { get; set; }
+
+        /// <summary>
+        /// Id of the rule source whose rules last wrote
+        /// <see cref="DatabaseLoadTop"/> (null when the database layer did
+        /// not write the flag on the last application).
+        /// </summary>
+        public string? DatabaseLoadTopSource { get; set; }
+
+        // --- About.xml provenance ------------------------------------------
+        // The mod's own About.xml declarations: populated when the metadata is
+        // parsed (ModService.ParseLoadOrderRules) and NEVER touched by the
+        // rules-database layer, so they survive every strip/re-apply cycle and
+        // give the UI a stable "About.xml" origin.
+        /// <summary>
+        /// PackageIds this mod's <see cref="LoadBefore"/> list received from
+        /// its own About.xml (mod-declared; never written by the rules layer).
+        /// </summary>
+        public HashSet<string> AboutLoadBefore { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// PackageIds this mod's <see cref="LoadAfter"/> list received from
+        /// its own About.xml (mod-declared; never written by the rules layer).
+        /// </summary>
+        public HashSet<string> AboutLoadAfter { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// PackageIds this mod's <see cref="IncompatibleWith"/> map received
+        /// from its own About.xml (mod-declared hard incompatibilities; never
+        /// written by the rules layer).
+        /// </summary>
+        public HashSet<string> AboutIncompatibleWith { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         public bool IsSupportedRW { get; set; }
 

@@ -2,6 +2,7 @@
 using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using RimSharp.Infrastructure.Mods.Rules;
 
 namespace RimSharp.Shared.Models
 {
@@ -54,6 +55,15 @@ namespace RimSharp.Shared.Models
         /// a synced source).
         /// </summary>
         public bool Bundled { get; set; }
+
+        /// <summary>
+        /// Whether this source is locked (its identity and URL cannot be changed
+        /// or removed). Derived from <see cref="Id"/> rather than persisted, so a
+        /// hand-edited config can never unlock the curated RimSharpDB source.
+        /// Locked sources can still be enabled/disabled and reordered.
+        /// </summary>
+        [JsonIgnore]
+        public bool Locked => string.Equals(Id, ModRuleSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

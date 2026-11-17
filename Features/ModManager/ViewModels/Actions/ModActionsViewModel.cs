@@ -181,6 +181,7 @@ public bool IsParentLoading
         public ICommand OpenLogViewerCommand { get; private set; } = null!;
         public ICommand RunGameCommand { get; private set; } = null!;
         public ICommand CustomizeModCommand { get; private set; } = null!;
+        public ICommand ViewRulesCommand { get; private set; } = null!;
 
         // Installation
         public ICommand InstallFromZipCommand { get; private set; } = null!;
@@ -317,6 +318,10 @@ public bool IsParentLoading
             CustomizeModCommand = CreateAsyncCommand<ModItem>(
                 execute: ExecuteCustomizeMod,
                 canExecute: CanExecutizeMod,
+                observedProperties: new[] { nameof(IsParentLoading), nameof(SelectedMod) });
+            ViewRulesCommand = CreateAsyncCommand<ModItem>(
+                execute: ExecuteViewRules,
+                canExecute: CanViewRules,
                 observedProperties: new[] { nameof(IsParentLoading), nameof(SelectedMod) });
             InitializeRedownloadCommand(); // Call the new initializer
         }
@@ -547,6 +552,24 @@ private bool CanExecutizeMod(ModItem? mod)
             {
                 _logger.LogDebug($"Error in ExecuteCustomizeMod: {ex}");
                 await RunOnUIThreadAsync(async () => await _dialogService.ShowError("Customization Error", $"Failed to customize mod '{mod?.Name ?? "Unknown"}': {ex.Message}"));
+            }
+        }
+
+        private bool CanViewRules(ModItem? mod) =>
+            !IsParentLoading && mod != null;
+
+        private async Task ExecuteViewRules(ModItem mod)
+        {
+            if (mod == null) return;
+            try
+            {
+                _logger.LogDebug($"Viewing rules for mod: {mod.PackageId}");
+                await _dialogService.ShowRulesViewerDialogAsync(mod);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug($"Error in ExecuteViewRules: {ex}");
+                await RunOnUIThreadAsync(async () => await _dialogService.ShowError("Rules Error", $"Failed to show rules for mod '{mod.Name ?? "Unknown"}': {ex.Message}"));
             }
         }
 

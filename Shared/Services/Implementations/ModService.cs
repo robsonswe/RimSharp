@@ -1274,6 +1274,25 @@ namespace RimSharp.Shared.Services.Implementations
             mod.LoadAfter = root.Element("loadAfter")?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>();
             mod.ForceLoadBefore = root.Element("forceLoadBefore")?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>();
             mod.ForceLoadAfter = root.Element("forceLoadAfter")?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>();
+
+            // About.xml provenance: the lists above are replaced wholesale, so
+            // the tracked origins are rebuilt to match exactly. These sets are
+            // never touched by the rules-database layer, which is what lets the
+            // UI label every presented row as "About.xml" (mod-declared) vs a
+            // rule source vs "Custom".
+            mod.AboutLoadBefore.Clear();
+            foreach (var target in mod.LoadBefore)
+            {
+                if (!string.IsNullOrWhiteSpace(target)) mod.AboutLoadBefore.Add(target);
+            }
+
+            mod.AboutLoadAfter.Clear();
+            foreach (var target in mod.LoadAfter)
+            {
+                if (!string.IsNullOrWhiteSpace(target)) mod.AboutLoadAfter.Add(target);
+            }
+
+            mod.AboutIncompatibleWith.Clear();
             var incompatibleIds = root.Element("incompatibleWith")?.Elements("li")
                 .Select(x => x.Value)
                 .Where(id => !string.IsNullOrWhiteSpace(id))
@@ -1285,6 +1304,7 @@ namespace RimSharp.Shared.Services.Implementations
             {
                 var reason = $"Incompatible according to '{mod.DisplayName}' authors";
                 mod.IncompatibleWith.Add(packageId, new ModIncompatibilityRule { HardIncompatibility = true, Comment = new List<string> { reason } });
+                mod.AboutIncompatibleWith.Add(packageId);
             }
         }
 

@@ -234,6 +234,87 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             _mockCustomService.Received(2).ApplyCustomInfoToMods(Arg.Any<IEnumerable<ModItem>>());
             service.GetLoadedMods().Should().HaveCount(loadedBefore);
         }
+
+        [Fact]
+        public async Task LoadModsAsync_ShouldTrackAboutXmlLoadOrderRules()
+        {
+            var modDir = Path.Combine(_modsPath, "AboutRulesMod");
+            var aboutDir = Path.Combine(modDir, "About");
+            Directory.CreateDirectory(aboutDir);
+            File.WriteAllText(Path.Combine(aboutDir, "About.xml"), @"<?xml version='1.0' encoding='utf-8'?>
+<ModMetaData>
+    <name>About Rules Mod</name>
+    <packageId>test.about.rules</packageId>
+    <loadBefore>
+        <li>about.before.one</li>
+        <li>about.before.two</li>
+    </loadBefore>
+    <loadAfter>
+        <li>about.after.one</li>
+    </loadAfter>
+    <incompatibleWith>
+        <li>about.bad.one</li>
+        <li>about.bad.two</li>
+    </incompatibleWith>
+</ModMetaData>");
+
+            var service = CreateService();
+            await service.LoadModsAsync();
+
+            var mod = service.GetLoadedMods().Single(m => m.PackageId == "test.about.rules");
+
+            mod.LoadBefore.Should().BeEquivalentTo(new[] { "about.before.one", "about.before.two" });
+            mod.LoadAfter.Should().BeEquivalentTo(new[] { "about.after.one" });
+            mod.IncompatibleWith.Should().ContainKeys("about.bad.one", "about.bad.two");
+
+            // The About.xml declarations are tracked as their own origin.
+            mod.AboutLoadBefore.Should().BeEquivalentTo(new[] { "about.before.one", "about.before.two" });
+            mod.AboutLoadAfter.Should().BeEquivalentTo(new[] { "about.after.one" });
+            mod.AboutIncompatibleWith.Should().BeEquivalentTo(new[] { "about.bad.one", "about.bad.two" });
+            mod.IncompatibleWith.Values.Should().OnlyContain(r => r.HardIncompatibility);
+        }
+
+        [Fact]
+        public async Task ReapplyRulesAsync_ShouldKeepAboutXmlProvenanceSets()
+        {
+            var modDir = Path.Combine(_modsPath, "AboutRulesMod");
+            var aboutDir = Path.Combine(modDir, "About");
+            Directory.CreateDirectory(aboutDir);
+            File.WriteAllText(Path.Combine(aboutDir, "About.xml"), @"<?xml version='1.0' encoding='utf-8'?>
+<ModMetaData>
+    <name>About Rules Mod</name>
+    <packageId>test.about.rules</packageId>
+    <loadBefore>
+        <li>about.before.one</li>
+    </loadBefore>
+    <loadAfter>
+        <li>about.after.one</li>
+    </loadAfter>
+    <incompatibleWith>
+        <li>about.bad.one</li>
+    </incompatibleWith>
+</ModMetaData>");
+
+            var service = CreateService();
+            await service.LoadModsAsync();
+
+            var mod = service.GetLoadedMods().Single(m => m.PackageId == "test.about.rules");
+            mod.AboutLoadBefore.Should().BeEquivalentTo(new[] { "about.before.one" });
+            mod.AboutLoadAfter.Should().BeEquivalentTo(new[] { "about.after.one" });
+            mod.AboutIncompatibleWith.Should().BeEquivalentTo(new[] { "about.bad.one" });
+
+            // A live re-merge re-applies the rules database onto the SAME mod
+            // instances. The About.xml provenance sets are never touched by
+            // that layer, so they must survive unchanged.
+            await service.ReapplyRulesAsync();
+
+            mod.AboutLoadBefore.Should().BeEquivalentTo(new[] { "about.before.one" });
+            mod.AboutLoadAfter.Should().BeEquivalentTo(new[] { "about.after.one" });
+            mod.AboutIncompatibleWith.Should().BeEquivalentTo(new[] { "about.bad.one" });
+            mod.LoadBefore.Should().Contain("about.before.one");
+            mod.LoadAfter.Should().Contain("about.after.one");
+            mod.IncompatibleWith.Should().ContainKey("about.bad.one");
+        }
     }
 
     public class ModServiceMacOSBundleTests : IDisposable

@@ -32,8 +32,8 @@ namespace RimSharp.Infrastructure.Mods.Rules
         public const string CommunitySourceUrl =
             "https://raw.githubusercontent.com/RimSort/Community-Rules-Database/main/communityRules.json";
 
-        private const string CuratedSourceName = "RimSharpDB (curated)";
-        private const string CommunitySourceName = "Community Rules Database";
+        private const string CuratedSourceName = "RimSharpDB";
+        private const string CommunitySourceName = "RimSortDB";
 
         private static readonly JsonSerializerOptions SerializerOptions = new()
         {
@@ -94,7 +94,24 @@ namespace RimSharp.Infrastructure.Mods.Rules
         /// </summary>
         public void ReplaceAll(IEnumerable<ModRuleSourceRecord> sources)
         {
-            _sources = sources?.Where(s => s != null).ToList() ?? new List<ModRuleSourceRecord>();
+            var incoming = (sources ?? Enumerable.Empty<ModRuleSourceRecord>())
+                .Where(s => s != null)
+                .ToList();
+
+            // The curated RimSharpDB source is hardcoded: a settings snapshot
+            // that omits it (or tries to unlock it) is corrected here so the
+            // source can never disappear from the registry.
+            if (!incoming.Any(s => string.Equals(s.Id, CuratedSourceId, StringComparison.OrdinalIgnoreCase)))
+            {
+                incoming.Insert(0, CreateDefaults().First(s => s.Id == CuratedSourceId));
+            }
+            else
+            {
+                var curated = incoming.First(s => string.Equals(s.Id, CuratedSourceId, StringComparison.OrdinalIgnoreCase));
+                curated.Id = CuratedSourceId; // keep the canonical id
+            }
+
+            _sources = incoming;
         }
 
         /// <summary>Appends a source at the lowest priority. Returns false when the id already exists.</summary>
@@ -113,6 +130,9 @@ namespace RimSharp.Infrastructure.Mods.Rules
         {
             var existing = Find(id);
             if (existing == null) return false;
+            // The curated RimSharpDB source is hardcoded: it can never be
+            // removed by hand or by the settings UI, only enabled/disabled.
+            if (existing.Locked) return false;
             return _sources.Remove(existing);
         }
 
@@ -202,6 +222,9 @@ namespace RimSharp.Infrastructure.Mods.Rules
                     if (source == null || string.IsNullOrWhiteSpace(source.Id)) continue;
                     if (!seen.Add(source.Id)) continue;
                     if (string.IsNullOrWhiteSpace(source.Name)) source.Name = source.Id;
+                    // Legacy display-name migration (renamed sources).
+                    if (source.Name == "RimSharpDB (curated)") source.Name = "RimSharpDB";
+                    if (source.Name == "Community Rules Database") source.Name = "RimSortDB";
                     result.Add(source);
                 }
                 return result;

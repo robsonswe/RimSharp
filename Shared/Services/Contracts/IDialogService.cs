@@ -14,6 +14,8 @@ using RimSharp.Features.WorkshopDownloader.Dialogs.Collection;
 using System.Collections.Generic;
 using RimSharp.Features.ModManager.Dialogs.Strip;
 using RimSharp.Features.ModManager.Dialogs.ActiveIssues;
+using RimSharp.Features.ModManager.Dialogs.RulesViewer;
+using RimSharp.Shared.Models;
 
 namespace RimSharp.Shared.Services.Contracts
 {
@@ -33,6 +35,7 @@ namespace RimSharp.Shared.Services.Contracts
 
         (MessageDialogResult Result, string Input) ShowInputDialog(string title, string message, string defaultInput = "");
         Task<(MessageDialogResult Result, string Input)> ShowInputDialogAsync(string title, string message, string defaultInput = "");
+        Task<(MessageDialogResult Result, string Name, string Url)> ShowRuleSourceEditorDialogAsync(string title, string message, string defaultName, string defaultUrl);
         
         Task<ModCustomizationResult> ShowCustomizeModDialog(CustomizeModDialogViewModel viewModel);
         Task<ModFilterDialogResult> ShowModFilterDialogAsync(ModFilterDialogViewModel viewModel);
@@ -102,6 +105,12 @@ namespace RimSharp.Shared.Services.Contracts
         /// confuse users.
         /// </summary>
         Task<bool> ShowSettingsDialogAsync(bool showAiProviders = true);
+
+        /// <summary>
+        /// Modals the read-only Rules viewer dialog for a mod: every applied
+        /// rule with its origin badge. Nothing is ever written.
+        /// </summary>
+        Task<bool> ShowRulesViewerDialogAsync(ModItem mod);
 
     }
 }

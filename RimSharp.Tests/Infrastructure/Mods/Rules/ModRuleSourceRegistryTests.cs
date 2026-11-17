@@ -160,15 +160,18 @@ namespace RimSharp.Tests.Infrastructure.Mods.Rules
         }
 
         [Fact]
-        public void ReplaceAll_ShouldReplaceTheWholeList()
+        public void ReplaceAll_ShouldReplaceTheWholeList_ButKeepLockedCuratedSource()
         {
             _registry.ReplaceAll(new[]
             {
                 new ModRuleSourceRecord { Id = "only" }
             });
 
-            _registry.Sources.Should().ContainSingle();
-            _registry.Sources[0].Id.Should().Be("only");
+            // The user-supplied snapshot replaces everything except the locked
+            // curated source, which is hardcoded and can never be removed.
+            _registry.Sources.Should().HaveCount(2);
+            _registry.Sources.Should().Contain(s => s.Id == "only");
+            _registry.Sources.Should().Contain(s => s.Id == ModRuleSourceRegistry.CuratedSourceId && s.Locked);
         }
 
         [Fact]
@@ -181,6 +184,92 @@ namespace RimSharp.Tests.Infrastructure.Mods.Rules
             raw.Should().NotContain("\n");
             raw.Should().Contain("community-rules");
             raw.Should().Contain("repoFile");
+        }
+
+        [Fact]
+        public void Defaults_CuratedSourceIsLocked_CommunitySourceIsNot()
+        {
+            var curated = _registry.Find(ModRuleSourceRegistry.CuratedSourceId);
+            var community = _registry.Find(ModRuleSourceRegistry.CommunitySourceId);
+
+            curated.Should().NotBeNull();
+            curated!.Locked.Should().BeTrue();
+            community.Should().NotBeNull();
+            community!.Locked.Should().BeFalse();
+        }
+
+        [Fact]
+        public void LockedSource_LockSurvivesSetEnabledAndReordering()
+        {
+            var curated = _registry.Find(ModRuleSourceRegistry.CuratedSourceId)!;
+            var originalId = curated.Id;
+            var originalUrl = curated.Url;
+            var originalType = curated.Type;
+
+            _registry.SetEnabled(ModRuleSourceRegistry.CuratedSourceId, false);
+            _registry.MoveDown(ModRuleSourceRegistry.CuratedSourceId);
+            _registry.MoveUp(ModRuleSourceRegistry.CuratedSourceId);
+            _registry.SetEnabled(ModRuleSourceRegistry.CuratedSourceId, true);
+
+            var after = _registry.Find(ModRuleSourceRegistry.CuratedSourceId)!;
+            after.Locked.Should().BeTrue();
+            after.Id.Should().Be(originalId);
+            after.Url.Should().Be(originalUrl);
+            after.Type.Should().Be(originalType);
+        }
+
+        [Fact]
+        public void ResetToDefaults_RestoresCuratedSourceAsLocked()
+        {
+            _registry.Remove(ModRuleSourceRegistry.CuratedSourceId);
+            _registry.Add(new ModRuleSourceRecord { Id = "extra" });
+
+            _registry.ResetToDefaults();
+
+            _registry.Sources.Should().HaveCount(2);
+            var curated = _registry.Find(ModRuleSourceRegistry.CuratedSourceId);
+            curated.Should().NotBeNull();
+            curated!.Locked.Should().BeTrue();
+            _registry.Find(ModRuleSourceRegistry.CommunitySourceId)!.Locked.Should().BeFalse();
+        }
+
+        [Fact]
+        public void TryParse_LockedFieldIsIgnored_LockIsDerivedFromId()
+        {
+            _configService.SetConfigValue(
+                ModRuleSourceRegistry.ConfigKey,
+                "[{\"id\":\"rimsharp-db\",\"name\":\"Curated\",\"locked\":false}," +
+                "{\"id\":\"custom\",\"name\":\"Custom\",\"locked\":true}]");
+            _configService.SaveConfig();
+
+            var registry = new ModRuleSourceRegistry(_configService);
+
+            registry.Find(ModRuleSourceRegistry.CuratedSourceId)!.Locked.Should().BeTrue();
+            registry.Find("custom")!.Locked.Should().BeFalse();
+        }
+
+        [Fact]
+        public void Constructor_EmptyConfigValue_ShouldUseCompiledDefaults()
+        {
+            _configService.SetConfigValue(ModRuleSourceRegistry.ConfigKey, string.Empty);
+            _configService.SaveConfig();
+
+            var registry = new ModRuleSourceRegistry(_configService);
+
+            registry.Sources.Should().HaveCount(2);
+            registry.Sources[0].Id.Should().Be(ModRuleSourceRegistry.CuratedSourceId);
+            registry.Sources[0].Locked.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Constructor_EmptyArrayKey_IsRespected_NotRefilled()
+        {
+            _configService.SetConfigValue(ModRuleSourceRegistry.ConfigKey, "[]");
+            _configService.SaveConfig();
+
+            var registry = new ModRuleSourceRegistry(_configService);
+
+            registry.Sources.Should().BeEmpty();
         }
     }
 }

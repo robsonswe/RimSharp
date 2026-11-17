@@ -24,7 +24,9 @@ using RimSharp.Features.ModManager.Dialogs.MissingMods;
 using RimSharp.Features.WorkshopDownloader.Dialogs.Collection;
 using RimSharp.Features.ModManager.Dialogs.Strip;
 using RimSharp.Features.ModManager.Dialogs.ActiveIssues;
+using RimSharp.Features.ModManager.Dialogs.RulesViewer;
 using RimSharp.Features.LogViewer.ViewModels;
+using RimSharp.Shared.Models;
 using RimSharp.Features.LogViewer.Views;
 using RimSharp.Features.AppLogs.ViewModels;
 using RimSharp.Features.AppLogs.Views;
@@ -49,6 +51,7 @@ namespace RimSharp.Infrastructure.Dialog
         private readonly IModListManager? _modListManager;
         private readonly Shared.Models.GameInstance? _gameInstance;
         private readonly IRuleSourceManager? _ruleSourceManager;
+        private readonly IModService? _modService;
         private int _openDialogCount;
         public bool IsAnyDialogOpen => _openDialogCount > 0;
 
@@ -67,7 +70,8 @@ namespace RimSharp.Infrastructure.Dialog
             ISaveHeaderService? saveHeaderService = null,
             IModListManager? modListManager = null,
             Shared.Models.GameInstance? gameInstance = null,
-            IRuleSourceManager? ruleSourceManager = null)
+            IRuleSourceManager? ruleSourceManager = null,
+            IModService? modService = null)
         {
             _appUpdaterService = appUpdaterService;
             _configService = configService;
@@ -82,6 +86,7 @@ namespace RimSharp.Infrastructure.Dialog
             _modListManager = modListManager;
             _gameInstance = gameInstance;
             _ruleSourceManager = ruleSourceManager;
+            _modService = modService;
         }
 
         private void OnPropertyChanged(string propertyName)
@@ -230,6 +235,14 @@ namespace RimSharp.Infrastructure.Dialog
             return (result, viewModel.Input);
         }
 
+        public async Task<(MessageDialogResult Result, string Name, string Url)> ShowRuleSourceEditorDialogAsync(string title, string message, string defaultName, string defaultUrl)
+        {
+            var viewModel = new RuleSourceEditorDialogViewModel(title, message, defaultName, defaultUrl);
+            var dialog = new RuleSourceEditorDialogView(viewModel);
+            var result = await ShowDialogInternalAsync<MessageDialogResult>(viewModel, dialog);
+            return (result, viewModel.Name, viewModel.Url);
+        }
+
         public (MessageDialogResult Result, string Input) ShowInputDialog(string title, string message, string defaultInput = "")
         {
             var viewModel = new InputDialogViewModel(title, message, defaultInput);
@@ -293,6 +306,14 @@ namespace RimSharp.Infrastructure.Dialog
                 showAiProviders: showAiProviders,
                 ruleSourceManager: _ruleSourceManager);
             var dialog = new SettingsDialogView(viewModel);
+            return await ShowDialogInternalAsync<bool>(viewModel, dialog);
+        }
+
+        public async Task<bool> ShowRulesViewerDialogAsync(ModItem mod)
+        {
+            if (_modService == null || _ruleSourceManager == null) return false;
+            var viewModel = new RulesViewerDialogViewModel(mod, _modService, _ruleSourceManager.Registry);
+            var dialog = new RulesViewerDialogView(viewModel);
             return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }
 

@@ -36,6 +36,10 @@ namespace RimSharp.Infrastructure.Mods.Rules
 
         private Dictionary<string, ModRule> _cachedRules =
             new(StringComparer.OrdinalIgnoreCase);
+        private Dictionary<string, RuleProvenance> _cachedProvenance =
+            new(StringComparer.OrdinalIgnoreCase);
+        private Dictionary<string, long> _sourceTimestamps =
+            new(StringComparer.OrdinalIgnoreCase);
         private long? _effectiveTimestamp;
         private bool _rulesLoaded;
 
@@ -70,9 +74,23 @@ namespace RimSharp.Infrastructure.Mods.Rules
         }
 
         /// <summary>
-        /// Drops the cached effective set so the next read re-resolves the
-        /// registry and re-merges every source file. Called after a registry
-        /// change or a source refresh (live re-merge).
+        /// Per-source upstream timestamp (unix seconds) for every source that
+        /// provides one, keyed by source Id. Warms the same cache as
+        /// <see cref="GetAllRules"/>.
+        /// </summary>
+        public IReadOnlyDictionary<string, long> SourceTimestamps
+        {
+            get
+            {
+                GetAllRules(); // ensure the cache (and timestamps) is warm
+                return _sourceTimestamps;
+            }
+        }
+
+        /// <summary>
+        /// Drops the cached effective set (and its provenance) so the next
+        /// read re-resolves the registry and re-merges every source file.
+        /// Called after a registry change or a source refresh (live re-merge).
         /// </summary>
         public void Invalidate()
         {
@@ -80,6 +98,8 @@ namespace RimSharp.Infrastructure.Mods.Rules
             {
                 _rulesLoaded = false;
                 _cachedRules = new Dictionary<string, ModRule>(StringComparer.OrdinalIgnoreCase);
+                _cachedProvenance = new Dictionary<string, RuleProvenance>(StringComparer.OrdinalIgnoreCase);
+                _sourceTimestamps = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
                 _effectiveTimestamp = null;
             }
         }
@@ -99,10 +119,26 @@ namespace RimSharp.Infrastructure.Mods.Rules
                     return _cachedRules;
                 }
 
-                _cachedRules = LoadAndMergeSources();
+                var (rules, provenance, timestamps) = LoadAndMergeSources();
+                _cachedRules = rules;
+                _cachedProvenance = provenance; // cached/invalidated together with the rules
+                _sourceTimestamps = timestamps;
                 _rulesLoaded = true; // Mark as loaded even on partial failure (avoids retry storms)
                 return _cachedRules;
             }
+        }
+
+        /// <summary>
+        /// Per-packageId provenance of the merged set: for every packageId
+        /// <see cref="GetAllRules"/> carries, which source Id claimed each
+        /// loadBefore / loadAfter / incompatibleWith target and the
+        /// loadTop / loadBottom flags (first source carrying an entry claims
+        /// it). Warms the same cache as <see cref="GetAllRules"/>.
+        /// </summary>
+        public IReadOnlyDictionary<string, RuleProvenance> GetAllRuleProvenance()
+        {
+            GetAllRules(); // ensure the cache (and the provenance) is warm
+            return _cachedProvenance;
         }
 
         public ModRule GetRulesForMod(string packageId)
@@ -125,11 +161,15 @@ namespace RimSharp.Infrastructure.Mods.Rules
         /// <summary>
         /// Loads every enabled source in priority order and merges them into
         /// the effective rule set. Each source is isolated: a missing or
-        /// broken file is logged and skipped, never fatal to the others.
+        /// broken file is logged and skipped, never fatal to the others. The
+        /// per-entry provenance (which source claimed what) is built in the
+        /// same pass, so it always matches the merged set.
         /// </summary>
-        private Dictionary<string, ModRule> LoadAndMergeSources()
+        private (Dictionary<string, ModRule> Rules, Dictionary<string, RuleProvenance> Provenance, Dictionary<string, long> Timestamps) LoadAndMergeSources()
         {
             var merged = new Dictionary<string, ModRule>(StringComparer.OrdinalIgnoreCase);
+            var provenance = new Dictionary<string, RuleProvenance>(StringComparer.OrdinalIgnoreCase);
+            var timestamps = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
             long maxTimestamp = 0;
 
             foreach (var source in _registry.GetEnabledSources())
@@ -165,8 +205,12 @@ namespace RimSharp.Infrastructure.Mods.Rules
                     {
                         maxTimestamp = timestamp;
                     }
+                    if (timestamp > 0)
+                    {
+                        timestamps[source.Id] = timestamp;
+                    }
 
-                    MergeInto(merged, rules);
+                    MergeInto(merged, provenance, rules, source.Id);
                 }
                 catch (JsonException jsonEx)
                 {
@@ -183,7 +227,7 @@ namespace RimSharp.Infrastructure.Mods.Rules
             }
 
             _effectiveTimestamp = maxTimestamp > 0 ? maxTimestamp : null;
-            return merged;
+            return (merged, provenance, timestamps);
         }
 
         /// <summary>
@@ -292,8 +336,16 @@ namespace RimSharp.Infrastructure.Mods.Rules
         /// of the rules schema into its own data source, so the rules layer
         /// keeps only the claiming (highest-priority) source's value.</item>
         /// </list>
+        /// This is bookkeeping-only for provenance: every claim recorded in
+        /// <paramref name="provenance"/> mirrors the exact condition under
+        /// which the entry was added to <paramref name="merged"/> — the merge
+        /// policies themselves are unchanged.
         /// </summary>
-        private static void MergeInto(Dictionary<string, ModRule> merged, Dictionary<string, ModRule>? incoming)
+        private static void MergeInto(
+            Dictionary<string, ModRule> merged,
+            Dictionary<string, RuleProvenance> provenance,
+            Dictionary<string, ModRule>? incoming,
+            string sourceId)
         {
             if (incoming == null || incoming.Count == 0)
             {
@@ -310,22 +362,97 @@ namespace RimSharp.Infrastructure.Mods.Rules
                 if (!merged.TryGetValue(entry.Key, out var existing))
                 {
                     merged[entry.Key] = entry.Value;
+                    // First source carrying the packageId claims everything it
+                    // provides (the rule object IS the merged rule from now on).
+                    provenance[entry.Key] = ClaimAll(entry.Value, sourceId);
                     continue;
                 }
 
-                MergeRule(existing, entry.Value);
+                if (!provenance.TryGetValue(entry.Key, out var entryProvenance))
+                {
+                    entryProvenance = new RuleProvenance();
+                    provenance[entry.Key] = entryProvenance;
+                }
+
+                MergeRule(existing, entry.Value, entryProvenance, sourceId);
             }
         }
 
-        private static void MergeRule(ModRule existing, ModRule incoming)
+        /// <summary>
+        /// Records that a single source owns every entry of a freshly merged
+        /// rule: all present loadBefore / loadAfter / incompatibleWith
+        /// targets and both loadTop / loadBottom flags.
+        /// </summary>
+        private static RuleProvenance ClaimAll(ModRule rule, string sourceId)
+        {
+            var claims = new RuleProvenance();
+            ClaimTargets(claims.LoadBeforeSource, rule.LoadBefore, sourceId);
+            ClaimTargets(claims.LoadAfterSource, rule.LoadAfter, sourceId);
+
+            if (rule.Incompatibilities != null)
+            {
+                foreach (var incompatibility in rule.Incompatibilities)
+                {
+                    if (string.IsNullOrWhiteSpace(incompatibility.Key)) continue;
+                    claims.IncompatibleSource[incompatibility.Key] = sourceId;
+                }
+            }
+
+            if (rule.LoadTop != null)
+            {
+                claims.LoadTopSource = sourceId;
+            }
+
+            if (rule.LoadBottom != null)
+            {
+                claims.LoadBottomSource = sourceId;
+            }
+
+            return claims;
+        }
+
+        /// <summary>Records first-source-wins claims for a target dictionary.</summary>
+        private static void ClaimTargets(
+            Dictionary<string, string> claims,
+            Dictionary<string, ModDependencyRule>? targets,
+            string sourceId)
+        {
+            if (targets == null)
+            {
+                return;
+            }
+
+            foreach (var target in targets)
+            {
+                if (string.IsNullOrWhiteSpace(target.Key)) continue;
+                if (!claims.ContainsKey(target.Key))
+                {
+                    claims[target.Key] = sourceId;
+                }
+            }
+        }
+
+        private static void MergeRule(ModRule existing, ModRule incoming, RuleProvenance claims, string sourceId)
         {
             // Explicit JSON nulls can wipe the property initializers.
             existing.LoadBefore ??= new Dictionary<string, ModDependencyRule>();
             existing.LoadAfter ??= new Dictionary<string, ModDependencyRule>();
             existing.Incompatibilities ??= new Dictionary<string, ModIncompatibilityRule>();
 
-            MergeDependencies(existing.LoadBefore, incoming.LoadBefore);
-            MergeDependencies(existing.LoadAfter, incoming.LoadAfter);
+            MergeDependencies(existing.LoadBefore, incoming.LoadBefore, claims.LoadBeforeSource, sourceId);
+            MergeDependencies(existing.LoadAfter, incoming.LoadAfter, claims.LoadAfterSource, sourceId);
+
+            // Flags merge by OR: the first source PROVIDING the flag claims
+            // it (its comment is the one kept by MergeFlag when present).
+            if (existing.LoadTop == null && incoming.LoadTop != null)
+            {
+                claims.LoadTopSource ??= sourceId;
+            }
+
+            if (existing.LoadBottom == null && incoming.LoadBottom != null)
+            {
+                claims.LoadBottomSource ??= sourceId;
+            }
 
             existing.LoadTop = MergeFlag(existing.LoadTop, incoming.LoadTop);
             existing.LoadBottom = MergeFlag(existing.LoadBottom, incoming.LoadBottom);
@@ -341,6 +468,11 @@ namespace RimSharp.Infrastructure.Mods.Rules
                     if (!existing.Incompatibilities.ContainsKey(incompatibility.Key))
                     {
                         existing.Incompatibilities[incompatibility.Key] = incompatibility.Value;
+                        // Claim mirrors the add condition above (first wins).
+                        if (!claims.IncompatibleSource.ContainsKey(incompatibility.Key))
+                        {
+                            claims.IncompatibleSource[incompatibility.Key] = sourceId;
+                        }
                     }
                 }
             }
@@ -352,7 +484,9 @@ namespace RimSharp.Infrastructure.Mods.Rules
 
         private static void MergeDependencies(
             Dictionary<string, ModDependencyRule> existing,
-            Dictionary<string, ModDependencyRule>? incoming)
+            Dictionary<string, ModDependencyRule>? incoming,
+            Dictionary<string, string> claims,
+            string sourceId)
         {
             if (incoming == null || incoming.Count == 0)
             {
@@ -363,10 +497,15 @@ namespace RimSharp.Infrastructure.Mods.Rules
             {
                 if (string.IsNullOrWhiteSpace(target.Key)) continue;
                 // Union: a target already claimed by a higher-priority source
-                // keeps that source's Name/Comment.
+                // keeps that source's Name/Comment (and provenance).
                 if (!existing.ContainsKey(target.Key))
                 {
                     existing[target.Key] = target.Value;
+                    // Claim mirrors the add condition above (first wins).
+                    if (!claims.ContainsKey(target.Key))
+                    {
+                        claims[target.Key] = sourceId;
+                    }
                 }
             }
         }

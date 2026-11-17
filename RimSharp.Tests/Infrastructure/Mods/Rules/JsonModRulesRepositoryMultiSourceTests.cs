@@ -295,5 +295,150 @@ namespace RimSharp.Tests.Infrastructure.Mods.Rules
 
             rule.LoadBefore.Should().ContainKey("mod.b");
         }
+
+        [Fact]
+        public void GetAllRuleProvenance_ShouldRecordFirstSourceWinsPerTarget()
+        {
+            // The curated source (higher priority) and the community source
+            // both carry mod.a. Every shared target must be claimed by the
+            // FIRST source carrying it; targets only one source carries are
+            // claimed by that source.
+            WriteSourceFile("RimSharp", "rules.json", @"{
+              ""rules"": {
+                ""mod.a"": {
+                  ""loadBefore"": { ""mod.shared"": {}, ""mod.curatedOnly"": {} },
+                  ""loadAfter"": { ""mod.afterShared"": {} },
+                  ""incompatibilities"": { ""mod.bad"": {} }
+                }
+              }
+            }");
+            WriteSourceFile("community-rules", "communityRules.json", @"{
+              ""rules"": {
+                ""mod.a"": {
+                  ""loadBefore"": { ""mod.shared"": {}, ""mod.communityOnly"": {} },
+                  ""loadAfter"": { ""mod.afterShared"": {}, ""mod.afterCommunity"": {} },
+                  ""incompatibleWith"": { ""mod.bad"": {}, ""mod.otherBad"": {} }
+                }
+              }
+            }");
+
+            var provenance = CreateRepository().GetAllRuleProvenance();
+
+            provenance.Should().ContainKey("mod.a");
+            var claims = provenance["mod.a"];
+
+            // loadBefore: shared target claimed by the first (curated) source.
+            claims.LoadBeforeSource["mod.shared"].Should().Be(ModRuleSourceRegistry.CuratedSourceId);
+            claims.LoadBeforeSource["mod.curatedOnly"].Should().Be(ModRuleSourceRegistry.CuratedSourceId);
+            claims.LoadBeforeSource["mod.communityOnly"].Should().Be(ModRuleSourceRegistry.CommunitySourceId);
+
+            // loadAfter: same first-source-wins policy.
+            claims.LoadAfterSource["mod.afterShared"].Should().Be(ModRuleSourceRegistry.CuratedSourceId);
+            claims.LoadAfterSource["mod.afterCommunity"].Should().Be(ModRuleSourceRegistry.CommunitySourceId);
+
+            // incompatibilities: first-source-wins per target (both keys bind).
+            claims.IncompatibleSource["mod.bad"].Should().Be(ModRuleSourceRegistry.CuratedSourceId);
+            claims.IncompatibleSource["mod.otherBad"].Should().Be(ModRuleSourceRegistry.CommunitySourceId);
+        }
+
+        [Fact]
+        public void GetAllRuleProvenance_ShouldRecordClaimingSourceForFlags()
+        {
+            // Flags merge by OR; the FIRST source providing a flag claims it.
+            // Here both sources provide both flags, so the curated source wins
+            // both claims.
+            WriteSourceFile("RimSharp", "rules.json", @"{
+              ""rules"": {
+                ""mod.both"": {
+                  ""loadTop"": { ""value"": true },
+                  ""loadBottom"": { ""value"": true }
+                }
+              }
+            }");
+            // mod.split is carried only by the community source (the curated
+            // source does not carry that packageId at all).
+            WriteSourceFile("community-rules", "communityRules.json", @"{
+              ""rules"": {
+                ""mod.both"": {
+                  ""loadTop"": { ""value"": true },
+                  ""loadBottom"": { ""value"": true }
+                },
+                ""mod.split"": {
+                  ""loadTop"": { ""value"": true },
+                  ""loadBottom"": { ""value"": true }
+                }
+              }
+            }");
+
+            var provenance = CreateRepository().GetAllRuleProvenance();
+
+            var both = provenance["mod.both"];
+            both.LoadTopSource.Should().Be(ModRuleSourceRegistry.CuratedSourceId);
+            both.LoadBottomSource.Should().Be(ModRuleSourceRegistry.CuratedSourceId);
+
+            // A packageId only the lower-priority source carries: that source
+            // claims its flags via ClaimAll.
+            var split = provenance["mod.split"];
+            split.LoadTopSource.Should().Be(ModRuleSourceRegistry.CommunitySourceId);
+            split.LoadBottomSource.Should().Be(ModRuleSourceRegistry.CommunitySourceId);
+        }
+
+        [Fact]
+        public void GetAllRuleProvenance_WhenFlagComesFromLowerPrioritySource_ShouldClaimThatSource()
+        {
+            // The first source carries the packageId but NOT the flag; the
+            // second source provides the flag, so it claims it (OR merge).
+            WriteSourceFile("RimSharp", "rules.json", @"{
+              ""rules"": { ""mod.a"": { ""loadBefore"": { ""mod.x"": {} } } }
+            }");
+            WriteSourceFile("community-rules", "communityRules.json", @"{
+              ""rules"": { ""mod.a"": { ""loadTop"": { ""value"": true } } }
+            }");
+
+            var provenance = CreateRepository().GetAllRuleProvenance();
+
+            var claims = provenance["mod.a"];
+            claims.LoadTopSource.Should().Be(ModRuleSourceRegistry.CommunitySourceId);
+            claims.LoadBottomSource.Should().BeNull();
+            claims.LoadBeforeSource["mod.x"].Should().Be(ModRuleSourceRegistry.CuratedSourceId);
+        }
+
+        [Fact]
+        public void GetAllRuleProvenance_IsCaseInsensitiveByPackageId()
+        {
+            WriteSourceFile("RimSharp", "rules.json", @"{ ""rules"": { ""Mod.A"": { ""loadBefore"": { ""mod.x"": {} } } } }");
+
+            var provenance = CreateRepository().GetAllRuleProvenance();
+
+            provenance["mod.a"].LoadBeforeSource["mod.x"].Should().Be(ModRuleSourceRegistry.CuratedSourceId);
+        }
+
+        [Fact]
+        public void Invalidate_ShouldRefreshProvenance()
+        {
+            WriteSourceFile("RimSharp", "rules.json", @"{
+              ""rules"": { ""mod.a"": { ""loadBefore"": { ""mod.first"": {} } } }
+            }");
+
+            var repo = CreateRepository();
+            repo.GetAllRuleProvenance()["mod.a"].LoadBeforeSource["mod.first"]
+                .Should().Be(ModRuleSourceRegistry.CuratedSourceId);
+
+            // Rewrite the source file: the cached provenance must not change.
+            File.WriteAllText(
+                Path.Combine(_dataRoot, "Rules", "RimSharp", "rules.json"),
+                @"{ ""rules"": { ""mod.a"": { ""loadBefore"": { ""mod.second"": {} } } } }");
+
+            var cached = repo.GetAllRuleProvenance()["mod.a"];
+            cached.LoadBeforeSource.Should().ContainKey("mod.first");
+            cached.LoadBeforeSource.Should().NotContainKey("mod.second");
+
+            repo.Invalidate();
+
+            var refreshed = repo.GetAllRuleProvenance()["mod.a"];
+            refreshed.LoadBeforeSource.Should().ContainKey("mod.second");
+            refreshed.LoadBeforeSource.Should().NotContainKey("mod.first");
+            refreshed.LoadBeforeSource["mod.second"].Should().Be(ModRuleSourceRegistry.CuratedSourceId);
+        }
     }
 }

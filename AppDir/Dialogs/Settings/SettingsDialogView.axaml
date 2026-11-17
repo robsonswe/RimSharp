@@ -240,7 +240,8 @@
                                        Foreground="{DynamicResource BrushTextStrong}"
                                        Text="Rule databases are merged in priority order: the first source that carries a rule for a mod wins, and order rules from every source are combined. Changes apply immediately - no restart needed."/>
 
-                            <ItemsControl ItemsSource="{Binding RuleSources}">
+                            <ItemsControl ItemsSource="{Binding RuleSources}"
+                                          x:CompileBindings="False">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="local:RuleSourceRowViewModel">
                                         <Border BorderBrush="{DynamicResource BrushBorderDefault}"
@@ -248,42 +249,70 @@
                                                 CornerRadius="4"
                                                 Padding="10,8"
                                                 Margin="0,0,0,8">
-                                            <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto" ColumnSpacing="8">
-                                                <CheckBox Grid.Row="0" Grid.Column="0"
-                                                          IsChecked="{Binding Enabled, Mode=TwoWay}"
-                                                          VerticalAlignment="Center"
-                                                          ToolTip.Tip="Enable or disable this source"/>
+                                            <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto" ColumnSpacing="8">
+                                                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                    <Button Content="Disable"
+                                                            Command="{Binding ToggleEnabledCommand}"
+                                                            Classes="btn" Padding="6,2"
+                                                            IsVisible="{Binding Enabled}"
+                                                            ToolTip.Tip="Disable this source"/>
+                                                    <Button Content="Enable"
+                                                            Command="{Binding ToggleEnabledCommand}"
+                                                            Classes="btn" Padding="6,2"
+                                                            IsVisible="{Binding !Enabled}"
+                                                            ToolTip.Tip="Enable this source"/>
+                                                </StackPanel>
                                                 <TextBlock Grid.Row="0" Grid.Column="1"
                                                            Text="{Binding Name}"
                                                            FontWeight="Bold" FontSize="13"
                                                            VerticalAlignment="Center"
                                                            TextTrimming="CharacterEllipsis"
                                                            Foreground="{DynamicResource BrushTextStrong}"/>
-                                                <TextBlock Grid.Row="0" Grid.Column="2"
-                                                           Text="{Binding TypeBadge}"
-                                                           FontSize="11" FontStyle="Italic"
-                                                           VerticalAlignment="Center"
-                                                           Foreground="{DynamicResource BrushTextSecondary}"/>
 
-                                                <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
-                                                         Text="{Binding Location, Mode=TwoWay}"
-                                                         Classes="input"
-                                                         MinHeight="28"
-                                                         IsEnabled="{Binding !IsCurated}"
-                                                         ToolTip.Tip="{Binding Location}"/>
-                                                <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" Spacing="6">
-                                                    <Button Content="Edit" Command="{Binding EditLocationCommand}"
-                                                            Classes="btn" Padding="8,4"
-                                                            IsEnabled="{Binding !IsCurated}"/>
-                                                    <Button Content="Update" Command="{Binding UpdateNowCommand}"
-                                                            Classes="btn" Padding="8,4"/>
-                                                </StackPanel>
+                                                <!-- URL is edited via the Edit dialog; nothing inline here. -->
 
                                                 <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
                                                            Text="{Binding Id}"
                                                            FontSize="10"
                                                            Margin="30,2,0,0"
                                                            Foreground="{DynamicResource BrushTextMuted}"/>
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
+                                                           Text="{Binding RulesAsOf, StringFormat='Rules as of {0}'}"
+                                                           FontSize="10"
+                                                           Margin="30,0,0,0"
+                                                           IsVisible="{Binding RulesAsOf, Converter={StaticResource StringIsNotNullOrEmptyConverter}}"
+                                                           Foreground="{DynamicResource BrushTextMuted}"/>
+
+                                                <!-- Per-source list actions: Remove / Move up / Move down -->
+                                                <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3"
+                                                            Orientation="Horizontal" Spacing="6"
+                                                            Margin="30,6,0,0">
+                                                    <Button Content="Edit"
+                                                            Command="{Binding EditLocationCommand}"
+                                                            Classes="btn" Padding="8,4"
+                                                            IsEnabled="{Binding !Locked}"
+                                                            ToolTip.Tip="Edit this source's name and URL"/>
+                                                    <Button Content="Update"
+                                                            Command="{Binding UpdateNowCommand}"
+                                                            Classes="btn" Padding="8,4"
+                                                            ToolTip.Tip="Refresh this source now"/>
+                                                    <Button Content="Remove"
+                                                            Command="{Binding DataContext.RemoveRuleSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Classes="btn" Padding="8,4"
+                                                            IsEnabled="{Binding !Locked}"
+                                                            ToolTip.Tip="Remove this rule source"/>
+                                                    <Button Content="Move up"
+                                                            Command="{Binding DataContext.MoveRuleSourceUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Classes="btn" Padding="8,4"
+                                                            ToolTip.Tip="Move this source up in priority"/>
+                                                    <Button Content="Move down"
+                                                            Command="{Binding DataContext.MoveRuleSourceDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Classes="btn" Padding="8,4"
+                                                            ToolTip.Tip="Move this source down in priority"/>
+                                                </StackPanel>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
@@ -292,14 +321,6 @@
 
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <Button Content="Add remote" Command="{Binding AddRemoteRuleSourceCommand}"
-                                        Classes="btn" Padding="10,4"/>
-                                <Button Content="Add local file" Command="{Binding AddLocalRuleSourceCommand}"
-                                        Classes="btn" Padding="10,4"/>
-                                <Button Content="Remove" Command="{Binding RemoveRuleSourceCommand}"
-                                        Classes="btn" Padding="10,4"/>
-                                <Button Content="Move up" Command="{Binding MoveRuleSourceUpCommand}"
-                                        Classes="btn" Padding="10,4"/>
-                                <Button Content="Move down" Command="{Binding MoveRuleSourceDownCommand}"
                                         Classes="btn" Padding="10,4"/>
                             </StackPanel>
 

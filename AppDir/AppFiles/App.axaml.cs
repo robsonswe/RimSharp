@@ -266,7 +266,8 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<ISaveHeaderService>(),
                     provider.GetRequiredService<IModListManager>(),
                     provider.GetRequiredService<GameInstance>(),
-                    provider.GetRequiredService<IRuleSourceManager>()
+                    provider.GetRequiredService<IRuleSourceManager>(),
+                    provider.GetRequiredService<IModService>()
                 ));
             services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
             services.AddSingleton<ISystemInfoService>(provider => SystemInfoServiceFactory.Create());

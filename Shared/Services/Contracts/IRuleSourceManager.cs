@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Infrastructure.Mods.Rules;
@@ -20,6 +21,12 @@ namespace RimSharp.Shared.Services.Contracts
         /// or null when no source provides one.
         /// </summary>
         long? EffectiveTimestamp { get; }
+
+        /// <summary>
+        /// Per-source upstream timestamp (unix seconds) for every source that
+        /// provides one, keyed by source Id. Delegates to the repository.
+        /// </summary>
+        IReadOnlyDictionary<string, long> SourceTimestamps { get; }
 
         /// <summary>
         /// Persists the current registry state and re-merges the rules onto the
