@@ -13,7 +13,7 @@ namespace RimSharp.Infrastructure.Configuration
     ///
     /// Linux: app-managed data follows the XDG base directory specification:
     ///   - config.cfg -> $XDG_CONFIG_HOME/RimSharp (fallback ~/.config/RimSharp)
-    ///   - data (SteamCMD_Data, Logs, Rules, Lists) -> $XDG_DATA_HOME/RimSharp
+    ///   - data (SteamCMD_Data, Logs, Data, Lists) -> $XDG_DATA_HOME/RimSharp
     ///     (fallback ~/.local/share/RimSharp)
     ///
     /// Explicit XDG environment variables are honored when set to an absolute
@@ -42,7 +42,7 @@ namespace RimSharp.Infrastructure.Configuration
                 : ResolveXdgDirectory(XdgConfigHomeEnv, Environment.SpecialFolder.ApplicationData);
 
         /// <summary>
-        /// Directory holding app-managed data (SteamCMD_Data, Logs, Rules,
+        /// Directory holding app-managed data (SteamCMD_Data, Logs, Data,
         /// Lists). Windows: next to the exe. Linux: $XDG_DATA_HOME/RimSharp
         /// or ~/.local/share/RimSharp.
         /// </summary>
@@ -89,7 +89,7 @@ namespace RimSharp.Infrastructure.Configuration
                     ("config.cfg", ConfigDirectory),
                     ("SteamCMD_Data", DataDirectory),
                     ("Logs", DataDirectory),
-                    ("Rules", DataDirectory),
+                    ("Data", DataDirectory),
                     ("Lists", DataDirectory),
                 };
 
@@ -108,6 +108,65 @@ namespace RimSharp.Infrastructure.Configuration
             catch (Exception ex)
             {
                 Console.WriteLine($"[RimSharp] Legacy data migration failed (continuing): {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// One-time migration of the renamed data folder ("Rules" -> "Data")
+        /// inside <see cref="DataDirectory"/>. Unlike
+        /// <see cref="MigrateLegacyLocations"/> this runs on every platform,
+        /// because the folder lives next to the executable on Windows and can
+        /// only be renamed there too. Two strategies:
+        ///   - target missing: plain directory rename;
+        ///   - target already exists (e.g. the new build's bundled placeholders
+        ///     were copied before startup): merge - the user's files from the
+        ///     old location overwrite bundled placeholders, subdirectories are
+        ///     moved in when absent.
+        /// Failures are reported and skipped so startup can continue.
+        /// </summary>
+        public static void MigrateRenamedDataFolder()
+        {
+            MigrateRenamedDataFolderCore(
+                Path.Combine(DataDirectory, "Rules"),
+                Path.Combine(DataDirectory, "Data"));
+        }
+
+        internal static void MigrateRenamedDataFolderCore(string source, string target)
+        {
+            try
+            {
+                if (!Directory.Exists(source)) return;
+
+                // Degenerate guard: source and target resolve to the same directory.
+                if (string.Equals(Path.GetFullPath(source), Path.GetFullPath(target),
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                if (!Directory.Exists(target))
+                {
+                    Directory.Move(source, target);
+                    Console.WriteLine($"[RimSharp] Migrated renamed data folder: {source} -> {target}");
+                    return;
+                }
+
+                // The old location held the user's live working files; anything
+                // already in the target is a freshly-copied bundled placeholder
+                // ({} etc.). User data therefore wins on every merge conflict.
+                foreach (var sourceFile in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
+                {
+                    var relative = Path.GetRelativePath(source, sourceFile);
+                    var nestedTarget = Path.Combine(target, relative);
+                    Directory.CreateDirectory(Path.GetDirectoryName(nestedTarget)!);
+                    File.Copy(sourceFile, nestedTarget, overwrite: true);
+                }
+
+                Console.WriteLine($"[RimSharp] Merged legacy 'Rules' data folder into '{target}' (user data preserved).");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[RimSharp] Could not migrate 'Rules' -> 'Data': {ex.Message}");
             }
         }
 

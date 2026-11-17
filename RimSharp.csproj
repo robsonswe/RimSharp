@@ -89,7 +89,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Rules\db\**">
+    <Content Include="Data\db\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="version.txt">
@@ -108,11 +108,11 @@
   </PropertyGroup>
 
   <Target Name="EnsureLocalDataFilesExist" BeforeTargets="PrepareForBuild">
-    <MakeDir Directories="$(ProjectDir)Rules\db" Condition="!Exists('$(ProjectDir)Rules\db')" />
-    <WriteLinesToFile File="$(ProjectDir)Rules\db\manifest.json" Lines="$(DefaultManifestJsonContent)" Overwrite="false" Condition="!Exists('$(ProjectDir)Rules\db\manifest.json')" />
-    <WriteLinesToFile File="$(ProjectDir)Rules\db\rules.json" Lines="$(DefaultRulesJsonContent)" Overwrite="false" Condition="!Exists('$(ProjectDir)Rules\db\rules.json')" />
-    <WriteLinesToFile File="$(ProjectDir)Rules\db\db.json" Lines="$(DefaultDbJsonContent)" Overwrite="false" Condition="!Exists('$(ProjectDir)Rules\db\db.json')" />
-    <WriteLinesToFile File="$(ProjectDir)Rules\db\replacements.json" Lines="$(DefaultReplacementsJsonContent)" Overwrite="false" Condition="!Exists('$(ProjectDir)Rules\db\replacements.json')" />
+    <MakeDir Directories="$(ProjectDir)Data\db" Condition="!Exists('$(ProjectDir)Data\db')" />
+    <WriteLinesToFile File="$(ProjectDir)Data\db\manifest.json" Lines="$(DefaultManifestJsonContent)" Overwrite="false" Condition="!Exists('$(ProjectDir)Data\db\manifest.json')" />
+    <WriteLinesToFile File="$(ProjectDir)Data\db\rules.json" Lines="$(DefaultRulesJsonContent)" Overwrite="false" Condition="!Exists('$(ProjectDir)Data\db\rules.json')" />
+    <WriteLinesToFile File="$(ProjectDir)Data\db\db.json" Lines="$(DefaultDbJsonContent)" Overwrite="false" Condition="!Exists('$(ProjectDir)Data\db\db.json')" />
+    <WriteLinesToFile File="$(ProjectDir)Data\db\replacements.json" Lines="$(DefaultReplacementsJsonContent)" Overwrite="false" Condition="!Exists('$(ProjectDir)Data\db\replacements.json')" />
   </Target>
 
   <Target Name="SetVersionFromTextFile" BeforeTargets="BeforeBuild">
@@ -128,7 +128,7 @@
   </Target>
 
   <Target Name="PostBuild" AfterTargets="PostBuild">
-    <MakeDir Directories="$(OutputPath)Rules\db" />
+    <MakeDir Directories="$(OutputPath)Data\db" />
     <MakeDir Directories="$(OutputPath)Lists" />
   </Target>
 </Project>

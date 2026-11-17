@@ -25,7 +25,7 @@ namespace RimSharp.Shared.Services.Implementations
         public ModCustomService(string appBasePath, ILoggerService? logger = null)
         {
             _appBasePath = appBasePath ?? throw new ArgumentNullException(nameof(appBasePath));
-            _customFolderPath = Path.Combine(_appBasePath, "Rules", "Custom");
+            _customFolderPath = Path.Combine(_appBasePath, "Data", "Custom");
             _modsJsonPath = Path.Combine(_customFolderPath, "Mods.json");
             _modsData = new ModsCustomRootInternal { Mods = new Dictionary<string, ModCustomInfo>(StringComparer.OrdinalIgnoreCase) };
             _logger = logger;

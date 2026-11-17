@@ -60,9 +60,9 @@ namespace RimSharp.Tests.Infrastructure.Data
 
             await service.CheckForAndApplyUpdatesAsync(progress, CancellationToken.None);
 
-            File.Exists(Path.Combine(_testTempDir, "Rules", "db", "manifest.json")).Should().BeTrue();
-            File.Exists(Path.Combine(_testTempDir, "Rules", "db", "rules.json")).Should().BeTrue();
-            File.ReadAllText(Path.Combine(_testTempDir, "Rules", "db", "rules.json")).Should().Be(rulesJson);
+            File.Exists(Path.Combine(_testTempDir, "Data", "db", "manifest.json")).Should().BeTrue();
+            File.Exists(Path.Combine(_testTempDir, "Data", "db", "rules.json")).Should().BeTrue();
+            File.ReadAllText(Path.Combine(_testTempDir, "Data", "db", "rules.json")).Should().Be(rulesJson);
         }
 
         [Fact]
@@ -72,7 +72,7 @@ namespace RimSharp.Tests.Infrastructure.Data
             var manifestJson = @"{ ""version"": ""1.0"", ""files"": {} }";
             
             // Setup local manifest
-            var localDbDir = Path.Combine(_testTempDir, "Rules", "db");
+            var localDbDir = Path.Combine(_testTempDir, "Data", "db");
             Directory.CreateDirectory(localDbDir);
             File.WriteAllText(Path.Combine(localDbDir, "manifest.json"), manifestJson);
 
@@ -90,14 +90,14 @@ namespace RimSharp.Tests.Infrastructure.Data
         public void Constructor_WhenRulesDbMissingAndBundledExists_ShouldSeedFromBundledPlaceholders()
         {
 
-            var bundledDir = Path.Combine(_testTempDir, "bundled", "Rules", "db");
+            var bundledDir = Path.Combine(_testTempDir, "bundled", "Data", "db");
             Directory.CreateDirectory(bundledDir);
             File.WriteAllText(Path.Combine(bundledDir, "manifest.json"), "{}");
             File.WriteAllText(Path.Combine(bundledDir, "rules.json"), @"{ ""rules"": [] }");
 
             var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient, bundledDir);
 
-            var seededDir = Path.Combine(_testTempDir, "Rules", "db");
+            var seededDir = Path.Combine(_testTempDir, "Data", "db");
             Directory.Exists(seededDir).Should().BeTrue();
             File.Exists(Path.Combine(seededDir, "manifest.json")).Should().BeTrue();
             File.Exists(Path.Combine(seededDir, "rules.json")).Should().BeTrue();
@@ -108,11 +108,11 @@ namespace RimSharp.Tests.Infrastructure.Data
         public void Constructor_WhenRulesDbAlreadyPopulated_ShouldNotOverwriteFromBundled()
         {
 
-            var bundledDir = Path.Combine(_testTempDir, "bundled", "Rules", "db");
+            var bundledDir = Path.Combine(_testTempDir, "bundled", "Data", "db");
             Directory.CreateDirectory(bundledDir);
             File.WriteAllText(Path.Combine(bundledDir, "rules.json"), @"{ ""rules"": [] }");
 
-            var existingDbDir = Path.Combine(_testTempDir, "Rules", "db");
+            var existingDbDir = Path.Combine(_testTempDir, "Data", "db");
             Directory.CreateDirectory(existingDbDir);
             File.WriteAllText(Path.Combine(existingDbDir, "rules.json"), @"{ ""rules"": [""existing""] }");
 
@@ -125,11 +125,11 @@ namespace RimSharp.Tests.Infrastructure.Data
         public void Constructor_WhenBundledMissing_ShouldStillCreateEmptyRulesDb()
         {
 
-            var missingBundled = Path.Combine(_testTempDir, "does-not-exist", "Rules", "db");
+            var missingBundled = Path.Combine(_testTempDir, "does-not-exist", "Data", "db");
 
             var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient, missingBundled);
 
-            Directory.Exists(Path.Combine(_testTempDir, "Rules", "db")).Should().BeTrue();
+            Directory.Exists(Path.Combine(_testTempDir, "Data", "db")).Should().BeTrue();
         }
 
         private class MockHttpMessageHandler : HttpMessageHandler

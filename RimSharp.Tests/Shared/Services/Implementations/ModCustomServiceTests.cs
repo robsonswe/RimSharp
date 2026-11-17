@@ -23,7 +23,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             _mockLogger = Substitute.For<ILoggerService>();
             _testTempDir = Path.Combine(Path.GetTempPath(), "RimSharpTests_Custom_" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_testTempDir);
-            _modsJsonPath = Path.Combine(_testTempDir, "Rules", "Custom", "Mods.json");
+            _modsJsonPath = Path.Combine(_testTempDir, "Data", "Custom", "Mods.json");
         }
 
         public void Dispose()

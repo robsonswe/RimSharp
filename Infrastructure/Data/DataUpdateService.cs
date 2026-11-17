@@ -20,7 +20,7 @@ namespace RimSharp.Infrastructure.Data
         private readonly string _remoteBaseUrl = "https://raw.githubusercontent.com/robsonswe/RimSharpDB/main/";
 
         public DataUpdateService(ILoggerService logger, string appBasePath, HttpClient httpClient)
-            : this(logger, appBasePath, httpClient, Path.Combine(AppDataPaths.BaseDirectory, "Rules", "db"))
+            : this(logger, appBasePath, httpClient, Path.Combine(AppDataPaths.BaseDirectory, "Data", "db"))
         {
         }
 
@@ -36,7 +36,7 @@ namespace RimSharp.Infrastructure.Data
             }
 
             // Store data in a reliable, user-specific location
-            _localRulesPath = Path.Combine(appBasePath, "Rules", "db");
+            _localRulesPath = Path.Combine(appBasePath, "Data", "db");
 
             SeedFromBundledPlaceholders();
 
@@ -44,10 +44,10 @@ namespace RimSharp.Infrastructure.Data
         }
 
         /// <summary>
-        /// First-run seeding: when the writable Rules/db does not exist yet
+        /// First-run seeding: when the writable Data/db does not exist yet
         /// (e.g. fresh XDG data directory on Linux), copy the bundled
         /// placeholder files that ship next to the executable
-        /// ("&lt;BaseDirectory&gt;/Rules/db") into the writable location.
+        /// ("&lt;BaseDirectory&gt;/Data/db") into the writable location.
         /// On Windows the writable location IS the exe-side directory, so
         /// this is a no-op there.
         /// </summary>
@@ -81,11 +81,11 @@ namespace RimSharp.Infrastructure.Data
                     File.Copy(file, Path.Combine(_localRulesPath, Path.GetFileName(file)), overwrite: false);
                 }
 
-                _logger.LogInfo($"Seeded Rules/db from bundled placeholders: {bundledDir} -> {_localRulesPath}", nameof(DataUpdateService));
+                _logger.LogInfo($"Seeded Data/db from bundled placeholders: {bundledDir} -> {_localRulesPath}", nameof(DataUpdateService));
             }
             catch (Exception ex)
             {
-                _logger.LogWarning($"Failed to seed Rules/db from bundled placeholders: {ex.Message}", nameof(DataUpdateService));
+                _logger.LogWarning($"Failed to seed Data/db from bundled placeholders: {ex.Message}", nameof(DataUpdateService));
             }
         }
 

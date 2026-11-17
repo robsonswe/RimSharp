@@ -105,6 +105,12 @@ namespace RimSharp.AppDir.AppFiles
                 // built so ConfigService reads the migrated config.cfg.
                 AppDataPaths.MigrateLegacyLocations();
 
+                // One-time migration of the renamed data folder (Rules -> Data).
+                // Cross-platform: the folder sits next to the exe on Windows.
+                // Runs before services are built so DataUpdateService,
+                // ModCustomService and friends see the renamed location.
+                AppDataPaths.MigrateRenamedDataFolder();
+
                 var services = new ServiceCollection();
                 ConfigureServices(services);
                 ServiceProvider = services.BuildServiceProvider();

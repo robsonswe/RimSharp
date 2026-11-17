@@ -169,5 +169,62 @@ namespace RimSharp.Tests.Infrastructure.Configuration
 
             AppDataPaths.EnsureDirectory(target).Should().Be(target);
         }
+
+        [Fact]
+        public void MigrateRenamedDataFolderCore_WhenSourceMissing_ShouldBeNoOp()
+        {
+            var source = Path.Combine(_tempRoot, "missing-rules");
+            var target = Path.Combine(_tempRoot, "data");
+
+            AppDataPaths.MigrateRenamedDataFolderCore(source, target);
+
+            Directory.Exists(source).Should().BeFalse();
+            Directory.Exists(target).Should().BeFalse();
+        }
+
+        [Fact]
+        public void MigrateRenamedDataFolderCore_WhenTargetMissing_ShouldRenameFolder()
+        {
+            var source = Path.Combine(_tempRoot, "rules");
+            var target = Path.Combine(_tempRoot, "data");
+            Directory.CreateDirectory(Path.Combine(source, "db"));
+            File.WriteAllText(Path.Combine(source, "db", "db.json"), "{}");
+
+            AppDataPaths.MigrateRenamedDataFolderCore(source, target);
+
+            Directory.Exists(source).Should().BeFalse();
+            File.Exists(Path.Combine(target, "db", "db.json")).Should().BeTrue();
+        }
+
+        [Fact]
+        public void MigrateRenamedDataFolderCore_WhenTargetExists_ShouldOverwritePlaceholders()
+        {
+            var source = Path.Combine(_tempRoot, "rules");
+            var target = Path.Combine(_tempRoot, "data");
+            Directory.CreateDirectory(Path.Combine(source, "db"));
+            File.WriteAllText(Path.Combine(source, "db", "db.json"), "user-data");
+            Directory.CreateDirectory(Path.Combine(target, "db"));
+            File.WriteAllText(Path.Combine(target, "db", "db.json"), "{}");
+
+            AppDataPaths.MigrateRenamedDataFolderCore(source, target);
+
+            File.ReadAllText(Path.Combine(target, "db", "db.json")).Should().Be("user-data");
+        }
+
+        [Fact]
+        public void MigrateRenamedDataFolderCore_WhenTargetExists_ShouldMoveMissingSubdirsAndKeepExisting()
+        {
+            var source = Path.Combine(_tempRoot, "rules");
+            var target = Path.Combine(_tempRoot, "data");
+            Directory.CreateDirectory(Path.Combine(source, "Custom"));
+            File.WriteAllText(Path.Combine(source, "Custom", "Mods.json"), "user-custom");
+            Directory.CreateDirectory(Path.Combine(target, "Custom"));
+            File.WriteAllText(Path.Combine(target, "Custom", "Keep.json"), "fresh");
+
+            AppDataPaths.MigrateRenamedDataFolderCore(source, target);
+
+            File.Exists(Path.Combine(target, "Custom", "Keep.json")).Should().BeTrue();
+            File.Exists(Path.Combine(target, "Custom", "Mods.json")).Should().BeTrue();
+        }
     }
 }
