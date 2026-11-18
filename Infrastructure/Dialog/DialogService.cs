@@ -54,6 +54,7 @@ namespace RimSharp.Infrastructure.Dialog
         private readonly IModInfoSourceManager? _modInfoSourceManager;
         private readonly IModReplacementSourceManager? _replacementSourceManager;
         private readonly INoVersionWarningSourceManager? _noVersionWarningSourceManager;
+        private readonly IDataUpdateService? _dataUpdateService;
         private readonly IModService? _modService;
         private int _openDialogCount;
         public bool IsAnyDialogOpen => _openDialogCount > 0;
@@ -77,7 +78,8 @@ namespace RimSharp.Infrastructure.Dialog
             IModService? modService = null,
             IModInfoSourceManager? modInfoSourceManager = null,
             IModReplacementSourceManager? replacementSourceManager = null,
-            INoVersionWarningSourceManager? noVersionWarningSourceManager = null)
+            INoVersionWarningSourceManager? noVersionWarningSourceManager = null,
+            IDataUpdateService? dataUpdateService = null)
         {
             _appUpdaterService = appUpdaterService;
             _configService = configService;
@@ -96,6 +98,7 @@ namespace RimSharp.Infrastructure.Dialog
             _modInfoSourceManager = modInfoSourceManager;
             _replacementSourceManager = replacementSourceManager;
             _noVersionWarningSourceManager = noVersionWarningSourceManager;
+            _dataUpdateService = dataUpdateService;
         }
 
         private void OnPropertyChanged(string propertyName)
@@ -316,7 +319,8 @@ namespace RimSharp.Infrastructure.Dialog
                 ruleSourceManager: _ruleSourceManager,
                 modInfoSourceManager: _modInfoSourceManager,
                 replacementSourceManager: _replacementSourceManager,
-                noVersionWarningSourceManager: _noVersionWarningSourceManager);
+                noVersionWarningSourceManager: _noVersionWarningSourceManager,
+                dataUpdateService: _dataUpdateService);
             var dialog = new SettingsDialogView(viewModel);
             return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }

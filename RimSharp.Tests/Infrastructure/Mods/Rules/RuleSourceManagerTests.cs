@@ -182,25 +182,6 @@ namespace RimSharp.Tests.Infrastructure.Mods.Rules
         }
 
         [Fact]
-        public async Task RefreshAllAsync_ShouldSyncThenInvalidateAndReapply()
-        {
-            await _manager.RefreshAllAsync(TestContext.Current.CancellationToken);
-
-            await _mockSyncService.Received(1).RefreshAllRuleSourcesAsync(Arg.Any<System.Threading.CancellationToken>());
-            await _mockModService.Received(1).ReapplyRulesAsync();
-        }
-
-        [Fact]
-        public async Task RefreshSourceAsync_ShouldSyncOnlyThatSourceThenReapply()
-        {
-            await _manager.RefreshSourceAsync(ModRuleSourceRegistry.CommunitySourceId, TestContext.Current.CancellationToken);
-
-            await _mockSyncService.Received(1).RefreshRuleSourceAsync(
-                ModRuleSourceRegistry.CommunitySourceId, Arg.Any<System.Threading.CancellationToken>());
-            await _mockModService.Received(1).ReapplyRulesAsync();
-        }
-
-        [Fact]
         public void EffectiveTimestamp_ShouldComeFromTheNewestSource()
         {
             _manager.EffectiveTimestamp.Should().Be(1789239946);

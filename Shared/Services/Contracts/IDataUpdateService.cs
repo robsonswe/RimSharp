@@ -25,22 +25,29 @@ public interface IDataUpdateService
     Task SyncRuleSourcesAsync(IProgress<DataUpdateProgress>? progress, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Manual refresh of a single rule source (settings "Update now").
+    /// Fetches and validates a single new rule source before it is added to the
+    /// registry. Throws <see cref="InvalidOperationException"/> with a friendly
+    /// message when the download fails or its content is invalid.
     /// </summary>
-    Task RefreshRuleSourceAsync(string sourceId, CancellationToken cancellationToken);
+    Task SyncNewRuleSourceAsync(string sourceId, string url, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Manual refresh of every enabled repoFile rule source (settings
-    /// "Update all").
+    /// Fetches and validates a single new ModInfo source before it is added to
+    /// the registry. Throws on download or validation failure.
     /// </summary>
-    Task RefreshAllRuleSourcesAsync(CancellationToken cancellationToken);
+    Task SyncNewModInfoSourceAsync(string sourceId, string url, CancellationToken cancellationToken = default);
 
-    Task RefreshModInfoSourceAsync(string sourceId, CancellationToken cancellationToken);
-    Task RefreshAllModInfoSourcesAsync(CancellationToken cancellationToken);
+    /// <summary>
+    /// Fetches and validates a single new replacement source before it is added
+    /// to the registry. Honors the .gz decompression path. Throws on download
+    /// or validation failure.
+    /// </summary>
+    Task SyncNewReplacementSourceAsync(string sourceId, string url, CancellationToken cancellationToken = default);
 
-    Task RefreshReplacementSourceAsync(string sourceId, CancellationToken cancellationToken);
-    Task RefreshAllReplacementSourcesAsync(CancellationToken cancellationToken);
-
-    Task RefreshNoVersionWarningSourceAsync(string sourceId, CancellationToken cancellationToken);
-    Task RefreshAllNoVersionWarningSourcesAsync(CancellationToken cancellationToken);
+    /// <summary>
+    /// Fetches and validates a single new NoVersionWarning source (its
+    /// per-version ModIdsToFix.xml tree) before it is added to the registry.
+    /// Throws on download or validation failure.
+    /// </summary>
+    Task SyncNewNoVersionWarningSourceAsync(string sourceId, string url, CancellationToken cancellationToken = default);
 }

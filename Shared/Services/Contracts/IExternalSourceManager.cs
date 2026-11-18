@@ -1,14 +1,12 @@
 #nullable enable
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace RimSharp.Shared.Services.Contracts
 {
     /// <summary>
     /// Common contract for external data source managers (Rules, ModInfo, Replacements,
-    /// NoVersionWarning). Manages the source registry commit path, manual refreshes,
-    /// and checking if local mods are installed.
+    /// NoVersionWarning). Manages the source registry commit path and checking if
+    /// local mods are installed. Remote sources sync automatically at startup.
     /// </summary>
     public interface IExternalSourceManager
     {
@@ -28,16 +26,6 @@ namespace RimSharp.Shared.Services.Contracts
         /// Persists the current registry state and invalidates caches / re-applies data.
         /// </summary>
         void CommitRegistryChanges();
-
-        /// <summary>
-        /// Fetches every enabled remote source, then invalidates caches.
-        /// </summary>
-        Task RefreshAllAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Fetches one source, then invalidates caches.
-        /// </summary>
-        Task RefreshSourceAsync(string sourceId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Checks whether a mod with the given folder/workshop ID is installed on disk.

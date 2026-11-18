@@ -101,7 +101,6 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
             row.Id.Should().Be(ModInfoSourceRegistry.CuratedSourceId);
             row.Locked.Should().BeTrue();
             row.LockedBadge.Should().Be("built-in");
-            row.CanUpdate.Should().BeFalse();
         }
 
         [Fact]
@@ -118,7 +117,6 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
             modRow!.IsMod.Should().BeTrue();
             modRow.Locked.Should().BeTrue();
             modRow.LockedBadge.Should().Be("mod");
-            modRow.CanUpdate.Should().BeFalse();
         }
 
         [Fact]

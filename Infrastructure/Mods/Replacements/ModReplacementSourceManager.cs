@@ -190,18 +190,6 @@ namespace RimSharp.Infrastructure.Mods.Replacements
             _logger.LogInfo("Mod replacement source registry changed; invalidated replacement cache.", nameof(ModReplacementSourceManager));
         }
 
-        public async Task RefreshAllAsync(CancellationToken cancellationToken = default)
-        {
-            await _dataUpdateService.RefreshAllReplacementSourcesAsync(cancellationToken).ConfigureAwait(false);
-            _replacementService.Invalidate();
-        }
-
-        public async Task RefreshSourceAsync(string sourceId, CancellationToken cancellationToken = default)
-        {
-            await _dataUpdateService.RefreshReplacementSourceAsync(sourceId, cancellationToken).ConfigureAwait(false);
-            _replacementService.Invalidate();
-        }
-
         public bool IsModInstalled(string? modFolderId)
         {
             return !string.IsNullOrEmpty(ResolveModFolderPath(modFolderId));

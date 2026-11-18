@@ -192,26 +192,6 @@ namespace RimSharp.Infrastructure.Mods.Versions
             }
         }
 
-        public async Task RefreshAllAsync(CancellationToken cancellationToken = default)
-        {
-            await _dataUpdateService.RefreshAllNoVersionWarningSourcesAsync(cancellationToken).ConfigureAwait(false);
-            _mlieVersionService.Invalidate();
-            if (_modService != null)
-            {
-                await _modService.ReapplyRulesAsync().ConfigureAwait(false);
-            }
-        }
-
-        public async Task RefreshSourceAsync(string sourceId, CancellationToken cancellationToken = default)
-        {
-            await _dataUpdateService.RefreshNoVersionWarningSourceAsync(sourceId, cancellationToken).ConfigureAwait(false);
-            _mlieVersionService.Invalidate();
-            if (_modService != null)
-            {
-                await _modService.ReapplyRulesAsync().ConfigureAwait(false);
-            }
-        }
-
         public bool IsModInstalled(string? modFolderId)
         {
             return !string.IsNullOrEmpty(ResolveModFolderPath(modFolderId));

@@ -81,7 +81,6 @@ namespace RimSharp.AppDir.Dialogs
             _fileDialogService = fileDialogService;
 
             EditLocationCommand = CreateAsyncCommand(() => EditLocationAsync(this));
-            UpdateNowCommand = CreateAsyncCommand(() => UpdateNowAsync(this));
             ToggleEnabledCommand = CreateCommand(() => Enabled = !Enabled);
         }
 
@@ -158,8 +157,6 @@ namespace RimSharp.AppDir.Dialogs
         /// <summary>"built-in" or "mod" badge text shown on locked rows.</summary>
         public string LockedBadge => IsCurated ? "built-in" : (IsMod ? "mod" : string.Empty);
 
-        public bool CanUpdate => IsRepoFile && !string.IsNullOrWhiteSpace(Url) && !IsCurated;
-
         /// <summary>
         /// Per-source "rules as of" date (short date) derived from that
         /// source's upstream timestamp, or empty when the source provides none.
@@ -195,7 +192,6 @@ namespace RimSharp.AppDir.Dialogs
         }
 
         public ICommand EditLocationCommand { get; }
-        public ICommand UpdateNowCommand { get; }
         public ICommand ToggleEnabledCommand { get; }
 
         private async Task EditLocationAsync(RuleSourceRowViewModel row)
@@ -232,18 +228,6 @@ namespace RimSharp.AppDir.Dialogs
             }
         }
 
-        private async Task UpdateNowAsync(RuleSourceRowViewModel row)
-        {
-            if (_sourceManager == null || !row.CanUpdate) return;
-            try
-            {
-                await _sourceManager.RefreshSourceAsync(row.Id);
-            }
-            catch (Exception)
-            {
-                // RefreshSourceAsync already isolates per-source failures.
-            }
-        }
     }
 
     public class SettingsDialogViewModel : DialogViewModelBase<bool>
@@ -269,6 +253,7 @@ namespace RimSharp.AppDir.Dialogs
         private readonly Shared.Services.Contracts.IModInfoSourceManager? _modInfoSourceManager;
         private readonly Shared.Services.Contracts.IModReplacementSourceManager? _replacementSourceManager;
         private readonly Shared.Services.Contracts.INoVersionWarningSourceManager? _noVersionWarningSourceManager;
+        private readonly IDataUpdateService? _dataUpdateService;
 
         private string _gamePath = string.Empty;
         public string GamePath { get => _gamePath; set
@@ -453,7 +438,7 @@ namespace RimSharp.AppDir.Dialogs
         public bool CanMoveRuleSourceDown => SelectedRuleSource != null && RuleSources.IndexOf(SelectedRuleSource) >= 0 && RuleSources.IndexOf(SelectedRuleSource) < RuleSources.Count - 1;
 
         private string _ruleSourcesStatus = string.Empty;
-        /// <summary>Status line under the rule source list ("rules as of ...", update results).</summary>
+        /// <summary>Status line under the rule source list ("rules as of ...").</summary>
         public string RuleSourcesStatus
         {
             get => _ruleSourcesStatus;
@@ -464,7 +449,6 @@ namespace RimSharp.AppDir.Dialogs
         public ICommand RemoveRuleSourceCommand { get; }
         public ICommand MoveRuleSourceUpCommand { get; }
         public ICommand MoveRuleSourceDownCommand { get; }
-        public ICommand UpdateAllRuleSourcesCommand { get; }
         public ICommand ResetRuleSourcesCommand { get; }
 
         // --- ModInfo (Dictionary) Databases section --------------------------
@@ -500,7 +484,6 @@ namespace RimSharp.AppDir.Dialogs
         public ICommand RemoveModInfoSourceCommand { get; }
         public ICommand MoveModInfoSourceUpCommand { get; }
         public ICommand MoveModInfoSourceDownCommand { get; }
-        public ICommand UpdateAllModInfoSourcesCommand { get; }
         public ICommand ResetModInfoSourcesCommand { get; }
 
         // --- Replacements Databases section ---------------------------------
@@ -536,7 +519,6 @@ namespace RimSharp.AppDir.Dialogs
         public ICommand RemoveReplacementSourceCommand { get; }
         public ICommand MoveReplacementSourceUpCommand { get; }
         public ICommand MoveReplacementSourceDownCommand { get; }
-        public ICommand UpdateAllReplacementSourcesCommand { get; }
         public ICommand ResetReplacementSourcesCommand { get; }
 
         // --- NoVersionWarning Databases section ------------------------------
@@ -572,7 +554,6 @@ namespace RimSharp.AppDir.Dialogs
         public ICommand RemoveNoVersionWarningSourceCommand { get; }
         public ICommand MoveNoVersionWarningSourceUpCommand { get; }
         public ICommand MoveNoVersionWarningSourceDownCommand { get; }
-        public ICommand UpdateAllNoVersionWarningSourcesCommand { get; }
         public ICommand ResetNoVersionWarningSourcesCommand { get; }
 
         public SettingsDialogViewModel(
@@ -588,7 +569,8 @@ namespace RimSharp.AppDir.Dialogs
             IRuleSourceManager? ruleSourceManager = null,
             Shared.Services.Contracts.IModInfoSourceManager? modInfoSourceManager = null,
             Shared.Services.Contracts.IModReplacementSourceManager? replacementSourceManager = null,
-            Shared.Services.Contracts.INoVersionWarningSourceManager? noVersionWarningSourceManager = null)
+            Shared.Services.Contracts.INoVersionWarningSourceManager? noVersionWarningSourceManager = null,
+            IDataUpdateService? dataUpdateService = null)
         : base("RimSharp Settings")
         {
             _configService = configService ?? throw new ArgumentNullException(nameof(configService));
@@ -602,6 +584,7 @@ namespace RimSharp.AppDir.Dialogs
             _modInfoSourceManager = modInfoSourceManager;
             _replacementSourceManager = replacementSourceManager;
             _noVersionWarningSourceManager = noVersionWarningSourceManager;
+            _dataUpdateService = dataUpdateService;
             ShowAiProviders = showAiProviders;
 
             _gamePath = _configService.GetConfigValue(GameFolderKey) ?? string.Empty;
@@ -645,7 +628,6 @@ namespace RimSharp.AppDir.Dialogs
                 var t = r ?? SelectedRuleSource;
                 return t != null && RuleSources.IndexOf(t) >= 0 && RuleSources.IndexOf(t) < RuleSources.Count - 1;
             }, nameof(SelectedRuleSource));
-            UpdateAllRuleSourcesCommand = CreateAsyncCommand(UpdateAllRuleSourcesAsync);
             ResetRuleSourcesCommand = CreateCommand(ResetRuleSources);
 
             // ModInfo Databases section
@@ -666,7 +648,6 @@ namespace RimSharp.AppDir.Dialogs
                 var t = r ?? SelectedModInfoSource;
                 return t != null && ModInfoSources.IndexOf(t) >= 0 && ModInfoSources.IndexOf(t) < ModInfoSources.Count - 1;
             }, nameof(SelectedModInfoSource));
-            UpdateAllModInfoSourcesCommand = CreateAsyncCommand(UpdateAllModInfoSourcesAsync);
             ResetModInfoSourcesCommand = CreateCommand(ResetModInfoSources);
 
             // Replacements Databases section
@@ -687,7 +668,6 @@ namespace RimSharp.AppDir.Dialogs
                 var t = r ?? SelectedReplacementSource;
                 return t != null && ReplacementSources.IndexOf(t) >= 0 && ReplacementSources.IndexOf(t) < ReplacementSources.Count - 1;
             }, nameof(SelectedReplacementSource));
-            UpdateAllReplacementSourcesCommand = CreateAsyncCommand(UpdateAllReplacementSourcesAsync);
             ResetReplacementSourcesCommand = CreateCommand(ResetReplacementSources);
 
             // NoVersionWarning Databases section
@@ -708,7 +688,6 @@ namespace RimSharp.AppDir.Dialogs
                 var t = r ?? SelectedNoVersionWarningSource;
                 return t != null && NoVersionWarningSources.IndexOf(t) >= 0 && NoVersionWarningSources.IndexOf(t) < NoVersionWarningSources.Count - 1;
             }, nameof(SelectedNoVersionWarningSource));
-            UpdateAllNoVersionWarningSourcesCommand = CreateAsyncCommand(UpdateAllNoVersionWarningSourcesAsync);
             ResetNoVersionWarningSourcesCommand = CreateCommand(ResetNoVersionWarningSources);
         }
 
@@ -758,7 +737,7 @@ namespace RimSharp.AppDir.Dialogs
 
         private async Task AddRemoteRuleSourceAsync()
         {
-            if (_ruleSourceManager == null || _dialogService == null) return;
+            if (_ruleSourceManager == null || _dialogService == null || _dataUpdateService == null) return;
 
             var (result, name, url) = await _dialogService.ShowRuleSourceEditorDialogAsync(
                 "Add Rule Database",
@@ -770,6 +749,17 @@ namespace RimSharp.AppDir.Dialogs
             url = url.Trim();
             var id = BuildUniqueSourceId(Path.GetFileNameWithoutExtension(GetUrlPath(url)), RuleSources);
             var displayName = string.IsNullOrWhiteSpace(name) ? id : name.Trim();
+
+            try
+            {
+                await _dataUpdateService.SyncNewRuleSourceAsync(id, url);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Could not add rule source '{id}': {ex.Message}", nameof(SettingsDialogViewModel));
+                _ = _dialogService.ShowError("Could not add source", ex.Message);
+                return;
+            }
 
             RuleSources.Add(CreateRow(new ModRuleSourceRecord
             {
@@ -816,23 +806,6 @@ namespace RimSharp.AppDir.Dialogs
             LoadRuleSources();
         }
 
-        private async Task UpdateAllRuleSourcesAsync()
-        {
-            if (_ruleSourceManager == null) return;
-
-            RuleSourcesStatus = "Updating rule databases...";
-            try
-            {
-                await _ruleSourceManager.RefreshAllAsync();
-                RefreshRuleSourcesStatus();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning($"Rule database update failed: {ex.Message}", nameof(SettingsDialogViewModel));
-                RuleSourcesStatus = "Update failed. Check the URLs and your internet connection.";
-            }
-        }
-
         // --- ModInfo (Dictionary) handlers ----------------------------------
         private void LoadModInfoSources()
         {
@@ -867,7 +840,7 @@ namespace RimSharp.AppDir.Dialogs
 
         private async Task AddRemoteModInfoSourceAsync()
         {
-            if (_modInfoSourceManager == null || _dialogService == null) return;
+            if (_modInfoSourceManager == null || _dialogService == null || _dataUpdateService == null) return;
 
             var (result, name, url) = await _dialogService.ShowRuleSourceEditorDialogAsync(
                 "Add Mod Info Database",
@@ -879,6 +852,17 @@ namespace RimSharp.AppDir.Dialogs
             url = url.Trim();
             var id = BuildUniqueSourceId(Path.GetFileNameWithoutExtension(GetUrlPath(url)), ModInfoSources);
             var displayName = string.IsNullOrWhiteSpace(name) ? id : name.Trim();
+
+            try
+            {
+                await _dataUpdateService.SyncNewModInfoSourceAsync(id, url);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Could not add ModInfo source '{id}': {ex.Message}", nameof(SettingsDialogViewModel));
+                _ = _dialogService.ShowError("Could not add source", ex.Message);
+                return;
+            }
 
             ModInfoSources.Add(CreateRow(new ModRuleSourceRecord
             {
@@ -925,23 +909,6 @@ namespace RimSharp.AppDir.Dialogs
             LoadModInfoSources();
         }
 
-        private async Task UpdateAllModInfoSourcesAsync()
-        {
-            if (_modInfoSourceManager == null) return;
-
-            ModInfoSourcesStatus = "Updating mod info databases...";
-            try
-            {
-                await _modInfoSourceManager.RefreshAllAsync();
-                RefreshModInfoSourcesStatus();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning($"Mod info database update failed: {ex.Message}", nameof(SettingsDialogViewModel));
-                ModInfoSourcesStatus = "Update failed. Check the URLs and your internet connection.";
-            }
-        }
-
         // --- Replacements handlers ------------------------------------------
         private void LoadReplacementSources()
         {
@@ -980,7 +947,7 @@ namespace RimSharp.AppDir.Dialogs
 
         private async Task AddRemoteReplacementSourceAsync()
         {
-            if (_replacementSourceManager == null || _dialogService == null) return;
+            if (_replacementSourceManager == null || _dialogService == null || _dataUpdateService == null) return;
 
             var (result, name, url) = await _dialogService.ShowRuleSourceEditorDialogAsync(
                 "Add Replacement Database",
@@ -992,6 +959,17 @@ namespace RimSharp.AppDir.Dialogs
             url = url.Trim();
             var id = BuildUniqueSourceId(Path.GetFileNameWithoutExtension(GetUrlPath(url)), ReplacementSources);
             var displayName = string.IsNullOrWhiteSpace(name) ? id : name.Trim();
+
+            try
+            {
+                await _dataUpdateService.SyncNewReplacementSourceAsync(id, url);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Could not add replacement source '{id}': {ex.Message}", nameof(SettingsDialogViewModel));
+                _ = _dialogService.ShowError("Could not add source", ex.Message);
+                return;
+            }
 
             ReplacementSources.Add(CreateRow(new ModRuleSourceRecord
             {
@@ -1038,23 +1016,6 @@ namespace RimSharp.AppDir.Dialogs
             LoadReplacementSources();
         }
 
-        private async Task UpdateAllReplacementSourcesAsync()
-        {
-            if (_replacementSourceManager == null) return;
-
-            ReplacementSourcesStatus = "Updating replacement databases...";
-            try
-            {
-                await _replacementSourceManager.RefreshAllAsync();
-                RefreshReplacementSourcesStatus();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning($"Replacement database update failed: {ex.Message}", nameof(SettingsDialogViewModel));
-                ReplacementSourcesStatus = "Update failed. Check the URLs and your internet connection.";
-            }
-        }
-
         // --- NoVersionWarning handlers --------------------------------------
         private void LoadNoVersionWarningSources()
         {
@@ -1093,7 +1054,7 @@ namespace RimSharp.AppDir.Dialogs
 
         private async Task AddRemoteNoVersionWarningSourceAsync()
         {
-            if (_noVersionWarningSourceManager == null || _dialogService == null) return;
+            if (_noVersionWarningSourceManager == null || _dialogService == null || _dataUpdateService == null) return;
 
             var (result, name, url) = await _dialogService.ShowRuleSourceEditorDialogAsync(
                 "Add Version Warning Database",
@@ -1105,6 +1066,17 @@ namespace RimSharp.AppDir.Dialogs
             url = url.Trim();
             var id = BuildUniqueSourceId(Path.GetFileNameWithoutExtension(GetUrlPath(url)), NoVersionWarningSources);
             var displayName = string.IsNullOrWhiteSpace(name) ? id : name.Trim();
+
+            try
+            {
+                await _dataUpdateService.SyncNewNoVersionWarningSourceAsync(id, url);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Could not add NoVersionWarning source '{id}': {ex.Message}", nameof(SettingsDialogViewModel));
+                _ = _dialogService.ShowError("Could not add source", ex.Message);
+                return;
+            }
 
             NoVersionWarningSources.Add(CreateRow(new ModRuleSourceRecord
             {
@@ -1149,23 +1121,6 @@ namespace RimSharp.AppDir.Dialogs
             if (_noVersionWarningSourceManager == null) return;
             _noVersionWarningSourceManager.Registry.ResetToDefaults();
             LoadNoVersionWarningSources();
-        }
-
-        private async Task UpdateAllNoVersionWarningSourcesAsync()
-        {
-            if (_noVersionWarningSourceManager == null) return;
-
-            NoVersionWarningSourcesStatus = "Updating version warning databases...";
-            try
-            {
-                await _noVersionWarningSourceManager.RefreshAllAsync();
-                RefreshNoVersionWarningSourcesStatus();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning($"Version warning database update failed: {ex.Message}", nameof(SettingsDialogViewModel));
-                NoVersionWarningSourcesStatus = "Update failed. Check the URLs and your internet connection.";
-            }
         }
 
         private static string GetUrlPath(string url) =>

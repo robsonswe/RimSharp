@@ -22,6 +22,7 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
         private readonly ILoggerService _mockLogger;
         private readonly ISteamClaimValidator _mockSteamClaimValidator;
         private readonly IRuleSourceManager _mockRuleSourceManager;
+        private readonly IDataUpdateService _mockDataUpdateService;
 
         public SettingsDialogViewModelRuleSourcesTests()
         {
@@ -39,6 +40,8 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
             _mockRuleSourceManager = Substitute.For<IRuleSourceManager>();
             _mockRuleSourceManager.Registry.Returns(new ModRuleSourceRegistry(new NullConfigService()));
             _mockRuleSourceManager.EffectiveTimestamp.Returns((long?)1789239946);
+
+            _mockDataUpdateService = Substitute.For<IDataUpdateService>();
         }
 
         private SettingsDialogViewModel CreateViewModel(
@@ -57,7 +60,8 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
                 CreateStubDetectionWithoutCandidates(),
                 dialogService: dialogService,
                 showAiProviders: false,
-                ruleSourceManager: ruleSourceManager);
+                ruleSourceManager: ruleSourceManager,
+                dataUpdateService: _mockDataUpdateService);
         }
 
         private static GameInstallationDetectionService CreateStubDetectionWithoutCandidates()
@@ -185,7 +189,7 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
         }
 
         [Fact]
-        public async Task AddRemoteRuleSource_ShouldAppendARowWithTheUrl()
+        public async Task AddRemoteRuleSource_ShouldFetchValidateThenAppendARowWithTheUrl()
         {
             var dialogService = Substitute.For<IDialogService>();
             dialogService.ShowRuleSourceEditorDialogAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>())
@@ -196,12 +200,32 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
             vm.AddRemoteRuleSourceCommand.Execute(null);
             await Task.Delay(100, TestContext.Current.CancellationToken);
 
+            await _mockDataUpdateService.Received(1).SyncNewRuleSourceAsync(
+                "myRules", "https://example.invalid/myRules.json", Arg.Any<CancellationToken>());
             vm.RuleSources.Should().HaveCount(3);
             var added = vm.RuleSources.Last();
             added.Url.Should().Be("https://example.invalid/myRules.json");
             added.Name.Should().Be("My Rules");
             added.IsRepoFile.Should().BeTrue();
             added.Id.Should().Be("myRules");
+        }
+
+        [Fact]
+        public async Task AddRemoteRuleSource_WhenFetchFails_ShouldNotAppendARowAndShowError()
+        {
+            var dialogService = Substitute.For<IDialogService>();
+            dialogService.ShowRuleSourceEditorDialogAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>())
+                .Returns(Task.FromResult((MessageDialogResult.OK, "My Rules", "https://example.invalid/myRules.json")));
+            _mockDataUpdateService.SyncNewRuleSourceAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(_ => Task.FromException(new InvalidOperationException("bad content")));
+
+            var vm = CreateViewModel(new NullConfigService(), _mockRuleSourceManager, dialogService);
+
+            vm.AddRemoteRuleSourceCommand.Execute(null);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
+
+            vm.RuleSources.Should().HaveCount(2);
+            await dialogService.Received(1).ShowError("Could not add source", "bad content");
         }
 
         private sealed class NullConfigService : IConfigService

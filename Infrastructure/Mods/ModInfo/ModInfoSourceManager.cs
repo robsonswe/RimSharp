@@ -126,18 +126,6 @@ namespace RimSharp.Infrastructure.Mods.ModInfo
             _logger.LogInfo("ModInfo source registry changed; invalidated dictionary cache.", nameof(ModInfoSourceManager));
         }
 
-        public async Task RefreshAllAsync(CancellationToken cancellationToken = default)
-        {
-            await _dataUpdateService.RefreshAllModInfoSourcesAsync(cancellationToken).ConfigureAwait(false);
-            _dictionaryService.Invalidate();
-        }
-
-        public async Task RefreshSourceAsync(string sourceId, CancellationToken cancellationToken = default)
-        {
-            await _dataUpdateService.RefreshModInfoSourceAsync(sourceId, cancellationToken).ConfigureAwait(false);
-            _dictionaryService.Invalidate();
-        }
-
         public bool IsModInstalled(string? modFolderId) => false;
     }
 }

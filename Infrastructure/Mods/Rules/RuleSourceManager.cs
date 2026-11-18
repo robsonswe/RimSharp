@@ -11,8 +11,7 @@ namespace RimSharp.Infrastructure.Mods.Rules
     /// <summary>
     /// Default <see cref="IRuleSourceManager"/>: owns the registry commit path
     /// (persist -> invalidate the merged rules cache -> re-apply onto the
-    /// loaded mods) and the manual refresh path (fetch -> invalidate ->
-    /// re-apply).
+    /// loaded mods). Remote sources sync automatically at startup.
     /// </summary>
     public class RuleSourceManager : IRuleSourceManager
     {
@@ -53,24 +52,6 @@ namespace RimSharp.Infrastructure.Mods.Rules
             _repository.Invalidate();
             _logger.LogInfo("Rule source registry changed; re-merging the rules database.", nameof(RuleSourceManager));
             _ = ReapplyAsync(nameof(CommitRegistryChanges));
-        }
-
-        public async Task RefreshAllAsync(CancellationToken cancellationToken = default)
-        {
-            await _dataUpdateService.RefreshAllRuleSourcesAsync(cancellationToken).ConfigureAwait(false);
-            await InvalidateAndReapplyAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        public async Task RefreshSourceAsync(string sourceId, CancellationToken cancellationToken = default)
-        {
-            await _dataUpdateService.RefreshRuleSourceAsync(sourceId, cancellationToken).ConfigureAwait(false);
-            await InvalidateAndReapplyAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        private async Task InvalidateAndReapplyAsync(CancellationToken cancellationToken)
-        {
-            _repository.Invalidate();
-            await _modService.ReapplyRulesAsync().ConfigureAwait(false);
         }
 
         private async Task ReapplyAsync(string caller)

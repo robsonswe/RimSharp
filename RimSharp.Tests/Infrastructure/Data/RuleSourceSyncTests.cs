@@ -245,7 +245,7 @@ namespace RimSharp.Tests.Infrastructure.Data
         }
 
         [Fact]
-        public async Task RefreshRuleSourceAsync_ShouldFetchOnlyTheRequestedSource()
+        public async Task SyncNewRuleSourceAsync_ShouldFetchOnlyTheRequestedUrlAndWriteItsCache()
         {
             var requestedUrls = new List<string>();
             _httpHandler.OnRequest = req =>
@@ -257,40 +257,39 @@ namespace RimSharp.Tests.Infrastructure.Data
                 };
             };
 
-            await CreateService().RefreshRuleSourceAsync("second-source", CancellationToken.None);
+            await CreateService().SyncNewRuleSourceAsync(
+                "new-source", "https://example.invalid/newRules.json", CancellationToken.None);
 
-            requestedUrls.Should().Contain(u => u.EndsWith("secondRules.json"));
-            requestedUrls.Should().NotContain(u => u.EndsWith("communityRules.json"));
+            requestedUrls.Should().ContainSingle(u => u.EndsWith("newRules.json"));
+            File.ReadAllText(CachePath("new-source", "newRules.json")).Should().Be(@"{ ""rules"": {} }");
         }
 
         [Fact]
-        public async Task RefreshAllRuleSourcesAsync_ShouldFetchEveryEnabledRepoFileSource()
+        public async Task SyncNewRuleSourceAsync_WhenContentInvalid_ShouldThrowAndKeepNoCache()
         {
-            var requestedUrls = new List<string>();
-            _httpHandler.OnRequest = req =>
+            _httpHandler.OnRequest = _ => new HttpResponseMessage(HttpStatusCode.OK)
             {
-                requestedUrls.Add(req.RequestUri!.ToString());
-                return new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent(@"{ ""rules"": {} }")
-                };
+                Content = new StringContent("<html>not json</html>")
             };
 
-            await CreateService().RefreshAllRuleSourcesAsync(CancellationToken.None);
+            Func<Task> act = () => CreateService().SyncNewRuleSourceAsync(
+                "new-source", "https://example.invalid/newRules.json", CancellationToken.None);
 
-            requestedUrls.Should().Contain(u => u.EndsWith("communityRules.json"));
-            requestedUrls.Should().Contain(u => u.EndsWith("secondRules.json"));
+            await act.Should().ThrowAsync<InvalidOperationException>();
+            File.Exists(CachePath("new-source", "newRules.json")).Should().BeFalse();
+            File.Exists(CachePath("new-source", "newRules.json") + ".etag").Should().BeFalse();
         }
 
         [Fact]
-        public async Task RefreshRuleSourceAsync_WhenSourceFails_ShouldThrowIsolatedError()
+        public async Task SyncNewRuleSourceAsync_WhenFetchFails_ShouldThrowFriendlyError()
         {
             _httpHandler.OnRequest = _ => new HttpResponseMessage(HttpStatusCode.NotFound);
 
-            Func<Task> act = () => CreateService().RefreshRuleSourceAsync(
-                ModRuleSourceRegistry.CommunitySourceId, CancellationToken.None);
+            Func<Task> act = () => CreateService().SyncNewRuleSourceAsync(
+                "new-source", "https://example.invalid/newRules.json", CancellationToken.None);
 
-            await act.Should().ThrowAsync<InvalidOperationException>();
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*check the URL*");
         }
 
         private class MockHttpMessageHandler : HttpMessageHandler

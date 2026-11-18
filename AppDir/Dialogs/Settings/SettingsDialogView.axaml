@@ -271,10 +271,6 @@
                                                             Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
                                                             IsVisible="{Binding !Locked}"
                                                             ToolTip.Tip="Edit name and URL"/>
-                                                    <Button Content="Update" Command="{Binding UpdateNowCommand}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding CanUpdate}"
-                                                            ToolTip.Tip="Refresh now"/>
                                                     <Button Content="Remove"
                                                             Command="{Binding DataContext.RemoveRuleSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                             CommandParameter="{Binding}"
@@ -311,8 +307,6 @@
 
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <Button Content="Add remote" Command="{Binding AddRemoteRuleSourceCommand}"
-                                        Classes="btn" Padding="10,4"/>
-                                <Button Content="Update all" Command="{Binding UpdateAllRuleSourcesCommand}"
                                         Classes="btn" Padding="10,4"/>
                                 <Button Content="Reset to defaults" Command="{Binding ResetRuleSourcesCommand}"
                                         Classes="btn" Padding="10,4"/>
@@ -364,10 +358,6 @@
                                                             Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
                                                             IsVisible="{Binding !Locked}"
                                                             ToolTip.Tip="Edit name and URL"/>
-                                                    <Button Content="Update" Command="{Binding UpdateNowCommand}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding CanUpdate}"
-                                                            ToolTip.Tip="Refresh now"/>
                                                     <Button Content="Remove"
                                                             Command="{Binding DataContext.RemoveModInfoSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                             CommandParameter="{Binding}"
@@ -404,8 +394,6 @@
 
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <Button Content="Add remote" Command="{Binding AddRemoteModInfoSourceCommand}"
-                                        Classes="btn" Padding="10,4"/>
-                                <Button Content="Update all" Command="{Binding UpdateAllModInfoSourcesCommand}"
                                         Classes="btn" Padding="10,4"/>
                                 <Button Content="Reset to defaults" Command="{Binding ResetModInfoSourcesCommand}"
                                         Classes="btn" Padding="10,4"/>
@@ -457,10 +445,6 @@
                                                             Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
                                                             IsVisible="{Binding !Locked}"
                                                             ToolTip.Tip="Edit name and URL"/>
-                                                    <Button Content="Update" Command="{Binding UpdateNowCommand}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding CanUpdate}"
-                                                            ToolTip.Tip="Refresh now"/>
                                                     <Button Content="Remove"
                                                             Command="{Binding DataContext.RemoveReplacementSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                             CommandParameter="{Binding}"
@@ -497,8 +481,6 @@
 
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <Button Content="Add remote" Command="{Binding AddRemoteReplacementSourceCommand}"
-                                        Classes="btn" Padding="10,4"/>
-                                <Button Content="Update all" Command="{Binding UpdateAllReplacementSourcesCommand}"
                                         Classes="btn" Padding="10,4"/>
                                 <Button Content="Reset to defaults" Command="{Binding ResetReplacementSourcesCommand}"
                                         Classes="btn" Padding="10,4"/>
@@ -550,10 +532,6 @@
                                                             Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
                                                             IsVisible="{Binding !Locked}"
                                                             ToolTip.Tip="Edit name and URL"/>
-                                                    <Button Content="Update" Command="{Binding UpdateNowCommand}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding CanUpdate}"
-                                                            ToolTip.Tip="Refresh now"/>
                                                     <Button Content="Remove"
                                                             Command="{Binding DataContext.RemoveNoVersionWarningSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                             CommandParameter="{Binding}"
@@ -590,8 +568,6 @@
 
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <Button Content="Add remote" Command="{Binding AddRemoteNoVersionWarningSourceCommand}"
-                                        Classes="btn" Padding="10,4"/>
-                                <Button Content="Update all" Command="{Binding UpdateAllNoVersionWarningSourcesCommand}"
                                         Classes="btn" Padding="10,4"/>
                                 <Button Content="Reset to defaults" Command="{Binding ResetNoVersionWarningSourcesCommand}"
                                         Classes="btn" Padding="10,4"/>

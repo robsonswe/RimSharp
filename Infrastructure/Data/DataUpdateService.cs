@@ -336,7 +336,9 @@ namespace RimSharp.Infrastructure.Data
                 {
                     progress?.Report(new DataUpdateProgress { Message = $"Updating {source.Name}..." });
                     _logger.LogInfo($"Syncing rule source '{source.Id}' from '{source.Url}'...", nameof(DataUpdateService));
-                    await SyncTextFileAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+                    await SyncTextFileAsync(
+                        source.Url, localPath, cancellationToken,
+                        SourceContentValidator.ValidateRules, source.Id).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -348,96 +350,40 @@ namespace RimSharp.Infrastructure.Data
         }
 
         /// <summary>
-        /// Manual refresh of a single rule source from the settings UI
-        /// ("Update now"). Uses the same conditional GET as the startup sync,
-        /// so an unchanged source answers 304 and keeps its cache.
+        /// Fetches and validates a single new rule source before it is added to
+        /// the registry. Uses the same conditional GET and cache path as the
+        /// startup sync. Throws a friendly <see cref="InvalidOperationException"/>
+        /// when the download fails or the content is not a valid rules file.
         /// </summary>
-        public async Task RefreshRuleSourceAsync(string sourceId, CancellationToken cancellationToken)
+        public async Task SyncNewRuleSourceAsync(string sourceId, string url, CancellationToken cancellationToken = default)
         {
-            if (_ruleSourceRegistry == null)
-            {
-                return;
-            }
-
-            var source = _ruleSourceRegistry.Find(sourceId);
-            if (source == null)
-            {
-                _logger.LogWarning($"Cannot refresh unknown rule source '{sourceId}'.", nameof(DataUpdateService));
-                return;
-            }
-
-            if (string.Equals(source.Id, ModRuleSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogInfo($"Rule source '{sourceId}' is the curated database; it updates with the regular data update check.", nameof(DataUpdateService));
-                return;
-            }
-
-            if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
-            {
-                _logger.LogInfo($"Rule source '{sourceId}' is a local file; nothing to fetch.", nameof(DataUpdateService));
-                return;
-            }
-
-            var localPath = GetRuleSourceFilePath(source);
+            var localPath = GetRuleSourceFilePath(new ModRuleSourceRecord { Id = sourceId, Url = url });
             if (localPath == null)
             {
-                _logger.LogWarning($"Could not derive a cache file name for rule source '{sourceId}' ('{source.Url}').", nameof(DataUpdateService));
-                return;
+                throw new InvalidOperationException("Could not derive a cache file name from the URL. Please check the URL and try again.");
             }
 
+            string? rejection = null;
             try
             {
-                _logger.LogInfo($"Refreshing rule source '{sourceId}' from '{source.Url}'...", nameof(DataUpdateService));
-                await SyncTextFileAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+                _logger.LogInfo($"Fetching new rule source '{sourceId}' from '{url}'...", nameof(DataUpdateService));
+                var accepted = await SyncTextFileAsync(
+                    url, localPath, cancellationToken,
+                    content => rejection = SourceContentValidator.ValidateRules(content),
+                    sourceId).ConfigureAwait(false);
+                if (!accepted)
+                {
+                    throw new InvalidOperationException($"The downloaded rules file is not valid ({rejection ?? "unexpected format"}). Please check the URL.");
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning($"Could not refresh rule source '{sourceId}': {ex.Message}", nameof(DataUpdateService));
-                throw new InvalidOperationException($"Could not update '{source.Name}'. Please check the URL and your internet connection.", ex);
-            }
-        }
-
-        /// <summary>
-        /// Manual refresh of every enabled repoFile rule source from the
-        /// settings UI ("Update all").
-        /// </summary>
-        public async Task RefreshAllRuleSourcesAsync(CancellationToken cancellationToken)
-        {
-            if (_ruleSourceRegistry == null)
-            {
-                return;
-            }
-
-            foreach (var source in _ruleSourceRegistry.GetEnabledSources())
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (string.Equals(source.Id, ModRuleSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
-                {
-                    continue;
-                }
-
-                var localPath = GetRuleSourceFilePath(source);
-                if (localPath == null)
-                {
-                    continue;
-                }
-
-                try
-                {
-                    _logger.LogInfo($"Refreshing rule source '{source.Id}' from '{source.Url}'...", nameof(DataUpdateService));
-                    await SyncTextFileAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    // Per-source isolation: one dead source must not abort the rest.
-                    _logger.LogWarning($"Could not refresh rule source '{source.Id}': {ex.Message}", nameof(DataUpdateService));
-                }
+                _logger.LogWarning($"Could not fetch new rule source '{sourceId}': {ex.Message}", nameof(DataUpdateService));
+                throw new InvalidOperationException($"Could not fetch '{sourceId}'. Please check the URL and your internet connection.", ex);
             }
         }
 
@@ -493,7 +439,7 @@ namespace RimSharp.Infrastructure.Data
             }
         }
 
-        #region ModInfo Sources Sync & Refresh
+        #region ModInfo Sources Sync
 
         public async Task SyncModInfoSourcesAsync(CancellationToken cancellationToken)
         {
@@ -519,7 +465,9 @@ namespace RimSharp.Infrastructure.Data
                 try
                 {
                     _logger.LogInfo($"Syncing ModInfo source '{source.Id}' from '{source.Url}'...", nameof(DataUpdateService));
-                    await SyncTextFileAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+                    await SyncTextFileAsync(
+                        source.Url, localPath, cancellationToken,
+                        SourceContentValidator.ValidateModInfo, source.Id).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -528,74 +476,40 @@ namespace RimSharp.Infrastructure.Data
             }
         }
 
-        public async Task RefreshModInfoSourceAsync(string sourceId, CancellationToken cancellationToken)
+        /// <summary>
+        /// Fetches and validates a single new ModInfo source before it is added
+        /// to the registry. Throws a friendly <see cref="InvalidOperationException"/>
+        /// when the download fails or the content is not a valid db.json file.
+        /// </summary>
+        public async Task SyncNewModInfoSourceAsync(string sourceId, string url, CancellationToken cancellationToken = default)
         {
-            if (_modInfoSourceRegistry == null) return;
-
-            var source = _modInfoSourceRegistry.Find(sourceId);
-            if (source == null)
+            var localPath = GetModInfoSourceFilePath(new ModRuleSourceRecord { Id = sourceId, Url = url });
+            if (localPath == null)
             {
-                _logger.LogWarning($"Cannot refresh unknown ModInfo source '{sourceId}'.", nameof(DataUpdateService));
-                return;
+                throw new InvalidOperationException("Could not derive a cache file name from the URL. Please check the URL and try again.");
             }
 
-            if (string.Equals(source.Id, ModInfoSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogInfo($"ModInfo source '{sourceId}' is the curated database; it updates with the regular data update check.", nameof(DataUpdateService));
-                return;
-            }
-
-            if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
-            {
-                _logger.LogInfo($"ModInfo source '{sourceId}' is a local file or mod; nothing to fetch.", nameof(DataUpdateService));
-                return;
-            }
-
-            var localPath = GetModInfoSourceFilePath(source);
-            if (localPath == null) return;
-
+            string? rejection = null;
             try
             {
-                _logger.LogInfo($"Refreshing ModInfo source '{sourceId}' from '{source.Url}'...", nameof(DataUpdateService));
-                await SyncTextFileAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+                _logger.LogInfo($"Fetching new ModInfo source '{sourceId}' from '{url}'...", nameof(DataUpdateService));
+                var accepted = await SyncTextFileAsync(
+                    url, localPath, cancellationToken,
+                    content => rejection = SourceContentValidator.ValidateModInfo(content),
+                    sourceId).ConfigureAwait(false);
+                if (!accepted)
+                {
+                    throw new InvalidOperationException($"The downloaded mod info file is not valid ({rejection ?? "unexpected format"}). Please check the URL.");
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning($"Could not refresh ModInfo source '{sourceId}': {ex.Message}", nameof(DataUpdateService));
-                throw new InvalidOperationException($"Could not update '{source.Name}'. Please check the URL and your internet connection.", ex);
-            }
-        }
-
-        public async Task RefreshAllModInfoSourcesAsync(CancellationToken cancellationToken)
-        {
-            if (_modInfoSourceRegistry == null) return;
-
-            foreach (var source in _modInfoSourceRegistry.GetEnabledSources())
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (string.Equals(source.Id, ModInfoSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
-                {
-                    continue;
-                }
-
-                var localPath = GetModInfoSourceFilePath(source);
-                if (localPath == null) continue;
-
-                try
-                {
-                    _logger.LogInfo($"Refreshing ModInfo source '{source.Id}' from '{source.Url}'...", nameof(DataUpdateService));
-                    await SyncTextFileAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning($"Could not refresh ModInfo source '{source.Id}': {ex.Message}", nameof(DataUpdateService));
-                }
+                _logger.LogWarning($"Could not fetch new ModInfo source '{sourceId}': {ex.Message}", nameof(DataUpdateService));
+                throw new InvalidOperationException($"Could not fetch '{sourceId}'. Please check the URL and your internet connection.", ex);
             }
         }
 
@@ -614,7 +528,7 @@ namespace RimSharp.Infrastructure.Data
 
         #endregion
 
-        #region Replacements Sources Sync & Refresh
+        #region Replacements Sources Sync
 
         public async Task SyncReplacementSourcesAsync(CancellationToken cancellationToken)
         {
@@ -642,11 +556,15 @@ namespace RimSharp.Infrastructure.Data
                     _logger.LogInfo($"Syncing replacement source '{source.Id}' from '{source.Url}'...", nameof(DataUpdateService));
                     if (source.Url.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
                     {
-                        await SyncGzippedJsonAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+                        await SyncGzippedJsonAsync(
+                            source.Url, localPath, cancellationToken,
+                            SourceContentValidator.ValidateReplacements, source.Id).ConfigureAwait(false);
                     }
                     else
                     {
-                        await SyncTextFileAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+                        await SyncTextFileAsync(
+                            source.Url, localPath, cancellationToken,
+                            SourceContentValidator.ValidateReplacements, source.Id).ConfigureAwait(false);
                     }
                 }
                 catch (Exception ex)
@@ -656,88 +574,47 @@ namespace RimSharp.Infrastructure.Data
             }
         }
 
-        public async Task RefreshReplacementSourceAsync(string sourceId, CancellationToken cancellationToken)
+        /// <summary>
+        /// Fetches and validates a single new replacement source before it is
+        /// added to the registry. Honors the .gz decompression path. Throws a
+        /// friendly <see cref="InvalidOperationException"/> when the download
+        /// fails or the content is not a valid replacements file.
+        /// </summary>
+        public async Task SyncNewReplacementSourceAsync(string sourceId, string url, CancellationToken cancellationToken = default)
         {
-            if (_replacementSourceRegistry == null) return;
-
-            var source = _replacementSourceRegistry.Find(sourceId);
-            if (source == null)
+            var localPath = GetReplacementSourceFilePath(new ModRuleSourceRecord { Id = sourceId, Url = url });
+            if (localPath == null)
             {
-                _logger.LogWarning($"Cannot refresh unknown replacement source '{sourceId}'.", nameof(DataUpdateService));
-                return;
+                throw new InvalidOperationException("Could not derive a cache file name from the URL. Please check the URL and try again.");
             }
 
-            if (string.Equals(source.Id, ModReplacementSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogInfo($"Replacement source '{sourceId}' is the curated database; it updates with the regular data update check.", nameof(DataUpdateService));
-                return;
-            }
-
-            if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
-            {
-                _logger.LogInfo($"Replacement source '{sourceId}' is a local file or mod; nothing to fetch.", nameof(DataUpdateService));
-                return;
-            }
-
-            var localPath = GetReplacementSourceFilePath(source);
-            if (localPath == null) return;
-
+            string? rejection = null;
+            Func<string, string?> validate = content => rejection = SourceContentValidator.ValidateReplacements(content);
             try
             {
-                _logger.LogInfo($"Refreshing replacement source '{sourceId}' from '{source.Url}'...", nameof(DataUpdateService));
-                if (source.Url.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
+                _logger.LogInfo($"Fetching new replacement source '{sourceId}' from '{url}'...", nameof(DataUpdateService));
+                bool accepted;
+                if (url.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
                 {
-                    await SyncGzippedJsonAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+                    accepted = await SyncGzippedJsonAsync(url, localPath, cancellationToken, validate, sourceId).ConfigureAwait(false);
                 }
                 else
                 {
-                    await SyncTextFileAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+                    accepted = await SyncTextFileAsync(url, localPath, cancellationToken, validate, sourceId).ConfigureAwait(false);
                 }
+                if (!accepted)
+                {
+                    throw new InvalidOperationException($"The downloaded replacements file is not valid ({rejection ?? "unexpected format"}). Please check the URL.");
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning($"Could not refresh replacement source '{sourceId}': {ex.Message}", nameof(DataUpdateService));
-                throw new InvalidOperationException($"Could not update '{source.Name}'. Please check the URL and your internet connection.", ex);
-            }
-        }
-
-        public async Task RefreshAllReplacementSourcesAsync(CancellationToken cancellationToken)
-        {
-            if (_replacementSourceRegistry == null) return;
-
-            foreach (var source in _replacementSourceRegistry.GetEnabledSources())
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (string.Equals(source.Id, ModReplacementSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
-                {
-                    continue;
-                }
-
-                var localPath = GetReplacementSourceFilePath(source);
-                if (localPath == null) continue;
-
-                try
-                {
-                    _logger.LogInfo($"Refreshing replacement source '{source.Id}' from '{source.Url}'...", nameof(DataUpdateService));
-                    if (source.Url.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
-                    {
-                        await SyncGzippedJsonAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        await SyncTextFileAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning($"Could not refresh replacement source '{source.Id}': {ex.Message}", nameof(DataUpdateService));
-                }
+                _logger.LogWarning($"Could not fetch new replacement source '{sourceId}': {ex.Message}", nameof(DataUpdateService));
+                throw new InvalidOperationException($"Could not fetch '{sourceId}'. Please check the URL and your internet connection.", ex);
             }
         }
 
@@ -753,7 +630,7 @@ namespace RimSharp.Infrastructure.Data
 
         #endregion
 
-        #region NoVersionWarning Sources Sync & Refresh
+        #region NoVersionWarning Sources Sync
 
         public async Task SyncNoVersionWarningSourcesAsync(CancellationToken cancellationToken)
         {
@@ -772,67 +649,48 @@ namespace RimSharp.Infrastructure.Data
             }
         }
 
-        public async Task RefreshNoVersionWarningSourceAsync(string sourceId, CancellationToken cancellationToken)
+        /// <summary>
+        /// Fetches and validates a single new NoVersionWarning source (its
+        /// per-version ModIdsToFix.xml tree) before it is added to the registry.
+        /// Throws a friendly <see cref="InvalidOperationException"/> when no
+        /// version snapshot could be fetched or the content is invalid.
+        /// </summary>
+        public async Task SyncNewNoVersionWarningSourceAsync(string sourceId, string url, CancellationToken cancellationToken = default)
         {
-            if (_noVersionWarningSourceRegistry == null) return;
-
-            var source = _noVersionWarningSourceRegistry.Find(sourceId);
-            if (source == null)
-            {
-                _logger.LogWarning($"Cannot refresh unknown NoVersionWarning source '{sourceId}'.", nameof(DataUpdateService));
-                return;
-            }
-
-            if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
-            {
-                _logger.LogInfo($"NoVersionWarning source '{sourceId}' is a local file or mod; nothing to fetch.", nameof(DataUpdateService));
-                return;
-            }
-
             try
             {
-                _logger.LogInfo($"Refreshing NoVersionWarning source '{sourceId}' from '{source.Url}'...", nameof(DataUpdateService));
-                await SyncNoVersionWarningForSourceAsync(source.Id, source.Url, cancellationToken).ConfigureAwait(false);
+                _logger.LogInfo($"Fetching new NoVersionWarning source '{sourceId}' from '{url}'...", nameof(DataUpdateService));
+                var accepted = await SyncNoVersionWarningForSourceAsync(sourceId, url, cancellationToken).ConfigureAwait(false);
+                if (!accepted)
+                {
+                    throw new InvalidOperationException($"No valid 'No Version Warning' snapshots could be fetched from '{url}'. Please check the URL and try again.");
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning($"Could not refresh NoVersionWarning source '{sourceId}': {ex.Message}", nameof(DataUpdateService));
-                throw new InvalidOperationException($"Could not update '{source.Name}'. Please check the URL and your internet connection.", ex);
+                _logger.LogWarning($"Could not fetch new NoVersionWarning source '{sourceId}': {ex.Message}", nameof(DataUpdateService));
+                throw new InvalidOperationException($"Could not fetch '{sourceId}'. Please check the URL and your internet connection.", ex);
             }
         }
 
-        public async Task RefreshAllNoVersionWarningSourcesAsync(CancellationToken cancellationToken)
-        {
-            if (_noVersionWarningSourceRegistry == null) return;
-
-            foreach (var source in _noVersionWarningSourceRegistry.GetEnabledSources())
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    _logger.LogInfo($"Refreshing NoVersionWarning source '{source.Id}' from '{source.Url}'...", nameof(DataUpdateService));
-                    await SyncNoVersionWarningForSourceAsync(source.Id, source.Url, cancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning($"Could not refresh NoVersionWarning source '{source.Id}': {ex.Message}", nameof(DataUpdateService));
-                }
-            }
-        }
-
-        private async Task SyncNoVersionWarningForSourceAsync(string sourceId, string baseUrl, CancellationToken cancellationToken)
+        /// <summary>
+        /// Syncs the per-version ModIdsToFix.xml tree of one source. Returns
+        /// true when at least one version snapshot was accepted, false when
+        /// every fetch failed or was rejected by validation. Per-version
+        /// failures are isolated so one missing version never blocks the rest.
+        /// </summary>
+        private async Task<bool> SyncNoVersionWarningForSourceAsync(string sourceId, string baseUrl, CancellationToken cancellationToken)
         {
             try
             {
                 var versions = await DiscoverNoVersionWarningVersionsAsync(cancellationToken).ConfigureAwait(false);
                 _logger.LogInfo($"Syncing 'No Version Warning' version snapshots for {sourceId}: {string.Join(", ", versions)}", nameof(DataUpdateService));
 
+                bool anyAccepted = false;
                 foreach (var version in versions)
                 {
                     var localXmlPath = GetExternalFilePath(
@@ -842,17 +700,26 @@ namespace RimSharp.Infrastructure.Data
 
                     try
                     {
-                        await SyncTextFileAsync(url, localXmlPath, cancellationToken).ConfigureAwait(false);
+                        if (await SyncTextFileAsync(
+                                url, localXmlPath, cancellationToken,
+                                SourceContentValidator.ValidateNoVersionWarningXml,
+                                sourceId).ConfigureAwait(false))
+                        {
+                            anyAccepted = true;
+                        }
                     }
                     catch (Exception ex)
                     {
                         _logger.LogWarning($"Could not sync 'No Version Warning' snapshot for {version} ({sourceId}): {ex.Message}", nameof(DataUpdateService));
                     }
                 }
+
+                return anyAccepted;
             }
             catch (Exception ex)
             {
                 _logger.LogWarning($"Could not sync 'No Version Warning' version snapshots for {sourceId}: {ex.Message}", nameof(DataUpdateService));
+                return false;
             }
         }
 
@@ -872,7 +739,9 @@ namespace RimSharp.Infrastructure.Data
             try
             {
                 _logger.LogInfo("Syncing 'Use This Instead' repository snapshot...", nameof(DataUpdateService));
-                await SyncGzippedJsonAsync(_useThisInsteadUrl, localJsonPath, cancellationToken).ConfigureAwait(false);
+                await SyncGzippedJsonAsync(
+                    _useThisInsteadUrl, localJsonPath, cancellationToken,
+                    SourceContentValidator.ValidateReplacements, "UseThisInstead").ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -887,9 +756,16 @@ namespace RimSharp.Infrastructure.Data
         /// JSON to <paramref name="localJsonPath"/>. A validator (ETag, else
         /// Last-Modified) is persisted next to the file as "<file>.etag";
         /// when the server answers 304 Not Modified the local file is left
-        /// untouched.
+        /// untouched. <paramref name="validate"/> checks the decompressed
+        /// content before it is written; a rejection keeps the cached file and
+        /// its etag and returns false.
         /// </summary>
-        private async Task SyncGzippedJsonAsync(string url, string localJsonPath, CancellationToken cancellationToken)
+        private async Task<bool> SyncGzippedJsonAsync(
+            string url,
+            string localJsonPath,
+            CancellationToken cancellationToken,
+            Func<string, string?>? validate = null,
+            string? sourceName = null)
         {
             var localDir = Path.GetDirectoryName(localJsonPath)!;
             Directory.CreateDirectory(localDir);
@@ -902,7 +778,7 @@ namespace RimSharp.Infrastructure.Data
             if (response.StatusCode == HttpStatusCode.NotModified)
             {
                 _logger.LogInfo($"External source up to date: '{url}'", nameof(DataUpdateService));
-                return;
+                return true;
             }
 
             response.EnsureSuccessStatusCode();
@@ -915,10 +791,21 @@ namespace RimSharp.Infrastructure.Data
                 json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
             }
 
+            if (validate != null)
+            {
+                var reason = validate(json);
+                if (reason != null)
+                {
+                    _logger.LogWarning($"Rejected invalid content from source '{sourceName ?? url}' ({url}): {reason}. Keeping the cached file.", nameof(DataUpdateService));
+                    return false;
+                }
+            }
+
             await File.WriteAllTextAsync(localJsonPath, json, cancellationToken).ConfigureAwait(false);
             await StoreValidatorAsync(response, validatorPath, cancellationToken).ConfigureAwait(false);
 
             _logger.LogInfo($"External source updated: '{url}' -> '{localJsonPath}'", nameof(DataUpdateService));
+            return true;
         }
 
         /// <summary>
@@ -946,7 +833,10 @@ namespace RimSharp.Infrastructure.Data
 
                     try
                     {
-                        await SyncTextFileAsync(url, localXmlPath, cancellationToken).ConfigureAwait(false);
+                        await SyncTextFileAsync(
+                            url, localXmlPath, cancellationToken,
+                            SourceContentValidator.ValidateNoVersionWarningXml,
+                            "NoVersionWarning").ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
@@ -1132,9 +1022,16 @@ namespace RimSharp.Infrastructure.Data
         /// writes it to <paramref name="localPath"/>. A validator (ETag, else
         /// Last-Modified) is persisted next to the file as "&lt;file&gt;.etag";
         /// when the server answers 304 Not Modified the local file is left
-        /// untouched.
+        /// untouched. <paramref name="validate"/> checks the content before it
+        /// is written; a rejection keeps the cached file and its etag and
+        /// returns false.
         /// </summary>
-        private async Task SyncTextFileAsync(string url, string localPath, CancellationToken cancellationToken)
+        private async Task<bool> SyncTextFileAsync(
+            string url,
+            string localPath,
+            CancellationToken cancellationToken,
+            Func<string, string?>? validate = null,
+            string? sourceName = null)
         {
             var localDir = Path.GetDirectoryName(localPath)!;
             Directory.CreateDirectory(localDir);
@@ -1147,16 +1044,28 @@ namespace RimSharp.Infrastructure.Data
             if (response.StatusCode == HttpStatusCode.NotModified)
             {
                 _logger.LogInfo($"External source up to date: '{url}'", nameof(DataUpdateService));
-                return;
+                return true;
             }
 
             response.EnsureSuccessStatusCode();
 
             var text = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+
+            if (validate != null)
+            {
+                var reason = validate(text);
+                if (reason != null)
+                {
+                    _logger.LogWarning($"Rejected invalid content from source '{sourceName ?? url}' ({url}): {reason}. Keeping the cached file.", nameof(DataUpdateService));
+                    return false;
+                }
+            }
+
             await File.WriteAllTextAsync(localPath, text, cancellationToken).ConfigureAwait(false);
             await StoreValidatorAsync(response, validatorPath, cancellationToken).ConfigureAwait(false);
 
             _logger.LogInfo($"External source updated: '{url}' -> '{localPath}'", nameof(DataUpdateService));
+            return true;
         }
 
         /// <summary>
