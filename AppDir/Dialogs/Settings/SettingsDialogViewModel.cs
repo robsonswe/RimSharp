@@ -59,24 +59,24 @@ namespace RimSharp.AppDir.Dialogs
     }
 
     /// <summary>
-    /// One row of the "Rule Databases" settings section: an editable snapshot
+    /// One row of an external sources settings section: an editable snapshot
     /// of a <see cref="ModRuleSourceRecord"/>. The dialog works on these rows
     /// and only writes back to the shared registry on Save.
     /// </summary>
     public class RuleSourceRowViewModel : ViewModelBase
     {
-        private readonly IRuleSourceManager? _ruleSourceManager;
+        private readonly IExternalSourceManager? _sourceManager;
         private readonly IDialogService? _dialogService;
         private readonly IFileDialogService? _fileDialogService;
 
         public RuleSourceRowViewModel(
             ModRuleSourceRecord record,
-            IRuleSourceManager? ruleSourceManager = null,
+            IExternalSourceManager? sourceManager = null,
             IDialogService? dialogService = null,
             IFileDialogService? fileDialogService = null)
         {
             Record = record ?? throw new ArgumentNullException(nameof(record));
-            _ruleSourceManager = ruleSourceManager;
+            _sourceManager = sourceManager;
             _dialogService = dialogService;
             _fileDialogService = fileDialogService;
 
@@ -131,6 +131,7 @@ namespace RimSharp.AppDir.Dialogs
 
         public bool IsRepoFile => Record.Type == ModRuleSourceType.RepoFile;
         public bool IsLocalFile => Record.Type == ModRuleSourceType.LocalFile;
+        public bool IsMod => Record.Type == ModRuleSourceType.Mod;
 
         /// <summary>
         /// True for the curated RimSharpDB entry: its file is owned by the
@@ -139,26 +140,36 @@ namespace RimSharp.AppDir.Dialogs
         /// </summary>
         public bool IsCurated => string.Equals(Record.Id, ModRuleSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase);
 
-        /// <summary>"Remote file" / "Local file" badge text.</summary>
-        public string TypeBadge => IsLocalFile ? "Local file" : "Remote file";
+        /// <summary>"built-in" / "mod" / "Local file" / "Remote file" badge text.</summary>
+        public string TypeBadge
+        {
+            get
+            {
+                if (IsCurated) return "built-in";
+                if (IsMod) return "mod";
+                if (IsLocalFile) return "Local file";
+                return "Remote file";
+            }
+        }
 
-        /// <summary>True when this source is locked (built-in curated RimSharpDB).</summary>
+        /// <summary>True when this source is locked (built-in curated RimSharpDB or installed mod).</summary>
         public bool Locked => Record.Locked;
 
-        /// <summary>"built-in" badge text shown on locked rows.</summary>
-        public string LockedBadge => Locked ? "built-in" : string.Empty;
+        /// <summary>"built-in" or "mod" badge text shown on locked rows.</summary>
+        public string LockedBadge => IsCurated ? "built-in" : (IsMod ? "mod" : string.Empty);
+
+        public bool CanUpdate => IsRepoFile && !string.IsNullOrWhiteSpace(Url) && !IsCurated;
 
         /// <summary>
         /// Per-source "rules as of" date (short date) derived from that
-        /// source's upstream timestamp, or empty when the source provides none
-        /// (e.g. the curated file, which carries no timestamp).
+        /// source's upstream timestamp, or empty when the source provides none.
         /// </summary>
         public string RulesAsOf
         {
             get
             {
-                if (_ruleSourceManager == null) return string.Empty;
-                if (!_ruleSourceManager.SourceTimestamps.TryGetValue(Record.Id, out var ts) || ts <= 0)
+                if (_sourceManager == null) return string.Empty;
+                if (!_sourceManager.SourceTimestamps.TryGetValue(Record.Id, out var ts) || ts <= 0)
                 {
                     return string.Empty;
                 }
@@ -168,17 +179,17 @@ namespace RimSharp.AppDir.Dialogs
 
         /// <summary>
         /// The URL (remote) or path (local) shown/edited in the row; writes are
-        /// routed to the matching backing property. The curated entry shows a
-        /// placeholder instead: its file is owned by the SHA-gated sync.
+        /// routed to the matching backing property. Curated and mod entries show
+        /// a placeholder instead.
         /// </summary>
         public string Location
         {
-            get => IsCurated
+            get => (IsCurated || IsMod)
                 ? string.Empty
                 : IsLocalFile ? LocalPath : Url;
             set
             {
-                if (IsCurated) return;
+                if (IsCurated || IsMod) return;
                 if (IsLocalFile) LocalPath = value; else Url = value;
             }
         }
@@ -189,11 +200,13 @@ namespace RimSharp.AppDir.Dialogs
 
         private async Task EditLocationAsync(RuleSourceRowViewModel row)
         {
+            if (row.Locked) return;
+
             if (row.IsLocalFile)
             {
                 if (_fileDialogService == null) return;
                 var (success, path) = await _fileDialogService.ShowOpenFileDialogAsync(
-                    "Select Rules File", "JSON files|*.json|All files|*.*", row.LocalPath);
+                    "Select Source File", "JSON files|*.json|All files|*.*", row.LocalPath);
                 if (success && !string.IsNullOrWhiteSpace(path))
                 {
                     row.LocalPath = path;
@@ -204,7 +217,7 @@ namespace RimSharp.AppDir.Dialogs
 
             if (_dialogService == null) return;
             var (result, name, url) = await _dialogService.ShowRuleSourceEditorDialogAsync(
-                "Edit Rule Database",
+                "Edit Source",
                 $"Edit the name and URL for '{row.Name}':",
                 row.Name,
                 row.Url);
@@ -221,15 +234,14 @@ namespace RimSharp.AppDir.Dialogs
 
         private async Task UpdateNowAsync(RuleSourceRowViewModel row)
         {
-            if (_ruleSourceManager == null) return;
+            if (_sourceManager == null || !row.CanUpdate) return;
             try
             {
-                await _ruleSourceManager.RefreshSourceAsync(row.Id);
+                await _sourceManager.RefreshSourceAsync(row.Id);
             }
             catch (Exception)
             {
-                // RefreshSourceAsync already isolates per-source failures; surface
-                // nothing extra here (the manager logs).
+                // RefreshSourceAsync already isolates per-source failures.
             }
         }
     }
@@ -254,6 +266,9 @@ namespace RimSharp.AppDir.Dialogs
         private readonly IDialogService? _dialogService;
         private readonly ILoggerService _logger;
         private readonly IRuleSourceManager? _ruleSourceManager;
+        private readonly Shared.Services.Contracts.IModInfoSourceManager? _modInfoSourceManager;
+        private readonly Shared.Services.Contracts.IModReplacementSourceManager? _replacementSourceManager;
+        private readonly Shared.Services.Contracts.INoVersionWarningSourceManager? _noVersionWarningSourceManager;
 
         private string _gamePath = string.Empty;
         public string GamePath { get => _gamePath; set
@@ -452,6 +467,114 @@ namespace RimSharp.AppDir.Dialogs
         public ICommand UpdateAllRuleSourcesCommand { get; }
         public ICommand ResetRuleSourcesCommand { get; }
 
+        // --- ModInfo (Dictionary) Databases section --------------------------
+        public ObservableCollection<RuleSourceRowViewModel> ModInfoSources { get; } = new();
+
+        private RuleSourceRowViewModel? _selectedModInfoSource;
+        public RuleSourceRowViewModel? SelectedModInfoSource
+        {
+            get => _selectedModInfoSource;
+            set
+            {
+                if (SetProperty(ref _selectedModInfoSource, value))
+                {
+                    OnPropertyChanged(nameof(CanRemoveModInfoSource));
+                    OnPropertyChanged(nameof(CanMoveModInfoSourceUp));
+                    OnPropertyChanged(nameof(CanMoveModInfoSourceDown));
+                }
+            }
+        }
+
+        public bool CanRemoveModInfoSource => SelectedModInfoSource != null && !SelectedModInfoSource.Locked;
+        public bool CanMoveModInfoSourceUp => SelectedModInfoSource != null && ModInfoSources.IndexOf(SelectedModInfoSource) > 0;
+        public bool CanMoveModInfoSourceDown => SelectedModInfoSource != null && ModInfoSources.IndexOf(SelectedModInfoSource) >= 0 && ModInfoSources.IndexOf(SelectedModInfoSource) < ModInfoSources.Count - 1;
+
+        private string _modInfoSourcesStatus = string.Empty;
+        public string ModInfoSourcesStatus
+        {
+            get => _modInfoSourcesStatus;
+            private set => SetProperty(ref _modInfoSourcesStatus, value);
+        }
+
+        public ICommand AddRemoteModInfoSourceCommand { get; }
+        public ICommand RemoveModInfoSourceCommand { get; }
+        public ICommand MoveModInfoSourceUpCommand { get; }
+        public ICommand MoveModInfoSourceDownCommand { get; }
+        public ICommand UpdateAllModInfoSourcesCommand { get; }
+        public ICommand ResetModInfoSourcesCommand { get; }
+
+        // --- Replacements Databases section ---------------------------------
+        public ObservableCollection<RuleSourceRowViewModel> ReplacementSources { get; } = new();
+
+        private RuleSourceRowViewModel? _selectedReplacementSource;
+        public RuleSourceRowViewModel? SelectedReplacementSource
+        {
+            get => _selectedReplacementSource;
+            set
+            {
+                if (SetProperty(ref _selectedReplacementSource, value))
+                {
+                    OnPropertyChanged(nameof(CanRemoveReplacementSource));
+                    OnPropertyChanged(nameof(CanMoveReplacementSourceUp));
+                    OnPropertyChanged(nameof(CanMoveReplacementSourceDown));
+                }
+            }
+        }
+
+        public bool CanRemoveReplacementSource => SelectedReplacementSource != null && !SelectedReplacementSource.Locked;
+        public bool CanMoveReplacementSourceUp => SelectedReplacementSource != null && ReplacementSources.IndexOf(SelectedReplacementSource) > 0;
+        public bool CanMoveReplacementSourceDown => SelectedReplacementSource != null && ReplacementSources.IndexOf(SelectedReplacementSource) >= 0 && ReplacementSources.IndexOf(SelectedReplacementSource) < ReplacementSources.Count - 1;
+
+        private string _replacementSourcesStatus = string.Empty;
+        public string ReplacementSourcesStatus
+        {
+            get => _replacementSourcesStatus;
+            private set => SetProperty(ref _replacementSourcesStatus, value);
+        }
+
+        public ICommand AddRemoteReplacementSourceCommand { get; }
+        public ICommand RemoveReplacementSourceCommand { get; }
+        public ICommand MoveReplacementSourceUpCommand { get; }
+        public ICommand MoveReplacementSourceDownCommand { get; }
+        public ICommand UpdateAllReplacementSourcesCommand { get; }
+        public ICommand ResetReplacementSourcesCommand { get; }
+
+        // --- NoVersionWarning Databases section ------------------------------
+        public ObservableCollection<RuleSourceRowViewModel> NoVersionWarningSources { get; } = new();
+
+        private RuleSourceRowViewModel? _selectedNoVersionWarningSource;
+        public RuleSourceRowViewModel? SelectedNoVersionWarningSource
+        {
+            get => _selectedNoVersionWarningSource;
+            set
+            {
+                if (SetProperty(ref _selectedNoVersionWarningSource, value))
+                {
+                    OnPropertyChanged(nameof(CanRemoveNoVersionWarningSource));
+                    OnPropertyChanged(nameof(CanMoveNoVersionWarningSourceUp));
+                    OnPropertyChanged(nameof(CanMoveNoVersionWarningSourceDown));
+                }
+            }
+        }
+
+        public bool CanRemoveNoVersionWarningSource => SelectedNoVersionWarningSource != null && !SelectedNoVersionWarningSource.Locked;
+        public bool CanMoveNoVersionWarningSourceUp => SelectedNoVersionWarningSource != null && NoVersionWarningSources.IndexOf(SelectedNoVersionWarningSource) > 0;
+        public bool CanMoveNoVersionWarningSourceDown => SelectedNoVersionWarningSource != null && NoVersionWarningSources.IndexOf(SelectedNoVersionWarningSource) >= 0 && NoVersionWarningSources.IndexOf(SelectedNoVersionWarningSource) < NoVersionWarningSources.Count - 1;
+
+        private string _noVersionWarningSourcesStatus = string.Empty;
+        public string NoVersionWarningSourcesStatus
+        {
+            get => _noVersionWarningSourcesStatus;
+            private set => SetProperty(ref _noVersionWarningSourcesStatus, value);
+        }
+
+        public ICommand AddRemoteNoVersionWarningSourceCommand { get; }
+        public ICommand RemoveNoVersionWarningSourceCommand { get; }
+        public ICommand MoveNoVersionWarningSourceUpCommand { get; }
+        public ICommand MoveNoVersionWarningSourceDownCommand { get; }
+        public ICommand UpdateAllNoVersionWarningSourcesCommand { get; }
+        public ICommand ResetNoVersionWarningSourcesCommand { get; }
+
         public SettingsDialogViewModel(
             IConfigService configService,
             IPathService pathService,
@@ -462,7 +585,10 @@ namespace RimSharp.AppDir.Dialogs
             GameInstallationDetectionService gameInstallationDetectionService,
             IDialogService? dialogService = null,
             bool showAiProviders = true,
-            IRuleSourceManager? ruleSourceManager = null)
+            IRuleSourceManager? ruleSourceManager = null,
+            Shared.Services.Contracts.IModInfoSourceManager? modInfoSourceManager = null,
+            Shared.Services.Contracts.IModReplacementSourceManager? replacementSourceManager = null,
+            Shared.Services.Contracts.INoVersionWarningSourceManager? noVersionWarningSourceManager = null)
         : base("RimSharp Settings")
         {
             _configService = configService ?? throw new ArgumentNullException(nameof(configService));
@@ -473,6 +599,9 @@ namespace RimSharp.AppDir.Dialogs
             _steamClaimValidator = steamClaimValidator ?? throw new ArgumentNullException(nameof(steamClaimValidator));
             _gameInstallationDetectionService = gameInstallationDetectionService ?? throw new ArgumentNullException(nameof(gameInstallationDetectionService));
             _ruleSourceManager = ruleSourceManager;
+            _modInfoSourceManager = modInfoSourceManager;
+            _replacementSourceManager = replacementSourceManager;
+            _noVersionWarningSourceManager = noVersionWarningSourceManager;
             ShowAiProviders = showAiProviders;
 
             _gamePath = _configService.GetConfigValue(GameFolderKey) ?? string.Empty;
@@ -518,6 +647,69 @@ namespace RimSharp.AppDir.Dialogs
             }, nameof(SelectedRuleSource));
             UpdateAllRuleSourcesCommand = CreateAsyncCommand(UpdateAllRuleSourcesAsync);
             ResetRuleSourcesCommand = CreateCommand(ResetRuleSources);
+
+            // ModInfo Databases section
+            LoadModInfoSources();
+            AddRemoteModInfoSourceCommand = CreateAsyncCommand(AddRemoteModInfoSourceAsync);
+            RemoveModInfoSourceCommand = CreateCommand<RuleSourceRowViewModel>(RemoveModInfoSource, r =>
+            {
+                var t = r ?? SelectedModInfoSource;
+                return t != null && !t.Locked;
+            }, nameof(SelectedModInfoSource));
+            MoveModInfoSourceUpCommand = CreateCommand<RuleSourceRowViewModel>(MoveModInfoSourceUp, r =>
+            {
+                var t = r ?? SelectedModInfoSource;
+                return t != null && ModInfoSources.IndexOf(t) > 0;
+            }, nameof(SelectedModInfoSource));
+            MoveModInfoSourceDownCommand = CreateCommand<RuleSourceRowViewModel>(MoveModInfoSourceDown, r =>
+            {
+                var t = r ?? SelectedModInfoSource;
+                return t != null && ModInfoSources.IndexOf(t) >= 0 && ModInfoSources.IndexOf(t) < ModInfoSources.Count - 1;
+            }, nameof(SelectedModInfoSource));
+            UpdateAllModInfoSourcesCommand = CreateAsyncCommand(UpdateAllModInfoSourcesAsync);
+            ResetModInfoSourcesCommand = CreateCommand(ResetModInfoSources);
+
+            // Replacements Databases section
+            LoadReplacementSources();
+            AddRemoteReplacementSourceCommand = CreateAsyncCommand(AddRemoteReplacementSourceAsync);
+            RemoveReplacementSourceCommand = CreateCommand<RuleSourceRowViewModel>(RemoveReplacementSource, r =>
+            {
+                var t = r ?? SelectedReplacementSource;
+                return t != null && !t.Locked;
+            }, nameof(SelectedReplacementSource));
+            MoveReplacementSourceUpCommand = CreateCommand<RuleSourceRowViewModel>(MoveReplacementSourceUp, r =>
+            {
+                var t = r ?? SelectedReplacementSource;
+                return t != null && ReplacementSources.IndexOf(t) > 0;
+            }, nameof(SelectedReplacementSource));
+            MoveReplacementSourceDownCommand = CreateCommand<RuleSourceRowViewModel>(MoveReplacementSourceDown, r =>
+            {
+                var t = r ?? SelectedReplacementSource;
+                return t != null && ReplacementSources.IndexOf(t) >= 0 && ReplacementSources.IndexOf(t) < ReplacementSources.Count - 1;
+            }, nameof(SelectedReplacementSource));
+            UpdateAllReplacementSourcesCommand = CreateAsyncCommand(UpdateAllReplacementSourcesAsync);
+            ResetReplacementSourcesCommand = CreateCommand(ResetReplacementSources);
+
+            // NoVersionWarning Databases section
+            LoadNoVersionWarningSources();
+            AddRemoteNoVersionWarningSourceCommand = CreateAsyncCommand(AddRemoteNoVersionWarningSourceAsync);
+            RemoveNoVersionWarningSourceCommand = CreateCommand<RuleSourceRowViewModel>(RemoveNoVersionWarningSource, r =>
+            {
+                var t = r ?? SelectedNoVersionWarningSource;
+                return t != null && !t.Locked;
+            }, nameof(SelectedNoVersionWarningSource));
+            MoveNoVersionWarningSourceUpCommand = CreateCommand<RuleSourceRowViewModel>(MoveNoVersionWarningSourceUp, r =>
+            {
+                var t = r ?? SelectedNoVersionWarningSource;
+                return t != null && NoVersionWarningSources.IndexOf(t) > 0;
+            }, nameof(SelectedNoVersionWarningSource));
+            MoveNoVersionWarningSourceDownCommand = CreateCommand<RuleSourceRowViewModel>(MoveNoVersionWarningSourceDown, r =>
+            {
+                var t = r ?? SelectedNoVersionWarningSource;
+                return t != null && NoVersionWarningSources.IndexOf(t) >= 0 && NoVersionWarningSources.IndexOf(t) < NoVersionWarningSources.Count - 1;
+            }, nameof(SelectedNoVersionWarningSource));
+            UpdateAllNoVersionWarningSourcesCommand = CreateAsyncCommand(UpdateAllNoVersionWarningSourcesAsync);
+            ResetNoVersionWarningSourcesCommand = CreateCommand(ResetNoVersionWarningSources);
         }
 
         /// <summary>
@@ -537,9 +729,9 @@ namespace RimSharp.AppDir.Dialogs
             RefreshRuleSourcesStatus();
         }
 
-        private RuleSourceRowViewModel CreateRow(ModRuleSourceRecord record)
+        private RuleSourceRowViewModel CreateRow(ModRuleSourceRecord record, IExternalSourceManager? manager = null)
         {
-            var row = new RuleSourceRowViewModel(record, _ruleSourceManager, _dialogService, _fileDialogService)
+            var row = new RuleSourceRowViewModel(record, manager ?? _ruleSourceManager, _dialogService, _fileDialogService)
             {
                 Name = record.Name,
                 Enabled = record.Enabled,
@@ -576,7 +768,7 @@ namespace RimSharp.AppDir.Dialogs
             if (result != MessageDialogResult.OK || string.IsNullOrWhiteSpace(url)) return;
 
             url = url.Trim();
-            var id = BuildUniqueSourceId(Path.GetFileNameWithoutExtension(GetUrlPath(url)));
+            var id = BuildUniqueSourceId(Path.GetFileNameWithoutExtension(GetUrlPath(url)), RuleSources);
             var displayName = string.IsNullOrWhiteSpace(name) ? id : name.Trim();
 
             RuleSources.Add(CreateRow(new ModRuleSourceRecord
@@ -586,7 +778,7 @@ namespace RimSharp.AppDir.Dialogs
                 Type = ModRuleSourceType.RepoFile,
                 Url = url,
                 Enabled = true
-            }));
+            }, _ruleSourceManager));
         }
 
         private void RemoveRuleSource(RuleSourceRowViewModel? row)
@@ -641,15 +833,350 @@ namespace RimSharp.AppDir.Dialogs
             }
         }
 
+        // --- ModInfo (Dictionary) handlers ----------------------------------
+        private void LoadModInfoSources()
+        {
+            ModInfoSources.Clear();
+            if (_modInfoSourceManager == null) return;
+
+            foreach (var record in _modInfoSourceManager.Registry.Sources)
+            {
+                ModInfoSources.Add(CreateRow(record, _modInfoSourceManager));
+            }
+
+            RefreshModInfoSourcesStatus();
+        }
+
+        private void RefreshModInfoSourcesStatus()
+        {
+            if (_modInfoSourceManager == null)
+            {
+                ModInfoSourcesStatus = string.Empty;
+                return;
+            }
+
+            var ts = _modInfoSourceManager.EffectiveTimestamp;
+            var asOf = ts.HasValue && ts.Value > 0
+                ? DateTimeOffset.FromUnixTimeSeconds(ts.Value).ToLocalTime().ToString("d")
+                : null;
+
+            ModInfoSourcesStatus = asOf != null
+                ? $"Mod info as of {asOf}. First source with details for a mod wins."
+                : "Mod info databases are resolved in priority order: first match wins.";
+        }
+
+        private async Task AddRemoteModInfoSourceAsync()
+        {
+            if (_modInfoSourceManager == null || _dialogService == null) return;
+
+            var (result, name, url) = await _dialogService.ShowRuleSourceEditorDialogAsync(
+                "Add Mod Info Database",
+                "Enter a display name and the raw file URL of the mod info db.json (e.g. a GitHub raw link).",
+                "My Mod Info Database",
+                "https://raw.githubusercontent.com/");
+            if (result != MessageDialogResult.OK || string.IsNullOrWhiteSpace(url)) return;
+
+            url = url.Trim();
+            var id = BuildUniqueSourceId(Path.GetFileNameWithoutExtension(GetUrlPath(url)), ModInfoSources);
+            var displayName = string.IsNullOrWhiteSpace(name) ? id : name.Trim();
+
+            ModInfoSources.Add(CreateRow(new ModRuleSourceRecord
+            {
+                Id = id,
+                Name = displayName,
+                Type = ModRuleSourceType.RepoFile,
+                Url = url,
+                Enabled = true
+            }, _modInfoSourceManager));
+        }
+
+        private void RemoveModInfoSource(RuleSourceRowViewModel? row)
+        {
+            var target = row ?? SelectedModInfoSource;
+            if (target == null || target.Locked) return;
+            ModInfoSources.Remove(target);
+            SelectedModInfoSource = null;
+        }
+
+        private void MoveModInfoSourceUp(RuleSourceRowViewModel? row)
+        {
+            var target = row ?? SelectedModInfoSource;
+            if (target == null) return;
+            var index = ModInfoSources.IndexOf(target);
+            if (index <= 0) return;
+            ModInfoSources.Move(index - 1, index);
+            SelectedModInfoSource = ModInfoSources[index - 1];
+        }
+
+        private void MoveModInfoSourceDown(RuleSourceRowViewModel? row)
+        {
+            var target = row ?? SelectedModInfoSource;
+            if (target == null) return;
+            var index = ModInfoSources.IndexOf(target);
+            if (index < 0 || index >= ModInfoSources.Count - 1) return;
+            ModInfoSources.Move(index, index + 1);
+            SelectedModInfoSource = ModInfoSources[index + 1];
+        }
+
+        private void ResetModInfoSources()
+        {
+            if (_modInfoSourceManager == null) return;
+            _modInfoSourceManager.Registry.ResetToDefaults();
+            LoadModInfoSources();
+        }
+
+        private async Task UpdateAllModInfoSourcesAsync()
+        {
+            if (_modInfoSourceManager == null) return;
+
+            ModInfoSourcesStatus = "Updating mod info databases...";
+            try
+            {
+                await _modInfoSourceManager.RefreshAllAsync();
+                RefreshModInfoSourcesStatus();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Mod info database update failed: {ex.Message}", nameof(SettingsDialogViewModel));
+                ModInfoSourcesStatus = "Update failed. Check the URLs and your internet connection.";
+            }
+        }
+
+        // --- Replacements handlers ------------------------------------------
+        private void LoadReplacementSources()
+        {
+            ReplacementSources.Clear();
+            if (_replacementSourceManager == null) return;
+
+            foreach (var record in _replacementSourceManager.Registry.Sources)
+            {
+                if (record.Type == ModRuleSourceType.Mod && !_replacementSourceManager.IsModInstalled(record.ModFolderId))
+                {
+                    continue;
+                }
+                ReplacementSources.Add(CreateRow(record, _replacementSourceManager));
+            }
+
+            RefreshReplacementSourcesStatus();
+        }
+
+        private void RefreshReplacementSourcesStatus()
+        {
+            if (_replacementSourceManager == null)
+            {
+                ReplacementSourcesStatus = string.Empty;
+                return;
+            }
+
+            var ts = _replacementSourceManager.EffectiveTimestamp;
+            var asOf = ts.HasValue && ts.Value > 0
+                ? DateTimeOffset.FromUnixTimeSeconds(ts.Value).ToLocalTime().ToString("d")
+                : null;
+
+            ReplacementSourcesStatus = asOf != null
+                ? $"Replacements as of {asOf}. Higher entries win when sources overlap."
+                : "Replacements are resolved in priority order: first match wins.";
+        }
+
+        private async Task AddRemoteReplacementSourceAsync()
+        {
+            if (_replacementSourceManager == null || _dialogService == null) return;
+
+            var (result, name, url) = await _dialogService.ShowRuleSourceEditorDialogAsync(
+                "Add Replacement Database",
+                "Enter a display name and the raw file URL of the replacements JSON or JSON.GZ.",
+                "My Replacement Database",
+                "https://raw.githubusercontent.com/");
+            if (result != MessageDialogResult.OK || string.IsNullOrWhiteSpace(url)) return;
+
+            url = url.Trim();
+            var id = BuildUniqueSourceId(Path.GetFileNameWithoutExtension(GetUrlPath(url)), ReplacementSources);
+            var displayName = string.IsNullOrWhiteSpace(name) ? id : name.Trim();
+
+            ReplacementSources.Add(CreateRow(new ModRuleSourceRecord
+            {
+                Id = id,
+                Name = displayName,
+                Type = ModRuleSourceType.RepoFile,
+                Url = url,
+                Enabled = true
+            }, _replacementSourceManager));
+        }
+
+        private void RemoveReplacementSource(RuleSourceRowViewModel? row)
+        {
+            var target = row ?? SelectedReplacementSource;
+            if (target == null || target.Locked) return;
+            ReplacementSources.Remove(target);
+            SelectedReplacementSource = null;
+        }
+
+        private void MoveReplacementSourceUp(RuleSourceRowViewModel? row)
+        {
+            var target = row ?? SelectedReplacementSource;
+            if (target == null) return;
+            var index = ReplacementSources.IndexOf(target);
+            if (index <= 0) return;
+            ReplacementSources.Move(index - 1, index);
+            SelectedReplacementSource = ReplacementSources[index - 1];
+        }
+
+        private void MoveReplacementSourceDown(RuleSourceRowViewModel? row)
+        {
+            var target = row ?? SelectedReplacementSource;
+            if (target == null) return;
+            var index = ReplacementSources.IndexOf(target);
+            if (index < 0 || index >= ReplacementSources.Count - 1) return;
+            ReplacementSources.Move(index, index + 1);
+            SelectedReplacementSource = ReplacementSources[index + 1];
+        }
+
+        private void ResetReplacementSources()
+        {
+            if (_replacementSourceManager == null) return;
+            _replacementSourceManager.Registry.ResetToDefaults();
+            LoadReplacementSources();
+        }
+
+        private async Task UpdateAllReplacementSourcesAsync()
+        {
+            if (_replacementSourceManager == null) return;
+
+            ReplacementSourcesStatus = "Updating replacement databases...";
+            try
+            {
+                await _replacementSourceManager.RefreshAllAsync();
+                RefreshReplacementSourcesStatus();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Replacement database update failed: {ex.Message}", nameof(SettingsDialogViewModel));
+                ReplacementSourcesStatus = "Update failed. Check the URLs and your internet connection.";
+            }
+        }
+
+        // --- NoVersionWarning handlers --------------------------------------
+        private void LoadNoVersionWarningSources()
+        {
+            NoVersionWarningSources.Clear();
+            if (_noVersionWarningSourceManager == null) return;
+
+            foreach (var record in _noVersionWarningSourceManager.Registry.Sources)
+            {
+                if (record.Type == ModRuleSourceType.Mod && !_noVersionWarningSourceManager.IsModInstalled(record.ModFolderId))
+                {
+                    continue;
+                }
+                NoVersionWarningSources.Add(CreateRow(record, _noVersionWarningSourceManager));
+            }
+
+            RefreshNoVersionWarningSourcesStatus();
+        }
+
+        private void RefreshNoVersionWarningSourcesStatus()
+        {
+            if (_noVersionWarningSourceManager == null)
+            {
+                NoVersionWarningSourcesStatus = string.Empty;
+                return;
+            }
+
+            var ts = _noVersionWarningSourceManager.EffectiveTimestamp;
+            var asOf = ts.HasValue && ts.Value > 0
+                ? DateTimeOffset.FromUnixTimeSeconds(ts.Value).ToLocalTime().ToString("d")
+                : null;
+
+            NoVersionWarningSourcesStatus = asOf != null
+                ? $"Version compatibility as of {asOf}. Higher entries win when sources overlap."
+                : "Version compatibility allowlists are combined across all enabled sources.";
+        }
+
+        private async Task AddRemoteNoVersionWarningSourceAsync()
+        {
+            if (_noVersionWarningSourceManager == null || _dialogService == null) return;
+
+            var (result, name, url) = await _dialogService.ShowRuleSourceEditorDialogAsync(
+                "Add Version Warning Database",
+                "Enter a display name and the base raw URL of the repository containing version folders.",
+                "My Version Warning Database",
+                "https://raw.githubusercontent.com/");
+            if (result != MessageDialogResult.OK || string.IsNullOrWhiteSpace(url)) return;
+
+            url = url.Trim();
+            var id = BuildUniqueSourceId(Path.GetFileNameWithoutExtension(GetUrlPath(url)), NoVersionWarningSources);
+            var displayName = string.IsNullOrWhiteSpace(name) ? id : name.Trim();
+
+            NoVersionWarningSources.Add(CreateRow(new ModRuleSourceRecord
+            {
+                Id = id,
+                Name = displayName,
+                Type = ModRuleSourceType.RepoFile,
+                Url = url,
+                Enabled = true
+            }, _noVersionWarningSourceManager));
+        }
+
+        private void RemoveNoVersionWarningSource(RuleSourceRowViewModel? row)
+        {
+            var target = row ?? SelectedNoVersionWarningSource;
+            if (target == null || target.Locked) return;
+            NoVersionWarningSources.Remove(target);
+            SelectedNoVersionWarningSource = null;
+        }
+
+        private void MoveNoVersionWarningSourceUp(RuleSourceRowViewModel? row)
+        {
+            var target = row ?? SelectedNoVersionWarningSource;
+            if (target == null) return;
+            var index = NoVersionWarningSources.IndexOf(target);
+            if (index <= 0) return;
+            NoVersionWarningSources.Move(index - 1, index);
+            SelectedNoVersionWarningSource = NoVersionWarningSources[index - 1];
+        }
+
+        private void MoveNoVersionWarningSourceDown(RuleSourceRowViewModel? row)
+        {
+            var target = row ?? SelectedNoVersionWarningSource;
+            if (target == null) return;
+            var index = NoVersionWarningSources.IndexOf(target);
+            if (index < 0 || index >= NoVersionWarningSources.Count - 1) return;
+            NoVersionWarningSources.Move(index, index + 1);
+            SelectedNoVersionWarningSource = NoVersionWarningSources[index + 1];
+        }
+
+        private void ResetNoVersionWarningSources()
+        {
+            if (_noVersionWarningSourceManager == null) return;
+            _noVersionWarningSourceManager.Registry.ResetToDefaults();
+            LoadNoVersionWarningSources();
+        }
+
+        private async Task UpdateAllNoVersionWarningSourcesAsync()
+        {
+            if (_noVersionWarningSourceManager == null) return;
+
+            NoVersionWarningSourcesStatus = "Updating version warning databases...";
+            try
+            {
+                await _noVersionWarningSourceManager.RefreshAllAsync();
+                RefreshNoVersionWarningSourcesStatus();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Version warning database update failed: {ex.Message}", nameof(SettingsDialogViewModel));
+                NoVersionWarningSourcesStatus = "Update failed. Check the URLs and your internet connection.";
+            }
+        }
+
         private static string GetUrlPath(string url) =>
             Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.AbsolutePath : url;
 
-        private string BuildUniqueSourceId(string baseId)
+        private static string BuildUniqueSourceId(string baseId, IEnumerable<RuleSourceRowViewModel> existing)
         {
             var id = string.IsNullOrWhiteSpace(baseId) ? "source" : baseId;
             var candidate = id;
             int suffix = 2;
-            while (RuleSources.Any(r => string.Equals(r.Id, candidate, StringComparison.OrdinalIgnoreCase)))
+            while (existing.Any(r => string.Equals(r.Id, candidate, StringComparison.OrdinalIgnoreCase)))
             {
                 candidate = $"{id}-{suffix++}";
             }
@@ -902,10 +1429,7 @@ namespace RimSharp.AppDir.Dialogs
                 row.WriteBack();
             }
 
-            // Rule databases: write the edited snapshot back to the shared
-            // registry, persist it and re-merge the rules onto the loaded mods
-            // (live — a removed/disabled source's rules disappear without a
-            // restart).
+            // External source registries: write snapshots back and commit changes
             if (_ruleSourceManager != null)
             {
                 _ruleSourceManager.Registry.ReplaceAll(RuleSources.Select(row => new ModRuleSourceRecord
@@ -919,6 +1443,53 @@ namespace RimSharp.AppDir.Dialogs
                     Bundled = row.Record.Bundled
                 }));
                 _ruleSourceManager.CommitRegistryChanges();
+            }
+
+            if (_modInfoSourceManager != null)
+            {
+                _modInfoSourceManager.Registry.ReplaceAll(ModInfoSources.Select(row => new ModRuleSourceRecord
+                {
+                    Id = row.Record.Id,
+                    Name = string.IsNullOrWhiteSpace(row.Name) ? row.Record.Id : row.Name.Trim(),
+                    Type = row.Record.Type,
+                    Url = row.IsRepoFile ? (string.IsNullOrWhiteSpace(row.Url) ? null : row.Url.Trim()) : null,
+                    LocalPath = row.IsLocalFile ? (string.IsNullOrWhiteSpace(row.LocalPath) ? null : row.LocalPath.Trim()) : null,
+                    Enabled = row.Enabled,
+                    Bundled = row.Record.Bundled
+                }));
+                _modInfoSourceManager.CommitRegistryChanges();
+            }
+
+            if (_replacementSourceManager != null)
+            {
+                _replacementSourceManager.Registry.ReplaceAll(ReplacementSources.Select(row => new ModRuleSourceRecord
+                {
+                    Id = row.Record.Id,
+                    Name = string.IsNullOrWhiteSpace(row.Name) ? row.Record.Id : row.Name.Trim(),
+                    Type = row.Record.Type,
+                    Url = row.IsRepoFile ? (string.IsNullOrWhiteSpace(row.Url) ? null : row.Url.Trim()) : null,
+                    LocalPath = row.IsLocalFile ? (string.IsNullOrWhiteSpace(row.LocalPath) ? null : row.LocalPath.Trim()) : null,
+                    ModFolderId = row.Record.ModFolderId,
+                    Enabled = row.Enabled,
+                    Bundled = row.Record.Bundled
+                }));
+                _replacementSourceManager.CommitRegistryChanges();
+            }
+
+            if (_noVersionWarningSourceManager != null)
+            {
+                _noVersionWarningSourceManager.Registry.ReplaceAll(NoVersionWarningSources.Select(row => new ModRuleSourceRecord
+                {
+                    Id = row.Record.Id,
+                    Name = string.IsNullOrWhiteSpace(row.Name) ? row.Record.Id : row.Name.Trim(),
+                    Type = row.Record.Type,
+                    Url = row.IsRepoFile ? (string.IsNullOrWhiteSpace(row.Url) ? null : row.Url.Trim()) : null,
+                    LocalPath = row.IsLocalFile ? (string.IsNullOrWhiteSpace(row.LocalPath) ? null : row.LocalPath.Trim()) : null,
+                    ModFolderId = row.Record.ModFolderId,
+                    Enabled = row.Enabled,
+                    Bundled = row.Record.Bundled
+                }));
+                _noVersionWarningSourceManager.CommitRegistryChanges();
             }
 
             _configService.SaveConfig();

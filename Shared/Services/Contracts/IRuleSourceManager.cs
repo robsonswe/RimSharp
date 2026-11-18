@@ -11,37 +11,9 @@ namespace RimSharp.Shared.Services.Contracts
     /// invalidation + re-application onto the loaded mods) so registry changes
     /// take effect without an app restart.
     /// </summary>
-    public interface IRuleSourceManager
+    public interface IRuleSourceManager : IExternalSourceManager
     {
         /// <summary>The shared, priority-ordered source registry.</summary>
         ModRuleSourceRegistry Registry { get; }
-
-        /// <summary>
-        /// Newest upstream timestamp across the enabled sources ("rules as of"),
-        /// or null when no source provides one.
-        /// </summary>
-        long? EffectiveTimestamp { get; }
-
-        /// <summary>
-        /// Per-source upstream timestamp (unix seconds) for every source that
-        /// provides one, keyed by source Id. Delegates to the repository.
-        /// </summary>
-        IReadOnlyDictionary<string, long> SourceTimestamps { get; }
-
-        /// <summary>
-        /// Persists the current registry state and re-merges the rules onto the
-        /// loaded mods (a removed/disabled source's contributions disappear).
-        /// </summary>
-        void CommitRegistryChanges();
-
-        /// <summary>
-        /// Fetches every enabled repoFile source, then re-merges.
-        /// </summary>
-        Task RefreshAllAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Fetches one source, then re-merges.
-        /// </summary>
-        Task RefreshSourceAsync(string sourceId, CancellationToken cancellationToken = default);
     }
 }

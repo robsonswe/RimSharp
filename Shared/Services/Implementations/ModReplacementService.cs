@@ -19,15 +19,30 @@ namespace RimSharp.Shared.Services.Implementations
         private readonly IDataUpdateService _dataUpdateService;
         private readonly IPathService _pathService;
         private readonly ILoggerService _logger;
+        private readonly Infrastructure.Mods.Replacements.ModReplacementSourceRegistry? _sourceRegistry;
         private Dictionary<string, ModReplacementInfo>? _replacementsCache;
         private bool _isInitialized = false;
         private readonly object _lock = new object();
 
-        public ModReplacementService(IPathService pathService, IDataUpdateService dataUpdateService, ILoggerService logger)
+        public ModReplacementService(
+            IPathService pathService,
+            IDataUpdateService dataUpdateService,
+            ILoggerService logger,
+            Infrastructure.Mods.Replacements.ModReplacementSourceRegistry? sourceRegistry = null)
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
             _dataUpdateService = dataUpdateService ?? throw new ArgumentNullException(nameof(dataUpdateService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _sourceRegistry = sourceRegistry;
+        }
+
+        public void Invalidate()
+        {
+            lock (_lock)
+            {
+                _replacementsCache = null;
+                _isInitialized = false;
+            }
         }
 
         public Dictionary<string, ModReplacementInfo> GetAllReplacements()
@@ -80,29 +95,75 @@ namespace RimSharp.Shared.Services.Implementations
         {
             var results = new Dictionary<string, ModReplacementInfo>(StringComparer.OrdinalIgnoreCase);
 
-            // Priority order: the locally installed mod first, the community
-            // repository snapshot second, our curated database last.
-            int utiCount = LoadFromUseThisInsteadXml(results);
-            _logger.LogDebug($"Loaded {utiCount} replacements from 'Use This Instead' mod folder.", nameof(ModReplacementService));
+            if (_sourceRegistry != null)
+            {
+                foreach (var source in _sourceRegistry.GetEnabledSources())
+                {
+                    if (source.Type == ModRuleSourceType.Mod)
+                    {
+                        int count = LoadFromUseThisInsteadXml(results);
+                        _logger.LogDebug($"Loaded {count} replacements from mod folder '{source.Name}'.", nameof(ModReplacementService));
+                    }
+                    else if (string.Equals(source.Id, Infrastructure.Mods.Replacements.ModReplacementSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        int count = LoadFromJson(results);
+                        _logger.LogDebug($"Loaded {count} replacements from curated database (gaps only).", nameof(ModReplacementService));
+                    }
+                    else if (source.Type == ModRuleSourceType.RepoFile && !string.IsNullOrWhiteSpace(source.Url))
+                    {
+                        int count = LoadFromUseThisInsteadRepository(source.Id, results);
+                        _logger.LogDebug($"Loaded {count} replacements from repository snapshot '{source.Name}'.", nameof(ModReplacementService));
+                    }
+                    else if (source.Type == ModRuleSourceType.LocalFile && !string.IsNullOrWhiteSpace(source.LocalPath))
+                    {
+                        int count = LoadFromLocalFile(source.LocalPath, results);
+                        _logger.LogDebug($"Loaded {count} replacements from local file '{source.LocalPath}'.", nameof(ModReplacementService));
+                    }
+                }
+            }
+            else
+            {
+                // Fallback default order: mod -> repo -> curated
+                int utiCount = LoadFromUseThisInsteadXml(results);
+                _logger.LogDebug($"Loaded {utiCount} replacements from 'Use This Instead' mod folder.", nameof(ModReplacementService));
 
-            int repoCount = LoadFromUseThisInsteadRepository(results);
-            _logger.LogDebug($"Loaded {repoCount} replacements from 'Use This Instead' repository snapshot.", nameof(ModReplacementService));
+                int repoCount = LoadFromUseThisInsteadRepository("UseThisInstead", results);
+                _logger.LogDebug($"Loaded {repoCount} replacements from 'Use This Instead' repository snapshot.", nameof(ModReplacementService));
 
-            int dbCount = LoadFromJson(results);
-            _logger.LogDebug($"Loaded {dbCount} replacements from JSON database (gaps only).", nameof(ModReplacementService));
+                int dbCount = LoadFromJson(results);
+                _logger.LogDebug($"Loaded {dbCount} replacements from JSON database (gaps only).", nameof(ModReplacementService));
+            }
 
             return results;
         }
 
-        /// <summary>
-        /// Loads replacement rules from the emipa606/UseThisInstead GitHub
-        /// snapshot kept by the data updater at
-        /// Data/Replacements/UseThisInstead/replacements.json. Rules whose key
-        /// was already provided by a higher-priority source are skipped.
-        /// </summary>
-        private int LoadFromUseThisInsteadRepository(Dictionary<string, ModReplacementInfo> targetDictionary)
+        private int LoadFromLocalFile(string localPath, Dictionary<string, ModReplacementInfo> targetDictionary)
         {
-            var snapshotPath = _dataUpdateService.GetExternalFilePath("Replacements", "UseThisInstead", "replacements.json");
+            if (!File.Exists(localPath)) return 0;
+
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(localPath));
+                if (doc.RootElement.TryGetProperty("rules", out var rules))
+                {
+                    return ParseReplacementsRules(rules, targetDictionary, ReplacementSource.UseThisInstead);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Failed to parse local replacement file '{localPath}': {ex.Message}", nameof(ModReplacementService));
+            }
+            return 0;
+        }
+
+        private int LoadFromUseThisInsteadRepository(string sourceId, Dictionary<string, ModReplacementInfo> targetDictionary)
+        {
+            var snapshotPath = _dataUpdateService.GetExternalFilePath("Replacements", sourceId, "replacements.json");
+            if (!File.Exists(snapshotPath) && (sourceId == "community-replacements" || sourceId == "UseThisInstead"))
+            {
+                var altPath = _dataUpdateService.GetExternalFilePath("Replacements", "UseThisInstead", "replacements.json");
+                if (File.Exists(altPath)) snapshotPath = altPath;
+            }
 
             if (!File.Exists(snapshotPath))
             {

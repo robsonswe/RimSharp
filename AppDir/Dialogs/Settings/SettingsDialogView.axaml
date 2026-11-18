@@ -12,7 +12,7 @@
         x:CompileBindings="True"
         Title="{Binding Title}"
         SizeToContent="Height"
-        Width="560"
+        Width="680"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
 
@@ -231,8 +231,8 @@
                     </Border>
                 </TabItem>
 
-            <!-- TAB 4: RULE DATABASES -->
-                <TabItem Header="Rule Databases">
+            <!-- TAB 4: RULES -->
+                <TabItem Header="Rules">
                     <Border Classes="panel-subtle">
                         <StackPanel Margin="15" Spacing="12">
 
@@ -262,14 +262,18 @@
                                                             IsVisible="{Binding !Enabled}"
                                                             ToolTip.Tip="Enable this source"/>
                                                 </StackPanel>
-                                                <TextBlock Grid.Row="0" Grid.Column="1"
-                                                           Text="{Binding Name}"
-                                                           FontWeight="Bold" FontSize="13"
-                                                           VerticalAlignment="Center"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           Foreground="{DynamicResource BrushTextStrong}"/>
-
-                                                <!-- URL is edited via the Edit dialog; nothing inline here. -->
+                                                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}"
+                                                               FontWeight="Bold" FontSize="13"
+                                                               VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Foreground="{DynamicResource BrushTextStrong}"/>
+                                                    <TextBlock Text="{Binding LockedBadge, StringFormat='({0})'}"
+                                                               FontSize="11" FontStyle="Italic"
+                                                               VerticalAlignment="Center"
+                                                               IsVisible="{Binding Locked}"
+                                                               Foreground="{DynamicResource BrushTextMuted}"/>
+                                                </StackPanel>
 
                                                 <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
                                                            Text="{Binding Id}"
@@ -291,16 +295,20 @@
                                                             Command="{Binding EditLocationCommand}"
                                                             Classes="btn" Padding="8,4"
                                                             IsEnabled="{Binding !Locked}"
+                                                            IsVisible="{Binding !Locked}"
                                                             ToolTip.Tip="Edit this source's name and URL"/>
                                                     <Button Content="Update"
                                                             Command="{Binding UpdateNowCommand}"
                                                             Classes="btn" Padding="8,4"
+                                                            IsEnabled="{Binding CanUpdate}"
+                                                            IsVisible="{Binding CanUpdate}"
                                                             ToolTip.Tip="Refresh this source now"/>
                                                     <Button Content="Remove"
                                                             Command="{Binding DataContext.RemoveRuleSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                             CommandParameter="{Binding}"
                                                             Classes="btn" Padding="8,4"
                                                             IsEnabled="{Binding !Locked}"
+                                                            IsVisible="{Binding !Locked}"
                                                             ToolTip.Tip="Remove this rule source"/>
                                                     <Button Content="Move up"
                                                             Command="{Binding DataContext.MoveRuleSourceUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -332,6 +340,351 @@
                             </StackPanel>
 
                             <TextBlock Text="{Binding RuleSourcesStatus}"
+                                       TextWrapping="Wrap" FontSize="11"
+                                       Foreground="{DynamicResource BrushTextSecondary}"/>
+                        </StackPanel>
+                    </Border>
+                </TabItem>
+
+                <!-- TAB 5: MOD INFO -->
+                <TabItem Header="Mod Info">
+                    <Border Classes="panel-subtle">
+                        <StackPanel Margin="15" Spacing="12">
+
+                            <TextBlock TextWrapping="Wrap" FontSize="12"
+                                       Foreground="{DynamicResource BrushTextStrong}"
+                                       Text="Mod info databases provide metadata, descriptions, and steam IDs for mods. Sources are checked in priority order: the first source that carries info for a mod wins. Changes apply immediately."/>
+
+                            <ItemsControl ItemsSource="{Binding ModInfoSources}"
+                                          x:CompileBindings="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:RuleSourceRowViewModel">
+                                        <Border BorderBrush="{DynamicResource BrushBorderDefault}"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="10,8"
+                                                Margin="0,0,0,8">
+                                            <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto" ColumnSpacing="8">
+                                                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                    <Button Content="Disable"
+                                                            Command="{Binding ToggleEnabledCommand}"
+                                                            Classes="btn" Padding="6,2"
+                                                            IsVisible="{Binding Enabled}"
+                                                            ToolTip.Tip="Disable this source"/>
+                                                    <Button Content="Enable"
+                                                            Command="{Binding ToggleEnabledCommand}"
+                                                            Classes="btn" Padding="6,2"
+                                                            IsVisible="{Binding !Enabled}"
+                                                            ToolTip.Tip="Enable this source"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}"
+                                                               FontWeight="Bold" FontSize="13"
+                                                               VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Foreground="{DynamicResource BrushTextStrong}"/>
+                                                    <TextBlock Text="{Binding LockedBadge, StringFormat='({0})'}"
+                                                               FontSize="11" FontStyle="Italic"
+                                                               VerticalAlignment="Center"
+                                                               IsVisible="{Binding Locked}"
+                                                               Foreground="{DynamicResource BrushTextMuted}"/>
+                                                </StackPanel>
+
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
+                                                           Text="{Binding Id}"
+                                                           FontSize="10"
+                                                           Margin="30,2,0,0"
+                                                           Foreground="{DynamicResource BrushTextMuted}"/>
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
+                                                           Text="{Binding RulesAsOf, StringFormat='Updated {0}'}"
+                                                           FontSize="10"
+                                                           Margin="30,0,0,0"
+                                                           IsVisible="{Binding RulesAsOf, Converter={StaticResource StringIsNotNullOrEmptyConverter}}"
+                                                           Foreground="{DynamicResource BrushTextMuted}"/>
+
+                                                <!-- Per-source list actions: Remove / Move up / Move down -->
+                                                <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3"
+                                                            Orientation="Horizontal" Spacing="6"
+                                                            Margin="30,6,0,0">
+                                                    <Button Content="Edit"
+                                                            Command="{Binding EditLocationCommand}"
+                                                            Classes="btn" Padding="8,4"
+                                                            IsEnabled="{Binding !Locked}"
+                                                            IsVisible="{Binding !Locked}"
+                                                            ToolTip.Tip="Edit this source's name and URL"/>
+                                                    <Button Content="Update"
+                                                            Command="{Binding UpdateNowCommand}"
+                                                            Classes="btn" Padding="8,4"
+                                                            IsEnabled="{Binding CanUpdate}"
+                                                            IsVisible="{Binding CanUpdate}"
+                                                            ToolTip.Tip="Refresh this source now"/>
+                                                    <Button Content="Remove"
+                                                            Command="{Binding DataContext.RemoveModInfoSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Classes="btn" Padding="8,4"
+                                                            IsEnabled="{Binding !Locked}"
+                                                            IsVisible="{Binding !Locked}"
+                                                            ToolTip.Tip="Remove this source"/>
+                                                    <Button Content="Move up"
+                                                            Command="{Binding DataContext.MoveModInfoSourceUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Classes="btn" Padding="8,4"
+                                                            ToolTip.Tip="Move this source up in priority"/>
+                                                    <Button Content="Move down"
+                                                            Command="{Binding DataContext.MoveModInfoSourceDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Classes="btn" Padding="8,4"
+                                                            ToolTip.Tip="Move this source down in priority"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Button Content="Add remote" Command="{Binding AddRemoteModInfoSourceCommand}"
+                                        Classes="btn" Padding="10,4"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Button Content="Update all" Command="{Binding UpdateAllModInfoSourcesCommand}"
+                                        Classes="btn" Padding="10,4"/>
+                                <Button Content="Reset to defaults" Command="{Binding ResetModInfoSourcesCommand}"
+                                        Classes="btn" Padding="10,4"/>
+                            </StackPanel>
+
+                            <TextBlock Text="{Binding ModInfoSourcesStatus}"
+                                       TextWrapping="Wrap" FontSize="11"
+                                       Foreground="{DynamicResource BrushTextSecondary}"/>
+                        </StackPanel>
+                    </Border>
+                </TabItem>
+
+                <!-- TAB 6: REPLACEMENTS -->
+                <TabItem Header="Replacements">
+                    <Border Classes="panel-subtle">
+                        <StackPanel Margin="15" Spacing="12">
+
+                            <TextBlock TextWrapping="Wrap" FontSize="12"
+                                       Foreground="{DynamicResource BrushTextStrong}"
+                                       Text="Mod replacement databases provide suggestions for outdated or alternative mods (such as Use This Instead). Sources are checked in priority order. Installed mod sources are detected automatically."/>
+
+                            <ItemsControl ItemsSource="{Binding ReplacementSources}"
+                                          x:CompileBindings="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:RuleSourceRowViewModel">
+                                        <Border BorderBrush="{DynamicResource BrushBorderDefault}"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="10,8"
+                                                Margin="0,0,0,8">
+                                            <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto" ColumnSpacing="8">
+                                                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                    <Button Content="Disable"
+                                                            Command="{Binding ToggleEnabledCommand}"
+                                                            Classes="btn" Padding="6,2"
+                                                            IsVisible="{Binding Enabled}"
+                                                            ToolTip.Tip="Disable this source"/>
+                                                    <Button Content="Enable"
+                                                            Command="{Binding ToggleEnabledCommand}"
+                                                            Classes="btn" Padding="6,2"
+                                                            IsVisible="{Binding !Enabled}"
+                                                            ToolTip.Tip="Enable this source"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}"
+                                                               FontWeight="Bold" FontSize="13"
+                                                               VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Foreground="{DynamicResource BrushTextStrong}"/>
+                                                    <TextBlock Text="{Binding LockedBadge, StringFormat='({0})'}"
+                                                               FontSize="11" FontStyle="Italic"
+                                                               VerticalAlignment="Center"
+                                                               IsVisible="{Binding Locked}"
+                                                               Foreground="{DynamicResource BrushTextMuted}"/>
+                                                </StackPanel>
+
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
+                                                           Text="{Binding Id}"
+                                                           FontSize="10"
+                                                           Margin="30,2,0,0"
+                                                           Foreground="{DynamicResource BrushTextMuted}"/>
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
+                                                           Text="{Binding RulesAsOf, StringFormat='Updated {0}'}"
+                                                           FontSize="10"
+                                                           Margin="30,0,0,0"
+                                                           IsVisible="{Binding RulesAsOf, Converter={StaticResource StringIsNotNullOrEmptyConverter}}"
+                                                           Foreground="{DynamicResource BrushTextMuted}"/>
+
+                                                <!-- Per-source list actions: Remove / Move up / Move down -->
+                                                <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3"
+                                                            Orientation="Horizontal" Spacing="6"
+                                                            Margin="30,6,0,0">
+                                                    <Button Content="Edit"
+                                                            Command="{Binding EditLocationCommand}"
+                                                            Classes="btn" Padding="8,4"
+                                                            IsEnabled="{Binding !Locked}"
+                                                            IsVisible="{Binding !Locked}"
+                                                            ToolTip.Tip="Edit this source's name and URL"/>
+                                                    <Button Content="Update"
+                                                            Command="{Binding UpdateNowCommand}"
+                                                            Classes="btn" Padding="8,4"
+                                                            IsEnabled="{Binding CanUpdate}"
+                                                            IsVisible="{Binding CanUpdate}"
+                                                            ToolTip.Tip="Refresh this source now"/>
+                                                    <Button Content="Remove"
+                                                            Command="{Binding DataContext.RemoveReplacementSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Classes="btn" Padding="8,4"
+                                                            IsEnabled="{Binding !Locked}"
+                                                            IsVisible="{Binding !Locked}"
+                                                            ToolTip.Tip="Remove this source"/>
+                                                    <Button Content="Move up"
+                                                            Command="{Binding DataContext.MoveReplacementSourceUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Classes="btn" Padding="8,4"
+                                                            ToolTip.Tip="Move this source up in priority"/>
+                                                    <Button Content="Move down"
+                                                            Command="{Binding DataContext.MoveReplacementSourceDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Classes="btn" Padding="8,4"
+                                                            ToolTip.Tip="Move this source down in priority"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Button Content="Add remote" Command="{Binding AddRemoteReplacementSourceCommand}"
+                                        Classes="btn" Padding="10,4"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Button Content="Update all" Command="{Binding UpdateAllReplacementSourcesCommand}"
+                                        Classes="btn" Padding="10,4"/>
+                                <Button Content="Reset to defaults" Command="{Binding ResetReplacementSourcesCommand}"
+                                        Classes="btn" Padding="10,4"/>
+                            </StackPanel>
+
+                            <TextBlock Text="{Binding ReplacementSourcesStatus}"
+                                       TextWrapping="Wrap" FontSize="11"
+                                       Foreground="{DynamicResource BrushTextSecondary}"/>
+                        </StackPanel>
+                    </Border>
+                </TabItem>
+
+                <!-- TAB 7: NO VERSION WARNING -->
+                <TabItem Header="No Version Warning">
+                    <Border Classes="panel-subtle">
+                        <StackPanel Margin="15" Spacing="12">
+
+                            <TextBlock TextWrapping="Wrap" FontSize="12"
+                                       Foreground="{DynamicResource BrushTextStrong}"
+                                       Text="No version warning databases provide compatibility allowlists for mods running on different game versions. Sources are checked in priority order. Installed mod sources are detected automatically."/>
+
+                            <ItemsControl ItemsSource="{Binding NoVersionWarningSources}"
+                                          x:CompileBindings="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:RuleSourceRowViewModel">
+                                        <Border BorderBrush="{DynamicResource BrushBorderDefault}"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="10,8"
+                                                Margin="0,0,0,8">
+                                            <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto" ColumnSpacing="8">
+                                                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                    <Button Content="Disable"
+                                                            Command="{Binding ToggleEnabledCommand}"
+                                                            Classes="btn" Padding="6,2"
+                                                            IsVisible="{Binding Enabled}"
+                                                            ToolTip.Tip="Disable this source"/>
+                                                    <Button Content="Enable"
+                                                            Command="{Binding ToggleEnabledCommand}"
+                                                            Classes="btn" Padding="6,2"
+                                                            IsVisible="{Binding !Enabled}"
+                                                            ToolTip.Tip="Enable this source"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}"
+                                                               FontWeight="Bold" FontSize="13"
+                                                               VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Foreground="{DynamicResource BrushTextStrong}"/>
+                                                    <TextBlock Text="{Binding LockedBadge, StringFormat='({0})'}"
+                                                               FontSize="11" FontStyle="Italic"
+                                                               VerticalAlignment="Center"
+                                                               IsVisible="{Binding Locked}"
+                                                               Foreground="{DynamicResource BrushTextMuted}"/>
+                                                </StackPanel>
+
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
+                                                           Text="{Binding Id}"
+                                                           FontSize="10"
+                                                           Margin="30,2,0,0"
+                                                           Foreground="{DynamicResource BrushTextMuted}"/>
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
+                                                           Text="{Binding RulesAsOf, StringFormat='Updated {0}'}"
+                                                           FontSize="10"
+                                                           Margin="30,0,0,0"
+                                                           IsVisible="{Binding RulesAsOf, Converter={StaticResource StringIsNotNullOrEmptyConverter}}"
+                                                           Foreground="{DynamicResource BrushTextMuted}"/>
+
+                                                <!-- Per-source list actions: Remove / Move up / Move down -->
+                                                <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3"
+                                                            Orientation="Horizontal" Spacing="6"
+                                                            Margin="30,6,0,0">
+                                                    <Button Content="Edit"
+                                                            Command="{Binding EditLocationCommand}"
+                                                            Classes="btn" Padding="8,4"
+                                                            IsEnabled="{Binding !Locked}"
+                                                            IsVisible="{Binding !Locked}"
+                                                            ToolTip.Tip="Edit this source's name and URL"/>
+                                                    <Button Content="Update"
+                                                            Command="{Binding UpdateNowCommand}"
+                                                            Classes="btn" Padding="8,4"
+                                                            IsEnabled="{Binding CanUpdate}"
+                                                            IsVisible="{Binding CanUpdate}"
+                                                            ToolTip.Tip="Refresh this source now"/>
+                                                    <Button Content="Remove"
+                                                            Command="{Binding DataContext.RemoveNoVersionWarningSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Classes="btn" Padding="8,4"
+                                                            IsEnabled="{Binding !Locked}"
+                                                            IsVisible="{Binding !Locked}"
+                                                            ToolTip.Tip="Remove this source"/>
+                                                    <Button Content="Move up"
+                                                            Command="{Binding DataContext.MoveNoVersionWarningSourceUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Classes="btn" Padding="8,4"
+                                                            ToolTip.Tip="Move this source up in priority"/>
+                                                    <Button Content="Move down"
+                                                            Command="{Binding DataContext.MoveNoVersionWarningSourceDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Classes="btn" Padding="8,4"
+                                                            ToolTip.Tip="Move this source down in priority"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Button Content="Add remote" Command="{Binding AddRemoteNoVersionWarningSourceCommand}"
+                                        Classes="btn" Padding="10,4"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Button Content="Update all" Command="{Binding UpdateAllNoVersionWarningSourcesCommand}"
+                                        Classes="btn" Padding="10,4"/>
+                                <Button Content="Reset to defaults" Command="{Binding ResetNoVersionWarningSourcesCommand}"
+                                        Classes="btn" Padding="10,4"/>
+                            </StackPanel>
+
+                            <TextBlock Text="{Binding NoVersionWarningSourcesStatus}"
                                        TextWrapping="Wrap" FontSize="11"
                                        Foreground="{DynamicResource BrushTextSecondary}"/>
                         </StackPanel>

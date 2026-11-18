@@ -20,24 +20,24 @@ namespace RimSharp.Shared.Models
     public enum ModRuleSourceType
     {
         RepoFile = 0,
-        LocalFile = 1
+        LocalFile = 1,
+        Mod = 2
     }
 
     /// <summary>
-    /// One entry of the rule database source registry. The registry is a
-    /// priority-ordered list of these records persisted as a JSON array under
-    /// the <c>rules_db_sources</c> config key; array order IS the priority
-    /// (first entry = highest priority).
+    /// One entry of an external data source registry (Rules, ModInfo, Replacements,
+    /// NoVersionWarning). The registry is a priority-ordered list of these records;
+    /// array order IS the priority (first entry = highest priority).
     /// </summary>
     public class ModRuleSourceRecord
     {
-        /// <summary>Stable identifier; also the cache folder name under Data/Rules/.</summary>
+        /// <summary>Stable identifier; also the cache folder name under Data/<Category>/.</summary>
         public string Id { get; set; } = string.Empty;
 
         /// <summary>Display name shown in the settings UI.</summary>
         public string Name { get; set; } = string.Empty;
 
-        /// <summary>How the file is obtained (repoFile / localFile).</summary>
+        /// <summary>How the file is obtained (repoFile / localFile / mod).</summary>
         public ModRuleSourceType Type { get; set; } = ModRuleSourceType.RepoFile;
 
         /// <summary>Raw file URL for <see cref="ModRuleSourceType.RepoFile"/> sources.</summary>
@@ -45,6 +45,9 @@ namespace RimSharp.Shared.Models
 
         /// <summary>Absolute path on disk for <see cref="ModRuleSourceType.LocalFile"/> sources.</summary>
         public string? LocalPath { get; set; }
+
+        /// <summary>Steam workshop ID or folder name for <see cref="ModRuleSourceType.Mod"/> sources.</summary>
+        public string? ModFolderId { get; set; }
 
         /// <summary>Disabled sources are kept in the registry but never synced or merged.</summary>
         public bool Enabled { get; set; } = true;
@@ -56,19 +59,22 @@ namespace RimSharp.Shared.Models
         /// </summary>
         public bool Bundled { get; set; }
 
+        /// <summary>True for the built-in curated RimSharpDB entry.</summary>
+        [JsonIgnore]
+        public bool Curated => string.Equals(Id, ModRuleSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase);
+
         /// <summary>
         /// Whether this source is locked (its identity and URL cannot be changed
-        /// or removed). Derived from <see cref="Id"/> rather than persisted, so a
-        /// hand-edited config can never unlock the curated RimSharpDB source.
-        /// Locked sources can still be enabled/disabled and reordered.
+        /// or removed). Curated RimSharpDB and installed local mods are locked:
+        /// they can only be enabled/disabled and reordered, but not edited or deleted.
         /// </summary>
         [JsonIgnore]
-        public bool Locked => string.Equals(Id, ModRuleSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase);
+        public bool Locked => Curated || Type == ModRuleSourceType.Mod;
     }
 
     /// <summary>
     /// Serializes <see cref="ModRuleSourceType"/> as the lowercase literals
-    /// "repoFile" / "localFile" (and accepts any casing on read).
+    /// "repoFile" / "localFile" / "mod" (and accepts any casing on read).
     /// </summary>
     public sealed class ModRuleSourceTypeConverter : JsonConverter<ModRuleSourceType>
     {
@@ -76,20 +82,31 @@ namespace RimSharp.Shared.Models
         {
             if (reader.TokenType == JsonTokenType.Number && reader.TryGetInt32(out var numeric))
             {
-                return numeric == (int)ModRuleSourceType.LocalFile ? ModRuleSourceType.LocalFile : ModRuleSourceType.RepoFile;
+                return numeric switch
+                {
+                    1 => ModRuleSourceType.LocalFile,
+                    2 => ModRuleSourceType.Mod,
+                    _ => ModRuleSourceType.RepoFile
+                };
             }
 
             var value = reader.GetString();
             return value?.Trim().ToLowerInvariant() switch
             {
                 "localfile" => ModRuleSourceType.LocalFile,
+                "mod" => ModRuleSourceType.Mod,
                 _ => ModRuleSourceType.RepoFile
             };
         }
 
         public override void Write(Utf8JsonWriter writer, ModRuleSourceType value, JsonSerializerOptions options)
         {
-            writer.WriteStringValue(value == ModRuleSourceType.LocalFile ? "localFile" : "repoFile");
+            writer.WriteStringValue(value switch
+            {
+                ModRuleSourceType.LocalFile => "localFile",
+                ModRuleSourceType.Mod => "mod",
+                _ => "repoFile"
+            });
         }
     }
 }

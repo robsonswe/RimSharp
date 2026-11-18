@@ -34,5 +34,10 @@ ModDictionaryEntry? GetEntryByPackageId(string packageId);
 /// </summary>
 
 List<ModDictionaryEntry> GetAllEntriesByPackageId(string packageId);
+
+        /// <summary>
+        /// Clears the in-memory cache so subsequent lookups re-load from the configured sources.
+        /// </summary>
+        void Invalidate();
     }
 }

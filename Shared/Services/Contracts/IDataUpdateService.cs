@@ -34,4 +34,13 @@ public interface IDataUpdateService
     /// "Update all").
     /// </summary>
     Task RefreshAllRuleSourcesAsync(CancellationToken cancellationToken);
+
+    Task RefreshModInfoSourceAsync(string sourceId, CancellationToken cancellationToken);
+    Task RefreshAllModInfoSourcesAsync(CancellationToken cancellationToken);
+
+    Task RefreshReplacementSourceAsync(string sourceId, CancellationToken cancellationToken);
+    Task RefreshAllReplacementSourcesAsync(CancellationToken cancellationToken);
+
+    Task RefreshNoVersionWarningSourceAsync(string sourceId, CancellationToken cancellationToken);
+    Task RefreshAllNoVersionWarningSourcesAsync(CancellationToken cancellationToken);
 }

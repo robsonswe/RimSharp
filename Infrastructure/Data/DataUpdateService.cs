@@ -11,7 +11,10 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Infrastructure.Configuration;
+using RimSharp.Infrastructure.Mods.ModInfo;
+using RimSharp.Infrastructure.Mods.Replacements;
 using RimSharp.Infrastructure.Mods.Rules;
+using RimSharp.Infrastructure.Mods.Versions;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 
@@ -30,6 +33,9 @@ namespace RimSharp.Infrastructure.Data
         private readonly GameInstance? _gameInstance;
         private readonly string _noVersionWarningTreeUrl = "https://api.github.com/repos/emipa606/NoVersionWarning/git/trees/main";
         private readonly ModRuleSourceRegistry? _ruleSourceRegistry;
+        private readonly ModInfoSourceRegistry? _modInfoSourceRegistry;
+        private readonly ModReplacementSourceRegistry? _replacementSourceRegistry;
+        private readonly NoVersionWarningSourceRegistry? _noVersionWarningSourceRegistry;
         // Fallback version list used when the repository tree cannot be
         // discovered (offline, rate-limited). Mirrors the repo's current
         // layout; unknown versions are fetched dynamically instead.
@@ -61,18 +67,38 @@ namespace RimSharp.Infrastructure.Data
             (Path.Combine("Data", "Replacements", "RimSharp", "replacements.json"), Path.Combine("Replacements", "RimSharp", "replacements.json")),
         };
 
-        public DataUpdateService(ILoggerService logger, string appBasePath, HttpClient httpClient, GameInstance? gameInstance = null, ModRuleSourceRegistry? ruleSourceRegistry = null)
-            : this(logger, appBasePath, httpClient, AppDataPaths.BaseDirectory, gameInstance, ruleSourceRegistry)
+        public DataUpdateService(
+            ILoggerService logger,
+            string appBasePath,
+            HttpClient httpClient,
+            GameInstance? gameInstance = null,
+            ModRuleSourceRegistry? ruleSourceRegistry = null,
+            ModInfoSourceRegistry? modInfoSourceRegistry = null,
+            ModReplacementSourceRegistry? replacementSourceRegistry = null,
+            NoVersionWarningSourceRegistry? noVersionWarningSourceRegistry = null)
+            : this(logger, appBasePath, httpClient, AppDataPaths.BaseDirectory, gameInstance, ruleSourceRegistry, modInfoSourceRegistry, replacementSourceRegistry, noVersionWarningSourceRegistry)
         {
         }
 
-        internal DataUpdateService(ILoggerService logger, string appBasePath, HttpClient httpClient, string bundledDataSource, GameInstance? gameInstance = null, ModRuleSourceRegistry? ruleSourceRegistry = null)
+        internal DataUpdateService(
+            ILoggerService logger,
+            string appBasePath,
+            HttpClient httpClient,
+            string bundledDataSource,
+            GameInstance? gameInstance = null,
+            ModRuleSourceRegistry? ruleSourceRegistry = null,
+            ModInfoSourceRegistry? modInfoSourceRegistry = null,
+            ModReplacementSourceRegistry? replacementSourceRegistry = null,
+            NoVersionWarningSourceRegistry? noVersionWarningSourceRegistry = null)
         {
             _gameInstance = gameInstance;
             _logger = logger;
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _bundledDataSource = bundledDataSource;
             _ruleSourceRegistry = ruleSourceRegistry;
+            _modInfoSourceRegistry = modInfoSourceRegistry;
+            _replacementSourceRegistry = replacementSourceRegistry;
+            _noVersionWarningSourceRegistry = noVersionWarningSourceRegistry;
 
             if (!_httpClient.DefaultRequestHeaders.Contains("User-Agent"))
             {
@@ -443,9 +469,394 @@ namespace RimSharp.Infrastructure.Data
         /// </summary>
         private async Task SyncExternalSourcesAsync(CancellationToken cancellationToken)
         {
-            await SyncUseThisInsteadAsync(cancellationToken).ConfigureAwait(false);
-            await SyncNoVersionWarningAsync(cancellationToken).ConfigureAwait(false);
+            if (_replacementSourceRegistry != null)
+            {
+                await SyncReplacementSourcesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                await SyncUseThisInsteadAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            if (_noVersionWarningSourceRegistry != null)
+            {
+                await SyncNoVersionWarningSourcesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                await SyncNoVersionWarningAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            if (_modInfoSourceRegistry != null)
+            {
+                await SyncModInfoSourcesAsync(cancellationToken).ConfigureAwait(false);
+            }
         }
+
+        #region ModInfo Sources Sync & Refresh
+
+        public async Task SyncModInfoSourcesAsync(CancellationToken cancellationToken)
+        {
+            if (_modInfoSourceRegistry == null) return;
+
+            foreach (var source in _modInfoSourceRegistry.GetEnabledSources())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (string.Equals(source.Id, ModInfoSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
+                {
+                    continue;
+                }
+
+                var localPath = GetModInfoSourceFilePath(source);
+                if (localPath == null) continue;
+
+                try
+                {
+                    _logger.LogInfo($"Syncing ModInfo source '{source.Id}' from '{source.Url}'...", nameof(DataUpdateService));
+                    await SyncTextFileAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning($"Could not sync ModInfo source '{source.Id}': {ex.Message}", nameof(DataUpdateService));
+                }
+            }
+        }
+
+        public async Task RefreshModInfoSourceAsync(string sourceId, CancellationToken cancellationToken)
+        {
+            if (_modInfoSourceRegistry == null) return;
+
+            var source = _modInfoSourceRegistry.Find(sourceId);
+            if (source == null)
+            {
+                _logger.LogWarning($"Cannot refresh unknown ModInfo source '{sourceId}'.", nameof(DataUpdateService));
+                return;
+            }
+
+            if (string.Equals(source.Id, ModInfoSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogInfo($"ModInfo source '{sourceId}' is the curated database; it updates with the regular data update check.", nameof(DataUpdateService));
+                return;
+            }
+
+            if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
+            {
+                _logger.LogInfo($"ModInfo source '{sourceId}' is a local file or mod; nothing to fetch.", nameof(DataUpdateService));
+                return;
+            }
+
+            var localPath = GetModInfoSourceFilePath(source);
+            if (localPath == null) return;
+
+            try
+            {
+                _logger.LogInfo($"Refreshing ModInfo source '{sourceId}' from '{source.Url}'...", nameof(DataUpdateService));
+                await SyncTextFileAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Could not refresh ModInfo source '{sourceId}': {ex.Message}", nameof(DataUpdateService));
+                throw new InvalidOperationException($"Could not update '{source.Name}'. Please check the URL and your internet connection.", ex);
+            }
+        }
+
+        public async Task RefreshAllModInfoSourcesAsync(CancellationToken cancellationToken)
+        {
+            if (_modInfoSourceRegistry == null) return;
+
+            foreach (var source in _modInfoSourceRegistry.GetEnabledSources())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (string.Equals(source.Id, ModInfoSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
+                {
+                    continue;
+                }
+
+                var localPath = GetModInfoSourceFilePath(source);
+                if (localPath == null) continue;
+
+                try
+                {
+                    _logger.LogInfo($"Refreshing ModInfo source '{source.Id}' from '{source.Url}'...", nameof(DataUpdateService));
+                    await SyncTextFileAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning($"Could not refresh ModInfo source '{source.Id}': {ex.Message}", nameof(DataUpdateService));
+                }
+            }
+        }
+
+        private string? GetModInfoSourceFilePath(ModRuleSourceRecord source)
+        {
+            if (string.IsNullOrWhiteSpace(source.Url) || !Uri.TryCreate(source.Url, UriKind.Absolute, out var uri))
+            {
+                return null;
+            }
+
+            var fileName = Path.GetFileName(uri.AbsolutePath);
+            if (string.IsNullOrEmpty(fileName)) fileName = "db.json";
+
+            return GetExternalFilePath("ModInfo", source.Id, Uri.UnescapeDataString(fileName));
+        }
+
+        #endregion
+
+        #region Replacements Sources Sync & Refresh
+
+        public async Task SyncReplacementSourcesAsync(CancellationToken cancellationToken)
+        {
+            if (_replacementSourceRegistry == null) return;
+
+            foreach (var source in _replacementSourceRegistry.GetEnabledSources())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (string.Equals(source.Id, ModReplacementSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
+                {
+                    continue;
+                }
+
+                var localPath = GetReplacementSourceFilePath(source);
+                if (localPath == null) continue;
+
+                try
+                {
+                    _logger.LogInfo($"Syncing replacement source '{source.Id}' from '{source.Url}'...", nameof(DataUpdateService));
+                    if (source.Url.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await SyncGzippedJsonAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await SyncTextFileAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning($"Could not sync replacement source '{source.Id}': {ex.Message}", nameof(DataUpdateService));
+                }
+            }
+        }
+
+        public async Task RefreshReplacementSourceAsync(string sourceId, CancellationToken cancellationToken)
+        {
+            if (_replacementSourceRegistry == null) return;
+
+            var source = _replacementSourceRegistry.Find(sourceId);
+            if (source == null)
+            {
+                _logger.LogWarning($"Cannot refresh unknown replacement source '{sourceId}'.", nameof(DataUpdateService));
+                return;
+            }
+
+            if (string.Equals(source.Id, ModReplacementSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogInfo($"Replacement source '{sourceId}' is the curated database; it updates with the regular data update check.", nameof(DataUpdateService));
+                return;
+            }
+
+            if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
+            {
+                _logger.LogInfo($"Replacement source '{sourceId}' is a local file or mod; nothing to fetch.", nameof(DataUpdateService));
+                return;
+            }
+
+            var localPath = GetReplacementSourceFilePath(source);
+            if (localPath == null) return;
+
+            try
+            {
+                _logger.LogInfo($"Refreshing replacement source '{sourceId}' from '{source.Url}'...", nameof(DataUpdateService));
+                if (source.Url.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
+                {
+                    await SyncGzippedJsonAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    await SyncTextFileAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Could not refresh replacement source '{sourceId}': {ex.Message}", nameof(DataUpdateService));
+                throw new InvalidOperationException($"Could not update '{source.Name}'. Please check the URL and your internet connection.", ex);
+            }
+        }
+
+        public async Task RefreshAllReplacementSourcesAsync(CancellationToken cancellationToken)
+        {
+            if (_replacementSourceRegistry == null) return;
+
+            foreach (var source in _replacementSourceRegistry.GetEnabledSources())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (string.Equals(source.Id, ModReplacementSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
+                {
+                    continue;
+                }
+
+                var localPath = GetReplacementSourceFilePath(source);
+                if (localPath == null) continue;
+
+                try
+                {
+                    _logger.LogInfo($"Refreshing replacement source '{source.Id}' from '{source.Url}'...", nameof(DataUpdateService));
+                    if (source.Url.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await SyncGzippedJsonAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await SyncTextFileAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning($"Could not refresh replacement source '{source.Id}': {ex.Message}", nameof(DataUpdateService));
+                }
+            }
+        }
+
+        private string? GetReplacementSourceFilePath(ModRuleSourceRecord source)
+        {
+            if (string.IsNullOrWhiteSpace(source.Url) || !Uri.TryCreate(source.Url, UriKind.Absolute, out _))
+            {
+                return null;
+            }
+
+            return GetExternalFilePath("Replacements", source.Id, "replacements.json");
+        }
+
+        #endregion
+
+        #region NoVersionWarning Sources Sync & Refresh
+
+        public async Task SyncNoVersionWarningSourcesAsync(CancellationToken cancellationToken)
+        {
+            if (_noVersionWarningSourceRegistry == null) return;
+
+            foreach (var source in _noVersionWarningSourceRegistry.GetEnabledSources())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
+                {
+                    continue;
+                }
+
+                await SyncNoVersionWarningForSourceAsync(source.Id, source.Url, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        public async Task RefreshNoVersionWarningSourceAsync(string sourceId, CancellationToken cancellationToken)
+        {
+            if (_noVersionWarningSourceRegistry == null) return;
+
+            var source = _noVersionWarningSourceRegistry.Find(sourceId);
+            if (source == null)
+            {
+                _logger.LogWarning($"Cannot refresh unknown NoVersionWarning source '{sourceId}'.", nameof(DataUpdateService));
+                return;
+            }
+
+            if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
+            {
+                _logger.LogInfo($"NoVersionWarning source '{sourceId}' is a local file or mod; nothing to fetch.", nameof(DataUpdateService));
+                return;
+            }
+
+            try
+            {
+                _logger.LogInfo($"Refreshing NoVersionWarning source '{sourceId}' from '{source.Url}'...", nameof(DataUpdateService));
+                await SyncNoVersionWarningForSourceAsync(source.Id, source.Url, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Could not refresh NoVersionWarning source '{sourceId}': {ex.Message}", nameof(DataUpdateService));
+                throw new InvalidOperationException($"Could not update '{source.Name}'. Please check the URL and your internet connection.", ex);
+            }
+        }
+
+        public async Task RefreshAllNoVersionWarningSourcesAsync(CancellationToken cancellationToken)
+        {
+            if (_noVersionWarningSourceRegistry == null) return;
+
+            foreach (var source in _noVersionWarningSourceRegistry.GetEnabledSources())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    _logger.LogInfo($"Refreshing NoVersionWarning source '{source.Id}' from '{source.Url}'...", nameof(DataUpdateService));
+                    await SyncNoVersionWarningForSourceAsync(source.Id, source.Url, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning($"Could not refresh NoVersionWarning source '{source.Id}': {ex.Message}", nameof(DataUpdateService));
+                }
+            }
+        }
+
+        private async Task SyncNoVersionWarningForSourceAsync(string sourceId, string baseUrl, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var versions = await DiscoverNoVersionWarningVersionsAsync(cancellationToken).ConfigureAwait(false);
+                _logger.LogInfo($"Syncing 'No Version Warning' version snapshots for {sourceId}: {string.Join(", ", versions)}", nameof(DataUpdateService));
+
+                foreach (var version in versions)
+                {
+                    var localXmlPath = GetExternalFilePath(
+                        "Versions", sourceId, Path.Combine(version, "ModIdsToFix.xml"));
+                    var trimmedBase = baseUrl.TrimEnd('/');
+                    var url = $"{trimmedBase}/{version}/ModIdsToFix.xml";
+
+                    try
+                    {
+                        await SyncTextFileAsync(url, localXmlPath, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning($"Could not sync 'No Version Warning' snapshot for {version} ({sourceId}): {ex.Message}", nameof(DataUpdateService));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Could not sync 'No Version Warning' version snapshots for {sourceId}: {ex.Message}", nameof(DataUpdateService));
+            }
+        }
+
+        #endregion
 
         /// <summary>
         /// Syncs the community "Use This Instead" replacement snapshot from the

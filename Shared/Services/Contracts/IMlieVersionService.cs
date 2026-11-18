@@ -15,6 +15,11 @@ namespace RimSharp.Shared.Services.Contracts
 
 /// </returns>
         Dictionary<string, List<string>> GetMlieVersions();
+
+        /// <summary>
+        /// Clears the in-memory cache so subsequent lookups re-load from the configured sources.
+        /// </summary>
+        void Invalidate();
     }
 }
 

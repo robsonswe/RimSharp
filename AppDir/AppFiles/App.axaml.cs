@@ -24,6 +24,9 @@ using RimSharp.Features.ModManager.Services.Management;
 using RimSharp.Features.ModManager.ViewModels;
 using RimSharp.Infrastructure.Mods.IO;
 using RimSharp.Infrastructure.Mods.Rules;
+using RimSharp.Infrastructure.Mods.ModInfo;
+using RimSharp.Infrastructure.Mods.Replacements;
+using RimSharp.Infrastructure.Mods.Versions;
 using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
 using RimSharp.Infrastructure.Mods.Validation.Duplicates;
 using RimSharp.Infrastructure.Mods.Validation.AI;
@@ -267,7 +270,10 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IModListManager>(),
                     provider.GetRequiredService<GameInstance>(),
                     provider.GetRequiredService<IRuleSourceManager>(),
-                    provider.GetRequiredService<IModService>()
+                    provider.GetRequiredService<IModService>(),
+                    provider.GetRequiredService<IModInfoSourceManager>(),
+                    provider.GetRequiredService<IModReplacementSourceManager>(),
+                    provider.GetRequiredService<INoVersionWarningSourceManager>()
                 ));
             services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
             services.AddSingleton<ISystemInfoService>(provider => SystemInfoServiceFactory.Create());
@@ -308,10 +314,16 @@ namespace RimSharp.AppDir.AppFiles
             });
 
 
-            // Rule database source registry (shared singleton: the settings dialog edits
-            // it, the repository merges from it, the data sync fetches from it).
+            // External database source registries (shared singletons: settings dialog edits them,
+            // repositories/services merge from them, data sync fetches from them).
             services.AddSingleton<ModRuleSourceRegistry>(provider =>
                 new ModRuleSourceRegistry(provider.GetRequiredService<IConfigService>()));
+            services.AddSingleton<ModInfoSourceRegistry>(provider =>
+                new ModInfoSourceRegistry(provider.GetRequiredService<IConfigService>()));
+            services.AddSingleton<ModReplacementSourceRegistry>(provider =>
+                new ModReplacementSourceRegistry(provider.GetRequiredService<IConfigService>()));
+            services.AddSingleton<NoVersionWarningSourceRegistry>(provider =>
+                new NoVersionWarningSourceRegistry(provider.GetRequiredService<IConfigService>()));
 
             services.AddSingleton<IDataUpdateService>(provider =>
                    new DataUpdateService(
@@ -319,7 +331,10 @@ namespace RimSharp.AppDir.AppFiles
                        provider.GetRequiredService<string>(),
                        provider.GetRequiredService<IHttpClientFactory>().CreateClient(),
                        gameInstance: provider.GetRequiredService<GameInstance>(),
-                       ruleSourceRegistry: provider.GetRequiredService<ModRuleSourceRegistry>()
+                       ruleSourceRegistry: provider.GetRequiredService<ModRuleSourceRegistry>(),
+                       modInfoSourceRegistry: provider.GetRequiredService<ModInfoSourceRegistry>(),
+                       replacementSourceRegistry: provider.GetRequiredService<ModReplacementSourceRegistry>(),
+                       noVersionWarningSourceRegistry: provider.GetRequiredService<NoVersionWarningSourceRegistry>()
                    )
                 );
 
@@ -358,20 +373,54 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<string>(), 
                     provider.GetRequiredService<ILoggerService>()
                  ));
-            services.AddSingleton<IMlieVersionService, MlieVersionService>();
+            services.AddSingleton<IMlieVersionService>(provider =>
+                new MlieVersionService(
+                    provider.GetRequiredService<IPathService>(),
+                    provider.GetRequiredService<IDataUpdateService>(),
+                    provider.GetRequiredService<ILoggerService>(),
+                    provider.GetRequiredService<NoVersionWarningSourceRegistry>()
+                ));
             services.AddSingleton<IModReplacementService>(provider =>
                 new ModReplacementService(
                     provider.GetRequiredService<IPathService>(),
                     provider.GetRequiredService<IDataUpdateService>(),
-                    provider.GetRequiredService<ILoggerService>()
+                    provider.GetRequiredService<ILoggerService>(),
+                    provider.GetRequiredService<ModReplacementSourceRegistry>()
                 ));
 
             services.AddSingleton<IModDictionaryService>(provider =>
                 new ModDictionaryService(
                     provider.GetRequiredService<IPathService>(),
                     provider.GetRequiredService<IDataUpdateService>(),
-                    provider.GetRequiredService<ILoggerService>()
+                    provider.GetRequiredService<ILoggerService>(),
+                    provider.GetRequiredService<ModInfoSourceRegistry>()
                 ));
+
+            services.AddSingleton<IModInfoSourceManager>(provider =>
+                new ModInfoSourceManager(
+                    provider.GetRequiredService<ModInfoSourceRegistry>(),
+                    provider.GetRequiredService<IModDictionaryService>(),
+                    provider.GetRequiredService<IDataUpdateService>(),
+                    provider.GetRequiredService<ILoggerService>()));
+
+            services.AddSingleton<IModReplacementSourceManager>(provider =>
+                new ModReplacementSourceManager(
+                    provider.GetRequiredService<ModReplacementSourceRegistry>(),
+                    provider.GetRequiredService<IModReplacementService>(),
+                    provider.GetRequiredService<IDataUpdateService>(),
+                    provider.GetRequiredService<IPathService>(),
+                    provider.GetRequiredService<ILoggerService>(),
+                    provider.GetRequiredService<GameInstance>()));
+
+            services.AddSingleton<INoVersionWarningSourceManager>(provider =>
+                new NoVersionWarningSourceManager(
+                    provider.GetRequiredService<NoVersionWarningSourceRegistry>(),
+                    provider.GetRequiredService<IMlieVersionService>(),
+                    provider.GetRequiredService<IDataUpdateService>(),
+                    provider.GetRequiredService<IPathService>(),
+                    provider.GetRequiredService<ILoggerService>(),
+                    provider.GetRequiredService<IModService>(),
+                    provider.GetRequiredService<GameInstance>()));
             services.AddSingleton<IModService>(provider =>
                 new ModService(
                     provider.GetRequiredService<IPathService>(),

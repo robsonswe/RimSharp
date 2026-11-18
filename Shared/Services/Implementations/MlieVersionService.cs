@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using RimSharp.Infrastructure.Logging;
+using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 
 namespace RimSharp.Shared.Services.Implementations
@@ -17,15 +18,30 @@ namespace RimSharp.Shared.Services.Implementations
         private readonly IPathService _pathService;
         private readonly IDataUpdateService _dataUpdateService;
         private readonly ILoggerService _logger;
+        private readonly Infrastructure.Mods.Versions.NoVersionWarningSourceRegistry? _sourceRegistry;
         private Dictionary<string, List<string>>? _mlieVersionsCache;
         private bool _isInitialized = false;
         private readonly object _lock = new object();
 
-        public MlieVersionService(IPathService pathService, IDataUpdateService dataUpdateService, ILoggerService logger)
+        public MlieVersionService(
+            IPathService pathService,
+            IDataUpdateService dataUpdateService,
+            ILoggerService logger,
+            Infrastructure.Mods.Versions.NoVersionWarningSourceRegistry? sourceRegistry = null)
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
             _dataUpdateService = dataUpdateService ?? throw new ArgumentNullException(nameof(dataUpdateService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _sourceRegistry = sourceRegistry;
+        }
+
+        public void Invalidate()
+        {
+            lock (_lock)
+            {
+                _mlieVersionsCache = null;
+                _isInitialized = false;
+            }
         }
 
         public Dictionary<string, List<string>> GetMlieVersions()
@@ -54,14 +70,30 @@ namespace RimSharp.Shared.Services.Implementations
         {
             var results = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
-            // Priority union: the locally installed mod first, then the
-            // repository snapshot synced by the data updater. Both share the
-            // same per-version XML layout; a packageId known to both sources
-            // gets the additive union of its version lists. (No curated layer
-            // exists yet; Data/Versions/Custom/<ver>/ModIdsToFix.xml would
-            // parse with the same walker if one is added later.)
-            LoadFromModFolder(results);
-            LoadFromRepositorySnapshot(results);
+            if (_sourceRegistry != null)
+            {
+                foreach (var source in _sourceRegistry.GetEnabledSources())
+                {
+                    if (source.Type == ModRuleSourceType.Mod)
+                    {
+                        LoadFromModFolder(results);
+                    }
+                    else if (source.Type == ModRuleSourceType.RepoFile && !string.IsNullOrWhiteSpace(source.Url))
+                    {
+                        LoadFromRepositorySnapshot(source.Id, results);
+                    }
+                    else if (source.Type == ModRuleSourceType.LocalFile && !string.IsNullOrWhiteSpace(source.LocalPath))
+                    {
+                        int count = LoadFromVersionDirectories(source.LocalPath, results);
+                        _logger.LogDebug($"Loaded {count} packageId entries from local path '{source.LocalPath}'.", nameof(MlieVersionService));
+                    }
+                }
+            }
+            else
+            {
+                LoadFromModFolder(results);
+                LoadFromRepositorySnapshot("NoVersionWarning", results);
+            }
 
             return results;
         }
@@ -81,18 +113,25 @@ namespace RimSharp.Shared.Services.Implementations
             _logger.LogDebug($"Loaded {count} packageId entries from the Mlie mod folder '{mlieModPath}'.", nameof(MlieVersionService));
         }
 
-        private void LoadFromRepositorySnapshot(Dictionary<string, List<string>> results)
+        private void LoadFromRepositorySnapshot(string sourceId, Dictionary<string, List<string>> results)
         {
             try
             {
                 var snapshotRoot = Path.GetDirectoryName(
-                    _dataUpdateService.GetExternalFilePath("Versions", "NoVersionWarning", MlieFileName))!;
+                    _dataUpdateService.GetExternalFilePath("Versions", sourceId, MlieFileName))!;
+                if (!Directory.Exists(snapshotRoot) && (sourceId == "community-noversionwarning" || sourceId == "NoVersionWarning"))
+                {
+                    var altRoot = Path.GetDirectoryName(
+                        _dataUpdateService.GetExternalFilePath("Versions", "NoVersionWarning", MlieFileName))!;
+                    if (Directory.Exists(altRoot)) snapshotRoot = altRoot;
+                }
+
                 int count = LoadFromVersionDirectories(snapshotRoot, results);
                 _logger.LogDebug($"Loaded {count} packageId entries from the 'No Version Warning' repository snapshot '{snapshotRoot}'.", nameof(MlieVersionService));
             }
             catch (Exception ex)
             {
-                _logger.LogException(ex, "Failed to load the 'No Version Warning' repository snapshot.", nameof(MlieVersionService));
+                _logger.LogException(ex, $"Failed to load the 'No Version Warning' repository snapshot for '{sourceId}'.", nameof(MlieVersionService));
             }
         }
 

@@ -51,6 +51,9 @@ namespace RimSharp.Infrastructure.Dialog
         private readonly IModListManager? _modListManager;
         private readonly Shared.Models.GameInstance? _gameInstance;
         private readonly IRuleSourceManager? _ruleSourceManager;
+        private readonly IModInfoSourceManager? _modInfoSourceManager;
+        private readonly IModReplacementSourceManager? _replacementSourceManager;
+        private readonly INoVersionWarningSourceManager? _noVersionWarningSourceManager;
         private readonly IModService? _modService;
         private int _openDialogCount;
         public bool IsAnyDialogOpen => _openDialogCount > 0;
@@ -71,7 +74,10 @@ namespace RimSharp.Infrastructure.Dialog
             IModListManager? modListManager = null,
             Shared.Models.GameInstance? gameInstance = null,
             IRuleSourceManager? ruleSourceManager = null,
-            IModService? modService = null)
+            IModService? modService = null,
+            IModInfoSourceManager? modInfoSourceManager = null,
+            IModReplacementSourceManager? replacementSourceManager = null,
+            INoVersionWarningSourceManager? noVersionWarningSourceManager = null)
         {
             _appUpdaterService = appUpdaterService;
             _configService = configService;
@@ -87,6 +93,9 @@ namespace RimSharp.Infrastructure.Dialog
             _gameInstance = gameInstance;
             _ruleSourceManager = ruleSourceManager;
             _modService = modService;
+            _modInfoSourceManager = modInfoSourceManager;
+            _replacementSourceManager = replacementSourceManager;
+            _noVersionWarningSourceManager = noVersionWarningSourceManager;
         }
 
         private void OnPropertyChanged(string propertyName)
@@ -304,7 +313,10 @@ namespace RimSharp.Infrastructure.Dialog
                 _gameInstallationDetectionService!,
                 dialogService: this,
                 showAiProviders: showAiProviders,
-                ruleSourceManager: _ruleSourceManager);
+                ruleSourceManager: _ruleSourceManager,
+                modInfoSourceManager: _modInfoSourceManager,
+                replacementSourceManager: _replacementSourceManager,
+                noVersionWarningSourceManager: _noVersionWarningSourceManager);
             var dialog = new SettingsDialogView(viewModel);
             return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }

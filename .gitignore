@@ -5,6 +5,7 @@
 
 /tmp
 .vscode
+/docs/
 
 # dotenv files
 .env

@@ -15,16 +15,31 @@ namespace RimSharp.Shared.Services.Implementations
         private const string DatabaseDictionaryFileName = "db.json";
         private readonly IPathService _pathService;
         private readonly ILoggerService _logger;
-        private readonly IDataUpdateService _dataUpdateService; 
+        private readonly IDataUpdateService _dataUpdateService;
+        private readonly Infrastructure.Mods.ModInfo.ModInfoSourceRegistry? _sourceRegistry;
         private Dictionary<string, ModDictionaryEntry>? _dictionaryCache;
         private bool _isInitialized = false;
         private readonly object _lock = new object();
 
-        public ModDictionaryService(IPathService pathService, IDataUpdateService dataUpdateService, ILoggerService logger)
+        public ModDictionaryService(
+            IPathService pathService,
+            IDataUpdateService dataUpdateService,
+            ILoggerService logger,
+            Infrastructure.Mods.ModInfo.ModInfoSourceRegistry? sourceRegistry = null)
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
             _dataUpdateService = dataUpdateService ?? throw new ArgumentNullException(nameof(dataUpdateService)); 
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _sourceRegistry = sourceRegistry;
+        }
+
+        public void Invalidate()
+        {
+            lock (_lock)
+            {
+                _dictionaryCache = null;
+                _isInitialized = false;
+            }
         }
 
         public Dictionary<string, ModDictionaryEntry> GetAllEntries()
@@ -131,14 +146,39 @@ namespace RimSharp.Shared.Services.Implementations
         private Dictionary<string, ModDictionaryEntry> LoadEntries()
         {
             var results = new Dictionary<string, ModDictionaryEntry>(StringComparer.OrdinalIgnoreCase);
-            int loadedCount = LoadFromJson(results);
-            _logger.LogDebug($"Loaded {loadedCount} entries from dictionary JSON database.", nameof(ModDictionaryService));
+
+            if (_sourceRegistry != null)
+            {
+                foreach (var source in _sourceRegistry.GetEnabledSources())
+                {
+                    if (string.Equals(source.Id, Infrastructure.Mods.ModInfo.ModInfoSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        var jsonPath = _dataUpdateService.GetExternalFilePath("ModInfo", "RimSharp", DatabaseDictionaryFileName);
+                        LoadFromJsonFile(jsonPath, results);
+                    }
+                    else if (source.Type == ModRuleSourceType.RepoFile && !string.IsNullOrWhiteSpace(source.Url))
+                    {
+                        var jsonPath = _dataUpdateService.GetExternalFilePath("ModInfo", source.Id, DatabaseDictionaryFileName);
+                        LoadFromJsonFile(jsonPath, results);
+                    }
+                    else if (source.Type == ModRuleSourceType.LocalFile && !string.IsNullOrWhiteSpace(source.LocalPath))
+                    {
+                        LoadFromJsonFile(source.LocalPath, results);
+                    }
+                }
+            }
+            else
+            {
+                var jsonPath = _dataUpdateService.GetExternalFilePath("ModInfo", "RimSharp", DatabaseDictionaryFileName);
+                LoadFromJsonFile(jsonPath, results);
+            }
+
+            _logger.LogDebug($"Loaded {results.Count} entries across ModInfo database sources.", nameof(ModDictionaryService));
             return results;
         }
 
-        private int LoadFromJson(Dictionary<string, ModDictionaryEntry> targetDictionary)
+        private int LoadFromJsonFile(string jsonFilePath, Dictionary<string, ModDictionaryEntry> targetDictionary)
         {
-            var jsonFilePath = _dataUpdateService.GetExternalFilePath("ModInfo", "RimSharp", DatabaseDictionaryFileName);
             var dbDirectoryPath = Path.GetDirectoryName(jsonFilePath);
             int count = 0;
 
@@ -196,12 +236,11 @@ namespace RimSharp.Shared.Services.Implementations
                                 Published = details.Published
                             };
 
-                            if (targetDictionary.ContainsKey(steamIdLower))
+                            if (!targetDictionary.ContainsKey(steamIdLower))
                             {
-                                _logger.LogWarning($"Duplicate Steam ID '{steamIdLower}' found in '{jsonFilePath}'. Overwriting entry. Previous package: '{targetDictionary[steamIdLower].PackageId}', New package: '{packageIdLower}'.", nameof(ModDictionaryService));
+                                targetDictionary[steamIdLower] = entry;
+                                count++;
                             }
-                            targetDictionary[steamIdLower] = entry;
-                            count++;
                         }
                     }
                 }
@@ -220,7 +259,7 @@ namespace RimSharp.Shared.Services.Implementations
             }
             catch (Exception ex)
             {
-                _logger.LogException(ex, $"Unexpected error loading dictionary entries from '{jsonFilePath}'.", nameof(ModDictionaryService));
+                _logger.LogException(ex, $"Unexpected error loading dictionary from '{jsonFilePath}'.", nameof(ModDictionaryService));
             }
 
             return count;

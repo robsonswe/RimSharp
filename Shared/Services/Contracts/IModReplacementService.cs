@@ -29,6 +29,11 @@ namespace RimSharp.Shared.Services.Contracts
 
         /// <returns>The <see cref="ModReplacementInfo"/> if found, otherwise null.</returns>
         ModReplacementInfo? GetReplacementByPackageId(string packageId);
+
+        /// <summary>
+        /// Clears the in-memory cache so subsequent lookups re-load from the configured sources.
+        /// </summary>
+        void Invalidate();
     }
 }
 
