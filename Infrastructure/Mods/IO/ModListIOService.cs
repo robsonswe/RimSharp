@@ -326,7 +326,7 @@ namespace RimSharp.Infrastructure.Mods.IO
                 // One best-effort resolver pass for all candidate pfids. The
                 // resolver batches internally into single Steam API calls. A
                 // failure here never fails the import - dictionary names remain.
-                var resolvedNames = await ResolveLiveNamesAsync(
+                var resolvedDetails = await ResolveLiveDetailsAsync(
                     matches.Where(m => m.entries.Count > 0).Select(m => m.missingId).ToList(),
                     prepCts.Token);
 
@@ -341,10 +341,24 @@ namespace RimSharp.Infrastructure.Mods.IO
                             foreach (var entry in matchingEntries.OrderBy(e => e.Name)) 
                             {
                                 // Ordering stays keyed to the dictionary name; only
-                                // the displayed name may be enriched by the resolver.
-                                var displayName = FindResolvedName(resolvedNames, missingId, entry.SteamId);
+                                // the displayed name, versions, update date, and live published status
+                                // are enriched by the resolver.
+                                var liveDetails = FindResolvedDetails(resolvedDetails, missingId, entry.SteamId);
+                                var displayName = !string.IsNullOrWhiteSpace(liveDetails?.DisplayName) ? liveDetails!.DisplayName : null;
+                                var timeUpdated = liveDetails?.TimeUpdated ?? 0;
+                                var versionsString = liveDetails?.VersionsString;
+                                var isPublished = liveDetails?.IsPublished ?? entry.Published;
+
+                                var enrichedEntry = (displayName != null || isPublished != entry.Published)
+                                    ? WithLiveModInfo(entry, displayName ?? entry.Name, isPublished)
+                                    : entry;
+
                                 group.Variants.Add(new MissingModVariantViewModel(
-                                    displayName == null ? entry : WithDisplayName(entry, displayName)));
+                                    enrichedEntry,
+                                    timeUpdated,
+                                    displayName,
+                                    versionsString,
+                                    isPublished));
                             }
                             group.SelectedVariant = group.Variants.FirstOrDefault(v => v.IsPublished);
                             groups.Add(group);
@@ -409,7 +423,21 @@ namespace RimSharp.Infrastructure.Mods.IO
         /// or null when enrichment is unavailable/failed so callers keep the
         /// dictionary-driven names exactly as before.
         /// </summary>
-        private async Task<Dictionary<string, Dictionary<string, string>>?> ResolveLiveNamesAsync(
+        private sealed record ResolvedLiveModDetails(
+            string? DisplayName,
+            long TimeUpdated,
+            string? VersionsString,
+            bool? IsPublished);
+
+        /// <summary>
+        /// Best-effort live-details enrichment (display name, tags/versions, update date, and live published status).
+        /// One resolver pass covers all candidate package ids; the resolver batches
+        /// the pfids internally into batched Steam API calls.
+        /// Returns a case-insensitive map of packageId -> (pfid -> details),
+        /// or null when enrichment is unavailable/failed so callers keep the
+        /// dictionary-driven names exactly as before.
+        /// </summary>
+        private async Task<Dictionary<string, Dictionary<string, ResolvedLiveModDetails>>?> ResolveLiveDetailsAsync(
             List<string> packageIds,
             CancellationToken cancellationToken)
         {
@@ -429,48 +457,89 @@ namespace RimSharp.Infrastructure.Mods.IO
             }
             catch (Exception ex)
             {
-                // Live names are a nicety: on failure keep the dictionary names
+                // Live details are a nicety: on failure keep the dictionary names
                 // so the picker/queue flow is unaffected (same fallback pattern
                 // as ResolveMissingDependencyUrlsAsync).
-                _logger.LogException(ex, "Live name enrichment for missing mods failed; keeping dictionary names.", nameof(ModListIOService));
+                _logger.LogException(ex, "Live details enrichment for missing mods failed; keeping dictionary names.", nameof(ModListIOService));
                 return null;
             }
 
             if (resolved == null || resolved.Count == 0) return null;
 
-            var names = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+            var details = new Dictionary<string, Dictionary<string, ResolvedLiveModDetails>>(StringComparer.OrdinalIgnoreCase);
             foreach (var kvp in resolved)
             {
-                var bySteamId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                var bySteamId = new Dictionary<string, ResolvedLiveModDetails>(StringComparer.OrdinalIgnoreCase);
                 foreach (var candidate in kvp.Value ?? Enumerable.Empty<ModInfoResolutionCandidate>())
                 {
                     if (candidate == null || string.IsNullOrWhiteSpace(candidate.SteamId)) continue;
-                    if (string.IsNullOrWhiteSpace(candidate.DisplayName)) continue;
-                    bySteamId[candidate.SteamId] = candidate.DisplayName;
+
+                    var apiDetail = candidate.ApiDetails;
+                    string? displayName = null;
+                    long timeUpdated = 0;
+                    string? versionsString = null;
+                    bool? isPublished = null;
+
+                    if (apiDetail != null)
+                    {
+                        if (apiDetail.Result == (int)SteamApiResultCode.OK)
+                        {
+                            isPublished = true;
+                            if (!string.IsNullOrWhiteSpace(apiDetail.Title))
+                            {
+                                displayName = apiDetail.Title;
+                            }
+                            timeUpdated = apiDetail.TimeUpdated;
+
+                            if (apiDetail.Tags != null && apiDetail.Tags.Count > 0)
+                            {
+                                var versionTags = SteamApiResultHelper.ExtractAndSortVersionTags(apiDetail.Tags);
+                                if (versionTags.Count > 0)
+                                {
+                                    versionsString = string.Join(", ", versionTags);
+                                }
+                            }
+                        }
+                        else if (apiDetail.Result == (int)SteamApiResultCode.FileNotFound ||
+                                 apiDetail.Result == (int)SteamApiResultCode.AccessDenied ||
+                                 apiDetail.Result == (int)SteamApiResultCode.ItemDeleted ||
+                                 apiDetail.Result == (int)SteamApiResultCode.InvalidSteamID)
+                        {
+                            // Mod is reported as deleted, unlisted, private/hidden, or invalid ID by Steam
+                            isPublished = false;
+                        }
+                        // Note: For other transient/service error codes (timeout, busy, service unavailable, rate limit),
+                        // isPublished remains null so callers fall back to the local database status.
+                    }
+
+                    if (string.IsNullOrWhiteSpace(displayName) && !string.IsNullOrWhiteSpace(candidate.DisplayName))
+                    {
+                        displayName = candidate.DisplayName;
+                    }
+
+                    bySteamId[candidate.SteamId] = new ResolvedLiveModDetails(displayName, timeUpdated, versionsString, isPublished);
                 }
-                names[kvp.Key] = bySteamId;
+                details[kvp.Key] = bySteamId;
             }
-            return names;
+            return details;
         }
 
-        private static string? FindResolvedName(
-            Dictionary<string, Dictionary<string, string>>? resolvedNames,
+        private static ResolvedLiveModDetails? FindResolvedDetails(
+            Dictionary<string, Dictionary<string, ResolvedLiveModDetails>>? resolvedDetails,
             string packageId,
             string steamId)
         {
-            if (resolvedNames == null || string.IsNullOrWhiteSpace(steamId)) return null;
-            if (!resolvedNames.TryGetValue(packageId, out var bySteamId)) return null;
-            if (!bySteamId.TryGetValue(steamId, out var displayName)) return null;
-            return displayName;
+            if (resolvedDetails == null || string.IsNullOrWhiteSpace(steamId)) return null;
+            if (!resolvedDetails.TryGetValue(packageId, out var bySteamId)) return null;
+            if (!bySteamId.TryGetValue(steamId, out var details)) return null;
+            return details;
         }
 
         /// <summary>
         /// Copies a dictionary entry with the display name overridden by the
-        /// live-resolved title. SteamName takes priority in ModDictionaryEntry.Name,
-        /// so setting it guarantees the variant shows the enriched name while
-        /// every other field (authors, versions, pfid, published) is preserved.
+        /// live-resolved title and live published status.
         /// </summary>
-        private static ModDictionaryEntry WithDisplayName(ModDictionaryEntry entry, string displayName)
+        private static ModDictionaryEntry WithLiveModInfo(ModDictionaryEntry entry, string displayName, bool isPublished)
         {
             return new ModDictionaryEntry
             {
@@ -482,8 +551,19 @@ namespace RimSharp.Infrastructure.Mods.IO
                 SourceId = entry.SourceId,
                 Versions = entry.Versions,
                 Authors = entry.Authors,
-                Published = entry.Published
+                Published = isPublished
             };
+        }
+
+        /// <summary>
+        /// Copies a dictionary entry with the display name overridden by the
+        /// live-resolved title. SteamName takes priority in ModDictionaryEntry.Name,
+        /// so setting it guarantees the variant shows the enriched name while
+        /// every other field (authors, versions, pfid, published) is preserved.
+        /// </summary>
+        private static ModDictionaryEntry WithDisplayName(ModDictionaryEntry entry, string displayName)
+        {
+            return WithLiveModInfo(entry, displayName, entry.Published);
         }
 
         private async Task ProcessAndQueueSelectedModsAsync(List<string> steamIds, CancellationToken ct)

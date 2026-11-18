@@ -41,6 +41,54 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
         public bool HasUnknownMods => UnknownModIds.Any();
         public bool HasKnownMods => ModGroups.Any();
 
+        /// <summary>
+        /// Summary text for the section header, e.g. "2 of 3 selected".
+        /// Only counts groups that have at least one published (selectable) variant.
+        /// </summary>
+        public string SelectionSummary
+        {
+            get
+            {
+                var total = ModGroups.Count(g => g.HasSelectableVariants);
+                var selected = ModGroups.Count(g => g.HasSelectableVariants && g.SelectedVariant != null);
+                return $"{selected} of {total} selected";
+            }
+        }
+
+        /// <summary>
+        /// Status bar text for the footer.
+        /// </summary>
+        public string StatusText
+        {
+            get
+            {
+                var parts = new List<string>();
+                if (HasKnownMods)
+                {
+                    var selectableCount = ModGroups.Count(g => g.HasSelectableVariants);
+                    var selectedCount = ModGroups.Count(g => g.HasSelectableVariants && g.SelectedVariant != null);
+                    parts.Add($"{selectedCount}/{selectableCount} mods selected for download");
+                }
+                if (HasUnknownMods)
+                {
+                    parts.Add($"{UnknownModIds.Count} mod(s) not found in database");
+                }
+                return string.Join("  •  ", parts);
+            }
+        }
+
+        /// <summary>
+        /// Display label for the unknown mods section header count.
+        /// </summary>
+        public string UnknownModCount
+        {
+            get
+            {
+                var count = UnknownModIds.Count;
+                return count == 1 ? "1 mod" : $"{count} mods";
+            }
+        }
+
         public ICommand DownloadCommand { get; }
         public ICommand CancelCommand { get; }
 
@@ -68,6 +116,8 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
             if (e.PropertyName == nameof(MissingModGroupViewModel.SelectedVariant))
             {
                 (DownloadCommand as IDelegateCommand)?.RaiseCanExecuteChanged();
+                OnPropertyChanged(nameof(SelectionSummary));
+                OnPropertyChanged(nameof(StatusText));
             }
         }
 
