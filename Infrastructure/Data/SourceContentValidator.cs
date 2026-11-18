@@ -122,6 +122,76 @@ namespace RimSharp.Infrastructure.Data
         }
 
         /// <summary>
+        /// Validates a RimSort Steam Workshop Database (<c>steamDB.json</c>)
+        /// snapshot. The root is an object keyed by publishedfileid; an optional
+        /// numeric <c>version</c> sits alongside the entries. Validation stays
+        /// deliberately shallow (no deep per-entry scan) so a ~48 MB payload is
+        /// checked cheaply: root shape, version type, every other value being an
+        /// object, at least one entry, and a usable first entry.
+        /// </summary>
+        public static string? ValidateSteamWorkshopDb(string content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return "content is empty";
+            }
+
+            try
+            {
+                using var doc = JsonDocument.Parse(content);
+                var root = doc.RootElement;
+                if (root.ValueKind != JsonValueKind.Object)
+                {
+                    return "root must be a JSON object";
+                }
+
+                bool hasEntry = false;
+                bool firstEntryChecked = false;
+                foreach (var property in root.EnumerateObject())
+                {
+                    if (string.Equals(property.Name, "version", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (property.Value.ValueKind != JsonValueKind.Number)
+                        {
+                            return "'version' must be a number";
+                        }
+                        continue;
+                    }
+
+                    if (property.Value.ValueKind != JsonValueKind.Object)
+                    {
+                        return $"entry '{property.Name}' must be a JSON object";
+                    }
+
+                    if (!firstEntryChecked)
+                    {
+                        firstEntryChecked = true;
+                        bool hasPackageId = TryGetPropertyIgnoreCase(property.Value, "packageId", out var pkg) &&
+                                            pkg.ValueKind == JsonValueKind.String;
+                        bool hasAppId = TryGetPropertyIgnoreCase(property.Value, "appid", out _);
+                        if (!hasPackageId && !hasAppId)
+                        {
+                            return $"first entry '{property.Name}' has no string 'packageId' or 'appid' property";
+                        }
+                    }
+
+                    hasEntry = true;
+                }
+
+                if (!hasEntry)
+                {
+                    return "no entries found";
+                }
+
+                return null;
+            }
+            catch (JsonException ex)
+            {
+                return $"invalid JSON: {ex.Message}";
+            }
+        }
+
+        /// <summary>
         /// Validates a replacements file. The Use This Instead repository
         /// snapshot uses <c>{"rules": [ ... ]}</c>; the curated database uses
         /// <c>{"mods": { ... }}</c>. Both (including their empty forms) are

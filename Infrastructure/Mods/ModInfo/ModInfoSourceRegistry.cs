@@ -20,6 +20,22 @@ namespace RimSharp.Infrastructure.Mods.ModInfo
         public const string CuratedSourceId = "rimsharp-db";
         private const string CuratedSourceName = "RimSharpDB";
 
+        /// <summary>Id of the pre-filled RimSort Steam Workshop Database source.</summary>
+        public const string SteamWorkshopDbSourceId = "steamworkshopdb";
+
+        /// <summary>Display name of the pre-filled Steam Workshop Database source.</summary>
+        public const string SteamWorkshopDbSourceName = "Steam Workshop DB";
+
+        /// <summary>Raw URL of the upstream community Steam Workshop database.</summary>
+        public const string SteamWorkshopDbSourceUrl =
+            "https://raw.githubusercontent.com/RimSort/Steam-Workshop-Database/main/steamDB.json";
+
+        /// <summary>
+        /// Config flag recording that the one-time Steam Workshop DB migration
+        /// already ran, so a user removing the source later is never undone.
+        /// </summary>
+        public const string SteamWorkshopDbMigrationFlagKey = "modinfo_steamworkshopdb_migrated";
+
         private static readonly JsonSerializerOptions SerializerOptions = new()
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -46,7 +62,36 @@ namespace RimSharp.Infrastructure.Mods.ModInfo
         {
             var raw = _configService.GetConfigValue(ConfigKey);
             var parsed = TryParse(raw);
-            _sources = parsed ?? CreateDefaults();
+            if (parsed == null)
+            {
+                _sources = CreateDefaults();
+                MarkSteamWorkshopDbMigrationDone();
+                return;
+            }
+
+            // One-time migration: configs persisted before the Steam Workshop DB
+            // became a default contain only the curated entry. Append the default
+            // ONCE and record it, so a later user removal is never resurrected on
+            // the next startup. Curated entries keep their persisted id
+            // (rimsharp-db) untouched.
+            if (!IsSteamWorkshopDbMigrationDone())
+            {
+                if (!parsed.Any(s => string.Equals(s.Id, SteamWorkshopDbSourceId, StringComparison.OrdinalIgnoreCase)))
+                {
+                    parsed.Add(CreateDefaults().First(s => s.Id == SteamWorkshopDbSourceId));
+                }
+                MarkSteamWorkshopDbMigrationDone();
+            }
+            _sources = parsed;
+        }
+
+        private bool IsSteamWorkshopDbMigrationDone() =>
+            string.Equals(_configService.GetConfigValue(SteamWorkshopDbMigrationFlagKey), "true", StringComparison.OrdinalIgnoreCase);
+
+        private void MarkSteamWorkshopDbMigrationDone()
+        {
+            _configService.SetConfigValue(SteamWorkshopDbMigrationFlagKey, "true");
+            _configService.SaveConfig();
         }
 
         public void Save()
@@ -127,6 +172,11 @@ namespace RimSharp.Infrastructure.Mods.ModInfo
         public ModRuleSourceRecord? Find(string id) =>
             _sources.FirstOrDefault(s => string.Equals(s.Id, id, StringComparison.OrdinalIgnoreCase));
 
+        /// <summary>
+        /// The compiled defaults: the curated RimSharpDB (highest priority, its
+        /// file is owned by the existing SHA-gated sync) followed by the public
+        /// RimSort Steam Workshop Database.
+        /// </summary>
         public static List<ModRuleSourceRecord> CreateDefaults() => new()
         {
             new ModRuleSourceRecord
@@ -135,6 +185,15 @@ namespace RimSharp.Infrastructure.Mods.ModInfo
                 Name = CuratedSourceName,
                 Type = ModRuleSourceType.RepoFile,
                 Url = null,
+                Enabled = true,
+                Bundled = false
+            },
+            new ModRuleSourceRecord
+            {
+                Id = SteamWorkshopDbSourceId,
+                Name = SteamWorkshopDbSourceName,
+                Type = ModRuleSourceType.RepoFile,
+                Url = SteamWorkshopDbSourceUrl,
                 Enabled = true,
                 Bundled = false
             }

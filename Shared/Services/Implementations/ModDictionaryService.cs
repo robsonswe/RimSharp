@@ -158,7 +158,10 @@ namespace RimSharp.Shared.Services.Implementations
                     }
                     else if (source.Type == ModRuleSourceType.RepoFile && !string.IsNullOrWhiteSpace(source.Url))
                     {
-                        var jsonPath = _dataUpdateService.GetExternalFilePath("ModInfo", source.Id, DatabaseDictionaryFileName);
+                        // Resolve the same URL-derived path the sync writes to
+                        // (e.g. steamDB.json), not a fixed db.json name.
+                        var jsonPath = _dataUpdateService.GetModInfoSourceFilePath(source.Id, source.Url);
+                        if (jsonPath == null) continue;
                         LoadFromJsonFile(jsonPath, results);
                     }
                     else if (source.Type == ModRuleSourceType.LocalFile && !string.IsNullOrWhiteSpace(source.LocalPath))
@@ -198,51 +201,70 @@ namespace RimSharp.Shared.Services.Implementations
                 }
 
                 _logger.LogDebug($"Parsing dictionary database: '{jsonFilePath}'", nameof(ModDictionaryService));
-                string jsonContent = File.ReadAllText(jsonFilePath);
 
                 var options = new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true
                 };
 
-                var jsonData = JsonSerializer.Deserialize<ModDictionaryJsonRoot>(jsonContent, options);
+                // Parse from the stream (not ReadAllText) to keep transient
+                // allocation reasonable for the ~48 MB community database.
+                using var stream = File.OpenRead(jsonFilePath);
+                using var doc = JsonDocument.Parse(stream);
+                var root = doc.RootElement;
 
-                if (jsonData?.Mods != null)
+                if (root.ValueKind != JsonValueKind.Object)
                 {
-                    foreach (var packageKvp in jsonData.Mods)
+                    _logger.LogWarning($"Dictionary database '{jsonFilePath}' has a non-object root; skipping.", nameof(ModDictionaryService));
+                    return 0;
+                }
+
+                if (TryGetPropertyIgnoreCase(root, "mods", out _))
+                {
+                    // Curated db.json shape: { "mods": { packageId: { steamId: details } } }
+                    var jsonData = root.Deserialize<ModDictionaryJsonRoot>(options);
+                    if (jsonData?.Mods != null)
                     {
-                        string packageIdRaw = packageKvp.Key;
-                        var steamEntries = packageKvp.Value;
-
-                        if (string.IsNullOrWhiteSpace(packageIdRaw) || steamEntries == null) continue;
-
-                        string packageIdLower = packageIdRaw.ToLowerInvariant();
-
-                        foreach (var steamKvp in steamEntries)
+                        foreach (var packageKvp in jsonData.Mods)
                         {
-                            string steamIdRaw = steamKvp.Key;
-                            var details = steamKvp.Value;
+                            string packageIdRaw = packageKvp.Key;
+                            var steamEntries = packageKvp.Value;
 
-                            if (string.IsNullOrWhiteSpace(steamIdRaw) || details == null) continue;
+                            if (string.IsNullOrWhiteSpace(packageIdRaw) || steamEntries == null) continue;
 
-                            string steamIdLower = steamIdRaw.ToLowerInvariant();
-                            var entry = new ModDictionaryEntry
+                            string packageIdLower = packageIdRaw.ToLowerInvariant();
+
+                            foreach (var steamKvp in steamEntries)
                             {
-                                PackageId = packageIdLower,
-                                SteamId = steamIdLower,
-                                Name = details.Name,
-                                Versions = details.Versions ?? new List<string>(),
-                                Authors = details.Authors,
-                                Published = details.Published
-                            };
+                                string steamIdRaw = steamKvp.Key;
+                                var details = steamKvp.Value;
 
-                            if (!targetDictionary.ContainsKey(steamIdLower))
-                            {
-                                targetDictionary[steamIdLower] = entry;
-                                count++;
+                                if (string.IsNullOrWhiteSpace(steamIdRaw) || details == null) continue;
+
+                                string steamIdLower = steamIdRaw.ToLowerInvariant();
+                                var entry = new ModDictionaryEntry
+                                {
+                                    PackageId = packageIdLower,
+                                    SteamId = steamIdLower,
+                                    Name = details.Name,
+                                    Versions = details.Versions ?? new List<string>(),
+                                    Authors = details.Authors,
+                                    Published = details.Published
+                                };
+
+                                if (!targetDictionary.ContainsKey(steamIdLower))
+                                {
+                                    targetDictionary[steamIdLower] = entry;
+                                    count++;
+                                }
                             }
                         }
                     }
+                }
+                else
+                {
+                    // Steam Workshop DB shape: { "<publishedfileid>": { ... }, "version": <int> }
+                    count = LoadSteamWorkshopDbEntries(root, targetDictionary);
                 }
             }
             catch (JsonException jsonEx)
@@ -263,6 +285,136 @@ namespace RimSharp.Shared.Services.Implementations
             }
 
             return count;
+        }
+
+        /// <summary>
+        /// Maps the workshop-ID-keyed Steam Workshop DB shape into the existing
+        /// <see cref="ModDictionaryEntry"/> fields. First-source-wins is kept:
+        /// an entry already loaded from a higher-priority source is not replaced.
+        /// </summary>
+        private static int LoadSteamWorkshopDbEntries(JsonElement root, Dictionary<string, ModDictionaryEntry> targetDictionary)
+        {
+            int count = 0;
+            foreach (var property in root.EnumerateObject())
+            {
+                if (string.Equals(property.Name, "version", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (property.Value.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                var entryElement = property.Value;
+                string steamIdLower = property.Name.ToLowerInvariant();
+                if (string.IsNullOrWhiteSpace(steamIdLower))
+                {
+                    continue;
+                }
+
+                string packageId = string.Empty;
+                if (TryGetPropertyIgnoreCase(entryElement, "packageId", out var pkgElement) &&
+                    pkgElement.ValueKind == JsonValueKind.String)
+                {
+                    packageId = (pkgElement.GetString() ?? string.Empty).ToLowerInvariant();
+                }
+
+                string name = string.Empty;
+                if (TryGetPropertyIgnoreCase(entryElement, "name", out var nameElement) &&
+                    nameElement.ValueKind == JsonValueKind.String)
+                {
+                    name = nameElement.GetString() ?? string.Empty;
+                }
+
+                var versions = ReadStringOrArrayToList(entryElement, "gameVersions");
+                string authors = ReadStringOrArrayJoined(entryElement, "authors");
+
+                bool published = true;
+                if (TryGetPropertyIgnoreCase(entryElement, "unpublished", out var unpublishedElement))
+                {
+                    if (unpublishedElement.ValueKind == JsonValueKind.True) published = false;
+                    else if (unpublishedElement.ValueKind == JsonValueKind.False) published = true;
+                }
+
+                var entry = new ModDictionaryEntry
+                {
+                    PackageId = packageId,
+                    SteamId = steamIdLower,
+                    Name = name,
+                    Versions = versions,
+                    Authors = authors,
+                    Published = published
+                };
+
+                if (!targetDictionary.ContainsKey(steamIdLower))
+                {
+                    targetDictionary[steamIdLower] = entry;
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        private static List<string> ReadStringOrArrayToList(JsonElement obj, string name)
+        {
+            var result = new List<string>();
+            if (!TryGetPropertyIgnoreCase(obj, name, out var value)) return result;
+
+            if (value.ValueKind == JsonValueKind.String)
+            {
+                var s = value.GetString();
+                if (!string.IsNullOrEmpty(s)) result.Add(s);
+            }
+            else if (value.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in value.EnumerateArray())
+                {
+                    if (item.ValueKind == JsonValueKind.String)
+                    {
+                        result.Add(item.GetString() ?? string.Empty);
+                    }
+                }
+            }
+            return result;
+        }
+
+        private static string ReadStringOrArrayJoined(JsonElement obj, string name)
+        {
+            if (!TryGetPropertyIgnoreCase(obj, name, out var value)) return string.Empty;
+
+            if (value.ValueKind == JsonValueKind.String)
+            {
+                return value.GetString() ?? string.Empty;
+            }
+            if (value.ValueKind == JsonValueKind.Array)
+            {
+                var parts = new List<string>();
+                foreach (var item in value.EnumerateArray())
+                {
+                    if (item.ValueKind == JsonValueKind.String)
+                    {
+                        parts.Add(item.GetString() ?? string.Empty);
+                    }
+                }
+                return string.Join(", ", parts);
+            }
+            return string.Empty;
+        }
+
+        private static bool TryGetPropertyIgnoreCase(JsonElement obj, string name, out JsonElement value)
+        {
+            foreach (var property in obj.EnumerateObject())
+            {
+                if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = property.Value;
+                    return true;
+                }
+            }
+            value = default;
+            return false;
         }
 
         /// <summary>

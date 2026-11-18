@@ -11,7 +11,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using NSubstitute;
+using RimSharp.Infrastructure.Configuration;
 using RimSharp.Infrastructure.Data;
+using RimSharp.Infrastructure.Mods.ModInfo;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using Xunit;
@@ -518,6 +520,123 @@ namespace RimSharp.Tests.Infrastructure.Data
             var dir = Path.Combine(_testTempDir, "Data", "Versions", "NoVersionWarning");
             File.Exists(Path.Combine(dir, "1.9", "ModIdsToFix.xml")).Should().BeTrue("a game major above the seed must extend the candidates");
             File.Exists(Path.Combine(dir, "1.8", "ModIdsToFix.xml")).Should().BeTrue("the installed mod's version dirs must extend the candidates");
+        }
+
+        [Fact]
+        public async Task SyncModInfoSourcesAsync_SteamWorkshopDb_WhenShaUnchanged_ShouldSkipDownload()
+        {
+            var configService = Substitute.For<IConfigService>();
+            var registry = new ModInfoSourceRegistry(configService);
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient, modInfoSourceRegistry: registry);
+
+            var localPath = service.GetModInfoSourceFilePath(
+                ModInfoSourceRegistry.SteamWorkshopDbSourceId,
+                ModInfoSourceRegistry.SteamWorkshopDbSourceUrl)!;
+            Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
+            File.WriteAllText(localPath, "existing-content");
+            File.WriteAllText(localPath + ".etag", "abc123sha");
+
+            var requestedUrls = new List<string>();
+            _httpHandler.OnRequest = req =>
+            {
+                var url = req.RequestUri!.ToString();
+                requestedUrls.Add(url);
+                if (url.Contains("api.github.com/repos/RimSort/Steam-Workshop-Database/commits"))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent("[{\"sha\":\"abc123sha\"}]")
+                    };
+                }
+                return new HttpResponseMessage(HttpStatusCode.InternalServerError);
+            };
+
+            await service.SyncModInfoSourcesAsync(CancellationToken.None);
+
+            File.ReadAllText(localPath).Should().Be("existing-content", "an unchanged sha must skip the large download");
+            requestedUrls.Should().NotContain(u => u.Contains("raw.githubusercontent.com/RimSort/Steam-Workshop-Database"));
+        }
+
+        [Fact]
+        public async Task SyncModInfoSourcesAsync_SteamWorkshopDb_WhenShaChanged_ShouldDownloadValidateAndStoreSha()
+        {
+            var configService = Substitute.For<IConfigService>();
+            var registry = new ModInfoSourceRegistry(configService);
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient, modInfoSourceRegistry: registry);
+
+            var localPath = service.GetModInfoSourceFilePath(
+                ModInfoSourceRegistry.SteamWorkshopDbSourceId,
+                ModInfoSourceRegistry.SteamWorkshopDbSourceUrl)!;
+            Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
+            File.WriteAllText(localPath + ".etag", "oldsha");
+
+            var steamDbJson = @"{ ""version"": 1790337009, ""123"": { ""packageId"": ""mod.a"" } }";
+            _httpHandler.OnRequest = req =>
+            {
+                var url = req.RequestUri!.ToString();
+                if (url.Contains("api.github.com/repos/RimSort/Steam-Workshop-Database/commits"))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent("[{\"sha\":\"newsha\"}]")
+                    };
+                }
+                if (url.Contains("raw.githubusercontent.com/RimSort/Steam-Workshop-Database"))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(steamDbJson) };
+                }
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            };
+
+            await service.SyncModInfoSourcesAsync(CancellationToken.None);
+
+            File.ReadAllText(localPath).Should().Be(steamDbJson);
+            File.ReadAllText(localPath + ".etag").Should().Be("newsha", "the commit sha is stored as the validator for the next pre-check");
+        }
+
+        [Fact]
+        public async Task SyncModInfoSourcesAsync_SteamWorkshopDb_WhenApiFails_ShouldFallBackWithoutBreakingOtherSources()
+        {
+            var configService = Substitute.For<IConfigService>();
+            var registry = new ModInfoSourceRegistry(configService);
+            registry.Add(new ModRuleSourceRecord
+            {
+                Id = "other-info",
+                Name = "Other Info",
+                Type = ModRuleSourceType.RepoFile,
+                Url = "https://example.com/other.json"
+            });
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient, modInfoSourceRegistry: registry);
+
+            var steamDbJson = @"{ ""version"": 1790337009, ""123"": { ""packageId"": ""mod.a"" } }";
+            var otherJson = @"{ ""mods"": {} }";
+            _httpHandler.OnRequest = req =>
+            {
+                var url = req.RequestUri!.ToString();
+                if (url.Contains("api.github.com/repos/RimSort/Steam-Workshop-Database/commits"))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.TooManyRequests); // rate-limited
+                }
+                if (url.Contains("raw.githubusercontent.com/RimSort/Steam-Workshop-Database"))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(steamDbJson) };
+                }
+                if (url.EndsWith("other.json"))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(otherJson) };
+                }
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            };
+
+            await service.SyncModInfoSourcesAsync(CancellationToken.None);
+
+            var steamDbPath = service.GetModInfoSourceFilePath(
+                ModInfoSourceRegistry.SteamWorkshopDbSourceId,
+                ModInfoSourceRegistry.SteamWorkshopDbSourceUrl)!;
+            File.ReadAllText(steamDbPath).Should().Be(steamDbJson, "a failed API probe must fall back to the normal download");
+
+            var otherPath = service.GetModInfoSourceFilePath("other-info", "https://example.com/other.json")!;
+            File.ReadAllText(otherPath).Should().Be(otherJson, "one source's failure must not block the others");
         }
 
         private static string Sha256Hex(string content)

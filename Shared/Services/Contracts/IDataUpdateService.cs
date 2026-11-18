@@ -17,6 +17,14 @@ public interface IDataUpdateService
     string GetExternalFilePath(string category, string source, string fileName);
 
     /// <summary>
+    /// Cache location of a ModInfo source file, derived from the source id and
+    /// URL (file name from the URL, defaulting to db.json). Shared by the sync
+    /// and the dictionary loader so both resolve the same path. Returns null
+    /// when the URL is not an absolute URI.
+    /// </summary>
+    string? GetModInfoSourceFilePath(string sourceId, string url);
+
+    /// <summary>
     /// Syncs every enabled repoFile rule database source from the registry
     /// (conditional GET with ETag/304). The curated RimSharpDB entry is
     /// skipped — the SHA-gated curated sync owns its file — and localFile

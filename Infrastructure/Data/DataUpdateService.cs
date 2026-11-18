@@ -32,6 +32,14 @@ namespace RimSharp.Infrastructure.Data
         private readonly string _noVersionWarningBaseUrl = "https://raw.githubusercontent.com/emipa606/NoVersionWarning/main";
         private readonly GameInstance? _gameInstance;
         private readonly string _noVersionWarningTreeUrl = "https://api.github.com/repos/emipa606/NoVersionWarning/git/trees/main";
+
+        /// <summary>
+        /// Cheap staleness probe for the ~48 MB Steam Workshop DB: the latest
+        /// commit touching steamDB.json. Its sha is stored as the file's
+        /// validator so an unchanged upstream file skips the large download.
+        /// </summary>
+        private const string SteamWorkshopDbCommitsApiUrl =
+            "https://api.github.com/repos/RimSort/Steam-Workshop-Database/commits?path=steamDB.json&per_page=1";
         private readonly ModRuleSourceRegistry? _ruleSourceRegistry;
         private readonly ModInfoSourceRegistry? _modInfoSourceRegistry;
         private readonly ModReplacementSourceRegistry? _replacementSourceRegistry;
@@ -459,20 +467,95 @@ namespace RimSharp.Infrastructure.Data
                     continue;
                 }
 
-                var localPath = GetModInfoSourceFilePath(source);
+                var localPath = GetModInfoSourceFilePath(source.Id, source.Url);
                 if (localPath == null) continue;
 
                 try
                 {
                     _logger.LogInfo($"Syncing ModInfo source '{source.Id}' from '{source.Url}'...", nameof(DataUpdateService));
-                    await SyncTextFileAsync(
-                        source.Url, localPath, cancellationToken,
-                        SourceContentValidator.ValidateModInfo, source.Id).ConfigureAwait(false);
+                    if (string.Equals(source.Id, ModInfoSourceRegistry.SteamWorkshopDbSourceId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // The ~48 MB community DB needs a cheap freshness probe
+                        // before any conditional GET (raw.githubusercontent does
+                        // not reliably serve usable ETags for large files).
+                        await SyncSteamWorkshopDbAsync(source.Url, localPath, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await SyncTextFileAsync(
+                            source.Url, localPath, cancellationToken,
+                            SourceContentValidator.ValidateModInfo, source.Id).ConfigureAwait(false);
+                    }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning($"Could not sync ModInfo source '{source.Id}': {ex.Message}", nameof(DataUpdateService));
                 }
+            }
+        }
+
+        /// <summary>
+        /// Syncs the community Steam Workshop DB with bandwidth protection. A
+        /// cheap GitHub commits API probe yields the sha of the latest commit
+        /// touching steamDB.json; when it matches the stored validator the large
+        /// download is skipped entirely. Otherwise the normal conditional GET
+        /// runs and the sha is persisted as the validator on success. A failed
+        /// probe simply falls back to the conditional GET, so an offline or
+        /// rate-limited API never blocks this (or any other) source.
+        /// </summary>
+        private async Task SyncSteamWorkshopDbAsync(string url, string localPath, CancellationToken cancellationToken)
+        {
+            var validatorPath = localPath + ".etag";
+            string? sha = null;
+
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, SteamWorkshopDbCommitsApiUrl);
+                request.Headers.UserAgent.ParseAdd("RimSharp");
+                using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
+                var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var commit in doc.RootElement.EnumerateArray())
+                    {
+                        if (commit.ValueKind == JsonValueKind.Object &&
+                            commit.TryGetProperty("sha", out var shaElement) &&
+                            shaElement.ValueKind == JsonValueKind.String)
+                        {
+                            sha = shaElement.GetString();
+                            break;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Could not check Steam Workshop DB freshness; falling back to conditional GET: {ex.Message}", nameof(DataUpdateService));
+            }
+
+            if (!string.IsNullOrEmpty(sha) && File.Exists(localPath) && File.Exists(validatorPath))
+            {
+                var stored = await File.ReadAllTextAsync(validatorPath, cancellationToken).ConfigureAwait(false);
+                if (string.Equals(stored.Trim(), sha, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogInfo($"Steam Workshop DB is up to date (sha {sha}); skipping download.", nameof(DataUpdateService));
+                    return;
+                }
+            }
+
+            var accepted = await SyncTextFileAsync(
+                url, localPath, cancellationToken,
+                SourceContentValidator.ValidateSteamWorkshopDb,
+                ModInfoSourceRegistry.SteamWorkshopDbSourceId).ConfigureAwait(false);
+
+            // Store the commit sha (not the HTTP ETag) so the next startup's
+            // pre-check can short-circuit the download. Only do this after a
+            // successful write so a rejected payload never marks itself fresh.
+            if (accepted && !string.IsNullOrEmpty(sha))
+            {
+                await File.WriteAllTextAsync(validatorPath, sha, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -483,7 +566,7 @@ namespace RimSharp.Infrastructure.Data
         /// </summary>
         public async Task SyncNewModInfoSourceAsync(string sourceId, string url, CancellationToken cancellationToken = default)
         {
-            var localPath = GetModInfoSourceFilePath(new ModRuleSourceRecord { Id = sourceId, Url = url });
+            var localPath = GetModInfoSourceFilePath(sourceId, url);
             if (localPath == null)
             {
                 throw new InvalidOperationException("Could not derive a cache file name from the URL. Please check the URL and try again.");
@@ -513,9 +596,14 @@ namespace RimSharp.Infrastructure.Data
             }
         }
 
-        private string? GetModInfoSourceFilePath(ModRuleSourceRecord source)
+        /// <summary>
+        /// Cache location of a ModInfo source file: Data/ModInfo/&lt;sourceId&gt;/
+        /// &lt;file name from the URL&gt; (defaulting to db.json). Shared with the
+        /// loader so sync and load always resolve the same path.
+        /// </summary>
+        public string? GetModInfoSourceFilePath(string sourceId, string url)
         {
-            if (string.IsNullOrWhiteSpace(source.Url) || !Uri.TryCreate(source.Url, UriKind.Absolute, out var uri))
+            if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri))
             {
                 return null;
             }
@@ -523,7 +611,7 @@ namespace RimSharp.Infrastructure.Data
             var fileName = Path.GetFileName(uri.AbsolutePath);
             if (string.IsNullOrEmpty(fileName)) fileName = "db.json";
 
-            return GetExternalFilePath("ModInfo", source.Id, Uri.UnescapeDataString(fileName));
+            return GetExternalFilePath("ModInfo", sourceId, Uri.UnescapeDataString(fileName));
         }
 
         #endregion

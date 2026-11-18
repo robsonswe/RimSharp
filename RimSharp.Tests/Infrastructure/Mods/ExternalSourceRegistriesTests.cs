@@ -98,15 +98,23 @@ namespace RimSharp.Tests.Infrastructure.Mods
         }
 
         [Fact]
-        public void ModInfoSourceRegistry_DefaultsAndReset_ShouldIncludeRimSharpDb()
+        public void ModInfoSourceRegistry_DefaultsAndReset_ShouldIncludeCuratedAndSteamWorkshopDb()
         {
             var registry = new ModInfoSourceRegistry(_configService);
 
-            registry.Sources.Should().ContainSingle();
-            var source = registry.Sources[0];
-            source.Id.Should().Be(ModInfoSourceRegistry.CuratedSourceId);
-            source.Curated.Should().BeTrue();
-            source.Locked.Should().BeTrue();
+            registry.Sources.Should().HaveCount(2);
+            var curated = registry.Sources[0];
+            curated.Id.Should().Be(ModInfoSourceRegistry.CuratedSourceId);
+            curated.Curated.Should().BeTrue();
+            curated.Locked.Should().BeTrue();
+
+            var steamDb = registry.Sources[1];
+            steamDb.Id.Should().Be(ModInfoSourceRegistry.SteamWorkshopDbSourceId);
+            steamDb.Name.Should().Be(ModInfoSourceRegistry.SteamWorkshopDbSourceName);
+            steamDb.Url.Should().Be(ModInfoSourceRegistry.SteamWorkshopDbSourceUrl);
+            steamDb.Type.Should().Be(ModRuleSourceType.RepoFile);
+            steamDb.Enabled.Should().BeTrue();
+            steamDb.Locked.Should().BeFalse("the community DB is a removable default, not locked");
 
             registry.Add(new ModRuleSourceRecord
             {
@@ -115,11 +123,52 @@ namespace RimSharp.Tests.Infrastructure.Mods
                 Type = ModRuleSourceType.RepoFile,
                 Url = "https://example.com/db.json"
             });
-            registry.Sources.Should().HaveCount(2);
+            registry.Sources.Should().HaveCount(3);
 
             registry.ResetToDefaults();
-            registry.Sources.Should().ContainSingle();
+            registry.Sources.Should().HaveCount(2);
             registry.Sources[0].Id.Should().Be(ModInfoSourceRegistry.CuratedSourceId);
+            registry.Sources[1].Id.Should().Be(ModInfoSourceRegistry.SteamWorkshopDbSourceId);
+        }
+
+        [Fact]
+        public void ModInfoSourceRegistry_Migration_AppendsSteamWorkshopDbOnce()
+        {
+            // Legacy persisted list: curated only, no migration flag yet.
+            _configService.SetConfigValue(
+                ModInfoSourceRegistry.ConfigKey,
+                "[{\"id\":\"rimsharp-db\",\"name\":\"RimSharpDB\",\"type\":\"repoFile\",\"enabled\":true}]");
+            _configService.SaveConfig();
+
+            var registry = new ModInfoSourceRegistry(_configService);
+
+            registry.Sources.Should().HaveCount(2);
+            registry.Sources[0].Id.Should().Be(ModInfoSourceRegistry.CuratedSourceId);
+            registry.Sources[1].Id.Should().Be(ModInfoSourceRegistry.SteamWorkshopDbSourceId);
+            _configService.GetConfigValue(ModInfoSourceRegistry.SteamWorkshopDbMigrationFlagKey)
+                .Should().Be("true");
+        }
+
+        [Fact]
+        public void ModInfoSourceRegistry_Migration_RemovalPersistsAcrossRestarts()
+        {
+            _configService.SetConfigValue(
+                ModInfoSourceRegistry.ConfigKey,
+                "[{\"id\":\"rimsharp-db\",\"name\":\"RimSharpDB\",\"type\":\"repoFile\",\"enabled\":true}]");
+            _configService.SaveConfig();
+
+            var first = new ModInfoSourceRegistry(_configService);
+            first.Sources.Should().HaveCount(2);
+
+            // The user removes the removable default and persists the change.
+            first.Remove(ModInfoSourceRegistry.SteamWorkshopDbSourceId).Should().BeTrue();
+            first.Save();
+
+            var second = new ModInfoSourceRegistry(_configService);
+            second.Sources.Should().ContainSingle();
+            second.Sources[0].Id.Should().Be(ModInfoSourceRegistry.CuratedSourceId);
+            second.Find(ModInfoSourceRegistry.SteamWorkshopDbSourceId).Should().BeNull(
+                "a one-time migration must not resurrect a source the user removed");
         }
 
         [Fact]

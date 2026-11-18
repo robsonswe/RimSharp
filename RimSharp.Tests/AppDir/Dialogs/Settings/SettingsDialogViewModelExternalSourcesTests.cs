@@ -92,15 +92,19 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
         }
 
         [Fact]
-        public void ModInfoSources_ShouldLoadCuratedSource()
+        public void ModInfoSources_ShouldLoadCuratedAndSteamWorkshopDbSources()
         {
             var vm = CreateViewModel();
 
-            vm.ModInfoSources.Should().ContainSingle();
-            var row = vm.ModInfoSources[0];
-            row.Id.Should().Be(ModInfoSourceRegistry.CuratedSourceId);
-            row.Locked.Should().BeTrue();
-            row.LockedBadge.Should().Be("built-in");
+            vm.ModInfoSources.Should().HaveCount(2);
+            var curated = vm.ModInfoSources[0];
+            curated.Id.Should().Be(ModInfoSourceRegistry.CuratedSourceId);
+            curated.Locked.Should().BeTrue();
+            curated.LockedBadge.Should().Be("built-in");
+
+            var steamDb = vm.ModInfoSources[1];
+            steamDb.Id.Should().Be(ModInfoSourceRegistry.SteamWorkshopDbSourceId);
+            steamDb.Locked.Should().BeFalse();
         }
 
         [Fact]

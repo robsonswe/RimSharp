@@ -24,6 +24,8 @@ namespace RimSharp.Infrastructure.Configuration
             "ai_model",
             "update_channel", // <- Adicionado aqui
             "rules_db_sources", // JSON array of rule database sources (priority order)
+            "modinfo_sources", // JSON array of ModInfo database sources (priority order)
+            "modinfo_steamworkshopdb_migrated", // one-time migration flag for the Steam Workshop DB default
         };
 
         private readonly string _configPath;
