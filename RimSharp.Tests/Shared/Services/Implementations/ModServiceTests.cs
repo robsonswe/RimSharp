@@ -315,6 +315,71 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             mod.LoadAfter.Should().Contain("about.after.one");
             mod.IncompatibleWith.Should().ContainKey("about.bad.one");
         }
+
+        [Fact]
+        public async Task LoadModsAsync_ShouldApplyExternalVersionsWithSourceName()
+        {
+            var modDir = Path.Combine(_modsPath, "ExternalVersionMod");
+            var aboutDir = Path.Combine(modDir, "About");
+            Directory.CreateDirectory(aboutDir);
+            File.WriteAllText(Path.Combine(aboutDir, "About.xml"), @"<?xml version='1.0' encoding='utf-8'?>
+<ModMetaData>
+    <name>External Version Mod</name>
+    <packageId>test.external.version</packageId>
+    <supportedVersions>
+        <li>1.5</li>
+    </supportedVersions>
+</ModMetaData>");
+
+            _mockMlieVersionService.GetExternalVersions().Returns(new Dictionary<string, List<ExternalVersionInfo>>
+            {
+                ["test.external.version"] = new List<ExternalVersionInfo>
+                {
+                    new("1.6", "Community NVW")
+                }
+            });
+
+            var service = CreateService();
+            await service.LoadModsAsync();
+
+            var mod = service.GetLoadedMods().Single(m => m.PackageId == "test.external.version");
+            var external = mod.SupportedVersions.Single(v => v.Source == VersionSource.External);
+            external.Version.Should().Be("1.6");
+            external.ExternalSourceName.Should().Be("Community NVW");
+            external.Unofficial.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task LoadModsAsync_ShouldNotDuplicateOfficialVersionAsExternal()
+        {
+            var modDir = Path.Combine(_modsPath, "DedupeVersionMod");
+            var aboutDir = Path.Combine(modDir, "About");
+            Directory.CreateDirectory(aboutDir);
+            File.WriteAllText(Path.Combine(aboutDir, "About.xml"), @"<?xml version='1.0' encoding='utf-8'?>
+<ModMetaData>
+    <name>Dedupe Version Mod</name>
+    <packageId>test.dedupe.version</packageId>
+    <supportedVersions>
+        <li>1.5</li>
+    </supportedVersions>
+</ModMetaData>");
+
+            _mockMlieVersionService.GetExternalVersions().Returns(new Dictionary<string, List<ExternalVersionInfo>>
+            {
+                ["test.dedupe.version"] = new List<ExternalVersionInfo>
+                {
+                    new("1.5", "Community NVW")
+                }
+            });
+
+            var service = CreateService();
+            await service.LoadModsAsync();
+
+            var mod = service.GetLoadedMods().Single(m => m.PackageId == "test.dedupe.version");
+            mod.SupportedVersions.Where(v => v.Version == "1.5").Should().ContainSingle();
+            mod.SupportedVersions.Single(v => v.Version == "1.5").Source.Should().Be(VersionSource.Official);
+            mod.SupportedVersions.Should().NotContain(v => v.Source == VersionSource.External);
+        }
     }
 
     public class ModServiceMacOSBundleTests : IDisposable

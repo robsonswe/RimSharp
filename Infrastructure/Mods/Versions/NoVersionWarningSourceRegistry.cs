@@ -23,8 +23,8 @@ namespace RimSharp.Infrastructure.Mods.Versions
         public const string CommunitySourceUrl =
             "https://raw.githubusercontent.com/emipa606/NoVersionWarning/main";
 
-        private const string ModSourceName = "No Version Warning (Mod)";
-        private const string CommunitySourceName = "No Version Warning (GitHub)";
+        public const string ModSourceName = "No Version Warning (Mod)";
+        public const string CommunitySourceName = "No Version Warning (GitHub)";
 
         private static readonly JsonSerializerOptions SerializerOptions = new()
         {

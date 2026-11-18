@@ -106,17 +106,20 @@ namespace RimSharp.Features.ModManager.Dialogs.RulesViewer
             if (Mod.SupportedVersions != null && Mod.SupportedVersions.Any())
             {
                 var versionOrigins = new List<string>();
-                foreach (var source in Mod.SupportedVersions.Select(v => v.Source).Distinct())
+                foreach (var versionSupport in Mod.SupportedVersions)
                 {
-                    switch (source)
+                    switch (versionSupport.Source)
                     {
                         case VersionSource.Official: versionOrigins.Add("Official"); break;
-                        case VersionSource.Mlie: versionOrigins.Add("Mlie"); break;
+                        case VersionSource.External:
+                            versionOrigins.Add(string.IsNullOrWhiteSpace(versionSupport.ExternalSourceName)
+                                ? "External"
+                                : $"External ({versionSupport.ExternalSourceName})");
+                            break;
                         case VersionSource.Custom: versionOrigins.Add("Custom"); break;
-                        // Database-sourced supported versions are no longer surfaced
-                        // here: version suppression moved to its own data source.
                     }
                 }
+                versionOrigins = versionOrigins.Distinct().ToList();
                 if (versionOrigins.Count == 0) versionOrigins.Add("Unknown");
                 AddRow("Supported Versions", string.Join(", ", Mod.SupportedVersions.Select(v => v.Version)), versionOrigins);
             }

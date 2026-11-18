@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using FluentAssertions;
 using NSubstitute;
+using RimSharp.Infrastructure.Mods.Versions;
+using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Shared.Services.Implementations;
 using Xunit;
@@ -52,10 +54,33 @@ namespace RimSharp.Tests.Shared.Services.Implementations
 
         private void CreateMlieVersionFile(string version, string xmlContent)
         {
-            var versionDir = Path.Combine(_mlieModPath, version);
+            CreateVersionFile(_mlieModPath, version, xmlContent);
+        }
+
+        private static void CreateVersionFile(string root, string version, string xmlContent)
+        {
+            var versionDir = Path.Combine(root, version);
             Directory.CreateDirectory(versionDir);
             File.WriteAllText(Path.Combine(versionDir, "ModIdsToFix.xml"), xmlContent);
         }
+
+        private static NoVersionWarningSourceRegistry CreateRegistry(params ModRuleSourceRecord[] sources)
+        {
+            var configService = Substitute.For<IConfigService>();
+            configService.GetConfigValue(Arg.Any<string>()).Returns((string?)null);
+            var registry = new NoVersionWarningSourceRegistry(configService);
+            registry.ReplaceAll(sources);
+            return registry;
+        }
+
+        private static ModRuleSourceRecord LocalSource(string id, string name, string localPath) => new()
+        {
+            Id = id,
+            Name = name,
+            Type = ModRuleSourceType.LocalFile,
+            LocalPath = localPath,
+            Enabled = true
+        };
 
         [Fact]
         public void GetMlieVersions_ShouldLoadVersionsFromXml()
@@ -116,9 +141,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         }
         private void CreateSnapshotVersionFile(string version, string xmlContent)
         {
-            var versionDir = Path.Combine(_snapshotRoot, version);
-            Directory.CreateDirectory(versionDir);
-            File.WriteAllText(Path.Combine(versionDir, "ModIdsToFix.xml"), xmlContent);
+            CreateVersionFile(_snapshotRoot, version, xmlContent);
         }
 
         [Fact]
@@ -164,6 +187,71 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             result.Should().ContainKey("test.mod.good");
             result.Should().NotContainKey("test.mod.broken");
         }
+
+        [Fact]
+        public void GetExternalVersions_WhenSeveralSourcesDeclareSameVersion_FirstSourceWinsAttribution()
+        {
+            var dirA = Path.Combine(_testTempDir, "sourceA");
+            var dirB = Path.Combine(_testTempDir, "sourceB");
+            Directory.CreateDirectory(dirA);
+            Directory.CreateDirectory(dirB);
+            CreateVersionFile(dirA, "1.5", @"<ModIds><li>test.mod.one</li></ModIds>");
+            CreateVersionFile(dirB, "1.5", @"<ModIds><li>test.mod.one</li></ModIds>");
+
+            var registry = CreateRegistry(
+                LocalSource("first", "First Source", dirA),
+                LocalSource("second", "Second Source", dirB));
+            var service = new MlieVersionService(_mockPathService, _mockDataUpdateService, _mockLogger, registry);
+
+            var result = service.GetExternalVersions();
+
+            result["test.mod.one"].Should().ContainSingle()
+                .Which.Should().Be(new ExternalVersionInfo("1.5", "First Source"));
+        }
+
+        [Fact]
+        public void GetExternalVersions_WithSingleSource_ShouldUseItsName()
+        {
+            var dir = Path.Combine(_testTempDir, "solo");
+            Directory.CreateDirectory(dir);
+            CreateVersionFile(dir, "1.6", @"<ModIds><li>test.mod.solo</li></ModIds>");
+
+            var registry = CreateRegistry(LocalSource("solo-id", "Solo Source", dir));
+            var service = new MlieVersionService(_mockPathService, _mockDataUpdateService, _mockLogger, registry);
+
+            var result = service.GetExternalVersions();
+
+            result["test.mod.solo"].Should().ContainSingle()
+                .Which.Should().Be(new ExternalVersionInfo("1.6", "Solo Source"));
+        }
+
+        [Fact]
+        public void GetExternalVersions_WhenSourceNameMissing_ShouldFallBackToId()
+        {
+            var dir = Path.Combine(_testTempDir, "nameless");
+            Directory.CreateDirectory(dir);
+            CreateVersionFile(dir, "1.5", @"<ModIds><li>test.mod.nameless</li></ModIds>");
+
+            var registry = CreateRegistry(LocalSource("fallback-id", string.Empty, dir));
+            var service = new MlieVersionService(_mockPathService, _mockDataUpdateService, _mockLogger, registry);
+
+            var result = service.GetExternalVersions();
+
+            result["test.mod.nameless"].Should().ContainSingle()
+                .Which.Should().Be(new ExternalVersionInfo("1.5", "fallback-id"));
+        }
+
+        [Fact]
+        public void GetExternalVersions_WithoutRegistry_ShouldUseFallbackNames()
+        {
+            CreateMlieVersionFile("1.4", @"<ModIds><li>test.mod.one</li></ModIds>");
+
+            var service = new MlieVersionService(_mockPathService, _mockDataUpdateService, _mockLogger);
+
+            var result = service.GetExternalVersions();
+
+            result["test.mod.one"].Should().ContainSingle()
+                .Which.Should().Be(new ExternalVersionInfo("1.4", NoVersionWarningSourceRegistry.ModSourceName));
+        }
     }
 }
-

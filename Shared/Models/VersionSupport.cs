@@ -9,12 +9,19 @@ namespace RimSharp.Shared.Models
         public bool Unofficial { get; set; }
         public VersionSource Source { get; set; }
 
-        // Modify constructor to accept source
-        public VersionSupport(string version, VersionSource source, bool unofficial = false)
+        /// <summary>
+        /// Display name of the community source that contributed this entry.
+        /// Only meaningful when <see cref="Source"/> is
+        /// <see cref="VersionSource.External"/>; otherwise null.
+        /// </summary>
+        public string? ExternalSourceName { get; set; }
+
+        public VersionSupport(string version, VersionSource source, bool unofficial = false, string? externalSourceName = null)
         {
             Version = version?.Trim() ?? throw new ArgumentNullException(nameof(version));
             Source = source;
             Unofficial = unofficial;
+            ExternalSourceName = externalSourceName;
         }
 
         public override bool Equals(object? obj)
@@ -40,5 +47,3 @@ namespace RimSharp.Shared.Models
         }
     }
 }
-
-

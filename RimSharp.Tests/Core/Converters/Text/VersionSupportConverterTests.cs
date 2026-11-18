@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
+using Avalonia.Controls;
 using FluentAssertions;
 using RimSharp.Core.Converters.Text;
 using RimSharp.Shared.Models;
@@ -33,7 +35,7 @@ namespace RimSharp.Tests.Core.Converters.Text
             var versions = new List<VersionSupport>
             {
                 new VersionSupport("1.4", VersionSource.Official),
-                new VersionSupport("1.5", VersionSource.Mlie, true)
+                new VersionSupport("1.5", VersionSource.External, true)
             };
 
             var result = _converter.Convert(versions, typeof(string), null, CultureInfo.InvariantCulture);
@@ -48,7 +50,7 @@ namespace RimSharp.Tests.Core.Converters.Text
             var versions = new List<VersionSupport>
             {
                 new VersionSupport("1.4", VersionSource.Official),
-                new VersionSupport("1.5", VersionSource.Mlie, true)
+                new VersionSupport("1.5", VersionSource.External, true)
             };
 
             var result = _converter.Convert(versions, typeof(string), "OfficialOnly", CultureInfo.InvariantCulture);
@@ -62,13 +64,40 @@ namespace RimSharp.Tests.Core.Converters.Text
 
             var versions = new List<VersionSupport>
             {
-                new VersionSupport("1.5", VersionSource.Mlie, true)
+                new VersionSupport("1.5", VersionSource.External, true)
             };
 
             var result = _converter.Convert(versions, typeof(string), "OfficialOnly", CultureInfo.InvariantCulture);
 
             result.Should().Be("None");
         }
+
+        [Fact]
+        public void Convert_ToPanel_ExternalWithSourceName_ShouldNameSourceInTooltip()
+        {
+            var versions = new List<VersionSupport>
+            {
+                new VersionSupport("1.5", VersionSource.External, true, "Community NVW")
+            };
+
+            var panel = _converter.Convert(versions, typeof(WrapPanel), null, CultureInfo.InvariantCulture) as WrapPanel;
+            var textBlock = panel!.Children.OfType<TextBlock>().Single();
+
+            ToolTip.GetTip(textBlock).Should().Be("Unofficial: Compatibility added via Community NVW.");
+        }
+
+        [Fact]
+        public void Convert_ToPanel_ExternalWithoutSourceName_ShouldUseFallbackTooltip()
+        {
+            var versions = new List<VersionSupport>
+            {
+                new VersionSupport("1.5", VersionSource.External, true)
+            };
+
+            var panel = _converter.Convert(versions, typeof(WrapPanel), null, CultureInfo.InvariantCulture) as WrapPanel;
+            var textBlock = panel!.Children.OfType<TextBlock>().Single();
+
+            ToolTip.GetTip(textBlock).Should().Be("Unofficial: Compatibility added via an external source.");
+        }
     }
 }
-

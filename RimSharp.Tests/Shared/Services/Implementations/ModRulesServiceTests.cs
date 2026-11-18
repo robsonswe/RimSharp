@@ -25,7 +25,7 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         public void ApplyRulesToMods_ShouldNotPopulateSupportedVersionsFromRules()
         {
             // Version suppression moved out of the rules schema: the rules
-            // layer must no longer produce VersionSource.Database entries.
+            // layer must never produce supported-version entries.
             var mod = new ModItem { PackageId = "mod1", SupportedVersions = new List<VersionSupport>() };
             var rule = new ModRule { SupportedVersions = new List<string> { "1.5" } };
             _mockRepository.GetAllRules().Returns(new Dictionary<string, ModRule> { { "mod1", rule } });
@@ -137,29 +137,6 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             mod.IncompatibleWith.Should().ContainSingle();
             mod.LoadTop.Should().BeTrue();
             mod.LoadBottom.Should().BeTrue();
-        }
-
-        [Fact]
-        public void ApplyRulesToMods_ShouldStillStripLegacyDatabaseVersionEntries()
-        {
-            // The strip path is retained (idempotency of re-application): a
-            // legacy VersionSource.Database entry - e.g. written by an older
-            // build or seeded by hand - is removed even though the rules layer
-            // no longer produces them.
-            var mod = new ModItem
-            {
-                PackageId = "mod1",
-                SupportedVersions = new List<VersionSupport>
-                {
-                    new("1.5", VersionSource.Official),
-                    new("1.6", VersionSource.Database, unofficial: true)
-                }
-            };
-            _mockRepository.GetAllRules().Returns(new Dictionary<string, ModRule>());
-
-            _service.ApplyRulesToMods(new[] { mod });
-
-            mod.SupportedVersions.Should().ContainSingle(v => v.Version == "1.5" && v.Source == VersionSource.Official);
         }
 
         [Fact]

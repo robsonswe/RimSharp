@@ -70,22 +70,32 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
                     return new List<VersionSupport>();
                 }
                 var source = GetEquivalentVersionSource(ReplacementInfo.Source);
+                var sourceName = GetExternalSourceName(ReplacementInfo.Source);
                 return ReplacementInfo.ReplacementVersionList
-                    .Select(v => new VersionSupport(v, source, unofficial: true))
+                    .Select(v => new VersionSupport(v, source, unofficial: true, externalSourceName: sourceName))
                     .ToList();
             }
         }
 
         private VersionSource GetEquivalentVersionSource(ReplacementSource replacementSource)
         {
-            return replacementSource switch
-            {
-                ReplacementSource.Database => VersionSource.Database,
-                ReplacementSource.UseThisInstead => VersionSource.Mlie,
-                ReplacementSource.UseThisInsteadRepo => VersionSource.Mlie,
-                _ => VersionSource.Database
-            };
+            // All replacement-version sources are community/external data.
+            return VersionSource.External;
         }
+
+        /// <summary>
+        /// Display name of the external source behind a replacement's version
+        /// data, carried on each <see cref="VersionSupport"/> entry so tooltips
+        /// can say which source contributed it. Null when unknown (the converter
+        /// falls back to generic wording).
+        /// </summary>
+        private static string? GetExternalSourceName(ReplacementSource replacementSource) => replacementSource switch
+        {
+            ReplacementSource.Database => "RimSharpDB",
+            ReplacementSource.UseThisInstead => "the installed 'Use This Instead' mod",
+            ReplacementSource.UseThisInsteadRepo => "'Use This Instead' (GitHub snapshot)",
+            _ => null
+        };
 
         public bool IsSelected
         {

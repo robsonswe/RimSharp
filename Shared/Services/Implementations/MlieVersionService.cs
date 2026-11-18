@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using RimSharp.Infrastructure.Logging;
+using RimSharp.Infrastructure.Mods.Versions;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 
@@ -18,8 +19,8 @@ namespace RimSharp.Shared.Services.Implementations
         private readonly IPathService _pathService;
         private readonly IDataUpdateService _dataUpdateService;
         private readonly ILoggerService _logger;
-        private readonly Infrastructure.Mods.Versions.NoVersionWarningSourceRegistry? _sourceRegistry;
-        private Dictionary<string, List<string>>? _mlieVersionsCache;
+        private readonly NoVersionWarningSourceRegistry? _sourceRegistry;
+        private Dictionary<string, List<ExternalVersionInfo>>? _externalVersionsCache;
         private bool _isInitialized = false;
         private readonly object _lock = new object();
 
@@ -27,7 +28,7 @@ namespace RimSharp.Shared.Services.Implementations
             IPathService pathService,
             IDataUpdateService dataUpdateService,
             ILoggerService logger,
-            Infrastructure.Mods.Versions.NoVersionWarningSourceRegistry? sourceRegistry = null)
+            NoVersionWarningSourceRegistry? sourceRegistry = null)
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
             _dataUpdateService = dataUpdateService ?? throw new ArgumentNullException(nameof(dataUpdateService));
@@ -39,66 +40,80 @@ namespace RimSharp.Shared.Services.Implementations
         {
             lock (_lock)
             {
-                _mlieVersionsCache = null;
+                _externalVersionsCache = null;
                 _isInitialized = false;
+            }
+        }
+
+        public Dictionary<string, List<ExternalVersionInfo>> GetExternalVersions()
+        {
+            if (_isInitialized && _externalVersionsCache != null)
+            {
+                return _externalVersionsCache;
+            }
+
+            lock (_lock)
+            {
+                if (_isInitialized && _externalVersionsCache != null)
+                {
+                    return _externalVersionsCache;
+                }
+
+                _logger.LogInfo("Initializing MlieVersionService cache.", nameof(MlieVersionService));
+                _externalVersionsCache = LoadExternalVersions();
+                _isInitialized = true;
+                _logger.LogInfo($"MlieVersionService cache initialized. Found compatibility info for {_externalVersionsCache!.Count} mods.", nameof(MlieVersionService));
+                return _externalVersionsCache!;
             }
         }
 
         public Dictionary<string, List<string>> GetMlieVersions()
         {
-            if (_isInitialized && _mlieVersionsCache != null)
-            {
-                return _mlieVersionsCache;
-            }
-
-            lock (_lock)
-            {
-                if (_isInitialized && _mlieVersionsCache != null)
-                {
-                    return _mlieVersionsCache;
-                }
-
-                _logger.LogInfo("Initializing MlieVersionService cache.", nameof(MlieVersionService));
-                _mlieVersionsCache = LoadMlieVersions();
-                _isInitialized = true;
-                _logger.LogInfo($"MlieVersionService cache initialized. Found compatibility info for {_mlieVersionsCache!.Count} mods.", nameof(MlieVersionService));
-                return _mlieVersionsCache!;
-            }
+            var attributed = GetExternalVersions();
+            return attributed.ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value.Select(v => v.Version).ToList(),
+                StringComparer.OrdinalIgnoreCase);
         }
 
-        private Dictionary<string, List<string>> LoadMlieVersions()
+        private Dictionary<string, List<ExternalVersionInfo>> LoadExternalVersions()
         {
-            var results = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            var results = new Dictionary<string, List<ExternalVersionInfo>>(StringComparer.OrdinalIgnoreCase);
 
             if (_sourceRegistry != null)
             {
                 foreach (var source in _sourceRegistry.GetEnabledSources())
                 {
+                    // Display name of the contributing source; fall back to its Id.
+                    var sourceName = !string.IsNullOrWhiteSpace(source.Name) ? source.Name : source.Id;
+
                     if (source.Type == ModRuleSourceType.Mod)
                     {
-                        LoadFromModFolder(results);
+                        LoadFromModFolder(sourceName, results);
                     }
                     else if (source.Type == ModRuleSourceType.RepoFile && !string.IsNullOrWhiteSpace(source.Url))
                     {
-                        LoadFromRepositorySnapshot(source.Id, results);
+                        LoadFromRepositorySnapshot(source.Id, sourceName, results);
                     }
                     else if (source.Type == ModRuleSourceType.LocalFile && !string.IsNullOrWhiteSpace(source.LocalPath))
                     {
-                        int count = LoadFromVersionDirectories(source.LocalPath, results);
+                        int count = LoadFromVersionDirectories(source.LocalPath, sourceName, results);
                         _logger.LogDebug($"Loaded {count} packageId entries from local path '{source.LocalPath}'.", nameof(MlieVersionService));
                     }
                 }
             }
             else
             {
-                LoadFromModFolder(results);
-                LoadFromRepositorySnapshot("NoVersionWarning", results);
+                // No registry (e.g. legacy callers/tests): keep the old two-source
+                // behaviour with the registry's default display names.
+                LoadFromModFolder(NoVersionWarningSourceRegistry.ModSourceName, results);
+                LoadFromRepositorySnapshot("NoVersionWarning", NoVersionWarningSourceRegistry.CommunitySourceName, results);
             }
 
             return results;
         }
 
-        private void LoadFromModFolder(Dictionary<string, List<string>> results)
+        private void LoadFromModFolder(string sourceName, Dictionary<string, List<ExternalVersionInfo>> results)
         {
             var modsPath = _pathService.GetModsPath();
 
@@ -109,11 +124,11 @@ namespace RimSharp.Shared.Services.Implementations
             }
 
             var mlieModPath = Path.Combine(modsPath, MlieModFolderId);
-            int count = LoadFromVersionDirectories(mlieModPath, results);
+            int count = LoadFromVersionDirectories(mlieModPath, sourceName, results);
             _logger.LogDebug($"Loaded {count} packageId entries from the Mlie mod folder '{mlieModPath}'.", nameof(MlieVersionService));
         }
 
-        private void LoadFromRepositorySnapshot(string sourceId, Dictionary<string, List<string>> results)
+        private void LoadFromRepositorySnapshot(string sourceId, string sourceName, Dictionary<string, List<ExternalVersionInfo>> results)
         {
             try
             {
@@ -126,7 +141,7 @@ namespace RimSharp.Shared.Services.Implementations
                     if (Directory.Exists(altRoot)) snapshotRoot = altRoot;
                 }
 
-                int count = LoadFromVersionDirectories(snapshotRoot, results);
+                int count = LoadFromVersionDirectories(snapshotRoot, sourceName, results);
                 _logger.LogDebug($"Loaded {count} packageId entries from the 'No Version Warning' repository snapshot '{snapshotRoot}'.", nameof(MlieVersionService));
             }
             catch (Exception ex)
@@ -137,13 +152,15 @@ namespace RimSharp.Shared.Services.Implementations
 
         /// <summary>
         /// Walks <paramref name="rootPath"/>'s version directories (e.g. "1.4")
-        /// and merges every ModIdsToFix.xml entry into
-        /// <paramref name="results"/>, additively (union of version lists).
-        /// Shared by the locally installed Mlie mod and the repository
-        /// snapshot; a missing root is a logged skip and per-file parse
-        /// failures never discard the remaining files.
+        /// and merges every ModIdsToFix.xml entry into <paramref name="results"/>,
+        /// additively (union of version lists). Each entry records
+        /// <paramref name="sourceName"/>; when a package id + version was already
+        /// contributed by an earlier source, that first attribution is kept.
+        /// Shared by the locally installed Mlie mod and the repository snapshot;
+        /// a missing root is a logged skip and per-file parse failures never
+        /// discard the remaining files.
         /// </summary>
-        private int LoadFromVersionDirectories(string rootPath, Dictionary<string, List<string>> results)
+        private int LoadFromVersionDirectories(string rootPath, string sourceName, Dictionary<string, List<ExternalVersionInfo>> results)
         {
             int count = 0;
 
@@ -173,9 +190,9 @@ namespace RimSharp.Shared.Services.Implementations
                         _logger.LogDebug($"Parsing Mlie file: '{filePath}' for version '{versionString}'.", nameof(MlieVersionService));
                         XDocument doc = XDocument.Load(filePath);
                         var packageIds = doc.Root?.Elements("li")
-                                            .Select(li => li.Value?.Trim())
-                                            .Where(id => !string.IsNullOrEmpty(id))
-                                            .ToList();
+                                             .Select(li => li.Value?.Trim())
+                                             .Where(id => !string.IsNullOrEmpty(id))
+                                             .ToList();
 
                         if (packageIds == null || !packageIds.Any())
                         {
@@ -187,12 +204,14 @@ namespace RimSharp.Shared.Services.Implementations
                             string lowerPackageId = packageId!.ToLowerInvariant();
                             if (!results.TryGetValue(lowerPackageId, out var versionList))
                             {
-                                versionList = new List<string>();
+                                versionList = new List<ExternalVersionInfo>();
                                 results[lowerPackageId] = versionList;
                             }
-                            if (!versionList.Contains(versionString, StringComparer.OrdinalIgnoreCase))
+                            // First source in registry order to declare this
+                            // package id + version keeps the attribution.
+                            if (!versionList.Any(v => string.Equals(v.Version, versionString, StringComparison.OrdinalIgnoreCase)))
                             {
-                                versionList.Add(versionString);
+                                versionList.Add(new ExternalVersionInfo(versionString, sourceName));
                             }
                             count++;
                         }

@@ -82,8 +82,9 @@ namespace RimSharp.Core.Converters.Text
 
                     string tooltipContent = versionSupport.Source switch
                     {
-                        VersionSource.Mlie => "Unofficial: Compatibility added via Mlie's 'No Version Warning' Mod.",
-                        VersionSource.Database => "Unofficial: Compatibility added via app's rules database.",
+                        VersionSource.External => string.IsNullOrWhiteSpace(versionSupport.ExternalSourceName)
+                            ? "Unofficial: Compatibility added via an external source."
+                            : $"Unofficial: Compatibility added via {versionSupport.ExternalSourceName}.",
                         VersionSource.Custom => "Unofficial: Compatibility added via your custom settings.",
                         _ => "Unofficial: Compatibility source unknown."
                     };

@@ -181,11 +181,11 @@ namespace RimSharp.Shared.Services.Implementations
 
             ApplyAcfTimestamps();
 
-            _logger.LogDebug("Retrieving Mlie version data...", nameof(ModService));
-            var mlieVersions = _mlieVersionService.GetMlieVersions();
+            _logger.LogDebug("Retrieving external version data...", nameof(ModService));
+            var externalVersions = _mlieVersionService.GetExternalVersions();
 
-            _logger.LogDebug("Applying Mlie version data...", nameof(ModService));
-            ApplyMlieVersions(_allMods, mlieVersions);
+            _logger.LogDebug("Applying external version data...", nameof(ModService));
+            ApplyExternalVersions(_allMods, externalVersions);
 
             _logger.LogDebug("Applying ModRulesService data...", nameof(ModService));
             _rulesService.ApplyRulesToMods(_allMods);
@@ -205,14 +205,16 @@ namespace RimSharp.Shared.Services.Implementations
         }
 
         /// <summary>
-        /// Applies version compatibility information from the Mlie service to the mods list.
-        /// Only adds versions if they are not already present from the Official source.
+        /// Applies version compatibility information from community external
+        /// sources to the mods list. Only adds versions that are not already
+        /// present (e.g. from the Official source), preserving the contributing
+        /// source's display name on each new entry.
         /// </summary>
-        private void ApplyMlieVersions(List<ModItem> mods, Dictionary<string, List<string>> mlieVersions)
+        private void ApplyExternalVersions(List<ModItem> mods, Dictionary<string, List<ExternalVersionInfo>> externalVersions)
         {
-            if (mlieVersions == null || mlieVersions.Count == 0)
+            if (externalVersions == null || externalVersions.Count == 0)
             {
-                _logger.LogDebug("No Mlie version data found or provided to apply.", nameof(ModService));
+                _logger.LogDebug("No external version data found or provided to apply.", nameof(ModService));
                 return;
             }
 
@@ -221,26 +223,30 @@ namespace RimSharp.Shared.Services.Implementations
             {
                 if (string.IsNullOrEmpty(mod.PackageId)) continue;
 
-                if (mlieVersions.TryGetValue(mod.PackageId.ToLowerInvariant(), out var supportedMlieVersions))
+                if (externalVersions.TryGetValue(mod.PackageId.ToLowerInvariant(), out var supportedExternalVersions))
                 {
-                    if (supportedMlieVersions != null)
+                    if (supportedExternalVersions != null)
                     {
                         var existingVersions = mod.SupportedVersions
                                                   .Select(v => v.Version)
                                                   .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-                        foreach (var mlieVersion in supportedMlieVersions)
+                        foreach (var externalVersion in supportedExternalVersions)
                         {
-                            if (existingVersions.Add(mlieVersion))
+                            if (existingVersions.Add(externalVersion.Version))
                             {
-                                mod.SupportedVersions.Add(new VersionSupport(mlieVersion, VersionSource.Mlie, unofficial: true));
+                                mod.SupportedVersions.Add(new VersionSupport(
+                                    externalVersion.Version,
+                                    VersionSource.External,
+                                    externalSourceName: externalVersion.SourceName,
+                                    unofficial: true));
                                 versionsAdded++;
                             }
                         }
                     }
                 }
             }
-            _logger.LogDebug($"Applied Mlie versions. Added {versionsAdded} new version entries.", nameof(ModService));
+            _logger.LogDebug($"Applied external versions. Added {versionsAdded} new version entries.", nameof(ModService));
         }
 
         #region Timestamp File Creation
@@ -360,13 +366,13 @@ namespace RimSharp.Shared.Services.Implementations
 
             ApplyAcfTimestamps();
 
-            _logger.LogDebug("Retrieving Mlie version data...", nameof(ModService));
-            progress?.Report((75, 100, "Retrieving compatibility data (Mlie)..."));
-            var mlieVersions = _mlieVersionService.GetMlieVersions();
+            _logger.LogDebug("Retrieving external version data...", nameof(ModService));
+            progress?.Report((75, 100, "Retrieving compatibility data (external sources)..."));
+            var externalVersions = _mlieVersionService.GetExternalVersions();
 
-            _logger.LogDebug("Applying Mlie version data...", nameof(ModService));
-            progress?.Report((80, 100, "Applying compatibility data (Mlie)..."));
-            ApplyMlieVersions(_allMods, mlieVersions);
+            _logger.LogDebug("Applying external version data...", nameof(ModService));
+            progress?.Report((80, 100, "Applying compatibility data (external sources)..."));
+            ApplyExternalVersions(_allMods, externalVersions);
 
             _logger.LogDebug("Applying ModRulesService data...", nameof(ModService));
             progress?.Report((85, 100, "Applying community rules..."));

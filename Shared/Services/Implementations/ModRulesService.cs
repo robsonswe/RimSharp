@@ -11,8 +11,7 @@ namespace RimSharp.Shared.Services.Implementations
     /// Applies the effective (merged) rules database onto mods. Application is
     /// provenance-aware: every contribution is recorded on the mod
     /// (<see cref="ModItem.DatabaseLoadBefore"/> — target → claiming source Id —
-    /// etc., plus any legacy <see cref="VersionSource.Database"/> version
-    /// entries) and stripped before each application, which makes the
+    /// etc.) and stripped before each application, which makes the
     /// operation idempotent and lets a live re-merge remove a
     /// disabled/removed source's contributions without a restart or rescan.
     /// The recorded source Ids (never null/empty) let the UI label every rule
@@ -116,10 +115,8 @@ namespace RimSharp.Shared.Services.Implementations
                 {
                     // NOTE: rule.SupportedVersions is intentionally NOT applied
                     // here. Version suppression moved out of the rules schema
-                    // into its own data source; the rules layer no longer
-                    // produces VersionSource.Database entries. The strip below
-                    // still removes any legacy Database entries so
-                    // re-application stays idempotent.
+                    // into its own data source; the rules layer never produces
+                    // supported-version entries.
 
                     RuleProvenance? claims = null;
                     provenance?.TryGetValue(mod.PackageId, out claims);
@@ -200,9 +197,8 @@ namespace RimSharp.Shared.Services.Implementations
         /// <summary>
         /// Removes exactly the contributions a previous application added:
         /// the tracked load-order targets (iterating the recorded dictionary
-        /// keys), the tracked incompatibilities, the database-owned
-        /// loadTop/loadBottom flags (and their source ids) and every
-        /// <see cref="VersionSource.Database"/> version entry. Contributions
+        /// keys), the tracked incompatibilities, and the database-owned
+        /// loadTop/loadBottom flags (and their source ids). Contributions
         /// from About.xml (<see cref="ModItem.AboutLoadBefore"/> etc.) or
         /// custom edits are never tracked here and therefore never stripped.
         /// </summary>
@@ -239,8 +235,6 @@ namespace RimSharp.Shared.Services.Implementations
                 mod.DatabaseLoadTop = false;
             }
             mod.DatabaseLoadTopSource = null;
-
-            mod.SupportedVersions.RemoveAll(v => v != null && v.Source == VersionSource.Database);
         }
     }
 }
