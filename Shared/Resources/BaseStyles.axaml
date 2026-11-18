@@ -340,7 +340,7 @@
         </Setter>
     </Style>
 
-    <Style Selector="TabControl.tabs TabItem TextBlock">
+    <Style Selector="TabControl.tabs TabItem /template/ ContentPresenter TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
     </Style>
 
@@ -348,7 +348,7 @@
         <Setter Property="Background" Value="{DynamicResource BrushBgPanel}"/>
         <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
     </Style>
-    <Style Selector="TabControl.tabs TabItem:pointerover TextBlock">
+    <Style Selector="TabControl.tabs TabItem:pointerover /template/ ContentPresenter TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
     </Style>
 
@@ -356,7 +356,7 @@
         <Setter Property="Background" Value="{DynamicResource BrushBgAction}"/>
         <Setter Property="Foreground" Value="{DynamicResource BrushTextOnDark}"/>
     </Style>
-    <Style Selector="TabControl.tabs TabItem:selected TextBlock">
+    <Style Selector="TabControl.tabs TabItem:selected /template/ ContentPresenter TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource BrushTextOnDark}"/>
     </Style>
 

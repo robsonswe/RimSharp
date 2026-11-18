@@ -20,13 +20,13 @@
                            FontSize="14"
                            Foreground="{DynamicResource BrushTextStrong}"/>
 
-                <TextBlock Text="Name" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}"/>
+                <TextBlock Text="Name" FontSize="12" Foreground="{DynamicResource BrushTextMuted}"/>
                 <TextBox Text="{Binding Name, Mode=TwoWay}"
                          FontSize="14" Padding="5"
                          BorderBrush="{DynamicResource BrushBorderDefault}"
                          BorderThickness="1"/>
 
-                <TextBlock Text="URL" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}"/>
+                <TextBlock Text="URL" FontSize="12" Foreground="{DynamicResource BrushTextMuted}"/>
                 <TextBox Text="{Binding Url, Mode=TwoWay}"
                          FontSize="14" Padding="5"
                          BorderBrush="{DynamicResource BrushBorderDefault}"
