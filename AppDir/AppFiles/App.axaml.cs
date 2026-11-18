@@ -456,6 +456,10 @@ namespace RimSharp.AppDir.AppFiles
     provider.GetRequiredService<IConfigService>()
 ));
             services.AddSingleton<ISteamApiClient, SteamApiClient>();
+            // packageId-only resolution (dictionary candidates + batched Steam enrichment).
+            services.AddSingleton<IModInfoResolver>(provider => new ModInfoResolver(
+                provider.GetRequiredService<IModDictionaryService>(),
+                provider.GetRequiredService<ISteamApiClient>()));
             services.AddSingleton<IWorkshopUpdateCheckerService, WorkshopUpdateCheckerService>();
             services.AddSingleton<ISteamWorkshopQueueProcessor, SteamWorkshopQueueProcessor>();
             
@@ -580,7 +584,8 @@ namespace RimSharp.AppDir.AppFiles
                    provider.GetRequiredService<IContextMenuAvailabilityService>(),
                    provider.GetRequiredService<GameInstance>(),
                     provider.GetRequiredService<ISteamSubscriptionService>(),
-                   provider.GetRequiredService<IWorkshopUpdateService>()
+                   provider.GetRequiredService<IWorkshopUpdateService>(),
+                   provider.GetRequiredService<IModInfoResolver>()
                ));
 
             services.AddTransient<DownloaderViewModel>(provider =>

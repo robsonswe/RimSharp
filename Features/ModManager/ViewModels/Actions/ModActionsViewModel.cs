@@ -1,5 +1,6 @@
 #nullable enable
 using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
+using RimSharp.Infrastructure.Mods.ModInfo;
 using RimSharp.Core.Commands;
 using RimSharp.Features.ModManager.Dialogs.DuplicateMods;
 using RimSharp.Features.ModManager.Dialogs.Incompatibilities;
@@ -53,6 +54,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private readonly IModCustomService _customService;
         private readonly ISteamSubscriptionService? _steamSubscriptionService;
         private readonly IWorkshopUpdateService? _workshopUpdateService;
+        private readonly IModInfoResolver? _modInfoResolver;
         private readonly ILoggerService _logger;
         private readonly GameInstance _gameInstance;
         private bool _isParentLoading;
@@ -221,7 +223,8 @@ public bool IsParentLoading
             ILoggerService logger,
             GameInstance gameInstance,
             ISteamSubscriptionService? steamSubscriptionService = null,
-            IWorkshopUpdateService? workshopUpdateService = null)
+            IWorkshopUpdateService? workshopUpdateService = null,
+            IModInfoResolver? modInfoResolver = null)
         {
             _dataService = dataService;
             _commandService = commandService;
@@ -246,6 +249,7 @@ public bool IsParentLoading
             _gameInstance = gameInstance;
             _steamSubscriptionService = steamSubscriptionService;
             _workshopUpdateService = workshopUpdateService;
+            _modInfoResolver = modInfoResolver;
             RefreshPathValidity();
 
             _modListManager.ListChanged += OnModListChanged;

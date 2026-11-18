@@ -1,9 +1,14 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Avalonia.Headless.XUnit;
 using FluentAssertions;
 using NSubstitute;
+using RimSharp.Features.ModManager.Dialogs.Dependencies;
 using RimSharp.Features.ModManager.ViewModels.Actions;
+using RimSharp.Infrastructure.Mods.ModInfo;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Features.WorkshopDownloader.Services;
@@ -32,10 +37,16 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
         private readonly IApplicationNavigationService _navigationService = Substitute.For<IApplicationNavigationService>();
         private readonly ISteamWorkshopQueueProcessor _steamWorkshopQueueProcessor = Substitute.For<ISteamWorkshopQueueProcessor>();
         private readonly IGitService _gitService = Substitute.For<IGitService>();
+        private readonly IModInfoResolver _modInfoResolver = Substitute.For<IModInfoResolver>();
 
         public ModActionsViewModelTests()
         {
             TestApp.InitializeTestApp();
+            _modInfoResolver.ResolveAsync(
+                    Arg.Any<IEnumerable<string>>(),
+                    Arg.Any<IEnumerable<string>>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(new Dictionary<string, IReadOnlyList<ModInfoResolutionCandidate>>(StringComparer.OrdinalIgnoreCase));
             _modListManager.GetAllMods().Returns(Enumerable.Empty<ModItem>());
             _modListManager.VirtualActiveMods.Returns(new List<(ModItem Mod, int LoadOrder)>());
             
@@ -57,7 +68,8 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
                 Substitute.For<IAIncompatibilityAgentService>(),
                 Substitute.For<IModCustomService>(),
                 Substitute.For<ILoggerService>(),
-                gameInstance);
+                gameInstance,
+                modInfoResolver: _modInfoResolver);
         }
 
         [AvaloniaFact]
@@ -151,6 +163,86 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
             vm.OpenLogViewerCommand.Execute(null);
 
             _dialogService.Received().ShowLogViewerAsync();
+        }
+
+        [AvaloniaFact]
+        public async Task ResolveMissingDependencyUrlsAsync_NoUrlDep_ResolverFindsIt_BecomesSelectable()
+        {
+            var missing = new List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)>
+            {
+                ("missing.dep", "missing.dep", "", new List<string> { "Mod A" })
+            };
+            var candidate = new ModInfoResolutionCandidate
+            {
+                SteamId = "12345",
+                DisplayName = "Resolved Mod",
+                Published = true
+            };
+            var resolved = new Dictionary<string, IReadOnlyList<ModInfoResolutionCandidate>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["missing.dep"] = new[] { candidate }
+            };
+            _modInfoResolver.ResolveAsync(
+                    Arg.Is<IEnumerable<string>>(ids => ids.SequenceEqual(new[] { "missing.dep" })),
+                    Arg.Any<IEnumerable<string>>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(resolved);
+
+            var vm = CreateViewModel();
+            var transformed = await vm.ResolveMissingDependencyUrlsAsync(missing, CancellationToken.None);
+
+            transformed.Should().ContainSingle();
+            transformed[0].steamUrl.Should().Be("https://steamcommunity.com/workshop/filedetails/?id=12345");
+            transformed[0].displayName.Should().Be("Resolved Mod");
+
+            var dialog = new DependencyResolutionDialogViewModel(transformed);
+            dialog.MissingDependencies.Should().ContainSingle();
+            dialog.MissingDependencies![0].IsSelectable.Should().BeTrue();
+            dialog.MissingDependencies[0].SteamId.Should().Be("12345");
+            dialog.GetSelectedSteamIds().Should().Contain("12345");
+        }
+
+        [AvaloniaFact]
+        public async Task ResolveMissingDependencyUrlsAsync_ZeroCandidates_KeepsRowUnselectable()
+        {
+            var missing = new List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)>
+            {
+                ("missing.dep", "missing.dep", "", new List<string> { "Mod A" })
+            };
+            var empty = new Dictionary<string, IReadOnlyList<ModInfoResolutionCandidate>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["missing.dep"] = Array.Empty<ModInfoResolutionCandidate>()
+            };
+            _modInfoResolver.ResolveAsync(
+                    Arg.Any<IEnumerable<string>>(),
+                    Arg.Any<IEnumerable<string>>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(empty);
+
+            var vm = CreateViewModel();
+            var transformed = await vm.ResolveMissingDependencyUrlsAsync(missing, CancellationToken.None);
+
+            transformed.Should().ContainSingle();
+            transformed[0].steamUrl.Should().BeEmpty();
+            transformed[0].displayName.Should().Be("missing.dep");
+
+            var dialog = new DependencyResolutionDialogViewModel(transformed);
+            dialog.MissingDependencies![0].IsSelectable.Should().BeFalse();
+        }
+
+        [AvaloniaFact]
+        public async Task ResolveMissingDependencyUrlsAsync_DepWithUrl_IsLeftUntouched()
+        {
+            var missing = new List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)>
+            {
+                ("Existing", "with.url", "https://steamcommunity.com/workshop/filedetails/?id=999", new List<string>())
+            };
+
+            var vm = CreateViewModel();
+            var transformed = await vm.ResolveMissingDependencyUrlsAsync(missing, CancellationToken.None);
+
+            transformed.Should().BeEquivalentTo(missing);
+            await _modInfoResolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default);
         }
     }
 }

@@ -5,6 +5,7 @@ using RimSharp.Features.ModManager.Dialogs.DuplicateMods;
 using RimSharp.Features.ModManager.Dialogs.Incompatibilities;
 using RimSharp.Features.ModManager.Dialogs.Replacements;
 using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
+using RimSharp.Infrastructure.Mods.ModInfo;
 using RimSharp.AppDir.AppFiles;
 using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
@@ -76,6 +77,66 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
         private bool CanExecuteCheckIncompatibilities() => !IsParentLoading && _modListManager.VirtualActiveMods.Any();
 
+        /// <summary>
+        /// Resolves missing dependencies that carry no Steam Workshop URL via
+        /// <see cref="IModInfoResolver"/>, then rebuilds the dialog tuples with
+        /// the best candidate's pfid (as a URL) and display name. Dependencies
+        /// that already have a URL are left untouched. Zero candidates keep
+        /// today's pass-through behavior (row stays visible but unselectable).
+        /// </summary>
+        internal async Task<List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)>>
+            ResolveMissingDependencyUrlsAsync(
+                List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)> missingDependencies,
+                CancellationToken ct)
+        {
+            if (missingDependencies == null || missingDependencies.Count == 0 || _modInfoResolver == null)
+            {
+                return missingDependencies ?? new List<(string, string, string, List<string>)>();
+            }
+
+            var noUrlPackages = missingDependencies
+                .Where(d => string.IsNullOrWhiteSpace(d.steamUrl) && !string.IsNullOrWhiteSpace(d.packageId))
+                .Select(d => d.packageId)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (noUrlPackages.Count == 0) return missingDependencies;
+
+            ct.ThrowIfCancellationRequested();
+            IReadOnlyDictionary<string, IReadOnlyList<ModInfoResolutionCandidate>> resolved;
+            try
+            {
+                resolved = await _modInfoResolver
+                    .ResolveAsync(noUrlPackages, cancellationToken: ct)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // The dictionary/API path is best-effort: on failure keep the
+                // pre-resolution rows (visible but unselectable) instead of
+                // failing the whole resolve-dependencies flow.
+                _logger.LogException(ex, "Resolving missing dependency workshop URLs failed; falling back to unresolved rows.");
+                return missingDependencies;
+            }
+
+            return missingDependencies.Select(d =>
+            {
+                if (!string.IsNullOrWhiteSpace(d.steamUrl)) return d;
+                if (!resolved.TryGetValue(d.packageId, out var candidates) || candidates.Count == 0) return d;
+
+                var best = candidates[0];
+                if (string.IsNullOrWhiteSpace(best.SteamId)) return d;
+
+                var steamUrl = $"https://steamcommunity.com/workshop/filedetails/?id={best.SteamId}";
+                var displayName = string.IsNullOrWhiteSpace(best.DisplayName) ? d.displayName : best.DisplayName;
+                return (displayName, d.packageId, steamUrl, d.requiredBy);
+            }).ToList();
+        }
+
         private async Task ExecuteResolveDependencies(CancellationToken ct)
         {
             IsLoadingRequest?.Invoke(this, true);
@@ -88,6 +149,11 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 ct.ThrowIfCancellationRequested();
 
                 var (addedMods, missingDependencies) = result;
+
+                // PackageId-only dependencies (no Workshop URL) get resolved
+                // through the dictionary + Steam API before the dialog is built.
+                missingDependencies = await ResolveMissingDependencyUrlsAsync(missingDependencies, ct);
+                ct.ThrowIfCancellationRequested();
 
                 if (missingDependencies.Count > 0)
                 {

@@ -1,6 +1,7 @@
 #nullable enable
 using RimSharp.Features.ModManager.ViewModels.Actions;
 using RimSharp.Features.WorkshopDownloader.Services;
+using RimSharp.Infrastructure.Mods.ModInfo;
 using RimSharp.AppDir.AppFiles;
 using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
@@ -180,7 +181,8 @@ namespace RimSharp.Features.ModManager.ViewModels
             IContextMenuAvailabilityService contextMenuAvailabilityService,
             GameInstance gameInstance,
             ISteamSubscriptionService? steamSubscriptionService = null,
-            IWorkshopUpdateService? workshopUpdateService = null)
+            IWorkshopUpdateService? workshopUpdateService = null,
+            IModInfoResolver? modInfoResolver = null)
         {
             _dataService = dataService;
             _filterService = filterService;
@@ -204,7 +206,8 @@ namespace RimSharp.Features.ModManager.ViewModels
             ModActionsViewModel = new ModActionsViewModel(
                 _dataService, commandService, ioService, _modListManager, incompatibilityService, duplicateService, _deletionService, _dialogService, _pathService, _modService,
                         replacementService, downloadQueueService, steamApiClient, navigationService, steamWorkshopQueueProcessor, _gitService,
-                        aiAgentService, customService, _logger, _gameInstance, steamSubscriptionService, workshopUpdateService
+                        aiAgentService, customService, _logger, _gameInstance, steamSubscriptionService, workshopUpdateService,
+                        modInfoResolver
                         );
             _modListManager.ListChanged += OnModListManagerChanged;
             ModListViewModel.RequestSelectionChange += OnChildRequestSelectionChange;
