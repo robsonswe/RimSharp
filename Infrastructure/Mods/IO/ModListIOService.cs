@@ -5,6 +5,7 @@ using RimSharp.Features.ModManager.Dialogs.MissingMods;
 using RimSharp.Features.WorkshopDownloader.Models;
 using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Infrastructure.Configuration;
+using RimSharp.Infrastructure.Mods.ModInfo;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using System;
@@ -32,7 +33,8 @@ namespace RimSharp.Infrastructure.Mods.IO
         private readonly IDownloadQueueService _downloadQueueService;
         private readonly IApplicationNavigationService _navigationService;
         private readonly ISteamWorkshopQueueProcessor _steamWorkshopQueueProcessor;
-        private readonly ILoggerService _logger; 
+        private readonly ILoggerService _logger;
+        private readonly IModInfoResolver? _modInfoResolver;
         private const int MaxParallelApiOperations = 10; // Max parallel downloads/API checks
         public ModListIOService(
             IPathService pathService,
@@ -44,7 +46,8 @@ namespace RimSharp.Infrastructure.Mods.IO
             IDownloadQueueService downloadQueueService,
             IApplicationNavigationService navigationService,
             ILoggerService logger,
-            ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor)
+            ISteamWorkshopQueueProcessor steamWorkshopQueueProcessor,
+            IModInfoResolver? modInfoResolver = null)
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
             _modListManager = modListManager ?? throw new ArgumentNullException(nameof(modListManager));
@@ -56,6 +59,9 @@ namespace RimSharp.Infrastructure.Mods.IO
             _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _steamWorkshopQueueProcessor = steamWorkshopQueueProcessor ?? throw new ArgumentNullException(nameof(steamWorkshopQueueProcessor));
+            // Optional: live-name enrichment is best-effort. When absent, the
+            // dictionary-driven names are used exactly as before.
+            _modInfoResolver = modInfoResolver;
 
         }
 
@@ -275,7 +281,6 @@ namespace RimSharp.Infrastructure.Mods.IO
 
             List<MissingModGroupViewModel> groups = new List<MissingModGroupViewModel>();
             List<string> unknownIds = new List<string>();
-            Dictionary<string, ModDictionaryEntry>? allEntries = null;
 
             ProgressDialogViewModel? prepProgressDialog = null;
             CancellationTokenSource? prepCts = null;
@@ -296,39 +301,50 @@ namespace RimSharp.Infrastructure.Mods.IO
                 if (prepProgressDialog == null) throw new InvalidOperationException("Preparation progress dialog not created");
                 if (prepCts == null) throw new InvalidOperationException("Preparation CTS not created");
 
-await Task.Run(() =>
-                {
-                    allEntries = _modDictionaryService.GetAllEntries();
-                }, prepCts.Token);
-
-                prepCts.Token.ThrowIfCancellationRequested();
-                if (allEntries is null)
-                {
-                    _logger.LogWarning("Mod dictionary was null, cannot match missing mods.", nameof(ModListIOService));
-                    await _dialogService.ShowWarning("Dictionary Missing", "Could not load the mod dictionary to find missing mods.");
-                    return; // Exit early
-                }
-
-                await ThreadHelper.RunOnUIThreadAsync(() => prepProgressDialog.Message = "Matching missing mods...");
-
+                // Reverse-index lookup per distinct id replaces the old full-table
+                // scan. GetAllEntriesByPackageId is case-insensitive and O(1), and
+                // returns the same dictionary entries the linear Where produced.
+                var matches = new List<(string missingId, List<ModDictionaryEntry> entries)>();
                 await Task.Run(() =>
                 {
-                    var allEntriesList = allEntries.Values.ToList();
                     foreach (var missingId in missingModIds.Distinct(StringComparer.OrdinalIgnoreCase))
                     {
                         prepCts.Token.ThrowIfCancellationRequested();
                         var normalizedMissingId = missingId.ToLowerInvariant();
-                        var matchingEntries = allEntriesList
-                           .Where(entry => !string.IsNullOrEmpty(entry.PackageId) &&
+                        var matchingEntries = (_modDictionaryService.GetAllEntriesByPackageId(missingId) ?? new List<ModDictionaryEntry>())
+                           .Where(entry => entry != null && !string.IsNullOrEmpty(entry.PackageId) &&
                                           entry.PackageId.Equals(normalizedMissingId, StringComparison.OrdinalIgnoreCase))
                            .ToList();
+                        matches.Add((missingId, matchingEntries));
+                    }
+                }, prepCts.Token);
 
+                prepCts.Token.ThrowIfCancellationRequested();
+
+                await ThreadHelper.RunOnUIThreadAsync(() => prepProgressDialog.Message = "Matching missing mods...");
+
+                // One best-effort resolver pass for all candidate pfids. The
+                // resolver batches internally into single Steam API calls. A
+                // failure here never fails the import - dictionary names remain.
+                var resolvedNames = await ResolveLiveNamesAsync(
+                    matches.Where(m => m.entries.Count > 0).Select(m => m.missingId).ToList(),
+                    prepCts.Token);
+
+                await Task.Run(() =>
+                {
+                    foreach (var (missingId, matchingEntries) in matches)
+                    {
+                        prepCts.Token.ThrowIfCancellationRequested();
                         if (matchingEntries.Any())
                         {
                             var group = new MissingModGroupViewModel(missingId); 
                             foreach (var entry in matchingEntries.OrderBy(e => e.Name)) 
                             {
-                                group.Variants.Add(new MissingModVariantViewModel(entry));
+                                // Ordering stays keyed to the dictionary name; only
+                                // the displayed name may be enriched by the resolver.
+                                var displayName = FindResolvedName(resolvedNames, missingId, entry.SteamId);
+                                group.Variants.Add(new MissingModVariantViewModel(
+                                    displayName == null ? entry : WithDisplayName(entry, displayName)));
                             }
                             group.SelectedVariant = group.Variants.FirstOrDefault(v => v.IsPublished);
                             groups.Add(group);
@@ -384,6 +400,90 @@ await Task.Run(() =>
                 await ThreadHelper.RunOnUIThreadAsync(() => prepProgressDialog?.ForceClose());
                 prepCts?.Dispose();
             }
+        }
+
+        /// <summary>
+        /// Best-effort live-name enrichment. One resolver pass covers all
+        /// candidate package ids; the resolver batches the pfids internally.
+        /// Returns a case-insensitive map of packageId -> (pfid -> display name),
+        /// or null when enrichment is unavailable/failed so callers keep the
+        /// dictionary-driven names exactly as before.
+        /// </summary>
+        private async Task<Dictionary<string, Dictionary<string, string>>?> ResolveLiveNamesAsync(
+            List<string> packageIds,
+            CancellationToken cancellationToken)
+        {
+            if (_modInfoResolver == null || packageIds == null || packageIds.Count == 0) return null;
+
+            cancellationToken.ThrowIfCancellationRequested();
+            IReadOnlyDictionary<string, IReadOnlyList<ModInfoResolutionCandidate>> resolved;
+            try
+            {
+                resolved = await _modInfoResolver
+                    .ResolveAsync(packageIds, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // Live names are a nicety: on failure keep the dictionary names
+                // so the picker/queue flow is unaffected (same fallback pattern
+                // as ResolveMissingDependencyUrlsAsync).
+                _logger.LogException(ex, "Live name enrichment for missing mods failed; keeping dictionary names.", nameof(ModListIOService));
+                return null;
+            }
+
+            if (resolved == null || resolved.Count == 0) return null;
+
+            var names = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var kvp in resolved)
+            {
+                var bySteamId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var candidate in kvp.Value ?? Enumerable.Empty<ModInfoResolutionCandidate>())
+                {
+                    if (candidate == null || string.IsNullOrWhiteSpace(candidate.SteamId)) continue;
+                    if (string.IsNullOrWhiteSpace(candidate.DisplayName)) continue;
+                    bySteamId[candidate.SteamId] = candidate.DisplayName;
+                }
+                names[kvp.Key] = bySteamId;
+            }
+            return names;
+        }
+
+        private static string? FindResolvedName(
+            Dictionary<string, Dictionary<string, string>>? resolvedNames,
+            string packageId,
+            string steamId)
+        {
+            if (resolvedNames == null || string.IsNullOrWhiteSpace(steamId)) return null;
+            if (!resolvedNames.TryGetValue(packageId, out var bySteamId)) return null;
+            if (!bySteamId.TryGetValue(steamId, out var displayName)) return null;
+            return displayName;
+        }
+
+        /// <summary>
+        /// Copies a dictionary entry with the display name overridden by the
+        /// live-resolved title. SteamName takes priority in ModDictionaryEntry.Name,
+        /// so setting it guarantees the variant shows the enriched name while
+        /// every other field (authors, versions, pfid, published) is preserved.
+        /// </summary>
+        private static ModDictionaryEntry WithDisplayName(ModDictionaryEntry entry, string displayName)
+        {
+            return new ModDictionaryEntry
+            {
+                PackageId = entry.PackageId,
+                SteamId = entry.SteamId,
+                SteamName = displayName,
+                AboutName = entry.AboutName,
+                Name = entry.Name,
+                SourceId = entry.SourceId,
+                Versions = entry.Versions,
+                Authors = entry.Authors,
+                Published = entry.Published
+            };
         }
 
         private async Task ProcessAndQueueSelectedModsAsync(List<string> steamIds, CancellationToken ct)

@@ -498,7 +498,8 @@ namespace RimSharp.AppDir.AppFiles
                    provider.GetRequiredService<IDownloadQueueService>(),
                    provider.GetRequiredService<IApplicationNavigationService>(),
                    provider.GetRequiredService<ILoggerService>(),
-                   provider.GetRequiredService<ISteamWorkshopQueueProcessor>()
+                   provider.GetRequiredService<ISteamWorkshopQueueProcessor>(),
+                   provider.GetRequiredService<IModInfoResolver>()
                );
             });
 

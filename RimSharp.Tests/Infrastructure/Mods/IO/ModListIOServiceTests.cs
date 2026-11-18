@@ -8,7 +8,9 @@ using System.Xml.Linq;
 using FluentAssertions;
 using NSubstitute;
 using RimSharp.AppDir.Dialogs;
+using RimSharp.Features.ModManager.Dialogs.MissingMods;
 using RimSharp.Infrastructure.Mods.IO;
+using RimSharp.Infrastructure.Mods.ModInfo;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Features.WorkshopDownloader.Services;
@@ -28,6 +30,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
         private readonly IApplicationNavigationService _mockNavigationService;
         private readonly ILoggerService _mockLogger;
         private readonly ISteamWorkshopQueueProcessor _mockSteamWorkshopQueueProcessor;
+        private readonly IModInfoResolver _mockModInfoResolver;
         private readonly string _testTempDir;
 
         public ModListIOServiceTests()
@@ -42,6 +45,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
             _mockNavigationService = Substitute.For<IApplicationNavigationService>();
             _mockLogger = Substitute.For<ILoggerService>();
             _mockSteamWorkshopQueueProcessor = Substitute.For<ISteamWorkshopQueueProcessor>();
+            _mockModInfoResolver = Substitute.For<IModInfoResolver>();
 
             _testTempDir = Path.Combine(Path.GetTempPath(), "RimSharp_IO_Test_" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_testTempDir);
@@ -55,7 +59,7 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
             }
         }
 
-        private ModListIOService CreateService()
+        private ModListIOService CreateService(IModInfoResolver? resolver = null)
         {
             return new ModListIOService(
                 _mockPathService,
@@ -67,8 +71,52 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
                 _mockDownloadQueueService,
                 _mockNavigationService,
                 _mockLogger,
-                _mockSteamWorkshopQueueProcessor
+                _mockSteamWorkshopQueueProcessor,
+                resolver
             );
+        }
+
+        /// <summary>
+        /// Wires the confirmation + progress + picker dialogs so the import
+        /// reaches HandleMissingModDownloadRequestAsync. Returns a getter for
+        /// the picker VM the service built, so tests can assert its contents.
+        /// </summary>
+        private Func<MissingModSelectionDialogViewModel?> SetupMissingModDownloadFlow(
+            MissingModSelectionResult result = MissingModSelectionResult.Cancel)
+        {
+            _mockDialogService.ShowConfirmationAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>())
+                .Returns(MessageDialogResult.OK);
+
+            _mockDialogService.ShowProgressDialog(
+                    Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<bool>(),
+                    Arg.Any<CancellationTokenSource>(), Arg.Any<bool>(), Arg.Any<bool>())
+                .Returns(_ => new ProgressDialogViewModel("Preparing Download Options", "Loading mod dictionary..."));
+
+            MissingModSelectionDialogViewModel? captured = null;
+            _mockDialogService.ShowMissingModSelectionDialogAsync(Arg.Any<MissingModSelectionDialogViewModel>())
+                .Returns(callInfo =>
+                {
+                    captured = callInfo.Arg<MissingModSelectionDialogViewModel>();
+                    return Task.FromResult(new MissingModSelectionDialogOutput
+                    {
+                        Result = result,
+                        SelectedSteamIds = new List<string>()
+                    });
+                });
+
+            return () => captured;
+        }
+
+        private static ModDictionaryEntry Entry(
+            string packageId, string steamId, string name, bool published = true)
+        {
+            return new ModDictionaryEntry
+            {
+                PackageId = packageId,
+                SteamId = steamId,
+                Name = name,
+                Published = published
+            };
         }
 
         [Fact]
@@ -199,6 +247,149 @@ namespace RimSharp.Tests.Infrastructure.Mods.IO
             _mockModListManager.DidNotReceive().Initialize(
                 Arg.Any<IEnumerable<ModItem>>(), Arg.Any<IEnumerable<string>>(), Arg.Any<bool>());
             await _mockDialogService.DidNotReceive().ShowInformation(Arg.Any<string>(), Arg.Any<string>());
+        }
+
+        [Fact]
+        public async Task MissingModDownload_ResolvesEachIdViaReverseIndex_WithoutFullTableScan()
+        {
+            var service = CreateService();
+            var getPicker = SetupMissingModDownloadFlow();
+
+            _mockModListManager.GetAllMods().Returns(new List<ModItem>());
+
+            // Two dictionary candidates for mod.a (one published, one not) and
+            // none for mod.b. The old code would have scanned the whole table
+            // for each id; the new code looks each id up directly.
+            _mockModDictionaryService.GetAllEntriesByPackageId("mod.a").Returns(new List<ModDictionaryEntry>
+            {
+                Entry("mod.a", "101", "Zeta", published: true),
+                Entry("mod.a", "102", "Alpha", published: false)
+            });
+            _mockModDictionaryService.GetAllEntriesByPackageId("mod.b")
+                .Returns(new List<ModDictionaryEntry>());
+
+            await service.ImportModListAsync(new List<string> { "mod.a", "mod.b" }, "Colony");
+
+            // Per-id reverse-index lookups, never the full-table scan.
+            _mockModDictionaryService.Received(1).GetAllEntriesByPackageId("mod.a");
+            _mockModDictionaryService.Received(1).GetAllEntriesByPackageId("mod.b");
+            _mockModDictionaryService.DidNotReceive().GetAllEntries();
+
+            var picker = getPicker();
+            picker.Should().NotBeNull();
+            picker!.ModGroups.Should().ContainSingle();
+            var group = picker.ModGroups.Single();
+            group.PackageId.Should().Be("mod.a");
+            // Variants ordered by dictionary Name, default = first published.
+            group.Variants.Select(v => v.Name).Should().Equal("Alpha", "Zeta");
+            group.SelectedVariant.Should().NotBeNull();
+            group.SelectedVariant!.SteamId.Should().Be("101");
+            group.SelectedVariant.IsPublished.Should().BeTrue();
+
+            picker.UnknownModIds.Should().ContainSingle().Which.Should().Be("mod.b");
+        }
+
+        [Fact]
+        public async Task MissingModDownload_ResolverEnrichesVariantName_WithOnePass()
+        {
+            // Inject the resolver explicitly so enrichment is exercised.
+            var service = CreateService(_mockModInfoResolver);
+            var getPicker = SetupMissingModDownloadFlow();
+
+            _mockModListManager.GetAllMods().Returns(new List<ModItem>());
+            _mockModDictionaryService.GetAllEntriesByPackageId("mod.a").Returns(new List<ModDictionaryEntry>
+            {
+                Entry("mod.a", "101", "Dictionary Name", published: true)
+            });
+
+            _mockModInfoResolver.ResolveAsync(
+                    Arg.Any<IEnumerable<string>>(),
+                    Arg.Any<IEnumerable<string>>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(_ => Task.FromResult<IReadOnlyDictionary<string, IReadOnlyList<ModInfoResolutionCandidate>>>(
+                    new Dictionary<string, IReadOnlyList<ModInfoResolutionCandidate>>
+                    {
+                        ["mod.a"] = new List<ModInfoResolutionCandidate>
+                        {
+                            new ModInfoResolutionCandidate
+                            {
+                                SteamId = "101",
+                                DisplayName = "Live Steam Title"
+                            }
+                        }
+                    }));
+
+            await service.ImportModListAsync(new List<string> { "mod.a" }, "Colony");
+
+            // Exactly one resolver pass for all candidate ids.
+            await _mockModInfoResolver.Received(1).ResolveAsync(
+                Arg.Any<IEnumerable<string>>(),
+                Arg.Any<IEnumerable<string>>(),
+                Arg.Any<CancellationToken>());
+
+            var picker = getPicker();
+            picker.Should().NotBeNull();
+            var variant = picker!.ModGroups.Single().Variants.Single();
+            variant.Name.Should().Be("Live Steam Title");
+            // Enrichment must not touch selection/ordering semantics.
+            variant.SteamId.Should().Be("101");
+            variant.IsPublished.Should().BeTrue();
+            picker.ModGroups.Single().SelectedVariant.Should().BeSameAs(variant);
+        }
+
+        [Fact]
+        public async Task MissingModDownload_ResolverFailure_KeepsDictionaryNames_AndReachesPicker()
+        {
+            var service = CreateService(_mockModInfoResolver);
+            var getPicker = SetupMissingModDownloadFlow();
+
+            _mockModListManager.GetAllMods().Returns(new List<ModItem>());
+            _mockModDictionaryService.GetAllEntriesByPackageId("mod.a").Returns(new List<ModDictionaryEntry>
+            {
+                Entry("mod.a", "101", "Dictionary Name", published: true)
+            });
+
+            _mockModInfoResolver.ResolveAsync(
+                    Arg.Any<IEnumerable<string>>(),
+                    Arg.Any<IEnumerable<string>>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(_ => Task.FromException<IReadOnlyDictionary<string, IReadOnlyList<ModInfoResolutionCandidate>>>(
+                    new InvalidOperationException("Steam API down")));
+
+            await service.ImportModListAsync(new List<string> { "mod.a" }, "Colony");
+
+            // The failure is swallowed; the picker still shows the group with
+            // the exact dictionary-driven name.
+            var picker = getPicker();
+            picker.Should().NotBeNull();
+            var group = picker!.ModGroups.Single();
+            group.Variants.Single().Name.Should().Be("Dictionary Name");
+            group.SelectedVariant.Should().NotBeNull();
+            group.SelectedVariant!.SteamId.Should().Be("101");
+            await _mockDialogService.Received(1).ShowMissingModSelectionDialogAsync(
+                Arg.Any<MissingModSelectionDialogViewModel>());
+        }
+
+        [Fact]
+        public async Task MissingModDownload_NothingInstalledNothingKnown_ReportsSameUnknownIds()
+        {
+            var service = CreateService();
+            var getPicker = SetupMissingModDownloadFlow();
+
+            _mockModListManager.GetAllMods().Returns(new List<ModItem>());
+            _mockModDictionaryService.GetAllEntriesByPackageId("unknown.1")
+                .Returns(new List<ModDictionaryEntry>());
+            _mockModDictionaryService.GetAllEntriesByPackageId("unknown.2")
+                .Returns(new List<ModDictionaryEntry>());
+
+            await service.ImportModListAsync(new List<string> { "unknown.1", "unknown.2" }, "Colony");
+
+            var picker = getPicker();
+            picker.Should().NotBeNull();
+            picker!.ModGroups.Should().BeEmpty();
+            picker.UnknownModIds.Should().Equal("unknown.1", "unknown.2");
+            await _mockDialogService.Received(1).ShowMissingModSelectionDialogAsync(
+                Arg.Any<MissingModSelectionDialogViewModel>());
         }
     }
 }
