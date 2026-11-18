@@ -143,31 +143,34 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         {
             File.WriteAllText(_steamDbPath, @"{
                 ""version"": 1790337009,
-                ""123"": {
-                    ""packageId"": ""Mod.A"",
-                    ""name"": ""Mod A"",
-                    ""authors"": [""Alice"", ""Bob""],
-                    ""gameVersions"": [""1.5"", ""1.6""],
-                    ""unpublished"": false
-                },
-                ""456"": {
-                    ""packageid"": ""mod.b"",
-                    ""name"": ""Mod B"",
-                    ""authors"": ""Carol"",
-                    ""gameVersions"": ""1.6"",
-                    ""unpublished"": true
-                },
-                ""294100"": {
-                    ""appid"": true,
-                    ""packageid"": ""ludeon.rimworld"",
-                    ""packageId"": ""ludeon.rimworld"",
-                    ""name"": ""RimWorld""
+                ""database"": {
+                    ""123"": {
+                        ""packageId"": ""Mod.A"",
+                        ""name"": ""Mod A"",
+                        ""authors"": [""Alice"", ""Bob""],
+                        ""gameVersions"": [""1.5"", ""1.6""],
+                        ""unpublished"": false
+                    },
+                    ""456"": {
+                        ""packageid"": ""mod.b"",
+                        ""name"": ""Mod B"",
+                        ""authors"": ""Carol"",
+                        ""gameVersions"": ""1.6"",
+                        ""unpublished"": true
+                    },
+                    ""294100"": {
+                        ""appid"": true,
+                        ""packageid"": ""ludeon.rimworld"",
+                        ""packageId"": ""ludeon.rimworld"",
+                        ""name"": ""RimWorld""
+                    }
                 }
             }");
             var service = CreateServiceWithRegistry();
 
             var entries = service.GetAllEntries();
 
+            entries.Should().NotContainKey("database", "the 'database' wrapper must not become a bogus entry");
             entries.Should().HaveCount(3);
             var a = entries["123"];
             a.PackageId.Should().Be("mod.a");
@@ -199,12 +202,15 @@ namespace RimSharp.Tests.Shared.Services.Implementations
                 }
             }");
             File.WriteAllText(_steamDbPath, @"{
-                ""123"": { ""packageId"": ""steam.pkg"", ""name"": ""Steam Name"" }
+                ""database"": {
+                    ""123"": { ""packageId"": ""steam.pkg"", ""name"": ""Steam Name"" }
+                }
             }");
             var service = CreateServiceWithRegistry();
 
             var entries = service.GetAllEntries();
 
+            entries.Should().NotContainKey("database", "the 'database' wrapper must not become a bogus entry");
             entries.Should().HaveCount(1, "first-source-wins keeps a single entry per steam id");
             var entry = entries["123"];
             entry.Name.Should().Be("Curated Name", "the curated source is iterated first and keeps priority");

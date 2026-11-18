@@ -123,11 +123,14 @@ namespace RimSharp.Infrastructure.Data
 
         /// <summary>
         /// Validates a RimSort Steam Workshop Database (<c>steamDB.json</c>)
-        /// snapshot. The root is an object keyed by publishedfileid; an optional
-        /// numeric <c>version</c> sits alongside the entries. Validation stays
-        /// deliberately shallow (no deep per-entry scan) so a ~48 MB payload is
-        /// checked cheaply: root shape, version type, every other value being an
-        /// object, at least one entry, and a usable first entry.
+        /// snapshot. The current shape is
+        /// <c>{"version": &lt;int&gt;, "database": {"&lt;publishedfileid&gt;": {...}}}</c>;
+        /// the legacy flat shape (root keyed by publishedfileid, with an optional
+        /// numeric <c>version</c> alongside the entries) is still accepted as a
+        /// fallback. Validation stays deliberately shallow (no deep per-entry
+        /// scan) so a ~48 MB payload is checked cheaply: root shape, root
+        /// <c>version</c> type, every entry being an object, at least one entry,
+        /// and a usable first entry.
         /// </summary>
         public static string? ValidateSteamWorkshopDb(string content)
         {
@@ -145,16 +148,35 @@ namespace RimSharp.Infrastructure.Data
                     return "root must be a JSON object";
                 }
 
+                // 'version' is root-level metadata in both shapes, never an entry.
+                if (TryGetPropertyIgnoreCase(root, "version", out var version) &&
+                    version.ValueKind != JsonValueKind.Number)
+                {
+                    return "'version' must be a number";
+                }
+
+                // Unwrap the nested snapshot first; only fall back to treating the
+                // root itself as the entry map when there is no 'database' property.
+                bool skipVersion = true;
+                JsonElement entries = root;
+                if (TryGetPropertyIgnoreCase(root, "database", out var database))
+                {
+                    if (database.ValueKind != JsonValueKind.Object)
+                    {
+                        return "'database' must be a JSON object";
+                    }
+
+                    entries = database;
+                    skipVersion = false;
+                }
+
                 bool hasEntry = false;
                 bool firstEntryChecked = false;
-                foreach (var property in root.EnumerateObject())
+                foreach (var property in entries.EnumerateObject())
                 {
-                    if (string.Equals(property.Name, "version", StringComparison.OrdinalIgnoreCase))
+                    if (skipVersion &&
+                        string.Equals(property.Name, "version", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (property.Value.ValueKind != JsonValueKind.Number)
-                        {
-                            return "'version' must be a number";
-                        }
                         continue;
                     }
 

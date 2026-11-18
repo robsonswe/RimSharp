@@ -263,7 +263,7 @@ namespace RimSharp.Shared.Services.Implementations
                 }
                 else
                 {
-                    // Steam Workshop DB shape: { "<publishedfileid>": { ... }, "version": <int> }
+                    // Steam Workshop DB shape: { "version": <int>, "database": { "<publishedfileid>": { ... } } }
                     count = LoadSteamWorkshopDbEntries(root, targetDictionary);
                 }
             }
@@ -289,15 +289,31 @@ namespace RimSharp.Shared.Services.Implementations
 
         /// <summary>
         /// Maps the workshop-ID-keyed Steam Workshop DB shape into the existing
-        /// <see cref="ModDictionaryEntry"/> fields. First-source-wins is kept:
-        /// an entry already loaded from a higher-priority source is not replaced.
+        /// <see cref="ModDictionaryEntry"/> fields. The current snapshot nests
+        /// the entries under a root-level <c>database</c> object; the legacy flat
+        /// shape (root keyed by publishedfileid) is still accepted as a fallback.
+        /// First-source-wins is kept: an entry already loaded from a
+        /// higher-priority source is not replaced.
         /// </summary>
         private static int LoadSteamWorkshopDbEntries(JsonElement root, Dictionary<string, ModDictionaryEntry> targetDictionary)
         {
             int count = 0;
-            foreach (var property in root.EnumerateObject())
+
+            // Unwrap the nested snapshot first; only fall back to treating the
+            // root itself as the entry map when there is no 'database' property.
+            bool skipVersion = true;
+            JsonElement entries = root;
+            if (TryGetPropertyIgnoreCase(root, "database", out var database) &&
+                database.ValueKind == JsonValueKind.Object)
             {
-                if (string.Equals(property.Name, "version", StringComparison.OrdinalIgnoreCase))
+                entries = database;
+                skipVersion = false;
+            }
+
+            foreach (var property in entries.EnumerateObject())
+            {
+                if (skipVersion &&
+                    string.Equals(property.Name, "version", StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }

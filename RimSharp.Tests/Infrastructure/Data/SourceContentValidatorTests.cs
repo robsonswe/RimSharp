@@ -53,11 +53,19 @@ namespace RimSharp.Tests.Infrastructure.Data
         }
 
         [Theory]
-        [InlineData(@"{ ""123"": { ""packageId"": ""mod.a"", ""name"": ""A"" } }")]
-        [InlineData(@"{ ""version"": 1790337009, ""123"": { ""packageId"": ""mod.a"" }, ""456"": { ""packageId"": ""mod.b"" } }")]
-        [InlineData(@"{ ""294100"": { ""appid"": true, ""packageid"": ""ludeon.rimworld"", ""packageId"": ""ludeon.rimworld"" } }")]
+        [InlineData(@"{ ""database"": { ""123"": { ""packageId"": ""mod.a"", ""name"": ""A"" } } }")]
+        [InlineData(@"{ ""version"": 1790337009, ""database"": { ""123"": { ""packageId"": ""mod.a"" }, ""456"": { ""packageId"": ""mod.b"" } } }")]
+        [InlineData(@"{ ""version"": 1790337009, ""database"": { ""294100"": { ""appid"": true, ""packageid"": ""ludeon.rimworld"", ""packageId"": ""ludeon.rimworld"" } } }")]
         public void ValidateSteamWorkshopDb_ShouldAcceptValidDocuments(string content)
         {
+            SourceContentValidator.ValidateSteamWorkshopDb(content).Should().BeNull();
+        }
+
+        [Fact]
+        public void ValidateSteamWorkshopDb_ShouldAcceptLegacyFlatShape()
+        {
+            var content = @"{ ""version"": 1790337009, ""123"": { ""packageId"": ""mod.a"" } }";
+
             SourceContentValidator.ValidateSteamWorkshopDb(content).Should().BeNull();
         }
 
@@ -65,10 +73,11 @@ namespace RimSharp.Tests.Infrastructure.Data
         [InlineData("")]
         [InlineData("<html/>")]
         [InlineData("[]")]
-        [InlineData(@"{ ""version"": 1790337009 }")]
-        [InlineData(@"{ ""123"": ""not an object"" }")]
-        [InlineData(@"{ ""version"": ""yesterday"", ""123"": { ""packageId"": ""mod.a"" } }")]
-        [InlineData(@"{ ""123"": { ""name"": ""no package id or appid"" } }")]
+        [InlineData(@"{ ""version"": 1 }")]
+        [InlineData(@"{ ""database"": {} }")]
+        [InlineData(@"{ ""database"": { ""123"": ""not an object"" } }")]
+        [InlineData(@"{ ""database"": { ""123"": { ""name"": ""no package id or appid"" } } }")]
+        [InlineData(@"{ ""version"": ""yesterday"", ""database"": { ""123"": { ""packageId"": ""a.b"" } } }")]
         public void ValidateSteamWorkshopDb_ShouldRejectInvalidDocuments(string content)
         {
             SourceContentValidator.ValidateSteamWorkshopDb(content).Should().NotBeNull();

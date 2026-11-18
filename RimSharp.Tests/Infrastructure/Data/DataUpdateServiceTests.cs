@@ -570,7 +570,7 @@ namespace RimSharp.Tests.Infrastructure.Data
             Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
             File.WriteAllText(localPath + ".etag", "oldsha");
 
-            var steamDbJson = @"{ ""version"": 1790337009, ""123"": { ""packageId"": ""mod.a"" } }";
+            var steamDbJson = @"{ ""version"": 1790337009, ""database"": { ""123"": { ""packageId"": ""mod.a"" } } }";
             _httpHandler.OnRequest = req =>
             {
                 var url = req.RequestUri!.ToString();
@@ -608,7 +608,7 @@ namespace RimSharp.Tests.Infrastructure.Data
             });
             var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient, modInfoSourceRegistry: registry);
 
-            var steamDbJson = @"{ ""version"": 1790337009, ""123"": { ""packageId"": ""mod.a"" } }";
+            var steamDbJson = @"{ ""version"": 1790337009, ""database"": { ""123"": { ""packageId"": ""mod.a"" } } }";
             var otherJson = @"{ ""mods"": {} }";
             _httpHandler.OnRequest = req =>
             {
