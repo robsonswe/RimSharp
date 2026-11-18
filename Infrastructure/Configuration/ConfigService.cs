@@ -25,6 +25,7 @@ namespace RimSharp.Infrastructure.Configuration
             "update_channel", // <- Adicionado aqui
             "rules_db_sources", // JSON array of rule database sources (priority order)
             "modinfo_sources", // JSON array of ModInfo database sources (priority order)
+            "modinfo_source_order", // JSON array of ModInfo source ids in user-configured priority order
             "modinfo_steamworkshopdb_migrated", // one-time migration flag for the Steam Workshop DB default
         };
 

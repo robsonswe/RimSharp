@@ -890,6 +890,7 @@ namespace RimSharp.AppDir.Dialogs
             if (index <= 0) return;
             ModInfoSources.Move(index - 1, index);
             SelectedModInfoSource = ModInfoSources[index - 1];
+            PersistModInfoSourceOrder();
         }
 
         private void MoveModInfoSourceDown(RuleSourceRowViewModel? row)
@@ -900,6 +901,13 @@ namespace RimSharp.AppDir.Dialogs
             if (index < 0 || index >= ModInfoSources.Count - 1) return;
             ModInfoSources.Move(index, index + 1);
             SelectedModInfoSource = ModInfoSources[index + 1];
+            PersistModInfoSourceOrder();
+        }
+
+        private void PersistModInfoSourceOrder()
+        {
+            if (_modInfoSourceManager == null) return;
+            _modInfoSourceManager.Registry.SetPriorityOrder(ModInfoSources.Select(row => row.Record.Id));
         }
 
         private void ResetModInfoSources()
@@ -1402,6 +1410,9 @@ namespace RimSharp.AppDir.Dialogs
 
             if (_modInfoSourceManager != null)
             {
+                // Keep the dedicated priority-order config in sync with the
+                // final row order (reordering also persists it immediately).
+                _modInfoSourceManager.Registry.SetPriorityOrder(ModInfoSources.Select(row => row.Record.Id));
                 _modInfoSourceManager.Registry.ReplaceAll(ModInfoSources.Select(row => new ModRuleSourceRecord
                 {
                     Id = row.Record.Id,

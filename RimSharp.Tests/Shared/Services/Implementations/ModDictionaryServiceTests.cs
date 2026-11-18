@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using FluentAssertions;
 using NSubstitute;
 using RimSharp.Infrastructure.Configuration;
@@ -58,9 +59,23 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             return new ModDictionaryService(_mockPathService, _mockDataUpdateService, _mockLogger, registry);
         }
 
+        private ModDictionaryService CreateServiceWithConfiguredOrder(params string[] sourceIds)
+        {
+            var configService = Substitute.For<IConfigService>();
+            configService.GetConfigValue(ModInfoSourceRegistry.PriorityOrderConfigKey)
+                .Returns(JsonSerializer.Serialize(sourceIds));
+            var registry = new ModInfoSourceRegistry(configService);
+            return new ModDictionaryService(_mockPathService, _mockDataUpdateService, _mockLogger, registry);
+        }
+
         private void WriteDbFile(string json)
         {
             File.WriteAllText(_tempDbPath, json);
+        }
+
+        private void WriteSteamDbFile(string json)
+        {
+            File.WriteAllText(_steamDbPath, json);
         }
 
         [Fact]
@@ -215,6 +230,178 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             var entry = entries["123"];
             entry.Name.Should().Be("Curated Name", "the curated source is iterated first and keeps priority");
             entry.PackageId.Should().Be("curated.pkg");
+        }
+
+        [Fact]
+        public void GetAllEntries_SteamWorkshopDb_MapsSteamNameAndAboutName()
+        {
+            WriteSteamDbFile(@"{
+                ""database"": {
+                    ""123"": {
+                        ""packageId"": ""Mod.A"",
+                        ""steamName"": ""Workshop Title"",
+                        ""name"": ""About Title""
+                    }
+                }
+            }");
+            var service = CreateServiceWithRegistry();
+
+            var entry = service.GetAllEntries()["123"];
+
+            entry.SteamName.Should().Be("Workshop Title");
+            entry.AboutName.Should().Be("About Title");
+            entry.Name.Should().Be("Workshop Title", "the workshop title is the preferred display name");
+            entry.SourceId.Should().Be(ModInfoSourceRegistry.SteamWorkshopDbSourceId);
+        }
+
+        [Fact]
+        public void GetAllEntries_Curated_MapsNameToSteamName()
+        {
+            WriteDbFile(@"{
+                ""mods"": {
+                    ""mod.a"": { ""123"": { ""name"": ""Curated Title"", ""published"": true } }
+                }
+            }");
+            var service = CreateServiceWithRegistry();
+
+            var entry = service.GetAllEntries()["123"];
+
+            entry.SteamName.Should().Be("Curated Title", "curated `name` is workshop-title lineage");
+            entry.AboutName.Should().BeEmpty();
+            entry.Name.Should().Be("Curated Title");
+            entry.SourceId.Should().Be(ModInfoSourceRegistry.CuratedSourceId);
+        }
+
+        [Fact]
+        public void GetAllEntries_DefaultOrder_CuratedOwnsAndSteamDbFillsEmptyFields()
+        {
+            WriteDbFile(@"{
+                ""mods"": {
+                    ""curated.pkg"": {
+                        ""123"": {
+                            ""name"": ""Curated Title"",
+                            ""versions"": [""1.4""],
+                            ""authors"": ""Curated Author"",
+                            ""published"": true
+                        }
+                    }
+                }
+            }");
+            WriteSteamDbFile(@"{
+                ""database"": {
+                    ""123"": {
+                        ""packageId"": ""steam.pkg"",
+                        ""steamName"": ""Steam Title"",
+                        ""name"": ""About Title"",
+                        ""gameVersions"": [""1.5""],
+                        ""authors"": ""Steam Author"",
+                        ""unpublished"": true
+                    }
+                }
+            }");
+            var service = CreateServiceWithRegistry();
+
+            var entry = service.GetAllEntries()["123"];
+
+            entry.SteamName.Should().Be("Curated Title", "the first source owns SteamName");
+            entry.AboutName.Should().Be("About Title", "a later source fills the empty AboutName");
+            entry.PackageId.Should().Be("curated.pkg");
+            entry.Authors.Should().Be("Curated Author");
+            entry.Versions.Should().Equal(new[] { "1.4", "1.5" }, "missing version items are filled");
+            entry.Published.Should().BeTrue("Published is first-writer-wins despite steamdb's unpublished=true");
+            entry.SourceId.Should().Be(ModInfoSourceRegistry.CuratedSourceId);
+        }
+
+        [Fact]
+        public void GetAllEntries_ConfiguredOrder_SteamDbOwnsAndCuratedFillsSteamName()
+        {
+            WriteSteamDbFile(@"{
+                ""database"": {
+                    ""123"": {
+                        ""packageId"": ""steam.pkg"",
+                        ""name"": ""About Title"",
+                        ""unpublished"": true
+                    }
+                }
+            }");
+            WriteDbFile(@"{
+                ""mods"": {
+                    ""curated.pkg"": { ""123"": { ""name"": ""Curated Title"", ""published"": true } }
+                }
+            }");
+            var service = CreateServiceWithConfiguredOrder(
+                ModInfoSourceRegistry.SteamWorkshopDbSourceId,
+                ModInfoSourceRegistry.CuratedSourceId);
+
+            var entry = service.GetAllEntries()["123"];
+
+            entry.SteamName.Should().Be("Curated Title", "the curated name fills steamdb's missing steamName");
+            entry.AboutName.Should().Be("About Title");
+            entry.PackageId.Should().Be("steam.pkg", "steamdb is first in the configured order and owns the entry");
+            entry.Published.Should().BeFalse("the first writer's unpublished=true is not overridden");
+            entry.SourceId.Should().Be(ModInfoSourceRegistry.SteamWorkshopDbSourceId);
+        }
+
+        [Fact]
+        public void GetAllEntriesByPackageId_CaseInsensitiveReverseIndex()
+        {
+            WriteDbFile(@"{
+                ""mods"": {
+                    ""Test.Mod"": { ""123"": { ""name"": ""Test Mod"", ""published"": true } }
+                }
+            }");
+            var service = CreateServiceWithRegistry();
+
+            service.GetAllEntriesByPackageId("test.mod").Should().ContainSingle()
+                .Which.SteamId.Should().Be("123");
+            service.GetAllEntriesByPackageId("TEST.MOD").Should().ContainSingle()
+                .Which.SteamId.Should().Be("123");
+        }
+
+        [Fact]
+        public void GetEntryByPackageId_DefaultOrder_CuratedCandidateWins()
+        {
+            WriteDbFile(@"{
+                ""mods"": {
+                    ""shared.pkg"": {
+                        ""111"": { ""name"": ""Curated"", ""versions"": [""1.5""], ""published"": true }
+                    }
+                }
+            }");
+            WriteSteamDbFile(@"{
+                ""database"": {
+                    ""222"": { ""packageId"": ""shared.pkg"", ""steamName"": ""Steam"", ""gameVersions"": [""1.5""] }
+                }
+            }");
+            _mockPathService.GetMajorGameVersion().Returns("1.5");
+            var service = CreateServiceWithRegistry();
+
+            service.GetEntryByPackageId("shared.pkg")!.SteamId.Should().Be("111",
+                "with equal version/published the higher-priority (curated) source wins");
+        }
+
+        [Fact]
+        public void GetEntryByPackageId_ConfiguredOrder_SteamDbCandidateWins()
+        {
+            WriteDbFile(@"{
+                ""mods"": {
+                    ""shared.pkg"": {
+                        ""111"": { ""name"": ""Curated"", ""versions"": [""1.5""], ""published"": true }
+                    }
+                }
+            }");
+            WriteSteamDbFile(@"{
+                ""database"": {
+                    ""222"": { ""packageId"": ""shared.pkg"", ""steamName"": ""Steam"", ""gameVersions"": [""1.5""] }
+                }
+            }");
+            _mockPathService.GetMajorGameVersion().Returns("1.5");
+            var service = CreateServiceWithConfiguredOrder(
+                ModInfoSourceRegistry.SteamWorkshopDbSourceId,
+                ModInfoSourceRegistry.CuratedSourceId);
+
+            service.GetEntryByPackageId("shared.pkg")!.SteamId.Should().Be("222",
+                "the configured order puts steamdb first, so its candidate wins the tie");
         }
     }
 }

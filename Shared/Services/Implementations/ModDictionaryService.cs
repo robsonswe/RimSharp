@@ -18,6 +18,8 @@ namespace RimSharp.Shared.Services.Implementations
         private readonly IDataUpdateService _dataUpdateService;
         private readonly Infrastructure.Mods.ModInfo.ModInfoSourceRegistry? _sourceRegistry;
         private Dictionary<string, ModDictionaryEntry>? _dictionaryCache;
+        private Dictionary<string, List<ModDictionaryEntry>>? _packageIndex;
+        private Dictionary<string, int> _sourcePriority = new(StringComparer.OrdinalIgnoreCase);
         private bool _isInitialized = false;
         private readonly object _lock = new object();
 
@@ -38,6 +40,8 @@ namespace RimSharp.Shared.Services.Implementations
             lock (_lock)
             {
                 _dictionaryCache = null;
+                _packageIndex = null;
+                _sourcePriority = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
                 _isInitialized = false;
             }
         }
@@ -79,15 +83,10 @@ namespace RimSharp.Shared.Services.Implementations
         {
             if (string.IsNullOrWhiteSpace(packageId)) return null;
 
-            var cache = GetAllEntries(); 
-            string normalizedId = packageId.ToLowerInvariant();
-
-            var candidates = cache.Values.Where(entry =>
-                !string.IsNullOrEmpty(entry.PackageId) &&
-                entry.PackageId.Equals(normalizedId, StringComparison.OrdinalIgnoreCase))
-                .ToList(); 
-
-            if (candidates.Count == 0)
+            GetAllEntries(); // ensure the reverse index is built
+            if (_packageIndex == null ||
+                !_packageIndex.TryGetValue(packageId, out var candidates) ||
+                candidates.Count == 0)
             {
                 return null;
             }
@@ -116,6 +115,7 @@ namespace RimSharp.Shared.Services.Implementations
                     entry.Versions != null &&
                     entry.Versions.Contains(majorGameVersion))
                 .ThenByDescending(entry => entry.Published)
+                .ThenBy(entry => GetSourcePriority(entry))
                 .FirstOrDefault();
 
             if (prioritizedEntry != null)
@@ -134,53 +134,131 @@ namespace RimSharp.Shared.Services.Implementations
         {
             if (string.IsNullOrWhiteSpace(packageId)) return new List<ModDictionaryEntry>();
 
-            var cache = GetAllEntries(); 
-            string normalizedId = packageId.ToLowerInvariant();
-
-            return cache.Values.Where(entry =>
-                !string.IsNullOrEmpty(entry.PackageId) &&
-                entry.PackageId.Equals(normalizedId, StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            GetAllEntries(); // ensure the reverse index is built
+            if (_packageIndex != null && _packageIndex.TryGetValue(packageId, out var candidates))
+            {
+                // The index is keyed by steamId, so candidates are already deduped.
+                return new List<ModDictionaryEntry>(candidates);
+            }
+            return new List<ModDictionaryEntry>();
         }
+
+        private int GetSourcePriority(ModDictionaryEntry entry) =>
+            _sourcePriority.TryGetValue(entry.SourceId, out var priority) ? priority : int.MaxValue;
 
         private Dictionary<string, ModDictionaryEntry> LoadEntries()
         {
             var results = new Dictionary<string, ModDictionaryEntry>(StringComparer.OrdinalIgnoreCase);
+            var priority = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            int order = 0;
 
             if (_sourceRegistry != null)
             {
-                foreach (var source in _sourceRegistry.GetEnabledSources())
+                foreach (var source in _sourceRegistry.GetEnabledSourcesInPriorityOrder())
                 {
-                    if (string.Equals(source.Id, Infrastructure.Mods.ModInfo.ModInfoSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase))
-                    {
-                        var jsonPath = _dataUpdateService.GetExternalFilePath("ModInfo", "RimSharp", DatabaseDictionaryFileName);
-                        LoadFromJsonFile(jsonPath, results);
-                    }
-                    else if (source.Type == ModRuleSourceType.RepoFile && !string.IsNullOrWhiteSpace(source.Url))
-                    {
-                        // Resolve the same URL-derived path the sync writes to
-                        // (e.g. steamDB.json), not a fixed db.json name.
-                        var jsonPath = _dataUpdateService.GetModInfoSourceFilePath(source.Id, source.Url);
-                        if (jsonPath == null) continue;
-                        LoadFromJsonFile(jsonPath, results);
-                    }
-                    else if (source.Type == ModRuleSourceType.LocalFile && !string.IsNullOrWhiteSpace(source.LocalPath))
-                    {
-                        LoadFromJsonFile(source.LocalPath, results);
-                    }
+                    priority[source.Id] = order++;
+                    LoadSource(source, results);
                 }
             }
             else
             {
+                priority[Infrastructure.Mods.ModInfo.ModInfoSourceRegistry.CuratedSourceId] = order++;
                 var jsonPath = _dataUpdateService.GetExternalFilePath("ModInfo", "RimSharp", DatabaseDictionaryFileName);
-                LoadFromJsonFile(jsonPath, results);
+                LoadFromJsonFile(jsonPath, results, Infrastructure.Mods.ModInfo.ModInfoSourceRegistry.CuratedSourceId);
             }
+
+            _sourcePriority = priority;
+            _packageIndex = BuildPackageIndex(results);
 
             _logger.LogDebug($"Loaded {results.Count} entries across ModInfo database sources.", nameof(ModDictionaryService));
             return results;
         }
 
-        private int LoadFromJsonFile(string jsonFilePath, Dictionary<string, ModDictionaryEntry> targetDictionary)
+        private void LoadSource(ModRuleSourceRecord source, Dictionary<string, ModDictionaryEntry> results)
+        {
+            if (string.Equals(source.Id, Infrastructure.Mods.ModInfo.ModInfoSourceRegistry.CuratedSourceId, StringComparison.OrdinalIgnoreCase))
+            {
+                var jsonPath = _dataUpdateService.GetExternalFilePath("ModInfo", "RimSharp", DatabaseDictionaryFileName);
+                LoadFromJsonFile(jsonPath, results, source.Id);
+            }
+            else if (source.Type == ModRuleSourceType.RepoFile && !string.IsNullOrWhiteSpace(source.Url))
+            {
+                // Resolve the same URL-derived path the sync writes to
+                // (e.g. steamDB.json), not a fixed db.json name.
+                var jsonPath = _dataUpdateService.GetModInfoSourceFilePath(source.Id, source.Url);
+                if (jsonPath == null) return;
+                LoadFromJsonFile(jsonPath, results, source.Id);
+            }
+            else if (source.Type == ModRuleSourceType.LocalFile && !string.IsNullOrWhiteSpace(source.LocalPath))
+            {
+                LoadFromJsonFile(source.LocalPath, results, source.Id);
+            }
+        }
+
+        private static Dictionary<string, List<ModDictionaryEntry>> BuildPackageIndex(
+            Dictionary<string, ModDictionaryEntry> entries)
+        {
+            var index = new Dictionary<string, List<ModDictionaryEntry>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in entries.Values)
+            {
+                if (string.IsNullOrWhiteSpace(entry.PackageId)) continue;
+                if (!index.TryGetValue(entry.PackageId, out var list))
+                {
+                    list = new List<ModDictionaryEntry>();
+                    index[entry.PackageId] = list;
+                }
+                list.Add(entry);
+            }
+            return index;
+        }
+
+        /// <summary>
+        /// Merges an incoming entry into the one already owned by an earlier
+        /// (higher-priority) source. Only empty fields are filled; the owner's
+        /// values are never overwritten.
+        /// </summary>
+        private static void MergeEntry(
+            Dictionary<string, ModDictionaryEntry> target,
+            string steamIdLower,
+            ModDictionaryEntry incoming)
+        {
+            if (!target.TryGetValue(steamIdLower, out var existing))
+            {
+                target[steamIdLower] = incoming;
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(existing.SteamName)) existing.SteamName = incoming.SteamName;
+            if (string.IsNullOrWhiteSpace(existing.AboutName)) existing.AboutName = incoming.AboutName;
+            if (string.IsNullOrWhiteSpace(existing.PackageId)) existing.PackageId = incoming.PackageId;
+            if (string.IsNullOrWhiteSpace(existing.Authors)) existing.Authors = incoming.Authors;
+
+            if (existing.Versions == null || existing.Versions.Count == 0)
+            {
+                existing.Versions = incoming.Versions ?? new List<string>();
+            }
+            else if (incoming.Versions != null)
+            {
+                foreach (var version in incoming.Versions)
+                {
+                    if (!string.IsNullOrEmpty(version) && !existing.Versions.Contains(version))
+                    {
+                        existing.Versions.Add(version);
+                    }
+                }
+            }
+
+            // Published is deliberately first-writer-wins. Corner case: steamDB's
+            // absent `unpublished` defaults to Published=true, so when a lower-
+            // priority source loaded first for a steamId it can mask an explicit
+            // published=false from a source loaded later. We keep whichever value
+            // the first source wrote rather than trying to reconcile the two.
+        }
+
+        private int LoadFromJsonFile(
+            string jsonFilePath,
+            Dictionary<string, ModDictionaryEntry> targetDictionary,
+            string sourceId)
         {
             var dbDirectoryPath = Path.GetDirectoryName(jsonFilePath);
             int count = 0;
@@ -246,17 +324,19 @@ namespace RimSharp.Shared.Services.Implementations
                                 {
                                     PackageId = packageIdLower,
                                     SteamId = steamIdLower,
-                                    Name = details.Name,
+                                    // Curated `name` is workshop-title lineage (83%
+                                    // match steamName vs 4% About name), so it maps
+                                    // to SteamName; AboutName stays empty.
+                                    SteamName = details.Name,
+                                    AboutName = string.Empty,
                                     Versions = details.Versions ?? new List<string>(),
                                     Authors = details.Authors,
-                                    Published = details.Published
+                                    Published = details.Published,
+                                    SourceId = sourceId
                                 };
 
-                                if (!targetDictionary.ContainsKey(steamIdLower))
-                                {
-                                    targetDictionary[steamIdLower] = entry;
-                                    count++;
-                                }
+                                if (!targetDictionary.ContainsKey(steamIdLower)) count++;
+                                MergeEntry(targetDictionary, steamIdLower, entry);
                             }
                         }
                     }
@@ -264,7 +344,7 @@ namespace RimSharp.Shared.Services.Implementations
                 else
                 {
                     // Steam Workshop DB shape: { "version": <int>, "database": { "<publishedfileid>": { ... } } }
-                    count = LoadSteamWorkshopDbEntries(root, targetDictionary);
+                    count = LoadSteamWorkshopDbEntries(root, targetDictionary, sourceId);
                 }
             }
             catch (JsonException jsonEx)
@@ -288,14 +368,17 @@ namespace RimSharp.Shared.Services.Implementations
         }
 
         /// <summary>
-        /// Maps the workshop-ID-keyed Steam Workshop DB shape into the existing
+        /// Maps the workshop-ID-keyed Steam Workshop DB shape into the normalized
         /// <see cref="ModDictionaryEntry"/> fields. The current snapshot nests
         /// the entries under a root-level <c>database</c> object; the legacy flat
         /// shape (root keyed by publishedfileid) is still accepted as a fallback.
-        /// First-source-wins is kept: an entry already loaded from a
-        /// higher-priority source is not replaced.
+        /// Entries are merged field-by-field into whatever an earlier, higher-
+        /// priority source already contributed for the same steamId.
         /// </summary>
-        private static int LoadSteamWorkshopDbEntries(JsonElement root, Dictionary<string, ModDictionaryEntry> targetDictionary)
+        private static int LoadSteamWorkshopDbEntries(
+            JsonElement root,
+            Dictionary<string, ModDictionaryEntry> targetDictionary,
+            string sourceId)
         {
             int count = 0;
 
@@ -337,11 +420,18 @@ namespace RimSharp.Shared.Services.Implementations
                     packageId = (pkgElement.GetString() ?? string.Empty).ToLowerInvariant();
                 }
 
-                string name = string.Empty;
+                string steamName = string.Empty;
+                if (TryGetPropertyIgnoreCase(entryElement, "steamName", out var steamNameElement) &&
+                    steamNameElement.ValueKind == JsonValueKind.String)
+                {
+                    steamName = steamNameElement.GetString() ?? string.Empty;
+                }
+
+                string aboutName = string.Empty;
                 if (TryGetPropertyIgnoreCase(entryElement, "name", out var nameElement) &&
                     nameElement.ValueKind == JsonValueKind.String)
                 {
-                    name = nameElement.GetString() ?? string.Empty;
+                    aboutName = nameElement.GetString() ?? string.Empty;
                 }
 
                 var versions = ReadStringOrArrayToList(entryElement, "gameVersions");
@@ -358,17 +448,16 @@ namespace RimSharp.Shared.Services.Implementations
                 {
                     PackageId = packageId,
                     SteamId = steamIdLower,
-                    Name = name,
+                    SteamName = steamName,
+                    AboutName = aboutName,
                     Versions = versions,
                     Authors = authors,
-                    Published = published
+                    Published = published,
+                    SourceId = sourceId
                 };
 
-                if (!targetDictionary.ContainsKey(steamIdLower))
-                {
-                    targetDictionary[steamIdLower] = entry;
-                    count++;
-                }
+                if (!targetDictionary.ContainsKey(steamIdLower)) count++;
+                MergeEntry(targetDictionary, steamIdLower, entry);
             }
             return count;
         }

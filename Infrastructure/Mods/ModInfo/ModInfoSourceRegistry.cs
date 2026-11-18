@@ -17,6 +17,13 @@ namespace RimSharp.Infrastructure.Mods.ModInfo
     public class ModInfoSourceRegistry
     {
         public const string ConfigKey = "modinfo_sources";
+
+        /// <summary>
+        /// Config key holding a JSON array of source ids in user-configured
+        /// priority order. Absent/empty means "use registry definition order".
+        /// </summary>
+        public const string PriorityOrderConfigKey = "modinfo_source_order";
+
         public const string CuratedSourceId = "rimsharp-db";
         private const string CuratedSourceName = "RimSharpDB";
 
@@ -57,6 +64,79 @@ namespace RimSharp.Infrastructure.Mods.ModInfo
 
         public IReadOnlyList<ModRuleSourceRecord> GetEnabledSources() =>
             _sources.Where(s => s.Enabled).ToList();
+
+        /// <summary>
+        /// Enabled sources in merge priority order: ids listed in
+        /// <see cref="PriorityOrderConfigKey"/> come first (in that order),
+        /// followed by any enabled source not listed, in registry definition
+        /// order. With no configured order this is today's definition order.
+        /// </summary>
+        public IReadOnlyList<ModRuleSourceRecord> GetEnabledSourcesInPriorityOrder()
+        {
+            var enabled = _sources.Where(s => s.Enabled).ToList();
+            var order = ParsePriorityOrder(_configService.GetConfigValue(PriorityOrderConfigKey));
+            if (order.Count == 0) return enabled;
+
+            var result = new List<ModRuleSourceRecord>(enabled.Count);
+            var added = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var id in order)
+            {
+                var match = enabled.FirstOrDefault(s => string.Equals(s.Id, id, StringComparison.OrdinalIgnoreCase));
+                if (match != null && added.Add(match.Id)) result.Add(match);
+            }
+            foreach (var source in enabled)
+            {
+                if (added.Add(source.Id)) result.Add(source);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Persists the given source ids as the user-configured priority order.
+        /// </summary>
+        public void SetPriorityOrder(IEnumerable<string> ids)
+        {
+            var order = (ids ?? Enumerable.Empty<string>())
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Select(id => id.Trim())
+                .ToList();
+            var json = JsonSerializer.Serialize(order, SerializerOptions);
+            _configService.SetConfigValue(PriorityOrderConfigKey, json);
+            _configService.SaveConfig();
+        }
+
+        /// <summary>
+        /// Clears the configured order so registry definition order applies again.
+        /// </summary>
+        public void ClearPriorityOrder()
+        {
+            _configService.SetConfigValue(PriorityOrderConfigKey, string.Empty);
+            _configService.SaveConfig();
+        }
+
+        private static List<string> ParsePriorityOrder(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return new List<string>();
+            try
+            {
+                var parsed = JsonSerializer.Deserialize<List<string>>(raw, SerializerOptions);
+                if (parsed == null) return new List<string>();
+
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var result = new List<string>();
+                foreach (var id in parsed)
+                {
+                    if (string.IsNullOrWhiteSpace(id)) continue;
+                    var trimmed = id.Trim();
+                    if (seen.Add(trimmed)) result.Add(trimmed);
+                }
+                return result;
+            }
+            catch (Exception)
+            {
+                return new List<string>();
+            }
+        }
 
         public void Reload()
         {
@@ -104,6 +184,7 @@ namespace RimSharp.Infrastructure.Mods.ModInfo
         public void ResetToDefaults()
         {
             _sources = CreateDefaults();
+            ClearPriorityOrder();
             Save();
         }
 
