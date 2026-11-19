@@ -49,6 +49,19 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
             }
         }
 
+        /// <summary>
+        /// Human-readable name of the source that supplied this replacement rule.
+        /// Local-file sources use the registry record's display name carried on
+        /// <see cref="ModReplacementInfo.SourceName"/>.
+        /// </summary>
+        public string SourceDisplayName => GetSourceDisplayName(ReplacementInfo) ?? string.Empty;
+
+        /// <summary>Curated reason text, shown on a row only when present.</summary>
+        public string? ReasonDisplay => ReplacementInfo?.Reason;
+
+        /// <summary>Whether a non-empty reason is available for display.</summary>
+        public bool HasReason => !string.IsNullOrWhiteSpace(ReplacementInfo?.Reason);
+
         public long OriginalLastUpdate { get; set; }
         public long ReplacementLastUpdate { get; set; }
         public string FormattedOriginalLastUpdate => 
@@ -70,7 +83,7 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
                     return new List<VersionSupport>();
                 }
                 var source = GetEquivalentVersionSource(ReplacementInfo.Source);
-                var sourceName = GetExternalSourceName(ReplacementInfo.Source);
+                var sourceName = GetSourceDisplayName(ReplacementInfo);
                 return ReplacementInfo.ReplacementVersionList
                     .Select(v => new VersionSupport(v, source, unofficial: true, externalSourceName: sourceName))
                     .ToList();
@@ -84,18 +97,28 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
         }
 
         /// <summary>
-        /// Display name of the external source behind a replacement's version
-        /// data, carried on each <see cref="VersionSupport"/> entry so tooltips
-        /// can say which source contributed it. Null when unknown (the converter
-        /// falls back to generic wording).
+        /// Display name of the source behind a replacement rule (and its version
+        /// data). Local-file sources use the registry record's display name;
+        /// null when unknown so the version-tooltip converter falls back to
+        /// generic wording.
         /// </summary>
-        private static string? GetExternalSourceName(ReplacementSource replacementSource) => replacementSource switch
+        private static string? GetSourceDisplayName(ModReplacementInfo? info)
         {
-            ReplacementSource.Database => "RimSharpDB",
-            ReplacementSource.UseThisInstead => "the installed 'Use This Instead' mod",
-            ReplacementSource.UseThisInsteadRepo => "'Use This Instead' (GitHub snapshot)",
-            _ => null
-        };
+            if (info == null) return null;
+            if (info.Source == ReplacementSource.LocalFile || info.Source == ReplacementSource.IndexedRecords)
+            {
+                return string.IsNullOrWhiteSpace(info.SourceName)
+                    ? (info.Source == ReplacementSource.LocalFile ? "local replacement file" : "external replacement index")
+                    : info.SourceName;
+            }
+            return info.Source switch
+            {
+                ReplacementSource.Database => "RimSharpDB",
+                ReplacementSource.UseThisInstead => "the installed 'Use This Instead' mod",
+                ReplacementSource.UseThisInsteadRepo => "'Use This Instead' (GitHub snapshot)",
+                _ => null
+            };
+        }
 
         public bool IsSelected
         {

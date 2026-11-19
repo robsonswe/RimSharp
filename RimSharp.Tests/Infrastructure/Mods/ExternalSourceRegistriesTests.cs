@@ -172,11 +172,11 @@ namespace RimSharp.Tests.Infrastructure.Mods
         }
 
         [Fact]
-        public void ModReplacementSourceRegistry_Defaults_ShouldIncludeModRemoteAndRimSharpDb()
+        public void ModReplacementSourceRegistry_Defaults_ShouldIncludeModRemoteRimSharpDbAndIndexedSource()
         {
             var registry = new ModReplacementSourceRegistry(_configService);
 
-            registry.Sources.Should().HaveCount(3);
+            registry.Sources.Should().HaveCount(4);
 
             var modSource = registry.Find(ModReplacementSourceRegistry.ModSourceId);
             modSource.Should().NotBeNull();
@@ -193,6 +193,12 @@ namespace RimSharp.Tests.Infrastructure.Mods
             curatedSource.Should().NotBeNull();
             curatedSource!.Curated.Should().BeTrue();
             curatedSource.Locked.Should().BeTrue();
+
+            var indexedSource = registry.Find(ModReplacementSourceRegistry.IndexedRecordsSourceId);
+            indexedSource.Should().NotBeNull();
+            indexedSource!.Type.Should().Be(ModRuleSourceType.IndexedRecords);
+            indexedSource.Url.Should().Be(ModReplacementSourceRegistry.IndexedRecordsSourceUrl);
+            indexedSource.Locked.Should().BeFalse("the indexed source is removable");
         }
 
         [Fact]

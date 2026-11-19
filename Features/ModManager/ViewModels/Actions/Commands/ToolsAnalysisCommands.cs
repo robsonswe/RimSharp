@@ -513,22 +513,27 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 var tasks = new List<Task>();
                 int processedCount = 0;
 
+                // One work item per (mod, suggestion) so every source's
+                // suggestion is surfaced as its own row in the dialog.
                 var modsToProcess = loadedMods
-                    .Select(mod =>
+                    .SelectMany(mod =>
                     {
-                        // 1. Try lookup by Steam ID
-                        var r = _replacementService.GetReplacementBySteamId(mod.SteamId ?? "");
-
-                        if (r == null && !string.IsNullOrEmpty(mod.PackageId))
+                        // 1. Try lookup by Steam ID, falling back to package id.
+                        var suggestions = _replacementService.GetReplacementsBySteamId(mod.SteamId ?? "");
+                        if ((suggestions == null || suggestions.Count == 0) && !string.IsNullOrEmpty(mod.PackageId))
                         {
-                            r = _replacementService.GetReplacementByPackageId(mod.PackageId);
+                            suggestions = _replacementService.GetReplacementsByPackageId(mod.PackageId);
                         }
 
-                        return new { Mod = mod, Replacement = r };
+                        if (suggestions == null || string.IsNullOrEmpty(mod.SteamId))
+                        {
+                            return Enumerable.Empty<(ModItem Mod, ModReplacementInfo Replacement)>();
+                        }
+
+                        return suggestions
+                            .Where(r => !string.IsNullOrEmpty(r.ReplacementSteamId))
+                            .Select(r => (Mod: mod, Replacement: r));
                     })
-                    .Where(x => x.Replacement != null && 
-                                !string.IsNullOrEmpty(x.Mod.SteamId) && 
-                                !string.IsNullOrEmpty(x.Replacement.ReplacementSteamId))
                     .ToList();
 
                 Debug.WriteLine($"[CheckReplacements] Found {modsToProcess.Count} potential replacement rules.");

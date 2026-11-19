@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -14,6 +15,7 @@ using NSubstitute;
 using RimSharp.Infrastructure.Configuration;
 using RimSharp.Infrastructure.Data;
 using RimSharp.Infrastructure.Mods.ModInfo;
+using RimSharp.Infrastructure.Mods.Replacements;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using Xunit;
@@ -639,6 +641,178 @@ namespace RimSharp.Tests.Infrastructure.Data
             File.ReadAllText(otherPath).Should().Be(otherJson, "one source's failure must not block the others");
         }
 
+        [Fact]
+        public async Task SyncReplacementSourcesAsync_IndexedRecords_ShouldFetchIndexThenOnlyMissingRecords()
+        {
+            var configService = Substitute.For<IConfigService>();
+            configService.GetConfigValue(ModReplacementSourceRegistry.ConfigKey).Returns((string?)null);
+            var registry = new ModReplacementSourceRegistry(configService);
+            foreach (var s in registry.Sources) s.Enabled = false;
+            registry.Add(new ModRuleSourceRecord
+            {
+                Id = "indexed-source",
+                Name = "Community Index (Reasons)",
+                Type = ModRuleSourceType.IndexedRecords,
+                Url = "https://example.invalid/",
+                Enabled = true
+            });
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient, replacementSourceRegistry: registry);
+
+            var indexJson = @"{ ""a.mod"": 1, ""b.mod"": 2 }";
+            var requestCount = 0;
+            _httpHandler.OnRequest = req =>
+            {
+                requestCount++;
+                var url = req.RequestUri!.ToString();
+                if (url.EndsWith("/mods/index.json"))
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(indexJson) };
+                if (url.EndsWith("/mods/1.json") || url.EndsWith("/mods/2.json"))
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(@"{ ""notices"": [] }") };
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            };
+
+            await service.SyncReplacementSourcesAsync(CancellationToken.None);
+
+            var dir = Path.Combine(_testTempDir, "Data", "Replacements", "indexed-source");
+            File.Exists(Path.Combine(dir, "index.json")).Should().BeTrue();
+            File.Exists(Path.Combine(dir, "1.json")).Should().BeTrue();
+            File.Exists(Path.Combine(dir, "2.json")).Should().BeTrue();
+            requestCount.Should().Be(3, "one index GET plus one GET per new record id");
+
+            requestCount = 0;
+            await service.SyncReplacementSourcesAsync(CancellationToken.None);
+
+            requestCount.Should().Be(1, "only the index is re-checked; already-cached records are not re-fetched");
+        }
+
+        [Fact]
+        public async Task SyncReplacementSourcesAsync_IndexedRecords_ShouldFetchMissingRecordsWithBoundedConcurrency()
+        {
+            var service = CreateIndexedRecordsService();
+
+            const int recordCount = 40;
+            var ids = Enumerable.Range(1, recordCount).ToList();
+            var indexJson = "{" + string.Join(",", ids.Select(i => $"\"mod{i}.mod\": {i}")) + "}";
+
+            int inFlight = 0;
+            int maxInFlight = 0;
+            _httpHandler.OnRequestAsync = async (req, ct) =>
+            {
+                var url = req.RequestUri!.ToString();
+                if (url.EndsWith("/mods/index.json"))
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(indexJson) };
+                if (url.Contains("/mods/") && url.EndsWith(".json"))
+                {
+                    var current = Interlocked.Increment(ref inFlight);
+                    int observed;
+                    while (current > (observed = Volatile.Read(ref maxInFlight)))
+                        Interlocked.CompareExchange(ref maxInFlight, current, observed);
+                    try
+                    {
+                        await Task.Delay(25, ct).ConfigureAwait(false);
+                        return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(@"{ ""notices"": [] }") };
+                    }
+                    finally
+                    {
+                        Interlocked.Decrement(ref inFlight);
+                    }
+                }
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            };
+
+            await service.SyncReplacementSourcesAsync(CancellationToken.None);
+
+            var dir = Path.Combine(_testTempDir, "Data", "Replacements", "indexed-source");
+            for (var i = 1; i <= recordCount; i++)
+                File.Exists(Path.Combine(dir, $"{i}.json")).Should().BeTrue($"record {i} should have been fetched");
+
+            maxInFlight.Should().BeGreaterThan(1, "records should be fetched concurrently, not sequentially");
+            maxInFlight.Should().BeLessThanOrEqualTo(8, "concurrency must stay bounded to the worker limit");
+        }
+
+        [Fact]
+        public async Task SyncReplacementSourcesAsync_IndexedRecords_WhenCancelled_ShouldStopPromptlyAndThrow()
+        {
+            var service = CreateIndexedRecordsService();
+
+            var ids = Enumerable.Range(1, 100).ToList();
+            var indexJson = "{" + string.Join(",", ids.Select(i => $"\"mod{i}.mod\": {i}")) + "}";
+
+            var firstRecordRequested = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _httpHandler.OnRequestAsync = async (req, ct) =>
+            {
+                var url = req.RequestUri!.ToString();
+                if (url.EndsWith("/mods/index.json"))
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(indexJson) };
+                if (url.Contains("/mods/") && url.EndsWith(".json"))
+                {
+                    firstRecordRequested.TrySetResult();
+                    await Task.Delay(Timeout.Infinite, ct).ConfigureAwait(false);
+                }
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            };
+
+            using var cts = new CancellationTokenSource();
+            var syncTask = service.SyncReplacementSourcesAsync(cts.Token);
+
+            await firstRecordRequested.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            cts.Cancel();
+
+            var completed = await Task.WhenAny(syncTask, Task.Delay(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+            completed.Should().BeSameAs(syncTask, "cancellation should stop the sync promptly");
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => syncTask);
+        }
+
+        [Fact]
+        public async Task SyncReplacementSourcesAsync_IndexedRecords_ShouldIsolatePerRecordFailures()
+        {
+            var service = CreateIndexedRecordsService();
+
+            const int recordCount = 10;
+            const int failingId = 3;
+            var ids = Enumerable.Range(1, recordCount).ToList();
+            var indexJson = "{" + string.Join(",", ids.Select(i => $"\"mod{i}.mod\": {i}")) + "}";
+
+            _httpHandler.OnRequestAsync = (req, ct) =>
+            {
+                var url = req.RequestUri!.ToString();
+                if (url.EndsWith("/mods/index.json"))
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(indexJson) });
+                if (url.EndsWith($"/mods/{failingId}.json"))
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+                if (url.Contains("/mods/") && url.EndsWith(".json"))
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(@"{ ""notices"": [] }") });
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+            };
+
+            await service.SyncReplacementSourcesAsync(CancellationToken.None);
+
+            var dir = Path.Combine(_testTempDir, "Data", "Replacements", "indexed-source");
+            File.Exists(Path.Combine(dir, $"{failingId}.json")).Should().BeFalse("the failing record must not be written");
+            for (var i = 1; i <= recordCount; i++)
+            {
+                if (i == failingId) continue;
+                File.Exists(Path.Combine(dir, $"{i}.json")).Should().BeTrue($"record {i} should be fetched despite another record failing");
+            }
+        }
+
+        private DataUpdateService CreateIndexedRecordsService(string sourceId = "indexed-source")
+        {
+            var configService = Substitute.For<IConfigService>();
+            configService.GetConfigValue(ModReplacementSourceRegistry.ConfigKey).Returns((string?)null);
+            var registry = new ModReplacementSourceRegistry(configService);
+            foreach (var s in registry.Sources) s.Enabled = false;
+            registry.Add(new ModRuleSourceRecord
+            {
+                Id = sourceId,
+                Name = "Community Index (Reasons)",
+                Type = ModRuleSourceType.IndexedRecords,
+                Url = "https://example.invalid/",
+                Enabled = true
+            });
+            return new DataUpdateService(_mockLogger, _testTempDir, _httpClient, replacementSourceRegistry: registry);
+        }
+
         private static string Sha256Hex(string content)
         {
             return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(content)));
@@ -695,10 +869,16 @@ namespace RimSharp.Tests.Infrastructure.Data
         {
             public Func<HttpRequestMessage, HttpResponseMessage>? OnRequest { get; set; }
 
-            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            // Async hook used by the concurrency/cancellation tests: it can
+            // delay and observe the caller's cancellation token.
+            public Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>>? OnRequestAsync { get; set; }
+
+            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
-                if (OnRequest == null) return Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
-                return Task.FromResult(OnRequest(request));
+                if (OnRequestAsync != null)
+                    return await OnRequestAsync(request, cancellationToken).ConfigureAwait(false);
+                if (OnRequest == null) return new HttpResponseMessage(HttpStatusCode.InternalServerError);
+                return OnRequest(request);
             }
         }
     }

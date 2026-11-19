@@ -21,7 +21,16 @@ namespace RimSharp.Shared.Models
     {
         RepoFile = 0,
         LocalFile = 1,
-        Mod = 2
+        Mod = 2,
+
+        /// <summary>
+        /// An index-driven record set: a JSON index maps source ids to record
+        /// ids, and each record is a separate JSON file. Synced incrementally
+        /// into the source's Data directory; parsed by the replacements loader's
+        /// format adapter. The concrete dataset is defined by the registry
+        /// record's URL, not by this type.
+        /// </summary>
+        IndexedRecords = 3
     }
 
     /// <summary>
@@ -40,7 +49,11 @@ namespace RimSharp.Shared.Models
         /// <summary>How the file is obtained (repoFile / localFile / mod).</summary>
         public ModRuleSourceType Type { get; set; } = ModRuleSourceType.RepoFile;
 
-        /// <summary>Raw file URL for <see cref="ModRuleSourceType.RepoFile"/> sources.</summary>
+        /// <summary>
+        /// Raw file URL for <see cref="ModRuleSourceType.RepoFile"/> sources, or
+        /// the base URL of the index for <see cref="ModRuleSourceType.IndexedRecords"/>
+        /// sources.
+        /// </summary>
         public string? Url { get; set; }
 
         /// <summary>Absolute path on disk for <see cref="ModRuleSourceType.LocalFile"/> sources.</summary>
@@ -86,6 +99,7 @@ namespace RimSharp.Shared.Models
                 {
                     1 => ModRuleSourceType.LocalFile,
                     2 => ModRuleSourceType.Mod,
+                    3 => ModRuleSourceType.IndexedRecords,
                     _ => ModRuleSourceType.RepoFile
                 };
             }
@@ -95,6 +109,7 @@ namespace RimSharp.Shared.Models
             {
                 "localfile" => ModRuleSourceType.LocalFile,
                 "mod" => ModRuleSourceType.Mod,
+                "indexedrecords" => ModRuleSourceType.IndexedRecords,
                 _ => ModRuleSourceType.RepoFile
             };
         }
@@ -105,6 +120,7 @@ namespace RimSharp.Shared.Models
             {
                 ModRuleSourceType.LocalFile => "localFile",
                 ModRuleSourceType.Mod => "mod",
+                ModRuleSourceType.IndexedRecords => "indexedRecords",
                 _ => "repoFile"
             });
         }

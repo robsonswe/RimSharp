@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentAssertions;
 using RimSharp.Shared.Models;
 using Xunit;
@@ -36,6 +37,26 @@ namespace RimSharp.Tests.Shared.Models
 
             // Act & Assert
             info.ReplacementSteamUrl.Should().BeNull();
+        }
+
+        [Fact]
+        public void Reason_WhenAbsent_ShouldStayAbsentInJson()
+        {
+            var json = JsonSerializer.Serialize(new ModReplacementInfo { ModId = "some.mod" });
+
+            json.Should().NotContain("Reason");
+        }
+
+        [Fact]
+        public void Reason_WhenPresent_ShouldBeSerialized()
+        {
+            var json = JsonSerializer.Serialize(new ModReplacementInfo
+            {
+                ModId = "some.mod",
+                Reason = "Better performance, same features."
+            });
+
+            json.Should().Contain("\"Reason\":\"Better performance, same features.\"");
         }
     }
 }

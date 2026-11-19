@@ -34,6 +34,16 @@ namespace RimSharp.Infrastructure.Data
         private readonly string _noVersionWarningTreeUrl = "https://api.github.com/repos/emipa606/NoVersionWarning/git/trees/main";
 
         /// <summary>
+        /// Maximum number of per-record JSON files fetched concurrently when
+        /// syncing an IndexedRecords replacement source. A first sync can touch
+        /// thousands of tiny files; fetching them one at a time takes many
+        /// minutes and leaves most records unsynced if the app closes mid-run.
+        /// Mirrors the bounded-concurrency approach used for other bulk network
+        /// operations (see ModListIOService.MaxParallelApiOperations).
+        /// </summary>
+        private const int MaxParallelRecordFetches = 8;
+
+        /// <summary>
         /// Cheap staleness probe for the ~48 MB Steam Workshop DB: the latest
         /// commit touching steamDB.json. Its sha is stored as the file's
         /// validator so an unchanged upstream file skips the large download.
@@ -631,6 +641,28 @@ namespace RimSharp.Infrastructure.Data
                     continue;
                 }
 
+                if (source.Type == ModRuleSourceType.IndexedRecords)
+                {
+                    if (!string.IsNullOrWhiteSpace(source.Url))
+                    {
+                        try
+                        {
+                            await SyncIndexedRecordsSourceAsync(source, cancellationToken).ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                        {
+                            // Cancellation is not a source failure: let it abort
+                            // the whole sync instead of being logged and swallowed.
+                            throw;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning($"Could not sync indexed replacement source '{source.Id}': {ex.Message}", nameof(DataUpdateService));
+                        }
+                    }
+                    continue;
+                }
+
                 if (source.Type != ModRuleSourceType.RepoFile || string.IsNullOrWhiteSpace(source.Url))
                 {
                     continue;
@@ -714,6 +746,128 @@ namespace RimSharp.Infrastructure.Data
             }
 
             return GetExternalFilePath("Replacements", source.Id, "replacements.json");
+        }
+
+        /// <summary>
+        /// Incrementally syncs an index-driven replacement source. The index is
+        /// conditional-GET (ETag/304) into the source's Data directory; then only
+        /// record files whose ids are not cached yet are fetched. The path layout
+        /// (index.json + mods/&lt;id&gt;.json) is part of the IndexedRecords format;
+        /// the concrete dataset comes from the registry record's URL. Per-record
+        /// failures are isolated so one bad record never blocks the rest.
+        /// </summary>
+        private async Task SyncIndexedRecordsSourceAsync(ModRuleSourceRecord source, CancellationToken cancellationToken)
+        {
+            var baseUrl = source.Url!.TrimEnd('/');
+            var indexPath = GetExternalFilePath("Replacements", source.Id, "index.json");
+            var sourceDir = Path.GetDirectoryName(indexPath)!;
+            Directory.CreateDirectory(sourceDir);
+
+            _logger.LogInfo($"Syncing indexed replacement source '{source.Id}' from '{source.Url}'...", nameof(DataUpdateService));
+            await SyncTextFileAsync(
+                $"{baseUrl}/mods/index.json", indexPath, cancellationToken,
+                ValidateIndexedRecordsIndex, source.Id).ConfigureAwait(false);
+
+            if (!File.Exists(indexPath)) return;
+
+            var ids = ParseIndexedRecordIds(
+                await File.ReadAllTextAsync(indexPath, cancellationToken).ConfigureAwait(false));
+
+            // Incremental: snapshot the ids whose record file is not cached yet
+            // before starting the workers, so File.Exists is never raced by a
+            // concurrent write of another record.
+            var missingIds = ids
+                .Where(id => !File.Exists(Path.Combine(sourceDir, $"{id}.json")))
+                .ToList();
+
+            _logger.LogInfo($"Indexed replacement source '{source.Id}': fetching {missingIds.Count} new record(s) of {ids.Count} indexed.", nameof(DataUpdateService));
+
+            if (missingIds.Count == 0) return;
+
+            // Bounded parallelism: a semaphore caps in-flight requests while
+            // Task.WhenAll drains the whole set. Each record still goes through
+            // SyncTextFileAsync unchanged (conditional GET + validated write +
+            // etag), and each failure stays isolated to its own record.
+            using var gate = new SemaphoreSlim(MaxParallelRecordFetches, MaxParallelRecordFetches);
+            var tasks = missingIds.Select(async id =>
+            {
+                await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await SyncTextFileAsync(
+                        $"{baseUrl}/mods/{id}.json", Path.Combine(sourceDir, $"{id}.json"), cancellationToken,
+                        ValidateIndexedRecord, source.Id).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    // Cancellation aborts the whole sync promptly; it is not a
+                    // per-record failure and must not be logged and swallowed.
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning($"Could not sync record '{id}' for replacement source '{source.Id}': {ex.Message}", nameof(DataUpdateService));
+                }
+                finally
+                {
+                    gate.Release();
+                }
+            });
+
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+
+        private static IReadOnlyList<int> ParseIndexedRecordIds(string json)
+        {
+            var ids = new List<int>();
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object) return ids;
+
+            foreach (var prop in doc.RootElement.EnumerateObject())
+            {
+                if (prop.Value.ValueKind == JsonValueKind.Number &&
+                    prop.Value.TryGetInt32(out var id) &&
+                    !ids.Contains(id))
+                {
+                    ids.Add(id);
+                }
+            }
+            return ids;
+        }
+
+        private static string? ValidateIndexedRecordsIndex(string content)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(content);
+                return doc.RootElement.ValueKind == JsonValueKind.Object
+                    ? null
+                    : "index is not a JSON object";
+            }
+            catch (JsonException ex)
+            {
+                return $"invalid JSON: {ex.Message}";
+            }
+        }
+
+        private static string? ValidateIndexedRecord(string content)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(content);
+                if (doc.RootElement.ValueKind != JsonValueKind.Object) return "record is not a JSON object";
+                if (!doc.RootElement.TryGetProperty("notices", out var notices) || notices.ValueKind != JsonValueKind.Array)
+                {
+                    return "record has no notices array";
+                }
+                return null;
+            }
+            catch (JsonException ex)
+            {
+                return $"invalid JSON: {ex.Message}";
+            }
         }
 
         #endregion

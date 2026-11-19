@@ -114,7 +114,7 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
 
             var vm = CreateViewModel();
 
-            vm.ReplacementSources.Should().HaveCount(3);
+            vm.ReplacementSources.Should().HaveCount(4);
 
             var modRow = vm.ReplacementSources.FirstOrDefault(r => r.Id == ModReplacementSourceRegistry.ModSourceId);
             modRow.Should().NotBeNull();
@@ -130,10 +130,11 @@ namespace RimSharp.Tests.AppDir.Dialogs.Settings
 
             var vm = CreateViewModel();
 
-            vm.ReplacementSources.Should().HaveCount(2);
+            vm.ReplacementSources.Should().HaveCount(3);
             vm.ReplacementSources.Should().NotContain(r => r.Id == ModReplacementSourceRegistry.ModSourceId);
             vm.ReplacementSources.Should().Contain(r => r.Id == ModReplacementSourceRegistry.CommunitySourceId);
             vm.ReplacementSources.Should().Contain(r => r.Id == ModReplacementSourceRegistry.CuratedSourceId);
+            vm.ReplacementSources.Should().Contain(r => r.Id == ModReplacementSourceRegistry.IndexedRecordsSourceId);
         }
 
         [Fact]

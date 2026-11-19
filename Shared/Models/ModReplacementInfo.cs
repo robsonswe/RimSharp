@@ -28,6 +28,22 @@ namespace RimSharp.Shared.Models
         // Source of this information
         public ReplacementSource Source { get; set; }
 
+        /// <summary>
+        /// Human-readable name of the registry source that supplied this rule.
+        /// Only meaningful for <see cref="ReplacementSource.LocalFile"/> sources,
+        /// whose display name is user-defined rather than a fixed enum label.
+        /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? SourceName { get; set; }
+
+        /// <summary>
+        /// Optional curated reason text (e.g. from JuMLi's UseAlternative notices).
+        /// Serialized only when present so an absent reason stays an absent JSON
+        /// property.
+        /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Reason { get; set; }
+
         [JsonIgnore]
         public string? ReplacementSteamUrl => !string.IsNullOrEmpty(ReplacementSteamId)
                                             ? $"https://steamcommunity.com/sharedfiles/filedetails/?id={ReplacementSteamId}"

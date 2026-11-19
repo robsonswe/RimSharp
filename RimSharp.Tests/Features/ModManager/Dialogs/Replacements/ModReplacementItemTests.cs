@@ -46,5 +46,53 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.Replacements
 
             item.ReplacementSupportedVersions.Should().BeEmpty();
         }
+
+        [Theory]
+        [InlineData(ReplacementSource.Database, "RimSharpDB")]
+        [InlineData(ReplacementSource.UseThisInstead, "the installed 'Use This Instead' mod")]
+        [InlineData(ReplacementSource.UseThisInsteadRepo, "'Use This Instead' (GitHub snapshot)")]
+        public void SourceDisplayName_MapsFixedSources(ReplacementSource source, string expected)
+        {
+            CreateItem(source).SourceDisplayName.Should().Be(expected);
+        }
+
+        [Fact]
+        public void SourceDisplayName_LocalFile_UsesRegistrySourceName()
+        {
+            var item = new ModReplacementItem(new ModItem(), new ModReplacementInfo
+            {
+                Source = ReplacementSource.LocalFile,
+                SourceName = "My Local Rules"
+            });
+
+            item.SourceDisplayName.Should().Be("My Local Rules");
+        }
+
+        [Fact]
+        public void SourceDisplayName_IndexedRecords_UsesRegistrySourceName()
+        {
+            var item = new ModReplacementItem(new ModItem(), new ModReplacementInfo
+            {
+                Source = ReplacementSource.IndexedRecords,
+                SourceName = "Community Index (Reasons)"
+            });
+
+            item.SourceDisplayName.Should().Be("Community Index (Reasons)");
+        }
+
+        [Fact]
+        public void ReasonDisplay_ShownOnlyWhenPresent()
+        {
+            var withReason = new ModReplacementItem(new ModItem(), new ModReplacementInfo
+            {
+                Reason = "Better performance, same features."
+            });
+            withReason.HasReason.Should().BeTrue();
+            withReason.ReasonDisplay.Should().Be("Better performance, same features.");
+
+            var withoutReason = new ModReplacementItem(new ModItem(), new ModReplacementInfo());
+            withoutReason.HasReason.Should().BeFalse();
+            withoutReason.ReasonDisplay.Should().BeNull();
+        }
     }
 }

@@ -36,6 +36,30 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
         }
 
         [Fact]
+        public void MultipleSuggestionsForSameMod_ShouldProduceOneRowEach()
+        {
+            // Two sources suggested different targets for the same original mod;
+            // the analysis passes one tuple per suggestion, so the dialog shows
+            // one row per (mod, suggestion) using the existing row construction.
+            var original = new ModItem { Name = "Old Mod", SteamId = "1" };
+            var data = new List<(ModItem Original, ModReplacementInfo Replacement, long OriginalUpdate, long ReplacementUpdate, string ReplacementSteamTitle, string ReplacementSteamAuthor)>
+            {
+                (original, new ModReplacementInfo { ReplacementSteamId = "2", ReplacementName = "First", Source = ReplacementSource.UseThisInsteadRepo }, 0, 0, "First", "Author A"),
+                (original, new ModReplacementInfo { ReplacementSteamId = "3", ReplacementName = "Second", Source = ReplacementSource.IndexedRecords, SourceName = "Community Index (Reasons)", Reason = "Curated reason" }, 0, 0, "Second", "Author B")
+            };
+
+            var vm = new ModReplacementDialogViewModel(data, new List<ModItem>());
+
+            var rows = vm.Replacements!;
+            rows.Should().HaveCount(2);
+            rows.Select(r => r.ReplacementInfo.ReplacementSteamId)
+                .Should().BeEquivalentTo(new[] { "2", "3" });
+            rows.Single(r => r.ReplacementInfo.ReplacementSteamId == "3")
+                .ReasonDisplay.Should().Be("Curated reason");
+            vm.GetSelectedReplacements().Should().HaveCount(2);
+        }
+
+        [Fact]
         public void SelectAll_ShouldUpdateSelectedCount()
         {
 

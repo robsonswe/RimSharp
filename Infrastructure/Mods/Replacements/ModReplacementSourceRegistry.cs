@@ -24,9 +24,25 @@ namespace RimSharp.Infrastructure.Mods.Replacements
         public const string CommunitySourceUrl =
             "https://raw.githubusercontent.com/emipa606/UseThisInstead/main/replacements.json.gz";
 
+        /// <summary>
+        /// Id of the index-driven replacement source. Its dataset is defined by
+        /// <see cref="IndexedRecordsSourceUrl"/> on the registry record; the
+        /// loader/sync dispatch on <see cref="ModRuleSourceType.IndexedRecords"/>,
+        /// never on this id or the URL.
+        /// </summary>
+        public const string IndexedRecordsSourceId = "community-index-replacements";
+        public const string IndexedRecordsSourceUrl = "https://jumli.sysrqmagician.dev/";
+
+        /// <summary>
+        /// Config flag recording that the one-time IndexedRecords migration ran,
+        /// so a user removing the source later is never undone on next startup.
+        /// </summary>
+        public const string IndexedRecordsMigrationFlagKey = "replacements_indexedrecords_migrated";
+
         private const string CuratedSourceName = "RimSharpDB";
         private const string ModSourceName = "Use This Instead (Mod)";
         private const string CommunitySourceName = "Use This Instead (GitHub)";
+        private const string IndexedRecordsSourceName = "Community Index (Reasons)";
 
         private static readonly JsonSerializerOptions SerializerOptions = new()
         {
@@ -54,7 +70,34 @@ namespace RimSharp.Infrastructure.Mods.Replacements
         {
             var raw = _configService.GetConfigValue(ConfigKey);
             var parsed = TryParse(raw);
-            _sources = parsed ?? CreateDefaults();
+            if (parsed == null)
+            {
+                _sources = CreateDefaults();
+                MarkIndexedRecordsMigrationDone();
+                return;
+            }
+
+            // One-time migration: configs persisted before the index-driven
+            // source became a default do not contain it. Append it ONCE and
+            // record that, so a later user removal is never resurrected.
+            if (!IsIndexedRecordsMigrationDone())
+            {
+                if (!parsed.Any(s => string.Equals(s.Id, IndexedRecordsSourceId, StringComparison.OrdinalIgnoreCase)))
+                {
+                    parsed.Add(CreateDefaults().First(s => s.Id == IndexedRecordsSourceId));
+                }
+                MarkIndexedRecordsMigrationDone();
+            }
+            _sources = parsed;
+        }
+
+        private bool IsIndexedRecordsMigrationDone() =>
+            string.Equals(_configService.GetConfigValue(IndexedRecordsMigrationFlagKey), "true", StringComparison.OrdinalIgnoreCase);
+
+        private void MarkIndexedRecordsMigrationDone()
+        {
+            _configService.SetConfigValue(IndexedRecordsMigrationFlagKey, "true");
+            _configService.SaveConfig();
         }
 
         public void Save()
@@ -176,6 +219,15 @@ namespace RimSharp.Infrastructure.Mods.Replacements
                 Name = CuratedSourceName,
                 Type = ModRuleSourceType.RepoFile,
                 Url = null,
+                Enabled = true,
+                Bundled = false
+            },
+            new ModRuleSourceRecord
+            {
+                Id = IndexedRecordsSourceId,
+                Name = IndexedRecordsSourceName,
+                Type = ModRuleSourceType.IndexedRecords,
+                Url = IndexedRecordsSourceUrl,
                 Enabled = true,
                 Bundled = false
             }
