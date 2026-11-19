@@ -2,94 +2,163 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
              xmlns:vm="clr-namespace:RimSharp.Features.ModManager.Dialogs.RulesViewer"
-             xmlns:sys="using:System"
              x:Class="RimSharp.Features.ModManager.Dialogs.RulesViewer.RulesViewerDialogView"
              x:DataType="vm:RulesViewerDialogViewModel"
              x:CompileBindings="True"
-             Width="700"
-             Height="560"
+             Width="740"
+             Height="620"
              Title="{Binding Title}">
 
     <dialogs:BaseDialog.MainContent>
-        <Grid RowDefinitions="Auto,*" Margin="10,10,10,0">
+        <Grid RowDefinitions="Auto,*">
+
+            <Grid.Styles>
+                <!-- Tags. Style = where the rule comes from:
+                     outlined = declared by the mod, filled = community source, amber = custom -->
+                <Style Selector="Border.tag">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderMuted}"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="CornerRadius" Value="3"/>
+                    <Setter Property="Padding" Value="6,1"/>
+                </Style>
+                <Style Selector="Border.tag > TextBlock">
+                    <Setter Property="FontSize" Value="10.5"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+                </Style>
+                <Style Selector="Border.tag[Tag=External]">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgAccent}"/>
+                </Style>
+                <Style Selector="Border.tag[Tag=External] > TextBlock">
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextOnDark}"/>
+                </Style>
+                <Style Selector="Border.tag[Tag=Custom]">
+                    <Setter Property="Background" Value="{DynamicResource BrushBgHighlight}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderStrong}"/>
+                </Style>
+                <Style Selector="Border.tag[Tag=Custom] > TextBlock">
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextBrown950}"/>
+                </Style>
+            </Grid.Styles>
 
             <!-- Mod header -->
-            <Border Grid.Row="0" Classes="panel-subtle" Padding="12" Margin="0,0,0,10">
-                <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Grid.Column="0" Text="{Binding Mod.DisplayName}" FontWeight="Bold" FontSize="16"
+            <Border Grid.Row="0" Classes="panel-subtle" Padding="12,10" Margin="0,0,0,8" CornerRadius="3">
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Mod.DisplayName}"
+                               FontWeight="Bold" FontSize="18"
                                Foreground="{DynamicResource BrushTextStrong}" TextWrapping="Wrap"/>
-                    <TextBlock Grid.Column="1" Text="{Binding Mod.PackageId}" FontSize="11" FontStyle="Italic"
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Mod.PackageId}"
+                               FontFamily="{DynamicResource RimSharpMonoFontFamily}" FontSize="11"
                                VerticalAlignment="Center" Foreground="{DynamicResource BrushTextMuted}"
-                               TextTrimming="CharacterEllipsis" Margin="10,0,0,0"/>
+                               TextTrimming="CharacterEllipsis" Margin="12,0,0,0"/>
+                    <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding SummaryText}"
+                               FontSize="11" Margin="0,3,0,0"
+                               Foreground="{DynamicResource BrushTextMuted}"
+                               IsVisible="{Binding HasRules}"/>
                 </Grid>
             </Border>
 
-            <!-- Rules list / empty state -->
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                <StackPanel>
-                    <ItemsControl ItemsSource="{Binding Rows}"
-                                  IsVisible="{Binding HasRules}">
+                <StackPanel Margin="2,0,12,0">
+
+                    <ItemsControl ItemsSource="{Binding Groups}" IsVisible="{Binding HasRules}">
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:RuleRowViewModel">
-                                <Border BorderBrush="{DynamicResource BrushBorderDefault}" BorderThickness="1"
-                                        CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
-                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
-                                        <!-- Kind badge -->
-                                        <Border Grid.Column="0" Background="{DynamicResource BrushBgAction}"
-                                                CornerRadius="3" Padding="6,3" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Kind}" FontSize="10" FontWeight="Bold"
-                                                       Foreground="{DynamicResource BrushTextOnDark}"/>
-                                        </Border>
+                            <DataTemplate x:DataType="vm:RuleGroupViewModel">
+                                <StackPanel Margin="0,6,0,10">
 
-                                        <!-- Target / detail -->
-                                        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Target}" FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource BrushTextStrong}"
-                                                       TextTrimming="CharacterEllipsis" TextWrapping="Wrap"/>
-                                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                                <TextBlock IsVisible="{Binding Name, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                           Text="{Binding Name}" FontSize="11" FontStyle="Italic"
-                                                           Foreground="{DynamicResource BrushTextMuted}"/>
-                                                <TextBlock IsVisible="{Binding Comment, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                                           Text="{Binding Comment}" FontSize="11" FontStyle="Italic"
-                                                           Foreground="{DynamicResource BrushTextMuted}"/>
-                                                <TextBlock Text="hard" FontSize="10" FontWeight="Bold"
-                                                           Foreground="{DynamicResource BrushTextError}"
-                                                           IsVisible="{Binding Hard}"/>
-                                            </StackPanel>
-                                        </StackPanel>
+                                    <!-- Section header: soft tinted band. Rows below are indented under it. -->
+                                    <Border Background="#2E4A3A2B" CornerRadius="3" Padding="10,5"
+                                            Margin="0,0,0,2" ToolTip.Tip="{Binding Description}">
+                                        <TextBlock Text="{Binding Header}"
+                                                   FontSize="14" FontWeight="Bold"
+                                                   Foreground="{DynamicResource BrushTextStrong}"/>
+                                    </Border>
 
-                                        <!-- Origin badges -->
-                                        <ItemsControl Grid.Column="2" ItemsSource="{Binding Origins}" VerticalAlignment="Center"
-                                                      HorizontalAlignment="Right">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <StackPanel Orientation="Horizontal" Spacing="6"/>
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate x:DataType="sys:String">
-                                                    <Border Background="{DynamicResource BrushBgSuccess}"
-                                                            CornerRadius="3" Padding="5,3">
-                                                        <TextBlock Text="{Binding}" FontSize="9" FontWeight="Bold"
-                                                                   Foreground="{DynamicResource BrushTextOnDark}"/>
-                                                    </Border>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </Grid>
-                                </Border>
+                                    <ItemsControl ItemsSource="{Binding Rows}" Margin="10,0,4,0">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:RuleRowViewModel">
+                                                <StackPanel>
+                                                    <Border Height="1" Background="#40372A1F" IsVisible="{Binding ShowDivider}"/>
+
+                                                    <Grid ColumnDefinitions="3,*,Auto" Margin="0,7">
+
+                                                        <!-- Hard-incompatibility accent -->
+                                                        <Border Grid.Column="0" Background="{DynamicResource BrushBgDanger}"
+                                                                CornerRadius="1" Margin="0,0,9,0"
+                                                                IsVisible="{Binding Hard}"/>
+
+                                                        <!-- Title / detail -->
+                                                        <StackPanel Grid.Column="1" Spacing="2">
+                                                            <StackPanel Orientation="Horizontal" Spacing="6"
+                                                                        IsVisible="{Binding !HasVersions}">
+                                                                <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                                                           Foreground="{DynamicResource BrushTextStrong}"
+                                                                           TextTrimming="CharacterEllipsis"/>
+                                                                <Border Background="{DynamicResource BrushBgDanger}"
+                                                                        CornerRadius="2" Padding="4,0"
+                                                                        VerticalAlignment="Center"
+                                                                        IsVisible="{Binding Hard}">
+                                                                    <TextBlock Text="HARD" FontSize="9" FontWeight="Bold"
+                                                                               Foreground="{DynamicResource BrushTextOnDark}"/>
+                                                                </Border>
+                                                            </StackPanel>
+
+                                                            <TextBlock IsVisible="{Binding ShowTarget}"
+                                                                       Text="{Binding Target}"
+                                                                       FontFamily="{DynamicResource RimSharpMonoFontFamily}"
+                                                                       FontSize="10.5"
+                                                                       Foreground="{DynamicResource BrushTextMuted}"
+                                                                       TextTrimming="CharacterEllipsis"/>
+
+                                                            <ContentControl IsVisible="{Binding HasVersions}"
+                                                                            Content="{Binding Versions, Converter={StaticResource VersionSupportConverter}, Mode=OneWay}"/>
+
+                                                            <TextBlock IsVisible="{Binding Comment, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                                       Text="{Binding Comment}" FontSize="11" FontStyle="Italic"
+                                                                       Margin="0,2,0,0" TextWrapping="Wrap"
+                                                                       Foreground="{DynamicResource BrushTextMuted}"/>
+                                                        </StackPanel>
+
+                                                        <!-- Tags -->
+                                                        <ItemsControl Grid.Column="2" ItemsSource="{Binding Tags}"
+                                                                      Margin="12,0,0,0" VerticalAlignment="Top">
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate>
+                                                                    <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                                                </ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate x:DataType="vm:RuleTagViewModel">
+                                                                    <Border Classes="tag" Tag="{Binding Category}"
+                                                                            ToolTip.Tip="{Binding Tooltip}">
+                                                                        <TextBlock Text="{Binding Text}"/>
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </Grid>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <TextBlock Text="No rules applied to this mod." FontSize="13" FontStyle="Italic"
-                               Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"
-                               VerticalAlignment="Center" Margin="0,40,0,0">
-                        <TextBlock.IsVisible>
+                    <!-- Empty state -->
+                    <StackPanel Margin="0,50,0,0" Spacing="4" HorizontalAlignment="Center">
+                        <StackPanel.IsVisible>
                             <Binding Path="HasRules" Converter="{StaticResource InvertedBooleanConverter}"/>
-                        </TextBlock.IsVisible>
-                    </TextBlock>
+                        </StackPanel.IsVisible>
+                        <TextBlock Text="No rules apply to this mod" FontSize="14" FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource BrushTextStrong}"/>
+                        <TextBlock Text="No load-order, dependency, incompatibility or version rules were found."
+                                   FontSize="11" FontStyle="Italic" HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource BrushTextMuted}"/>
+                    </StackPanel>
                 </StackPanel>
             </ScrollViewer>
         </Grid>

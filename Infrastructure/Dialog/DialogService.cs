@@ -14,6 +14,7 @@ using RimSharp.Infrastructure.Logging;
 using RimSharp.Infrastructure.Configuration;
 using RimSharp.Services.ModManagement;
 using RimSharp.Services.Workshop;
+using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
 using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
 using RimSharp.Features.ModManager.Dialogs.ModSelector;
@@ -55,6 +56,8 @@ namespace RimSharp.Infrastructure.Dialog
         private readonly INoVersionWarningSourceManager? _noVersionWarningSourceManager;
         private readonly IDataUpdateService? _dataUpdateService;
         private readonly IModService? _modService;
+        private readonly IModDictionaryService? _dictionaryService;
+        private readonly ISteamApiClient? _steamApiClient;
         private int _openDialogCount;
         public bool IsAnyDialogOpen => _openDialogCount > 0;
 
@@ -78,7 +81,9 @@ namespace RimSharp.Infrastructure.Dialog
             IModInfoSourceManager? modInfoSourceManager = null,
             IModReplacementSourceManager? replacementSourceManager = null,
             INoVersionWarningSourceManager? noVersionWarningSourceManager = null,
-            IDataUpdateService? dataUpdateService = null)
+            IDataUpdateService? dataUpdateService = null,
+            IModDictionaryService? dictionaryService = null,
+            ISteamApiClient? steamApiClient = null)
         {
             _appUpdaterService = appUpdaterService;
             _configService = configService;
@@ -98,6 +103,8 @@ namespace RimSharp.Infrastructure.Dialog
             _replacementSourceManager = replacementSourceManager;
             _noVersionWarningSourceManager = noVersionWarningSourceManager;
             _dataUpdateService = dataUpdateService;
+            _dictionaryService = dictionaryService;
+            _steamApiClient = steamApiClient;
         }
 
         private void OnPropertyChanged(string propertyName)
@@ -327,7 +334,9 @@ namespace RimSharp.Infrastructure.Dialog
         public async Task<bool> ShowRulesViewerDialogAsync(ModItem mod)
         {
             if (_modService == null || _ruleSourceManager == null) return false;
-            var viewModel = new RulesViewerDialogViewModel(mod, _modService, _ruleSourceManager.Registry);
+            var viewModel = new RulesViewerDialogViewModel(mod, _modService, _ruleSourceManager.Registry, _dictionaryService, _modListManager?.CurrentMajorGameVersion, _steamApiClient);
+            // Resolve live Steam titles/authors for dictionary targets before the dialog is shown.
+            await viewModel.InitializeAsync();
             var dialog = new RulesViewerDialogView(viewModel);
             return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }

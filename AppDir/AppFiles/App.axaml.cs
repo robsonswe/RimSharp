@@ -299,7 +299,9 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IModInfoSourceManager>(),
                     provider.GetRequiredService<IModReplacementSourceManager>(),
                     provider.GetRequiredService<INoVersionWarningSourceManager>(),
-                    provider.GetRequiredService<IDataUpdateService>()
+                    provider.GetRequiredService<IDataUpdateService>(),
+                    provider.GetRequiredService<IModDictionaryService>(),
+                    provider.GetRequiredService<ISteamApiClient>()
                 ));
             services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
             services.AddSingleton<ISystemInfoService>(provider => SystemInfoServiceFactory.Create());

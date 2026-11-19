@@ -6,6 +6,7 @@
 /tmp
 .vscode
 /docs/
+.opencode/
 
 # dotenv files
 .env
