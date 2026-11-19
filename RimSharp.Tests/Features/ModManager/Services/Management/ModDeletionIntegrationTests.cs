@@ -37,8 +37,7 @@ namespace RimSharp.Tests.Features.ModManager.Services.Management
             _mockDialogService = Substitute.For<IDialogService>();
             _deletionService = new ModDeletionService(); // Use actual robust deletion service
 
-            var mockDict = Substitute.For<IModDictionaryService>();
-            _modListManager = new ModListManager(mockDict);
+            _modListManager = new ModListManager();
 
             _viewModel = new ModActionsViewModel(
                 _mockDataService,

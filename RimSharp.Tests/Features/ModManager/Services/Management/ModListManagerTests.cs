@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
-using NSubstitute;
 using RimSharp.Features.ModManager.Services.Management;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
@@ -12,13 +11,11 @@ namespace RimSharp.Tests.Features.ModManager.Services.Management
 {
     public class ModListManagerTests
     {
-        private readonly IModDictionaryService _mockDictionaryService;
         private readonly ModListManager _manager;
 
         public ModListManagerTests()
         {
-            _mockDictionaryService = Substitute.For<IModDictionaryService>();
-            _manager = new ModListManager(_mockDictionaryService);
+            _manager = new ModListManager();
         }
 
         [Fact]
@@ -155,8 +152,6 @@ _manager.HasAnyActiveModIssues.Should().BeTrue();
             // "no usable URL" there and resolved via candidates.
             missing.steamUrl.Should().Be("steam://url/CommunityFilePage/12345");
             missing.displayName.Should().Be("Declared Name");
-            // No auto-pick: the dictionary must not be consulted for a URL.
-            _mockDictionaryService.DidNotReceiveWithAnyArgs().GetEntryByPackageId(default!);
         }
 
         [Fact]
@@ -182,7 +177,6 @@ _manager.HasAnyActiveModIssues.Should().BeTrue();
             // Left blank so ResolveMissingDependencyUrlsAsync resolves ALL candidates.
             missing.steamUrl.Should().BeEmpty();
             missing.displayName.Should().Be("Declared Name");
-            _mockDictionaryService.DidNotReceiveWithAnyArgs().GetEntryByPackageId(default!);
         }
 
         [Fact]
@@ -232,7 +226,6 @@ _manager.HasAnyActiveModIssues.Should().BeTrue();
             // Real workshop URLs stay untouched (single-variant, existing behavior).
             missing.steamUrl.Should().Be(url);
             missing.displayName.Should().Be("Declared Name");
-            _mockDictionaryService.DidNotReceiveWithAnyArgs().GetEntryByPackageId(default!);
         }
 
         [Fact]

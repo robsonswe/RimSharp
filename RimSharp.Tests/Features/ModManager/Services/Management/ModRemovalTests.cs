@@ -5,20 +5,17 @@ using FluentAssertions;
 using NSubstitute;
 using RimSharp.Features.ModManager.Services.Management;
 using RimSharp.Shared.Models;
-using RimSharp.Shared.Services.Contracts;
 using Xunit;
 
 namespace RimSharp.Tests.Features.ModManager.Services.Management
 {
     public class ModRemovalTests
     {
-        private readonly IModDictionaryService _mockDictionaryService;
         private readonly ModListManager _manager;
 
         public ModRemovalTests()
         {
-            _mockDictionaryService = Substitute.For<IModDictionaryService>();
-            _manager = new ModListManager(_mockDictionaryService);
+            _manager = new ModListManager();
         }
 
         [Fact]

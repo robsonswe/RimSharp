@@ -3,7 +3,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
 using RimSharp.Features.ModManager.Dialogs.ModSelector;
-using RimSharp.Features.ModManager.Dialogs.Dependencies;
 using RimSharp.Features.ModManager.Dialogs.Filter;
 using RimSharp.Features.ModManager.Dialogs.Replacements;
 using RimSharp.Features.WorkshopDownloader.Dialogs.UpdateCheck;
@@ -42,8 +41,6 @@ namespace RimSharp.Shared.Services.Contracts
         ModFilterDialogResult ShowModFilterDialog(ModFilterDialogViewModel viewModel);
         Task<ModReplacementDialogResult> ShowModReplacementDialogAsync(ModReplacementDialogViewModel viewModel);
         ModReplacementDialogResult ShowModReplacementDialog(ModReplacementDialogViewModel viewModel);
-        Task<DependencyResolutionDialogResult> ShowDependencyResolutionDialogAsync(DependencyResolutionDialogViewModel viewModel);
-        DependencyResolutionDialogResult ShowDependencyResolutionDialog(DependencyResolutionDialogViewModel viewModel);
         Task<MissingModSelectionDialogOutput> ShowMissingModSelectionDialogAsync(MissingModSelectionDialogViewModel viewModel);
         MissingModSelectionDialogOutput ShowMissingModSelectionDialog(MissingModSelectionDialogViewModel viewModel);
         Task<List<string>?> ShowCollectionDialogAsync(CollectionDialogViewModel viewModel);

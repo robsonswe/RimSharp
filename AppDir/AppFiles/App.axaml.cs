@@ -457,12 +457,7 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<GameInstance>(),
                     provider.GetRequiredService<IWorkshopAcfTimestampService>()
                 ));
-            services.AddSingleton<IModListManager>(provider => 
-            {
-                return new ModListManager(
-                    provider.GetRequiredService<IModDictionaryService>()
-                );
-            });
+            services.AddSingleton<IModListManager, ModListManager>();
             services.AddSingleton<ModLookupService>();
             services.AddSingleton<IModDataService>(provider =>
                 new ModDataService(

@@ -15,7 +15,6 @@ namespace RimSharp.Features.ModManager.Services.Management
         private readonly ModOrderService _orderService;
         private readonly ModDependencySorter _dependencySorter;
         private readonly ModLookupService _lookupService;
-        private readonly IModDictionaryService _modDictionaryService;
         private readonly List<ModItem> _allAvailableMods = new();
         private bool _hasAnyActiveModIssues = false;
         private string _currentMajorGameVersion = string.Empty;
@@ -23,10 +22,8 @@ namespace RimSharp.Features.ModManager.Services.Management
 
         public event EventHandler<ModListChangedEventArgs>? ListChanged;
 
-        public ModListManager(IModDictionaryService modDictionaryService)
+        public ModListManager()
         {
-            _modDictionaryService = modDictionaryService ?? throw new ArgumentNullException(nameof(modDictionaryService));
-
             _stateTracker = new ModStateTracker();
             _orderService = new ModOrderService();
             _dependencySorter = new ModDependencySorter();

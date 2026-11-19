@@ -19,7 +19,6 @@ using RimSharp.Features.ModManager.Dialogs.CustomizeMod;
 using RimSharp.Features.ModManager.Dialogs.ModSelector;
 using RimSharp.Features.ModManager.Dialogs.Filter;
 using RimSharp.Features.ModManager.Dialogs.Replacements;
-using RimSharp.Features.ModManager.Dialogs.Dependencies;
 using RimSharp.Features.ModManager.Dialogs.MissingMods;
 using RimSharp.Features.WorkshopDownloader.Dialogs.Collection;
 using RimSharp.Features.ModManager.Dialogs.Strip;
@@ -533,18 +532,6 @@ namespace RimSharp.Infrastructure.Dialog
         {
             var dialog = new ModReplacementDialogView(viewModel);
             return ShowDialogInternalAsync<ModReplacementDialogResult>(viewModel, dialog).GetAwaiter().GetResult();
-        }
-
-        public async Task<DependencyResolutionDialogResult> ShowDependencyResolutionDialogAsync(DependencyResolutionDialogViewModel viewModel)
-        {
-            var dialog = new DependencyResolutionDialogView(viewModel);
-            return await ShowDialogInternalAsync<DependencyResolutionDialogResult>(viewModel, dialog);
-        }
-
-        public DependencyResolutionDialogResult ShowDependencyResolutionDialog(DependencyResolutionDialogViewModel viewModel)
-        {
-            var dialog = new DependencyResolutionDialogView(viewModel);
-            return ShowDialogInternalAsync<DependencyResolutionDialogResult>(viewModel, dialog).GetAwaiter().GetResult();
         }
 
         public async Task<MissingModSelectionDialogOutput> ShowMissingModSelectionDialogAsync(MissingModSelectionDialogViewModel viewModel)
