@@ -425,6 +425,28 @@ namespace RimSharp.Shared.Services.Implementations
         }
 
         /// <summary>
+        /// Re-reads the freshly synced external version data and applies it to the
+        /// already-loaded mods, then performs the full rules/custom-info re-merge.
+        /// The version service cache is expected to have been invalidated already
+        /// by NoVersionWarningSourceManager.RefreshAfterSync(), so GetExternalVersions()
+        /// re-loads from the synced sources. _mlieVersionService is non-nullable and
+        /// enforced by the constructor, so no null guard is required here.
+        /// </summary>
+        public async Task ReapplySyncedDataAsync()
+        {
+            _logger.LogInfo("Re-applying synced external data to the loaded mods...", nameof(ModService));
+
+            var externalVersions = _mlieVersionService.GetExternalVersions();
+            ApplyExternalVersions(_allMods, externalVersions);
+
+            // Refreshes the rules cache, reapplies rules + custom info and
+            // recomputes IsSupportedRW on the same mod instances.
+            await ReapplyRulesAsync().ConfigureAwait(false);
+
+            _logger.LogInfo($"Synced data re-merge complete for {_allMods.Count} mods.", nameof(ModService));
+        }
+
+        /// <summary>
         /// Applies locally-recorded Workshop timestamps (appworkshop_294100.acf) onto
         /// the freshly scanned mod list, keyed by SteamId. No-op when no timestamp
         /// service was injected (hand-built ModService instances in tests) or when

@@ -184,12 +184,23 @@ namespace RimSharp.Infrastructure.Mods.Versions
         public void CommitRegistryChanges()
         {
             _registry.Save();
-            _mlieVersionService.Invalidate();
+            InvalidateCaches();
             _logger.LogInfo("NoVersionWarning source registry changed; invalidated version cache.", nameof(NoVersionWarningSourceManager));
             if (_modService != null)
             {
                 _ = ReapplyAsync(nameof(CommitRegistryChanges));
             }
+        }
+
+        public void RefreshAfterSync()
+        {
+            InvalidateCaches();
+            _logger.LogInfo("NoVersionWarning data synced; invalidated version cache.", nameof(NoVersionWarningSourceManager));
+        }
+
+        private void InvalidateCaches()
+        {
+            _mlieVersionService.Invalidate();
         }
 
         public bool IsModInstalled(string? modFolderId)

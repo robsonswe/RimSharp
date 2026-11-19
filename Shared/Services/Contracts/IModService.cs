@@ -69,6 +69,16 @@ Task CreateTimestampFilesAsync(string modDirectoryPath, string steamId, string p
         /// or rescan.
         /// </summary>
         Task ReapplyRulesAsync();
+
+        /// <summary>
+        /// Re-reads the freshly synced external version data and applies it to
+        /// the already-loaded mods, then performs the full rules/custom-info
+        /// re-merge. Used after a successful startup data sync so newly synced
+        /// versions and rules become visible without a restart. The individual
+        /// source caches must already have been invalidated by the callers'
+        /// <see cref="IExternalSourceManager.RefreshAfterSync"/> implementations.
+        /// </summary>
+        Task ReapplySyncedDataAsync();
     }
 }
 

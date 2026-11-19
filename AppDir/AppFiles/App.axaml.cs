@@ -188,6 +188,31 @@ namespace RimSharp.AppDir.AppFiles
                         {
                             _logger?.LogWarning($"Failed to update data files on startup: {updateEx.Message}", "App.OnFrameworkInitializationCompleted");
                         }
+
+                        // The sync (including its finally block) may have replaced
+                        // the on-disk versions/rules/dictionary/replacements data.
+                        // Invalidate the four source caches on the UI thread (they
+                        // are singletons shared with the UI), then re-apply the
+                        // freshly synced data onto the already-loaded mods. All of
+                        // this stays inside the fire-and-forget Task.Run so the UI
+                        // thread is never blocked by the re-merge.
+                        try
+                        {
+                            await Dispatcher.UIThread.InvokeAsync(() =>
+                            {
+                                ServiceProvider.GetRequiredService<IRuleSourceManager>().RefreshAfterSync();
+                                ServiceProvider.GetRequiredService<IModInfoSourceManager>().RefreshAfterSync();
+                                ServiceProvider.GetRequiredService<IModReplacementSourceManager>().RefreshAfterSync();
+                                ServiceProvider.GetRequiredService<INoVersionWarningSourceManager>().RefreshAfterSync();
+                            });
+
+                            await ServiceProvider.GetRequiredService<IModService>()
+                                .ReapplySyncedDataAsync().ConfigureAwait(false);
+                        }
+                        catch (Exception refreshEx)
+                        {
+                            _logger?.LogWarning($"Failed to refresh caches after startup data sync: {refreshEx.Message}", "App.OnFrameworkInitializationCompleted");
+                        }
                     });
                 });
             }

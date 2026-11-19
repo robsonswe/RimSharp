@@ -122,8 +122,19 @@ namespace RimSharp.Infrastructure.Mods.ModInfo
         public void CommitRegistryChanges()
         {
             _registry.Save();
-            _dictionaryService.Invalidate();
+            InvalidateCaches();
             _logger.LogInfo("ModInfo source registry changed; invalidated dictionary cache.", nameof(ModInfoSourceManager));
+        }
+
+        public void RefreshAfterSync()
+        {
+            InvalidateCaches();
+            _logger.LogInfo("ModInfo data synced; invalidated dictionary cache.", nameof(ModInfoSourceManager));
+        }
+
+        private void InvalidateCaches()
+        {
+            _dictionaryService.Invalidate();
         }
 
         public bool IsModInstalled(string? modFolderId) => false;

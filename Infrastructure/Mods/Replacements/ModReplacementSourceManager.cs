@@ -186,8 +186,19 @@ namespace RimSharp.Infrastructure.Mods.Replacements
         public void CommitRegistryChanges()
         {
             _registry.Save();
-            _replacementService.Invalidate();
+            InvalidateCaches();
             _logger.LogInfo("Mod replacement source registry changed; invalidated replacement cache.", nameof(ModReplacementSourceManager));
+        }
+
+        public void RefreshAfterSync()
+        {
+            InvalidateCaches();
+            _logger.LogInfo("Mod replacement data synced; invalidated replacement cache.", nameof(ModReplacementSourceManager));
+        }
+
+        private void InvalidateCaches()
+        {
+            _replacementService.Invalidate();
         }
 
         public bool IsModInstalled(string? modFolderId)

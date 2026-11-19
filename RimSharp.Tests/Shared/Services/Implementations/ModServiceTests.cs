@@ -236,6 +236,58 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         }
 
         [Fact]
+        public async Task ReapplySyncedDataAsync_ShouldReReadVersionsAndReapplyRules()
+        {
+            var modDir = Path.Combine(_modsPath, "SyncedMod");
+            var aboutDir = Path.Combine(modDir, "About");
+            Directory.CreateDirectory(aboutDir);
+            File.WriteAllText(Path.Combine(aboutDir, "About.xml"), @"<?xml version='1.0' encoding='utf-8'?>
+<ModMetaData>
+    <name>Synced Mod</name>
+    <packageId>test.synced</packageId>
+    <supportedVersions>
+        <li>1.5</li>
+    </supportedVersions>
+</ModMetaData>");
+
+            // Initially there is no external version for the mod. The lambda
+            // lets the test mutate the returned data to simulate a sync that
+            // happened after the initial load.
+            var externalVersions = new Dictionary<string, List<ExternalVersionInfo>>();
+            _mockMlieVersionService.GetExternalVersions().Returns(_ => externalVersions);
+
+            var service = CreateService();
+            await service.LoadModsAsync();
+
+            var mod = service.GetLoadedMods().Single(m => m.PackageId == "test.synced");
+            mod.SupportedVersions.Should().NotContain(v => v.Source == VersionSource.External);
+
+            // Simulate a successful data sync that added a new external version.
+            externalVersions["test.synced"] = new List<ExternalVersionInfo>
+            {
+                new("1.6", "Community NVW")
+            };
+
+            await service.ReapplySyncedDataAsync();
+
+            // The freshly synced version was re-read and applied to the SAME
+            // mod instance (no rescan).
+            var external = mod.SupportedVersions.Single(v => v.Source == VersionSource.External);
+            external.Version.Should().Be("1.6");
+            external.ExternalSourceName.Should().Be("Community NVW");
+            external.Unofficial.Should().BeTrue();
+
+            // GetExternalVersions was re-read (once at load, once on reapply).
+            _mockMlieVersionService.Received(2).GetExternalVersions();
+
+            // The rules cache was refreshed and both layers were re-applied:
+            // once during LoadModsAsync, once via ReapplyRulesAsync.
+            _mockRulesService.Received(1).RefreshRules();
+            _mockRulesService.Received(2).ApplyRulesToMods(Arg.Any<IEnumerable<ModItem>>());
+            _mockCustomService.Received(2).ApplyCustomInfoToMods(Arg.Any<IEnumerable<ModItem>>());
+        }
+
+        [Fact]
         public async Task LoadModsAsync_ShouldTrackAboutXmlLoadOrderRules()
         {
             var modDir = Path.Combine(_modsPath, "AboutRulesMod");

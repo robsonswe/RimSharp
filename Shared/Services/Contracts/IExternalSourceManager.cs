@@ -28,6 +28,13 @@ namespace RimSharp.Shared.Services.Contracts
         void CommitRegistryChanges();
 
         /// <summary>
+        /// Invalidates this manager's caches after a successful data sync, without
+        /// persisting the registry. Re-application of the freshly synced data onto
+        /// loaded mods is handled centrally by the caller.
+        /// </summary>
+        void RefreshAfterSync() { }
+
+        /// <summary>
         /// Checks whether a mod with the given folder/workshop ID is installed on disk.
         /// </summary>
         bool IsModInstalled(string? modFolderId) => false;

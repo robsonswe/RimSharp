@@ -49,9 +49,20 @@ namespace RimSharp.Infrastructure.Mods.Rules
         public void CommitRegistryChanges()
         {
             _registry.Save();
-            _repository.Invalidate();
+            InvalidateCaches();
             _logger.LogInfo("Rule source registry changed; re-merging the rules database.", nameof(RuleSourceManager));
             _ = ReapplyAsync(nameof(CommitRegistryChanges));
+        }
+
+        public void RefreshAfterSync()
+        {
+            InvalidateCaches();
+            _logger.LogInfo("Rule data synced; invalidated rules cache.", nameof(RuleSourceManager));
+        }
+
+        private void InvalidateCaches()
+        {
+            _repository.Invalidate();
         }
 
         private async Task ReapplyAsync(string caller)
