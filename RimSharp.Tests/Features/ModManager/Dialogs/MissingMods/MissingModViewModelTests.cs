@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using FluentAssertions;
 using RimSharp.Features.ModManager.Dialogs.MissingMods;
 using RimSharp.Shared.Models;
@@ -84,6 +85,28 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.MissingMods
             vm.Variants.Add(variant);
 
             vm.Variants.Should().HaveCount(1);
+        }
+
+        [Fact]
+        public void RequiredBy_DefaultsToEmpty_NoFlagForImportCreatedGroups()
+        {
+            var vm = new MissingModGroupViewModel("test.mod");
+
+            vm.RequiredBy.Should().BeEmpty();
+            vm.HasRequiredBy.Should().BeFalse();
+            vm.RequiredByDisplay.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void RequiredBy_CanBeSetAndJoinedForDisplay()
+        {
+            var vm = new MissingModGroupViewModel("test.mod")
+            {
+                RequiredBy = new List<string> { "Mod A", "Mod B" }
+            };
+
+            vm.HasRequiredBy.Should().BeTrue();
+            vm.RequiredByDisplay.Should().Be("Mod A, Mod B");
         }
     }
 

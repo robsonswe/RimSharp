@@ -131,7 +131,7 @@ _manager.HasAnyActiveModIssues.Should().BeTrue();
         }
 
         [Fact]
-        public void ResolveDependencies_WhenUrlIsInvalidSteamProtocol_ShouldLookupInDictionary()
+        public void ResolveDependencies_WhenUrlIsSteamProtocol_ShouldPreserveUrlAndKeepDeclaredName()
         {
 
             var mod = new ModItem 
@@ -140,21 +140,99 @@ _manager.HasAnyActiveModIssues.Should().BeTrue();
                 PackageId = "mod.bad", 
                 ModDependencies = new List<ModDependency> 
                 { 
-                    new ModDependency { PackageId = "missing.dep", SteamWorkshopUrl = "steam://12345" } 
+                    new ModDependency { PackageId = "missing.dep", DisplayName = "Declared Name", SteamWorkshopUrl = "steam://url/CommunityFilePage/12345" }
                 } 
             };
             _manager.Initialize(new[] { mod }, new[] { "mod.bad" });
-
-            var dictionaryEntry = new ModDictionaryEntry { PackageId = "missing.dep", SteamId = "99999", Name = "Real Name" };
-            _mockDictionaryService.GetEntryByPackageId("missing.dep").Returns(dictionaryEntry);
 
             var result = _manager.ResolveDependencies();
 
             result.missingDependencies.Should().HaveCount(1);
             var missing = result.missingDependencies[0];
             missing.packageId.Should().Be("missing.dep");
-            missing.steamUrl.Should().Be("https://steamcommunity.com/workshop/filedetails/?id=99999");
-            missing.displayName.Should().Be("Real Name");
+            // The raw steam:// URL is preserved so the declared pfid can drive
+            // live-API fallback and auto-selection downstream. It is treated as
+            // "no usable URL" there and resolved via candidates.
+            missing.steamUrl.Should().Be("steam://url/CommunityFilePage/12345");
+            missing.displayName.Should().Be("Declared Name");
+            // No auto-pick: the dictionary must not be consulted for a URL.
+            _mockDictionaryService.DidNotReceiveWithAnyArgs().GetEntryByPackageId(default!);
+        }
+
+        [Fact]
+        public void ResolveDependencies_WhenDependencyHasNoUrl_ShouldPassThroughBlankUrlAndKeepDeclaredName()
+        {
+
+            var mod = new ModItem
+            {
+                Name = "Mod With Dep",
+                PackageId = "mod.a",
+                ModDependencies = new List<ModDependency>
+                {
+                    new ModDependency { PackageId = "missing.dep", DisplayName = "Declared Name" }
+                }
+            };
+            _manager.Initialize(new[] { mod }, new[] { "mod.a" });
+
+            var result = _manager.ResolveDependencies();
+
+            result.missingDependencies.Should().HaveCount(1);
+            var missing = result.missingDependencies[0];
+            missing.packageId.Should().Be("missing.dep");
+            // Left blank so ResolveMissingDependencyUrlsAsync resolves ALL candidates.
+            missing.steamUrl.Should().BeEmpty();
+            missing.displayName.Should().Be("Declared Name");
+            _mockDictionaryService.DidNotReceiveWithAnyArgs().GetEntryByPackageId(default!);
+        }
+
+        [Fact]
+        public void ResolveDependencies_WhenDependencyHasNoUrlOrName_ShouldFallBackToPackageId()
+        {
+
+            var mod = new ModItem
+            {
+                Name = "Mod With Dep",
+                PackageId = "mod.a",
+                ModDependencies = new List<ModDependency>
+                {
+                    new ModDependency { PackageId = "Missing.Dep" }
+                }
+            };
+            _manager.Initialize(new[] { mod }, new[] { "mod.a" });
+
+            var result = _manager.ResolveDependencies();
+
+            result.missingDependencies.Should().HaveCount(1);
+            var missing = result.missingDependencies[0];
+            missing.steamUrl.Should().BeEmpty();
+            missing.displayName.Should().Be("missing.dep");
+        }
+
+        [Fact]
+        public void ResolveDependencies_WhenDependencyHasRealWorkshopUrl_ShouldKeepUrlUnchanged()
+        {
+            const string url = "https://steamcommunity.com/workshop/filedetails/?id=12345";
+
+            var mod = new ModItem
+            {
+                Name = "Mod With Dep",
+                PackageId = "mod.a",
+                ModDependencies = new List<ModDependency>
+                {
+                    new ModDependency { PackageId = "missing.dep", DisplayName = "Declared Name", SteamWorkshopUrl = url }
+                }
+            };
+            _manager.Initialize(new[] { mod }, new[] { "mod.a" });
+
+            var result = _manager.ResolveDependencies();
+
+            result.missingDependencies.Should().HaveCount(1);
+            var missing = result.missingDependencies[0];
+            missing.packageId.Should().Be("missing.dep");
+            // Real workshop URLs stay untouched (single-variant, existing behavior).
+            missing.steamUrl.Should().Be(url);
+            missing.displayName.Should().Be("Declared Name");
+            _mockDictionaryService.DidNotReceiveWithAnyArgs().GetEntryByPackageId(default!);
         }
 
         [Fact]

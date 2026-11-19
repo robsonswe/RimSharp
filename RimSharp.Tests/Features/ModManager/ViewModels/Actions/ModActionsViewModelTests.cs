@@ -6,12 +6,13 @@ using System.Threading.Tasks;
 using Avalonia.Headless.XUnit;
 using FluentAssertions;
 using NSubstitute;
-using RimSharp.Features.ModManager.Dialogs.Dependencies;
+using RimSharp.Features.ModManager.Dialogs.MissingMods;
 using RimSharp.Features.ModManager.ViewModels.Actions;
 using RimSharp.Infrastructure.Mods.ModInfo;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Features.WorkshopDownloader.Services;
+using RimSharp.Features.WorkshopDownloader.Models;
 using RimSharp.Tests.Base;
 using Xunit;
 
@@ -71,6 +72,22 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
                 gameInstance,
                 modInfoResolver: _modInfoResolver);
         }
+
+        private static SteamApiResponse ApiResponse(params SteamPublishedFileDetails[] details) => new()
+        {
+            Response = new SteamApiResponseDetails
+            {
+                Result = 1,
+                ResultCount = details.Length,
+                PublishedFileDetails = details.ToList()
+            }
+        };
+
+        private static List<(string displayName, string packageId, string steamUrl, List<string> requiredBy, IReadOnlyList<ModInfoResolutionCandidate> candidates)>
+            SteamUrlRow(string steamUrl) => new()
+            {
+                ("missing.dep", "missing.dep", steamUrl, new List<string> { "Mod A" }, Array.Empty<ModInfoResolutionCandidate>())
+            };
 
         [AvaloniaFact]
         public void DeleteModCommand_WhenNoModSelected_ShouldBeDisabled()
@@ -168,9 +185,9 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
         [AvaloniaFact]
         public async Task ResolveMissingDependencyUrlsAsync_NoUrlDep_ResolverFindsIt_BecomesSelectable()
         {
-            var missing = new List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)>
+            var missing = new List<(string displayName, string packageId, string steamUrl, List<string> requiredBy, IReadOnlyList<ModInfoResolutionCandidate> candidates)>
             {
-                ("missing.dep", "missing.dep", "", new List<string> { "Mod A" })
+                ("missing.dep", "missing.dep", "", new List<string> { "Mod A" }, Array.Empty<ModInfoResolutionCandidate>())
             };
             var candidate = new ModInfoResolutionCandidate
             {
@@ -192,22 +209,62 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
             var transformed = await vm.ResolveMissingDependencyUrlsAsync(missing, CancellationToken.None);
 
             transformed.Should().ContainSingle();
-            transformed[0].steamUrl.Should().Be("https://steamcommunity.com/workshop/filedetails/?id=12345");
-            transformed[0].displayName.Should().Be("Resolved Mod");
+            // All candidates are passed through; the row is not flattened to a single URL.
+            transformed[0].steamUrl.Should().BeEmpty();
+            transformed[0].displayName.Should().Be("missing.dep");
+            transformed[0].candidates.Should().HaveCount(1);
+            transformed[0].candidates.Should().Contain(candidate);
 
-            var dialog = new DependencyResolutionDialogViewModel(transformed);
-            dialog.MissingDependencies.Should().ContainSingle();
-            dialog.MissingDependencies![0].IsSelectable.Should().BeTrue();
-            dialog.MissingDependencies[0].SteamId.Should().Be("12345");
-            dialog.GetSelectedSteamIds().Should().Contain("12345");
+            var dialog = ModActionsViewModel.BuildMissingModSelectionDialog(transformed);
+            var group = dialog.ModGroups.Should().ContainSingle().Subject;
+            group.HasSelectableVariants.Should().BeTrue();
+            group.SelectedVariant!.SteamId.Should().Be("12345");
+            group.SelectedVariant.IsPublished.Should().BeTrue();
+        }
+
+        [AvaloniaFact]
+        public async Task ResolveMissingDependencyUrlsAsync_MultipleCandidates_PassesAllThrough()
+        {
+            var missing = new List<(string displayName, string packageId, string steamUrl, List<string> requiredBy, IReadOnlyList<ModInfoResolutionCandidate> candidates)>
+            {
+                ("missing.dep", "missing.dep", "", new List<string> { "Mod A" }, Array.Empty<ModInfoResolutionCandidate>())
+            };
+            var candidates = new List<ModInfoResolutionCandidate>
+            {
+                new() { SteamId = "111", DisplayName = "First", Published = true },
+                new() { SteamId = "222", DisplayName = "Second", Published = true },
+            };
+            var resolved = new Dictionary<string, IReadOnlyList<ModInfoResolutionCandidate>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["missing.dep"] = candidates
+            };
+            _modInfoResolver.ResolveAsync(
+                    Arg.Any<IEnumerable<string>>(),
+                    Arg.Any<IEnumerable<string>>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(resolved);
+
+            var vm = CreateViewModel();
+            var transformed = await vm.ResolveMissingDependencyUrlsAsync(missing, CancellationToken.None);
+
+            transformed.Should().ContainSingle();
+            transformed[0].steamUrl.Should().BeEmpty();
+            transformed[0].candidates.Should().HaveCount(2);
+
+            var dialog = ModActionsViewModel.BuildMissingModSelectionDialog(transformed);
+            var group = dialog.ModGroups.Should().ContainSingle().Subject;
+            group.HasSelectableVariants.Should().BeTrue();
+            group.Variants.Should().HaveCount(2);
+            // Default = first published candidate.
+            group.SelectedVariant!.SteamId.Should().Be("111");
         }
 
         [AvaloniaFact]
         public async Task ResolveMissingDependencyUrlsAsync_ZeroCandidates_KeepsRowUnselectable()
         {
-            var missing = new List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)>
+            var missing = new List<(string displayName, string packageId, string steamUrl, List<string> requiredBy, IReadOnlyList<ModInfoResolutionCandidate> candidates)>
             {
-                ("missing.dep", "missing.dep", "", new List<string> { "Mod A" })
+                ("missing.dep", "missing.dep", "", new List<string> { "Mod A" }, Array.Empty<ModInfoResolutionCandidate>())
             };
             var empty = new Dictionary<string, IReadOnlyList<ModInfoResolutionCandidate>>(StringComparer.OrdinalIgnoreCase)
             {
@@ -225,17 +282,19 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
             transformed.Should().ContainSingle();
             transformed[0].steamUrl.Should().BeEmpty();
             transformed[0].displayName.Should().Be("missing.dep");
+            transformed[0].candidates.Should().BeEmpty();
 
-            var dialog = new DependencyResolutionDialogViewModel(transformed);
-            dialog.MissingDependencies![0].IsSelectable.Should().BeFalse();
+            var dialog = ModActionsViewModel.BuildMissingModSelectionDialog(transformed);
+            dialog.ModGroups.Should().BeEmpty();
+            dialog.UnknownModIds.Should().Contain("missing.dep");
         }
 
         [AvaloniaFact]
         public async Task ResolveMissingDependencyUrlsAsync_DepWithUrl_IsLeftUntouched()
         {
-            var missing = new List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)>
+            var missing = new List<(string displayName, string packageId, string steamUrl, List<string> requiredBy, IReadOnlyList<ModInfoResolutionCandidate> candidates)>
             {
-                ("Existing", "with.url", "https://steamcommunity.com/workshop/filedetails/?id=999", new List<string>())
+                ("Existing", "with.url", "https://steamcommunity.com/workshop/filedetails/?id=999", new List<string>(), Array.Empty<ModInfoResolutionCandidate>())
             };
 
             var vm = CreateViewModel();
@@ -243,6 +302,144 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
 
             transformed.Should().BeEquivalentTo(missing);
             await _modInfoResolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default);
+        }
+
+        [AvaloniaFact]
+        public async Task ResolveMissingDependencyUrlsAsync_SteamUrlDep_NoDbCandidate_LiveApiAddsCandidate()
+        {
+            const string url = "steam://url/CommunityFilePage/12345";
+            var missing = SteamUrlRow(url);
+            var empty = new Dictionary<string, IReadOnlyList<ModInfoResolutionCandidate>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["missing.dep"] = Array.Empty<ModInfoResolutionCandidate>()
+            };
+            _modInfoResolver.ResolveAsync(
+                    Arg.Any<IEnumerable<string>>(), Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+                .Returns(empty);
+            _steamApiClient.GetPublishedFileDetailsBatchAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+                .Returns(ApiResponse(new SteamPublishedFileDetails
+                {
+                    PublishedFileId = "12345", Title = "Live Mod", Result = 1, Creator = "76561198000000009"
+                }));
+            _steamApiClient.GetPersonaNameAsync("76561198000000009", Arg.Any<CancellationToken>()).Returns("Live Author");
+
+            var vm = CreateViewModel();
+            var transformed = await vm.ResolveMissingDependencyUrlsAsync(missing, CancellationToken.None);
+
+            // The steam:// packageId is included in the resolver batch.
+            await _modInfoResolver.Received(1).ResolveAsync(
+                Arg.Is<IEnumerable<string>>(ids => ids.SequenceEqual(new[] { "missing.dep" })),
+                Arg.Any<IEnumerable<string>>(),
+                Arg.Any<CancellationToken>());
+
+            transformed.Should().ContainSingle();
+            transformed[0].steamUrl.Should().Be(url); // raw URL preserved
+            transformed[0].candidates.Should().ContainSingle();
+            var candidate = transformed[0].candidates[0];
+            candidate.SteamId.Should().Be("12345");
+            candidate.DisplayName.Should().Be("Live Mod");
+            candidate.Published.Should().BeTrue();
+            candidate.ApiDetails.Should().NotBeNull();
+            candidate.DictionaryEntry.PackageId.Should().Be("missing.dep");
+            candidate.DictionaryEntry.SteamId.Should().Be("12345");
+            candidate.DictionaryEntry.Published.Should().BeTrue();
+            candidate.Author.Should().Be("Live Author");
+
+            var dialog = ModActionsViewModel.BuildMissingModSelectionDialog(transformed);
+            var group = dialog.ModGroups.Should().ContainSingle().Subject;
+            group.Variants.Should().ContainSingle();
+            group.Variants[0].Authors.Should().Be("Live Author");
+            group.SelectedVariant!.SteamId.Should().Be("12345");
+        }
+
+        [AvaloniaFact]
+        public async Task ResolveMissingDependencyUrlsAsync_LiveApiReturnsNull_YieldsNoCandidate()
+        {
+            var missing = SteamUrlRow("steam://url/CommunityFilePage/12345");
+            var empty = new Dictionary<string, IReadOnlyList<ModInfoResolutionCandidate>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["missing.dep"] = Array.Empty<ModInfoResolutionCandidate>()
+            };
+            _modInfoResolver.ResolveAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+                .Returns(empty);
+            _steamApiClient.GetPublishedFileDetailsBatchAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+                .Returns((SteamApiResponse?)null);
+
+            var vm = CreateViewModel();
+            var transformed = await vm.ResolveMissingDependencyUrlsAsync(missing, CancellationToken.None);
+
+            transformed[0].candidates.Should().BeEmpty();
+            var dialog = ModActionsViewModel.BuildMissingModSelectionDialog(transformed);
+            dialog.UnknownModIds.Should().Contain("missing.dep");
+        }
+
+        [AvaloniaFact]
+        public async Task ResolveMissingDependencyUrlsAsync_LiveApiThrows_YieldsNoCandidate()
+        {
+            var missing = SteamUrlRow("steam://url/CommunityFilePage/12345");
+            var empty = new Dictionary<string, IReadOnlyList<ModInfoResolutionCandidate>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["missing.dep"] = Array.Empty<ModInfoResolutionCandidate>()
+            };
+            _modInfoResolver.ResolveAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+                .Returns(empty);
+            _steamApiClient.GetPublishedFileDetailsBatchAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+                .Returns<Task<SteamApiResponse?>>(_ => throw new InvalidOperationException("offline"));
+
+            var vm = CreateViewModel();
+            var transformed = await vm.ResolveMissingDependencyUrlsAsync(missing, CancellationToken.None);
+
+            transformed[0].candidates.Should().BeEmpty();
+        }
+
+        [AvaloniaFact]
+        public async Task ResolveMissingDependencyUrlsAsync_LiveApiNonOk_YieldsNoCandidate()
+        {
+            var missing = SteamUrlRow("steam://url/CommunityFilePage/12345");
+            var empty = new Dictionary<string, IReadOnlyList<ModInfoResolutionCandidate>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["missing.dep"] = Array.Empty<ModInfoResolutionCandidate>()
+            };
+            _modInfoResolver.ResolveAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+                .Returns(empty);
+            _steamApiClient.GetPublishedFileDetailsBatchAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+                .Returns(ApiResponse(new SteamPublishedFileDetails
+                {
+                    PublishedFileId = "12345", Title = "Gone", Result = (int)SteamApiResultCode.FileNotFound
+                }));
+
+            var vm = CreateViewModel();
+            var transformed = await vm.ResolveMissingDependencyUrlsAsync(missing, CancellationToken.None);
+
+            transformed[0].candidates.Should().BeEmpty();
+        }
+
+        [AvaloniaFact]
+        public async Task ResolveMissingDependencyUrlsAsync_DeclaredPfidAlreadyInDb_NoDuplicateCandidate()
+        {
+            var missing = SteamUrlRow("steam://url/CommunityFilePage/12345");
+            var dbCandidate = new ModInfoResolutionCandidate
+            {
+                SteamId = "12345", DisplayName = "Db Mod", Published = true
+            };
+            var resolved = new Dictionary<string, IReadOnlyList<ModInfoResolutionCandidate>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["missing.dep"] = new[] { dbCandidate }
+            };
+            _modInfoResolver.ResolveAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+                .Returns(resolved);
+            _steamApiClient.GetPublishedFileDetailsBatchAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+                .Returns(ApiResponse(new SteamPublishedFileDetails
+                {
+                    PublishedFileId = "12345", Title = "Live Mod", Result = 1
+                }));
+
+            var vm = CreateViewModel();
+            var transformed = await vm.ResolveMissingDependencyUrlsAsync(missing, CancellationToken.None);
+
+            transformed[0].candidates.Should().ContainSingle();
+            transformed[0].candidates[0].Should().BeSameAs(dbCandidate);
+            await _steamApiClient.DidNotReceiveWithAnyArgs().GetPublishedFileDetailsBatchAsync(default!, default);
         }
     }
 }

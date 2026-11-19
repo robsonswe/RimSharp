@@ -1,8 +1,8 @@
 #nullable enable
 using RimSharp.Core.Commands;
-using RimSharp.Features.ModManager.Dialogs.Dependencies;
 using RimSharp.Features.ModManager.Dialogs.DuplicateMods;
 using RimSharp.Features.ModManager.Dialogs.Incompatibilities;
+using RimSharp.Features.ModManager.Dialogs.MissingMods;
 using RimSharp.Features.ModManager.Dialogs.Replacements;
 using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
 using RimSharp.Infrastructure.Mods.ModInfo;
@@ -21,6 +21,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using RimSharp.Features.WorkshopDownloader.Services;
+using RimSharp.Features.WorkshopDownloader.Models;
 using RimSharp.Shared.Services.Contracts;
 using System.Collections.Concurrent;
 
@@ -78,36 +79,40 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private bool CanExecuteCheckIncompatibilities() => !IsParentLoading && _modListManager.VirtualActiveMods.Any();
 
         /// <summary>
-        /// Resolves missing dependencies that carry no Steam Workshop URL via
-        /// <see cref="IModInfoResolver"/>, then rebuilds the dialog tuples with
-        /// the best candidate's pfid (as a URL) and display name. Dependencies
-        /// that already have a URL are left untouched. Zero candidates keep
-        /// today's pass-through behavior (row stays visible but unselectable).
+        /// Resolves missing dependencies that carry no usable Steam Workshop
+        /// URL (blank or steam://) via <see cref="IModInfoResolver"/>. ALL
+        /// resolved candidates are passed through (best-first) so the user can
+        /// pick which variant to use. When the dictionary has no candidate for
+        /// a packageId, the pfid declared in a steam:// URL is looked up through
+        /// one batched live Steam API call and added as a candidate. Any API
+        /// failure is silently omitted. Dependencies with a real https URL are
+        /// left untouched.
         /// </summary>
-        internal async Task<List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)>>
+        internal async Task<List<(string displayName, string packageId, string steamUrl, List<string> requiredBy, IReadOnlyList<ModInfoResolutionCandidate> candidates)>>
             ResolveMissingDependencyUrlsAsync(
-                List<(string displayName, string packageId, string steamUrl, List<string> requiredBy)> missingDependencies,
+                List<(string displayName, string packageId, string steamUrl, List<string> requiredBy, IReadOnlyList<ModInfoResolutionCandidate> candidates)> missingDependencies,
                 CancellationToken ct)
         {
             if (missingDependencies == null || missingDependencies.Count == 0 || _modInfoResolver == null)
             {
-                return missingDependencies ?? new List<(string, string, string, List<string>)>();
+                return missingDependencies ?? new List<(string, string, string, List<string>, IReadOnlyList<ModInfoResolutionCandidate>)>();
             }
 
-            var noUrlPackages = missingDependencies
-                .Where(d => string.IsNullOrWhiteSpace(d.steamUrl) && !string.IsNullOrWhiteSpace(d.packageId))
-                .Select(d => d.packageId)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
+            // Blank URLs and steam:// URLs both need candidate resolution.
+            var needsResolution = missingDependencies
+                .Where(d => !HasUsableWorkshopUrl(d.steamUrl) && !string.IsNullOrWhiteSpace(d.packageId))
                 .ToList();
 
-            if (noUrlPackages.Count == 0) return missingDependencies;
+            if (needsResolution.Count == 0) return missingDependencies;
 
             ct.ThrowIfCancellationRequested();
             IReadOnlyDictionary<string, IReadOnlyList<ModInfoResolutionCandidate>> resolved;
             try
             {
                 resolved = await _modInfoResolver
-                    .ResolveAsync(noUrlPackages, cancellationToken: ct)
+                    .ResolveAsync(
+                        needsResolution.Select(d => d.packageId).Distinct(StringComparer.OrdinalIgnoreCase),
+                        cancellationToken: ct)
                     .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
@@ -123,18 +128,296 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                 return missingDependencies;
             }
 
+            // Collect pfids declared via steam:// URLs whose packageId has no
+            // dictionary candidate. Never re-query a pfid already among candidates.
+            var allCandidatePfids = new HashSet<string>(
+                resolved.Values
+                    .SelectMany(c => c ?? Array.Empty<ModInfoResolutionCandidate>())
+                    .Where(c => c != null && !string.IsNullOrWhiteSpace(c.SteamId))
+                    .Select(c => c.SteamId),
+                StringComparer.OrdinalIgnoreCase);
+
+            var fallbackPfids = new List<string>();
+            var seenFallback = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var dep in needsResolution)
+            {
+                if (string.IsNullOrWhiteSpace(dep.steamUrl)) continue; // no declared pfid
+                var declared = ExtractSteamIdFromUrl(dep.steamUrl);
+                if (string.IsNullOrWhiteSpace(declared)) continue;
+                if (allCandidatePfids.Contains(declared)) continue; // already present
+                if (resolved.TryGetValue(dep.packageId, out var cands) && cands.Count > 0) continue; // db has candidates
+                if (seenFallback.Add(declared)) fallbackPfids.Add(declared);
+            }
+
+            var fallbackDetails = await FetchFallbackDetailsAsync(fallbackPfids, ct).ConfigureAwait(false);
+            var fallbackAuthors = await ResolveFallbackAuthorsAsync(fallbackDetails.Values, ct).ConfigureAwait(false);
+
             return missingDependencies.Select(d =>
             {
-                if (!string.IsNullOrWhiteSpace(d.steamUrl)) return d;
-                if (!resolved.TryGetValue(d.packageId, out var candidates) || candidates.Count == 0) return d;
+                if (HasUsableWorkshopUrl(d.steamUrl)) return d; // real URL untouched
 
-                var best = candidates[0];
-                if (string.IsNullOrWhiteSpace(best.SteamId)) return d;
+                var candidates = resolved.TryGetValue(d.packageId, out var c) && c != null
+                    ? c.ToList()
+                    : new List<ModInfoResolutionCandidate>();
 
-                var steamUrl = $"https://steamcommunity.com/workshop/filedetails/?id={best.SteamId}";
-                var displayName = string.IsNullOrWhiteSpace(best.DisplayName) ? d.displayName : best.DisplayName;
-                return (displayName, d.packageId, steamUrl, d.requiredBy);
+                // Add a fallback candidate for the declared pfid when the db had none.
+                if (!string.IsNullOrWhiteSpace(d.steamUrl))
+                {
+                    var declared = ExtractSteamIdFromUrl(d.steamUrl);
+                    if (!string.IsNullOrWhiteSpace(declared)
+                        && fallbackDetails.TryGetValue(declared, out var detail)
+                        && candidates.All(x => !string.Equals(x.SteamId, declared, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        fallbackAuthors.TryGetValue(declared, out var author);
+                        var published = detail.Result == (int)SteamApiResultCode.OK;
+                        candidates.Add(new ModInfoResolutionCandidate
+                        {
+                            SteamId = declared,
+                            DisplayName = detail.Title,
+                            Published = published,
+                            ApiDetails = detail,
+                            DictionaryEntry = new ModDictionaryEntry
+                            {
+                                PackageId = d.packageId,
+                                SteamId = declared,
+                                Published = published
+                            },
+                            Author = author
+                        });
+                    }
+                }
+
+                return (d.displayName, d.packageId, d.steamUrl, d.requiredBy, (IReadOnlyList<ModInfoResolutionCandidate>)candidates);
             }).ToList();
+        }
+
+        // Steam's GetPublishedFileDetails endpoint accepts at most 300 ids per call.
+        private const int MaxFallbackBatchSize = 300;
+
+        /// <summary>
+        /// A real https workshop URL (with an extractable ?id=) takes the
+        /// single-variant path. Blank and steam:// URLs are resolved via candidates.
+        /// </summary>
+        private static bool HasUsableWorkshopUrl(string? url)
+            => !string.IsNullOrWhiteSpace(url)
+               && !url.Trim().StartsWith("steam://", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Batched live lookup for declared fallback pfids. Returns only OK
+        /// (published) items; any failure is silently swallowed.
+        /// </summary>
+        private async Task<Dictionary<string, SteamPublishedFileDetails>> FetchFallbackDetailsAsync(
+            IReadOnlyList<string> pfids, CancellationToken ct)
+        {
+            var details = new Dictionary<string, SteamPublishedFileDetails>(StringComparer.OrdinalIgnoreCase);
+            if (pfids.Count == 0 || _steamApiClient is null) return details;
+
+            try
+            {
+                for (int i = 0; i < pfids.Count; i += MaxFallbackBatchSize)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var chunk = pfids.Skip(i).Take(MaxFallbackBatchSize).ToList();
+                    var response = await _steamApiClient
+                        .GetPublishedFileDetailsBatchAsync(chunk, ct)
+                        .ConfigureAwait(false);
+
+                    foreach (var detail in response?.Response?.PublishedFileDetails ?? Enumerable.Empty<SteamPublishedFileDetails>())
+                    {
+                        if (detail == null || string.IsNullOrWhiteSpace(detail.PublishedFileId)) continue;
+                        if (detail.Result != (int)SteamApiResultCode.OK) continue; // unpublished / not found
+                        if (!details.ContainsKey(detail.PublishedFileId))
+                            details[detail.PublishedFileId] = detail;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Best-effort: a failed live lookup simply yields no fallback candidate.
+            }
+
+            return details;
+        }
+
+        /// <summary>
+        /// Resolves persona names for fallback candidates' creators, once per
+        /// distinct creator. Failures are swallowed (author stays null).
+        /// </summary>
+        private async Task<Dictionary<string, string?>> ResolveFallbackAuthorsAsync(
+            IEnumerable<SteamPublishedFileDetails> details, CancellationToken ct)
+        {
+            var authors = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            if (_steamApiClient is null) return authors;
+
+            var cache = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            foreach (var detail in details)
+            {
+                if (detail == null || string.IsNullOrWhiteSpace(detail.Creator)) continue;
+                if (!cache.TryGetValue(detail.Creator, out var author))
+                {
+                    author = null;
+                    try
+                    {
+                        author = await _steamApiClient.GetPersonaNameAsync(detail.Creator, ct).ConfigureAwait(false);
+                    }
+                    catch (Exception)
+                    {
+                        author = null;
+                    }
+                    cache[detail.Creator] = author;
+                }
+                authors[detail.PublishedFileId] = author;
+            }
+            return authors;
+        }
+
+        /// <summary>
+        /// Builds the proven import "missing mods" picker from resolved dependency
+        /// tuples. One group per missing dependency (group id = packageId); all
+        /// resolver candidates become variants (best-first), a URL-bearing dep
+        /// gets a single URL-derived variant, and deps with no usable candidate
+        /// are surfaced in UnknownModIds (visible but unselectable).
+        /// </summary>
+        internal static MissingModSelectionDialogViewModel BuildMissingModSelectionDialog(
+            IEnumerable<(string displayName, string packageId, string steamUrl, List<string> requiredBy, IReadOnlyList<ModInfoResolutionCandidate> candidates)> resolvedMissing)
+        {
+            var groups = new List<MissingModGroupViewModel>();
+            var unknownIds = new List<string>();
+
+            foreach (var dep in resolvedMissing ?? Enumerable.Empty<(string, string, string, List<string>, IReadOnlyList<ModInfoResolutionCandidate>)>())
+            {
+                var variants = new List<MissingModVariantViewModel>();
+
+                if (HasUsableWorkshopUrl(dep.steamUrl))
+                {
+                    // Real https ?id= URL: single URL-derived candidate (unchanged behavior).
+                    // steam:// and blank URLs take the all-candidates path below.
+                    var steamId = ExtractSteamIdFromUrl(dep.steamUrl);
+                    if (!string.IsNullOrWhiteSpace(steamId))
+                    {
+                        variants.Add(new MissingModVariantViewModel(
+                            new ModDictionaryEntry
+                            {
+                                PackageId = dep.packageId,
+                                SteamId = steamId,
+                                Name = dep.displayName,
+                                Authors = "Unknown",
+                                Published = true
+                            },
+                            displayName: dep.displayName,
+                            isPublished: true));
+                    }
+                }
+                else
+                {
+                    // No URL: pass ALL resolver candidates through as variants (best-first).
+                    foreach (var candidate in dep.candidates ?? Array.Empty<ModInfoResolutionCandidate>())
+                    {
+                        if (candidate == null || string.IsNullOrWhiteSpace(candidate.SteamId)) continue;
+
+                        var source = candidate.DictionaryEntry ?? new ModDictionaryEntry();
+                        var entry = new ModDictionaryEntry
+                        {
+                            PackageId = !string.IsNullOrWhiteSpace(source.PackageId) ? source.PackageId : dep.packageId,
+                            SteamId = candidate.SteamId,
+                            SteamName = source.SteamName,
+                            AboutName = source.AboutName,
+                            Name = source.Name,
+                            SourceId = source.SourceId,
+                            Versions = source.Versions,
+                            Authors = source.Authors,
+                            Published = candidate.Published
+                        };
+
+                        // API-sourced authors (persona name from the published
+                        // file's Creator) populate the picker's Authors display.
+                        // When no author could be resolved, show "Unknown"
+                        // instead of leaving the line blank (the view hides it
+                        // when Authors is empty).
+                        if (!string.IsNullOrWhiteSpace(candidate.Author))
+                            entry.Authors = candidate.Author;
+                        else if (string.IsNullOrWhiteSpace(entry.Authors))
+                            entry.Authors = "Unknown";
+
+                        var api = candidate.ApiDetails;
+                        long timeUpdated = 0;
+                        string? versionsString = null;
+                        if (api != null && api.Result == (int)SteamApiResultCode.OK)
+                        {
+                            timeUpdated = api.TimeUpdated;
+                            if (api.Tags != null && api.Tags.Count > 0)
+                            {
+                                var versionTags = SteamApiResultHelper.ExtractAndSortVersionTags(api.Tags);
+                                if (versionTags.Count > 0) versionsString = string.Join(", ", versionTags);
+                            }
+                        }
+
+                        variants.Add(new MissingModVariantViewModel(
+                            entry,
+                            timeUpdated,
+                            candidate.DisplayName,
+                            versionsString,
+                            candidate.Published));
+                    }
+                }
+
+                if (variants.Count == 0)
+                {
+                    // No usable candidate: surface as an unknown id so the picker
+                    // still shows the dependency (visible but unselectable).
+                    unknownIds.Add(dep.packageId);
+                    continue;
+                }
+
+                var group = new MissingModGroupViewModel(dep.packageId);
+                group.RequiredBy = dep.requiredBy;
+                foreach (var variant in variants) group.Variants.Add(variant);
+
+                // Auto-select the variant whose SteamId matches the pfid declared
+                // by the dependency's workshop URL, but only when it is published.
+                // Unpublished declared items are never auto-selected; fall back to
+                // the first published variant in that case.
+                var declaredSteamId = ExtractSteamIdFromUrl(dep.steamUrl);
+                var declaredVariant = !string.IsNullOrWhiteSpace(declaredSteamId)
+                    ? group.Variants.FirstOrDefault(v => v.IsPublished
+                        && string.Equals(v.SteamId, declaredSteamId, StringComparison.OrdinalIgnoreCase))
+                    : null;
+                group.SelectedVariant = declaredVariant ?? group.Variants.FirstOrDefault(v => v.IsPublished);
+                groups.Add(group);
+            }
+
+            return new MissingModSelectionDialogViewModel(groups, unknownIds);
+        }
+
+        private static readonly System.Text.RegularExpressions.Regex SteamIdFromUrlRegex = new(
+            @"id=(\d+)",
+            System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        private static readonly System.Text.RegularExpressions.Regex SteamIdFromCommunityFilePageRegex = new(
+            @"CommunityFilePage/(\d+)",
+            System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        private static readonly System.Text.RegularExpressions.Regex SteamIdTrailingRegex = new(
+            @"(\d+)/?\s*$",
+            System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        /// <summary>
+        /// Extracts the declared published-file id from a workshop URL. Supports
+        /// https <c>?id=&lt;digits&gt;</c>, <c>steam://…/CommunityFilePage/&lt;digits&gt;</c>,
+        /// and a trailing numeric id (e.g. <c>steam://12345</c>).
+        /// </summary>
+        private static string? ExtractSteamIdFromUrl(string? url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return null;
+
+            var match = SteamIdFromUrlRegex.Match(url);
+            if (match.Success && match.Groups.Count > 1) return match.Groups[1].Value;
+
+            match = SteamIdFromCommunityFilePageRegex.Match(url);
+            if (match.Success && match.Groups.Count > 1) return match.Groups[1].Value;
+
+            match = SteamIdTrailingRegex.Match(url);
+            return match.Success && match.Groups.Count > 1 ? match.Groups[1].Value : null;
         }
 
         private async Task ExecuteResolveDependencies(CancellationToken ct)
@@ -152,27 +435,33 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
                 // PackageId-only dependencies (no Workshop URL) get resolved
                 // through the dictionary + Steam API before the dialog is built.
-                missingDependencies = await ResolveMissingDependencyUrlsAsync(missingDependencies, ct);
+                // The resolver now returns ALL candidates per package id so the
+                // user can pick which variant to use.
+                var missingDependenciesWithCandidates = missingDependencies
+                    .Select(d => (d.displayName, d.packageId, d.steamUrl, d.requiredBy,
+                        (IReadOnlyList<ModInfoResolutionCandidate>)Array.Empty<ModInfoResolutionCandidate>()))
+                    .ToList();
+                var resolvedMissing = await ResolveMissingDependencyUrlsAsync(missingDependenciesWithCandidates, ct);
                 ct.ThrowIfCancellationRequested();
 
-                if (missingDependencies.Count > 0)
+                if (resolvedMissing.Count > 0)
                 {
-                    DependencyResolutionDialogResult dialogResult = DependencyResolutionDialogResult.Cancel;
-                    List<string>? selectedSteamIds = null;
+                    // Reuse the proven import "missing mods" picker: grouped
+                    // variants, radio mutual exclusion, published-awareness and
+                    // live enrichment all come for free. The dependency dialog is
+                    // no longer used by this flow.
+                    MissingModSelectionDialogOutput? selectionResult = null;
 
                     await RunOnUIThreadAsync(async () =>
                     {
-                        var viewModel = new DependencyResolutionDialogViewModel(missingDependencies);
-                        dialogResult = await _dialogService.ShowDependencyResolutionDialogAsync(viewModel);
-                        if (dialogResult == DependencyResolutionDialogResult.Download)
-                        {
-                            selectedSteamIds = viewModel.GetSelectedSteamIds();
-                        }
+                        var viewModel = BuildMissingModSelectionDialog(resolvedMissing);
+                        selectionResult = await _dialogService.ShowMissingModSelectionDialogAsync(viewModel);
                     });
 
                     ct.ThrowIfCancellationRequested();
 
-                    if (dialogResult == DependencyResolutionDialogResult.Download && selectedSteamIds != null && selectedSteamIds.Any())
+                    var selectedSteamIds = selectionResult?.SelectedSteamIds;
+                    if (selectionResult?.Result == MissingModSelectionResult.Download && selectedSteamIds != null && selectedSteamIds.Any())
                     {
                         QueueProcessResult queueResult = new QueueProcessResult();
                         try

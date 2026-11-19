@@ -1,4 +1,6 @@
 #nullable enable
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Linq;
@@ -79,6 +81,23 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
                 return count == 1 ? "1 variant" : $"{count} variants";
             }
         }
+
+        /// <summary>
+        /// Optional list of mod names that require this missing mod. Populated
+        /// by the dependency-resolution flow; empty for the import flow.
+        /// </summary>
+        public IReadOnlyList<string> RequiredBy { get; set; } = Array.Empty<string>();
+
+        /// <summary>
+        /// Whether <see cref="RequiredBy"/> has any entries.
+        /// </summary>
+        public bool HasRequiredBy => RequiredBy.Count > 0;
+
+        /// <summary>
+        /// Comma-joined display of <see cref="RequiredBy"/>, e.g. "Mod A, Mod B".
+        /// Empty when <see cref="HasRequiredBy"/> is false.
+        /// </summary>
+        public string RequiredByDisplay => string.Join(", ", RequiredBy);
 
         /// <summary>
         /// Unique group name for RadioButtons in this group.

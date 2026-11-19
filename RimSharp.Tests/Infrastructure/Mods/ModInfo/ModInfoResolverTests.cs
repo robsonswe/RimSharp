@@ -178,5 +178,123 @@ namespace RimSharp.Tests.Infrastructure.Mods.ModInfo
                 Arg.Is<IEnumerable<string>>(ids => ids.Count() == 1 && ids.First() == "777"),
                 Arg.Any<CancellationToken>());
         }
+
+        [Fact]
+        public async Task ResolveAsync_AuthorExtractedFromCreator()
+        {
+            var entry = new ModDictionaryEntry { PackageId = "auth.mod", SteamId = "111", SteamName = "Auth Mod" };
+            _dictionary.GetAllEntriesByPackageId("auth.mod").Returns(new List<ModDictionaryEntry> { entry });
+            _dictionary.GetEntryByPackageId("auth.mod").Returns(entry);
+            _steamApi.GetPublishedFileDetailsBatchAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+                .Returns(ApiResponse(new SteamPublishedFileDetails
+                {
+                    PublishedFileId = "111", Title = "Auth Mod", Result = 1, Creator = "76561198000000001"
+                }));
+            _steamApi.GetPersonaNameAsync("76561198000000001", Arg.Any<CancellationToken>()).Returns("Jane Doe");
+
+            var result = await _resolver.ResolveAsync(new[] { "auth.mod" }, cancellationToken: TestContext.Current.CancellationToken);
+
+            result["auth.mod"].Should().ContainSingle();
+            result["auth.mod"][0].Author.Should().Be("Jane Doe");
+            await _steamApi.Received(1).GetPersonaNameAsync("76561198000000001", Arg.Any<CancellationToken>());
+        }
+
+        [Fact]
+        public async Task ResolveAsync_SharedCreator_ResolvedOnce()
+        {
+            var a = new ModDictionaryEntry { PackageId = "a.mod", SteamId = "111", SteamName = "A" };
+            var b = new ModDictionaryEntry { PackageId = "b.mod", SteamId = "222", SteamName = "B" };
+            _dictionary.GetAllEntriesByPackageId("a.mod").Returns(new List<ModDictionaryEntry> { a });
+            _dictionary.GetAllEntriesByPackageId("b.mod").Returns(new List<ModDictionaryEntry> { b });
+            _dictionary.GetEntryByPackageId(Arg.Any<string>()).Returns(call => call.Arg<string>() == "a.mod" ? a : b);
+            _steamApi.GetPublishedFileDetailsBatchAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+                .Returns(ApiResponse(
+                    new SteamPublishedFileDetails { PublishedFileId = "111", Title = "A", Result = 1, Creator = "76561198000000002" },
+                    new SteamPublishedFileDetails { PublishedFileId = "222", Title = "B", Result = 1, Creator = "76561198000000002" }));
+            _steamApi.GetPersonaNameAsync("76561198000000002", Arg.Any<CancellationToken>()).Returns("Shared Author");
+
+            var result = await _resolver.ResolveAsync(new[] { "a.mod", "b.mod" }, cancellationToken: TestContext.Current.CancellationToken);
+
+            result["a.mod"][0].Author.Should().Be("Shared Author");
+            result["b.mod"][0].Author.Should().Be("Shared Author");
+            await _steamApi.Received(1).GetPersonaNameAsync("76561198000000002", Arg.Any<CancellationToken>());
+        }
+
+        [Fact]
+        public async Task ResolveAsync_NoAuthorWhenCreatorEmpty()
+        {
+            var entry = new ModDictionaryEntry { PackageId = "nocreator.mod", SteamId = "111", SteamName = "No Creator" };
+            _dictionary.GetAllEntriesByPackageId("nocreator.mod").Returns(new List<ModDictionaryEntry> { entry });
+            _dictionary.GetEntryByPackageId("nocreator.mod").Returns(entry);
+            _steamApi.GetPublishedFileDetailsBatchAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+                .Returns(ApiResponse(new SteamPublishedFileDetails
+                {
+                    PublishedFileId = "111", Title = "No Creator", Result = 1, Creator = ""
+                }));
+
+            var result = await _resolver.ResolveAsync(new[] { "nocreator.mod" }, cancellationToken: TestContext.Current.CancellationToken);
+
+            result["nocreator.mod"][0].Author.Should().BeNull();
+            await _steamApi.DidNotReceiveWithAnyArgs().GetPersonaNameAsync(default!, TestContext.Current.CancellationToken);
+        }
+
+        [Fact]
+        public async Task ResolveAsync_NoAuthorWhenApiResultNotOk()
+        {
+            var entry = new ModDictionaryEntry { PackageId = "notok.mod", SteamId = "111", SteamName = "Not OK" };
+            _dictionary.GetAllEntriesByPackageId("notok.mod").Returns(new List<ModDictionaryEntry> { entry });
+            _dictionary.GetEntryByPackageId("notok.mod").Returns(entry);
+            _steamApi.GetPublishedFileDetailsBatchAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+                .Returns(ApiResponse(new SteamPublishedFileDetails
+                {
+                    PublishedFileId = "111", Title = "Not OK", Result = (int)SteamApiResultCode.FileNotFound,
+                    Creator = "76561198000000003"
+                }));
+
+            var result = await _resolver.ResolveAsync(new[] { "notok.mod" }, cancellationToken: TestContext.Current.CancellationToken);
+
+            result["notok.mod"][0].Author.Should().BeNull();
+            await _steamApi.DidNotReceiveWithAnyArgs().GetPersonaNameAsync(default!, TestContext.Current.CancellationToken);
+        }
+
+        [Fact]
+        public async Task ResolveAsync_NoAuthorWhenPersonaFails()
+        {
+            var entry = new ModDictionaryEntry { PackageId = "fail.mod", SteamId = "111", SteamName = "Fail Author" };
+            _dictionary.GetAllEntriesByPackageId("fail.mod").Returns(new List<ModDictionaryEntry> { entry });
+            _dictionary.GetEntryByPackageId("fail.mod").Returns(entry);
+            _steamApi.GetPublishedFileDetailsBatchAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+                .Returns(ApiResponse(new SteamPublishedFileDetails
+                {
+                    PublishedFileId = "111", Title = "Fail Author", Result = 1, Creator = "76561198000000004"
+                }));
+            _steamApi.GetPersonaNameAsync("76561198000000004", Arg.Any<CancellationToken>())
+                .Returns<Task<string?>>(_ => throw new InvalidOperationException("offline"));
+
+            var result = await _resolver.ResolveAsync(new[] { "fail.mod" }, cancellationToken: TestContext.Current.CancellationToken);
+
+            result["fail.mod"][0].Author.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task ResolveAsync_DictionaryAuthors_AreNotOverridden()
+        {
+            var entry = new ModDictionaryEntry
+            {
+                PackageId = "dictauthor.mod", SteamId = "111", SteamName = "Dict Author", Authors = "Dictionary Author"
+            };
+            _dictionary.GetAllEntriesByPackageId("dictauthor.mod").Returns(new List<ModDictionaryEntry> { entry });
+            _dictionary.GetEntryByPackageId("dictauthor.mod").Returns(entry);
+            _steamApi.GetPublishedFileDetailsBatchAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+                .Returns(ApiResponse(new SteamPublishedFileDetails
+                {
+                    PublishedFileId = "111", Title = "Dict Author", Result = 1, Creator = "76561198000000005"
+                }));
+
+            var result = await _resolver.ResolveAsync(new[] { "dictauthor.mod" }, cancellationToken: TestContext.Current.CancellationToken);
+
+            result["dictauthor.mod"][0].Author.Should().BeNull();
+            await _steamApi.DidNotReceiveWithAnyArgs().GetPersonaNameAsync(default!, TestContext.Current.CancellationToken);
+        }
     }
 }

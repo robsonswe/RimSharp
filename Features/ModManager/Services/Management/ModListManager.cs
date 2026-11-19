@@ -369,23 +369,19 @@ ModItem? alternative = null;
                     }
                     else
                     {
+                        // Keep the About.xml-declared display name (or the package id
+                        // when no name was declared). Do NOT auto-pick a workshop URL
+                        // here: a missing URL must flow into ResolveMissingDependencyUrlsAsync
+                        // so IModInfoResolver can surface ALL candidates for the user to
+                        // choose from in the dependency dialog.
                         string finalDisplayName = !string.IsNullOrWhiteSpace(dependency.DisplayName) ? dependency.DisplayName : depPackageIdLower;
+
+                        // Keep the raw workshop URL untouched. A real https://…?id=
+                        // URL takes the single-variant path downstream; a steam://
+                        // URL is preserved so the declared pfid can be extracted for
+                        // live-API fallback and auto-selection. Downstream treats
+                        // steam:// as "no usable URL" and resolves via candidates.
                         string? finalSteamUrl = dependency.SteamWorkshopUrl;
-
-                        bool needsLookup = string.IsNullOrWhiteSpace(finalSteamUrl) || finalSteamUrl.Trim().StartsWith("steam://", StringComparison.OrdinalIgnoreCase);
-
-                        if (needsLookup)
-                        {
-                            var entry = _modDictionaryService.GetEntryByPackageId(depPackageIdLower);
-                            if (entry != null && !string.IsNullOrWhiteSpace(entry.SteamId))
-                            {
-                                finalSteamUrl = $"https://steamcommunity.com/workshop/filedetails/?id={entry.SteamId}";
-                                if (string.Equals(finalDisplayName, depPackageIdLower, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(entry.Name))
-                                    finalDisplayName = entry.Name;
-                            }
-                            else if (needsLookup && !string.IsNullOrWhiteSpace(finalSteamUrl) && finalSteamUrl.StartsWith("steam://"))
-                                finalSteamUrl = null;
-                        }
 
                         if (missingDepsDict.TryGetValue(depPackageIdLower, out var existing))
                         {

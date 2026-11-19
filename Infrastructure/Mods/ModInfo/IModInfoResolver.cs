@@ -61,5 +61,13 @@ namespace RimSharp.Infrastructure.Mods.ModInfo
 
         /// <summary>The dictionary entry this candidate came from.</summary>
         public ModDictionaryEntry DictionaryEntry { get; init; } = new();
+
+        /// <summary>
+        /// Author name resolved from the Steam API's published-file Creator
+        /// (a SteamID64) via the persona-name endpoint. Null when the API did
+        /// not return an item, the Creator was empty, the dictionary already
+        /// supplied authors, or the persona lookup failed.
+        /// </summary>
+        public string? Author { get; init; }
     }
 }

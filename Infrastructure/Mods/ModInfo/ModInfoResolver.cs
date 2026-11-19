@@ -119,28 +119,58 @@ namespace RimSharp.Infrastructure.Mods.ModInfo
                 }
             }
 
+            // Persona names are resolved once per distinct creator across the
+            // whole call. Failures are swallowed so author enrichment can never
+            // break resolution.
+            var personaCache = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+
             foreach (var packageId in requested)
             {
-                var candidates = candidatesByPackage[packageId]
-                    .Select(entry =>
-                    {
-                        apiDetails.TryGetValue(entry.SteamId, out var detail);
-                        var name = !string.IsNullOrWhiteSpace(detail?.Title) ? detail!.Title
-                            : !string.IsNullOrWhiteSpace(entry.SteamName) ? entry.SteamName
-                            : !string.IsNullOrWhiteSpace(entry.AboutName) ? entry.AboutName
-                            : !string.IsNullOrWhiteSpace(entry.Name) ? entry.Name
-                            : packageId;
+                var candidates = new List<ModInfoResolutionCandidate>();
+                foreach (var entry in candidatesByPackage[packageId])
+                {
+                    apiDetails.TryGetValue(entry.SteamId, out var detail);
+                    var name = !string.IsNullOrWhiteSpace(detail?.Title) ? detail!.Title
+                        : !string.IsNullOrWhiteSpace(entry.SteamName) ? entry.SteamName
+                        : !string.IsNullOrWhiteSpace(entry.AboutName) ? entry.AboutName
+                        : !string.IsNullOrWhiteSpace(entry.Name) ? entry.Name
+                        : packageId;
 
-                        return new ModInfoResolutionCandidate
+                    string? author = null;
+                    if (detail != null
+                        && detail.Result == (int)SteamApiResultCode.OK
+                        && !string.IsNullOrWhiteSpace(detail.Creator)
+                        && string.IsNullOrWhiteSpace(entry.Authors))
+                    {
+                        if (!personaCache.TryGetValue(detail.Creator, out author))
                         {
-                            SteamId = entry.SteamId,
-                            DisplayName = name,
-                            Published = entry.Published,
-                            ApiDetails = detail,
-                            DictionaryEntry = entry
-                        };
-                    })
-                    .ToList();
+                            author = null;
+                            try
+                            {
+                                author = await _steamApiClient
+                                    .GetPersonaNameAsync(detail.Creator, cancellationToken)
+                                    .ConfigureAwait(false);
+                            }
+                            catch (Exception)
+                            {
+                                // Best-effort: an unavailable persona endpoint
+                                // simply leaves the author unresolved.
+                                author = null;
+                            }
+                            personaCache[detail.Creator] = author;
+                        }
+                    }
+
+                    candidates.Add(new ModInfoResolutionCandidate
+                    {
+                        SteamId = entry.SteamId,
+                        DisplayName = name,
+                        Published = entry.Published,
+                        ApiDetails = detail,
+                        DictionaryEntry = entry,
+                        Author = author
+                    });
+                }
 
                 result[packageId] = candidates;
             }

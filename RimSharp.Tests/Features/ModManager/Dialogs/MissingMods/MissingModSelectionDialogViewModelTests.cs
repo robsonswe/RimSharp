@@ -65,6 +65,21 @@ var vm = new MissingModSelectionDialogViewModel(new List<MissingModGroupViewMode
             vm.DialogResult.SelectedSteamIds.Should().Contain("123");
             closeRequested.Should().BeTrue();
         }
+
+        [AvaloniaFact]
+        public void ImportCreatedGroups_HaveNoRequiredBy_ByDefault()
+        {
+            var group = new MissingModGroupViewModel("mod.a");
+            var variant = new MissingModVariantViewModel(new ModDictionaryEntry { Published = true, SteamId = "123" });
+            group.Variants.Add(variant);
+
+            var vm = new MissingModSelectionDialogViewModel(new List<MissingModGroupViewModel> { group }, new List<string>());
+
+            vm.ModGroups.Should().ContainSingle();
+            vm.ModGroups[0].RequiredBy.Should().BeEmpty();
+            vm.ModGroups[0].HasRequiredBy.Should().BeFalse();
+            vm.ModGroups[0].RequiredByDisplay.Should().BeEmpty();
+        }
     }
 }
 

@@ -60,12 +60,13 @@
 
                                             <!-- Group header: packageId + variant count -->
                                             <Border Background="{DynamicResource BrushBgAccent}" Padding="10,7">
-                                                <Grid ColumnDefinitions="*,Auto">
-                                                    <TextBlock Grid.Column="0" Text="{Binding PackageId}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource BrushTextStrong}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                                                    <TextBlock Grid.Column="0" Grid.Row="0" Text="{Binding PackageId}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource BrushTextStrong}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                    <StackPanel Grid.Column="1" Grid.Row="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                                                         <TextBlock Text="{Binding VariantCountLabel}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
                                                         <i:Icon Value="fa-check-circle" FontSize="11" Foreground="{DynamicResource BrushTextSuccess}" IsVisible="{Binding IsSelectionMade}"/>
                                                     </StackPanel>
+                                                    <TextBlock Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1" Text="{Binding RequiredByDisplay}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" IsVisible="{Binding HasRequiredBy}" TextWrapping="Wrap" Margin="0,3,0,0"/>
                                                 </Grid>
                                             </Border>
 
