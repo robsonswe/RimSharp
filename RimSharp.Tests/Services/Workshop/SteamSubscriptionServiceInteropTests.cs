@@ -30,7 +30,9 @@ namespace RimSharp.Tests.Services.Workshop
     public class SteamSubscriptionServiceInteropTests
     {
         private readonly ILoggerService _logger = Substitute.For<ILoggerService>();
-        private readonly SteamWorkshopApiClient _apiClient = Substitute.For<SteamWorkshopApiClient>(Substitute.For<System.Net.Http.HttpClient>());
+        private readonly SteamWorkshopApiClient _apiClient = Substitute.For<SteamWorkshopApiClient>(
+            Substitute.For<System.Net.Http.HttpClient>(),
+            Substitute.For<IApiResponseCache>());
         private readonly ISteamworksInterop _interop = Substitute.For<ISteamworksInterop>();
         private readonly GameInstance _gameInstance = new GameInstance
         {

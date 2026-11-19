@@ -61,6 +61,17 @@ namespace RimSharp.Infrastructure.Configuration
         /// <summary>Creates <see cref="DataDirectory"/> on demand and returns it.</summary>
         public static string EnsureDataDirectory() => EnsureDirectory(DataDirectory);
 
+        /// <summary>
+        /// Directory holding disposable API-response cache data. Windows: next
+        /// to the exe. Linux: $XDG_DATA_HOME/RimSharp/Cache or
+        /// ~/.local/share/RimSharp/Cache. The cache is disposable, so it is
+        /// deliberately absent from the legacy-migration list.
+        /// </summary>
+        public static string CacheDirectory => Path.Combine(DataDirectory, "Cache");
+
+        /// <summary>Creates <see cref="CacheDirectory"/> on demand and returns it.</summary>
+        public static string EnsureCacheDirectory() => EnsureDirectory(CacheDirectory);
+
         /// <summary>Creates the given directory on demand and returns it.</summary>
         public static string EnsureDirectory(string directory)
         {

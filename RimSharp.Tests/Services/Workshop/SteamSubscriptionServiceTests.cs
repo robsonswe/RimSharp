@@ -22,7 +22,9 @@ namespace RimSharp.Tests.Services.Workshop
     public class SteamSubscriptionServiceTests
     {
         private readonly ILoggerService _logger = Substitute.For<ILoggerService>();
-        private readonly SteamWorkshopApiClient _apiClient = Substitute.For<SteamWorkshopApiClient>(Substitute.For<System.Net.Http.HttpClient>());
+        private readonly SteamWorkshopApiClient _apiClient = Substitute.For<SteamWorkshopApiClient>(
+            Substitute.For<System.Net.Http.HttpClient>(),
+            Substitute.For<IApiResponseCache>());
         private readonly GameInstance _gameInstance = new GameInstance
         {
             GameFolder = @"C:\Test\RimWorld",

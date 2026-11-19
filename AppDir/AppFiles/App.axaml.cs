@@ -329,6 +329,12 @@ namespace RimSharp.AppDir.AppFiles
             // ModCustomService and LoggerService.
             services.AddSingleton<string>(provider => AppDataPaths.DataDirectory);
 
+            // Persistent, disposable API-response cache (single JSON file under
+            // <DataDirectory>/Cache). Registered before the Steam clients that
+            // depend on it; the service creates the folder/file lazily.
+            services.AddSingleton<IApiResponseCache>(provider =>
+                new ApiResponseCache(provider.GetRequiredService<ILoggerService>()));
+
             services.AddHttpClient();
 
             // Workshop HTML-description extractor: Steam serves the item page
@@ -485,7 +491,9 @@ namespace RimSharp.AppDir.AppFiles
             
             // Workshop Management Services
             services.AddSingleton<SteamWorkshopApiClient>(provider =>
-                new SteamWorkshopApiClient(provider.GetRequiredService<IHttpClientFactory>().CreateClient()));
+                new SteamWorkshopApiClient(
+                    provider.GetRequiredService<IHttpClientFactory>().CreateClient(),
+                    provider.GetRequiredService<IApiResponseCache>()));
             services.AddSingleton<IAcfFileParser, AcfFileParser>();
             services.AddSingleton<IWorkshopAcfTimestampService>(
                 provider => new WorkshopAcfTimestampService(

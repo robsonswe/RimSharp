@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Shared.Models;
+using RimSharp.Shared.Services.Contracts;
 
 namespace RimSharp.Services.Workshop
 {
@@ -21,10 +24,13 @@ namespace RimSharp.Services.Workshop
     ///   transient failures: HTTP 429/500/502/503/504, timeouts, and connection errors.
     /// - On terminal failure (all attempts exhausted), returns an empty list — the update
     ///   service maps that to per-mod failure outcomes.
+    /// - Successful, non-empty chunk results are cached for one hour; a transient failure
+    ///   falls back to a stale cached value when one exists.
     /// </summary>
     public class SteamWorkshopApiClient
     {
         private readonly HttpClient _httpClient;
+        private readonly IApiResponseCache _cache;
         private const string ApiBaseUrl = "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/";
         private const int MaxBatchSize = 300; // Steam API limit
         private const int MaxAttempts = 3;
@@ -43,9 +49,10 @@ namespace RimSharp.Services.Workshop
             HttpStatusCode.GatewayTimeout,
         };
 
-        public SteamWorkshopApiClient(HttpClient httpClient)
+        public SteamWorkshopApiClient(HttpClient httpClient, IApiResponseCache cache)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         }
 
         /// <summary>
@@ -84,85 +91,110 @@ namespace RimSharp.Services.Workshop
 
         private async Task<List<WorkshopModDetails>> GetModDetailsBatchInternalAsync(List<string> steamIds, CancellationToken cancellationToken)
         {
-            for (int attempt = 1; attempt <= MaxAttempts; attempt++)
-            {
-                using var attemptCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                attemptCts.CancelAfter(AttemptTimeout);
+            // Order-independent key so the same set of IDs shares one entry.
+            var keyIds = string.Join(",", steamIds.OrderBy(id => id, StringComparer.Ordinal));
+            var key = $"steam:workshop-details:{ComputeSha256(keyIds)}";
 
-                try
+            // The fetch delegate returns null for any failure or empty payload so
+            // the cache never stores an empty/failed result. The cache's stale
+            // fallback then covers transient failures; null is mapped back to an
+            // empty list below, preserving the terminal-failure contract.
+            var result = await _cache.GetOrFetchAsync<List<WorkshopModDetails>>(
+                key,
+                TimeSpan.FromHours(1),
+                async ct =>
                 {
-                    using var request = new HttpRequestMessage(HttpMethod.Post, ApiBaseUrl);
-                    var formData = new Dictionary<string, string>
+                    for (int attempt = 1; attempt <= MaxAttempts; attempt++)
                     {
-                        { "itemcount", steamIds.Count.ToString() }
-                    };
+                        using var attemptCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                        attemptCts.CancelAfter(AttemptTimeout);
 
-                    for (int i = 0; i < steamIds.Count; i++)
-                    {
-                        formData.Add($"publishedfileids[{i}]", steamIds[i]);
-                    }
-
-                    using var formContent = new FormUrlEncodedContent(formData);
-                    request.Content = formContent;
-
-                    using HttpResponseMessage response = await _httpClient.SendAsync(request, attemptCts.Token);
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        if (RetryableStatusCodes.Contains(response.StatusCode) && attempt < MaxAttempts)
+                        try
                         {
-                            await Task.Delay((int)Math.Pow(2, attempt - 1) * 1000, cancellationToken); // 1s, 2s, ...
-                            continue;
+                            using var request = new HttpRequestMessage(HttpMethod.Post, ApiBaseUrl);
+                            var formData = new Dictionary<string, string>
+                            {
+                                { "itemcount", steamIds.Count.ToString() }
+                            };
+
+                            for (int i = 0; i < steamIds.Count; i++)
+                            {
+                                formData.Add($"publishedfileids[{i}]", steamIds[i]);
+                            }
+
+                            using var formContent = new FormUrlEncodedContent(formData);
+                            request.Content = formContent;
+
+                            using HttpResponseMessage response = await _httpClient.SendAsync(request, attemptCts.Token);
+                            if (!response.IsSuccessStatusCode)
+                            {
+                                if (RetryableStatusCodes.Contains(response.StatusCode) && attempt < MaxAttempts)
+                                {
+                                    await Task.Delay((int)Math.Pow(2, attempt - 1) * 1000, ct); // 1s, 2s, ...
+                                    continue;
+                                }
+
+                                // Terminal failure (or non-retryable status): collapse to empty list.
+                                return null;
+                            }
+
+                            string jsonResponse = await response.Content.ReadAsStringAsync(attemptCts.Token);
+                            var options = new JsonSerializerOptions
+                            {
+                                PropertyNameCaseInsensitive = true,
+                                NumberHandling = JsonNumberHandling.AllowReadingFromString
+                            };
+
+                            var apiResponse = JsonSerializer.Deserialize<SteamApiResponse>(jsonResponse, options);
+
+                            if (apiResponse?.Response?.PublishedFileDetails == null)
+                            {
+                                // Malformed / failed payload → retry if attempts remain.
+                                if (attempt < MaxAttempts)
+                                {
+                                    await Task.Delay((int)Math.Pow(2, attempt - 1) * 1000, ct);
+                                    continue;
+                                }
+
+                                return null;
+                            }
+
+                            var details = apiResponse.Response.PublishedFileDetails;
+                            // Empty payload means failure — never cache it.
+                            return details.Count > 0 ? details : null;
                         }
-
-                        // Terminal failure (or non-retryable status): collapse to empty list.
-                        return new List<WorkshopModDetails>();
-                    }
-
-                    string jsonResponse = await response.Content.ReadAsStringAsync(attemptCts.Token);
-                    var options = new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true,
-                        NumberHandling = JsonNumberHandling.AllowReadingFromString
-                    };
-
-                    var apiResponse = JsonSerializer.Deserialize<SteamApiResponse>(jsonResponse, options);
-
-                    if (apiResponse?.Response?.PublishedFileDetails == null)
-                    {
-                        // Malformed / failed payload → retry if attempts remain.
-                        if (attempt < MaxAttempts)
+                        catch (OperationCanceledException) when (!attemptCts.IsCancellationRequested)
                         {
-                            await Task.Delay((int)Math.Pow(2, attempt - 1) * 1000, cancellationToken);
-                            continue;
+                            // The cancellation did not come from this attempt's timeout token:
+                            // it was driven by the caller's token (user cancellation). Propagate.
+                            throw;
                         }
+                        catch (Exception)
+                        {
+                            // Connection errors, timeouts, parse failures, etc. — retry with backoff if attempts remain.
+                            if (attempt < MaxAttempts)
+                            {
+                                await Task.Delay((int)Math.Pow(2, attempt - 1) * 1000, ct);
+                                continue;
+                            }
 
-                        return new List<WorkshopModDetails>();
+                            // Give up → whole-chunk failure.
+                            return null;
+                        }
                     }
 
-                    return apiResponse.Response.PublishedFileDetails ?? new List<WorkshopModDetails>();
-                }
-                catch (OperationCanceledException) when (!attemptCts.IsCancellationRequested)
-                {
-                    // The cancellation did not come from this attempt's timeout token:
-                    // it was driven by the caller's token (user cancellation). Propagate.
-                    throw;
-                }
-                catch (Exception)
-                {
-                    // Connection errors, timeouts, parse failures, etc. — retry with backoff if attempts remain.
-                    if (attempt < MaxAttempts)
-                    {
-                        await Task.Delay((int)Math.Pow(2, attempt - 1) * 1000, cancellationToken);
-                        continue;
-                    }
+                    // Should not be reached, but signal failure to satisfy the contract.
+                    return null;
+                },
+                cancellationToken);
 
-                    // Give up → whole-chunk failure.
-                    return new List<WorkshopModDetails>();
-                }
-            }
+            return result ?? new List<WorkshopModDetails>();
+        }
 
-            // Should not be reached, but return an empty chunk to satisfy the contract.
-            return new List<WorkshopModDetails>();
+        private static string ComputeSha256(string input)
+        {
+            var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+            return Convert.ToHexString(bytes).ToLowerInvariant();
         }
     }
 

@@ -12,6 +12,7 @@ using RimSharp.Infrastructure.Configuration;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Services.Workshop;
+using RimSharp.Tests.TestHelpers;
 using Xunit;
 
 namespace RimSharp.Tests.Services.Workshop
@@ -34,7 +35,9 @@ namespace RimSharp.Tests.Services.Workshop
             new(
                 new GameInstance(),
                 _logger,
-                new SteamWorkshopApiClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.steampowered.com/") }));
+                new SteamWorkshopApiClient(
+                    new HttpClient(handler) { BaseAddress = new Uri("https://api.steampowered.com/") },
+                    new PassthroughApiResponseCache()));
 
         [Fact]
         public async Task CheckForUpdatesAsync_TimestampOnly_ValuedByTimestampComparison()
