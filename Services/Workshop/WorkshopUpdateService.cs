@@ -26,10 +26,10 @@ namespace RimSharp.Services.Workshop
 
         private readonly GameInstance _gameInstance;
         private readonly ILoggerService _logger;
-        private readonly SteamWorkshopApiClient _apiClient;
+        private readonly ISteamApiClient _apiClient;
         private readonly ISteamSubscriptionService? _subscriptionService;
 
-        public WorkshopUpdateService(GameInstance gameInstance, ILoggerService logger, SteamWorkshopApiClient apiClient, ISteamSubscriptionService? subscriptionService = null)
+        public WorkshopUpdateService(GameInstance gameInstance, ILoggerService logger, ISteamApiClient apiClient, ISteamSubscriptionService? subscriptionService = null)
         {
             _gameInstance = gameInstance ?? throw new ArgumentNullException(nameof(gameInstance));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));

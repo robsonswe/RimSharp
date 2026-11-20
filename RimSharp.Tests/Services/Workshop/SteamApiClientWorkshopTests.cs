@@ -7,14 +7,18 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
-using RimSharp.Services.Workshop;
+using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Shared.Models;
 using RimSharp.Tests.TestHelpers;
 using Xunit;
 
 namespace RimSharp.Tests.Services.Workshop
 {
-    public class SteamWorkshopApiClientTests
+    /// <summary>
+    /// Retry / batching tests for the consolidated SteamApiClient's WorkshopModDetails
+    /// path. All seven cases are preserved.
+    /// </summary>
+    public class SteamApiClientWorkshopTests
     {
         [Fact]
         public async Task GetModDetailsBatchAsync_TransientErrorThenSuccess_RetriesAndReturnsData()
@@ -24,7 +28,7 @@ namespace RimSharp.Tests.Services.Workshop
             handler.EnqueueResponse(HttpStatusCode.ServiceUnavailable, "Service Unavailable");
             handler.EnqueueResponse(HttpStatusCode.OK, successJson);
 
-            var client = new SteamWorkshopApiClient(new HttpClient(handler), new PassthroughApiResponseCache());
+            var client = new SteamApiClient(new HttpClient(handler), new PassthroughApiResponseCache());
 
             var results = await client.GetModDetailsBatchAsync(new[] { "123" }, TestContext.Current.CancellationToken);
 
@@ -42,7 +46,7 @@ namespace RimSharp.Tests.Services.Workshop
             handler.EnqueueResponse(HttpStatusCode.InternalServerError, "Error 2");
             handler.EnqueueResponse(HttpStatusCode.InternalServerError, "Error 3");
 
-            var client = new SteamWorkshopApiClient(new HttpClient(handler), new PassthroughApiResponseCache());
+            var client = new SteamApiClient(new HttpClient(handler), new PassthroughApiResponseCache());
 
             var results = await client.GetModDetailsBatchAsync(new[] { "123" }, TestContext.Current.CancellationToken);
 
@@ -56,7 +60,7 @@ namespace RimSharp.Tests.Services.Workshop
             var handler = new SequenceStubHttpHandler();
             handler.EnqueueResponse(HttpStatusCode.NotFound, "Not Found");
 
-            var client = new SteamWorkshopApiClient(new HttpClient(handler), new PassthroughApiResponseCache());
+            var client = new SteamApiClient(new HttpClient(handler), new PassthroughApiResponseCache());
 
             var results = await client.GetModDetailsBatchAsync(new[] { "123" }, TestContext.Current.CancellationToken);
 
@@ -72,7 +76,7 @@ namespace RimSharp.Tests.Services.Workshop
             handler.EnqueueException(new HttpRequestException("Connection dropped"));
             handler.EnqueueResponse(HttpStatusCode.OK, successJson);
 
-            var client = new SteamWorkshopApiClient(new HttpClient(handler), new PassthroughApiResponseCache());
+            var client = new SteamApiClient(new HttpClient(handler), new PassthroughApiResponseCache());
 
             var results = await client.GetModDetailsBatchAsync(new[] { "456" }, TestContext.Current.CancellationToken);
 
@@ -90,7 +94,7 @@ namespace RimSharp.Tests.Services.Workshop
             handler.EnqueueResponse(HttpStatusCode.OK, "{\"response\":{\"result\":1}}");
             handler.EnqueueResponse(HttpStatusCode.OK, successJson);
 
-            var client = new SteamWorkshopApiClient(new HttpClient(handler), new PassthroughApiResponseCache());
+            var client = new SteamApiClient(new HttpClient(handler), new PassthroughApiResponseCache());
 
             var results = await client.GetModDetailsBatchAsync(new[] { "789" }, TestContext.Current.CancellationToken);
 
@@ -111,7 +115,7 @@ namespace RimSharp.Tests.Services.Workshop
             handler.EnqueueResponse(HttpStatusCode.OK, chunk1Json);
             handler.EnqueueResponse(HttpStatusCode.OK, chunk2Json);
 
-            var client = new SteamWorkshopApiClient(new HttpClient(handler), new PassthroughApiResponseCache());
+            var client = new SteamApiClient(new HttpClient(handler), new PassthroughApiResponseCache());
 
             var results = await client.GetModDetailsBatchAsync(ids, TestContext.Current.CancellationToken);
 
@@ -123,7 +127,7 @@ namespace RimSharp.Tests.Services.Workshop
         public async Task GetModDetailsAsync_InvalidSteamId_ReturnsNullWithoutCallingApi()
         {
             var handler = new SequenceStubHttpHandler();
-            var client = new SteamWorkshopApiClient(new HttpClient(handler), new PassthroughApiResponseCache());
+            var client = new SteamApiClient(new HttpClient(handler), new PassthroughApiResponseCache());
 
             var result = await client.GetModDetailsAsync("not-a-number", TestContext.Current.CancellationToken);
 

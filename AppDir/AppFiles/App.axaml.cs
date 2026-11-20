@@ -511,10 +511,6 @@ namespace RimSharp.AppDir.AppFiles
             services.AddSingleton<ISteamWorkshopQueueProcessor, SteamWorkshopQueueProcessor>();
             
             // Workshop Management Services
-            services.AddSingleton<SteamWorkshopApiClient>(provider =>
-                new SteamWorkshopApiClient(
-                    provider.GetRequiredService<IHttpClientFactory>().CreateClient(),
-                    provider.GetRequiredService<IApiResponseCache>()));
             services.AddSingleton<IAcfFileParser, AcfFileParser>();
             services.AddSingleton<IWorkshopAcfTimestampService>(
                 provider => new WorkshopAcfTimestampService(
@@ -526,7 +522,7 @@ namespace RimSharp.AppDir.AppFiles
                 new WorkshopUpdateService(
                     provider.GetRequiredService<GameInstance>(),
                     provider.GetRequiredService<ILoggerService>(),
-                    provider.GetRequiredService<SteamWorkshopApiClient>(),
+                    provider.GetRequiredService<ISteamApiClient>(),
                     provider.GetRequiredService<ISteamSubscriptionService>())); 
 
             // Save management services (read-only)

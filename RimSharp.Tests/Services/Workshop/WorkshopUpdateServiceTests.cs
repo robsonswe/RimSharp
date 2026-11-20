@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using NSubstitute;
+using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Infrastructure.Configuration;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
@@ -20,7 +21,7 @@ namespace RimSharp.Tests.Services.Workshop
     /// <summary>
     /// Tests for the consolidated WorkshopUpdateService check path: the decision
     /// contract (external = API time_updated; internal = max(ACF, timestamp.txt)),
-    /// clock-skew tolerance, and failure mapping. Hits the real SteamWorkshopApiClient
+    /// clock-skew tolerance, and failure mapping. Hits the real SteamApiClient
     /// with a stubbed HttpMessageHandler — no network involved.
     /// </summary>
     public class WorkshopUpdateServiceTests
@@ -35,7 +36,7 @@ namespace RimSharp.Tests.Services.Workshop
             new(
                 new GameInstance(),
                 _logger,
-                new SteamWorkshopApiClient(
+                new SteamApiClient(
                     new HttpClient(handler) { BaseAddress = new Uri("https://api.steampowered.com/") },
                     new PassthroughApiResponseCache()));
 

@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using NSubstitute;
+using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Infrastructure.Configuration;
 using RimSharp.Services.Workshop;
 using RimSharp.Shared.Models;
@@ -30,9 +31,7 @@ namespace RimSharp.Tests.Services.Workshop
     public class SteamSubscriptionServiceInteropTests
     {
         private readonly ILoggerService _logger = Substitute.For<ILoggerService>();
-        private readonly SteamWorkshopApiClient _apiClient = Substitute.For<SteamWorkshopApiClient>(
-            Substitute.For<System.Net.Http.HttpClient>(),
-            Substitute.For<IApiResponseCache>());
+        private readonly ISteamApiClient _apiClient = Substitute.For<ISteamApiClient>();
         private readonly ISteamworksInterop _interop = Substitute.For<ISteamworksInterop>();
         private readonly GameInstance _gameInstance = new GameInstance
         {

@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using RimSharp.Infrastructure.Workshop;
+using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Shared.Models;
 using RimSharp.Infrastructure.Configuration;
 using RimSharp.Shared.Services.Contracts;
@@ -25,7 +26,7 @@ namespace RimSharp.Services.Workshop
     {
         private readonly GameInstance _gameInstance;
         private readonly ILoggerService _logger;
-        private readonly SteamWorkshopApiClient _apiClient;
+        private readonly ISteamApiClient _apiClient;
         private readonly IPathService _pathService;
         private readonly Func<bool> _steamApiInit;
         private ISteamworksInterop? _interop;
@@ -98,7 +99,7 @@ namespace RimSharp.Services.Workshop
         /// </summary>
         private ISteamworksInterop Interop => _interop ??= SteamworksInteropFactory.Create();
 
-        public SteamSubscriptionService(GameInstance gameInstance, ILoggerService logger, SteamWorkshopApiClient apiClient, IPathService pathService, Func<bool>? steamApiInit = null, TimeSpan? initRetryCooldown = null, ISteamworksInterop? interop = null)
+        public SteamSubscriptionService(GameInstance gameInstance, ILoggerService logger, ISteamApiClient apiClient, IPathService pathService, Func<bool>? steamApiInit = null, TimeSpan? initRetryCooldown = null, ISteamworksInterop? interop = null)
         {
             _gameInstance = gameInstance ?? throw new ArgumentNullException(nameof(gameInstance));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
