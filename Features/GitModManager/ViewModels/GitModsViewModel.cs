@@ -211,6 +211,8 @@ namespace RimSharp.Features.GitModManager.ViewModels
             {
                 wrapper.UpdateStatus = "Error checking";
                 StatusMessage = $"Error: {ex.Message}";
+                await RunOnUIThreadAsync(async () =>
+                    await _dialogService.ShowError("Update Check Error", $"Could not check '{wrapper.ModItem.Name}':\n\n{ex.Message}"));
             }
             finally
             {
@@ -269,6 +271,7 @@ namespace RimSharp.Features.GitModManager.ViewModels
             IsBusy = true;
             StatusMessage = "Checking for updates...";
             ProgressDialogViewModel? progressViewModel = null;
+            var fetchErrors = new List<string>();
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
             try
@@ -347,8 +350,10 @@ namespace RimSharp.Features.GitModManager.ViewModels
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[GitModsVM] Error checking {mod.Name}: {ex.Message}");
+                        Debug.WriteLine($"[GitModsVM] Error checking {mod.Name}: {ex}");
                         modWrapper.UpdateStatus = "Error checking";
+                        StatusMessage = $"Error: {ex.Message}";
+                        fetchErrors.Add($"{mod.Name}: {ex.Message}");
                     }
                 }
 
@@ -374,6 +379,15 @@ namespace RimSharp.Features.GitModManager.ViewModels
                 Debug.WriteLine("[GitModsVM] Setting IsBusy = false");
                 IsBusy = false;
                 progressViewModel?.Dispose();
+            }
+
+            // Show a single aggregated error dialog after the progress dialog has closed,
+            // so modal dialogs don't stack. The per-row status stays short ("Error checking").
+            if (fetchErrors.Count > 0)
+            {
+                var detail = string.Join("\n\n", fetchErrors);
+                await RunOnUIThreadAsync(async () =>
+                    await _dialogService.ShowError("Update Check Errors", $"Some mods could not be checked:\n\n{detail}"));
             }
         }
 

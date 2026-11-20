@@ -1,5 +1,6 @@
 #nullable enable
 using LibGit2Sharp;
+using LibGit2Sharp.Handlers;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using System;
@@ -43,8 +44,18 @@ namespace RimSharp.Shared.Services.Implementations
                 if (remote == null) throw new InvalidOperationException($"Remote '{remoteName}' not found.");
 
                 var fetchOptions = new FetchOptions();
+                fetchOptions.CredentialsProvider = BuildCredentialsProvider();
                 string logMessage = $"Fetching {remote.Name} for {path}...";
-                Commands.Fetch(repo, remote.Name, remote.FetchRefSpecs.Select(x => x.Specification), fetchOptions, logMessage);
+                try
+                {
+                    Commands.Fetch(repo, remote.Name, remote.FetchRefSpecs.Select(x => x.Specification), fetchOptions, logMessage);
+                }
+                catch (LibGit2SharpException ex)
+                {
+                    throw new InvalidOperationException(
+                        $"Cannot fetch remote '{remote.Url}'. The repository may be private, deleted, or require credentials.",
+                        ex);
+                }
             }, ct);
         }
 
@@ -88,6 +99,7 @@ namespace RimSharp.Shared.Services.Implementations
                         FetchOptions = new FetchOptions(),
                         MergeOptions = new MergeOptions { FastForwardStrategy = FastForwardStrategy.FastForwardOnly }
                     };
+                    pullOptions.FetchOptions.CredentialsProvider = BuildCredentialsProvider();
 
                     MergeResult result = Commands.Pull(repo, signature, pullOptions);
 
@@ -120,8 +132,26 @@ namespace RimSharp.Shared.Services.Implementations
             await Task.Run(() =>
             {
                 var cloneOptions = new CloneOptions { Checkout = true };
+                cloneOptions.FetchOptions.CredentialsProvider = BuildCredentialsProvider();
                 Repository.Clone(url, destinationPath, cloneOptions);
             }, ct);
+        }
+
+        private static CredentialsHandler BuildCredentialsProvider()
+        {
+            return (url, usernameFromUrl, types) =>
+            {
+                // DefaultCredentials maps to NTLM/SPNEGO (Windows integrated auth). It is harmless
+                // elsewhere: libgit2 1.8 uses the OpenSSH exec transport, so SSH auth (agent, ~/.ssh
+                // keys) is handled by OpenSSH itself and never invokes this callback. Keep it
+                // available on all platforms for Windows domains and Negotiate setups.
+                if (types.HasFlag(SupportedCredentialTypes.Default))
+                    return new DefaultCredentials();
+
+                // No PAT/credential storage exists in the app, so username/password cannot be
+                // supplied. Returning null (callback still registered) avoids "no callback set".
+                return null;
+            };
         }
 
         public async Task<ModItem?> ValidateGitHubModRepoAsync(string gitUrl, CancellationToken ct = default)
