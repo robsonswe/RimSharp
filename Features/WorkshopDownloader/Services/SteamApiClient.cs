@@ -205,7 +205,20 @@ namespace RimSharp.Features.WorkshopDownloader.Services
 
                         string jsonResponse = await response.Content.ReadAsStringAsync(ct);
                         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, NumberHandling = JsonNumberHandling.AllowReadingFromString };
-                        return JsonSerializer.Deserialize<SteamApiResponse>(jsonResponse, options);
+                        var apiResponse = JsonSerializer.Deserialize<SteamApiResponse>(jsonResponse, options);
+
+                        // Mirror GetFileDetailsAsync: a failed or empty payload must
+                        // never be cached as a success. Returning null lets the cache's
+                        // null→stale fallback apply so callers can refetch later.
+                        if (apiResponse?.Response?.PublishedFileDetails == null ||
+                            apiResponse.Response.Result != 1 ||
+                            apiResponse.Response.PublishedFileDetails.Count == 0)
+                        {
+                            Debug.WriteLine($"[SteamApiClient] Batch response invalid or empty for IDs [{string.Join(",", idList)}]. Result Code: {apiResponse?.Response?.Result}. Raw JSON: {jsonResponse.Substring(0, Math.Min(jsonResponse.Length, 500))}");
+                            return null;
+                        }
+
+                        return apiResponse;
                     }
                     catch (Exception ex)
                     {

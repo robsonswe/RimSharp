@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -253,6 +254,50 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             keys.Count.Should().BeLessThanOrEqualTo(2000);
             keys.Should().NotContain("key-0", "the oldest entry should be evicted first");
             keys.Should().Contain("key-" + (total - 1), "the newest entry should be retained");
+        }
+
+        [Fact]
+        public async Task EnsureLoaded_OversizedFileOnDisk_PersistsTrimmedSetOnFlush()
+        {
+            const int total = 2005; // MaxEntries (2000) + 5
+
+            // Simulate a legacy/oversized cache file written before the cap was
+            // enforced (or by an older build). The store path already trims, so
+            // this must be seeded directly on disk to exercise the load path.
+            var seeded = new Dictionary<string, object>();
+            for (var i = 0; i < total; i++)
+            {
+                seeded[$"key-{i}"] = new
+                {
+                    Json = "{\"Value\":\"" + i + "\"}",
+                    // key-0 is the newest so it survives eviction and can be
+                    // used as a pure cache-hit probe below.
+                    CachedUtc = DateTime.UtcNow.AddSeconds(-i),
+                    TtlTicks = TimeSpan.FromHours(1).Ticks
+                };
+            }
+            File.WriteAllText(_cacheFilePath, JsonSerializer.Serialize(seeded));
+
+            var cache = CreateCache();
+
+            // A cache-hit probe forces EnsureLoaded() without any store mutation,
+            // so the only possible source of a save is the load-time eviction.
+            var probe = await cache.GetOrFetchAsync<TestPayload>("key-0", TimeSpan.FromHours(1), ct =>
+                Task.FromResult<TestPayload?>(new TestPayload { Value = "should-not-be-used" }), TestContext.Current.CancellationToken);
+            probe!.Value.Should().Be("0");
+
+            await cache.FlushAsync();
+
+            var json = File.ReadAllText(_cacheFilePath);
+            using var doc = JsonDocument.Parse(json);
+            doc.RootElement.EnumerateObject().Count().Should().BeLessThanOrEqualTo(2000,
+                "the trimmed set must be persisted so the file stops growing");
+
+            // A fresh instance must see the trimmed file, not the oversized one.
+            var second = CreateCache();
+            var reloadProbe = await second.GetOrFetchAsync<TestPayload>("key-0", TimeSpan.FromHours(1), ct =>
+                Task.FromResult<TestPayload?>(new TestPayload { Value = "should-not-be-used" }), TestContext.Current.CancellationToken);
+            reloadProbe!.Value.Should().Be("0");
         }
 
         public sealed class TestPayload

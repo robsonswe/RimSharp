@@ -277,6 +277,9 @@ namespace RimSharp.Features.ModManager.Dialogs.RulesViewer
             if (!responseOk || detailsById.Count == 0)
                 return;
 
+            // Collect every (row, title) update first. RuleRowViewModel.Name
+            // raises PropertyChanged, so it must be assigned on the UI thread.
+            var updates = new List<(RuleRowViewModel row, string title)>();
             foreach (var pair in _dictionarySteamIds)
             {
                 var row = pair.Key;
@@ -289,13 +292,36 @@ namespace RimSharp.Features.ModManager.Dialogs.RulesViewer
                 {
                     var title = detail.Title;
                     if (!string.IsNullOrWhiteSpace(title))
-                        row.Name = title;
+                        updates.Add((row, title));
                 }
                 catch (Exception)
                 {
                     // Never let a single row's enrichment break the others.
                 }
             }
+
+            if (updates.Count == 0)
+                return;
+
+            // Marshal to the UI thread and AWAIT it so InitializeAsync only
+            // completes once every row has actually been updated. A fire-and-
+            // forget Dispatcher.Post here would race the caller's assertions.
+            // RunOnUIThreadAsync uses Dispatcher.UIThread.InvokeAsync in the app
+            // and runs inline under the headless test harness (no dispatcher loop).
+            await RunOnUIThreadAsync(() =>
+            {
+                foreach (var (row, title) in updates)
+                {
+                    try
+                    {
+                        row.Name = title;
+                    }
+                    catch (Exception)
+                    {
+                        // Never let a single row's enrichment break the others.
+                    }
+                }
+            });
         }
 
         private void BuildRows()

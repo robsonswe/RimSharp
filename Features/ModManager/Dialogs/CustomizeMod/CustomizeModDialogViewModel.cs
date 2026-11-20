@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -270,7 +271,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             InitializeRuleCollections();
 
             // Setup commands
-            SaveCommand = CreateCommand(Save);
+            SaveCommand = CreateAsyncCommand(SaveAsync);
             CancelCommand = CreateCommand(Cancel);
 
             // Rule management commands with property observation
@@ -355,7 +356,7 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             }
         }
 
-        private void Save()
+        private async Task SaveAsync()
         {
             var customInfo = new ModCustomInfo
             {
@@ -382,7 +383,23 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                 IncompatibleWith = ConvertToIncompatibilityRules(CustomIncompatibilities)
             };
 
-            _ = Task.Run(async () => await _modService.SaveCustomModInfoAsync(_mod.PackageId, customInfo));
+            try
+            {
+                // Await the write before closing: a fire-and-forget Task.Run could
+                // be cut short when the dialog (and its owner) is torn down, and
+                // left any failure unobserved.
+                await _modService.SaveCustomModInfoAsync(_mod.PackageId, customInfo);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[CustomizeModDialogViewModel] Failed to save custom mod info for '{_mod.PackageId}': {ex}");
+                await _dialogService.ShowError(
+                    "Could not save custom mod",
+                    $"Your changes to '{_mod.Name}' could not be saved: {ex.Message}");
+                // Keep the dialog open so the user can retry; never close on failure.
+                return;
+            }
+
             CloseDialog(ModCustomizationResult.Save);
         }
 

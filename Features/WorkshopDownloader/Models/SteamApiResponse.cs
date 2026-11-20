@@ -30,8 +30,25 @@ namespace RimSharp.Features.WorkshopDownloader.Models
         [JsonPropertyName("result")]
         public int Result { get; set; } // 1 for success for this specific item
 
+        private int _consumerAppId;
+
         [JsonPropertyName("consumer_app_id")]
-        public int ConsumerAppId { get; set; } // Should be 294100 for RimWorld
+        public int ConsumerAppId
+        {
+            get => _consumerAppId;
+            set => _consumerAppId = value;
+        } // Should be 294100 for RimWorld
+
+        // Steam's real payload uses "consumer_appid" (no underscore between
+        // "app" and "id"); older fixtures used "consumer_app_id". Accept both
+        // spellings so no data is lost regardless of which the API sends.
+        [JsonInclude]
+        [JsonPropertyName("consumer_appid")]
+        private int ConsumerAppIdAlternate
+        {
+            get => _consumerAppId;
+            set => _consumerAppId = value;
+        }
 
         [JsonPropertyName("title")]
         public string Title { get; set; } = string.Empty;

@@ -217,7 +217,14 @@ namespace RimSharp.Shared.Services.Implementations
             }
         }
 
-        /// <summary>Removes the oldest entries until at most <see cref="MaxEntries"/> remain. Caller holds <see cref="_entriesLock"/>.</summary>
+        /// <summary>
+        /// Removes the oldest entries until at most <see cref="MaxEntries"/> remain.
+        /// Caller holds <see cref="_entriesLock"/>. Eviction is a mutation, so it
+        /// marks the cache dirty and schedules a save — this covers both the store
+        /// path and the load path (where an oversized file is trimmed on load).
+        /// ScheduleSave only touches _debounceLock and spawns a delayed flush, so
+        /// calling it while _entriesLock is held cannot re-enter _entriesLock.
+        /// </summary>
         private void EvictOldestLocked()
         {
             if (_entries == null || _entries.Count <= MaxEntries) return;
@@ -231,6 +238,9 @@ namespace RimSharp.Shared.Services.Implementations
             {
                 _entries.Remove(key);
             }
+
+            _dirty = true;
+            ScheduleSave();
         }
 
         /// <summary>Resets the debounce window so rapid mutations coalesce into one write.</summary>
