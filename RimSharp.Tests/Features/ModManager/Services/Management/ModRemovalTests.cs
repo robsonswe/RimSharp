@@ -5,6 +5,7 @@ using FluentAssertions;
 using NSubstitute;
 using RimSharp.Features.ModManager.Services.Management;
 using RimSharp.Shared.Models;
+using RimSharp.Shared.Services.Contracts;
 using Xunit;
 
 namespace RimSharp.Tests.Features.ModManager.Services.Management
@@ -15,7 +16,9 @@ namespace RimSharp.Tests.Features.ModManager.Services.Management
 
         public ModRemovalTests()
         {
-            _manager = new ModListManager();
+            var pathService = Substitute.For<IPathService>();
+            pathService.GetMajorGameVersion().Returns("1.7");
+            _manager = new ModListManager(pathService);
         }
 
         [Fact]

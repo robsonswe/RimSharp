@@ -15,6 +15,7 @@ namespace RimSharp.Features.ModManager.Services.Management
         private readonly ModOrderService _orderService;
         private readonly ModDependencySorter _dependencySorter;
         private readonly ModLookupService _lookupService;
+        private readonly IPathService _pathService;
         private readonly List<ModItem> _allAvailableMods = new();
         private bool _hasAnyActiveModIssues = false;
         private string _currentMajorGameVersion = string.Empty;
@@ -22,8 +23,9 @@ namespace RimSharp.Features.ModManager.Services.Management
 
         public event EventHandler<ModListChangedEventArgs>? ListChanged;
 
-        public ModListManager()
+        public ModListManager(IPathService pathService)
         {
+            _pathService = pathService;
             _stateTracker = new ModStateTracker();
             _orderService = new ModOrderService();
             _dependencySorter = new ModDependencySorter();
@@ -65,12 +67,11 @@ namespace RimSharp.Features.ModManager.Services.Management
             _allAvailableMods.AddRange(allAvailableMods);
             _lookupService.Initialize(_allAvailableMods);
 
-            _currentMajorGameVersion = string.Empty;
-            var coreMod = _allAvailableMods.FirstOrDefault(m => m.ModType == ModType.Core);
-            if (coreMod != null && coreMod.SupportedVersions.Any())
-            {
-                _currentMajorGameVersion = coreMod.SupportedVersions.First().Version;
-            }
+            // IPathService is the authoritative source for the running game's
+            // major version (extracted from the game binary). Do not derive it
+            // from the Core mod's SupportedVersions — a stripped/modified Core
+            // mod would break that, and it diverges from ModService.
+            _currentMajorGameVersion = _pathService.GetMajorGameVersion();
             if (string.IsNullOrEmpty(_currentMajorGameVersion) || _currentMajorGameVersion.StartsWith("N/A"))
             {
                 _currentMajorGameVersion = "Unknown";

@@ -151,8 +151,10 @@ public bool IsParentLoading
         public int ActiveIncompatibilitiesCount => _modListManager.ActiveIncompatibilitiesCount;
         public int ActiveVersionMismatchCount => _modListManager.ActiveVersionMismatchCount;
         public int ActiveDuplicateIssuesCount => _modListManager.ActiveDuplicateIssuesCount;
-        public int TotalActiveIssues => ActiveMissingDependenciesCount + 
-                                       ActiveIncompatibilitiesCount + 
+        public int TotalActiveIssues => ActiveSortingIssuesCount +
+                                       ActiveMissingDependenciesCount +
+                                       ActiveIncompatibilitiesCount +
+                                       ActiveVersionMismatchCount +
                                        ActiveDuplicateIssuesCount;
 
         private readonly Avalonia.Threading.DispatcherTimer _gameCheckTimer;

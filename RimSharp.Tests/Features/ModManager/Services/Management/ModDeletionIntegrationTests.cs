@@ -37,7 +37,10 @@ namespace RimSharp.Tests.Features.ModManager.Services.Management
             _mockDialogService = Substitute.For<IDialogService>();
             _deletionService = new ModDeletionService(); // Use actual robust deletion service
 
-            _modListManager = new ModListManager();
+            var pathService = Substitute.For<IPathService>();
+            pathService.GetMajorGameVersion().Returns("1.7");
+
+            _modListManager = new ModListManager(pathService);
 
             _viewModel = new ModActionsViewModel(
                 _mockDataService,
@@ -48,7 +51,7 @@ namespace RimSharp.Tests.Features.ModManager.Services.Management
                 Substitute.For<IModDuplicateService>(),
                 _deletionService,
                 _mockDialogService,
-                Substitute.For<IPathService>(),
+                pathService,
                 Substitute.For<IModService>(),
                 Substitute.For<IModReplacementService>(),
                 Substitute.For<IDownloadQueueService>(),

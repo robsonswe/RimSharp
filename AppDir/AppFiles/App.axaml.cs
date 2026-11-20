@@ -339,6 +339,25 @@ namespace RimSharp.AppDir.AppFiles
 
             services.AddHttpClient();
 
+            // Named clients used by the updaters and the AI provider. Without an
+            // explicit registration they silently get the default HttpClient — no
+            // User-Agent (GitHub rejects such requests) and no bounded timeout.
+            services.AddHttpClient("GitHub_Updater", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("RimSharp-Updater");
+            });
+            services.AddHttpClient("GOG_Updater", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("RimSharp-Updater");
+            });
+            services.AddHttpClient("AIProvider", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(120);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("RimSharp");
+            });
+
             // Workshop HTML-description extractor: Steam serves the item page
             // only to browser-like User-Agents.
             services.AddHttpClient("WorkshopHtml", client =>

@@ -125,12 +125,14 @@ namespace RimSharp.Tests.Features.ModManager.ViewModels.Actions
         public void TotalActiveIssues_ShouldSumCorrectly()
         {
 
+            _modListManager.ActiveSortingIssuesCount.Returns(2);
             _modListManager.ActiveMissingDependenciesCount.Returns(2);
             _modListManager.ActiveIncompatibilitiesCount.Returns(3);
+            _modListManager.ActiveVersionMismatchCount.Returns(1);
             _modListManager.ActiveDuplicateIssuesCount.Returns(1);
             var vm = CreateViewModel();
 
-            vm.TotalActiveIssues.Should().Be(6);
+            vm.TotalActiveIssues.Should().Be(9);
         }
 
         [AvaloniaFact]

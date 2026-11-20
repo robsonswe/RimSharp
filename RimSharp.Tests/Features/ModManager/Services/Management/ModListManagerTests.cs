@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
+using NSubstitute;
 using RimSharp.Features.ModManager.Services.Management;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
@@ -11,11 +12,14 @@ namespace RimSharp.Tests.Features.ModManager.Services.Management
 {
     public class ModListManagerTests
     {
+        private readonly IPathService _mockPathService;
         private readonly ModListManager _manager;
 
         public ModListManagerTests()
         {
-            _manager = new ModListManager();
+            _mockPathService = Substitute.For<IPathService>();
+            _mockPathService.GetMajorGameVersion().Returns("1.7");
+            _manager = new ModListManager(_mockPathService);
         }
 
         [Fact]
@@ -33,6 +37,30 @@ namespace RimSharp.Tests.Features.ModManager.Services.Management
             _manager.VirtualActiveMods[0].Mod.PackageId.Should().Be("mod1");
             _manager.AllInactiveMods.Should().HaveCount(1);
             _manager.AllInactiveMods[0].PackageId.Should().Be("mod2");
+        }
+
+        [Fact]
+        public void Initialize_SetsCurrentMajorGameVersionFromPathService()
+        {
+            _mockPathService.GetMajorGameVersion().Returns("1.7");
+
+            _manager.Initialize(new ModItem[0], new string[0]);
+
+            _manager.CurrentMajorGameVersion.Should().Be("1.7");
+        }
+
+        [Theory]
+        [InlineData("N/A")]
+        [InlineData("N/A (unknown)")]
+        [InlineData("")]
+        [InlineData(null)]
+        public void Initialize_FallsBackToUnknown_WhenPathServiceVersionIsUnusable(string? version)
+        {
+            _mockPathService.GetMajorGameVersion().Returns(version!);
+
+            _manager.Initialize(new ModItem[0], new string[0]);
+
+            _manager.CurrentMajorGameVersion.Should().Be("Unknown");
         }
 
         [Fact]
