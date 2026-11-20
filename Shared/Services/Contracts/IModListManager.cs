@@ -44,6 +44,16 @@ namespace RimSharp.Shared.Services.Contracts
         IEnumerable<ModIssue> GetActiveModIssues();
 
         /// <summary>
+        /// Re-evaluates issue state (HasIssues / IssueTooltipText on each active
+        /// mod plus the badge counts) after external data such as rules or
+        /// supported versions was re-applied onto the same ModItem instances,
+        /// and notifies subscribers so the UI refreshes its badges/tooltips.
+        /// The active list itself is NOT changed, so subscribers are told the
+        /// list is unmodified (no unsaved-changes flag is raised).
+        /// </summary>
+        void RefreshActiveModIssues();
+
+        /// <summary>
         /// Rebuilds the whole state from the available mods and the given
         /// active package ids.
         /// </summary>

@@ -47,6 +47,17 @@ namespace RimSharp.Features.ModManager.Services.Management
         public IEnumerable<ModIssue> GetActiveModIssues() => _activeModIssues;
 
         /// <summary>
+        /// Re-evaluates issue state after a live re-merge changed the rules or
+        /// supported versions on the already-loaded ModItem instances. Uses
+        /// RaiseListChanged(false) so the private recalculation runs AND the UI
+        /// is notified to refresh badges/tooltips; the active list did not
+        /// change, so the unsaved-changes flag is deliberately not raised.
+        /// Callers marshal this onto the UI thread (the ModItem collections it
+        /// reads must not be mutated concurrently).
+        /// </summary>
+        public void RefreshActiveModIssues() => RaiseListChanged(false);
+
+        /// <summary>
         /// Rebuilds the whole state from the available mods and the given
         /// active package ids. Core is force-included at the top of the active
         /// list when the caller dropped it.
@@ -421,6 +432,15 @@ ModItem? alternative = null;
             }
 
             var activePackageIds = activeModLookup.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            // Build one case-insensitive lookup of all available mods by package
+            // id. ToLookup builds the hash table in a single pass without
+            // allocating a List per package id up front (unlike GroupBy+ToList),
+            // so it is cheap even when only a handful of mods are active.
+            var modsByPackageId = _allAvailableMods
+                .Where(m => !string.IsNullOrEmpty(m.PackageId))
+                .ToLookup(m => m.PackageId, StringComparer.OrdinalIgnoreCase);
+
             bool anyIssuesFound = false;
 
             foreach (var currentEntry in activeModsWithOrder)
@@ -511,11 +531,13 @@ ModItem? alternative = null;
                 // Duplicate Check
                 if (!string.IsNullOrEmpty(currentMod.PackageId))
                 {
-                    var duplicates = _allAvailableMods.Where(m => 
-                        m != currentMod && 
-                        string.Equals(m.PackageId, currentMod.PackageId, StringComparison.OrdinalIgnoreCase)).ToList();
+                    // ToLookup returns an empty sequence for an unknown key, so no
+                    // null handling is needed here (PackageId was guarded above).
+                    var duplicates = modsByPackageId[currentMod.PackageId]
+                        .Where(m => m != currentMod)
+                        .ToList();
 
-                    if (duplicates.Any())
+                    if (duplicates.Count > 0)
                     {
                         var duplicateDetails = duplicates.Select(d => 
                         {

@@ -288,6 +288,80 @@ namespace RimSharp.Tests.Shared.Services.Implementations
         }
 
         [Fact]
+        public async Task ReapplySyncedDataAsync_ShouldStripStaleExternalVersionsBeforeApplyingFreshOnes()
+        {
+            var modDir = Path.Combine(_modsPath, "StaleVersionMod");
+            var aboutDir = Path.Combine(modDir, "About");
+            Directory.CreateDirectory(aboutDir);
+            File.WriteAllText(Path.Combine(aboutDir, "About.xml"), @"<?xml version='1.0' encoding='utf-8'?>
+<ModMetaData>
+    <name>Stale Version Mod</name>
+    <packageId>test.stale.version</packageId>
+    <supportedVersions>
+        <li>1.5</li>
+    </supportedVersions>
+</ModMetaData>");
+
+            var externalVersions = new Dictionary<string, List<ExternalVersionInfo>>
+            {
+                ["test.stale.version"] = new List<ExternalVersionInfo> { new("1.6", "Old Source") }
+            };
+            _mockMlieVersionService.GetExternalVersions().Returns(_ => externalVersions);
+
+            var service = CreateService();
+            await service.LoadModsAsync();
+            var mod = service.GetLoadedMods().Single(m => m.PackageId == "test.stale.version");
+            mod.SupportedVersions.Single(v => v.Source == VersionSource.External).Version.Should().Be("1.6");
+
+            // The source was updated: 1.6 disappeared, 1.7 was added by a
+            // different community source.
+            externalVersions["test.stale.version"] = new List<ExternalVersionInfo> { new("1.7", "New Source") };
+            await service.ReapplySyncedDataAsync();
+
+            mod.SupportedVersions.Should().NotContain(v => v.Version == "1.6", "the removed version must not linger");
+            var fresh = mod.SupportedVersions.Single(v => v.Source == VersionSource.External);
+            fresh.Version.Should().Be("1.7");
+            fresh.ExternalSourceName.Should().Be("New Source");
+            // The About.xml (Official) entry is never stripped.
+            mod.SupportedVersions.Should().Contain(v => v.Version == "1.5" && v.Source == VersionSource.Official);
+        }
+
+        [Fact]
+        public async Task ReapplySyncedDataAsync_WhenExternalSetBecomesEmpty_ShouldRemoveAllExternalVersions()
+        {
+            var modDir = Path.Combine(_modsPath, "EmptyExternalMod");
+            var aboutDir = Path.Combine(modDir, "About");
+            Directory.CreateDirectory(aboutDir);
+            File.WriteAllText(Path.Combine(aboutDir, "About.xml"), @"<?xml version='1.0' encoding='utf-8'?>
+<ModMetaData>
+    <name>Empty External Mod</name>
+    <packageId>test.empty.external</packageId>
+    <supportedVersions>
+        <li>1.5</li>
+    </supportedVersions>
+</ModMetaData>");
+
+            var externalVersions = new Dictionary<string, List<ExternalVersionInfo>>
+            {
+                ["test.empty.external"] = new List<ExternalVersionInfo> { new("1.6", "Removed Source") }
+            };
+            _mockMlieVersionService.GetExternalVersions().Returns(_ => externalVersions);
+
+            var service = CreateService();
+            await service.LoadModsAsync();
+            var mod = service.GetLoadedMods().Single(m => m.PackageId == "test.empty.external");
+            mod.SupportedVersions.Should().Contain(v => v.Source == VersionSource.External);
+
+            // The only external source was removed/disabled -> empty fresh set.
+            externalVersions.Clear();
+            await service.ReapplySyncedDataAsync();
+
+            mod.SupportedVersions.Should().NotContain(v => v.Source == VersionSource.External,
+                "an empty fresh set must strip the stale external versions (strip runs before the early return)");
+            mod.SupportedVersions.Should().ContainSingle(v => v.Version == "1.5" && v.Source == VersionSource.Official);
+        }
+
+        [Fact]
         public async Task LoadModsAsync_ShouldTrackAboutXmlLoadOrderRules()
         {
             var modDir = Path.Combine(_modsPath, "AboutRulesMod");

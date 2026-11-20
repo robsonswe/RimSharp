@@ -25,7 +25,7 @@ namespace RimSharp.Shared.Services.Implementations
     /// Caching is strictly best-effort: any read/write/serialization failure is
     /// swallowed and treated as a miss, never surfaced to callers.
     /// </summary>
-    public sealed class ApiResponseCache : IApiResponseCache
+    public sealed class ApiResponseCache : IApiResponseCache, IDisposable
     {
         private const int MaxEntries = 2000;
         private static readonly TimeSpan SaveDebounce = TimeSpan.FromMilliseconds(1000);
@@ -60,6 +60,9 @@ namespace RimSharp.Shared.Services.Implementations
         private volatile bool _loaded;
         private bool _dirty;
         private CancellationTokenSource? _saveCts;
+        // 0 = not disposed, 1 = disposed. Guarded with Interlocked so concurrent
+        // Dispose calls (and a racing ProcessExit) cannot double-flush.
+        private int _disposed;
 
         /// <param name="logger">Optional logger for cache I/O diagnostics.</param>
         /// <param name="cacheFilePath">
@@ -170,12 +173,19 @@ namespace RimSharp.Shared.Services.Implementations
             }
         }
 
-        private static bool IsFresh(ApiCacheEntry entry)
+        private static bool IsFresh(ApiCacheEntry entry) => IsFreshAt(entry, DateTime.UtcNow);
+
+        /// <summary>
+        /// Freshness check against an explicit "now" so a single timestamp can be
+        /// reused across a whole eviction pass. An entry is expired when
+        /// <c>now - cachedUtc &gt;= TtlTicks</c>.
+        /// </summary>
+        private static bool IsFreshAt(ApiCacheEntry entry, DateTime now)
         {
             var cachedUtc = entry.CachedUtc.Kind == DateTimeKind.Utc
                 ? entry.CachedUtc
                 : DateTime.SpecifyKind(entry.CachedUtc, DateTimeKind.Utc);
-            return DateTime.UtcNow - cachedUtc < TimeSpan.FromTicks(entry.TtlTicks);
+            return now - cachedUtc < TimeSpan.FromTicks(entry.TtlTicks);
         }
 
         private void EnsureLoaded()
@@ -218,25 +228,49 @@ namespace RimSharp.Shared.Services.Implementations
         }
 
         /// <summary>
-        /// Removes the oldest entries until at most <see cref="MaxEntries"/> remain.
-        /// Caller holds <see cref="_entriesLock"/>. Eviction is a mutation, so it
-        /// marks the cache dirty and schedules a save — this covers both the store
-        /// path and the load path (where an oversized file is trimmed on load).
+        /// Removes entries until at most <see cref="MaxEntries"/> remain. Caller
+        /// holds <see cref="_entriesLock"/>. Eviction is a mutation, so it marks
+        /// the cache dirty and schedules a save — this covers both the store path
+        /// and the load path (where an oversized file is trimmed on load).
         /// ScheduleSave only touches _debounceLock and spawns a delayed flush, so
         /// calling it while _entriesLock is held cannot re-enter _entriesLock.
+        ///
+        /// Two passes: already-expired entries are dropped first (oldest first),
+        /// so a stale short-TTL entry never displaces a still-valid long-TTL one.
+        /// If the set is still over the cap, the remaining oldest entries are
+        /// removed by <see cref="ApiCacheEntry.CachedUtc"/> as before.
         /// </summary>
         private void EvictOldestLocked()
         {
             if (_entries == null || _entries.Count <= MaxEntries) return;
 
-            var oldestKeys = _entries
+            var now = DateTime.UtcNow;
+            var excess = _entries.Count - MaxEntries;
+
+            // Pass 1: expired entries first, oldest first.
+            var expiredKeys = _entries
+                .Where(pair => !IsFreshAt(pair.Value, now))
                 .OrderBy(pair => pair.Value.CachedUtc)
-                .Take(_entries.Count - MaxEntries)
+                .Take(excess)
                 .Select(pair => pair.Key)
                 .ToList();
-            foreach (var key in oldestKeys)
+            foreach (var key in expiredKeys)
             {
                 _entries.Remove(key);
+            }
+
+            // Pass 2: if still over the cap, drop the remaining oldest entries.
+            if (_entries.Count > MaxEntries)
+            {
+                var oldestKeys = _entries
+                    .OrderBy(pair => pair.Value.CachedUtc)
+                    .Take(_entries.Count - MaxEntries)
+                    .Select(pair => pair.Key)
+                    .ToList();
+                foreach (var key in oldestKeys)
+                {
+                    _entries.Remove(key);
+                }
             }
 
             _dirty = true;
@@ -321,8 +355,11 @@ namespace RimSharp.Shared.Services.Implementations
             }
         }
 
-        /// <summary>Best-effort synchronous flush on normal shutdown.</summary>
-        private void OnProcessExit(object? sender, EventArgs e)
+        /// <summary>
+        /// Best-effort synchronous flush with a bounded wait. Never throws and
+        /// never blocks for long — used by both process shutdown and Dispose.
+        /// </summary>
+        private void FlushSync()
         {
             try
             {
@@ -338,8 +375,30 @@ namespace RimSharp.Shared.Services.Implementations
             }
             catch
             {
-                // Never block or throw during process shutdown.
+                // Never block or throw during shutdown/disposal.
             }
+        }
+
+        /// <summary>Best-effort synchronous flush on normal shutdown.</summary>
+        private void OnProcessExit(object? sender, EventArgs e) => FlushSync();
+
+        /// <summary>
+        /// Unsubscribes the ProcessExit handler, cancels any pending debounced
+        /// save, and synchronously flushes pending writes. Idempotent and never
+        /// throws. The DI container disposes this singleton automatically.
+        /// </summary>
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+
+            AppDomain.CurrentDomain.ProcessExit -= OnProcessExit;
+
+            lock (_debounceLock)
+            {
+                _saveCts?.Cancel();
+            }
+
+            FlushSync();
         }
 
         private static bool TryDeserialize<T>(string json, out T? value) where T : class

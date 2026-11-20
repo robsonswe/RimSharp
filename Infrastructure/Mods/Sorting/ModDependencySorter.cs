@@ -7,7 +7,6 @@ using System.Threading;
 using RimSharp.Shared.Models;
 using QuikGraph;
 using QuikGraph.Algorithms;
-using QuikGraph.Algorithms.Search;
 
 namespace RimSharp.Infrastructure.Mods.Sorting
 {
@@ -85,7 +84,14 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             {
                 ct.ThrowIfCancellationRequested();
 
-                var modLookup = allMods.ToDictionary(m => m.PackageId.ToLowerInvariant(), m => m, StringComparer.OrdinalIgnoreCase);
+                // ModListManager permits duplicate PackageIds (flagged as ModIssueType.Duplicate),
+                // so ToDictionary would throw here. First occurrence wins; no throw.
+                var modLookup = new Dictionary<string, ModItem>(StringComparer.OrdinalIgnoreCase);
+                foreach (var mod in allMods)
+                {
+                    if (string.IsNullOrEmpty(mod.PackageId)) continue;
+                    modLookup.TryAdd(mod.PackageId.ToLowerInvariant(), mod);
+                }
                 var (fullGraph, initialWarnings) = BuildGraph(allMods, modLookup, true, ct);
 
                 _logger.LogDebug("Partitioning mods into tiers.");
@@ -108,6 +114,12 @@ namespace RimSharp.Infrastructure.Mods.Sorting
                     .Where(m => m.LoadBottom || KnownTierThreePackageIds.Contains(m.PackageId))
                     .ToHashSet();
                 var tierThreeMods = GetTierMods(allMods, fullGraph, tierThreeStartingSet, findDependencies: false, ct);
+
+                // A mod can be pulled into tier 1 (LoadTop / tier-1 dependency) and
+                // also pushed into tier 3 (LoadBottom / tier-3 dependent). Without
+                // this it would be emitted by both tiers, so the final list would
+                // contain it twice and the count would not match allMods. Tier 1 wins.
+                tierThreeMods.ExceptWith(tierOneMods);
 
                 ct.ThrowIfCancellationRequested();
                 var tierTwoMods = allMods
@@ -305,6 +317,51 @@ namespace RimSharp.Infrastructure.Mods.Sorting
             return (graph, warnings);
         }
 
+        /// <summary>
+        /// BFS from <paramref name="start"/> following either in-edges (yielding the
+        /// set of vertices that can already reach it) or out-edges (yielding the set
+        /// of vertices reachable from it). One pass replaces a HasPath call per pair.
+        /// </summary>
+        private static HashSet<ModItem> GetReachableSet(
+            BidirectionalGraph<ModItem, Edge<ModItem>> graph,
+            ModItem start,
+            bool followInEdges,
+            CancellationToken ct)
+        {
+            var reached = new HashSet<ModItem> { start };
+            var queue = new Queue<ModItem>();
+            queue.Enqueue(start);
+
+            while (queue.Count > 0)
+            {
+                ct.ThrowIfCancellationRequested();
+                var current = queue.Dequeue();
+
+                if (followInEdges)
+                {
+                    if (graph.TryGetInEdges(current, out var inEdges))
+                    {
+                        foreach (var edge in inEdges)
+                        {
+                            if (reached.Add(edge.Source)) queue.Enqueue(edge.Source);
+                        }
+                    }
+                }
+                else
+                {
+                    if (graph.TryGetOutEdges(current, out var outEdges))
+                    {
+                        foreach (var edge in outEdges)
+                        {
+                            if (reached.Add(edge.Target)) queue.Enqueue(edge.Target);
+                        }
+                    }
+                }
+            }
+
+            return reached;
+        }
+
         private void AddImplicitDependencies(List<ModItem> mods, BidirectionalGraph<ModItem, Edge<ModItem>> graph, CancellationToken ct)
         {
             var coreMod = mods.FirstOrDefault(m => m.ModType == ModType.Core);
@@ -312,12 +369,16 @@ namespace RimSharp.Infrastructure.Mods.Sorting
 
             if (coreMod != null)
             {
+                // One reverse BFS from Core gives every mod that can already reach
+                // it. Adding Core->mod edges cannot create a new path ending at Core,
+                // so this set stays valid for the whole loop.
+                var modsThatReachCore = GetReachableSet(graph, coreMod, followInEdges: true, ct);
                 foreach (var mod in mods)
                 {
                     ct.ThrowIfCancellationRequested();
                     if (mod == coreMod) continue;
 
-                    if (!HasPath(graph, mod, coreMod))
+                    if (!modsThatReachCore.Contains(mod))
                     {
                         graph.AddEdge(new Edge<ModItem>(coreMod, mod));
                     }
@@ -326,37 +387,35 @@ namespace RimSharp.Infrastructure.Mods.Sorting
 
             foreach (var expansion in expansionMods)
             {
-                if (coreMod != null && coreMod != expansion)
-                {
-                    // OPTIMIZATION 2: Streamlined check.
-                    if (!HasPath(graph, expansion, coreMod))
-                    {
-                        graph.AddEdge(new Edge<ModItem>(coreMod, expansion));
-                    }
-                }
+                ct.ThrowIfCancellationRequested();
+                // The Core loop above already added Core->expansion (or an existing
+                // path expansion->Core made it unnecessary), so the old redundant
+                // Core check is dropped here.
+
+                // One reverse BFS (mods that can reach this expansion) and one
+                // forward BFS (mods reachable from it), computed before adding any
+                // edges for this expansion. Adding expansion->mod edges cannot create
+                // new paths INTO the expansion, so the reverse set stays valid; the
+                // forward set can only grow with mods already ordered after the
+                // expansion, which cannot introduce a cycle.
+                var modsThatReachExpansion = GetReachableSet(graph, expansion, followInEdges: true, ct);
+                var modsReachedFromExpansion = GetReachableSet(graph, expansion, followInEdges: false, ct);
 
                 foreach (var mod in mods)
                 {
                     ct.ThrowIfCancellationRequested();
                     if (mod.ModType != ModType.Core && mod.ModType != ModType.Expansion)
                     {
-                        // OPTIMIZATION 2: Streamlined check.
-                        if (!HasPath(graph, mod, expansion) && !HasPath(graph, expansion, mod))
+                        // Original intent: add expansion->mod only when there is no
+                        // path in either direction (mod->expansion would cycle,
+                        // expansion->mod would be redundant).
+                        if (!modsThatReachExpansion.Contains(mod) && !modsReachedFromExpansion.Contains(mod))
                         {
                             graph.AddEdge(new Edge<ModItem>(expansion, mod));
                         }
                     }
                 }
             }
-        }
-
-        private bool HasPath(IVertexListGraph<ModItem, Edge<ModItem>> graph, ModItem from, ModItem to)
-        {
-            var bfs = new BreadthFirstSearchAlgorithm<ModItem, Edge<ModItem>>(graph);
-            var reached = new HashSet<ModItem>();
-            bfs.DiscoverVertex += v => reached.Add(v);
-            bfs.Compute(from);
-            return reached.Contains(to);
         }
 
         private List<CycleInfo> DetectCycles(BidirectionalGraph<ModItem, Edge<ModItem>> graph)

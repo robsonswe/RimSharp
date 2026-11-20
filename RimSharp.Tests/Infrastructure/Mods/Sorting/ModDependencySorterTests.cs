@@ -270,5 +270,64 @@ namespace RimSharp.Tests.Infrastructure.Mods.Sorting
             result.SortedMods.Should().HaveCount(3);
             result.SortedMods.Should().Contain(new[] { modA, modB, modC });
         }
+
+        [Fact]
+        public void TopologicalSort_DuplicatePackageIds_ShouldNotCrashAndKeepBothMods()
+        {
+            // ModListManager allows duplicate PackageIds (flagged as ModIssueType.Duplicate),
+            // so building the lookup must not throw and both instances must be sorted.
+            var modA = new ModItem { Name = "Mod A", PackageId = "duplicate.id", ModType = ModType.Workshop };
+            var modB = new ModItem { Name = "Mod B", PackageId = "duplicate.id", ModType = ModType.Workshop };
+            var mods = new List<ModItem> { modA, modB };
+
+            var result = _sorter.TopologicalSort(mods, TestContext.Current.CancellationToken);
+
+            result.IsSuccess.Should().BeTrue();
+            result.SortedMods.Should().HaveCount(mods.Count);
+            result.SortedMods.Should().Contain(new[] { modA, modB });
+        }
+
+        [Fact]
+        public void TopologicalSort_ModInBothTiers_ShouldAppearExactlyOnce()
+        {
+            // A mod flagged both LoadTop (tier 1) and LoadBottom (tier 3) used to be
+            // emitted by both tiers, producing a duplicate and a count mismatch.
+            var core = new ModItem { Name = "Core", PackageId = "Ludeon.RimWorld", ModType = ModType.Core };
+            var bothTiers = new ModItem
+            {
+                Name = "Both Tiers",
+                PackageId = "both.tiers",
+                ModType = ModType.Workshop,
+                LoadTop = true,
+                LoadBottom = true
+            };
+            var mods = new List<ModItem> { core, bothTiers };
+
+            var result = _sorter.TopologicalSort(mods, TestContext.Current.CancellationToken);
+
+            result.IsSuccess.Should().BeTrue();
+            result.SortedMods.Should().HaveCount(mods.Count);
+            result.SortedMods.Count(m => m == bothTiers).Should().Be(1);
+            result.SortedMods.Should().Contain(new[] { core, bothTiers });
+        }
+
+        [Fact]
+        public void TopologicalSort_ImplicitCoreAndExpansionEdges_ShouldOrderCoreThenExpansionThenRegular()
+        {
+            // Exercises the reachability-pass rewrite of AddImplicitDependencies:
+            // Core must precede the expansion, which must precede a regular mod.
+            var core = new ModItem { Name = "Core", PackageId = "Ludeon.RimWorld", ModType = ModType.Core };
+            var expansion = new ModItem { Name = "Expansion", PackageId = "expansion.id", ModType = ModType.Expansion };
+            var regular = new ModItem { Name = "Regular", PackageId = "regular.id", ModType = ModType.Workshop };
+            var mods = new List<ModItem> { regular, expansion, core };
+
+            var result = _sorter.TopologicalSort(mods, TestContext.Current.CancellationToken);
+
+            result.IsSuccess.Should().BeTrue();
+            result.SortedMods.Should().HaveCount(3);
+            var sorted = result.SortedMods;
+            sorted.IndexOf(core).Should().BeLessThan(sorted.IndexOf(expansion));
+            sorted.IndexOf(expansion).Should().BeLessThan(sorted.IndexOf(regular));
+        }
     }
 }

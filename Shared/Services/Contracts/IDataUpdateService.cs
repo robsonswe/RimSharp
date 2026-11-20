@@ -5,9 +5,12 @@ using System.Threading.Tasks;
 public interface IDataUpdateService
 {
     /// <summary>
-
+    /// Checks every tracked data category for updates and applies them.
+    /// Returns a result whose <see cref="DataUpdateResult.Changed"/> flag tells
+    /// the caller whether any category actually changed on disk, so the
+    /// post-sync re-merge can be skipped when everything was up to date.
     /// </summary>
-    Task CheckForAndApplyUpdatesAsync(IProgress<DataUpdateProgress> progress, CancellationToken cancellationToken);
+    Task<DataUpdateResult> CheckForAndApplyUpdatesAsync(IProgress<DataUpdateProgress> progress, CancellationToken cancellationToken);
 
     /// <summary>
     /// Path of an externally synced source snapshot, e.g.

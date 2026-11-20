@@ -300,6 +300,101 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             reloadProbe!.Value.Should().Be("0");
         }
 
+        [Fact]
+        public async Task Dispose_FlushesPendingEntriesAndIsIdempotent()
+        {
+            var first = CreateCache();
+            await first.GetOrFetchAsync<TestPayload>("key", TimeSpan.FromHours(1), ct =>
+                Task.FromResult<TestPayload?>(new TestPayload { Value = "flushed-on-dispose" }), TestContext.Current.CancellationToken);
+
+            // No explicit FlushAsync: disposal itself must persist the pending write.
+            first.Dispose();
+            first.Dispose(); // idempotent — must not throw on a second call
+
+            File.Exists(_cacheFilePath).Should().BeTrue();
+
+            // A fresh instance sees the flushed entry without any explicit flush.
+            var second = CreateCache();
+            var fetchCalls = 0;
+            var result = await second.GetOrFetchAsync<TestPayload>("key", TimeSpan.FromHours(1), ct =>
+            {
+                fetchCalls++;
+                return Task.FromResult<TestPayload?>(new TestPayload { Value = "should-not-be-used" });
+            }, TestContext.Current.CancellationToken);
+
+            result!.Value.Should().Be("flushed-on-dispose");
+            fetchCalls.Should().Be(0);
+        }
+
+        [Fact]
+        public async Task EnsureLoaded_OverCap_EvictsExpiredEntriesBeforeFreshOnes()
+        {
+            const int freshCount = 1995;
+            const int expiredCount = 10; // 1995 + 10 = 2005 > MaxEntries (2000)
+            var now = DateTime.UtcNow;
+
+            // Seed a mix directly on disk so CachedUtc/TtlTicks are exact.
+            var seeded = new Dictionary<string, object>();
+
+            // Clearly expired: cached 2 days ago with a 1-hour TTL. Distinct
+            // timestamps make the eviction order deterministic (expired-0 oldest).
+            for (var i = 0; i < expiredCount; i++)
+            {
+                seeded[$"expired-{i}"] = new
+                {
+                    Json = "{\"Value\":\"expired-" + i + "\"}",
+                    CachedUtc = now.AddDays(-2).AddSeconds(i),
+                    TtlTicks = TimeSpan.FromHours(1).Ticks
+                };
+            }
+
+            // Fresh: cached now with a 30-day TTL — all still valid.
+            for (var i = 0; i < freshCount; i++)
+            {
+                seeded[$"fresh-{i}"] = new
+                {
+                    Json = "{\"Value\":\"fresh-" + i + "\"}",
+                    CachedUtc = now,
+                    TtlTicks = TimeSpan.FromDays(30).Ticks
+                };
+            }
+
+            File.WriteAllText(_cacheFilePath, JsonSerializer.Serialize(seeded));
+
+            var cache = CreateCache();
+
+            // A cache-hit probe forces EnsureLoaded() (and its load-time eviction)
+            // without adding a new entry.
+            var probe = await cache.GetOrFetchAsync<TestPayload>("fresh-0", TimeSpan.FromDays(30), ct =>
+                Task.FromResult<TestPayload?>(new TestPayload { Value = "should-not-be-used" }), TestContext.Current.CancellationToken);
+            probe!.Value.Should().Be("fresh-0");
+
+            await cache.FlushAsync();
+
+            var json = File.ReadAllText(_cacheFilePath);
+            using var doc = JsonDocument.Parse(json);
+            var keys = doc.RootElement.EnumerateObject().Select(p => p.Name).ToList();
+
+            keys.Count.Should().Be(2000, "the cap must be enforced");
+
+            // All fresh entries survive: expired ones are evicted first.
+            for (var i = 0; i < freshCount; i++)
+            {
+                keys.Should().Contain("fresh-" + i);
+            }
+
+            // Only 5 of the 10 expired entries fit alongside all fresh ones;
+            // the 5 oldest expired entries must be the ones dropped.
+            for (var i = 0; i < 5; i++)
+            {
+                keys.Should().NotContain("expired-" + i, "the oldest expired entries must be evicted first");
+            }
+            for (var i = 5; i < expiredCount; i++)
+            {
+                keys.Should().Contain("expired-" + i);
+            }
+        }
+
         public sealed class TestPayload
         {
             public string Value { get; set; } = string.Empty;

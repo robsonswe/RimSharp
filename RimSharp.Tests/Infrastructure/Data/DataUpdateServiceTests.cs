@@ -130,6 +130,68 @@ namespace RimSharp.Tests.Infrastructure.Data
         }
 
         [Fact]
+        public async Task CheckForAndApplyUpdatesAsync_WhenNothingChanged_ShouldReportNotChanged()
+        {
+            var rulesJson = @"{ ""rules"": [] }";
+            var replacementsJson = @"{ ""mods"": {} }";
+            var dbJson = @"{ ""mods"": {} }";
+            var manifestJson = BuildManifest(rulesJson, replacementsJson, dbJson);
+
+            // Curated files already match the manifest SHAs.
+            WriteCuratedFile("Rules", rulesJson);
+            WriteCuratedFile("Replacements", replacementsJson);
+            WriteCuratedFile("ModInfo", dbJson);
+
+            _httpHandler.OnRequest = req =>
+            {
+                var uri = req.RequestUri?.ToString() ?? "";
+                if (uri.EndsWith("manifest.json"))
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(manifestJson) };
+                // Every external source answers 304 (unchanged) or fails; none writes.
+                if (req.Headers.IfNoneMatch.Count > 0 || req.Headers.IfModifiedSince.HasValue)
+                    return new HttpResponseMessage(HttpStatusCode.NotModified);
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            };
+
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient);
+            var progress = Substitute.For<IProgress<DataUpdateProgress>>();
+
+            var result = await service.CheckForAndApplyUpdatesAsync(progress, CancellationToken.None);
+
+            result.Changed.Should().BeFalse("no category was written, so the post-sync re-merge can be skipped");
+        }
+
+        [Fact]
+        public async Task CheckForAndApplyUpdatesAsync_WhenCuratedFileDownloaded_ShouldReportChanged()
+        {
+            var rulesJson = @"{ ""rules"": [] }";
+            var replacementsJson = @"{ ""mods"": {} }";
+            var dbJson = @"{ ""mods"": {} }";
+            var manifestJson = BuildManifest(rulesJson, replacementsJson, dbJson);
+
+            _httpHandler.OnRequest = req =>
+            {
+                var uri = req.RequestUri?.ToString() ?? "";
+                if (uri.EndsWith("manifest.json"))
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(manifestJson) };
+                if (uri.EndsWith("db/rules.json"))
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(rulesJson) };
+                if (uri.EndsWith("db/replacements.json"))
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(replacementsJson) };
+                if (uri.EndsWith("db/db.json"))
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(dbJson) };
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            };
+
+            var service = new DataUpdateService(_mockLogger, _testTempDir, _httpClient);
+            var progress = Substitute.For<IProgress<DataUpdateProgress>>();
+
+            var result = await service.CheckForAndApplyUpdatesAsync(progress, CancellationToken.None);
+
+            result.Changed.Should().BeTrue("a curated file was downloaded, so the post-sync re-merge is required");
+        }
+
+        [Fact]
         public async Task CheckForAndApplyUpdatesAsync_WhenOneHashMismatches_ShouldDownloadOnlyThatFile()
         {
 

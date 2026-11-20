@@ -138,6 +138,35 @@ _manager.HasAnyActiveModIssues.Should().BeTrue();
         }
 
         [Fact]
+        public void RefreshActiveModIssues_ShouldRecalculateAndNotifyWithoutMarkingListModified()
+        {
+            var mod = new ModItem
+            {
+                Name = "Mod 1",
+                PackageId = "mod1",
+                IsSupportedRW = true, // isolate the dependency issue from version mismatch
+                ModDependencies = new List<ModDependency> { new ModDependency { PackageId = "missing" } }
+            };
+            _manager.Initialize(new[] { mod }, new[] { "mod1" });
+            mod.HasIssues.Should().BeTrue();
+
+            // Simulate a live re-merge that removed the offending rule from the
+            // same ModItem instance (no list change, no Initialize call).
+            mod.ModDependencies.Clear();
+
+            ModListChangedEventArgs? raised = null;
+            _manager.ListChanged += (_, e) => raised = e;
+
+            _manager.RefreshActiveModIssues();
+
+            mod.HasIssues.Should().BeFalse();
+            mod.IssueTooltipText.Should().BeEmpty();
+            _manager.HasAnyActiveModIssues.Should().BeFalse();
+            raised.Should().NotBeNull("the UI must be told to refresh badges/tooltips");
+            raised!.ActiveListModified.Should().BeFalse("the active list itself did not change");
+        }
+
+        [Fact]
         public void RecalculateActiveModIssues_ShouldDetectLoadOrderViolation()
         {
 
@@ -153,6 +182,54 @@ _manager.HasAnyActiveModIssues.Should().BeTrue();
 
             modB.HasIssues.Should().BeTrue();
             modB.IssueTooltipText.Should().Contain("Load order: Should load after 'Mod A', but loads before.");
+        }
+
+        [Fact]
+        public void RecalculateActiveModIssues_DuplicateCheck_ShouldMatchCaseInsensitivePackageIds()
+        {
+            // The active mod plus two other installed copies whose package ids
+            // differ only by case. All three must be treated as duplicates of
+            // each other, and the description text must be preserved verbatim.
+            var activeMod = new ModItem { Name = "Active Copy", PackageId = "Mod.Id", Path = "/mods/active" };
+            var caseVariant = new ModItem
+            {
+                Name = "Case Variant",
+                PackageId = "mod.id",
+                Authors = "Author A",
+                ModVersion = "1.2.3",
+                Path = "/mods/variant"
+            };
+            var exactCopy = new ModItem { Name = "Exact Copy", PackageId = "Mod.Id", Path = "/mods/copy" };
+
+            // activeMod is listed first so the case-insensitive lookup resolves
+            // "mod.id" to it deterministically.
+            _manager.Initialize(new[] { activeMod, caseVariant, exactCopy }, new[] { "Mod.Id" });
+
+            var duplicateIssues = _manager.GetActiveModIssues()
+                .Where(i => i.Type == ModIssueType.Duplicate)
+                .ToList();
+
+            duplicateIssues.Should().ContainSingle();
+            var issue = duplicateIssues[0];
+            issue.Mod.Should().Be(activeMod);
+            issue.Description.Should().StartWith("Duplicate mod detected. There are other versions of this mod installed:");
+            issue.Description.Should().Contain("- Case Variant by Author A (Mod Version: 1.2.3) at: /mods/variant");
+            issue.Description.Should().Contain("- Exact Copy at: /mods/copy");
+            _manager.ActiveDuplicateIssuesCount.Should().Be(1);
+        }
+
+        [Fact]
+        public void RecalculateActiveModIssues_DuplicateCheck_ShouldNotFlagUniquePackageId()
+        {
+            var uniqueMod = new ModItem { Name = "Unique Mod", PackageId = "unique.id", Path = "/mods/unique" };
+            var otherMod = new ModItem { Name = "Other Mod", PackageId = "other.id", Path = "/mods/other" };
+
+            _manager.Initialize(new[] { uniqueMod, otherMod }, new[] { "unique.id", "other.id" });
+
+            _manager.GetActiveModIssues()
+                .Where(i => i.Type == ModIssueType.Duplicate)
+                .Should().BeEmpty();
+            _manager.ActiveDuplicateIssuesCount.Should().Be(0);
         }
 
         [Fact]

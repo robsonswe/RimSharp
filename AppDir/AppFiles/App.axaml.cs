@@ -180,38 +180,75 @@ namespace RimSharp.AppDir.AppFiles
                     var dataUpdater = ServiceProvider.GetRequiredService<IDataUpdateService>();
                     _ = Task.Run(async () =>
                     {
+                        // Conservative default: reapply unless the sync explicitly
+                        // reports that nothing changed. A failed sync still runs the
+                        // reapply because its finally block may have synced external
+                        // sources even though the curated phase threw.
+                        bool dataChanged = true;
                         try
                         {
-                            await dataUpdater.CheckForAndApplyUpdatesAsync(new Progress<DataUpdateProgress>(), CancellationToken.None);
+                            var syncResult = await dataUpdater.CheckForAndApplyUpdatesAsync(
+                                new Progress<DataUpdateProgress>(), CancellationToken.None);
+                            dataChanged = syncResult?.Changed ?? true;
                         }
                         catch (Exception updateEx)
                         {
                             _logger?.LogWarning($"Failed to update data files on startup: {updateEx.Message}", "App.OnFrameworkInitializationCompleted");
                         }
 
-                        // The sync (including its finally block) may have replaced
-                        // the on-disk versions/rules/dictionary/replacements data.
-                        // Invalidate the four source caches on the UI thread (they
-                        // are singletons shared with the UI), then re-apply the
-                        // freshly synced data onto the already-loaded mods. All of
-                        // this stays inside the fire-and-forget Task.Run so the UI
-                        // thread is never blocked by the re-merge.
+                        if (dataChanged)
+                        {
+                            // The sync (including its finally block) may have replaced
+                            // the on-disk versions/rules/dictionary/replacements data.
+                            // Invalidate the four source caches on the UI thread (they
+                            // are singletons shared with the UI), then re-apply the
+                            // freshly synced data onto the already-loaded mods. All of
+                            // this stays inside the fire-and-forget Task.Run so the UI
+                            // thread is never blocked by the re-merge.
+                            try
+                            {
+                                await Dispatcher.UIThread.InvokeAsync(() =>
+                                {
+                                    ServiceProvider.GetRequiredService<IRuleSourceManager>().RefreshAfterSync();
+                                    ServiceProvider.GetRequiredService<IModInfoSourceManager>().RefreshAfterSync();
+                                    ServiceProvider.GetRequiredService<IModReplacementSourceManager>().RefreshAfterSync();
+                                    ServiceProvider.GetRequiredService<INoVersionWarningSourceManager>().RefreshAfterSync();
+                                });
+
+                                // ReapplySyncedDataAsync refreshes caches off-thread and
+                                // marshals the live ModItem mutations onto the UI thread.
+                                await ServiceProvider.GetRequiredService<IModService>()
+                                    .ReapplySyncedDataAsync().ConfigureAwait(false);
+
+                                // Recalculate issue badges/tooltips on the UI thread now
+                                // that rules/versions were re-applied onto the same mods.
+                                await ThreadHelper.RunOnUIThreadAsync(() =>
+                                    ServiceProvider.GetRequiredService<IModListManager>().RefreshActiveModIssues())
+                                    .ConfigureAwait(false);
+                            }
+                            catch (Exception refreshEx)
+                            {
+                                _logger?.LogWarning($"Failed to refresh caches after startup data sync: {refreshEx.Message}", "App.OnFrameworkInitializationCompleted");
+                            }
+                        }
+                        else
+                        {
+                            _logger?.LogInfo("Startup data sync found no changes; skipping post-sync re-merge.", "App.OnFrameworkInitializationCompleted");
+                        }
+
+                        // Always warm the dictionary cache on this background thread so the
+                        // first UI lookup (import, dependency resolution, Rules viewer) doesn't
+                        // parse the ~48 MB community DB on the UI thread. When data changed,
+                        // RefreshAfterSync() above invalidated the cache first, so the warmed
+                        // cache reflects the freshly synced data; when nothing changed, this
+                        // still preloads the existing cache off the UI thread.
                         try
                         {
-                            await Dispatcher.UIThread.InvokeAsync(() =>
-                            {
-                                ServiceProvider.GetRequiredService<IRuleSourceManager>().RefreshAfterSync();
-                                ServiceProvider.GetRequiredService<IModInfoSourceManager>().RefreshAfterSync();
-                                ServiceProvider.GetRequiredService<IModReplacementSourceManager>().RefreshAfterSync();
-                                ServiceProvider.GetRequiredService<INoVersionWarningSourceManager>().RefreshAfterSync();
-                            });
-
-                            await ServiceProvider.GetRequiredService<IModService>()
-                                .ReapplySyncedDataAsync().ConfigureAwait(false);
+                            ServiceProvider.GetRequiredService<IModDictionaryService>().GetAllEntries();
                         }
-                        catch (Exception refreshEx)
+                        catch (Exception warmupEx)
                         {
-                            _logger?.LogWarning($"Failed to refresh caches after startup data sync: {refreshEx.Message}", "App.OnFrameworkInitializationCompleted");
+                            _logger?.LogWarning($"Failed to warm mod dictionary cache on startup: {warmupEx.Message}", "App.OnFrameworkInitializationCompleted");
                         }
                     });
                 });
@@ -418,7 +455,8 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IModRulesRepository>(),
                     provider.GetRequiredService<IModService>(),
                     provider.GetRequiredService<IDataUpdateService>(),
-                    provider.GetRequiredService<ILoggerService>()));
+                    provider.GetRequiredService<ILoggerService>(),
+                    provider.GetRequiredService<IModListManager>()));
 
             services.AddSingleton<IModRulesService, ModRulesService>();
             services.AddSingleton<IModCustomService>(provider =>
@@ -473,7 +511,8 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IPathService>(),
                     provider.GetRequiredService<ILoggerService>(),
                     provider.GetRequiredService<IModService>(),
-                    provider.GetRequiredService<GameInstance>()));
+                    provider.GetRequiredService<GameInstance>(),
+                    provider.GetRequiredService<IModListManager>()));
             services.AddSingleton<IModService>(provider =>
                 new ModService(
                     provider.GetRequiredService<IPathService>(),

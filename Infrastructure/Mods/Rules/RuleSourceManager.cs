@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using RimSharp.Core.Extensions;
 using RimSharp.Infrastructure.Data;
 using RimSharp.Shared.Services.Contracts;
 
@@ -20,19 +21,22 @@ namespace RimSharp.Infrastructure.Mods.Rules
         private readonly IModService _modService;
         private readonly IDataUpdateService _dataUpdateService;
         private readonly ILoggerService _logger;
+        private readonly IModListManager? _modListManager;
 
         public RuleSourceManager(
             ModRuleSourceRegistry registry,
             IModRulesRepository repository,
             IModService modService,
             IDataUpdateService dataUpdateService,
-            ILoggerService logger)
+            ILoggerService logger,
+            IModListManager? modListManager = null)
         {
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
             _modService = modService ?? throw new ArgumentNullException(nameof(modService));
             _dataUpdateService = dataUpdateService ?? throw new ArgumentNullException(nameof(dataUpdateService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _modListManager = modListManager;
         }
 
         public ModRuleSourceRegistry Registry => _registry;
@@ -70,6 +74,16 @@ namespace RimSharp.Infrastructure.Mods.Rules
             try
             {
                 await _modService.ReapplyRulesAsync().ConfigureAwait(false);
+
+                // ReapplyRulesAsync marshals its ModItem mutations onto the UI
+                // thread and awaits them. Now refresh the issue badges on that
+                // same UI thread so HasIssues/tooltips/counts are not stale
+                // after a rule source was added/removed/reordered.
+                if (_modListManager != null)
+                {
+                    await ThreadHelper.RunOnUIThreadAsync(
+                        () => _modListManager.RefreshActiveModIssues()).ConfigureAwait(false);
+                }
             }
             catch (Exception ex)
             {

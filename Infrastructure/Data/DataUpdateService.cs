@@ -44,6 +44,15 @@ namespace RimSharp.Infrastructure.Data
         private const int MaxParallelRecordFetches = 8;
 
         /// <summary>
+        /// Set (via <see cref="MarkChanged"/>) whenever a sync pass actually
+        /// writes data. Reset at the start of every
+        /// <see cref="CheckForAndApplyUpdatesAsync"/> pass and read at its end
+        /// to build the returned <see cref="DataUpdateResult"/>. 0/1 int so it
+        /// can be flipped atomically from the parallel record-fetch workers.
+        /// </summary>
+        private int _syncChanged;
+
+        /// <summary>
         /// Cheap staleness probe for the ~48 MB Steam Workshop DB: the latest
         /// commit touching steamDB.json. Its sha is stored as the file's
         /// validator so an unchanged upstream file skips the large download.
@@ -190,8 +199,12 @@ namespace RimSharp.Infrastructure.Data
             return Path.Combine(_dataRootPath, category, source, fileName);
         }
 
-        public async Task CheckForAndApplyUpdatesAsync(IProgress<DataUpdateProgress> progress, CancellationToken cancellationToken)
+        public async Task<DataUpdateResult> CheckForAndApplyUpdatesAsync(IProgress<DataUpdateProgress> progress, CancellationToken cancellationToken)
         {
+            // Fresh pass: forget any change recorded by a previous startup sync
+            // or by a settings-dialog "add source" fetch.
+            Interlocked.Exchange(ref _syncChanged, 0);
+
             _logger.LogInfo("Checking for data file updates...", nameof(DataUpdateService));
             progress.Report(new DataUpdateProgress { Message = "Contacting server...", Percentage = 0 });
 
@@ -251,6 +264,7 @@ namespace RimSharp.Infrastructure.Data
                     await File.WriteAllTextAsync(destination, fileContent, cancellationToken)
                         .ConfigureAwait(false);
                     filesDownloaded++;
+                    MarkChanged();
 
                     _logger.LogInfo($"Curated file updated: '{remoteFileUrl}' -> '{destination}'", nameof(DataUpdateService));
                 }
@@ -293,7 +307,17 @@ namespace RimSharp.Infrastructure.Data
                     await SyncRuleSourcesAsync(null, cancellationToken).ConfigureAwait(false);
                 }
             }
+
+            return new DataUpdateResult { Changed = Volatile.Read(ref _syncChanged) != 0 };
         }
+
+        /// <summary>
+        /// Records that this sync pass wrote data. Called from the curated-file
+        /// loop and from the conditional-download helpers on a successful
+        /// (non-304, validated) write. A 304 / matching SHA never calls it.
+        /// </summary>
+        private void MarkChanged() => Interlocked.Exchange(ref _syncChanged, 1);
+
         /// <summary>
         /// Computes the SHA-256 of a local file and compares it (case-insensitive)
         /// with the manifest's expected hex hash.
@@ -1045,6 +1069,7 @@ namespace RimSharp.Infrastructure.Data
 
             await File.WriteAllTextAsync(localJsonPath, json, cancellationToken).ConfigureAwait(false);
             await StoreValidatorAsync(response, validatorPath, cancellationToken).ConfigureAwait(false);
+            MarkChanged();
 
             _logger.LogInfo($"External source updated: '{url}' -> '{localJsonPath}'", nameof(DataUpdateService));
             return true;
@@ -1305,6 +1330,7 @@ namespace RimSharp.Infrastructure.Data
 
             await File.WriteAllTextAsync(localPath, text, cancellationToken).ConfigureAwait(false);
             await StoreValidatorAsync(response, validatorPath, cancellationToken).ConfigureAwait(false);
+            MarkChanged();
 
             _logger.LogInfo($"External source updated: '{url}' -> '{localPath}'", nameof(DataUpdateService));
             return true;

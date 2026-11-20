@@ -17,10 +17,19 @@ namespace RimSharp.Shared.Services.Implementations
         private readonly ILoggerService _logger;
         private readonly IDataUpdateService _dataUpdateService;
         private readonly Infrastructure.Mods.ModInfo.ModInfoSourceRegistry? _sourceRegistry;
-        private Dictionary<string, ModDictionaryEntry>? _dictionaryCache;
-        private Dictionary<string, List<ModDictionaryEntry>>? _packageIndex;
-        private Dictionary<string, int> _sourcePriority = new(StringComparer.OrdinalIgnoreCase);
-        private bool _isInitialized = false;
+        /// <summary>
+        /// Immutable-by-convention snapshot of all derived dictionary data. The
+        /// dictionaries are fully populated before publication and never mutated
+        /// afterwards, so a single volatile reference can be swapped atomically
+        /// by <see cref="Invalidate"/> without ever exposing partially built state
+        /// or a null window to concurrent readers.
+        /// </summary>
+        private sealed record CacheSnapshot(
+            Dictionary<string, ModDictionaryEntry> BySteamId,
+            Dictionary<string, List<ModDictionaryEntry>> ByPackageId,
+            Dictionary<string, int> SourcePriority);
+
+        private volatile CacheSnapshot? _snapshot;
         private readonly object _lock = new object();
 
         public ModDictionaryService(
@@ -39,32 +48,43 @@ namespace RimSharp.Shared.Services.Implementations
         {
             lock (_lock)
             {
-                _dictionaryCache = null;
-                _packageIndex = null;
-                _sourcePriority = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-                _isInitialized = false;
+                // A single atomic assignment drops the whole snapshot at once.
+                _snapshot = null;
             }
         }
 
         public Dictionary<string, ModDictionaryEntry> GetAllEntries()
         {
-            if (_isInitialized && _dictionaryCache != null)
+            return GetSnapshot().BySteamId;
+        }
+
+        /// <summary>
+        /// Returns the current snapshot, building it under <see cref="_lock"/> with
+        /// double-checked locking when absent. The volatile field is read into a
+        /// local exactly once per call and that local is returned, so a concurrent
+        /// <see cref="Invalidate"/> can never turn the result null mid-operation.
+        /// </summary>
+        private CacheSnapshot GetSnapshot()
+        {
+            var snap = _snapshot;
+            if (snap != null)
             {
-                return _dictionaryCache;
+                return snap;
             }
 
             lock (_lock)
             {
-                if (_isInitialized && _dictionaryCache != null)
+                snap = _snapshot;
+                if (snap != null)
                 {
-                    return _dictionaryCache;
+                    return snap;
                 }
 
                 _logger.LogInfo("Initializing ModDictionaryService cache.", nameof(ModDictionaryService));
-                _dictionaryCache = LoadEntries();
-                _isInitialized = true;
-                _logger.LogInfo($"ModDictionaryService cache initialized. Found {_dictionaryCache.Count} unique mod dictionary entries.", nameof(ModDictionaryService));
-                return _dictionaryCache;
+                snap = LoadEntries();
+                _snapshot = snap;
+                _logger.LogInfo($"ModDictionaryService cache initialized. Found {snap.BySteamId.Count} unique mod dictionary entries.", nameof(ModDictionaryService));
+                return snap;
             }
         }
 
@@ -72,20 +92,18 @@ namespace RimSharp.Shared.Services.Implementations
         {
             if (string.IsNullOrWhiteSpace(steamId)) return null;
 
-            var cache = GetAllEntries(); 
-            string normalizedId = steamId.ToLowerInvariant();
-
-            cache.TryGetValue(normalizedId, out var entry);
-            return entry; 
+            var snap = GetSnapshot();
+            // BySteamId uses StringComparer.OrdinalIgnoreCase, so no lowercasing needed.
+            snap.BySteamId.TryGetValue(steamId, out var entry);
+            return entry;
         }
 
         public ModDictionaryEntry? GetEntryByPackageId(string packageId)
         {
             if (string.IsNullOrWhiteSpace(packageId)) return null;
 
-            GetAllEntries(); // ensure the reverse index is built
-            if (_packageIndex == null ||
-                !_packageIndex.TryGetValue(packageId, out var candidates) ||
+            var snap = GetSnapshot();
+            if (!snap.ByPackageId.TryGetValue(packageId, out var candidates) ||
                 candidates.Count == 0)
             {
                 return null;
@@ -115,7 +133,7 @@ namespace RimSharp.Shared.Services.Implementations
                     entry.Versions != null &&
                     entry.Versions.Contains(majorGameVersion))
                 .ThenByDescending(entry => entry.Published)
-                .ThenBy(entry => GetSourcePriority(entry))
+                .ThenBy(entry => GetSourcePriority(snap.SourcePriority, entry))
                 .FirstOrDefault();
 
             if (prioritizedEntry != null)
@@ -134,8 +152,8 @@ namespace RimSharp.Shared.Services.Implementations
         {
             if (string.IsNullOrWhiteSpace(packageId)) return new List<ModDictionaryEntry>();
 
-            GetAllEntries(); // ensure the reverse index is built
-            if (_packageIndex != null && _packageIndex.TryGetValue(packageId, out var candidates))
+            var snap = GetSnapshot();
+            if (snap.ByPackageId.TryGetValue(packageId, out var candidates))
             {
                 // The index is keyed by steamId, so candidates are already deduped.
                 return new List<ModDictionaryEntry>(candidates);
@@ -143,10 +161,12 @@ namespace RimSharp.Shared.Services.Implementations
             return new List<ModDictionaryEntry>();
         }
 
-        private int GetSourcePriority(ModDictionaryEntry entry) =>
-            _sourcePriority.TryGetValue(entry.SourceId, out var priority) ? priority : int.MaxValue;
+        private static int GetSourcePriority(
+            Dictionary<string, int> sourcePriority,
+            ModDictionaryEntry entry) =>
+            sourcePriority.TryGetValue(entry.SourceId, out var priority) ? priority : int.MaxValue;
 
-        private Dictionary<string, ModDictionaryEntry> LoadEntries()
+        private CacheSnapshot LoadEntries()
         {
             var results = new Dictionary<string, ModDictionaryEntry>(StringComparer.OrdinalIgnoreCase);
             var priority = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -167,11 +187,10 @@ namespace RimSharp.Shared.Services.Implementations
                 LoadFromJsonFile(jsonPath, results, Infrastructure.Mods.ModInfo.ModInfoSourceRegistry.CuratedSourceId);
             }
 
-            _sourcePriority = priority;
-            _packageIndex = BuildPackageIndex(results);
+            var packageIndex = BuildPackageIndex(results);
 
             _logger.LogDebug($"Loaded {results.Count} entries across ModInfo database sources.", nameof(ModDictionaryService));
-            return results;
+            return new CacheSnapshot(results, packageIndex, priority);
         }
 
         private void LoadSource(ModRuleSourceRecord source, Dictionary<string, ModDictionaryEntry> results)
@@ -413,48 +432,7 @@ namespace RimSharp.Shared.Services.Implementations
                     continue;
                 }
 
-                string packageId = string.Empty;
-                if (TryGetPropertyIgnoreCase(entryElement, "packageId", out var pkgElement) &&
-                    pkgElement.ValueKind == JsonValueKind.String)
-                {
-                    packageId = (pkgElement.GetString() ?? string.Empty).ToLowerInvariant();
-                }
-
-                string steamName = string.Empty;
-                if (TryGetPropertyIgnoreCase(entryElement, "steamName", out var steamNameElement) &&
-                    steamNameElement.ValueKind == JsonValueKind.String)
-                {
-                    steamName = steamNameElement.GetString() ?? string.Empty;
-                }
-
-                string aboutName = string.Empty;
-                if (TryGetPropertyIgnoreCase(entryElement, "name", out var nameElement) &&
-                    nameElement.ValueKind == JsonValueKind.String)
-                {
-                    aboutName = nameElement.GetString() ?? string.Empty;
-                }
-
-                var versions = ReadStringOrArrayToList(entryElement, "gameVersions");
-                string authors = ReadStringOrArrayJoined(entryElement, "authors");
-
-                bool published = true;
-                if (TryGetPropertyIgnoreCase(entryElement, "unpublished", out var unpublishedElement))
-                {
-                    if (unpublishedElement.ValueKind == JsonValueKind.True) published = false;
-                    else if (unpublishedElement.ValueKind == JsonValueKind.False) published = true;
-                }
-
-                var entry = new ModDictionaryEntry
-                {
-                    PackageId = packageId,
-                    SteamId = steamIdLower,
-                    SteamName = steamName,
-                    AboutName = aboutName,
-                    Versions = versions,
-                    Authors = authors,
-                    Published = published,
-                    SourceId = sourceId
-                };
+                var entry = ParseWorkshopEntry(entryElement, steamIdLower, sourceId);
 
                 if (!targetDictionary.ContainsKey(steamIdLower)) count++;
                 MergeEntry(targetDictionary, steamIdLower, entry);
@@ -462,11 +440,90 @@ namespace RimSharp.Shared.Services.Implementations
             return count;
         }
 
-        private static List<string> ReadStringOrArrayToList(JsonElement obj, string name)
+        /// <summary>
+        /// Reads every recognized field of a Steam Workshop DB entry in a single
+        /// pass over its JSON properties. Each field honors the first matching
+        /// property (case-insensitive), preserving the previous per-field lookup
+        /// behavior while avoiding six separate linear scans per entry.
+        /// </summary>
+        private static ModDictionaryEntry ParseWorkshopEntry(
+            JsonElement entryElement,
+            string steamIdLower,
+            string sourceId)
         {
-            var result = new List<string>();
-            if (!TryGetPropertyIgnoreCase(obj, name, out var value)) return result;
+            string packageId = string.Empty;
+            string steamName = string.Empty;
+            string aboutName = string.Empty;
+            var versions = new List<string>();
+            string authors = string.Empty;
+            bool published = true;
 
+            bool packageIdSeen = false;
+            bool steamNameSeen = false;
+            bool aboutNameSeen = false;
+            bool versionsSeen = false;
+            bool authorsSeen = false;
+            bool unpublishedSeen = false;
+
+            foreach (var prop in entryElement.EnumerateObject())
+            {
+                if (!packageIdSeen && string.Equals(prop.Name, "packageId", StringComparison.OrdinalIgnoreCase))
+                {
+                    packageIdSeen = true;
+                    if (prop.Value.ValueKind == JsonValueKind.String)
+                    {
+                        packageId = (prop.Value.GetString() ?? string.Empty).ToLowerInvariant();
+                    }
+                }
+                else if (!steamNameSeen && string.Equals(prop.Name, "steamName", StringComparison.OrdinalIgnoreCase))
+                {
+                    steamNameSeen = true;
+                    if (prop.Value.ValueKind == JsonValueKind.String)
+                    {
+                        steamName = prop.Value.GetString() ?? string.Empty;
+                    }
+                }
+                else if (!aboutNameSeen && string.Equals(prop.Name, "name", StringComparison.OrdinalIgnoreCase))
+                {
+                    aboutNameSeen = true;
+                    if (prop.Value.ValueKind == JsonValueKind.String)
+                    {
+                        aboutName = prop.Value.GetString() ?? string.Empty;
+                    }
+                }
+                else if (!versionsSeen && string.Equals(prop.Name, "gameVersions", StringComparison.OrdinalIgnoreCase))
+                {
+                    versionsSeen = true;
+                    ReadStringOrArrayToList(prop.Value, versions);
+                }
+                else if (!authorsSeen && string.Equals(prop.Name, "authors", StringComparison.OrdinalIgnoreCase))
+                {
+                    authorsSeen = true;
+                    authors = ReadStringOrArrayJoined(prop.Value);
+                }
+                else if (!unpublishedSeen && string.Equals(prop.Name, "unpublished", StringComparison.OrdinalIgnoreCase))
+                {
+                    unpublishedSeen = true;
+                    if (prop.Value.ValueKind == JsonValueKind.True) published = false;
+                    else if (prop.Value.ValueKind == JsonValueKind.False) published = true;
+                }
+            }
+
+            return new ModDictionaryEntry
+            {
+                PackageId = packageId,
+                SteamId = steamIdLower,
+                SteamName = steamName,
+                AboutName = aboutName,
+                Versions = versions,
+                Authors = authors,
+                Published = published,
+                SourceId = sourceId
+            };
+        }
+
+        private static void ReadStringOrArrayToList(JsonElement value, List<string> result)
+        {
             if (value.ValueKind == JsonValueKind.String)
             {
                 var s = value.GetString();
@@ -482,13 +539,10 @@ namespace RimSharp.Shared.Services.Implementations
                     }
                 }
             }
-            return result;
         }
 
-        private static string ReadStringOrArrayJoined(JsonElement obj, string name)
+        private static string ReadStringOrArrayJoined(JsonElement value)
         {
-            if (!TryGetPropertyIgnoreCase(obj, name, out var value)) return string.Empty;
-
             if (value.ValueKind == JsonValueKind.String)
             {
                 return value.GetString() ?? string.Empty;

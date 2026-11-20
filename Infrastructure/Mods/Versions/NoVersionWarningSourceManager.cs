@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using RimSharp.Core.Extensions;
 using RimSharp.Infrastructure.Data;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
@@ -20,6 +21,7 @@ namespace RimSharp.Infrastructure.Mods.Versions
         private readonly IModService? _modService;
         private readonly GameInstance? _gameInstance;
         private readonly ILoggerService _logger;
+        private readonly IModListManager? _modListManager;
 
         public NoVersionWarningSourceManager(
             NoVersionWarningSourceRegistry registry,
@@ -28,7 +30,8 @@ namespace RimSharp.Infrastructure.Mods.Versions
             IPathService pathService,
             ILoggerService logger,
             IModService? modService = null,
-            GameInstance? gameInstance = null)
+            GameInstance? gameInstance = null,
+            IModListManager? modListManager = null)
         {
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             _mlieVersionService = mlieVersionService ?? throw new ArgumentNullException(nameof(mlieVersionService));
@@ -37,6 +40,7 @@ namespace RimSharp.Infrastructure.Mods.Versions
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _modService = modService;
             _gameInstance = gameInstance;
+            _modListManager = modListManager;
         }
 
         public NoVersionWarningSourceRegistry Registry => _registry;
@@ -238,6 +242,16 @@ namespace RimSharp.Infrastructure.Mods.Versions
                 if (_modService != null)
                 {
                     await _modService.ReapplyRulesAsync().ConfigureAwait(false);
+
+                    // ReapplyRulesAsync marshals its ModItem mutations onto the
+                    // UI thread and awaits them. Refresh issue badges on that
+                    // same UI thread so version-mismatch counts/tooltips are not
+                    // stale after a version source was added/removed.
+                    if (_modListManager != null)
+                    {
+                        await ThreadHelper.RunOnUIThreadAsync(
+                            () => _modListManager.RefreshActiveModIssues()).ConfigureAwait(false);
+                    }
                 }
             }
             catch (Exception ex)

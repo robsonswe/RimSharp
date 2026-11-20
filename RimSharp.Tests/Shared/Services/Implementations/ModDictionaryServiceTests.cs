@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading.Tasks;
 using FluentAssertions;
 using NSubstitute;
 using RimSharp.Infrastructure.Configuration;
@@ -402,6 +403,83 @@ namespace RimSharp.Tests.Shared.Services.Implementations
 
             service.GetEntryByPackageId("shared.pkg")!.SteamId.Should().Be("222",
                 "the configured order puts steamdb first, so its candidate wins the tie");
+        }
+
+        [Fact]
+        public async Task GetAllEntries_ConcurrentCalls_AreSafeAndShareSingleCache()
+        {
+            WriteDbFile(@"{""mods"": { ""mod.a"": { ""123"": { ""name"": ""Mod A"", ""published"": true } } } }");
+
+            const int callCount = 16;
+            var tasks = Enumerable.Range(0, callCount)
+                .Select(_ => Task.Run(() => _service.GetAllEntries()))
+                .ToArray();
+
+            var results = await Task.WhenAll(tasks);
+
+            results.Should().OnlyContain(entries => ReferenceEquals(entries, results[0]),
+                "all concurrent callers should observe the single cached dictionary instance");
+            results[0].Should().ContainKey("123");
+            results[0]["123"].Name.Should().Be("Mod A");
+        }
+
+        [Fact]
+        public async Task ConcurrentInvalidateAndLookups_NeverThrow()
+        {
+            WriteDbFile(@"{""mods"": { ""mod.a"": { ""123"": { ""name"": ""Mod A"", ""published"": true } } } }");
+
+            // Bounded work plus the test framework's cancellation token so the
+            // test can never hang the suite.
+            var token = TestContext.Current.CancellationToken;
+            const int iterations = 1000;
+
+            var invalidator = Task.Run(() =>
+            {
+                for (int i = 0; i < iterations && !token.IsCancellationRequested; i++)
+                {
+                    _service.Invalidate();
+                }
+            }, token);
+
+            var readers = Enumerable.Range(0, 4).Select(_ => Task.Run(() =>
+            {
+                for (int i = 0; i < iterations && !token.IsCancellationRequested; i++)
+                {
+                    _service.GetAllEntries();
+                    _service.GetEntryByPackageId("mod.a");
+                    _service.GetAllEntriesByPackageId("mod.a");
+                    _service.GetEntryBySteamId("123");
+                }
+            }, token)).ToArray();
+
+            // Task.WhenAll surfaces any exception from any worker as a test failure.
+            await Task.WhenAll(readers.Append(invalidator));
+        }
+
+        [Fact]
+        public void GetAllEntries_SteamWorkshopDb_IgnoresUnknownAndMalformedProperties()
+        {
+            WriteSteamDbFile(@"{""database"": {
+                ""123"": {
+                    ""unknown"": { ""nested"": true },
+                    ""packageId"": ""mod.a"",
+                    ""steamName"": ""Title"",
+                    ""name"": ""About"",
+                    ""gameVersions"": [""1.5"", 7, ""1.6""],
+                    ""authors"": [""Alice"", null, ""Bob""],
+                    ""unpublished"": ""yes""
+                }
+            }}");
+            var service = CreateServiceWithRegistry();
+
+            var entry = service.GetAllEntries()["123"];
+
+            entry.PackageId.Should().Be("mod.a");
+            entry.SteamName.Should().Be("Title");
+            entry.AboutName.Should().Be("About");
+            entry.Versions.Should().Equal(new[] { "1.5", "1.6" }, "non-string array items are ignored");
+            entry.Authors.Should().Be("Alice, Bob", "non-string array items are ignored");
+            entry.Published.Should().BeTrue("a non-boolean 'unpublished' leaves the default true");
         }
     }
 }

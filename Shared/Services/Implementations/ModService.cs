@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using RimSharp.Core.Services;
+using RimSharp.Core.Extensions;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Services.Workshop;
 using RimSharp.Shared.Models;
@@ -212,6 +213,17 @@ namespace RimSharp.Shared.Services.Implementations
         /// </summary>
         private void ApplyExternalVersions(List<ModItem> mods, Dictionary<string, List<ExternalVersionInfo>> externalVersions)
         {
+            // Strip the PREVIOUS external-version contributions before doing
+            // anything else — including before the empty-data early return.
+            // When a NoVersionWarning source is removed/disabled the fresh set
+            // can be empty; without this strip its stale VersionSource.External
+            // entries would linger on the live mods until a full restart.
+            // Official (About.xml) and Custom entries are never touched.
+            foreach (var mod in mods)
+            {
+                mod.SupportedVersions.RemoveAll(v => v.Source == VersionSource.External);
+            }
+
             if (externalVersions == null || externalVersions.Count == 0)
             {
                 _logger.LogDebug("No external version data found or provided to apply.", nameof(ModService));
@@ -409,9 +421,17 @@ namespace RimSharp.Shared.Services.Implementations
         {
             _logger.LogInfo("Re-applying rule database changes to the loaded mods...", nameof(ModService));
 
-            await Task.Run(() =>
+            // Refresh the merged rules cache off-thread: this touches only the
+            // rules service's own cache, never the live ModItem collections.
+            await Task.Run(() => _rulesService.RefreshRules()).ConfigureAwait(false);
+
+            // The re-apply mutates live ModItem collections (LoadBefore,
+            // LoadAfter, IncompatibleWith, SupportedVersions, IsSupportedRW)
+            // that the UI / ModListManager may be enumerating. Marshal those
+            // mutations onto the UI thread and await them so callers can safely
+            // recalculate issue badges once this method returns.
+            await ThreadHelper.RunOnUIThreadAsync(() =>
             {
-                _rulesService.RefreshRules();
                 _rulesService.ApplyRulesToMods(_allMods);
                 _customService.ApplyCustomInfoToMods(_allMods);
 
@@ -436,11 +456,17 @@ namespace RimSharp.Shared.Services.Implementations
         {
             _logger.LogInfo("Re-applying synced external data to the loaded mods...", nameof(ModService));
 
-            var externalVersions = _mlieVersionService.GetExternalVersions();
-            ApplyExternalVersions(_allMods, externalVersions);
+            // Re-read the freshly synced external version data off-thread
+            // (cache refresh only), then mutate the live SupportedVersions
+            // collections on the UI thread. ApplyExternalVersions strips the
+            // previous VersionSource.External entries first, so versions whose
+            // source was removed/disabled do not linger.
+            var externalVersions = await Task.Run(() => _mlieVersionService.GetExternalVersions()).ConfigureAwait(false);
+            await ThreadHelper.RunOnUIThreadAsync(() => ApplyExternalVersions(_allMods, externalVersions)).ConfigureAwait(false);
 
             // Refreshes the rules cache, reapplies rules + custom info and
-            // recomputes IsSupportedRW on the same mod instances.
+            // recomputes IsSupportedRW on the same mod instances (mutations
+            // marshaled to the UI thread by ReapplyRulesAsync).
             await ReapplyRulesAsync().ConfigureAwait(false);
 
             _logger.LogInfo($"Synced data re-merge complete for {_allMods.Count} mods.", nameof(ModService));
@@ -1314,8 +1340,9 @@ namespace RimSharp.Shared.Services.Implementations
 
                 return mod;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError($"Failed to parse About.xml for mod '{folderName ?? "unknown"}' at '{aboutPath}': {ex.Message}", nameof(ModService));
                 return null;
             }
         }
