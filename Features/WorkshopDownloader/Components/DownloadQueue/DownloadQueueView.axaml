@@ -74,9 +74,9 @@
                  BorderThickness="1"
                  ScrollViewer.AllowAutoHide="False">
             <ListBox.Resources>
-                <SolidColorBrush x:Key="SystemControlHighlightListAccentLowBrush" Color="#3326a0da" />
-                <SolidColorBrush x:Key="SystemControlHighlightListAccentMediumBrush" Color="#4D26a0da" />
-                <SolidColorBrush x:Key="SystemControlHighlightListLowBrush" Color="#1A26a0da" />
+                <SolidColorBrush x:Key="SystemControlHighlightListAccentLowBrush" Color="{StaticResource ColorAccentBlueAlpha20}" />
+                <SolidColorBrush x:Key="SystemControlHighlightListAccentMediumBrush" Color="{StaticResource ColorAccentBlueAlpha30}" />
+                <SolidColorBrush x:Key="SystemControlHighlightListLowBrush" Color="{StaticResource ColorAccentBlueAlpha10}" />
             </ListBox.Resources>
             <ListBox.ItemContainerTheme>
                 <ControlTheme TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
@@ -89,13 +89,13 @@
             </ListBox.ItemContainerTheme>
             <ListBox.Styles>
                 <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-                    <Setter Property="Background" Value="#3326a0da" />
+                    <Setter Property="Background" Value="{DynamicResource BrushSelectionAccentLow}" />
                 </Style>
                 <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                    <Setter Property="Background" Value="#4D26a0da" />
+                    <Setter Property="Background" Value="{DynamicResource BrushSelectionAccentMedium}" />
                 </Style>
                 <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                    <Setter Property="Background" Value="#1A26a0da" />
+                    <Setter Property="Background" Value="{DynamicResource BrushSelectionAccentSubtle}" />
                 </Style>
             </ListBox.Styles>
             <ListBox.ItemTemplate>
@@ -172,16 +172,16 @@
 
                         <!-- Row 7: Status Badges -->
                         <StackPanel Grid.Row="7" Orientation="Horizontal" Spacing="5" Margin="0,4,0,0">
-                            <Border Background="#20008000" BorderBrush="ForestGreen" BorderThickness="1" CornerRadius="3" Padding="4,1" IsVisible="{Binding IsInstalled}">
-                                <TextBlock Text="INSTALLED" FontSize="9" FontWeight="Bold" Foreground="ForestGreen"/>
+                            <Border Background="{DynamicResource BrushStatusInstalledBg}" BorderBrush="{DynamicResource BrushStatusInstalledFg}" BorderThickness="1" CornerRadius="3" Padding="4,1" IsVisible="{Binding IsInstalled}">
+                                <TextBlock Text="INSTALLED" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushStatusInstalledFg}"/>
                             </Border>
 
-                            <Border Background="#201E90FF" BorderBrush="DodgerBlue" BorderThickness="1" CornerRadius="3" Padding="4,1" IsVisible="{Binding IsActive}">
-                                <TextBlock Text="ACTIVE" FontSize="9" FontWeight="Bold" Foreground="DodgerBlue"/>
+                            <Border Background="{DynamicResource BrushStatusActiveBg}" BorderBrush="{DynamicResource BrushStatusActiveFg}" BorderThickness="1" CornerRadius="3" Padding="4,1" IsVisible="{Binding IsActive}">
+                                <TextBlock Text="ACTIVE" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushStatusActiveFg}"/>
                             </Border>
 
-                            <Border Background="#20DAA520" BorderBrush="Goldenrod" BorderThickness="1" CornerRadius="3" Padding="4,1" IsVisible="{Binding IsFavorite}">
-                                <TextBlock Text="FAVORITE" FontSize="9" FontWeight="Bold" Foreground="Goldenrod"/>
+                            <Border Background="{DynamicResource BrushStatusFavoriteBg}" BorderBrush="{DynamicResource BrushStatusFavoriteFg}" BorderThickness="1" CornerRadius="3" Padding="4,1" IsVisible="{Binding IsFavorite}">
+                                <TextBlock Text="FAVORITE" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushStatusFavoriteFg}"/>
                             </Border>
                         </StackPanel>
                     </Grid>

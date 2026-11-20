@@ -1,598 +1,702 @@
 <dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
-        xmlns:local="clr-namespace:RimSharp.AppDir.Dialogs"
-        xmlns:models="clr-namespace:RimSharp.Shared.Models"
-        xmlns:i="https://github.com/projektanker/icons.avalonia"
-        x:Class="RimSharp.AppDir.Dialogs.SettingsDialogView"
-        mc:Ignorable="d"
-        x:DataType="local:SettingsDialogViewModel"
-        x:CompileBindings="True"
-        Title="{Binding Title}"
-        SizeToContent="Height"
-        Width="680"
-        CanResize="False"
-        WindowStartupLocation="CenterOwner">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+                    xmlns:local="clr-namespace:RimSharp.AppDir.Dialogs"
+                    xmlns:models="clr-namespace:RimSharp.Shared.Models"
+                    xmlns:i="https://github.com/projektanker/icons.avalonia"
+                    x:Class="RimSharp.AppDir.Dialogs.SettingsDialogView"
+                    mc:Ignorable="d"
+                    x:DataType="local:SettingsDialogViewModel"
+                    x:CompileBindings="True"
+                    Classes="dialog-flush"
+                    Title="{Binding Title}"
+                    SizeToContent="Height"
+                    Width="720"
+                    CanResize="False"
+                    WindowStartupLocation="CenterOwner">
 
     <dialogs:BaseDialog.MainContent>
-        <Border Classes="panel">
-            <TabControl Classes="tabs" Margin="12">
+        <TabControl Classes="tabs-rail" Height="472">
 
-                <!-- TAB 1: GAME -->
-                <TabItem Header="Game">
-                    <Border Classes="panel-subtle">
-                        <StackPanel Margin="15" Spacing="18">
+            <!-- TAB 1: GAME -->
+            <TabItem Header="Game" Classes="rail-group" Tag="GENERAL">
+                <StackPanel Spacing="14">
+                    <Border BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="0,0,0,8">
+                        <TextBlock Text="Game &amp; Paths" Classes="pane-title"/>
+                    </Border>
 
-                            <!-- Distribution Selection -->
+                    <!-- Distribution Selection -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Game Distribution" Classes="field-label"/>
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <ComboBox SelectedValue="{Binding SelectedDistribution, Mode=TwoWay}"
+                                      SelectedValueBinding="{Binding Tag, DataType=ComboBoxItem}"
+                                      Width="210"
+                                      Classes="select">
+                                <ComboBoxItem Tag="{x:Static models:GameDistribution.NonSteam}" Content="Non-Steam"/>
+                                <ComboBoxItem Tag="{x:Static models:GameDistribution.Steam}"
+                                              Content="Steam"
+                                              ToolTip.Tip="Not auto-detected. You can still select Steam, set the Game Directory manually, and it will be validated when you Save."
+                                              ToolTip.ShowOnDisabled="True"/>
+                            </ComboBox>
+                            <TextBlock Text="Steam installations validate automatically on Save."
+                                       Classes="field-hint" VerticalAlignment="Center" Opacity="0.85"/>
+                        </StackPanel>
+
+                        <Border Classes="callout-warning" IsVisible="{Binding IsManualSteamClaim}" Margin="0,4,0,0">
                             <StackPanel Spacing="6">
-                                <TextBlock Text="Game Distribution" FontWeight="Bold" VerticalAlignment="Center"
-                                           Foreground="{DynamicResource BrushTextStrong}"/>
-
-                                <ComboBox SelectedValue="{Binding SelectedDistribution, Mode=TwoWay}"
-                                          SelectedValueBinding="{Binding Tag, DataType=ComboBoxItem}"
-                                          Width="220"
-                                          VerticalAlignment="Center"
-                                          Classes="select">
-                                    <ComboBoxItem Tag="{x:Static models:GameDistribution.NonSteam}" Content="Non-Steam"/>
-                                    <ComboBoxItem Tag="{x:Static models:GameDistribution.Steam}"
-                                                Content="Steam"
-                                                ToolTip.Tip="Not auto-detected. You can still select Steam, set the Game Directory manually, and it will be validated when you Save."
-                                                ToolTip.ShowOnDisabled="True"/>
-                                </ComboBox>
-
-                                <!-- Manual Steam confirmation mode: no detected candidate -->
-                                <StackPanel Spacing="4" IsVisible="{Binding IsManualSteamClaim}">
-                                    <TextBlock Text="{Binding ManualSteamClaimHint}"
-                                               TextWrapping="Wrap" FontSize="11"
-                                               Foreground="{DynamicResource BrushTextMuted}"/>
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Button Content="Check now"
-                                                Command="{Binding ValidateSteamClaimCommand}"
-                                                Classes="btn" Padding="10,4"/>
-                                    </StackPanel>
-                                    <TextBlock Text="{Binding ManualSteamClaimStatus}"
-                                               IsVisible="{Binding ManualSteamClaimStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                               TextWrapping="Wrap" FontSize="11"
-                                               Foreground="{DynamicResource BrushTextStrong}"/>
+                                <TextBlock Text="{Binding ManualSteamClaimHint}" Classes="field-hint"/>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button Content="Check now"
+                                            Command="{Binding ValidateSteamClaimCommand}"
+                                            Classes="btn btn-sm"/>
                                 </StackPanel>
+                                <TextBlock Text="{Binding ManualSteamClaimStatus}"
+                                           IsVisible="{Binding ManualSteamClaimStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                           Classes="field-hint" FontWeight="SemiBold"/>
                             </StackPanel>
+                        </Border>
+                    </StackPanel>
 
-                            <!-- Game Directory -->
-                            <StackPanel Spacing="6">
-                                <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="6">
-                                    <TextBlock Grid.Column="0" Text="Game Directory" FontWeight="Bold" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource BrushTextStrong}"/>
-                                    <Button Grid.Column="1" Content="Browse..."
-                                            Command="{Binding BrowseGamePathCommand}"
-                                            Classes="btn" Padding="10,4"/>
-                                    <Button Grid.Column="2" Content="Open Folder"
-                                            Command="{Binding OpenGameFolderCommand}"
-                                            Classes="btn" Padding="10,4"/>
-                                </Grid>
-                                <TextBox Text="{Binding GamePath, Mode=TwoWay}"
-                                         Classes="input"
-                                         TextWrapping="Wrap"
-                                         MinHeight="30"
-                                         PlaceholderText="Folder where RimWorld is installed"/>
-                            </StackPanel>
+                    <!-- Game Directory -->
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Game Directory" Classes="field-label"/>
+                        <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="6">
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding GamePath, Mode=TwoWay}"
+                                     Classes="input"
+                                     MinHeight="30"
+                                     PlaceholderText="Folder where RimWorld is installed"/>
+                            <Button Grid.Column="1" Content="Browse..."
+                                    Command="{Binding BrowseGamePathCommand}"
+                                    Classes="btn" Height="30"/>
+                            <Button Grid.Column="2"
+                                    Command="{Binding OpenGameFolderCommand}"
+                                    Classes="btn-secondary" Height="30"
+                                    ToolTip.Tip="Open in file manager">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <i:Icon Value="fa-folder-open" FontSize="12"/>
+                                    <TextBlock Text="Open" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
 
-                            <!-- Config Directory -->
-                            <StackPanel Spacing="6">
-                                <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="6">
-                                    <TextBlock Grid.Column="0" Text="Config Directory" FontWeight="Bold" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource BrushTextStrong}"/>
-                                    <Button Grid.Column="1" Content="Browse..."
-                                            Command="{Binding BrowseConfigPathCommand}"
-                                            Classes="btn" Padding="10,4"/>
-                                    <Button Grid.Column="2" Content="Open Folder"
-                                            Command="{Binding OpenConfigFolderCommand}"
-                                            Classes="btn" Padding="10,4"/>
-                                </Grid>
-                                <TextBox Text="{Binding ConfigPath, Mode=TwoWay}"
-                                         Classes="input"
-                                         TextWrapping="Wrap"
-                                         MinHeight="30"
-                                         PlaceholderText="Folder with RimWorld's config files"/>
-                            </StackPanel>
+                    <!-- Config Directory -->
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Config Directory" Classes="field-label"/>
+                        <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="6">
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding ConfigPath, Mode=TwoWay}"
+                                     Classes="input"
+                                     MinHeight="30"
+                                     PlaceholderText="Folder with RimWorld's config files"/>
+                            <Button Grid.Column="1" Content="Browse..."
+                                    Command="{Binding BrowseConfigPathCommand}"
+                                    Classes="btn" Height="30"/>
+                            <Button Grid.Column="2"
+                                    Command="{Binding OpenConfigFolderCommand}"
+                                    Classes="btn-secondary" Height="30"
+                                    ToolTip.Tip="Open in file manager">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <i:Icon Value="fa-folder-open" FontSize="12"/>
+                                    <TextBlock Text="Open" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
 
-                            <!-- Mods Directory Override -->
-                            <StackPanel Spacing="6">
-                                <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="6">
-                                    <TextBlock Grid.Column="0" Text="Mods Directory" FontWeight="Bold" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource BrushTextStrong}"/>
-                                    <Button Grid.Column="1" Content="Browse..."
-                                            Command="{Binding BrowseModsFolderCommand}"
-                                            Classes="btn" Padding="10,4"
-                                            IsEnabled="{Binding IsGamePathSet, Mode=OneWay}"/>
-                                    <Button Grid.Column="2" Content="Open Folder"
-                                            Command="{Binding OpenModsFolderCommand}"
-                                            Classes="btn" Padding="10,4"
-                                            IsEnabled="{Binding IsGamePathSet, Mode=OneWay}"/>
-                                </Grid>
-                                <TextBox Text="{Binding ModsFolderPath, Mode=TwoWay}"
-                                         Classes="input"
-                                         TextWrapping="Wrap"
-                                         MinHeight="30"
-                                         PlaceholderText="Set the game path first; defaults to game\Mods"
-                                         IsEnabled="{Binding IsGamePathSet, Mode=OneWay}"/>
-                            </StackPanel>
+                    <!-- Mods Directory -->
+                    <StackPanel Spacing="5">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <TextBlock Text="Mods Directory" Classes="field-label" VerticalAlignment="Center"/>
+                            <Border Grid.Column="1" Classes="pill-badge muted">
+                                <TextBlock Text="Auto-derived from Game Directory" FontSize="10.5"
+                                           Foreground="{DynamicResource BrushTextPrimary}"/>
+                            </Border>
+                        </Grid>
+                        <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="6">
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding ModsFolderPath, Mode=TwoWay}"
+                                     Classes="input"
+                                     MinHeight="30"
+                                     PlaceholderText="Set the game path first; defaults to game\Mods"
+                                     IsEnabled="{Binding IsGamePathSet, Mode=OneWay}"/>
+                            <Button Grid.Column="1" Content="Browse..."
+                                    Command="{Binding BrowseModsFolderCommand}"
+                                    Classes="btn" Height="30"
+                                    IsEnabled="{Binding IsGamePathSet, Mode=OneWay}"/>
+                            <Button Grid.Column="2"
+                                    Command="{Binding OpenModsFolderCommand}"
+                                    Classes="btn-secondary" Height="30"
+                                    IsEnabled="{Binding IsGamePathSet, Mode=OneWay}"
+                                    ToolTip.Tip="Open in file manager">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <i:Icon Value="fa-folder-open" FontSize="12"/>
+                                    <TextBlock Text="Open" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
 
-                            <TextBlock TextWrapping="Wrap" FontSize="12"
-                                       Foreground="{DynamicResource BrushTextStrong}"
-                                       Text="Mod and config folders resolve from these directories. Restart is not required, but already-loaded lists keep the previous paths."/>
-                        </StackPanel>
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6" Margin="0,4,0,0" Opacity="0.85">
+                        <i:Icon Grid.Column="0" Value="fa-circle-info" FontSize="12" VerticalAlignment="Top" Margin="0,2,0,0"
+                                Foreground="{DynamicResource BrushTextPrimary}"/>
+                        <TextBlock Grid.Column="1" Classes="field-hint"
+                                   Text="Mod and config folders resolve from these directories. Restart is not required, but already-loaded lists keep the previous paths."/>
+                    </Grid>
+                </StackPanel>
+            </TabItem>
+
+            <!-- TAB 2: UPDATES -->
+            <TabItem Header="Updates">
+                <StackPanel Spacing="14">
+                    <Border BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="0,0,0,8">
+                        <TextBlock Text="Application Updates" Classes="pane-title"/>
                     </Border>
-                </TabItem>
 
-                <!-- TAB 2: UPDATES -->
-                <TabItem Header="Updates">
-                    <Border Classes="panel-subtle">
-                        <StackPanel Margin="15" Spacing="18">
-                            <StackPanel Spacing="6">
-                                <Grid ColumnDefinitions="*, Auto" ColumnSpacing="6">
-                                    <TextBlock Grid.Column="0" Text="Update Channel" FontWeight="Bold" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource BrushTextStrong}"/>
-                                    <ComboBox Grid.Column="1"
-                                              SelectedValue="{Binding UpdateChannel, Mode=TwoWay}"
-                                              SelectedValueBinding="{Binding Tag, DataType=ComboBoxItem}"
-                                              Width="140"
-                                              VerticalAlignment="Center"
-                                              Classes="select">
-                                        <ComboBoxItem Tag="stable" Content="Stable"/>
-                                        <ComboBoxItem Tag="beta" Content="Beta"/>
-                                        <ComboBoxItem Tag="alpha" Content="Alpha"/>
-                                    </ComboBox>
-                                </Grid>
-
-                                <TextBlock TextWrapping="Wrap" FontSize="12"
-                                           Foreground="{DynamicResource BrushTextStrong}"
-                                           Text="Alpha: Get the latest experimental features as soon as they're available. May contain bugs or instability."/>
-                                <TextBlock TextWrapping="Wrap" FontSize="12"
-                                           Foreground="{DynamicResource BrushTextStrong}"
-                                           Text="Beta: Get early access to upcoming features with improved stability. May still contain bugs."/>
-                                <TextBlock TextWrapping="Wrap" FontSize="12"
-                                           Foreground="{DynamicResource BrushTextStrong}"
-                                           Text="Stable: Receive only fully tested and stable releases. Recommended for everyday use."/>
+                    <Border Classes="surface-box">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <StackPanel Spacing="2" VerticalAlignment="Center">
+                                <TextBlock Text="Update Channel" Classes="field-label"/>
+                                <TextBlock Text="Controls which RimSharp releases are offered." Classes="field-hint"/>
                             </StackPanel>
-                        </StackPanel>
+                            <ComboBox Grid.Column="1"
+                                      SelectedValue="{Binding UpdateChannel, Mode=TwoWay}"
+                                      SelectedValueBinding="{Binding Tag, DataType=ComboBoxItem}"
+                                      Width="150"
+                                      VerticalAlignment="Center"
+                                      Classes="select">
+                                <ComboBoxItem Tag="stable" Content="Stable"/>
+                                <ComboBoxItem Tag="beta" Content="Beta"/>
+                                <ComboBoxItem Tag="alpha" Content="Alpha"/>
+                            </ComboBox>
+                        </Grid>
                     </Border>
-                </TabItem>
 
-                <!-- TAB 3: AI PROVIDERS -->
-                <TabItem Header="AI Providers" IsVisible="{Binding ShowAiProviders}">
-                    <Border Classes="panel-subtle">
-                        <StackPanel Margin="15" Spacing="14">
+                    <StackPanel Spacing="10">
+                        <Border Classes="surface-box">
+                            <StackPanel Spacing="4">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="Stable" Classes="field-label"/>
+                                    <Border Classes="pill-badge success">
+                                        <TextBlock Text="Recommended" FontSize="10.5" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource BrushTextSuccess}"/>
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock Classes="field-hint"
+                                           Text="Receive only fully tested and stable releases. Recommended for everyday use."/>
+                            </StackPanel>
+                        </Border>
 
-                            <TextBlock TextWrapping="Wrap" FontSize="12"
-                                       Foreground="{DynamicResource BrushTextStrong}"
-                                       Text="Configure the API key and model used by each AI provider. Saved keys stay local to config.cfg."/>
+                        <Border Classes="surface-box">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Beta" Classes="field-label"/>
+                                <TextBlock Classes="field-hint"
+                                           Text="Get early access to upcoming features with improved stability. May still contain bugs."/>
+                            </StackPanel>
+                        </Border>
 
-                            <ItemsControl ItemsSource="{Binding Providers}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="local:AiProviderSettingsRow">
-                                        <Border BorderBrush="{DynamicResource BrushBorderDefault}"
-                                                BorderThickness="1"
-                                                CornerRadius="4"
-                                                Padding="12,10">
-                                            <StackPanel Spacing="10">
+                        <Border Classes="surface-box">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Alpha" Classes="field-label"/>
+                                <TextBlock Classes="field-hint"
+                                           Text="Get the latest experimental features as soon as they're available. May contain bugs or instability."/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
 
-                                                <!-- Provider header -->
-                                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                                    <Ellipse Width="8" Height="8" VerticalAlignment="Center"
-                                                             Classes.configured="{Binding IsConfigured}">
-                                                        <Ellipse.Styles>
-                                                            <Style Selector="Ellipse">
-                                                                <Setter Property="Fill" Value="{DynamicResource BrushBgAccent}"/>
-                                                            </Style>
-                                                            <Style Selector="Ellipse.configured">
-                                                                <Setter Property="Fill" Value="{DynamicResource BrushBgSuccess}"/>
-                                                            </Style>
-                                                        </Ellipse.Styles>
-                                                    </Ellipse>
-                                                    <TextBlock Text="{Binding DisplayName}" FontWeight="Bold"
-                                                               FontSize="14"
-                                                               Foreground="{DynamicResource BrushTextStrong}"/>
-                                                    <TextBlock Text="configured" FontSize="11" FontStyle="Italic"
-                                                               VerticalAlignment="Center"
-                                                               IsVisible="{Binding IsConfigured}"
-                                                               Foreground="{DynamicResource BrushTextSuccess}"/>
-                                                    <TextBlock Text="not configured" FontSize="11" FontStyle="Italic"
-                                                               VerticalAlignment="Center"
-                                                               IsVisible="{Binding !IsConfigured}"
-                                                               Foreground="{DynamicResource BrushTextStrong}"/>
-                                                </StackPanel>
+            <!-- TAB 3: AI PROVIDERS -->
+            <TabItem Header="AI Providers" IsVisible="{Binding ShowAiProviders}">
+                <StackPanel Spacing="14">
+                    <Border BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="0,0,0,8">
+                        <TextBlock Text="AI Providers" Classes="pane-title"/>
+                    </Border>
 
-                                                <!-- API Key -->
-                                                <StackPanel Spacing="4">
-                                                    <TextBlock Text="API Key" FontWeight="SemiBold"
-                                                               Foreground="{DynamicResource BrushTextStrong}"/>
-                                                    <TextBox Text="{Binding ApiKey, Mode=TwoWay}"
-                                                             Classes="input"
-                                                             PasswordChar="●"
-                                                             PlaceholderText="sk-or-v1-..."/>
-                                                </StackPanel>
+                    <TextBlock Classes="field-hint"
+                               Text="Configure the API key and model used by each AI provider. Saved keys stay local to config.cfg."/>
 
-                                                <!-- Model -->
-                                                <StackPanel Spacing="4">
-                                                    <TextBlock Text="Model" FontWeight="SemiBold"
-                                                               Foreground="{DynamicResource BrushTextStrong}"/>
-                                                    <TextBox Text="{Binding Model, Mode=TwoWay}"
-                                                             Classes="input"
-                                                             PlaceholderText="e.g. openrouter/free"/>
-                                                </StackPanel>
+                    <ItemsControl ItemsSource="{Binding Providers}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="local:AiProviderSettingsRow">
+                                <Border Classes="surface-box" Margin="0,0,0,10">
+                                    <StackPanel Spacing="10">
+                                        <Grid ColumnDefinitions="*, Auto">
+                                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                <Ellipse Width="8" Height="8" VerticalAlignment="Center"
+                                                         Classes.configured="{Binding IsConfigured}">
+                                                    <Ellipse.Styles>
+                                                        <Style Selector="Ellipse">
+                                                            <Setter Property="Fill" Value="{DynamicResource BrushBgAccent}"/>
+                                                        </Style>
+                                                        <Style Selector="Ellipse.configured">
+                                                            <Setter Property="Fill" Value="{DynamicResource BrushBgSuccess}"/>
+                                                        </Style>
+                                                    </Ellipse.Styles>
+                                                </Ellipse>
+                                                <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" FontSize="14"
+                                                           Foreground="{DynamicResource BrushTextBrown950}"/>
                                             </StackPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </Border>
-                </TabItem>
+
+                                            <Border Grid.Column="1" Classes="pill-badge success" IsVisible="{Binding IsConfigured}">
+                                                <TextBlock Text="configured" FontSize="10.5" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource BrushTextSuccess}"/>
+                                            </Border>
+                                            <Border Grid.Column="1" Classes="pill-badge muted" IsVisible="{Binding !IsConfigured}">
+                                                <TextBlock Text="not configured" FontSize="10.5" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource BrushTextPrimary}"/>
+                                            </Border>
+                                        </Grid>
+
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="API Key" Classes="field-label"/>
+                                            <TextBox Text="{Binding ApiKey, Mode=TwoWay}"
+                                                     Classes="input-password"
+                                                     FontFamily="{DynamicResource RimSharpMonoFontFamily}"
+                                                     PasswordChar="●"
+                                                     PlaceholderText="sk-or-v1-..."/>
+                                        </StackPanel>
+
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="Model" Classes="field-label"/>
+                                            <TextBox Text="{Binding Model, Mode=TwoWay}"
+                                                     Classes="input"
+                                                     MinHeight="30"
+                                                     FontFamily="{DynamicResource RimSharpMonoFontFamily}"
+                                                     PlaceholderText="e.g. openrouter/free"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </TabItem>
 
             <!-- TAB 4: RULES -->
-                <TabItem Header="Rules">
-                    <Border Classes="panel-subtle">
-                        <StackPanel Margin="15" Spacing="10">
+            <TabItem Classes="rail-group" Tag="DATABASES">
+                <TabItem.Header>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="Rules" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{Binding RuleSources.Count}"
+                                   FontSize="10.5" Opacity="0.75" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    </Grid>
+                </TabItem.Header>
 
-                            <TextBlock TextWrapping="Wrap" FontSize="11"
-                                       Foreground="{DynamicResource BrushTextMuted}"
-                                       Text="Sources are merged in priority order — first source with a rule wins. Order rules from every source are combined. Changes apply immediately."/>
-
-                            <ItemsControl ItemsSource="{Binding RuleSources}" x:CompileBindings="False">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="local:RuleSourceRowViewModel">
-                                        <Border BorderBrush="{DynamicResource BrushBorderDefault}"
-                                                BorderThickness="1" CornerRadius="4"
-                                                Padding="10,8" Margin="0,0,0,6">
-                                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8">
-                                                <!-- Row 1: name -->
-                                                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13"
-                                                               TextTrimming="CharacterEllipsis"
-                                                               Foreground="{DynamicResource BrushTextStrong}"/>
-                                                    <TextBlock Text="{Binding LockedBadge, StringFormat='({0})'}"
-                                                               FontSize="11" FontStyle="Italic" VerticalAlignment="Center"
-                                                               IsVisible="{Binding Locked}"
-                                                               Foreground="{DynamicResource BrushTextMuted}"/>
-                                                </StackPanel>
-                                                <!-- Row 2: actions -->
-                                                <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Spacing="4" Margin="0,2,0,0">
-                                                    <Button Content="Disable" Command="{Binding ToggleEnabledCommand}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding Enabled}"
-                                                            ToolTip.Tip="Disable this source"/>
-                                                    <Button Content="Enable" Command="{Binding ToggleEnabledCommand}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding !Enabled}"
-                                                            ToolTip.Tip="Enable this source"/>
-                                                    <Button Content="Edit" Command="{Binding EditLocationCommand}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding !Locked}"
-                                                            ToolTip.Tip="Edit name and URL"/>
-                                                    <Button Content="Remove"
-                                                            Command="{Binding DataContext.RemoveRuleSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                            CommandParameter="{Binding}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding !Locked}"
-                                                            ToolTip.Tip="Remove this source"/>
-                                                </StackPanel>
-                                                <!-- Row 3: subtitle -->
-                                                <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Spacing="10">
-                                                    <TextBlock Text="{Binding Id}" FontSize="10"
-                                                               Foreground="{DynamicResource BrushTextMuted}"/>
-                                                    <TextBlock Text="{Binding RulesAsOf, StringFormat='· as of {0}'}"
-                                                               FontSize="10" Foreground="{DynamicResource BrushTextMuted}"
-                                                               IsVisible="{Binding RulesAsOf, Converter={StaticResource StringIsNotNullOrEmptyConverter}}"/>
-                                                </StackPanel>
-                                                <!-- Reorder -->
-                                                <Button Grid.Row="0" Grid.Column="1" Content="↑"
-                                                        Command="{Binding DataContext.MoveRuleSourceUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}"
-                                                        Classes="btn" Padding="0,0" Width="20" MinWidth="0" Height="20" MinHeight="0"
-                                                        VerticalAlignment="Center"
-                                                        ToolTip.Tip="Move up"/>
-                                                <Button Grid.Row="2" Grid.Column="1" Content="↓"
-                                                        Command="{Binding DataContext.MoveRuleSourceDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}"
-                                                        Classes="btn" Padding="0,0" Width="20" MinWidth="0" Height="20" MinHeight="0"
-                                                        VerticalAlignment="Center"
-                                                        ToolTip.Tip="Move down"/>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <Button Content="Add remote" Command="{Binding AddRemoteRuleSourceCommand}"
-                                        Classes="btn" Padding="10,4"/>
-                                <Button Content="Reset to defaults" Command="{Binding ResetRuleSourcesCommand}"
-                                        Classes="btn" Padding="10,4"/>
-                            </StackPanel>
-
-                            <TextBlock Text="{Binding RuleSourcesStatus}" TextWrapping="Wrap" FontSize="11"
-                                       Foreground="{DynamicResource BrushTextMuted}"/>
-                        </StackPanel>
+                <StackPanel Spacing="12">
+                    <Border BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="0,0,0,8">
+                        <TextBlock Text="Rule Databases" Classes="pane-title"/>
                     </Border>
-                </TabItem>
 
-                <!-- TAB 5: MOD INFO -->
-                <TabItem Header="Mod Info">
-                    <Border Classes="panel-subtle">
-                        <StackPanel Margin="15" Spacing="10">
+                    <TextBlock Classes="field-hint"
+                               Text="Sources are merged in priority order — first source with a rule wins. Order rules from every source are combined. Changes apply immediately."/>
 
-                            <TextBlock TextWrapping="Wrap" FontSize="11"
-                                       Foreground="{DynamicResource BrushTextMuted}"
-                                       Text="Sources are checked in priority order — first source with info for a mod wins. Changes apply immediately."/>
+                    <ItemsControl ItemsSource="{Binding RuleSources}" x:CompileBindings="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="local:RuleSourceRowViewModel">
+                                <Border Classes="card" Classes.disabled="{Binding !Enabled}" Margin="0,0,0,7">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Foreground="{DynamicResource BrushTextBrown950}"/>
+                                                <Border Classes="pill-badge muted" IsVisible="{Binding IsCurated}">
+                                                    <TextBlock Text="{Binding LockedBadge}" FontSize="10"
+                                                               Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                </Border>
+                                                <Border Classes="pill-badge mod" IsVisible="{Binding IsMod}">
+                                                    <TextBlock Text="{Binding LockedBadge}" FontSize="10"
+                                                               Foreground="{DynamicResource BrushTextBadgeMod}"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{Binding Id}" Classes="mono-sub"/>
+                                                <TextBlock Text="{Binding RulesAsOf, StringFormat='· as of {0}'}" Classes="mono-sub"
+                                                           IsVisible="{Binding RulesAsOf, Converter={StaticResource StringIsNotNullOrEmptyConverter}}"/>
+                                            </StackPanel>
+                                        </StackPanel>
 
-                            <ItemsControl ItemsSource="{Binding ModInfoSources}" x:CompileBindings="False">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="local:RuleSourceRowViewModel">
-                                        <Border BorderBrush="{DynamicResource BrushBorderDefault}"
-                                                BorderThickness="1" CornerRadius="4"
-                                                Padding="10,8" Margin="0,0,0,6">
-                                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8">
-                                                <!-- Row 1: name -->
-                                                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13"
-                                                               TextTrimming="CharacterEllipsis"
-                                                               Foreground="{DynamicResource BrushTextStrong}"/>
-                                                    <TextBlock Text="{Binding LockedBadge, StringFormat='({0})'}"
-                                                               FontSize="11" FontStyle="Italic" VerticalAlignment="Center"
-                                                               IsVisible="{Binding Locked}"
-                                                               Foreground="{DynamicResource BrushTextMuted}"/>
-                                                </StackPanel>
-                                                <!-- Row 2: actions -->
-                                                <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Spacing="4" Margin="0,2,0,0">
-                                                    <Button Content="Disable" Command="{Binding ToggleEnabledCommand}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding Enabled}"
-                                                            ToolTip.Tip="Disable this source"/>
-                                                    <Button Content="Enable" Command="{Binding ToggleEnabledCommand}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding !Enabled}"
-                                                            ToolTip.Tip="Enable this source"/>
-                                                    <Button Content="Edit" Command="{Binding EditLocationCommand}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding !Locked}"
-                                                            ToolTip.Tip="Edit name and URL"/>
-                                                    <Button Content="Remove"
-                                                            Command="{Binding DataContext.RemoveModInfoSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                            <Button Content="Disable" Command="{Binding ToggleEnabledCommand}"
+                                                    Classes="btn-secondary btn-sm" IsVisible="{Binding Enabled}"
+                                                    ToolTip.Tip="Disable this source"/>
+                                            <Button Content="Enable" Command="{Binding ToggleEnabledCommand}"
+                                                    Classes="btn-secondary btn-sm" IsVisible="{Binding !Enabled}"
+                                                    ToolTip.Tip="Enable this source"/>
+                                            <Button Command="{Binding EditLocationCommand}"
+                                                    Classes="btn-secondary btn-sm btn-icon" IsVisible="{Binding !Locked}"
+                                                    ToolTip.Tip="Edit name and URL">
+                                                <i:Icon Value="fa-pen" FontSize="11"/>
+                                            </Button>
+                                            <Button Command="{Binding DataContext.RemoveRuleSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    Classes="btn-danger-ghost btn-sm btn-icon" IsVisible="{Binding !Locked}"
+                                                    ToolTip.Tip="Remove this source">
+                                                <i:Icon Value="fa-trash" FontSize="11"/>
+                                            </Button>
+                                            <Border Classes="stepper" Margin="4,0,0,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Button Command="{Binding DataContext.MoveRuleSourceUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                             CommandParameter="{Binding}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding !Locked}"
-                                                            ToolTip.Tip="Remove this source"/>
-                                                </StackPanel>
-                                                <!-- Row 3: subtitle -->
-                                                <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Spacing="10">
-                                                    <TextBlock Text="{Binding Id}" FontSize="10"
-                                                               Foreground="{DynamicResource BrushTextMuted}"/>
-                                                    <TextBlock Text="{Binding RulesAsOf, StringFormat='· as of {0}'}"
-                                                               FontSize="10" Foreground="{DynamicResource BrushTextMuted}"
-                                                               IsVisible="{Binding RulesAsOf, Converter={StaticResource StringIsNotNullOrEmptyConverter}}"/>
-                                                </StackPanel>
-                                                <!-- Reorder -->
-                                                <Button Grid.Row="0" Grid.Column="1" Content="↑"
-                                                        Command="{Binding DataContext.MoveModInfoSourceUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}"
-                                                        Classes="btn" Padding="0,0" Width="20" MinWidth="0" Height="20" MinHeight="0"
-                                                        VerticalAlignment="Center"
-                                                        ToolTip.Tip="Move up"/>
-                                                <Button Grid.Row="2" Grid.Column="1" Content="↓"
-                                                        Command="{Binding DataContext.MoveModInfoSourceDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}"
-                                                        Classes="btn" Padding="0,0" Width="20" MinWidth="0" Height="20" MinHeight="0"
-                                                        VerticalAlignment="Center"
-                                                        ToolTip.Tip="Move down"/>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <Button Content="Add remote" Command="{Binding AddRemoteModInfoSourceCommand}"
-                                        Classes="btn" Padding="10,4"/>
-                                <Button Content="Reset to defaults" Command="{Binding ResetModInfoSourcesCommand}"
-                                        Classes="btn" Padding="10,4"/>
-                            </StackPanel>
-
-                            <TextBlock Text="{Binding ModInfoSourcesStatus}" TextWrapping="Wrap" FontSize="11"
-                                       Foreground="{DynamicResource BrushTextMuted}"/>
-                        </StackPanel>
-                    </Border>
-                </TabItem>
-
-                <!-- TAB 6: REPLACEMENTS -->
-                <TabItem Header="Replacements">
-                    <Border Classes="panel-subtle">
-                        <StackPanel Margin="15" Spacing="10">
-
-                            <TextBlock TextWrapping="Wrap" FontSize="11"
-                                       Foreground="{DynamicResource BrushTextMuted}"
-                                       Text="Replacement suggestions (e.g. Use This Instead). Sources checked in priority order. Installed mod sources appear automatically."/>
-
-                            <ItemsControl ItemsSource="{Binding ReplacementSources}" x:CompileBindings="False">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="local:RuleSourceRowViewModel">
-                                        <Border BorderBrush="{DynamicResource BrushBorderDefault}"
-                                                BorderThickness="1" CornerRadius="4"
-                                                Padding="10,8" Margin="0,0,0,6">
-                                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8">
-                                                <!-- Row 1: name -->
-                                                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13"
-                                                               TextTrimming="CharacterEllipsis"
-                                                               Foreground="{DynamicResource BrushTextStrong}"/>
-                                                    <TextBlock Text="{Binding LockedBadge, StringFormat='({0})'}"
-                                                               FontSize="11" FontStyle="Italic" VerticalAlignment="Center"
-                                                               IsVisible="{Binding Locked}"
-                                                               Foreground="{DynamicResource BrushTextMuted}"/>
-                                                </StackPanel>
-                                                <!-- Row 2: actions -->
-                                                <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Spacing="4" Margin="0,2,0,0">
-                                                    <Button Content="Disable" Command="{Binding ToggleEnabledCommand}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding Enabled}"
-                                                            ToolTip.Tip="Disable this source"/>
-                                                    <Button Content="Enable" Command="{Binding ToggleEnabledCommand}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding !Enabled}"
-                                                            ToolTip.Tip="Enable this source"/>
-                                                    <Button Content="Edit" Command="{Binding EditLocationCommand}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding !Locked}"
-                                                            ToolTip.Tip="Edit name and URL"/>
-                                                    <Button Content="Remove"
-                                                            Command="{Binding DataContext.RemoveReplacementSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            Classes="btn-stepper" ToolTip.Tip="Move up">
+                                                        <i:Icon Value="fa-arrow-up" FontSize="10"/>
+                                                    </Button>
+                                                    <Border Width="1" Background="{DynamicResource BrushBorderStrong}"/>
+                                                    <Button Command="{Binding DataContext.MoveRuleSourceDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                             CommandParameter="{Binding}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding !Locked}"
-                                                            ToolTip.Tip="Remove this source"/>
+                                                            Classes="btn-stepper" ToolTip.Tip="Move down">
+                                                        <i:Icon Value="fa-arrow-down" FontSize="10"/>
+                                                    </Button>
                                                 </StackPanel>
-                                                <!-- Row 3: subtitle -->
-                                                <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Spacing="10">
-                                                    <TextBlock Text="{Binding Id}" FontSize="10"
-                                                               Foreground="{DynamicResource BrushTextMuted}"/>
-                                                    <TextBlock Text="{Binding RulesAsOf, StringFormat='· as of {0}'}"
-                                                               FontSize="10" Foreground="{DynamicResource BrushTextMuted}"
-                                                               IsVisible="{Binding RulesAsOf, Converter={StaticResource StringIsNotNullOrEmptyConverter}}"/>
-                                                </StackPanel>
-                                                <!-- Reorder -->
-                                                <Button Grid.Row="0" Grid.Column="1" Content="↑"
-                                                        Command="{Binding DataContext.MoveReplacementSourceUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}"
-                                                        Classes="btn" Padding="0,0" Width="20" MinWidth="0" Height="20" MinHeight="0"
-                                                        VerticalAlignment="Center"
-                                                        ToolTip.Tip="Move up"/>
-                                                <Button Grid.Row="2" Grid.Column="1" Content="↓"
-                                                        Command="{Binding DataContext.MoveReplacementSourceDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}"
-                                                        Classes="btn" Padding="0,0" Width="20" MinWidth="0" Height="20" MinHeight="0"
-                                                        VerticalAlignment="Center"
-                                                        ToolTip.Tip="Move down"/>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                            </Border>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
 
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <Button Content="Add remote" Command="{Binding AddRemoteReplacementSourceCommand}"
-                                        Classes="btn" Padding="10,4"/>
-                                <Button Content="Reset to defaults" Command="{Binding ResetReplacementSourcesCommand}"
-                                        Classes="btn" Padding="10,4"/>
-                            </StackPanel>
-
-                            <TextBlock Text="{Binding ReplacementSourcesStatus}" TextWrapping="Wrap" FontSize="11"
-                                       Foreground="{DynamicResource BrushTextMuted}"/>
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Button Command="{Binding AddRemoteRuleSourceCommand}" Classes="btn" Padding="10,5">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <i:Icon Value="fa-plus" FontSize="11"/>
+                                    <TextBlock Text="Add remote" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Content="Reset to defaults" Command="{Binding ResetRuleSourcesCommand}"
+                                    Classes="btn-secondary" Padding="10,5"/>
                         </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding RuleSourcesStatus}" Classes="field-hint"
+                                   TextAlignment="Right" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    </Grid>
+                </StackPanel>
+            </TabItem>
+
+            <!-- TAB 5: MOD INFO -->
+            <TabItem>
+                <TabItem.Header>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="Mod Info" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{Binding ModInfoSources.Count}"
+                                   FontSize="10.5" Opacity="0.75" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    </Grid>
+                </TabItem.Header>
+
+                <StackPanel Spacing="12">
+                    <Border BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="0,0,0,8">
+                        <TextBlock Text="Mod Info Databases" Classes="pane-title"/>
                     </Border>
-                </TabItem>
 
-                <!-- TAB 7: NO VERSION WARNING -->
-                <TabItem Header="No Version Warning">
-                    <Border Classes="panel-subtle">
-                        <StackPanel Margin="15" Spacing="10">
+                    <TextBlock Classes="field-hint"
+                               Text="Sources are checked in priority order — first source with info for a mod wins. Changes apply immediately."/>
 
-                            <TextBlock TextWrapping="Wrap" FontSize="11"
-                                       Foreground="{DynamicResource BrushTextMuted}"
-                                       Text="Compatibility allowlists for mods running on different game versions. Sources checked in priority order. Installed mod sources appear automatically."/>
+                    <ItemsControl ItemsSource="{Binding ModInfoSources}" x:CompileBindings="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="local:RuleSourceRowViewModel">
+                                <Border Classes="card" Classes.disabled="{Binding !Enabled}" Margin="0,0,0,7">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Foreground="{DynamicResource BrushTextBrown950}"/>
+                                                <Border Classes="pill-badge muted" IsVisible="{Binding IsCurated}">
+                                                    <TextBlock Text="{Binding LockedBadge}" FontSize="10"
+                                                               Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                </Border>
+                                                <Border Classes="pill-badge mod" IsVisible="{Binding IsMod}">
+                                                    <TextBlock Text="{Binding LockedBadge}" FontSize="10"
+                                                               Foreground="{DynamicResource BrushTextBadgeMod}"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{Binding Id}" Classes="mono-sub"/>
+                                                <TextBlock Text="{Binding RulesAsOf, StringFormat='· as of {0}'}" Classes="mono-sub"
+                                                           IsVisible="{Binding RulesAsOf, Converter={StaticResource StringIsNotNullOrEmptyConverter}}"/>
+                                            </StackPanel>
+                                        </StackPanel>
 
-                            <ItemsControl ItemsSource="{Binding NoVersionWarningSources}" x:CompileBindings="False">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="local:RuleSourceRowViewModel">
-                                        <Border BorderBrush="{DynamicResource BrushBorderDefault}"
-                                                BorderThickness="1" CornerRadius="4"
-                                                Padding="10,8" Margin="0,0,0,6">
-                                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8">
-                                                <!-- Row 1: name -->
-                                                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13"
-                                                               TextTrimming="CharacterEllipsis"
-                                                               Foreground="{DynamicResource BrushTextStrong}"/>
-                                                    <TextBlock Text="{Binding LockedBadge, StringFormat='({0})'}"
-                                                               FontSize="11" FontStyle="Italic" VerticalAlignment="Center"
-                                                               IsVisible="{Binding Locked}"
-                                                               Foreground="{DynamicResource BrushTextMuted}"/>
-                                                </StackPanel>
-                                                <!-- Row 2: actions -->
-                                                <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Spacing="4" Margin="0,2,0,0">
-                                                    <Button Content="Disable" Command="{Binding ToggleEnabledCommand}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding Enabled}"
-                                                            ToolTip.Tip="Disable this source"/>
-                                                    <Button Content="Enable" Command="{Binding ToggleEnabledCommand}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding !Enabled}"
-                                                            ToolTip.Tip="Enable this source"/>
-                                                    <Button Content="Edit" Command="{Binding EditLocationCommand}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding !Locked}"
-                                                            ToolTip.Tip="Edit name and URL"/>
-                                                    <Button Content="Remove"
-                                                            Command="{Binding DataContext.RemoveNoVersionWarningSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                            <Button Content="Disable" Command="{Binding ToggleEnabledCommand}"
+                                                    Classes="btn-secondary btn-sm" IsVisible="{Binding Enabled}"/>
+                                            <Button Content="Enable" Command="{Binding ToggleEnabledCommand}"
+                                                    Classes="btn-secondary btn-sm" IsVisible="{Binding !Enabled}"/>
+                                            <Button Command="{Binding EditLocationCommand}"
+                                                    Classes="btn-secondary btn-sm btn-icon" IsVisible="{Binding !Locked}"
+                                                    ToolTip.Tip="Edit name and URL">
+                                                <i:Icon Value="fa-pen" FontSize="11"/>
+                                            </Button>
+                                            <Button Command="{Binding DataContext.RemoveModInfoSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    Classes="btn-danger-ghost btn-sm btn-icon" IsVisible="{Binding !Locked}"
+                                                    ToolTip.Tip="Remove this source">
+                                                <i:Icon Value="fa-trash" FontSize="11"/>
+                                            </Button>
+                                            <Border Classes="stepper" Margin="4,0,0,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Button Command="{Binding DataContext.MoveModInfoSourceUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                             CommandParameter="{Binding}"
-                                                            Classes="btn" Padding="6,2" MinWidth="0" MinHeight="0"
-                                                            IsVisible="{Binding !Locked}"
-                                                            ToolTip.Tip="Remove this source"/>
+                                                            Classes="btn-stepper" ToolTip.Tip="Move up">
+                                                        <i:Icon Value="fa-arrow-up" FontSize="10"/>
+                                                    </Button>
+                                                    <Border Width="1" Background="{DynamicResource BrushBorderStrong}"/>
+                                                    <Button Command="{Binding DataContext.MoveModInfoSourceDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Classes="btn-stepper" ToolTip.Tip="Move down">
+                                                        <i:Icon Value="fa-arrow-down" FontSize="10"/>
+                                                    </Button>
                                                 </StackPanel>
-                                                <!-- Row 3: subtitle -->
-                                                <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Spacing="10">
-                                                    <TextBlock Text="{Binding Id}" FontSize="10"
-                                                               Foreground="{DynamicResource BrushTextMuted}"/>
-                                                    <TextBlock Text="{Binding RulesAsOf, StringFormat='· as of {0}'}"
-                                                               FontSize="10" Foreground="{DynamicResource BrushTextMuted}"
-                                                               IsVisible="{Binding RulesAsOf, Converter={StaticResource StringIsNotNullOrEmptyConverter}}"/>
-                                                </StackPanel>
-                                                <!-- Reorder -->
-                                                <Button Grid.Row="0" Grid.Column="1" Content="↑"
-                                                        Command="{Binding DataContext.MoveNoVersionWarningSourceUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}"
-                                                        Classes="btn" Padding="0,0" Width="20" MinWidth="0" Height="20" MinHeight="0"
-                                                        VerticalAlignment="Center"
-                                                        ToolTip.Tip="Move up"/>
-                                                <Button Grid.Row="2" Grid.Column="1" Content="↓"
-                                                        Command="{Binding DataContext.MoveNoVersionWarningSourceDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}"
-                                                        Classes="btn" Padding="0,0" Width="20" MinWidth="0" Height="20" MinHeight="0"
-                                                        VerticalAlignment="Center"
-                                                        ToolTip.Tip="Move down"/>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                            </Border>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
 
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <Button Content="Add remote" Command="{Binding AddRemoteNoVersionWarningSourceCommand}"
-                                        Classes="btn" Padding="10,4"/>
-                                <Button Content="Reset to defaults" Command="{Binding ResetNoVersionWarningSourcesCommand}"
-                                        Classes="btn" Padding="10,4"/>
-                            </StackPanel>
-
-                            <TextBlock Text="{Binding NoVersionWarningSourcesStatus}" TextWrapping="Wrap" FontSize="11"
-                                       Foreground="{DynamicResource BrushTextMuted}"/>
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Button Command="{Binding AddRemoteModInfoSourceCommand}" Classes="btn" Padding="10,5">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <i:Icon Value="fa-plus" FontSize="11"/>
+                                    <TextBlock Text="Add remote" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Content="Reset to defaults" Command="{Binding ResetModInfoSourcesCommand}"
+                                    Classes="btn-secondary" Padding="10,5"/>
                         </StackPanel>
-                    </Border>
-                </TabItem>
+                        <TextBlock Grid.Column="1" Text="{Binding ModInfoSourcesStatus}" Classes="field-hint"
+                                   TextAlignment="Right" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    </Grid>
+                </StackPanel>
+            </TabItem>
 
-            </TabControl>
-        </Border>
+            <!-- TAB 6: REPLACEMENTS -->
+            <TabItem>
+                <TabItem.Header>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="Replacements" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{Binding ReplacementSources.Count}"
+                                   FontSize="10.5" Opacity="0.75" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    </Grid>
+                </TabItem.Header>
+
+                <StackPanel Spacing="12">
+                    <Border BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="0,0,0,8">
+                        <TextBlock Text="Replacement Databases" Classes="pane-title"/>
+                    </Border>
+
+                    <TextBlock Classes="field-hint"
+                               Text="Replacement suggestions (e.g. Use This Instead). Sources checked in priority order. Installed mod sources appear automatically."/>
+
+                    <ItemsControl ItemsSource="{Binding ReplacementSources}" x:CompileBindings="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="local:RuleSourceRowViewModel">
+                                <Border Classes="card" Classes.disabled="{Binding !Enabled}" Margin="0,0,0,7">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Foreground="{DynamicResource BrushTextBrown950}"/>
+                                                <Border Classes="pill-badge muted" IsVisible="{Binding IsCurated}">
+                                                    <TextBlock Text="{Binding LockedBadge}" FontSize="10"
+                                                               Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                </Border>
+                                                <Border Classes="pill-badge mod" IsVisible="{Binding IsMod}">
+                                                    <TextBlock Text="{Binding LockedBadge}" FontSize="10"
+                                                               Foreground="{DynamicResource BrushTextBadgeMod}"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{Binding Id}" Classes="mono-sub"/>
+                                                <TextBlock Text="{Binding RulesAsOf, StringFormat='· as of {0}'}" Classes="mono-sub"
+                                                           IsVisible="{Binding RulesAsOf, Converter={StaticResource StringIsNotNullOrEmptyConverter}}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                            <Button Content="Disable" Command="{Binding ToggleEnabledCommand}"
+                                                    Classes="btn-secondary btn-sm" IsVisible="{Binding Enabled}"/>
+                                            <Button Content="Enable" Command="{Binding ToggleEnabledCommand}"
+                                                    Classes="btn-secondary btn-sm" IsVisible="{Binding !Enabled}"/>
+                                            <Button Command="{Binding EditLocationCommand}"
+                                                    Classes="btn-secondary btn-sm btn-icon" IsVisible="{Binding !Locked}"
+                                                    ToolTip.Tip="Edit name and URL">
+                                                <i:Icon Value="fa-pen" FontSize="11"/>
+                                            </Button>
+                                            <Button Command="{Binding DataContext.RemoveReplacementSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    Classes="btn-danger-ghost btn-sm btn-icon" IsVisible="{Binding !Locked}"
+                                                    ToolTip.Tip="Remove this source">
+                                                <i:Icon Value="fa-trash" FontSize="11"/>
+                                            </Button>
+                                            <Border Classes="stepper" Margin="4,0,0,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Button Command="{Binding DataContext.MoveReplacementSourceUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Classes="btn-stepper" ToolTip.Tip="Move up">
+                                                        <i:Icon Value="fa-arrow-up" FontSize="10"/>
+                                                    </Button>
+                                                    <Border Width="1" Background="{DynamicResource BrushBorderStrong}"/>
+                                                    <Button Command="{Binding DataContext.MoveReplacementSourceDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Classes="btn-stepper" ToolTip.Tip="Move down">
+                                                        <i:Icon Value="fa-arrow-down" FontSize="10"/>
+                                                    </Button>
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Button Command="{Binding AddRemoteReplacementSourceCommand}" Classes="btn" Padding="10,5">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <i:Icon Value="fa-plus" FontSize="11"/>
+                                    <TextBlock Text="Add remote" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Content="Reset to defaults" Command="{Binding ResetReplacementSourcesCommand}"
+                                    Classes="btn-secondary" Padding="10,5"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding ReplacementSourcesStatus}" Classes="field-hint"
+                                   TextAlignment="Right" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    </Grid>
+                </StackPanel>
+            </TabItem>
+
+            <!-- TAB 7: NO VERSION WARNING -->
+            <TabItem>
+                <TabItem.Header>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="No Version Warning" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{Binding NoVersionWarningSources.Count}"
+                                   FontSize="10.5" Opacity="0.75" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    </Grid>
+                </TabItem.Header>
+
+                <StackPanel Spacing="12">
+                    <Border BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="0,0,0,8">
+                        <TextBlock Text="No Version Warning" Classes="pane-title"/>
+                    </Border>
+
+                    <TextBlock Classes="field-hint"
+                               Text="Compatibility allowlists for mods running on different game versions. Sources checked in priority order. Installed mod sources appear automatically."/>
+
+                    <ItemsControl ItemsSource="{Binding NoVersionWarningSources}" x:CompileBindings="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="local:RuleSourceRowViewModel">
+                                <Border Classes="card" Classes.disabled="{Binding !Enabled}" Margin="0,0,0,7">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Foreground="{DynamicResource BrushTextBrown950}"/>
+                                                <Border Classes="pill-badge muted" IsVisible="{Binding IsCurated}">
+                                                    <TextBlock Text="{Binding LockedBadge}" FontSize="10"
+                                                               Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                </Border>
+                                                <Border Classes="pill-badge mod" IsVisible="{Binding IsMod}">
+                                                    <TextBlock Text="{Binding LockedBadge}" FontSize="10"
+                                                               Foreground="{DynamicResource BrushTextBadgeMod}"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{Binding Id}" Classes="mono-sub"/>
+                                                <TextBlock Text="{Binding RulesAsOf, StringFormat='· as of {0}'}" Classes="mono-sub"
+                                                           IsVisible="{Binding RulesAsOf, Converter={StaticResource StringIsNotNullOrEmptyConverter}}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                            <Button Content="Disable" Command="{Binding ToggleEnabledCommand}"
+                                                    Classes="btn-secondary btn-sm" IsVisible="{Binding Enabled}"/>
+                                            <Button Content="Enable" Command="{Binding ToggleEnabledCommand}"
+                                                    Classes="btn-secondary btn-sm" IsVisible="{Binding !Enabled}"/>
+                                            <Button Command="{Binding EditLocationCommand}"
+                                                    Classes="btn-secondary btn-sm btn-icon" IsVisible="{Binding !Locked}"
+                                                    ToolTip.Tip="Edit name and URL">
+                                                <i:Icon Value="fa-pen" FontSize="11"/>
+                                            </Button>
+                                            <Button Command="{Binding DataContext.RemoveNoVersionWarningSourceCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    Classes="btn-danger-ghost btn-sm btn-icon" IsVisible="{Binding !Locked}"
+                                                    ToolTip.Tip="Remove this source">
+                                                <i:Icon Value="fa-trash" FontSize="11"/>
+                                            </Button>
+                                            <Border Classes="stepper" Margin="4,0,0,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Button Command="{Binding DataContext.MoveNoVersionWarningSourceUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Classes="btn-stepper" ToolTip.Tip="Move up">
+                                                        <i:Icon Value="fa-arrow-up" FontSize="10"/>
+                                                    </Button>
+                                                    <Border Width="1" Background="{DynamicResource BrushBorderStrong}"/>
+                                                    <Button Command="{Binding DataContext.MoveNoVersionWarningSourceDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Classes="btn-stepper" ToolTip.Tip="Move down">
+                                                        <i:Icon Value="fa-arrow-down" FontSize="10"/>
+                                                    </Button>
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Button Command="{Binding AddRemoteNoVersionWarningSourceCommand}" Classes="btn" Padding="10,5">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <i:Icon Value="fa-plus" FontSize="11"/>
+                                    <TextBlock Text="Add remote" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Content="Reset to defaults" Command="{Binding ResetNoVersionWarningSourcesCommand}"
+                                    Classes="btn-secondary" Padding="10,5"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding NoVersionWarningSourcesStatus}" Classes="field-hint"
+                                   TextAlignment="Right" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    </Grid>
+                </StackPanel>
+            </TabItem>
+
+        </TabControl>
     </dialogs:BaseDialog.MainContent>
 
     <dialogs:BaseDialog.ButtonContent>
-        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-            <Button Content="Cancel"
-                    Command="{Binding CancelCommand}"
-                    Classes="btn"
-                    MinWidth="100" Height="32"/>
-            <Button Content="Save"
-                    Command="{Binding SaveCommand}"
-                    Classes="btn-success"
-                    MinWidth="100" Height="32"/>
-        </StackPanel>
+        <Border Classes="dialog-footer">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="Database source changes apply immediately; paths save on Save."
+                           FontSize="11"
+                           Foreground="{DynamicResource BrushTextStrong}"
+                           Opacity="0.85"
+                           VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <Button Content="Cancel"
+                            Command="{Binding CancelCommand}"
+                            Classes="btn"
+                            MinWidth="96" Height="31"/>
+                    <Button Content="Save"
+                            Command="{Binding SaveCommand}"
+                            Classes="btn-success"
+                            MinWidth="96" Height="31"/>
+                </StackPanel>
+            </Grid>
+        </Border>
     </dialogs:BaseDialog.ButtonContent>
 </dialogs:BaseDialog>

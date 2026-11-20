@@ -142,7 +142,7 @@
         <!-- Initial Loading Overlay -->
         <Grid IsVisible="{Binding IsInitialLoading}">
             <!-- Dimmed Background -->
-            <Border Background="#99000000"/>
+            <Border Background="{DynamicResource BrushScrim}"/>
 
             <!-- Loading Card -->
             <Border Classes="panel"

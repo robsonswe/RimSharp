@@ -6,7 +6,7 @@
     <SolidColorBrush x:Key="DataGridRowGrayBrush" Color="{StaticResource ColorDataGridRowGray}"/>
     <SolidColorBrush x:Key="DataGridGridLineBrush" Color="{StaticResource ColorDataGridGridLine}"/>
 
-    <!-- Role-based utility brushes. These are intentionally independent from component styles. -->
+    <!-- Text brushes -->
     <SolidColorBrush x:Key="BrushTextPrimary" Color="{StaticResource ColorBrown800}"/>
     <SolidColorBrush x:Key="BrushTextStrong" Color="{StaticResource ColorBrown900}"/>
     <SolidColorBrush x:Key="BrushTextOnDark" Color="{StaticResource ColorWhite}"/>
@@ -19,8 +19,17 @@
     <SolidColorBrush x:Key="BrushTextCode" Color="{StaticResource ColorBlue700}"/>
     <SolidColorBrush x:Key="BrushTextHighlight" Color="{StaticResource ColorAmber300}"/>
     <SolidColorBrush x:Key="BrushTextSuccessHover" Color="{StaticResource ColorGreen700}"/>
+    <SolidColorBrush x:Key="BrushTextBadgeMod" Color="{StaticResource ColorBlue900}"/>
+
+    <!-- Surface & background brushes -->
     <SolidColorBrush x:Key="BrushBgSurface" Color="{StaticResource ColorBrown200}"/>
+    <SolidColorBrush x:Key="BrushBgSurfaceFocus" Color="{StaticResource ColorBrown100}"/>
     <SolidColorBrush x:Key="BrushBgPanel" Color="{StaticResource ColorBrown400}"/>
+    <SolidColorBrush x:Key="BrushBgSidebar" Color="{StaticResource ColorBrown500}"/>
+    <SolidColorBrush x:Key="BrushBgSidebarItemHover" Color="{StaticResource ColorBrown200Alpha50}"/>
+    <SolidColorBrush x:Key="BrushBgCard" Color="{StaticResource ColorBrown250}"/>
+    <SolidColorBrush x:Key="BrushBgCardDisabled" Color="{StaticResource ColorBrown400Alpha40}"/>
+    <SolidColorBrush x:Key="BrushBgCallout" Color="{StaticResource ColorAmber300Alpha28}"/>
     <SolidColorBrush x:Key="BrushBgAction" Color="{StaticResource ColorBrown800}"/>
     <SolidColorBrush x:Key="BrushBgActionHover" Color="{StaticResource ColorBrown400}"/>
     <SolidColorBrush x:Key="BrushBgActionStrong" Color="{StaticResource ColorBrown900}"/>
@@ -32,7 +41,10 @@
     <SolidColorBrush x:Key="BrushBgDangerHover" Color="{StaticResource ColorRed500}"/>
     <SolidColorBrush x:Key="BrushBgHighlight" Color="{StaticResource ColorAmber300}"/>
     <SolidColorBrush x:Key="BrushBgDisabled" Color="{StaticResource ColorGray500}"/>
-    <SolidColorBrush x:Key="BrushBgSelected" Color="#FFE8D8B0"/>
+    <SolidColorBrush x:Key="BrushBgSelected" Color="{StaticResource ColorBrown150}"/>
+    <SolidColorBrush x:Key="BrushDialogShadow" Color="{StaticResource ColorBlackAlpha27}"/>
+
+    <!-- State indicator brushes -->
     <SolidColorBrush x:Key="BrushStatePrimary" Color="{StaticResource ColorBrown800}"/>
     <SolidColorBrush x:Key="BrushStateSuccess" Color="{StaticResource ColorGreen800}"/>
     <SolidColorBrush x:Key="BrushStateDanger" Color="{StaticResource ColorRed600}"/>
@@ -43,10 +55,46 @@
     <SolidColorBrush x:Key="BrushStatePanel" Color="{StaticResource ColorBrown400}"/>
     <SolidColorBrush x:Key="BrushStateGit" Color="{StaticResource ColorBlue700}"/>
 
+    <!-- Border brushes -->
     <SolidColorBrush x:Key="BrushBorderDefault" Color="{StaticResource ColorBrown800}"/>
     <SolidColorBrush x:Key="BrushBorderStrong" Color="{StaticResource ColorBrown900}"/>
     <SolidColorBrush x:Key="BrushBorderMuted" Color="{StaticResource ColorBrown600}"/>
+    <SolidColorBrush x:Key="BrushBorderSubtle" Color="{StaticResource ColorBrown800Alpha30}"/>
     <SolidColorBrush x:Key="BrushBorderHighlight" Color="{StaticResource ColorAmber300}"/>
     <SolidColorBrush x:Key="BrushBorderSuccess" Color="{StaticResource ColorGreen900}"/>
     <SolidColorBrush x:Key="BrushBorderError" Color="{StaticResource ColorRed800}"/>
+
+    <!-- Pill badge brushes -->
+    <SolidColorBrush x:Key="BrushBgBadgeMuted" Color="{StaticResource ColorBrown800Alpha12}"/>
+    <SolidColorBrush x:Key="BrushBorderBadgeMuted" Color="{StaticResource ColorBrown800Alpha25}"/>
+    <SolidColorBrush x:Key="BrushBgBadgeSuccess" Color="{StaticResource ColorGreen800Alpha16}"/>
+    <SolidColorBrush x:Key="BrushBorderBadgeSuccess" Color="{StaticResource ColorGreen800Alpha35}"/>
+    <SolidColorBrush x:Key="BrushBgBadgeMod" Color="{StaticResource ColorBlue700Alpha14}"/>
+    <SolidColorBrush x:Key="BrushBorderBadgeMod" Color="{StaticResource ColorBlue700Alpha30}"/>
+
+    <!-- Overlay & wash brushes -->
+    <SolidColorBrush x:Key="BrushScrim" Color="{StaticResource ColorBlackAlpha60}"/>
+    <SolidColorBrush x:Key="BrushDangerWash" Color="{StaticResource ColorRed600Alpha20}"/>
+    <SolidColorBrush x:Key="BrushRuleWash" Color="{StaticResource ColorBrown800Alpha18}"/>
+    <SolidColorBrush x:Key="BrushRuleDivider" Color="{StaticResource ColorBrown900Alpha25}"/>
+    <SolidColorBrush x:Key="BrushBgWhite" Color="{StaticResource ColorWhite}"/>
+
+    <!-- Status badge brushes -->
+    <SolidColorBrush x:Key="BrushStatusInstalledBg" Color="{StaticResource ColorGreenAlpha12}"/>
+    <SolidColorBrush x:Key="BrushStatusInstalledFg" Color="{StaticResource ColorForestGreen}"/>
+    <SolidColorBrush x:Key="BrushStatusActiveBg" Color="{StaticResource ColorDodgerBlueAlpha12}"/>
+    <SolidColorBrush x:Key="BrushStatusActiveFg" Color="{StaticResource ColorDodgerBlue}"/>
+    <SolidColorBrush x:Key="BrushStatusFavoriteBg" Color="{StaticResource ColorGoldenrodAlpha12}"/>
+    <SolidColorBrush x:Key="BrushStatusFavoriteFg" Color="{StaticResource ColorGoldenrod}"/>
+
+    <!-- Git mod status brushes -->
+    <SolidColorBrush x:Key="BrushGitUpdateOk" Color="{StaticResource ColorForestGreen}"/>
+    <SolidColorBrush x:Key="BrushGitActiveWash" Color="{StaticResource ColorGreenAlpha12}"/>
+    <SolidColorBrush x:Key="BrushGitInactiveWash" Color="{StaticResource ColorGrayAlpha12}"/>
+
+    <!-- List selection highlight brushes -->
+    <SolidColorBrush x:Key="BrushSelectionAccentLow" Color="{StaticResource ColorAccentBlueAlpha20}"/>
+    <SolidColorBrush x:Key="BrushSelectionAccentMedium" Color="{StaticResource ColorAccentBlueAlpha30}"/>
+    <SolidColorBrush x:Key="BrushSelectionAccentSubtle" Color="{StaticResource ColorAccentBlueAlpha10}"/>
+
 </ResourceDictionary>

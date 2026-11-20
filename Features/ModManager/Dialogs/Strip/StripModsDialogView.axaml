@@ -53,7 +53,7 @@
                         <!-- Force expander arrow to be black -->
                         <Style Selector="TreeViewItem /template/ ToggleButton#PART_ExpandCollapseChevron">
                             <Style.Resources>
-                                <SolidColorBrush x:Key="TreeViewItemForeground" Color="Black" />
+                                <SolidColorBrush x:Key="TreeViewItemForeground" Color="{StaticResource ColorBlack}" />
                             </Style.Resources>
                         </Style>
                         <!-- Remove background/hover effects for the toggle button -->

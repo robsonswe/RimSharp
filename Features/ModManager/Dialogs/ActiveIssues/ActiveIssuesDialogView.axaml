@@ -38,7 +38,7 @@
                 <Border Grid.Column="1" Background="{DynamicResource BrushStateDangerStrong}"
                         CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
                     <TextBlock Text="{Binding IssueGroups.Count, StringFormat='{}{0} mods with issues'}"
-                               Foreground="White" FontSize="12" FontWeight="Bold"/>
+                               Foreground="{DynamicResource BrushTextOnDark}" FontSize="12" FontWeight="Bold"/>
                 </Border>
             </Grid>
 

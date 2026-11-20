@@ -68,7 +68,7 @@
                                 <StackPanel Margin="0,6,0,10">
 
                                     <!-- Section header: soft tinted band. Rows below are indented under it. -->
-                                    <Border Background="#2E4A3A2B" CornerRadius="3" Padding="10,5"
+                                    <Border Background="{DynamicResource BrushRuleWash}" CornerRadius="3" Padding="10,5"
                                             Margin="0,0,0,2" ToolTip.Tip="{Binding Description}">
                                         <TextBlock Text="{Binding Header}"
                                                    FontSize="14" FontWeight="Bold"
@@ -79,7 +79,7 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:RuleRowViewModel">
                                                 <StackPanel>
-                                                    <Border Height="1" Background="#40372A1F" IsVisible="{Binding ShowDivider}"/>
+                                                    <Border Height="1" Background="{DynamicResource BrushRuleDivider}" IsVisible="{Binding ShowDivider}"/>
 
                                                     <Grid ColumnDefinitions="3,*,Auto" Margin="0,7">
 

@@ -72,7 +72,7 @@
                     <Setter Property="Template">
                         <ControlTemplate>
                             <Border Name="Row"
-                                    Background="White"
+                                    Background="{DynamicResource BrushBgWhite}"
                                     BorderBrush="{DynamicResource BrushBorderMuted}"
                                     BorderThickness="1"
                                     CornerRadius="3"
@@ -292,7 +292,7 @@
 
                                 <!-- The log itself: fills the window now instead of a fixed 300px box -->
                                 <Border Grid.Row="1"
-                                        Background="White"
+                                        Background="{DynamicResource BrushBgWhite}"
                                         BorderBrush="{DynamicResource BrushBorderDefault}"
                                         BorderThickness="1"
                                         CornerRadius="3"
@@ -490,7 +490,7 @@
                                     </ListBox>
 
                                     <Border Grid.Column="1"
-                                            Background="White"
+                                            Background="{DynamicResource BrushBgWhite}"
                                             BorderBrush="{DynamicResource BrushBorderDefault}"
                                             BorderThickness="1"
                                             CornerRadius="3"
@@ -620,7 +620,7 @@
                                            Foreground="{DynamicResource BrushTextStrong}"/>
 
                                 <Border Grid.Row="1"
-                                        Background="White"
+                                        Background="{DynamicResource BrushBgWhite}"
                                         BorderBrush="{DynamicResource BrushBorderDefault}"
                                         BorderThickness="1"
                                         CornerRadius="3"

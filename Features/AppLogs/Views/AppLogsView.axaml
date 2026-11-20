@@ -62,7 +62,7 @@
                     <Setter Property="Template">
                         <ControlTemplate>
                             <Border Name="Row"
-                                    Background="White"
+                                    Background="{DynamicResource BrushBgWhite}"
                                     BorderBrush="{DynamicResource BrushBorderMuted}"
                                     BorderThickness="1"
                                     CornerRadius="3"
@@ -204,7 +204,7 @@
                             </Grid>
 
                             <Border Grid.Row="1"
-                                    Background="White"
+                                    Background="{DynamicResource BrushBgWhite}"
                                     BorderBrush="{DynamicResource BrushBorderDefault}"
                                     BorderThickness="1"
                                     CornerRadius="3"

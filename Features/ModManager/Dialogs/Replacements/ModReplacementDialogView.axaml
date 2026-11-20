@@ -127,7 +127,7 @@
                                                     <TextBlock Text="{Binding SourceDisplayName, StringFormat='Source: {0}'}" FontSize="10" Foreground="{DynamicResource BrushTextPrimary}"/>
                                                     <TextBlock Text="{Binding ReasonDisplay, StringFormat='Reason: {0}'}" FontSize="10" Foreground="{DynamicResource BrushTextPrimary}" TextWrapping="Wrap" IsVisible="{Binding HasReason}"/>
 
-                                                    <Border Margin="0,5,0,0" Padding="8,4" Background="#339E2A2A" CornerRadius="2">
+                                                    <Border Margin="0,5,0,0" Padding="8,4" Background="{DynamicResource BrushDangerWash}" CornerRadius="2">
                                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                                             <i:Icon Value="fa-triangle-exclamation" Foreground="{DynamicResource BrushTextError}" FontSize="12" VerticalAlignment="Center"/>
                                                             <TextBlock Text="You should remove the original mod to avoid load-order conflicts."

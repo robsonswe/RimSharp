@@ -198,7 +198,7 @@
                                               VerticalAlignment="Center"
                                               Margin="{TemplateBinding Padding}" />
                             <i:Icon Value="fa-caret-down" Grid.Column="1" VerticalAlignment="Center"
-                                       HorizontalAlignment="Right" Margin="0,0,8,0" FontSize="8" />
+                                    HorizontalAlignment="Right" Margin="0,0,8,0" FontSize="8" />
                         </Grid>
                     </Border>
 
@@ -307,7 +307,7 @@
     <Style Selector="Button.btn-browser-nav:disabled /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Foreground" Value="{DynamicResource BrushTextOnDark}"/>
     </Style>
-<Style Selector="Button.btn-browser-nav:pressed /template/ Border#ButtonBorder">
+    <Style Selector="Button.btn-browser-nav:pressed /template/ Border#ButtonBorder">
         <Setter Property="Background" Value="{DynamicResource BrushBgPanel}"/>
     </Style>
     <Style Selector="Button.btn-browser-nav:pressed">
@@ -321,5 +321,128 @@
     <Style Selector="Button.btn-browser-nav:disabled /template/ Border#ButtonBorder">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+
+    <!-- ================================================================
+    SHARED REDESIGN BUTTON VARIANTS
+    ================================================================ -->
+
+    <!-- Secondary (tan surface) button -->
+    <Style Selector="Button.btn-secondary">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+        <Setter Property="Padding" Value="10,4"/>
+        <Setter Property="MinHeight" Value="24"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="ButtonBackground"
+                        Background="{DynamicResource BrushBgSurface}"
+                        BorderBrush="{DynamicResource BrushBorderDefault}"
+                        BorderThickness="1"
+                        CornerRadius="3">
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      Padding="{TemplateBinding Padding}"
+                                      HorizontalContentAlignment="Center"
+                                      VerticalContentAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="Button.btn-secondary:pointerover /template/ Border#ButtonBackground">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderStrong}"/>
+    </Style>
+    <Style Selector="Button.btn-secondary:pressed /template/ Border#ButtonBackground">
+        <Setter Property="Background" Value="{DynamicResource BrushBgPanel}"/>
+    </Style>
+    <Style Selector="Button.btn-secondary:disabled /template/ Border#ButtonBackground">
+        <Setter Property="Opacity" Value="0.45"/>
+    </Style>
+
+    <!-- Subtle destructive button (fills red on hover) -->
+    <Style Selector="Button.btn-danger-ghost">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextError}"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="MinHeight" Value="24"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="ButtonBackground"
+                        Background="{DynamicResource BrushBgSurface}"
+                        BorderBrush="{DynamicResource BrushBorderError}"
+                        BorderThickness="1"
+                        CornerRadius="3">
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      Padding="{TemplateBinding Padding}"
+                                      HorizontalContentAlignment="Center"
+                                      VerticalContentAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="Button.btn-danger-ghost:pointerover /template/ Border#ButtonBackground">
+        <Setter Property="Background" Value="{DynamicResource BrushBgDanger}"/>
+    </Style>
+    <Style Selector="Button.btn-danger-ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextOnDark}"/>
+    </Style>
+    <Style Selector="Button.btn-danger-ghost:pressed /template/ Border#ButtonBackground">
+        <Setter Property="Background" Value="{DynamicResource BrushBgDangerHover}"/>
+    </Style>
+    <Style Selector="Button.btn-danger-ghost:disabled /template/ Border#ButtonBackground">
+        <Setter Property="Opacity" Value="0.45"/>
+    </Style>
+
+    <!-- Size & icon modifiers -->
+    <Style Selector="Button.btn-sm">
+        <Setter Property="Padding" Value="8,3"/>
+        <Setter Property="FontSize" Value="11.5"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="MinHeight" Value="24"/>
+    </Style>
+    <Style Selector="Button.btn-icon">
+        <Setter Property="Width" Value="26"/>
+        <Setter Property="Height" Value="24"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+    </Style>
+
+    <!-- Joined stepper button (inside Border.stepper) -->
+    <Style Selector="Button.btn-stepper">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextOnDark}"/>
+        <Setter Property="Width" Value="22"/>
+        <Setter Property="Height" Value="22"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="ButtonBackground"
+                        Background="{DynamicResource BrushBgAction}">
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      HorizontalContentAlignment="Center"
+                                      VerticalContentAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="Button.btn-stepper:pointerover /template/ Border#ButtonBackground">
+        <Setter Property="Background" Value="{DynamicResource BrushBgAccent}"/>
+    </Style>
+    <Style Selector="Button.btn-stepper:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextBrown950}"/>
+    </Style>
+    <Style Selector="Button.btn-stepper:pressed /template/ Border#ButtonBackground">
+        <Setter Property="Background" Value="{DynamicResource BrushBgActionStrong}"/>
+    </Style>
+    <Style Selector="Button.btn-stepper:disabled /template/ Border#ButtonBackground">
+        <Setter Property="Background" Value="{DynamicResource BrushBgAccent}"/>
+    </Style>
+    <Style Selector="Button.btn-stepper:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Opacity" Value="0.45"/>
     </Style>
 </Styles>

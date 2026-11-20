@@ -21,7 +21,7 @@
                     <Border Background="{DynamicResource BrushStateDangerStrong}"
                             CornerRadius="10" Padding="5,0" VerticalAlignment="Center"
                             IsVisible="{Binding ActiveSortingIssuesCount, Converter={StaticResource NumericToBooleanConverter}}">
-                        <TextBlock Text="{Binding ActiveSortingIssuesCount}" Foreground="White" FontSize="10" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding ActiveSortingIssuesCount}" Foreground="{DynamicResource BrushTextOnDark}" FontSize="10" FontWeight="Bold"/>
                     </Border>
                 </StackPanel>
             </Button>
@@ -36,7 +36,7 @@
                             <Border Background="{DynamicResource BrushStateDangerStrong}"
                                     CornerRadius="10" Padding="5,0" VerticalAlignment="Center"
                                     IsVisible="{Binding TotalActiveIssues, Converter={StaticResource NumericToBooleanConverter}}">
-                                <TextBlock Text="{Binding TotalActiveIssues}" Foreground="White" FontSize="10" FontWeight="Bold"/>
+                                <TextBlock Text="{Binding TotalActiveIssues}" Foreground="{DynamicResource BrushTextOnDark}" FontSize="10" FontWeight="Bold"/>
                             </Border>
                         </StackPanel>
                     </MenuItem.Header>
@@ -50,7 +50,7 @@
                                 <Border Grid.Column="1" Background="{DynamicResource BrushStateDangerStrong}"
                                         CornerRadius="10" Padding="5,0" VerticalAlignment="Center" Margin="10,0,0,0"
                                         IsVisible="{Binding ActiveMissingDependenciesCount, Converter={StaticResource NumericToBooleanConverter}}">
-                                    <TextBlock Text="{Binding ActiveMissingDependenciesCount}" Foreground="White" FontSize="10" FontWeight="Bold"/>
+                                    <TextBlock Text="{Binding ActiveMissingDependenciesCount}" Foreground="{DynamicResource BrushTextOnDark}" FontSize="10" FontWeight="Bold"/>
                                 </Border>
                             </Grid>
                         </MenuItem.Header>
@@ -65,7 +65,7 @@
                                 <Border Grid.Column="1" Background="{DynamicResource BrushStateDangerStrong}"
                                         CornerRadius="10" Padding="5,0" VerticalAlignment="Center" Margin="10,0,0,0"
                                         IsVisible="{Binding ActiveIncompatibilitiesCount, Converter={StaticResource NumericToBooleanConverter}}">
-                                    <TextBlock Text="{Binding ActiveIncompatibilitiesCount}" Foreground="White" FontSize="10" FontWeight="Bold"/>
+                                    <TextBlock Text="{Binding ActiveIncompatibilitiesCount}" Foreground="{DynamicResource BrushTextOnDark}" FontSize="10" FontWeight="Bold"/>
                                 </Border>
                             </Grid>
                         </MenuItem.Header>
@@ -80,7 +80,7 @@
                                 <Border Grid.Column="1" Background="{DynamicResource BrushStateDangerStrong}"
                                         CornerRadius="10" Padding="5,0" VerticalAlignment="Center" Margin="10,0,0,0"
                                         IsVisible="{Binding ActiveDuplicateIssuesCount, Converter={StaticResource NumericToBooleanConverter}}">
-                                    <TextBlock Text="{Binding ActiveDuplicateIssuesCount}" Foreground="White" FontSize="10" FontWeight="Bold"/>
+                                    <TextBlock Text="{Binding ActiveDuplicateIssuesCount}" Foreground="{DynamicResource BrushTextOnDark}" FontSize="10" FontWeight="Bold"/>
                                 </Border>
                             </Grid>
                         </MenuItem.Header>

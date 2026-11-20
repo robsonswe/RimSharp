@@ -31,9 +31,9 @@
             -->
             <Border.Resources>
                 <!-- A light wash over the parchment, for things set into a surface. -->
-                <SolidColorBrush x:Key="BrushInset" Color="#2EFFFFFF"/>
+                <SolidColorBrush x:Key="BrushInset" Color="{StaticResource ColorWhiteAlpha18}"/>
                 <!-- A rule that separates without shouting. -->
-                <SolidColorBrush x:Key="BrushHairline" Color="#558B7A64"/>
+                <SolidColorBrush x:Key="BrushHairline" Color="{StaticResource ColorBrown600Alpha33}"/>
 
                 <!--
                     One line of the mod list: name, package id, and a status tag
