@@ -9,7 +9,7 @@
     <ApplicationManifest Condition="'$(TargetFramework)'=='net10.0-windows'">app.manifest</ApplicationManifest>
     <ApplicationHighDpiMode Condition="'$(TargetFramework)'=='net10.0-windows'">PerMonitorV2</ApplicationHighDpiMode>
     <RootNamespace>RimSharp</RootNamespace>
-    <DefaultItemExcludes>$(DefaultItemExcludes);RimSharp.Tests\**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);RimSharp.Tests\**;TEMP\**</DefaultItemExcludes>
     <!-- Avalonia 12 enables compiled bindings by default; keep 11.x reflection-binding behavior. -->
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
