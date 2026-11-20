@@ -17,7 +17,6 @@ using RimSharp.Services.ModManagement;
 using RimSharp.Core.Extensions;
 using RimSharp.Features.GitModManager.ViewModels;
 using RimSharp.Core.Commands.Base;
-using RimSharp.Features.VramAnalysis.ViewModels;
 using ReactiveUI;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -39,7 +38,6 @@ namespace RimSharp.AppDir.MainPage
         public IModsViewModel ModsVM { get; }
         public IDownloaderViewModel? DownloaderVM { get; }
         public IGitModsViewModel GitModsVM { get; }
-        public IVramAnalysisViewModel VramAnalysisVM { get; }
 
         // Workshop Management Services
         public ISteamSubscriptionService? SteamSubscriptionService { get; }
@@ -104,7 +102,6 @@ namespace RimSharp.AppDir.MainPage
 
         private bool IsIdle => !ModsVM.IsLoading &&
                                !(DownloaderVM?.IsOperationInProgress ?? false) &&
-                               !(VramAnalysisVM?.IsBusy ?? false) &&
                                !_dialogService.IsAnyDialogOpen;
 
         public MainViewModel(
@@ -116,7 +113,6 @@ namespace RimSharp.AppDir.MainPage
             IModsViewModel modsViewModel,
             IDownloaderViewModel downloaderViewModel,
             IGitModsViewModel gitModsViewModel,
-            IVramAnalysisViewModel vramAnalysisViewModel,
             ISteamSubscriptionService? steamSubscriptionService = null,
             IWorkshopUpdateService? workshopUpdateService = null,
             GameInstance? gameInstance = null)
@@ -136,7 +132,6 @@ namespace RimSharp.AppDir.MainPage
             ModsVM = modsViewModel;
             DownloaderVM = downloaderViewModel;
             GitModsVM = gitModsViewModel;
-            VramAnalysisVM = vramAnalysisViewModel;
             
             // Initialize workshop services (optional)
             SteamSubscriptionService = steamSubscriptionService;
@@ -441,7 +436,6 @@ namespace RimSharp.AppDir.MainPage
                 "Mods" => ModsVM,
                 "Downloader" => DownloaderVM,
                 "GitMods" => GitModsVM,
-                "VRAM" => VramAnalysisVM,
                 _ => null
             };
 
@@ -591,7 +585,6 @@ namespace RimSharp.AppDir.MainPage
                 (ModsVM as IDisposable)?.Dispose();
                 (DownloaderVM as IDisposable)?.Dispose();
                 (GitModsVM as IDisposable)?.Dispose();
-                (VramAnalysisVM as IDisposable)?.Dispose();
             }
             base.Dispose(disposing);
             _disposed = true;

@@ -56,10 +56,6 @@
                                     Command="{Binding SwitchTabCommand}" CommandParameter="GitMods"
                                     Classes="btn-tab"
                                     Classes.active="{Binding SelectedTab, Converter={StaticResource EqualityConverter}, ConverterParameter=GitMods}"/>
-                            <Button Content="VRAM Analysis"
-                                    Command="{Binding SwitchTabCommand}" CommandParameter="VRAM"
-                                    Classes="btn-tab"
-                                    Classes.active="{Binding SelectedTab, Converter={StaticResource EqualityConverter}, ConverterParameter=VRAM}"/>
                         </StackPanel>
                     </StackPanel>
 

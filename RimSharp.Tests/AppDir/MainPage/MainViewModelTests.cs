@@ -7,7 +7,6 @@ using NSubstitute;
 using RimSharp.AppDir.MainPage;
 using RimSharp.Features.GitModManager.ViewModels;
 using RimSharp.Features.ModManager.ViewModels;
-using RimSharp.Features.VramAnalysis.ViewModels;
 using RimSharp.Features.WorkshopDownloader.ViewModels;
 using RimSharp.Infrastructure.Configuration;
 using RimSharp.Shared.Services.Contracts;
@@ -28,7 +27,6 @@ namespace RimSharp.Tests.AppDir.MainPage
         private readonly IModsViewModel _mockModsVM;
         private readonly IDownloaderViewModel _mockDownloaderVM;
         private readonly IGitModsViewModel _mockGitModsVM;
-        private readonly IVramAnalysisViewModel _mockVramAnalysisVM;
 
         public MainViewModelTests()
         {
@@ -53,7 +51,6 @@ namespace RimSharp.Tests.AppDir.MainPage
             _mockModsVM = Substitute.For<IModsViewModel>();
             _mockDownloaderVM = Substitute.For<IDownloaderViewModel>();
             _mockGitModsVM = Substitute.For<IGitModsViewModel>();
-            _mockVramAnalysisVM = Substitute.For<IVramAnalysisViewModel>();
         }
 
         public void Dispose()
@@ -74,8 +71,7 @@ namespace RimSharp.Tests.AppDir.MainPage
                 _mockUpdaterService,
                 _mockModsVM,
                 _mockDownloaderVM,
-                _mockGitModsVM,
-                _mockVramAnalysisVM
+                _mockGitModsVM
             );
         }
 
@@ -91,14 +87,12 @@ namespace RimSharp.Tests.AppDir.MainPage
             vm.ModsVM.Should().Be(_mockModsVM);
             vm.DownloaderVM.Should().Be(_mockDownloaderVM);
             vm.GitModsVM.Should().Be(_mockGitModsVM);
-            vm.VramAnalysisVM.Should().Be(_mockVramAnalysisVM);
         }
 
         [Theory]
         [InlineData("Mods", "Mods")]
         [InlineData("Downloader", "Downloader")]
         [InlineData("GitMods", "GitMods")]
-        [InlineData("VRAM", "VRAM")]
         public void SwitchTabCommand_ShouldChangeSelectedTab(string tabName, string expectedTab)
         {
 
@@ -109,7 +103,6 @@ namespace RimSharp.Tests.AppDir.MainPage
             vm.SelectedTab.Should().Be(expectedTab);
             if (tabName == "Downloader") vm.CurrentViewModel.Should().Be(_mockDownloaderVM);
             if (tabName == "GitMods") vm.CurrentViewModel.Should().Be(_mockGitModsVM);
-            if (tabName == "VRAM") vm.CurrentViewModel.Should().Be(_mockVramAnalysisVM);
             if (tabName == "Mods") vm.CurrentViewModel.Should().Be(_mockModsVM);
         }
 

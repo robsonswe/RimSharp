@@ -26,14 +26,9 @@
     <AvaloniaResource Include="Resources\Fonts\IBM_Plex_Mono\IBMPlexMono-Regular.ttf" />
     <AvaloniaResource Include="Resources\Fonts\IBM_Plex_Mono\IBMPlexMono-SemiBold.ttf" />
     <AvaloniaResource Include="Resources\Fonts\IBM_Plex_Mono\IBMPlexMono-Bold.ttf" />
-    <Content Include="Resources\classdata.tpk">
-      <Link>classdata.tpk</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AssetsTools.NET" Version="3.0.5" />
     <PackageReference Include="Avalonia" Version="12.1.4" />
     <PackageReference Include="Avalonia.Controls.WebView" Version="12.1.1" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
@@ -56,7 +51,6 @@
     <None Include="steam_appid.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <PackageReference Include="System.Management" Version="8.0.0" Condition="'$(TargetFramework)'=='net10.0-windows'" />
   </ItemGroup>
 
   <!--
@@ -85,7 +79,6 @@
   <ItemGroup Condition="'$(TargetFramework)'=='net10.0'">
     <Compile Remove="Features\WorkshopDownloader\Components\Browser\WindowsBrowserFactory.cs" />
     <Compile Remove="Features\WorkshopDownloader\Components\Browser\WindowsBrowserControl.cs" />
-    <Compile Remove="Core\Services\WindowsSystemInfoService.cs" />
   </ItemGroup>
 
   <ItemGroup>

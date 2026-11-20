@@ -32,7 +32,6 @@ using RimSharp.Infrastructure.Mods.Validation.Duplicates;
 using RimSharp.Infrastructure.Mods.Validation.AI;
 using RimSharp.Infrastructure.AI;
 using RimSharp.Features.GitModManager.ViewModels;
-using RimSharp.Features.VramAnalysis.ViewModels;
 using RimSharp.Features.WorkshopDownloader.Services;
 using RimSharp.Features.WorkshopDownloader.ViewModels;
 using RimSharp.Features.WorkshopDownloader.Components.DownloadQueue;
@@ -341,7 +340,6 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<ISteamApiClient>()
                 ));
             services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
-            services.AddSingleton<ISystemInfoService>(provider => SystemInfoServiceFactory.Create());
             services.AddSingleton<IGitService, GitService>();
 
 #if WINDOWS
@@ -697,15 +695,6 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<IGitService>()
                 ));
 
-            services.AddTransient<VramAnalysisViewModel>(provider =>
-                         new VramAnalysisViewModel(
-                             provider.GetRequiredService<IModListManager>(),
-                             provider.GetRequiredService<IDialogService>(),
-                             provider.GetRequiredService<ILoggerService>(),
-                             provider.GetRequiredService<IPathService>(),
-                             provider.GetRequiredService<ISystemInfoService>()
-                         ));
-
             services.AddSingleton<MainViewModel>(provider =>
                 new MainViewModel(
                     provider.GetRequiredService<IPathService>(),
@@ -716,7 +705,6 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<ModsViewModel>(),
                     provider.GetRequiredService<DownloaderViewModel>(), 
                     provider.GetRequiredService<GitModsViewModel>(),
-                    provider.GetRequiredService<VramAnalysisViewModel>(),
                     provider.GetRequiredService<ISteamSubscriptionService>(),
                     provider.GetRequiredService<IWorkshopUpdateService>(),
                     provider.GetRequiredService<GameInstance>()
