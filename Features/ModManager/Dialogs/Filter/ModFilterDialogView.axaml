@@ -1,204 +1,309 @@
 <dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
-                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-                   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-                   xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
-                   xmlns:local="clr-namespace:RimSharp.Features.ModManager.Dialogs.Filter"
-                   x:Class="RimSharp.Features.ModManager.Dialogs.Filter.ModFilterDialogView"
-                   x:DataType="local:ModFilterDialogViewModel"
-                   x:CompileBindings="True"
-                   Title="{Binding Title}"
-                   Width="650"
-                   Height="500">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                    xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+                    xmlns:local="clr-namespace:RimSharp.Features.ModManager.Dialogs.Filter"
+                    xmlns:i="https://github.com/projektanker/icons.avalonia"
+                    x:Class="RimSharp.Features.ModManager.Dialogs.Filter.ModFilterDialogView"
+                    x:DataType="local:ModFilterDialogViewModel"
+                    x:CompileBindings="True"
+                    Classes="dialog-flush"
+                    Title="{Binding Title}"
+                    Width="670"
+                    SizeToContent="Height"
+                    CanResize="False"
+                    WindowStartupLocation="CenterOwner">
 
-        <dialogs:BaseDialog.MainContent>
-            <Grid RowDefinitions="*, Auto" Margin="10,10,10,0">
+    <dialogs:BaseDialog.MainContent>
+        <TabControl Classes="tabs-rail" Height="416">
 
-                <TabControl Grid.Row="0" Classes="tabs">
-                    <!-- TAB 1: GENERAL (Search & Properties) -->
-                <TabItem Header="General">
-                    <Border Classes="panel-subtle">
-                        <Grid RowDefinitions="Auto, 15, Auto, *" Margin="15" VerticalAlignment="Top">
+            <!-- TAB 1: GENERAL -->
+            <TabItem Header="General" Classes="rail-group" Tag="SEARCH &amp; RULES">
+                <StackPanel Spacing="14">
+                    <Border BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="0,0,0,8">
+                        <TextBlock Text="General Criteria" Classes="pane-title"/>
+                    </Border>
 
-                                                        <!-- Search Inputs -->
-                                                        <Grid Grid.Row="0" ColumnDefinitions="140, *">
-                                                            <TextBlock Grid.Column="0" Text="Name / PackageId:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextStrong}"/>
-                                                            <TextBox Grid.Column="1" Text="{Binding SearchText, Mode=TwoWay}" Classes="input" PlaceholderText="e.g. Harmony"/>
-                                                        </Grid>
+                    <!-- Search Inputs -->
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <StackPanel Grid.Column="0" Spacing="5">
+                            <TextBlock Text="Name / PackageId" Classes="field-label"/>
+                            <TextBox Text="{Binding SearchText, Mode=TwoWay}"
+                                     Classes="input"
+                                     Height="30"
+                                     PlaceholderText="e.g. Harmony"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="5">
+                            <TextBlock Text="Author" Classes="field-label"/>
+                            <TextBox Text="{Binding AuthorFilterText, Mode=TwoWay}"
+                                     Classes="input"
+                                     Height="30"
+                                     PlaceholderText="e.g. Brrainz"/>
+                        </StackPanel>
+                    </Grid>
 
-                                                        <Grid Grid.Row="2" ColumnDefinitions="140, *">
-                                                            <TextBlock Grid.Column="0" Text="Author:" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextStrong}"/>
-                                                            <TextBox Grid.Column="1" Text="{Binding AuthorFilterText, Mode=TwoWay}" Classes="input" PlaceholderText="e.g. Brrainz"/>
-                                                        </Grid>
+                    <!-- State & Content -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="State &amp; Content" Classes="field-label"/>
 
-                                                        <!-- Properties Table -->
-                                                        <StackPanel Grid.Row="3" Margin="0,20,0,0">
-                                                            <TextBlock Text="Filter by State &amp; Content" FontWeight="Bold" Foreground="{DynamicResource BrushTextStrong}" Margin="0,0,0,10"/>
-                                                            <Border BorderBrush="{DynamicResource BrushBorderDefault}" BorderThickness="1" Background="{DynamicResource BrushBgSurface}">
-                                                                <Grid ColumnDefinitions="*, 60, 60, 60" RowDefinitions="Auto, 1, 35, 1, 35, 1, 35, 1, 35">
+                        <!-- Is Supported -->
+                        <Border Classes="surface-box" Padding="11,7">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="Is Supported?" FontWeight="SemiBold" FontSize="12.5"
+                                           Foreground="{DynamicResource BrushTextBrown950}" VerticalAlignment="Center"/>
+                                <Border Grid.Column="1" Classes="tri-seg">
+                                    <StackPanel Orientation="Horizontal">
+                                        <RadioButton Content="Any" GroupName="IsSupported" Classes="tri-btn tri-any"
+                                                     IsChecked="{Binding IsSupportedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsSupported|Null"/>
+                                        <Border Width="1" Background="{DynamicResource BrushBorderSubtle}"/>
+                                        <RadioButton Content="Yes" GroupName="IsSupported" Classes="tri-btn tri-yes"
+                                                     IsChecked="{Binding IsSupportedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsSupported|True"/>
+                                        <Border Width="1" Background="{DynamicResource BrushBorderSubtle}"/>
+                                        <RadioButton Content="No" GroupName="IsSupported" Classes="tri-btn tri-no"
+                                                     IsChecked="{Binding IsSupportedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsSupported|False"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
 
-                                                                    <!-- Header Row -->
-                                                                    <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Background="{DynamicResource BrushBgAccent}" Padding="10,5">
-                                                                        <Grid ColumnDefinitions="*, 60, 60, 60">
-                                                                            <TextBlock Text="Criteria" FontWeight="Bold" Foreground="{DynamicResource BrushTextBrown950}"/>
-                                                                            <TextBlock Grid.Column="1" Text="Any" FontWeight="Bold" Foreground="{DynamicResource BrushTextBrown950}" HorizontalAlignment="Center"/>
-                                                                            <TextBlock Grid.Column="2" Text="Yes" FontWeight="Bold" Foreground="{DynamicResource BrushTextBrown950}" HorizontalAlignment="Center"/>
-                                                                            <TextBlock Grid.Column="3" Text="No" FontWeight="Bold" Foreground="{DynamicResource BrushTextBrown950}" HorizontalAlignment="Center"/>
-                                                                        </Grid>
-                                                                    </Border>
+                        <!-- Is Favorite -->
+                        <Border Classes="surface-box" Padding="11,7">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="Is Favorite?" FontWeight="SemiBold" FontSize="12.5"
+                                           Foreground="{DynamicResource BrushTextBrown950}" VerticalAlignment="Center"/>
+                                <Border Grid.Column="1" Classes="tri-seg">
+                                    <StackPanel Orientation="Horizontal">
+                                        <RadioButton Content="Any" GroupName="IsFavorite" Classes="tri-btn tri-any"
+                                                     IsChecked="{Binding IsFavoriteFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsFavorite|Null"/>
+                                        <Border Width="1" Background="{DynamicResource BrushBorderSubtle}"/>
+                                        <RadioButton Content="Yes" GroupName="IsFavorite" Classes="tri-btn tri-yes"
+                                                     IsChecked="{Binding IsFavoriteFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsFavorite|True"/>
+                                        <Border Width="1" Background="{DynamicResource BrushBorderSubtle}"/>
+                                        <RadioButton Content="No" GroupName="IsFavorite" Classes="tri-btn tri-no"
+                                                     IsChecked="{Binding IsFavoriteFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsFavorite|False"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
 
-                                                                    <!-- Row 1: Supported -->
-                                                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Is Supported?" VerticalAlignment="Center" Margin="10,0" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextStrong}"/>
-                                                                    <RadioButton Grid.Row="2" Grid.Column="1" GroupName="IsSupported"
-                                                                                 IsChecked="{Binding IsSupportedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
-                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsSupported|Null"/>
-                                                                    <RadioButton Grid.Row="2" Grid.Column="2" GroupName="IsSupported"
-                                                                                 IsChecked="{Binding IsSupportedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"
-                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsSupported|True"/>
-                                                                    <RadioButton Grid.Row="2" Grid.Column="3" GroupName="IsSupported"
-                                                                                 IsChecked="{Binding IsSupportedFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"
-                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsSupported|False"/>                                                                    <Rectangle Grid.Row="3" Grid.ColumnSpan="4" Fill="{DynamicResource BrushBgAction}" Opacity="0.3"/>
+                        <!-- Has Assemblies -->
+                        <Border Classes="surface-box" Padding="11,7">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="Has Assemblies (.dll)?" FontWeight="SemiBold" FontSize="12.5"
+                                           Foreground="{DynamicResource BrushTextBrown950}" VerticalAlignment="Center"/>
+                                <Border Grid.Column="1" Classes="tri-seg">
+                                    <StackPanel Orientation="Horizontal">
+                                        <RadioButton Content="Any" GroupName="HasAssemblies" Classes="tri-btn tri-any"
+                                                     IsChecked="{Binding HasAssembliesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasAssemblies|Null"/>
+                                        <Border Width="1" Background="{DynamicResource BrushBorderSubtle}"/>
+                                        <RadioButton Content="Yes" GroupName="HasAssemblies" Classes="tri-btn tri-yes"
+                                                     IsChecked="{Binding HasAssembliesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasAssemblies|True"/>
+                                        <Border Width="1" Background="{DynamicResource BrushBorderSubtle}"/>
+                                        <RadioButton Content="No" GroupName="HasAssemblies" Classes="tri-btn tri-no"
+                                                     IsChecked="{Binding HasAssembliesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"
+                                                     Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasAssemblies|False"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
 
-                                                                    <!-- Row 2: Favorite -->
-                                                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Is Favorite?" VerticalAlignment="Center" Margin="10,0" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextStrong}"/>
-                                                                    <RadioButton Grid.Row="4" Grid.Column="1" GroupName="IsFavorite"
-                                                                                 IsChecked="{Binding IsFavoriteFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
-                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsFavorite|Null"/>
-                                                                    <RadioButton Grid.Row="4" Grid.Column="2" GroupName="IsFavorite"
-                                                                                 IsChecked="{Binding IsFavoriteFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"
-                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsFavorite|True"/>
-                                                                    <RadioButton Grid.Row="4" Grid.Column="3" GroupName="IsFavorite"
-                                                                                 IsChecked="{Binding IsFavoriteFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"
-                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="IsFavorite|False"/>
-                                                                    <Rectangle Grid.Row="5" Grid.ColumnSpan="4" Fill="{DynamicResource BrushBgAction}" Opacity="0.3"/>
-
-                                                                    <!-- Row 3: Assemblies -->
-                                                                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Has Assemblies (.dll)?" VerticalAlignment="Center" Margin="10,0" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextStrong}"/>
-                                                                    <RadioButton Grid.Row="6" Grid.Column="1" GroupName="HasAssemblies"
-                                                                                 IsChecked="{Binding HasAssembliesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
-                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasAssemblies|Null"/>
-                                                                    <RadioButton Grid.Row="6" Grid.Column="2" GroupName="HasAssemblies"
-                                                                                 IsChecked="{Binding HasAssembliesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"
-                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasAssemblies|True"/>
-                                                                    <RadioButton Grid.Row="6" Grid.Column="3" GroupName="HasAssemblies"
-                                                                                 IsChecked="{Binding HasAssembliesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"
-                                                                                 Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasAssemblies|False"/>
-                                                                    <Rectangle Grid.Row="7" Grid.ColumnSpan="4" Fill="{DynamicResource BrushBgAction}" Opacity="0.3"/>
-
-                                                                    <!-- Row 4: Textures -->
-                                                                    <TextBlock Grid.Row="8" Grid.Column="0" Text="Has Textures?" VerticalAlignment="Center" Margin="10,0" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextStrong}"/>
-                                        <RadioButton Grid.Row="8" Grid.Column="1" GroupName="HasTextures"
+                        <!-- Has Textures -->
+                        <Border Classes="surface-box" Padding="11,7">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="Has Textures?" FontWeight="SemiBold" FontSize="12.5"
+                                           Foreground="{DynamicResource BrushTextBrown950}" VerticalAlignment="Center"/>
+                                <Border Grid.Column="1" Classes="tri-seg">
+                                    <StackPanel Orientation="Horizontal">
+                                        <RadioButton Content="Any" GroupName="HasTextures" Classes="tri-btn tri-any"
                                                      IsChecked="{Binding HasTexturesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=Null}"
                                                      Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasTextures|Null"/>
-                                        <RadioButton Grid.Row="8" Grid.Column="2" GroupName="HasTextures"
+                                        <Border Width="1" Background="{DynamicResource BrushBorderSubtle}"/>
+                                        <RadioButton Content="Yes" GroupName="HasTextures" Classes="tri-btn tri-yes"
                                                      IsChecked="{Binding HasTexturesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=True}"
                                                      Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasTextures|True"/>
-                                        <RadioButton Grid.Row="8" Grid.Column="3" GroupName="HasTextures"
+                                        <Border Width="1" Background="{DynamicResource BrushBorderSubtle}"/>
+                                        <RadioButton Content="No" GroupName="HasTextures" Classes="tri-btn tri-no"
                                                      IsChecked="{Binding HasTexturesFilter, Mode=OneWay, Converter={StaticResource NullToBoolConverter}, ConverterParameter=False}"
                                                      Command="{Binding SetFilterPropertyCommand}" CommandParameter="HasTextures|False"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+
+            <!-- TAB 2: MOD TYPES -->
+            <TabItem Header="Mod Types" Classes="rail-group" Tag="CATEGORIES">
+                <StackPanel Spacing="12">
+                    <Border BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="0,0,0,8">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Text="Mod Types" Classes="pane-title" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="Leave all unchecked to show all" Classes="field-hint" VerticalAlignment="Center" Opacity="0.85"/>
+                        </Grid>
+                    </Border>
+
+                    <ItemsControl ItemsSource="{Binding AvailableModTypes}" x:CompileBindings="False" Margin="-4,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="2"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox Classes="check-card" IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="4">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <Border Width="9" Height="9" CornerRadius="2"
+                                                BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="1"
+                                                Background="{Binding Item, Converter={StaticResource ModTypeToColorConverter}}"/>
+                                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="12.5"
+                                                   Foreground="{DynamicResource BrushTextBrown950}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </CheckBox>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </TabItem>
+
+            <!-- TAB 3: TAGS -->
+            <TabItem Header="Tags">
+                <StackPanel Spacing="12">
+                    <Border BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="0,0,0,8">
+                        <TextBlock Text="Local Tags" Classes="pane-title"/>
+                    </Border>
+
+                    <TextBlock Classes="field-hint"
+                               Text="Mods must match at least one Include tag (if any) and none of the Exclude tags."/>
+
+                    <Border Classes="surface-box" IsVisible="{Binding HasNoTags}" Padding="16,20">
+                        <TextBlock Text="No tags found. Tag your mods via right-click → Customize Mod, then reopen this filter."
+                                   HorizontalAlignment="Center" TextAlignment="Center"
+                                   FontStyle="Italic" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource BrushTextMuted}"/>
+                    </Border>
+
+                    <ItemsControl x:Name="TagsList" ItemsSource="{Binding AvailableTags}" IsVisible="{Binding !HasNoTags}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="local:TriStateFilterItemViewModel">
+                                <Border Classes="surface-box" Padding="11,7" Margin="0,0,0,6">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                        <TextBlock Grid.Column="0" Text="{Binding DisplayName}"
+                                                   FontWeight="SemiBold" FontSize="12.5"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Foreground="{DynamicResource BrushTextBrown950}"
+                                                   VerticalAlignment="Center"/>
+                                        <Border Grid.Column="1" Classes="tri-seg">
+                                            <StackPanel Orientation="Horizontal">
+                                                <RadioButton Content="Any" Classes="tri-btn tri-any"
+                                                             GroupName="{Binding Item, StringFormat='Tag_{0}'}"
+                                                             IsChecked="{Binding IsAny, Mode=OneWay}"
+                                                             Command="{Binding #TagsList.((local:ModFilterDialogViewModel)DataContext).SetFilterModeCommand}"
+                                                             CommandParameter="{Binding ParamAny}"/>
+                                                <Border Width="1" Background="{DynamicResource BrushBorderSubtle}"/>
+                                                <RadioButton Content="Include" Classes="tri-btn tri-yes"
+                                                             GroupName="{Binding Item, StringFormat='Tag_{0}'}"
+                                                             IsChecked="{Binding IsInclude, Mode=OneWay}"
+                                                             Command="{Binding #TagsList.((local:ModFilterDialogViewModel)DataContext).SetFilterModeCommand}"
+                                                             CommandParameter="{Binding ParamInclude}"/>
+                                                <Border Width="1" Background="{DynamicResource BrushBorderSubtle}"/>
+                                                <RadioButton Content="Exclude" Classes="tri-btn tri-no"
+                                                             GroupName="{Binding Item, StringFormat='Tag_{0}'}"
+                                                             IsChecked="{Binding IsExclude, Mode=OneWay}"
+                                                             Command="{Binding #TagsList.((local:ModFilterDialogViewModel)DataContext).SetFilterModeCommand}"
+                                                             CommandParameter="{Binding ParamExclude}"/>
+                                            </StackPanel>
+                                        </Border>
                                     </Grid>
                                 </Border>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-                </TabItem>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </TabItem>
 
-                <!-- TAB 2: MOD TYPES (Dedicated) -->
-                <TabItem Header="Mod Types">
-                    <Border Classes="panel-subtle">
-                        <Grid RowDefinitions="Auto, 5, *">
-                            <TextBlock Grid.Row="0" Text="Mod Types" FontWeight="Bold" Foreground="{DynamicResource BrushTextStrong}" Margin="5"/>
-                            <ListBox Grid.Row="2" ItemsSource="{Binding AvailableModTypes}" Classes="list-safe">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <CheckBox Content="{Binding DisplayName}" IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="2,0"/>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                        </Grid>
+            <!-- TAB 4: VERSIONS -->
+            <TabItem Header="Versions">
+                <StackPanel Spacing="12">
+                    <Border BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="0,0,0,8">
+                        <TextBlock Text="Supported Game Versions" Classes="pane-title"/>
                     </Border>
-                </TabItem>
 
-                <!-- TAB 3: TAGS (tri-state, local tags set via Customize Mod) -->
-                <TabItem Header="Tags">
-                    <Border Classes="panel-subtle">
-                        <Grid RowDefinitions="Auto, 5, *">
-                            <TextBlock Grid.Row="0" Text="Tags" FontWeight="Bold" Foreground="{DynamicResource BrushTextStrong}" Margin="5"/>
-                            <TextBlock Grid.Row="2" Text="No tags found. Tag your mods via right-click, Customize Mod, then reopen this filter."
-                                       HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
-                                       FontStyle="Italic" TextWrapping="Wrap" Margin="20"
-                                       Foreground="{DynamicResource BrushTextMuted}"
-                                       IsVisible="{Binding HasNoTags}"/>
-                            <ListBox x:Name="TagsList" Grid.Row="2" ItemsSource="{Binding AvailableTags}" Classes="list-safe">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate x:DataType="local:TriStateFilterItemViewModel">
-                                        <Grid ColumnDefinitions="140, *, *, *" Margin="2,0">
-                                            <TextBlock Grid.Column="0" Text="{Binding DisplayName}" VerticalAlignment="Center"/>
-                                            <RadioButton Grid.Column="1" GroupName="{Binding Item}"
-                                                         Content="Any" HorizontalAlignment="Center"
-                                                         IsChecked="{Binding IsAny, Mode=OneWay}"
-                                                         Command="{Binding #TagsList.((local:ModFilterDialogViewModel)DataContext).SetFilterModeCommand}"
-                                                         CommandParameter="{Binding ParamAny}"/>
-                                            <RadioButton Grid.Column="2" GroupName="{Binding Item}"
-                                                         Content="Include" HorizontalAlignment="Center"
-                                                         IsChecked="{Binding IsInclude, Mode=OneWay}"
-                                                         Command="{Binding #TagsList.((local:ModFilterDialogViewModel)DataContext).SetFilterModeCommand}"
-                                                         CommandParameter="{Binding ParamInclude}"/>
-                                            <RadioButton Grid.Column="3" GroupName="{Binding Item}"
-                                                         Content="Exclude" HorizontalAlignment="Center"
-                                                         IsChecked="{Binding IsExclude, Mode=OneWay}"
-                                                         Command="{Binding #TagsList.((local:ModFilterDialogViewModel)DataContext).SetFilterModeCommand}"
-                                                         CommandParameter="{Binding ParamExclude}"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                        </Grid>
-                    </Border>
-                </TabItem>
+                    <ItemsControl x:Name="VersionsList" ItemsSource="{Binding AvailableVersions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="local:TriStateFilterItemViewModel">
+                                <Border Classes="surface-box" Padding="11,7" Margin="0,0,0,6">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                        <TextBlock Grid.Column="0" Text="{Binding DisplayName}"
+                                                   FontWeight="SemiBold" FontSize="12.5"
+                                                   Foreground="{DynamicResource BrushTextBrown950}"
+                                                   VerticalAlignment="Center"/>
+                                        <Border Grid.Column="1" Classes="tri-seg">
+                                            <StackPanel Orientation="Horizontal">
+                                                <RadioButton Content="Any" Classes="tri-btn tri-any"
+                                                             GroupName="{Binding Item, StringFormat='Ver_{0}'}"
+                                                             IsChecked="{Binding IsAny, Mode=OneWay}"
+                                                             Command="{Binding #VersionsList.((local:ModFilterDialogViewModel)DataContext).SetFilterModeCommand}"
+                                                             CommandParameter="{Binding ParamAny}"/>
+                                                <Border Width="1" Background="{DynamicResource BrushBorderSubtle}"/>
+                                                <RadioButton Content="Include" Classes="tri-btn tri-yes"
+                                                             GroupName="{Binding Item, StringFormat='Ver_{0}'}"
+                                                             IsChecked="{Binding IsInclude, Mode=OneWay}"
+                                                             Command="{Binding #VersionsList.((local:ModFilterDialogViewModel)DataContext).SetFilterModeCommand}"
+                                                             CommandParameter="{Binding ParamInclude}"/>
+                                                <Border Width="1" Background="{DynamicResource BrushBorderSubtle}"/>
+                                                <RadioButton Content="Exclude" Classes="tri-btn tri-no"
+                                                             GroupName="{Binding Item, StringFormat='Ver_{0}'}"
+                                                             IsChecked="{Binding IsExclude, Mode=OneWay}"
+                                                             Command="{Binding #VersionsList.((local:ModFilterDialogViewModel)DataContext).SetFilterModeCommand}"
+                                                             CommandParameter="{Binding ParamExclude}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </TabItem>
 
-                <!-- TAB 4: VERSIONS (tri-state: Any / Include / Exclude) -->
-                <TabItem Header="Versions">
-                    <Border Classes="panel-subtle">
-                        <Grid RowDefinitions="Auto, 5, *">
-                            <TextBlock Grid.Row="0" Text="Supported Game Versions" FontWeight="Bold" Foreground="{DynamicResource BrushTextStrong}" Margin="5"/>
-                            <ListBox x:Name="VersionsList" Grid.Row="2" ItemsSource="{Binding AvailableVersions}" Classes="list-safe">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate x:DataType="local:TriStateFilterItemViewModel">
-                                        <Grid ColumnDefinitions="60, *, *, *" Margin="2,0">
-                                            <TextBlock Grid.Column="0" Text="{Binding DisplayName}" VerticalAlignment="Center"/>
-                                            <RadioButton Grid.Column="1" GroupName="{Binding Item}"
-                                                         Content="Any" HorizontalAlignment="Center"
-                                                         IsChecked="{Binding IsAny, Mode=OneWay}"
-                                                         Command="{Binding #VersionsList.((local:ModFilterDialogViewModel)DataContext).SetFilterModeCommand}"
-                                                         CommandParameter="{Binding ParamAny}"/>
-                                            <RadioButton Grid.Column="2" GroupName="{Binding Item}"
-                                                         Content="Include" HorizontalAlignment="Center"
-                                                         IsChecked="{Binding IsInclude, Mode=OneWay}"
-                                                         Command="{Binding #VersionsList.((local:ModFilterDialogViewModel)DataContext).SetFilterModeCommand}"
-                                                         CommandParameter="{Binding ParamInclude}"/>
-                                            <RadioButton Grid.Column="3" GroupName="{Binding Item}"
-                                                         Content="Exclude" HorizontalAlignment="Center"
-                                                         IsChecked="{Binding IsExclude, Mode=OneWay}"
-                                                         Command="{Binding #VersionsList.((local:ModFilterDialogViewModel)DataContext).SetFilterModeCommand}"
-                                                         CommandParameter="{Binding ParamExclude}"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                        </Grid>
-                    </Border>
-                </TabItem>
-
-            </TabControl>
-        </Grid>
+        </TabControl>
     </dialogs:BaseDialog.MainContent>
 
     <dialogs:BaseDialog.ButtonContent>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,15,0,0">
-            <Button Content="Apply Filters" Command="{Binding ApplyCommand}" Classes="btn-success" MinWidth="100"/>
-            <Button Content="Clear All" Command="{Binding ClearCommand}" Classes="btn" MinWidth="100"/>
-            <Button Content="Cancel" Command="{Binding CancelCommand}" Classes="btn" MinWidth="80"/>
-        </StackPanel>
+        <Border Classes="dialog-footer">
+            <Grid ColumnDefinitions="*,Auto">
+                <Button Grid.Column="0"
+                        Command="{Binding ClearCommand}"
+                        Classes="btn-danger-ghost"
+                        HorizontalAlignment="Left"
+                        Height="31">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <i:Icon Value="fa-rotate-left" FontSize="11"/>
+                        <TextBlock Text="Clear All" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <Button Content="Cancel"
+                            Command="{Binding CancelCommand}"
+                            Classes="btn"
+                            MinWidth="92" Height="31"/>
+                    <Button Content="Apply Filters"
+                            Command="{Binding ApplyCommand}"
+                            Classes="btn-success"
+                            MinWidth="105" Height="31"/>
+                </StackPanel>
+            </Grid>
+        </Border>
     </dialogs:BaseDialog.ButtonContent>
 </dialogs:BaseDialog>

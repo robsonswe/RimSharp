@@ -875,4 +875,134 @@
         <Setter Property="Padding" Value="14,10"/>
     </Style>
 
+    <!-- ================================================================
+    SEGMENTED TRI-STATE PILLS & SELECTABLE CARDS
+    ================================================================ -->
+
+    <!-- Container for 3-way segmented radio pills -->
+    <Style Selector="Border.tri-seg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSurface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="ClipToBounds" Value="True"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- Individual option inside Border.tri-seg (use tri-any / tri-yes / tri-no) -->
+    <Style Selector="RadioButton.tri-btn">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+        <Setter Property="Padding" Value="10,4"/>
+        <Setter Property="MinWidth" Value="50"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="SegBg"
+                        Background="{TemplateBinding Background}"
+                        Padding="{TemplateBinding Padding}">
+                    <ContentPresenter x:Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="RadioButton.tri-btn /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource BrushTextStrong}"/>
+    </Style>
+    <Style Selector="RadioButton.tri-btn:pointerover /template/ Border#SegBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+    </Style>
+    <Style Selector="RadioButton.tri-btn.tri-any:checked /template/ Border#SegBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgAccent}"/>
+    </Style>
+    <Style Selector="RadioButton.tri-btn.tri-any:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource BrushTextOnDark}"/>
+    </Style>
+    <Style Selector="RadioButton.tri-btn.tri-yes:checked /template/ Border#SegBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSuccess}"/>
+    </Style>
+    <Style Selector="RadioButton.tri-btn.tri-yes:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource BrushTextOnDark}"/>
+    </Style>
+    <Style Selector="RadioButton.tri-btn.tri-no:checked /template/ Border#SegBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgDanger}"/>
+    </Style>
+    <Style Selector="RadioButton.tri-btn.tri-no:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource BrushTextOnDark}"/>
+    </Style>
+
+    <!-- Selectable card checkbox (e.g. Mod Types grid) -->
+    <Style Selector="CheckBox.check-card">
+        <Setter Property="Background" Value="{DynamicResource BrushBgCard}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderSubtle}"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextBrown950}"/>
+        <Setter Property="Padding" Value="11,9"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="CardRoot"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        ClipToBounds="True">
+                    <Border x:Name="CardAccent"
+                            BorderBrush="Transparent"
+                            BorderThickness="3,0,0,0"
+                            Padding="{TemplateBinding Padding}">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                            <Border x:Name="CheckSquare"
+                                    Grid.Column="0"
+                                    Width="15" Height="15"
+                                    Background="{DynamicResource BrushBgSurface}"
+                                    BorderBrush="{DynamicResource BrushBorderDefault}"
+                                    BorderThickness="1"
+                                    CornerRadius="3"
+                                    VerticalAlignment="Center">
+                                <i:Icon x:Name="CheckGlyph"
+                                        Value="fa-check"
+                                        FontSize="9"
+                                        Foreground="{DynamicResource BrushTextOnDark}"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        IsVisible="False"/>
+                            </Border>
+                            <ContentPresenter Grid.Column="1"
+                                              Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                              VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="CheckBox.check-card:pointerover /template/ Border#CardRoot">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+    </Style>
+    <Style Selector="CheckBox.check-card:checked /template/ Border#CardRoot">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderStrong}"/>
+    </Style>
+    <Style Selector="CheckBox.check-card:checked /template/ Border#CardAccent">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBgAction}"/>
+    </Style>
+    <Style Selector="CheckBox.check-card:checked /template/ Border#CheckSquare">
+        <Setter Property="Background" Value="{DynamicResource BrushBgAction}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderStrong}"/>
+    </Style>
+    <Style Selector="CheckBox.check-card:checked /template/ i|Icon#CheckGlyph">
+        <Setter Property="IsVisible" Value="True"/>
+    </Style>
+
 </Styles>
