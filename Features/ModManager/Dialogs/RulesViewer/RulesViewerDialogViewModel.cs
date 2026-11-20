@@ -289,7 +289,7 @@ namespace RimSharp.Features.ModManager.Dialogs.RulesViewer
                 {
                     var title = detail.Title;
                     if (!string.IsNullOrWhiteSpace(title))
-                        Avalonia.Threading.Dispatcher.UIThread.Post(() => row.Name = title);
+                        row.Name = title;
                 }
                 catch (Exception)
                 {

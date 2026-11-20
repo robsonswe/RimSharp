@@ -1175,13 +1175,37 @@ namespace RimSharp.Shared.Services.Implementations
                     PreviewImagePath = (previewImagePath != null && File.Exists(previewImagePath)) ? previewImagePath : string.Empty,
                 };
 
-                mod.ModDependencies = root.Element("modDependencies")?.Elements("li")
+                var plainDependencies = root.Element("modDependencies")?.Elements("li")
                     .Select(x => new ModDependency
                     {
                         PackageId = x.Element("packageId")?.Value ?? string.Empty,
                         DisplayName = x.Element("displayName")?.Value ?? string.Empty,
                         SteamWorkshopUrl = x.Element("steamWorkshopUrl")?.Value ?? string.Empty
                     }).ToList() ?? new List<ModDependency>();
+
+                // A <modDependenciesByVersion><vX.Y>...</vX.Y></...> block is a
+                // specialization of the plain rule for that game version. When a
+                // block matches the current major version its entries replace the
+                // plain list (even when the block is empty/self-closing). Otherwise
+                // the plain list is kept. Only the matching version's entries are
+                // stored in the raw ByVersion field.
+                var matchingDependencies = new List<ModDependency>();
+                if (TryGetVersionBlock(root, "modDependenciesByVersion", _currentMajorVersion, out var depBlock))
+                {
+                    matchingDependencies = depBlock!.Elements("li")
+                        .Select(x => new ModDependency
+                        {
+                            PackageId = x.Element("packageId")?.Value ?? string.Empty,
+                            DisplayName = x.Element("displayName")?.Value ?? string.Empty,
+                            SteamWorkshopUrl = x.Element("steamWorkshopUrl")?.Value ?? string.Empty
+                        }).ToList();
+                    mod.ModDependencies = new List<ModDependency>(matchingDependencies);
+                }
+                else
+                {
+                    mod.ModDependencies = plainDependencies;
+                }
+                mod.ModDependenciesByVersion = matchingDependencies;
 
                 // Cached Workshop description (RimSharp.json in the mod root,
                 // written by WorkshopDescriptionService after a download/update).
@@ -1286,7 +1310,7 @@ namespace RimSharp.Shared.Services.Implementations
                     }
                 }
 
-                ParseLoadOrderRules(root, mod);
+                ParseLoadOrderRules(root, mod, _currentMajorVersion);
 
                 return mod;
             }
@@ -1296,10 +1320,86 @@ namespace RimSharp.Shared.Services.Implementations
             }
         }
 
-        private static void ParseLoadOrderRules(XElement root, ModItem mod)
+        /// <summary>
+        /// Returns true when <paramref name="version"/> is a placeholder rather
+        /// than a real game version. Such values never match a version block.
+        /// </summary>
+        private static bool IsFallbackVersion(string? version)
         {
-            mod.LoadBefore = root.Element("loadBefore")?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>();
-            mod.LoadAfter = root.Element("loadAfter")?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>();
+            if (string.IsNullOrWhiteSpace(version)) return true;
+            return version.Equals("Unknown", StringComparison.OrdinalIgnoreCase)
+                || version.Equals("N/A", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Finds the version-specific block inside <paramref name="blockName"/>
+        /// whose version matches <paramref name="currentMajorVersion"/>. A leading
+        /// "v" is stripped from the element name before an OrdinalIgnoreCase
+        /// comparison. An existing element is a match even when it is empty or
+        /// self-closing (zero entries), which cancels the plain rule.
+        /// </summary>
+        private static bool TryGetVersionBlock(
+            XElement root,
+            string blockName,
+            string currentMajorVersion,
+            out XElement? matchingBlock)
+        {
+            matchingBlock = null;
+            if (IsFallbackVersion(currentMajorVersion)) return false;
+
+            var container = root.Element(blockName);
+            if (container == null) return false;
+
+            foreach (var candidate in container.Elements())
+            {
+                var versionName = candidate.Name.LocalName;
+                if (versionName.Length > 0 && (versionName[0] == 'v' || versionName[0] == 'V'))
+                    versionName = versionName.Substring(1);
+
+                if (IsFallbackVersion(versionName)) continue;
+
+                if (string.Equals(versionName, currentMajorVersion.Trim(), StringComparison.OrdinalIgnoreCase))
+                {
+                    matchingBlock = candidate;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Resolves a plain string list against its version-specific counterpart.
+        /// Returns the resolved entries (the matching version block when present,
+        /// otherwise the plain list) and exposes only the matching version's
+        /// entries through <paramref name="matchingVersionEntries"/>.
+        /// </summary>
+        private static List<string> ResolveVersionedStringList(
+            XElement root,
+            string plainTag,
+            string versionedTag,
+            string currentMajorVersion,
+            out List<string> matchingVersionEntries)
+        {
+            var plain = root.Element(plainTag)?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>();
+            matchingVersionEntries = new List<string>();
+
+            if (TryGetVersionBlock(root, versionedTag, currentMajorVersion, out var block))
+            {
+                matchingVersionEntries = block!.Elements("li").Select(x => x.Value).ToList();
+                return new List<string>(matchingVersionEntries);
+            }
+            return plain;
+        }
+
+        private static void ParseLoadOrderRules(XElement root, ModItem mod, string currentMajorVersion)
+        {
+            mod.LoadBefore = ResolveVersionedStringList(root, "loadBefore", "loadBeforeByVersion", currentMajorVersion, out var loadBeforeByVersion);
+            mod.LoadBeforeByVersion = loadBeforeByVersion;
+
+            mod.LoadAfter = ResolveVersionedStringList(root, "loadAfter", "loadAfterByVersion", currentMajorVersion, out var loadAfterByVersion);
+            mod.LoadAfterByVersion = loadAfterByVersion;
+
+            // Force rules are never versioned.
             mod.ForceLoadBefore = root.Element("forceLoadBefore")?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>();
             mod.ForceLoadAfter = root.Element("forceLoadAfter")?.Elements("li").Select(x => x.Value).ToList() ?? new List<string>();
 
@@ -1321,14 +1421,31 @@ namespace RimSharp.Shared.Services.Implementations
             }
 
             mod.AboutIncompatibleWith.Clear();
-            var incompatibleIds = root.Element("incompatibleWith")?.Elements("li")
+
+            var plainIncompatibleIds = root.Element("incompatibleWith")?.Elements("li")
                 .Select(x => x.Value)
                 .Where(id => !string.IsNullOrWhiteSpace(id))
-                .Distinct(StringComparer.OrdinalIgnoreCase);
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList() ?? new List<string>();
 
-            if (incompatibleIds == null) return;
+            List<string> resolvedIncompatibleIds;
+            var incompatibleByVersion = new List<string>();
+            if (TryGetVersionBlock(root, "incompatibleWithByVersion", currentMajorVersion, out var incompatBlock))
+            {
+                incompatibleByVersion = incompatBlock!.Elements("li")
+                    .Select(x => x.Value)
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                resolvedIncompatibleIds = new List<string>(incompatibleByVersion);
+            }
+            else
+            {
+                resolvedIncompatibleIds = plainIncompatibleIds;
+            }
+            mod.IncompatibleWithByVersion = incompatibleByVersion;
 
-            foreach (var packageId in incompatibleIds)
+            foreach (var packageId in resolvedIncompatibleIds)
             {
                 var reason = $"Incompatible according to '{mod.DisplayName}' authors";
                 mod.IncompatibleWith.Add(packageId, new ModIncompatibilityRule { HardIncompatibility = true, Comment = new List<string> { reason } });

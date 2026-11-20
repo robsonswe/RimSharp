@@ -432,6 +432,208 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             mod.SupportedVersions.Single(v => v.Version == "1.5").Source.Should().Be(VersionSource.Official);
             mod.SupportedVersions.Should().NotContain(v => v.Source == VersionSource.External);
         }
+
+        // ------------------------------------------------------------------
+        // *ByVersion About.xml support
+        // ------------------------------------------------------------------
+
+        private async Task<ModItem> LoadVersionedModAsync(string aboutXml, string majorVersion)
+        {
+            _mockPathService.GetMajorGameVersion().Returns(majorVersion);
+
+            var modDir = Path.Combine(_modsPath, "VersionedMod");
+            var aboutDir = Path.Combine(modDir, "About");
+            Directory.CreateDirectory(aboutDir);
+            File.WriteAllText(Path.Combine(aboutDir, "About.xml"), aboutXml);
+
+            var service = CreateService();
+            await service.LoadModsAsync();
+            return service.GetLoadedMods().Single(m => m.PackageId == "test.versioned");
+        }
+
+        [Fact]
+        public async Task LoadModsAsync_MatchingVersionBlock_ReplacesAllPlainRules()
+        {
+            var aboutXml = @"<?xml version='1.0' encoding='utf-8'?>
+<ModMetaData>
+    <name>Versioned Mod</name>
+    <packageId>test.versioned</packageId>
+    <modDependencies>
+        <li><packageId>plain.dep</packageId><displayName>Plain Dep</displayName></li>
+    </modDependencies>
+    <loadBefore><li>plain.before</li></loadBefore>
+    <loadAfter><li>plain.after</li></loadAfter>
+    <incompatibleWith><li>plain.bad</li></incompatibleWith>
+    <modDependenciesByVersion>
+        <v1.7>
+            <li><packageId>version.dep</packageId><displayName>Version Dep</displayName><steamWorkshopUrl>https://example.com/dep</steamWorkshopUrl></li>
+        </v1.7>
+    </modDependenciesByVersion>
+    <loadBeforeByVersion><v1.7><li>version.before</li></v1.7></loadBeforeByVersion>
+    <loadAfterByVersion><v1.7><li>version.after</li></v1.7></loadAfterByVersion>
+    <incompatibleWithByVersion><v1.7><li>version.bad</li></v1.7></incompatibleWithByVersion>
+</ModMetaData>";
+
+            var mod = await LoadVersionedModAsync(aboutXml, "1.7");
+
+            mod.ModDependencies.Should().ContainSingle().Which.PackageId.Should().Be("version.dep");
+            mod.ModDependencies.Should().NotContain(d => d.PackageId == "plain.dep");
+            mod.LoadBefore.Should().BeEquivalentTo(new[] { "version.before" });
+            mod.LoadAfter.Should().BeEquivalentTo(new[] { "version.after" });
+            mod.IncompatibleWith.Should().ContainKey("version.bad").And.NotContainKey("plain.bad");
+
+            // Provenance is rebuilt from the RESOLVED entries, not the plain ones.
+            mod.AboutLoadBefore.Should().BeEquivalentTo(new[] { "version.before" });
+            mod.AboutLoadAfter.Should().BeEquivalentTo(new[] { "version.after" });
+            mod.AboutIncompatibleWith.Should().BeEquivalentTo(new[] { "version.bad" });
+            mod.IncompatibleWith["version.bad"].HardIncompatibility.Should().BeTrue();
+            mod.IncompatibleWith["version.bad"].Comment.Should().ContainSingle()
+                .Which.Should().Be("Incompatible according to 'Versioned Mod' authors");
+        }
+
+        [Fact]
+        public async Task LoadModsAsync_SelfClosingVersionBlock_CancelsPlainRules()
+        {
+            var aboutXml = @"<?xml version='1.0' encoding='utf-8'?>
+<ModMetaData>
+    <name>Versioned Mod</name>
+    <packageId>test.versioned</packageId>
+    <modDependencies><li><packageId>plain.dep</packageId></li></modDependencies>
+    <loadBefore><li>plain.before</li></loadBefore>
+    <loadAfter><li>plain.after</li></loadAfter>
+    <incompatibleWith><li>plain.bad</li></incompatibleWith>
+    <modDependenciesByVersion><v1.0 /></modDependenciesByVersion>
+    <loadBeforeByVersion><v1.0 /></loadBeforeByVersion>
+    <loadAfterByVersion><v1.0 /></loadAfterByVersion>
+    <incompatibleWithByVersion><v1.0 /></incompatibleWithByVersion>
+</ModMetaData>";
+
+            var mod = await LoadVersionedModAsync(aboutXml, "1.0");
+
+            mod.ModDependencies.Should().BeEmpty();
+            mod.LoadBefore.Should().BeEmpty();
+            mod.LoadAfter.Should().BeEmpty();
+            mod.IncompatibleWith.Should().BeEmpty();
+            mod.AboutLoadBefore.Should().BeEmpty();
+            mod.AboutLoadAfter.Should().BeEmpty();
+            mod.AboutIncompatibleWith.Should().BeEmpty();
+        }
+
+        [Theory]
+        [InlineData("1.8")]
+        [InlineData("1.6")]
+        public async Task LoadModsAsync_NoMatchingVersionBlock_KeepsPlainRules(string majorVersion)
+        {
+            var aboutXml = @"<?xml version='1.0' encoding='utf-8'?>
+<ModMetaData>
+    <name>Versioned Mod</name>
+    <packageId>test.versioned</packageId>
+    <modDependencies><li><packageId>plain.dep</packageId></li></modDependencies>
+    <loadBefore><li>plain.before</li></loadBefore>
+    <loadAfter><li>plain.after</li></loadAfter>
+    <incompatibleWith><li>plain.bad</li></incompatibleWith>
+    <modDependenciesByVersion><v1.7><li><packageId>version.dep</packageId></li></v1.7></modDependenciesByVersion>
+    <loadBeforeByVersion><v1.7><li>version.before</li></v1.7></loadBeforeByVersion>
+    <loadAfterByVersion><v1.7><li>version.after</li></v1.7></loadAfterByVersion>
+    <incompatibleWithByVersion><v1.7><li>version.bad</li></v1.7></incompatibleWithByVersion>
+</ModMetaData>";
+
+            var mod = await LoadVersionedModAsync(aboutXml, majorVersion);
+
+            mod.ModDependencies.Should().ContainSingle().Which.PackageId.Should().Be("plain.dep");
+            mod.LoadBefore.Should().BeEquivalentTo(new[] { "plain.before" });
+            mod.LoadAfter.Should().BeEquivalentTo(new[] { "plain.after" });
+            mod.IncompatibleWith.Should().ContainKey("plain.bad").And.NotContainKey("version.bad");
+            mod.AboutLoadBefore.Should().BeEquivalentTo(new[] { "plain.before" });
+            mod.AboutLoadAfter.Should().BeEquivalentTo(new[] { "plain.after" });
+            mod.AboutIncompatibleWith.Should().BeEquivalentTo(new[] { "plain.bad" });
+
+            // No matching version -> raw ByVersion fields stay empty.
+            mod.ModDependenciesByVersion.Should().BeEmpty();
+            mod.LoadBeforeByVersion.Should().BeEmpty();
+            mod.LoadAfterByVersion.Should().BeEmpty();
+            mod.IncompatibleWithByVersion.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task LoadModsAsync_ByVersionFields_ContainOnlyMatchingVersionEntries()
+        {
+            var aboutXml = @"<?xml version='1.0' encoding='utf-8'?>
+<ModMetaData>
+    <name>Versioned Mod</name>
+    <packageId>test.versioned</packageId>
+    <modDependenciesByVersion>
+        <v1.6><li><packageId>old.dep</packageId></li></v1.6>
+        <v1.7><li><packageId>new.dep</packageId></li></v1.7>
+    </modDependenciesByVersion>
+    <loadBeforeByVersion>
+        <v1.6><li>old.before</li></v1.6>
+        <v1.7><li>new.before</li></v1.7>
+    </loadBeforeByVersion>
+    <loadAfterByVersion>
+        <v1.6><li>old.after</li></v1.6>
+        <v1.7><li>new.after</li></v1.7>
+    </loadAfterByVersion>
+    <incompatibleWithByVersion>
+        <v1.6><li>old.bad</li></v1.6>
+        <v1.7><li>new.bad</li></v1.7>
+    </incompatibleWithByVersion>
+</ModMetaData>";
+
+            var mod = await LoadVersionedModAsync(aboutXml, "1.7");
+
+            mod.ModDependenciesByVersion.Should().ContainSingle().Which.PackageId.Should().Be("new.dep");
+            mod.LoadBeforeByVersion.Should().BeEquivalentTo(new[] { "new.before" });
+            mod.LoadAfterByVersion.Should().BeEquivalentTo(new[] { "new.after" });
+            mod.IncompatibleWithByVersion.Should().BeEquivalentTo(new[] { "new.bad" });
+
+            // With no plain rules, the resolved fields mirror the matching block.
+            mod.ModDependencies.Should().ContainSingle().Which.PackageId.Should().Be("new.dep");
+            mod.LoadBefore.Should().BeEquivalentTo(new[] { "new.before" });
+            mod.LoadAfter.Should().BeEquivalentTo(new[] { "new.after" });
+            mod.IncompatibleWith.Should().ContainKey("new.bad").And.NotContainKey("old.bad");
+        }
+
+        [Fact]
+        public async Task LoadModsAsync_ForceRules_AreNotVersioned()
+        {
+            var aboutXml = @"<?xml version='1.0' encoding='utf-8'?>
+<ModMetaData>
+    <name>Versioned Mod</name>
+    <packageId>test.versioned</packageId>
+    <forceLoadBefore><li>force.before</li></forceLoadBefore>
+    <forceLoadAfter><li>force.after</li></forceLoadAfter>
+    <loadBefore><li>plain.before</li></loadBefore>
+    <loadBeforeByVersion><v1.7><li>version.before</li></v1.7></loadBeforeByVersion>
+</ModMetaData>";
+
+            var mod = await LoadVersionedModAsync(aboutXml, "1.7");
+
+            mod.ForceLoadBefore.Should().BeEquivalentTo(new[] { "force.before" });
+            mod.ForceLoadAfter.Should().BeEquivalentTo(new[] { "force.after" });
+            // The versioned non-force rule still applies.
+            mod.LoadBefore.Should().BeEquivalentTo(new[] { "version.before" });
+        }
+
+        [Theory]
+        [InlineData("Unknown")]
+        [InlineData("N/A")]
+        [InlineData("")]
+        public async Task LoadModsAsync_FallbackVersion_MatchesNothing_KeepsPlainRules(string majorVersion)
+        {
+            var aboutXml = @"<?xml version='1.0' encoding='utf-8'?>
+<ModMetaData>
+    <name>Versioned Mod</name>
+    <packageId>test.versioned</packageId>
+    <loadBefore><li>plain.before</li></loadBefore>
+    <loadBeforeByVersion><v1.7><li>version.before</li></v1.7></loadBeforeByVersion>
+</ModMetaData>";
+
+            var mod = await LoadVersionedModAsync(aboutXml, majorVersion);
+
+            mod.LoadBefore.Should().BeEquivalentTo(new[] { "plain.before" });
+            mod.LoadBeforeByVersion.Should().BeEmpty();
+        }
     }
 
     public class ModServiceMacOSBundleTests : IDisposable
