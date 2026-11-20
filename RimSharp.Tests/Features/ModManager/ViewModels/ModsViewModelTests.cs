@@ -182,6 +182,18 @@ _mockModListManager.ListChanged += Raise.Event<EventHandler<ModListChangedEventA
             vm.IsLoading.Should().BeFalse();
             await _mockDialogService.Received(1).ShowError(Arg.Any<string>(), Arg.Is<string>(s => s.Contains("Test Error")));
         }
+
+        [Fact]
+        public void CustomModInfoChanged_ShouldRefreshActiveModIssues()
+        {
+            var vm = CreateViewModel();
+
+            _mockModService.CustomModInfoChanged += Raise.Event<EventHandler>(_mockModService, EventArgs.Empty);
+
+            // ThreadHelper runs synchronously in test mode, so the marshaled
+            // call has already happened by the time Raise.Event returns.
+            _mockModListManager.Received(1).RefreshActiveModIssues();
+        }
     }
 }
 

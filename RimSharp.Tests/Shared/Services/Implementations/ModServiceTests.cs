@@ -708,6 +708,32 @@ namespace RimSharp.Tests.Shared.Services.Implementations
             mod.LoadBefore.Should().BeEquivalentTo(new[] { "plain.before" });
             mod.LoadBeforeByVersion.Should().BeEmpty();
         }
+
+        [Fact]
+        public async Task SaveCustomModInfoAsync_RaisesCustomModInfoChanged()
+        {
+            var service = CreateService();
+            object? raisedSender = null;
+            EventArgs? raisedArgs = null;
+            service.CustomModInfoChanged += (s, e) => { raisedSender = s; raisedArgs = e; };
+
+            await service.SaveCustomModInfoAsync("test.mod", new ModCustomInfo { Tags = "qol" });
+
+            raisedSender.Should().BeSameAs(service);
+            raisedArgs.Should().NotBeNull();
+        }
+
+        [Fact]
+        public async Task RemoveCustomModInfoAsync_RaisesCustomModInfoChanged()
+        {
+            var service = CreateService();
+            int raised = 0;
+            service.CustomModInfoChanged += (s, e) => raised++;
+
+            await service.RemoveCustomModInfoAsync("test.mod");
+
+            raised.Should().Be(1);
+        }
     }
 
     public class ModServiceMacOSBundleTests : IDisposable

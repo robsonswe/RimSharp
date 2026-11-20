@@ -210,6 +210,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                         modInfoResolver
                         );
             _modListManager.ListChanged += OnModListManagerChanged;
+            _modService.CustomModInfoChanged += OnCustomModInfoChanged;
             ModListViewModel.RequestSelectionChange += OnChildRequestSelectionChange;
             ModActionsViewModel.IsLoadingRequest += OnChildRequestLoading;
             ModActionsViewModel.RequestDataRefresh += OnChildRequestDataRefresh;
@@ -267,6 +268,16 @@ namespace RimSharp.Features.ModManager.ViewModels
         private void OnChildRequestLoading(object? sender, bool isLoading)
         {
             IsLoading = isLoading; 
+        }
+
+        private void OnCustomModInfoChanged(object? sender, EventArgs e)
+        {
+            // Customization changes version/rule data on the live mods, so the
+            // issue badges/tooltips must be recomputed. ModService cannot call
+            // IModListManager directly (circular dependency), so it raises this
+            // event instead. Additive to the RequestDataRefresh path — a double
+            // refresh is harmless.
+            _ = RunOnUIThreadAsync(() => _modListManager.RefreshActiveModIssues());
         }
 
         private void OnChildRequestDataRefresh(object? sender, EventArgs e)
@@ -468,6 +479,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                 Debug.WriteLine("[ModsViewModel] Disposing derived resources...");
 
                 if (_modListManager != null) _modListManager.ListChanged -= OnModListManagerChanged;
+                if (_modService != null) _modService.CustomModInfoChanged -= OnCustomModInfoChanged;
                 if (ModListViewModel != null) ModListViewModel.RequestSelectionChange -= OnChildRequestSelectionChange;
                 if (ModActionsViewModel != null)
                 {

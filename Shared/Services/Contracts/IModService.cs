@@ -12,6 +12,13 @@ namespace RimSharp.Shared.Services.Contracts
     public interface IModService
     {
         /// <summary>
+        /// Raised after custom mod info is saved or removed so views can
+        /// recompute issue badges without ModService depending on
+        /// IModListManager (which would introduce a circular dependency).
+        /// </summary>
+        event EventHandler? CustomModInfoChanged;
+
+        /// <summary>
 
 /// </summary>
 

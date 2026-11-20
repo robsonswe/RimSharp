@@ -24,6 +24,8 @@ namespace RimSharp.Shared.Services.Implementations
 {
     public class ModService : IModService
     {
+        public event EventHandler? CustomModInfoChanged;
+
         private readonly IPathService _pathService;
         private readonly List<ModItem> _allMods = new();
         private string _currentMajorVersion = string.Empty;
@@ -1538,6 +1540,15 @@ namespace RimSharp.Shared.Services.Implementations
 
             await _customService.SaveCustomModInfoAsync(packageId, customInfo);
             _customService.ApplyCustomInfoToMods(_allMods);
+
+            // Custom supported-version edits change this flag on the live mods;
+            // recompute it exactly like the full load path (LoadModsAsync) does.
+            foreach (var mod in _allMods)
+            {
+                mod.IsSupportedRW = IsVersionSupported(_currentMajorVersion, mod.SupportedVersions) || !mod.SupportedVersions.Any();
+            }
+
+            CustomModInfoChanged?.Invoke(this, EventArgs.Empty);
         }
 
         public async Task RemoveCustomModInfoAsync(string packageId)
@@ -1547,6 +1558,8 @@ namespace RimSharp.Shared.Services.Implementations
 
             await _customService.RemoveCustomModInfoAsync(packageId);
             await LoadModsAsync();
+
+            CustomModInfoChanged?.Invoke(this, EventArgs.Empty);
         }
 
         public ModCustomInfo? GetCustomModInfo(string packageId)
