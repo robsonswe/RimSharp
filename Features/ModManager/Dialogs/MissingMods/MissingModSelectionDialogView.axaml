@@ -1,191 +1,241 @@
 <dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
-        xmlns:vm="clr-namespace:RimSharp.Features.ModManager.Dialogs.MissingMods"
-        xmlns:i="https://github.com/projektanker/icons.avalonia"
-        x:Class="RimSharp.Features.ModManager.Dialogs.MissingMods.MissingModSelectionDialogView"
-        x:DataType="vm:MissingModSelectionDialogViewModel"
-        mc:Ignorable="d"
-        Title="{Binding Title}"
-        Width="750" MinWidth="650" MaxWidth="1000"
-        Height="600" MinHeight="450" MaxHeight="800"
-        WindowStartupLocation="CenterOwner">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                    xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+                    xmlns:vm="clr-namespace:RimSharp.Features.ModManager.Dialogs.MissingMods"
+                    xmlns:i="https://github.com/projektanker/icons.avalonia"
+                    xmlns:sys="using:System"
+                    x:Class="RimSharp.Features.ModManager.Dialogs.MissingMods.MissingModSelectionDialogView"
+                    x:DataType="vm:MissingModSelectionDialogViewModel"
+                    x:CompileBindings="True"
+                    mc:Ignorable="d"
+                    Classes="dialog-flush"
+                    Title="{Binding Title}"
+                    Width="800"
+                    MaxHeight="640"
+                    SizeToContent="Height"
+                    CanResize="False"
+                    WindowStartupLocation="CenterOwner">
 
     <dialogs:BaseDialog.MainContent>
-        <Grid Margin="15" RowDefinitions="Auto,*,Auto">
-
-            <!-- ═══ Header description ═══ -->
-            <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,12">
-                <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="{DynamicResource BrushTextStrong}">
-                    The following mods from the imported list were not found locally or need clarification.
-                </TextBlock>
-                <Border Background="{DynamicResource BrushBgPanel}" CornerRadius="3" Padding="10,8">
-                    <StackPanel Spacing="3">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <i:Icon Value="fa-circle-info" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
-                            <TextBlock Text="Select a variant for each mod to enable download." FontSize="11" Foreground="{DynamicResource BrushTextStrong}"/>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <i:Icon Value="fa-ban" FontSize="11" Foreground="{DynamicResource BrushTextError}"/>
-                            <TextBlock Text="Unavailable variants (unpublished) cannot be selected." FontSize="11" Foreground="{DynamicResource BrushTextStrong}"/>
-                        </StackPanel>
+        <Grid RowDefinitions="Auto,*">
+            <!-- Header Banner -->
+            <Border Grid.Row="0"
+                    Background="{DynamicResource BrushBgPanel}"
+                    BorderBrush="{DynamicResource BrushBorderDefault}"
+                    BorderThickness="0,0,0,1"
+                    Padding="16,10">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="The following mods were not found locally or need clarification."
+                                   FontSize="13.5" FontWeight="Bold" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource BrushTextBrown950}"/>
+                        <TextBlock Text="Select a published variant for each mod to enable download."
+                                   Classes="field-hint"/>
                     </StackPanel>
-                </Border>
-            </StackPanel>
 
-            <!-- ═══ Scrollable mod list ═══ -->
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                <StackPanel Spacing="6">
-
-                    <!-- ── Section: Known mods (with variants to pick) ── -->
-                    <StackPanel IsVisible="{Binding HasKnownMods}" Spacing="6">
-
-                        <!-- Section header -->
-                        <Border Classes="info-header" CornerRadius="3" Margin="0,0,0,2">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <i:Icon Grid.Column="0" Value="fa-download" FontSize="12" Foreground="{DynamicResource BrushTextOnDark}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                <TextBlock Grid.Column="1" Text="Downloadable Mods" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource BrushTextOnDark}" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="2" Text="{Binding SelectionSummary}" FontSize="11" Foreground="{DynamicResource BrushTextOnDark}" VerticalAlignment="Center" Opacity="0.85"/>
-                            </Grid>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <Border Classes="pill-badge success" IsVisible="{Binding HasKnownMods}">
+                            <TextBlock Text="{Binding SelectionSummary}" FontSize="10.5" FontWeight="Bold"
+                                       Foreground="{DynamicResource BrushTextSuccess}"/>
                         </Border>
+                        <Border Classes="pill-badge hard" IsVisible="{Binding HasUnknownMods}">
+                            <TextBlock Text="{Binding UnknownBadgeText}" FontSize="10.5" FontWeight="Bold"
+                                       Foreground="{DynamicResource BrushTextError}"/>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Border>
 
-                        <!-- Mod groups -->
-                        <ItemsControl ItemsSource="{Binding ModGroups}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:MissingModGroupViewModel">
-                                    <Border Classes="panel" Margin="0,0,0,4" Padding="0">
-                                        <StackPanel>
+            <!-- Scrollable Content -->
+            <ScrollViewer Grid.Row="1"
+                          Background="{DynamicResource BrushBgSurface}"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto"
+                          MaxHeight="468">
+                <StackPanel Margin="16,14" Spacing="12">
 
-                                            <!-- Group header: packageId + variant count -->
-                                            <Border Background="{DynamicResource BrushBgAccent}" Padding="10,7">
-                                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                                                    <TextBlock Grid.Column="0" Grid.Row="0" Text="{Binding PackageId}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource BrushTextStrong}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                                    <StackPanel Grid.Column="1" Grid.Row="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding VariantCountLabel}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
-                                                        <i:Icon Value="fa-check-circle" FontSize="11" Foreground="{DynamicResource BrushTextSuccess}" IsVisible="{Binding IsSelectionMade}"/>
-                                                    </StackPanel>
-                                                    <TextBlock Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1" Text="{Binding RequiredByDisplay}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" IsVisible="{Binding HasRequiredBy}" TextWrapping="Wrap" Margin="0,3,0,0"/>
-                                                </Grid>
-                                            </Border>
+                    <!-- Downloadable Mod Groups -->
+                    <ItemsControl ItemsSource="{Binding ModGroups}" IsVisible="{Binding HasKnownMods}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:MissingModGroupViewModel">
+                                <Border Classes="group-card" Margin="0,0,0,11">
+                                    <StackPanel>
+                                        <!-- Group Header -->
+                                        <Border Classes="group-head">
+                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                                <WrapPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding PackageId}"
+                                                               FontFamily="{DynamicResource RimSharpMonoFontFamily}"
+                                                               FontSize="12.5" FontWeight="Bold"
+                                                               Foreground="{DynamicResource BrushTextBrown950}"
+                                                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                    <Border Classes="pill-badge db" IsVisible="{Binding HasRequiredBy}">
+                                                        <TextBlock Text="{Binding RequiredByLabel}" FontSize="10" FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource BrushTextBadgeMod}"/>
+                                                    </Border>
+                                                </WrapPanel>
 
-                                            <!-- Variant cards -->
-                                            <ItemsControl ItemsSource="{Binding Variants}" Margin="8,6,8,8">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate x:DataType="vm:MissingModVariantViewModel">
-                                                        <Border Margin="0,0,0,4" Padding="10,8"
-                                                                Background="{DynamicResource BrushBgSurface}"
-                                                                BorderBrush="{DynamicResource BrushBorderDefault}"
-                                                                BorderThickness="1"
-                                                                CornerRadius="3"
-                                                                Opacity="{Binding SelectableOpacity}">
-                                                            <RadioButton IsChecked="{Binding IsSelected}" IsEnabled="{Binding IsSelectable}" GroupName="{Binding GroupName}">
-                                                                <StackPanel Spacing="4" Margin="4,0,0,0">
-                                                                    <!-- Row 1: mod name + unpublished badge -->
-                                                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                                                        <TextBlock FontWeight="SemiBold" FontSize="13" Text="{Binding Name}" Foreground="{DynamicResource BrushTextStrong}" TextTrimming="CharacterEllipsis"/>
-                                                                        <Border IsVisible="{Binding !IsPublished}" Background="{DynamicResource BrushBgDangerLight}" CornerRadius="2" Padding="5,1" VerticalAlignment="Center">
-                                                                            <TextBlock Text="Unpublished" FontSize="9" Foreground="{DynamicResource BrushTextOnDark}" FontWeight="Medium"/>
-                                                                        </Border>
-                                                                    </StackPanel>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                    <Border Classes="pill-badge muted">
+                                                        <TextBlock Text="{Binding VariantCountLabel}" FontSize="10" FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource BrushTextStrong}"/>
+                                                    </Border>
+                                                    <Border Classes="pill-badge hard" IsVisible="{Binding IsUnavailable}">
+                                                        <TextBlock Text="Unavailable" FontSize="10" FontWeight="Bold"
+                                                                   Foreground="{DynamicResource BrushTextError}"/>
+                                                    </Border>
+                                                    <Border Classes="pill-badge success" IsVisible="{Binding IsSelectionMade}">
+                                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                                            <i:Icon Value="fa-check" FontSize="9" Foreground="{DynamicResource BrushTextSuccess}"/>
+                                                            <TextBlock Text="Selected" FontSize="10" FontWeight="Bold"
+                                                                       Foreground="{DynamicResource BrushTextSuccess}"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <Border Classes="pill-badge soft" IsVisible="{Binding NeedsSelection}">
+                                                        <TextBlock Text="Pick one" FontSize="10" FontWeight="Bold"
+                                                                   Foreground="{DynamicResource BrushTextBrown950}"/>
+                                                    </Border>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
 
-                                                                    <!-- Row 2: metadata line (author, versions, updated, steam id) -->
-                                                                    <WrapPanel Orientation="Horizontal">
-                                                                        <!-- Author -->
-                                                                        <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,12,0"
-                                                                                    IsVisible="{Binding Authors, Converter={StaticResource IsNotNullOrEmptyConverter}}">
-                                                                            <i:Icon Value="fa-user" FontSize="9" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
-                                                                            <TextBlock Text="{Binding Authors}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
-                                                                        </StackPanel>
-                                                                        <!-- Versions -->
-                                                                        <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,12,0"
-                                                                                    IsVisible="{Binding VersionsString, Converter={StaticResource IsNotNullOrEmptyConverter}}">
-                                                                            <i:Icon Value="fa-code-branch" FontSize="9" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
-                                                                            <TextBlock Text="{Binding VersionsString}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
-                                                                        </StackPanel>
-                                                                        <!-- Last Updated -->
-                                                                        <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,12,0"
-                                                                                    IsVisible="{Binding HasLastUpdated}">
-                                                                            <i:Icon Value="fa-clock" FontSize="9" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
-                                                                            <TextBlock Text="{Binding LastUpdatedDisplay}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
-                                                                        </StackPanel>
-                                                                        <!-- Steam ID -->
-                                                                        <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,8,0"
-                                                                                    IsVisible="{Binding SteamId, Converter={StaticResource IsNotNullOrEmptyConverter}}">
-                                                                            <i:Icon Value="fa-brands fa-steam" FontSize="9" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
-                                                                            <TextBlock Text="{Binding SteamId}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" FontStyle="Italic" Padding="0,0,8,0" VerticalAlignment="Center"/>
-                                                                        </StackPanel>
-                                                                    </WrapPanel>
+                                        <!-- Variant Radio Cards -->
+                                        <ItemsControl ItemsSource="{Binding Variants}" Margin="10,9">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:MissingModVariantViewModel">
+                                                    <RadioButton GroupName="{Binding GroupName}"
+                                                                 IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                                 IsEnabled="{Binding IsSelectable}"
+                                                                 Classes="opt-card"
+                                                                 Margin="0,0,0,6">
+                                                        <StackPanel Spacing="4">
+                                                            <!-- Row 1: Mod Name + Unpublished Pill + Version Chips -->
+                                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                                                <WrapPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13"
+                                                                               Foreground="{DynamicResource BrushTextBrown950}"
+                                                                               VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                                                    <Border Classes="pill-badge hard" IsVisible="{Binding !IsPublished}">
+                                                                        <TextBlock Text="Unpublished" FontSize="10" FontWeight="Bold"
+                                                                                   Foreground="{DynamicResource BrushTextError}"/>
+                                                                    </Border>
+                                                                </WrapPanel>
+
+                                                                <ItemsControl Grid.Column="1" ItemsSource="{Binding VersionChips}"
+                                                                              IsVisible="{Binding HasVersionChips}" VerticalAlignment="Center">
+                                                                    <ItemsControl.ItemsPanel>
+                                                                        <ItemsPanelTemplate>
+                                                                            <WrapPanel Orientation="Horizontal"/>
+                                                                        </ItemsPanelTemplate>
+                                                                    </ItemsControl.ItemsPanel>
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate x:DataType="sys:String">
+                                                                            <Border Classes="ver-chip">
+                                                                                <TextBlock Text="{Binding}" FontFamily="{DynamicResource RimSharpMonoFontFamily}"
+                                                                                           FontSize="10" Foreground="{DynamicResource BrushTextBrown950}"/>
+                                                                            </Border>
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
+                                                            </Grid>
+
+                                                            <!-- Row 2: Metadata (Author, Updated, Steam ID) -->
+                                                            <WrapPanel Orientation="Horizontal">
+                                                                <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,12,0"
+                                                                            IsVisible="{Binding Authors, Converter={StaticResource IsNotNullOrEmptyConverter}}">
+                                                                    <i:Icon Value="fa-user" FontSize="9.5" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                                                    <TextBlock Text="{Binding Authors}" FontSize="11" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
                                                                 </StackPanel>
-                                                            </RadioButton>
-                                                        </Border>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </StackPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
 
-                    <!-- ── Section: Unknown mods (not in database) ── -->
-                    <StackPanel IsVisible="{Binding HasUnknownMods}" Spacing="6">
+                                                                <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,12,0"
+                                                                            IsVisible="{Binding HasLastUpdated}">
+                                                                    <i:Icon Value="fa-clock" FontSize="9.5" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                                                    <TextBlock Text="{Binding LastUpdatedDisplay}" FontSize="11" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                                                </StackPanel>
 
-                        <!-- Section header -->
-                        <Border Background="{DynamicResource BrushBgDanger}" CornerRadius="3" Padding="10,8" Margin="0,4,0,2">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <i:Icon Grid.Column="0" Value="fa-circle-exclamation" FontSize="12" Foreground="{DynamicResource BrushTextOnDark}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                <TextBlock Grid.Column="1" Text="Unknown Mods" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource BrushTextOnDark}" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="2" Text="{Binding UnknownModCount}" FontSize="11" Foreground="{DynamicResource BrushTextOnDark}" VerticalAlignment="Center" Opacity="0.85"/>
+                                                                <StackPanel Orientation="Horizontal" Spacing="4"
+                                                                            IsVisible="{Binding SteamId, Converter={StaticResource IsNotNullOrEmptyConverter}}">
+                                                                    <i:Icon Value="fa-brands fa-steam" FontSize="9.5" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                                                    <TextBlock Text="{Binding SteamId}" Classes="mono-sub" VerticalAlignment="Center"/>
+                                                                </StackPanel>
+                                                            </WrapPanel>
+                                                        </StackPanel>
+                                                    </RadioButton>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Unknown Mods Section -->
+                    <Border IsVisible="{Binding HasUnknownMods}"
+                            BorderBrush="{DynamicResource BrushBorderSubtle}"
+                            BorderThickness="0,1,0,0"
+                            Padding="0,10,0,0">
+                        <StackPanel Spacing="7">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="Unknown Mods (Cannot Download)"
+                                           FontWeight="Bold" FontSize="12.5"
+                                           Foreground="{DynamicResource BrushTextError}"
+                                           VerticalAlignment="Center"/>
+                                <Border Grid.Column="1" Classes="pill-badge hard">
+                                    <TextBlock Text="{Binding UnknownModCount}" FontSize="10" FontWeight="Bold"
+                                               Foreground="{DynamicResource BrushTextError}"/>
+                                </Border>
                             </Grid>
-                        </Border>
 
-                        <!-- Unknown mod items -->
-                        <ItemsControl ItemsSource="{Binding UnknownModIds}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Margin="0,0,0,3" Padding="10,8"
-                                            Background="{DynamicResource BrushBgSurface}"
-                                            BorderBrush="{DynamicResource BrushBorderDefault}"
-                                            BorderThickness="1"
-                                            CornerRadius="3"
-                                            Opacity="0.7">
-                                        <Grid ColumnDefinitions="Auto,*">
-                                            <i:Icon Grid.Column="0" Value="fa-circle-question" FontSize="13" Foreground="{DynamicResource BrushTextError}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                            <StackPanel Grid.Column="1" Spacing="2">
-                                                <TextBlock Text="{Binding}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource BrushTextStrong}" TextTrimming="CharacterEllipsis"/>
-                                                <TextBlock Text="Not found in local database — cannot be downloaded automatically." FontSize="11" FontStyle="Italic" Foreground="{DynamicResource BrushTextError}"/>
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
+                            <ItemsControl ItemsSource="{Binding UnknownModIds}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="sys:String">
+                                        <Border Classes="alert-box danger" Margin="0,0,0,6">
+                                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                                                <i:Icon Grid.Column="0" Value="fa-circle-question" FontSize="13" Margin="0,2,0,0"
+                                                        Foreground="{DynamicResource BrushTextError}"/>
+                                                <StackPanel Grid.Column="1" Spacing="2">
+                                                    <TextBlock Text="{Binding}"
+                                                               FontFamily="{DynamicResource RimSharpMonoFontFamily}"
+                                                               FontWeight="Bold" FontSize="12"
+                                                               Foreground="{DynamicResource BrushTextBrown950}"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="Not found in local database — cannot be downloaded automatically."
+                                                               FontSize="11" FontStyle="Italic"
+                                                               Foreground="{DynamicResource BrushTextError}"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
 
                 </StackPanel>
             </ScrollViewer>
-
-            <!-- ═══ Footer status bar ═══ -->
-            <Border Grid.Row="2" Margin="0,8,0,0" Padding="0,6,0,0"
-                    BorderBrush="{DynamicResource BrushBorderDefault}" BorderThickness="0,1,0,0">
-                <TextBlock Text="{Binding StatusText}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
-            </Border>
-
         </Grid>
     </dialogs:BaseDialog.MainContent>
 
     <dialogs:BaseDialog.ButtonContent>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="10">
-            <Button Content="Cancel" Command="{Binding CancelCommand}" Classes="btn" MinWidth="90"/>
-            <Button Command="{Binding DownloadCommand}" Classes="btn-success" MinWidth="160">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <i:Icon Value="fa-download" FontSize="12"/>
-                    <TextBlock Text="Download Selected" VerticalAlignment="Center"/>
+        <Border Classes="dialog-footer">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="{Binding StatusText}"
+                           FontSize="11.5" FontWeight="SemiBold"
+                           Foreground="{DynamicResource BrushTextStrong}"
+                           VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <Button Content="Cancel" Command="{Binding CancelCommand}" Classes="btn" MinWidth="92" Height="31"/>
+                    <Button Command="{Binding DownloadCommand}" Classes="btn-success" MinWidth="175" Height="31">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <i:Icon Value="fa-download" FontSize="11"/>
+                            <TextBlock Text="{Binding DownloadButtonText}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
-            </Button>
-        </StackPanel>
+            </Grid>
+        </Border>
     </dialogs:BaseDialog.ButtonContent>
 </dialogs:BaseDialog>

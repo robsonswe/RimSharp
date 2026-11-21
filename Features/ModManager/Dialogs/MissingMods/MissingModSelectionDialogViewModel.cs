@@ -89,6 +89,18 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
             }
         }
 
+        public string UnknownBadgeText =>
+            UnknownModIds.Count == 1 ? "1 unknown" : $"{UnknownModIds.Count} unknown";
+
+        public string DownloadButtonText
+        {
+            get
+            {
+                var selected = ModGroups.Count(g => g.HasSelectableVariants && g.SelectedVariant != null);
+                return $"Download Selected ({selected})";
+            }
+        }
+
         public ICommand DownloadCommand { get; }
         public ICommand CancelCommand { get; }
 
@@ -118,6 +130,7 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
                 (DownloadCommand as IDelegateCommand)?.RaiseCanExecuteChanged();
                 OnPropertyChanged(nameof(SelectionSummary));
                 OnPropertyChanged(nameof(StatusText));
+                OnPropertyChanged(nameof(DownloadButtonText));
             }
         }
 

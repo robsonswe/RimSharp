@@ -1473,6 +1473,12 @@
     <Style Selector="RadioButton.opt-card:checked /template/ Ellipse#OptDot">
         <Setter Property="IsVisible" Value="True"/>
     </Style>
+    <Style Selector="RadioButton.opt-card:disabled">
+        <Setter Property="Opacity" Value="0.54"/>
+    </Style>
+    <Style Selector="RadioButton.opt-card:disabled /template/ Border#OptRoot">
+        <Setter Property="Background" Value="{DynamicResource BrushBgCardDisabled}"/>
+    </Style>
 
     <!-- Decision pill RadioButton (Concept 3 Incompatibilities) -->
     <Style Selector="RadioButton.seg-pill">

@@ -53,26 +53,20 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
                     {
                         _isSyncingSelection = true;
                         foreach (var v in Variants)
-                        {
                             v.IsSelected = (v == value);
-                        }
                         _isSyncingSelection = false;
                     }
                     OnPropertyChanged(nameof(IsSelectionMade));
+                    OnPropertyChanged(nameof(NeedsSelection));
                 }
             }
         }
 
         public bool IsSelectionMade => SelectedVariant != null;
-
-        /// <summary>
-        /// Whether this group has at least one published (selectable) variant.
-        /// </summary>
         public bool HasSelectableVariants => Variants.Any(v => v.IsPublished);
+        public bool IsUnavailable => !HasSelectableVariants;
+        public bool NeedsSelection => HasSelectableVariants && !IsSelectionMade;
 
-        /// <summary>
-        /// Display label for variant count, e.g. "2 variants" or "1 variant".
-        /// </summary>
         public string VariantCountLabel
         {
             get
@@ -82,26 +76,11 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
             }
         }
 
-        /// <summary>
-        /// Optional list of mod names that require this missing mod. Populated
-        /// by the dependency-resolution flow; empty for the import flow.
-        /// </summary>
         public IReadOnlyList<string> RequiredBy { get; set; } = Array.Empty<string>();
-
-        /// <summary>
-        /// Whether <see cref="RequiredBy"/> has any entries.
-        /// </summary>
         public bool HasRequiredBy => RequiredBy.Count > 0;
-
-        /// <summary>
-        /// Comma-joined display of <see cref="RequiredBy"/>, e.g. "Mod A, Mod B".
-        /// Empty when <see cref="HasRequiredBy"/> is false.
-        /// </summary>
         public string RequiredByDisplay => string.Join(", ", RequiredBy);
+        public string RequiredByLabel => $"Required by: {RequiredByDisplay}";
 
-        /// <summary>
-        /// Unique group name for RadioButtons in this group.
-        /// </summary>
         public string GroupName => $"MissingModGroup_{PackageId}";
 
         public MissingModGroupViewModel(string packageId)
@@ -113,23 +92,17 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
         private void HookVariantsCollection(ObservableCollection<MissingModVariantViewModel>? collection)
         {
             if (collection == null) return;
-
             collection.CollectionChanged += OnVariantsCollectionChanged;
             foreach (var variant in collection)
-            {
                 RegisterVariant(variant);
-            }
         }
 
         private void UnhookVariantsCollection(ObservableCollection<MissingModVariantViewModel>? collection)
         {
             if (collection == null) return;
-
             collection.CollectionChanged -= OnVariantsCollectionChanged;
             foreach (var variant in collection)
-            {
                 UnregisterVariant(variant);
-            }
         }
 
         private void OnVariantsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -137,20 +110,18 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
             if (e.NewItems != null)
             {
                 foreach (MissingModVariantViewModel variant in e.NewItems)
-                {
                     RegisterVariant(variant);
-                }
             }
             if (e.OldItems != null)
             {
                 foreach (MissingModVariantViewModel variant in e.OldItems)
-                {
                     UnregisterVariant(variant);
-                }
             }
 
             OnPropertyChanged(nameof(VariantCountLabel));
             OnPropertyChanged(nameof(HasSelectableVariants));
+            OnPropertyChanged(nameof(IsUnavailable));
+            OnPropertyChanged(nameof(NeedsSelection));
         }
 
         private void RegisterVariant(MissingModVariantViewModel variant)
@@ -167,9 +138,7 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
         private void UpdateAllVariantGroupNames()
         {
             foreach (var variant in Variants)
-            {
                 variant.GroupName = GroupName;
-            }
         }
 
         private void Variant_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -181,13 +150,10 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
                 if (v.IsSelected)
                 {
                     _isSyncingSelection = true;
-                    // Deselect every other variant in this group to enforce single selection
                     foreach (var variant in Variants)
                     {
                         if (!ReferenceEquals(variant, v) && variant.IsSelected)
-                        {
                             variant.IsSelected = false;
-                        }
                     }
                     _isSyncingSelection = false;
 
@@ -203,9 +169,7 @@ namespace RimSharp.Features.ModManager.Dialogs.MissingMods
         protected override void Dispose(bool disposing)
         {
             if (!_disposed && disposing)
-            {
                 UnhookVariantsCollection(_variants);
-            }
             base.Dispose(disposing);
         }
     }
