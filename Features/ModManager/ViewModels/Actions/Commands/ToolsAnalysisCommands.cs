@@ -751,6 +751,10 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
             ProgressDialogViewModel? progressViewModel = null;
             CancellationTokenSource? linkedCts = null;
             var modsWithValidReplacements = new ConcurrentBag<(ModItem Original, ModReplacementInfo Replacement, long OriginalUpdate, long ReplacementUpdate, string ReplacementSteamTitle, string ReplacementSteamAuthor)>();
+            // Versions already fetched from Steam for each replacement (target) mod.
+            // Only the replacement side is captured here; the original/replaced mod
+            // deliberately keeps its local versions in the dialog.
+            var fetchedReplacementVersionsBySteamId = new ConcurrentDictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
             var personaNameCache = new ConcurrentDictionary<string, string?>();
 
             try
@@ -879,7 +883,12 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                                     return;
                                 }
 
-                                if (latestReplacementVersion == latestOriginalVersion && replacementDetails.TimeUpdated < originalDetails.TimeUpdated)
+                                // A curated reason is an explicit endorsement of this replacement,
+                                // so the "original updated more recently" rule does not apply.
+                                bool hasCuratedReason = !string.IsNullOrWhiteSpace(item.Replacement.Reason);
+                                if (latestReplacementVersion == latestOriginalVersion &&
+                                    replacementDetails.TimeUpdated < originalDetails.TimeUpdated &&
+                                    !hasCuratedReason)
                                 {
                                     Debug.WriteLine($"[CheckReplacements] Discarding replacement for '{item.Mod.Name}' due to older update date on same max version.");
                                     return;
@@ -899,6 +908,15 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
                                     steamAuthor = await _steamApiClient.GetPersonaNameAsync(replacementDetails.Creator, combinedTokenPhase1);
                                     personaNameCache[replacementDetails.Creator] = steamAuthor;
                                 }
+                            }
+
+                            // Capture the already-fetched Steam versions for the
+                            // replacement (target) mod only. The original/replaced
+                            // mod keeps its local versions in the dialog.
+                            var replacementSteamId = item.Replacement.ReplacementSteamId;
+                            if (!string.IsNullOrWhiteSpace(replacementSteamId))
+                            {
+                                fetchedReplacementVersionsBySteamId.TryAdd(replacementSteamId.Trim(), replacementVersions);
                             }
 
                             modsWithValidReplacements.Add((item.Mod, item.Replacement, originalDetails.TimeUpdated, replacementDetails.TimeUpdated, replacementDetails.Title, steamAuthor ?? string.Empty));
@@ -946,7 +964,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
 
                 await RunOnUIThreadAsync(async () =>
                 {
-                    var viewModel = new ModReplacementDialogViewModel(validReplacementsList, loadedMods);
+                    var viewModel = new ModReplacementDialogViewModel(validReplacementsList, loadedMods, _modDictionaryService, fetchedReplacementVersionsBySteamId);
 
                     if ((viewModel.Replacements?.Any() ?? false) || viewModel.HasAlreadyInstalledReplacements)
                     {

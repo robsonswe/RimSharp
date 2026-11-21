@@ -1293,4 +1293,98 @@
         <Setter Property="Opacity" Value="0.42"/>
     </Style>
 
+    <!-- ================================================================
+         REPLACEMENTS DIALOG: COMPARISON COLUMNS, VERSION CHIPS & LINK CHIPS
+         ================================================================ -->
+
+    <!-- Side-by-side comparison column inside a card -->
+    <Style Selector="Border.cmp-col">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSurface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderSubtle}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Padding" Value="9,8"/>
+    </Style>
+    <Style Selector="Border.cmp-col.new">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderBadgeSuccess}"/>
+    </Style>
+    <Style Selector="Border.cmp-col.installed">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderError}"/>
+    </Style>
+
+    <!-- Compact mono version chip (inside dedicated WrapPanel strips) -->
+    <Style Selector="Border.ver-chip">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSurfaceFocus}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderBadgeMuted}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Padding" Value="6,1"/>
+        <Setter Property="Margin" Value="0,0,4,3"/>
+    </Style>
+
+    <!-- Clickable Workshop ID link chip -->
+    <Style Selector="Button.link-chip">
+        <Setter Property="Background" Value="{DynamicResource BrushBgBadgeSuccess}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderBadgeSuccess}"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextSuccess}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Padding" Value="6,1"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="FontFamily" Value="{DynamicResource RimSharpMonoFontFamily}"/>
+        <Setter Property="FontSize" Value="10.5"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="ChipBg"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="{TemplateBinding Padding}">
+                    <ContentPresenter x:Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="Button.link-chip /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource BrushTextSuccess}"/>
+    </Style>
+    <Style Selector="Button.link-chip:pointerover /template/ Border#ChipBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSuccess}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderSuccess}"/>
+    </Style>
+    <Style Selector="Button.link-chip:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource BrushTextOnDark}"/>
+    </Style>
+
+    <Style Selector="Button.link-chip.muted">
+        <Setter Property="Background" Value="{DynamicResource BrushBgBadgeMuted}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderBadgeMuted}"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+    </Style>
+    <Style Selector="Button.link-chip.muted /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource BrushTextStrong}"/>
+    </Style>
+    <Style Selector="Button.link-chip.muted:pointerover /template/ Border#ChipBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgAction}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderStrong}"/>
+    </Style>
+    <Style Selector="Button.link-chip.muted:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource BrushTextOnDark}"/>
+    </Style>
+
+    <!-- Fluent's /template/ styles can paint a background on the named presenter
+         across button states; keep it clear so only ChipBg supplies the chip surface. -->
+    <Style Selector="Button.link-chip /template/ ContentPresenter#PART_ContentPresenter,
+                     Button.link-chip:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                     Button.link-chip:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+
 </Styles>

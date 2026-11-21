@@ -35,6 +35,7 @@ namespace RimSharp.Features.ModManager.ViewModels
         private readonly IWorkshopUpdateService? _workshopUpdateService;
         private readonly ILoggerService _logger;
         private readonly IContextMenuAvailabilityService _contextMenuAvailabilityService;
+        private readonly IModDictionaryService? _modDictionaryService;
         private readonly GameInstance _gameInstance;
 
         public ModListViewModel ModListViewModel { get; private set; }
@@ -182,7 +183,8 @@ namespace RimSharp.Features.ModManager.ViewModels
             GameInstance gameInstance,
             ISteamSubscriptionService? steamSubscriptionService = null,
             IWorkshopUpdateService? workshopUpdateService = null,
-            IModInfoResolver? modInfoResolver = null)
+            IModInfoResolver? modInfoResolver = null,
+            IModDictionaryService? modDictionaryService = null)
         {
             _dataService = dataService;
             _filterService = filterService;
@@ -197,6 +199,7 @@ namespace RimSharp.Features.ModManager.ViewModels
             _steamSubscriptionService = steamSubscriptionService;
             _workshopUpdateService = workshopUpdateService;
             _contextMenuAvailabilityService = contextMenuAvailabilityService;
+            _modDictionaryService = modDictionaryService;
             _gameInstance = gameInstance;
 
             RequestRefreshCommand = CreateCancellableAsyncCommand(ExecuteRequestRefreshAsync, CanExecuteRequestRefresh, nameof(IsLoading));
@@ -207,7 +210,7 @@ namespace RimSharp.Features.ModManager.ViewModels
                 _dataService, commandService, ioService, _modListManager, incompatibilityService, duplicateService, _deletionService, _dialogService, _pathService, _modService,
                         replacementService, downloadQueueService, steamApiClient, navigationService, steamWorkshopQueueProcessor, _gitService,
                         aiAgentService, customService, _logger, _gameInstance, steamSubscriptionService, workshopUpdateService,
-                        modInfoResolver
+                        modInfoResolver, _modDictionaryService
                         );
             _modListManager.ListChanged += OnModListManagerChanged;
             _modService.CustomModInfoChanged += OnCustomModInfoChanged;

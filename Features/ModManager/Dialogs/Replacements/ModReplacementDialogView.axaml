@@ -1,157 +1,306 @@
 <dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
-                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-                   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-                   xmlns:local="clr-namespace:RimSharp.Features.ModManager.Dialogs.Replacements"
-                   xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
-                   xmlns:i="https://github.com/projektanker/icons.avalonia"
-                   x:Class="RimSharp.Features.ModManager.Dialogs.Replacements.ModReplacementDialogView"
-                   x:DataType="local:ModReplacementDialogViewModel"
-                   mc:Ignorable="d"
-                   Title="{Binding Title}"
-                   Width="750" MinHeight="450" MaxHeight="650">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                    xmlns:local="clr-namespace:RimSharp.Features.ModManager.Dialogs.Replacements"
+                    xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+                    xmlns:i="https://github.com/projektanker/icons.avalonia"
+                    xmlns:sys="using:System"
+                    x:Class="RimSharp.Features.ModManager.Dialogs.Replacements.ModReplacementDialogView"
+                    x:DataType="local:ModReplacementDialogViewModel"
+                    x:CompileBindings="True"
+                    mc:Ignorable="d"
+                    Classes="dialog-flush"
+                    Title="{Binding Title}"
+                    Width="900"
+                    Height="620"
+                    CanResize="False"
+                    WindowStartupLocation="CenterOwner">
+
+    <dialogs:BaseDialog.Resources>
+        <DataTemplate x:Key="ReplacementCardTemplate" x:DataType="local:ModReplacementItem">
+            <Border Classes="card" Padding="11,10" Margin="0,0,0,9">
+                <StackPanel Spacing="7">
+                    <Grid ColumnDefinitions="Auto,*,Auto,1.08*" ColumnSpacing="10">
+                        <!-- Selection CheckBox (disabled for already-installed replacements) -->
+                        <CheckBox Grid.Column="0"
+                                  IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                  IsEnabled="{Binding !ReplacementAlreadyInstalled}"
+                                  VerticalAlignment="Center"/>
+
+                        <!-- ORIGINAL COLUMN -->
+                        <Border Grid.Column="1" Classes="cmp-col">
+                            <Grid RowDefinitions="Auto,Auto,Auto,*">
+                                <!-- Row 0: Badge + Update Date (no version pills here) -->
+                                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,5">
+                                    <Border Grid.Column="0" Classes="pill-badge muted" HorizontalAlignment="Left">
+                                        <TextBlock Text="Original" FontSize="10" FontWeight="Bold"
+                                                   Foreground="{DynamicResource BrushTextStrong}"/>
+                                    </Border>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding FormattedOriginalLastUpdate, StringFormat='Updated {0}'}"
+                                               Classes="mono-sub" VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <!-- Row 1: Title + Author -->
+                                <StackPanel Grid.Row="1" Spacing="1" Margin="0,0,0,5">
+                                    <TextBlock Text="{Binding OriginalMod.DisplayName}"
+                                               FontWeight="Bold" FontSize="12.5" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource BrushTextBrown950}"/>
+                                    <TextBlock Text="{Binding OriginalMod.Authors, StringFormat='by {0}'}"
+                                               FontSize="11" TextTrimming="CharacterEllipsis"
+                                               Foreground="{DynamicResource BrushTextPrimary}"/>
+                                </StackPanel>
+
+                                <!-- Row 2: Dedicated Wrapping Versions Strip -->
+                                <Grid Grid.Row="2" ColumnDefinitions="Auto,*" ColumnSpacing="5"
+                                      IsVisible="{Binding HasOriginalVersions}" Margin="0,0,0,5">
+                                    <TextBlock Grid.Column="0" Text="Versions:" FontSize="10" FontWeight="Bold"
+                                               Opacity="0.8" Foreground="{DynamicResource BrushTextPrimary}"
+                                               VerticalAlignment="Center" Margin="0,0,0,3"/>
+                                    <ItemsControl Grid.Column="1" ItemsSource="{Binding OriginalVersions}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="sys:String">
+                                                <Border Classes="ver-chip">
+                                                    <TextBlock Text="{Binding}" FontFamily="{DynamicResource RimSharpMonoFontFamily}"
+                                                               FontSize="10" Foreground="{DynamicResource BrushTextBrown950}"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Grid>
+
+                                <!-- Row 3: Package ID + Steam Link pinned at bottom -->
+                                <Border Grid.Row="3" VerticalAlignment="Bottom"
+                                        BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,1,0,0"
+                                        Padding="0,5,0,0">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="{Binding OriginalPackageIdDisplay}"
+                                                   Classes="mono-sub" TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"
+                                                   ToolTip.Tip="{Binding OriginalPackageIdDisplay}"/>
+                                        <Button Grid.Column="1" Classes="link-chip muted"
+                                                IsVisible="{Binding HasOriginalSteamId}"
+                                                Command="{Binding OriginalMod.SteamUrl, Converter={StaticResource LinkToCommandConverter}}"
+                                                ToolTip.Tip="Open original Workshop page">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <i:Icon Value="fa-brands fa-steam" FontSize="10"/>
+                                                <TextBlock Text="{Binding OriginalMod.SteamId}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- ARROW -->
+                        <i:Icon Grid.Column="2" Value="fa-arrow-right" FontSize="13"
+                                Foreground="{DynamicResource BrushTextStrong}"
+                                VerticalAlignment="Center" HorizontalAlignment="Center"/>
+
+                        <!-- REPLACEMENT COLUMN -->
+                        <Border Grid.Column="3" Classes="cmp-col new"
+                                Classes.installed="{Binding ReplacementAlreadyInstalled}">
+                            <Grid RowDefinitions="Auto,Auto,Auto,*">
+                                <!-- Row 0: Badge + Update Date -->
+                                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,5">
+                                    <Border Grid.Column="0" Classes="pill-badge" HorizontalAlignment="Left"
+                                            Classes.success="{Binding !ReplacementAlreadyInstalled}"
+                                            Classes.hard="{Binding ReplacementAlreadyInstalled}">
+                                        <TextBlock Text="{Binding TargetBadgeText}" FontSize="10" FontWeight="Bold"
+                                                   Foreground="{DynamicResource BrushTextBrown950}"/>
+                                    </Border>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding FormattedReplacementLastUpdate, StringFormat='Updated {0}'}"
+                                               Classes="mono-sub" VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <!-- Row 1: Title + Author -->
+                                <StackPanel Grid.Row="1" Spacing="1" Margin="0,0,0,5">
+                                    <TextBlock Text="{Binding ReplacementDisplayName}"
+                                               FontWeight="Bold" FontSize="12.5" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource BrushTextBrown950}"/>
+                                    <TextBlock Text="{Binding ReplacementAuthorDisplay, StringFormat='by {0}'}"
+                                               FontSize="11" TextTrimming="CharacterEllipsis"
+                                               Foreground="{DynamicResource BrushTextPrimary}"/>
+                                </StackPanel>
+
+                                <!-- Row 2: Dedicated Wrapping Versions Strip -->
+                                <Grid Grid.Row="2" ColumnDefinitions="Auto,*" ColumnSpacing="5"
+                                      IsVisible="{Binding HasReplacementVersions}" Margin="0,0,0,5">
+                                    <TextBlock Grid.Column="0" Text="Versions:" FontSize="10" FontWeight="Bold"
+                                               Opacity="0.8" Foreground="{DynamicResource BrushTextPrimary}"
+                                               VerticalAlignment="Center" Margin="0,0,0,3"/>
+                                    <ItemsControl Grid.Column="1" ItemsSource="{Binding ReplacementVersions}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="sys:String">
+                                                <Border Classes="ver-chip">
+                                                    <TextBlock Text="{Binding}" FontFamily="{DynamicResource RimSharpMonoFontFamily}"
+                                                               FontSize="10" Foreground="{DynamicResource BrushTextBrown950}"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Grid>
+
+                                <!-- Row 3: Package ID + Steam Link pinned at bottom -->
+                                <Border Grid.Row="3" VerticalAlignment="Bottom"
+                                        BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,1,0,0"
+                                        Padding="0,5,0,0">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="{Binding ReplacementPackageIdDisplay}"
+                                                   Classes="mono-sub" TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"
+                                                   ToolTip.Tip="{Binding ReplacementPackageIdDisplay}"/>
+                                        <Button Grid.Column="1" Classes="link-chip"
+                                                IsVisible="{Binding HasReplacementSteamId}"
+                                                Command="{Binding ReplacementInfo.ReplacementSteamUrl, Converter={StaticResource LinkToCommandConverter}}"
+                                                ToolTip.Tip="Open replacement Workshop page">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <i:Icon Value="fa-brands fa-steam" FontSize="10"/>
+                                                <TextBlock Text="{Binding ReplacementInfo.ReplacementSteamId}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- Source Provenance Badge -->
+                    <StackPanel Orientation="Horizontal" Margin="26,0,0,0">
+                        <Border Classes="pill-badge"
+                                Classes.db="{Binding IsIndexedOrDbSource}"
+                                Classes.muted="{Binding !IsIndexedOrDbSource}">
+                            <TextBlock Text="{Binding SourceDisplayName, StringFormat='Source: {0}'}"
+                                       FontSize="10" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource BrushTextStrong}"/>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Curated Reason Callout -->
+                    <Border Classes="alert-box info" Margin="26,0,0,0" IsVisible="{Binding HasReason}">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <i:Icon Grid.Column="0" Value="fa-circle-info" FontSize="12" Margin="0,2,0,0"
+                                    Foreground="{DynamicResource BrushTextInfo}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding ReasonDisplay}" FontSize="11.5"
+                                       TextWrapping="Wrap" Foreground="{DynamicResource BrushTextInfo}"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Conflict Warning (Already Installed) -->
+                    <Border Classes="alert-box danger" Margin="26,0,0,0" IsVisible="{Binding ReplacementAlreadyInstalled}">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <i:Icon Grid.Column="0" Value="fa-triangle-exclamation" FontSize="12" Margin="0,2,0,0"
+                                    Foreground="{DynamicResource BrushTextError}"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="You should remove the original mod to avoid load-order conflicts."
+                                       FontSize="11.5" FontWeight="SemiBold" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource BrushTextError}"/>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </dialogs:BaseDialog.Resources>
 
     <dialogs:BaseDialog.MainContent>
-        <Grid Margin="10" RowDefinitions="Auto,*,Auto">
-            <!-- Header (Only show if there are regular replacements) -->
-            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10" IsVisible="{Binding HasRegularReplacements}">
-                <TextBlock Grid.Column="0" Text="The following mods have newer replacement versions available:" TextWrapping="Wrap" FontWeight="Medium" Foreground="{DynamicResource BrushTextPrimary}" />
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
-                    <Button Content="Select All" Command="{Binding SelectAllCommand}" Classes="btn"/>
-                    <Button Content="Select None" Command="{Binding SelectNoneCommand}" Classes="btn"/>
-                </StackPanel>
-            </Grid>
+        <Grid RowDefinitions="Auto,*">
+            <!-- Top Filter & Selection Bar -->
+            <Border Grid.Row="0"
+                    Background="{DynamicResource BrushBgPanel}"
+                    BorderBrush="{DynamicResource BrushBorderDefault}"
+                    BorderThickness="0,0,0,1"
+                    Padding="16,9">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="5">
+                        <RadioButton Content="{Binding FilterAllLabel}" GroupName="ReplFilter" Classes="f-pill"
+                                     IsChecked="{Binding IsFilterAll, Mode=OneWay}"
+                                     Command="{Binding SetFilterCommand}" CommandParameter="All"/>
+                        <RadioButton Content="{Binding FilterToDownloadLabel}" GroupName="ReplFilter" Classes="f-pill"
+                                     IsChecked="{Binding IsFilterToDownload, Mode=OneWay}"
+                                     Command="{Binding SetFilterCommand}" CommandParameter="ToDownload"/>
+                        <RadioButton Content="{Binding FilterInstalledLabel}" GroupName="ReplFilter" Classes="f-pill"
+                                     IsChecked="{Binding IsFilterAlreadyInstalled, Mode=OneWay}"
+                                     Command="{Binding SetFilterCommand}" CommandParameter="AlreadyInstalled"/>
+                    </StackPanel>
 
-            <!-- Replacements List -->
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                <StackPanel Spacing="10">
-                    <!-- Informational message if only already installed ones were found -->
-                    <Border IsVisible="{Binding !HasRegularReplacements}" Classes="panel" Padding="15" Margin="0,0,0,10">
-                        <StackPanel Spacing="5">
-                            <TextBlock Text="No new replacements to download." FontWeight="Bold" Foreground="{DynamicResource BrushTextStrong}"/>
-                            <TextBlock Text="All identified replacement mods are already installed on your system." FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextStrong}"/>
-                        </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                        <Button Content="Select All" Command="{Binding SelectAllCommand}"
+                                Classes="btn-secondary btn-sm" IsEnabled="{Binding HasRegularReplacements}"/>
+                        <Button Content="Select None" Command="{Binding SelectNoneCommand}"
+                                Classes="btn-secondary btn-sm" IsEnabled="{Binding HasRegularReplacements}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Scrollable List -->
+            <ScrollViewer Grid.Row="1"
+                          Background="{DynamicResource BrushBgSurface}"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="16,14" Spacing="10">
+                    <!-- Empty Filter State -->
+                    <Border Classes="surface-box" IsVisible="{Binding HasNoVisibleItems}" Padding="16,24">
+                        <TextBlock Text="No replacements in this category."
+                                   HorizontalAlignment="Center" FontStyle="Italic"
+                                   Foreground="{DynamicResource BrushTextMuted}"/>
                     </Border>
 
-                    <ItemsControl ItemsSource="{Binding Replacements}" IsVisible="{Binding HasRegularReplacements}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="local:ModReplacementItem">
-                                <Border Margin="0,0,0,10" Padding="10" Background="{DynamicResource BrushBgSurface}" CornerRadius="3" BorderThickness="1" BorderBrush="{DynamicResource BrushBorderDefault}">
-                                                                        <Grid ColumnDefinitions="Auto,*">
-                                                                            <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                                                            <StackPanel Grid.Column="1" Spacing="2">
-                                                                                <TextBlock FontWeight="Medium" Foreground="{DynamicResource BrushTextPrimary}">
-                                                                                    <TextBlock.Text>
-                                                                                        <MultiBinding StringFormat="Original: {0} by {1}">
-                                                                                            <Binding Path="OriginalMod.DisplayName" FallbackValue="Unknown"/>
-                                                                                            <Binding Path="OriginalMod.Authors" FallbackValue="Unknown"/>
-                                                                                        </MultiBinding>
-                                                                                    </TextBlock.Text>
-                                                                                </TextBlock>                                                                                <StackPanel Orientation="Horizontal" Spacing="5">
-                                                                                    <TextBlock Text="{Binding OriginalMod.PackageId, StringFormat='ID: {0}', FallbackValue='ID: Unknown'}" FontSize="10" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                                                    <Button Content="{Binding OriginalMod.SteamId, StringFormat='Steam: {0}', FallbackValue='Steam: N/A'}"
-                                                                                            Command="{Binding OriginalMod.SteamUrl, Converter={StaticResource LinkToCommandConverter}}"
-                                                                                            Background="Transparent" BorderThickness="0" Padding="0"
-                                                                                            Foreground="{DynamicResource BrushTextSuccess}" FontSize="10"/>
-                                                                                    <TextBlock Text="{Binding FormattedOriginalLastUpdate, StringFormat='| Updated: {0}', FallbackValue='| Updated: N/A'}" FontSize="10" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                                                </StackPanel>
+                    <!-- Regular Replacements -->
+                    <ItemsControl ItemsSource="{Binding Replacements}"
+                                  ItemTemplate="{StaticResource ReplacementCardTemplate}"
+                                  IsVisible="{Binding ShowRegularSection}"/>
 
-                                                                                <TextBlock FontWeight="Medium" Foreground="{DynamicResource BrushTextSuccess}">
-                                                                                    <TextBlock.Text>
-                                                                                        <MultiBinding StringFormat="Replace with: {0} by {1}">
-                                                                                            <Binding Path="ReplacementDisplayName" FallbackValue="Unknown"/>
-                                                                                            <Binding Path="ReplacementAuthorDisplay" FallbackValue="Unknown"/>
-                                                                                        </MultiBinding>
-                                                                                    </TextBlock.Text>
-                                                                                </TextBlock>
-                                                                                <StackPanel Orientation="Horizontal" Spacing="5">
-                                                                                    <TextBlock Text="{Binding ReplacementInfo.ReplacementModId, StringFormat='ID: {0}', FallbackValue='ID: Unknown'}" FontSize="10" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                                                    <Button Content="{Binding ReplacementInfo.ReplacementSteamId, StringFormat='Steam: {0}', FallbackValue='Steam: N/A'}"
-                                                                                            Command="{Binding ReplacementInfo.ReplacementSteamUrl, Converter={StaticResource LinkToCommandConverter}}"
-                                                                                            Background="Transparent" BorderThickness="0" Padding="0"
-                                                                                            Foreground="{DynamicResource BrushTextSuccess}" FontSize="10"/>
-                                                                                    <TextBlock Text="{Binding FormattedReplacementLastUpdate, StringFormat='| Updated: {0}', FallbackValue='| Updated: N/A'}" FontSize="10" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                                                </StackPanel>
-                                                                                    <TextBlock Text="{Binding SourceDisplayName, StringFormat='Source: {0}'}" FontSize="10" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                                                    <TextBlock Text="{Binding ReasonDisplay, StringFormat='Reason: {0}'}" FontSize="10" Foreground="{DynamicResource BrushTextPrimary}" TextWrapping="Wrap" IsVisible="{Binding HasReason}"/>
-                                                                            </StackPanel>
-                                                                        </Grid>
-
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <Border IsVisible="{Binding HasAlreadyInstalledReplacements}" BorderBrush="{DynamicResource BrushBorderDefault}" BorderThickness="0,1,0,0" Padding="0,10,0,0">
-                        <StackPanel Spacing="10">
-                            <TextBlock Text="The following replacement mods are already installed:" FontWeight="Medium" Foreground="{DynamicResource BrushTextStrong}"/>
-                            <ItemsControl ItemsSource="{Binding AlreadyInstalledReplacements}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="local:ModReplacementItem">
-                                        <Border Margin="0,0,0,10" Padding="10" Background="{DynamicResource BrushBgSurface}" CornerRadius="3" BorderThickness="1" BorderBrush="{DynamicResource BrushBorderDefault}">
-                                            <Grid ColumnDefinitions="Auto,*">
-                                                <CheckBox Grid.Column="0" IsChecked="False" IsEnabled="False" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                                <StackPanel Grid.Column="1" Spacing="2">
-                                                    <TextBlock FontWeight="Medium" Foreground="{DynamicResource BrushTextPrimary}">
-                                                        <TextBlock.Text>
-                                                            <MultiBinding StringFormat="Original: {0} by {1}">
-                                                                <Binding Path="OriginalMod.DisplayName" FallbackValue="Unknown"/>
-                                                                <Binding Path="OriginalMod.Authors" FallbackValue="Unknown"/>
-                                                            </MultiBinding>
-                                                        </TextBlock.Text>
-                                                    </TextBlock>                                                    <StackPanel Orientation="Horizontal" Spacing="5">
-                                                        <TextBlock Text="{Binding OriginalMod.PackageId, StringFormat='ID: {0}', FallbackValue='ID: Unknown'}" FontSize="10" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                        <Button Content="{Binding OriginalMod.SteamId, StringFormat='Steam: {0}', FallbackValue='Steam: N/A'}"
-                                                                Command="{Binding OriginalMod.SteamUrl, Converter={StaticResource LinkToCommandConverter}}"
-                                                                Background="Transparent" BorderThickness="0" Padding="0"
-                                                                Foreground="{DynamicResource BrushTextSuccess}" FontSize="10"/>
-                                                        <TextBlock Text="{Binding FormattedOriginalLastUpdate, StringFormat='| Updated: {0}', FallbackValue='| Updated: N/A'}" FontSize="10" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                    </StackPanel>
-
-                                                    <TextBlock FontWeight="Medium" Foreground="{DynamicResource BrushTextSuccess}">
-                                                        <TextBlock.Text>
-                                                            <MultiBinding StringFormat="Replacement (Already Installed): {0} by {1}">
-                                                                <Binding Path="ReplacementDisplayName" FallbackValue="Unknown"/>
-                                                                <Binding Path="ReplacementAuthorDisplay" FallbackValue="Unknown"/>
-                                                            </MultiBinding>
-                                                        </TextBlock.Text>
-                                                    </TextBlock>
-                                                    <StackPanel Orientation="Horizontal" Spacing="5">
-                                                        <TextBlock Text="{Binding ReplacementInfo.ReplacementModId, StringFormat='ID: {0}', FallbackValue='ID: Unknown'}" FontSize="10" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                        <Button Content="{Binding ReplacementInfo.ReplacementSteamId, StringFormat='Steam: {0}', FallbackValue='Steam: N/A'}"
-                                                                Command="{Binding ReplacementInfo.ReplacementSteamUrl, Converter={StaticResource LinkToCommandConverter}}"
-                                                                Background="Transparent" BorderThickness="0" Padding="0"
-                                                                Foreground="{DynamicResource BrushTextSuccess}" FontSize="10"/>
-                                                        <TextBlock Text="{Binding FormattedReplacementLastUpdate, StringFormat='| Updated: {0}', FallbackValue='| Updated: N/A'}" FontSize="10" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                    </StackPanel>
-                                                    <TextBlock Text="{Binding SourceDisplayName, StringFormat='Source: {0}'}" FontSize="10" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                    <TextBlock Text="{Binding ReasonDisplay, StringFormat='Reason: {0}'}" FontSize="10" Foreground="{DynamicResource BrushTextPrimary}" TextWrapping="Wrap" IsVisible="{Binding HasReason}"/>
-
-                                                    <Border Margin="0,5,0,0" Padding="8,4" Background="{DynamicResource BrushDangerWash}" CornerRadius="2">
-                                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                                            <i:Icon Value="fa-triangle-exclamation" Foreground="{DynamicResource BrushTextError}" FontSize="12" VerticalAlignment="Center"/>
-                                                            <TextBlock Text="You should remove the original mod to avoid load-order conflicts."
-                                                                       Foreground="{DynamicResource BrushTextError}"
-                                                                       FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center"/>
-                                                        </StackPanel>
-                                                    </Border>
-                                                </StackPanel>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
+                    <!-- Already Installed Section Header (shown when both sections appear under All) -->
+                    <Border IsVisible="{Binding ShowInstalledSection}"
+                            BorderBrush="{DynamicResource BrushBorderSubtle}"
+                            BorderThickness="0,1,0,0"
+                            Padding="0,10,0,2"
+                            Margin="0,2,0,0">
+                        <TextBlock Text="Already Installed (Remove original mods to avoid conflicts)"
+                                   Classes="field-label"/>
                     </Border>
+
+                    <!-- Already Installed Replacements -->
+                    <ItemsControl ItemsSource="{Binding AlreadyInstalledReplacements}"
+                                  ItemTemplate="{StaticResource ReplacementCardTemplate}"
+                                  IsVisible="{Binding ShowInstalledSection}"/>
                 </StackPanel>
             </ScrollViewer>
-
-            <!-- Footer -->
-            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0" Spacing="10">
-                <TextBlock Text="{Binding SelectedCount, StringFormat='{}{0} replacements selected'}" VerticalAlignment="Center" Foreground="{DynamicResource BrushTextPrimary}" />
-                <Button Content="Cancel" Command="{Binding CloseWithResultCommand}" CommandParameter="{x:Static local:ModReplacementDialogResult.Cancel}" Classes="btn"/>
-                <Button Content="Download Selected" Command="{Binding CloseWithResultCommand}" CommandParameter="{x:Static local:ModReplacementDialogResult.Download}" Classes="btn" IsEnabled="{Binding SelectedCount}"/>
-            </StackPanel>
         </Grid>
     </dialogs:BaseDialog.MainContent>
+
+    <dialogs:BaseDialog.ButtonContent>
+        <Border Classes="dialog-footer">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding SelectedSummaryText}"
+                           FontSize="12" FontWeight="SemiBold"
+                           Foreground="{DynamicResource BrushTextStrong}"
+                           VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <Button Content="Cancel"
+                            Command="{Binding CloseWithResultCommand}"
+                            CommandParameter="{x:Static local:ModReplacementDialogResult.Cancel}"
+                            Classes="btn" MinWidth="92" Height="31"/>
+                    <Button Content="{Binding DownloadButtonText}"
+                            Command="{Binding CloseWithResultCommand}"
+                            CommandParameter="{x:Static local:ModReplacementDialogResult.Download}"
+                            Classes="btn-success" MinWidth="165" Height="31"
+                            IsEnabled="{Binding HasSelection}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </dialogs:BaseDialog.ButtonContent>
 </dialogs:BaseDialog>

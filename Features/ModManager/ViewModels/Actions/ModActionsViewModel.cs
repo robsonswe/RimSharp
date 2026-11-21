@@ -55,6 +55,7 @@ namespace RimSharp.Features.ModManager.ViewModels.Actions
         private readonly ISteamSubscriptionService? _steamSubscriptionService;
         private readonly IWorkshopUpdateService? _workshopUpdateService;
         private readonly IModInfoResolver? _modInfoResolver;
+        private readonly IModDictionaryService? _modDictionaryService;
         private readonly ILoggerService _logger;
         private readonly GameInstance _gameInstance;
         private bool _isParentLoading;
@@ -226,7 +227,8 @@ public bool IsParentLoading
             GameInstance gameInstance,
             ISteamSubscriptionService? steamSubscriptionService = null,
             IWorkshopUpdateService? workshopUpdateService = null,
-            IModInfoResolver? modInfoResolver = null)
+            IModInfoResolver? modInfoResolver = null,
+            IModDictionaryService? modDictionaryService = null)
         {
             _dataService = dataService;
             _commandService = commandService;
@@ -252,6 +254,7 @@ public bool IsParentLoading
             _steamSubscriptionService = steamSubscriptionService;
             _workshopUpdateService = workshopUpdateService;
             _modInfoResolver = modInfoResolver;
+            _modDictionaryService = modDictionaryService;
             RefreshPathValidity();
 
             _modListManager.ListChanged += OnModListChanged;

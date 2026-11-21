@@ -669,7 +669,8 @@ namespace RimSharp.AppDir.AppFiles
                    provider.GetRequiredService<GameInstance>(),
                     provider.GetRequiredService<ISteamSubscriptionService>(),
                    provider.GetRequiredService<IWorkshopUpdateService>(),
-                   provider.GetRequiredService<IModInfoResolver>()
+                   provider.GetRequiredService<IModInfoResolver>(),
+                   provider.GetRequiredService<IModDictionaryService>()
                ));
 
             services.AddTransient<DownloaderViewModel>(provider =>

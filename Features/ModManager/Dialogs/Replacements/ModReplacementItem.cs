@@ -25,6 +25,14 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
         public string? SteamTitle { get; set; }
         public string? SteamAuthor { get; set; }
 
+        /// <summary>
+        /// Package ID resolved at display time from a fallback source (installed mod
+        /// by SteamId, then the ModInfo dictionary by SteamId) when the shared
+        /// <see cref="ModReplacementInfo.ReplacementModId"/> is empty. Kept on the row
+        /// rather than mutating the cached replacement info.
+        /// </summary>
+        public string? ResolvedReplacementPackageId { get; set; }
+
         public string ReplacementDisplayName
         {
             get
@@ -119,6 +127,128 @@ namespace RimSharp.Features.ModManager.Dialogs.Replacements
                 _ => null
             };
         }
+
+        // --- Read-only display helpers for the unified replacement card --------
+
+        public IReadOnlyList<string> OriginalVersions =>
+            OriginalMod.SupportedVersionStrings
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+        public bool HasOriginalVersions => OriginalVersions.Count > 0;
+
+        private IReadOnlyList<string>? _fetchedReplacementVersions;
+
+        /// <summary>
+        /// Versions fetched from Steam for the replacement (target) mod. Steam is
+        /// the authoritative source for the replacement side only; the original
+        /// (replaced) mod deliberately keeps its local versions in
+        /// <see cref="OriginalVersions"/>. Normally set on the row in the view
+        /// model's initializer (before binding), but raising change notifications
+        /// keeps later updates safe too.
+        /// </summary>
+        public IReadOnlyList<string>? FetchedReplacementVersions
+        {
+            get => _fetchedReplacementVersions;
+            set
+            {
+                if (!ReferenceEquals(_fetchedReplacementVersions, value))
+                {
+                    _fetchedReplacementVersions = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(ReplacementVersions));
+                    OnPropertyChanged(nameof(HasReplacementVersions));
+                    OnPropertyChanged(nameof(HasFetchedReplacementVersions));
+                }
+            }
+        }
+
+        public bool HasFetchedReplacementVersions =>
+            FetchedReplacementVersions != null && FetchedReplacementVersions.Count > 0;
+
+        private IReadOnlyList<string>? _modInfoReplacementVersions;
+
+        /// <summary>
+        /// Versions for the replacement (target) mod resolved from the ModInfo
+        /// database by its SteamId. Used only when Steam and the local installed
+        /// mod cannot supply versions. Kept on the row rather than mutating the
+        /// shared <see cref="ModReplacementInfo"/> cache.
+        /// </summary>
+        public IReadOnlyList<string>? ModInfoReplacementVersions
+        {
+            get => _modInfoReplacementVersions;
+            set
+            {
+                if (!ReferenceEquals(_modInfoReplacementVersions, value))
+                {
+                    _modInfoReplacementVersions = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(ReplacementVersions));
+                    OnPropertyChanged(nameof(HasReplacementVersions));
+                }
+            }
+        }
+
+        private static IReadOnlyList<string> NormalizeVersions(IEnumerable<string>? versions) =>
+            versions == null
+                ? Array.Empty<string>()
+                : versions.Where(v => !string.IsNullOrWhiteSpace(v))
+                          .Distinct(StringComparer.OrdinalIgnoreCase)
+                          .ToList();
+
+        public IReadOnlyList<string> ReplacementVersions
+        {
+            get
+            {
+                // 1. Steam-fetched versions for the replacement (authoritative).
+                var fetched = NormalizeVersions(FetchedReplacementVersions);
+                if (fetched.Count > 0)
+                    return fetched;
+
+                // 2. Versions from the locally installed replacement mod.
+                if (InstalledReplacement != null)
+                {
+                    var installed = NormalizeVersions(InstalledReplacement.SupportedVersionStrings);
+                    if (installed.Count > 0)
+                        return installed;
+                }
+
+                // 3. Versions from the ModInfo database.
+                var modInfo = NormalizeVersions(ModInfoReplacementVersions);
+                if (modInfo.Count > 0)
+                    return modInfo;
+
+                // 4. Curated rule list as the final fallback so no data is lost.
+                return NormalizeVersions(ReplacementInfo?.ReplacementVersionList);
+            }
+        }
+
+        public bool HasReplacementVersions => ReplacementVersions.Count > 0;
+
+        public string OriginalPackageIdDisplay =>
+            string.IsNullOrWhiteSpace(OriginalMod.PackageId) ? "(No Package ID)" : OriginalMod.PackageId;
+
+        public string ReplacementPackageIdDisplay
+        {
+            get
+            {
+                var explicitId = ReplacementInfo?.ReplacementModId;
+                if (!string.IsNullOrWhiteSpace(explicitId)) return explicitId!.Trim();
+                if (!string.IsNullOrWhiteSpace(ResolvedReplacementPackageId)) return ResolvedReplacementPackageId!.Trim();
+                return "(No Package ID)";
+            }
+        }
+
+        public bool HasOriginalSteamId => !string.IsNullOrWhiteSpace(OriginalMod.SteamId);
+        public bool HasReplacementSteamId => !string.IsNullOrWhiteSpace(ReplacementInfo?.ReplacementSteamId);
+
+        public bool IsIndexedOrDbSource =>
+            ReplacementInfo?.Source == ReplacementSource.IndexedRecords ||
+            ReplacementInfo?.Source == ReplacementSource.Database;
+
+        public string TargetBadgeText =>
+            ReplacementAlreadyInstalled ? "Already Installed" : "Replacement";
 
         public bool IsSelected
         {
