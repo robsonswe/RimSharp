@@ -529,22 +529,14 @@ private bool CanExecutizeMod(ModItem? mod)
         {
             if (mod == null) return;
 
-            ModCustomInfo? customInfo = null;
-            CustomizeModDialogViewModel? viewModel = null;
             ModCustomizationResult result = ModCustomizationResult.Cancel;
 
             try
             {
                 _logger.LogDebug($"Attempting to customize mod: {mod.PackageId}");
-                customInfo = await Task.Run(() => _modService.GetCustomModInfo(mod.PackageId));
-
-                // Create ViewModel and show dialog on UI thread
-                viewModel = new CustomizeModDialogViewModel(mod, customInfo ?? new ModCustomInfo(), _modService, _dialogService);
-
-                _logger.LogDebug("Showing customize dialog on UI thread...");
 
                 // Show Dialog (blocks until dialog closes)
-                result = await _dialogService.ShowCustomizeModDialog(viewModel);
+                result = await _dialogService.ShowCustomizeModDialogAsync(mod);
 
                 _logger.LogDebug($"Dialog result: {result}");
 

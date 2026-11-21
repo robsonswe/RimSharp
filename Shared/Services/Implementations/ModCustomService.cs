@@ -4,11 +4,9 @@ using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Linq;
-using System.Diagnostics;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 using RimSharp.Infrastructure.Logging;
-using System.Threading;
 
 namespace RimSharp.Shared.Services.Implementations
 {
@@ -50,9 +48,7 @@ namespace RimSharp.Shared.Services.Implementations
                 try
                 {
                     if (!Directory.Exists(_customFolderPath))
-                    {
                         Directory.CreateDirectory(_customFolderPath);
-                    }
 
                     if (!File.Exists(_modsJsonPath))
                     {
@@ -83,14 +79,9 @@ namespace RimSharp.Shared.Services.Implementations
                 var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                 var loadedData = JsonSerializer.Deserialize<ModsCustomRootInternal>(json, options);
 
-                if (loadedData?.Mods != null)
-                {
-                    _modsData.Mods = new Dictionary<string, ModCustomInfo>(loadedData.Mods, StringComparer.OrdinalIgnoreCase);
-                }
-                else
-                {
-                    _modsData.Mods = new Dictionary<string, ModCustomInfo>(StringComparer.OrdinalIgnoreCase);
-                }
+                _modsData.Mods = loadedData?.Mods != null
+                    ? new Dictionary<string, ModCustomInfo>(loadedData.Mods, StringComparer.OrdinalIgnoreCase)
+                    : new Dictionary<string, ModCustomInfo>(StringComparer.OrdinalIgnoreCase);
             }
             catch (Exception ex)
             {
@@ -104,10 +95,14 @@ namespace RimSharp.Shared.Services.Implementations
             string json;
             lock (_lock)
             {
-                var options = new JsonSerializerOptions { WriteIndented = true, DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull };
+                var options = new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                };
                 json = JsonSerializer.Serialize(_modsData, options);
             }
-            
+
             if (!Directory.Exists(_customFolderPath)) Directory.CreateDirectory(_customFolderPath);
             await File.WriteAllTextAsync(_modsJsonPath, json);
         }
@@ -117,7 +112,9 @@ namespace RimSharp.Shared.Services.Implementations
             Initialize();
             lock (_lock)
             {
-                return new Dictionary<string, ModCustomInfo>(_modsData.Mods ?? new Dictionary<string, ModCustomInfo>(), StringComparer.OrdinalIgnoreCase);
+                return new Dictionary<string, ModCustomInfo>(
+                    _modsData.Mods ?? new Dictionary<string, ModCustomInfo>(),
+                    StringComparer.OrdinalIgnoreCase);
             }
         }
 
@@ -128,9 +125,7 @@ namespace RimSharp.Shared.Services.Implementations
             lock (_lock)
             {
                 if (_modsData.Mods != null && _modsData.Mods.TryGetValue(packageId, out var info))
-                {
                     return info;
-                }
             }
             return null;
         }
@@ -169,11 +164,6 @@ namespace RimSharp.Shared.Services.Implementations
             {
                 await SaveModsDataAsync();
 
-                // Strip the values from the live ModItem we last applied them to
-                // so direct callers that never re-apply (IModCustomService
-                // consumers outside ModService) don't leave stale custom values
-                // on screen. The load-path strip in ApplyCustomInfoToMods stays
-                // as a second layer for folder-scan-cached instances.
                 if (prev != null)
                 {
                     lock (_lock)
@@ -181,10 +171,26 @@ namespace RimSharp.Shared.Services.Implementations
                         if (prev.AppliedToInstanceRef != null &&
                             prev.AppliedToInstanceRef.TryGetTarget(out var liveMod))
                         {
-                            // StripCustomInfoFromMod's InstanceId guard still applies.
                             StripCustomInfoFromMod(liveMod, prev);
                         }
                         _lastApplied.Remove(packageId);
+                    }
+                }
+            }
+        }
+
+        public void StripCustomInfoFromMods(IEnumerable<ModItem> mods)
+        {
+            if (mods == null) return;
+            lock (_lock)
+            {
+                foreach (var mod in mods)
+                {
+                    if (mod == null || string.IsNullOrEmpty(mod.PackageId)) continue;
+                    if (_lastApplied.TryGetValue(mod.PackageId, out var prev))
+                    {
+                        StripCustomInfoFromMod(mod, prev);
+                        _lastApplied.Remove(mod.PackageId);
                     }
                 }
             }
@@ -205,16 +211,10 @@ namespace RimSharp.Shared.Services.Implementations
                 {
                     if (_modsData.Mods != null && _modsData.Mods.TryGetValue(mod.PackageId, out var customInfo))
                     {
-                        // ApplyCustomInfoToMod strips the previous pass first.
                         ApplyCustomInfoToMod(mod, customInfo, ref versionsAdded);
                     }
                     else if (_lastApplied.TryGetValue(mod.PackageId, out var prev))
                     {
-                        // The custom record was removed entirely (or this load
-                        // has no record for the mod). Strip what we previously
-                        // applied so a folder-scan-cached ModItem does not keep
-                        // stale values. This is the path used by
-                        // ModService.RemoveCustomModInfoAsync -> LoadModsAsync.
                         StripCustomInfoFromMod(mod, prev);
                         _lastApplied.Remove(mod.PackageId);
                     }
@@ -224,8 +224,6 @@ namespace RimSharp.Shared.Services.Implementations
 
         private void ApplyCustomInfoToMod(ModItem mod, ModCustomInfo customInfo, ref int versionsAdded)
         {
-            // Strip exactly what this service applied on the previous pass so a
-            // removed/changed value takes effect on the live ModItem immediately.
             if (_lastApplied.TryGetValue(mod.PackageId, out var prev))
                 StripCustomInfoFromMod(mod, prev);
 
@@ -251,13 +249,9 @@ namespace RimSharp.Shared.Services.Implementations
                                                .Select(t => t.Trim())
                                                .Where(t => !string.IsNullOrEmpty(t))
                                                .ToList();
-                // Union semantics: keep the first occurrence's casing and only
-                // record tags that were genuinely new (so we never strip a
-                // base/Steam tag that merely matched a custom one).
                 var knownTags = new HashSet<string>(existingTags, StringComparer.OrdinalIgnoreCase);
                 var addedTags = customTags.Where(t => knownTags.Add(t)).ToList();
-                var combinedTags = existingTags.Concat(addedTags).ToList();
-                mod.Tags = string.Join(", ", combinedTags);
+                mod.Tags = string.Join(", ", existingTags.Concat(addedTags));
                 mod.InvalidateTagListCache();
                 current.AddedTags.AddRange(addedTags);
             }
@@ -276,6 +270,79 @@ namespace RimSharp.Shared.Services.Implementations
                 }
             }
 
+            // --- Build suppression sets (Disabled inherited + Custom overrides) ---
+            var customBeforeKeys = ToKeySet(customInfo.LoadBefore?.Keys);
+            var customAfterKeys = ToKeySet(customInfo.LoadAfter?.Keys);
+            var customIncompKeys = ToKeySet(customInfo.IncompatibleWith?.Keys);
+
+            var suppressBefore = ToKeySet(customInfo.DisabledLoadBefore);
+            suppressBefore.UnionWith(customAfterKeys);
+            suppressBefore.UnionWith(customIncompKeys);
+            suppressBefore.ExceptWith(customBeforeKeys);
+
+            var suppressAfter = ToKeySet(customInfo.DisabledLoadAfter);
+            suppressAfter.UnionWith(customBeforeKeys);
+            suppressAfter.UnionWith(customIncompKeys);
+            suppressAfter.ExceptWith(customAfterKeys);
+
+            var suppressIncomp = ToKeySet(customInfo.DisabledIncompatibilities);
+            suppressIncomp.UnionWith(customBeforeKeys);
+            suppressIncomp.UnionWith(customAfterKeys);
+            suppressIncomp.ExceptWith(customIncompKeys);
+
+            // Snapshot & strip suppressed inherited LoadBefore / LoadAfter
+            if (suppressBefore.Count > 0)
+            {
+                for (int i = mod.LoadBefore.Count - 1; i >= 0; i--)
+                {
+                    var t = mod.LoadBefore[i];
+                    if (suppressBefore.Contains(t))
+                    {
+                        current.SuppressedLoadBefore.Add(t);
+                        mod.LoadBefore.RemoveAt(i);
+                    }
+                }
+            }
+
+            if (suppressAfter.Count > 0)
+            {
+                for (int i = mod.LoadAfter.Count - 1; i >= 0; i--)
+                {
+                    var t = mod.LoadAfter[i];
+                    if (suppressAfter.Contains(t))
+                    {
+                        current.SuppressedLoadAfter.Add(t);
+                        mod.LoadAfter.RemoveAt(i);
+                    }
+                }
+            }
+
+            // Snapshot & strip suppressed or overridden incompatibilities
+            var toSuppressIncomp = new HashSet<string>(suppressIncomp, StringComparer.OrdinalIgnoreCase);
+            toSuppressIncomp.UnionWith(customIncompKeys);
+            if (toSuppressIncomp.Count > 0)
+            {
+                foreach (var target in toSuppressIncomp)
+                {
+                    if (mod.IncompatibleWith.TryGetValue(target, out var existingRule))
+                    {
+                        current.SuppressedIncompatibilities[target] = existingRule;
+                        mod.IncompatibleWith.Remove(target);
+                    }
+                }
+
+                for (int i = mod.IncompatibleWithByVersion.Count - 1; i >= 0; i--)
+                {
+                    var t = mod.IncompatibleWithByVersion[i];
+                    if (suppressIncomp.Contains(t))
+                    {
+                        current.SuppressedIncompatibleByVersion.Add(t);
+                        mod.IncompatibleWithByVersion.RemoveAt(i);
+                    }
+                }
+            }
+
+            // Add Custom LoadBefore / LoadAfter / Incompatibilities
             if (customInfo.LoadBefore != null)
             {
                 foreach (var target in customInfo.LoadBefore.Keys)
@@ -300,24 +367,6 @@ namespace RimSharp.Shared.Services.Implementations
                 }
             }
 
-            if (customInfo.LoadBottom?.Value == true)
-            {
-                // Remember the pre-custom value: ModRulesService also writes
-                // this flag (before the custom layer in the load cycle), so a
-                // custom-only re-apply must restore the rule's value rather
-                // than blindly forcing false.
-                current.PreviousLoadBottom = mod.LoadBottom;
-                current.SetLoadBottom = true;
-                mod.LoadBottom = true;
-            }
-
-            if (customInfo.LoadTop?.Value == true)
-            {
-                current.PreviousLoadTop = mod.LoadTop;
-                current.SetLoadTop = true;
-                mod.LoadTop = true;
-            }
-
             if (customInfo.IncompatibleWith != null)
             {
                 foreach (var entry in customInfo.IncompatibleWith)
@@ -330,15 +379,46 @@ namespace RimSharp.Shared.Services.Implementations
                 }
             }
 
+            // --- LoadTop / LoadBottom (mutually exclusive override semantics) ---
+            bool forceTop = customInfo.LoadTop?.Value == true;
+            bool forceBottom = customInfo.LoadBottom?.Value == true;
+            bool disableTop = customInfo.DisableInheritedLoadTop == true;
+            bool disableBottom = customInfo.DisableInheritedLoadBottom == true;
+
+            // The new dialog only ever sets one of LoadTop/LoadBottom. When both
+            // are explicitly forced (legacy ModCustomInfo), honor both so the
+            // long-standing round-trip behavior is preserved; otherwise forcing
+            // one end overrides the opposite inherited pinning.
+            bool bothForced = forceTop && forceBottom;
+
+            if (forceTop || disableTop || (forceBottom && !bothForced))
+            {
+                current.PreviousLoadTop = mod.LoadTop;
+                current.SetLoadTop = true;
+                mod.LoadTop = forceTop;
+            }
+
+            if (forceBottom || disableBottom || (forceTop && !bothForced))
+            {
+                current.PreviousLoadBottom = mod.LoadBottom;
+                current.SetLoadBottom = true;
+                mod.LoadBottom = forceBottom;
+            }
+
             _lastApplied[mod.PackageId] = current;
         }
 
-        /// <summary>
-        /// Removes exactly the values recorded by the previous application.
-        /// Only touches values this service actually added to THIS ModItem
-        /// instance; a fresh instance parsed after a folder-scan cache miss
-        /// carries no custom contributions and must keep its base values.
-        /// </summary>
+        private static HashSet<string> ToKeySet(IEnumerable<string>? keys)
+        {
+            var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (keys == null) return set;
+            foreach (var k in keys)
+            {
+                if (!string.IsNullOrWhiteSpace(k)) set.Add(k);
+            }
+            return set;
+        }
+
         private static void StripCustomInfoFromMod(ModItem mod, LastAppliedCustom prev)
         {
             if (prev.AppliedToInstance != mod.InstanceId) return;
@@ -367,6 +447,31 @@ namespace RimSharp.Shared.Services.Implementations
             foreach (var key in prev.AddedIncompatibilities)
                 mod.IncompatibleWith.Remove(key);
 
+            // Restore suppressed inherited rules
+            foreach (var target in prev.SuppressedLoadBefore)
+            {
+                if (!mod.LoadBefore.Contains(target, StringComparer.OrdinalIgnoreCase))
+                    mod.LoadBefore.Add(target);
+            }
+
+            foreach (var target in prev.SuppressedLoadAfter)
+            {
+                if (!mod.LoadAfter.Contains(target, StringComparer.OrdinalIgnoreCase))
+                    mod.LoadAfter.Add(target);
+            }
+
+            foreach (var kvp in prev.SuppressedIncompatibilities)
+            {
+                if (!mod.IncompatibleWith.ContainsKey(kvp.Key))
+                    mod.IncompatibleWith[kvp.Key] = kvp.Value;
+            }
+
+            foreach (var target in prev.SuppressedIncompatibleByVersion)
+            {
+                if (!mod.IncompatibleWithByVersion.Contains(target, StringComparer.OrdinalIgnoreCase))
+                    mod.IncompatibleWithByVersion.Add(target);
+            }
+
             if (prev.SetLoadBottom)
                 mod.LoadBottom = prev.PreviousLoadBottom;
 
@@ -383,32 +488,26 @@ namespace RimSharp.Shared.Services.Implementations
                 mod.IsFavorite = false;
         }
 
-        /// <summary>
-        /// The exact values the custom layer added to one ModItem on its last
-        /// application. Kept per packageId so a strip/re-apply cycle can be
-        /// precise without adding provenance fields to the ModItem model.
-        /// </summary>
         private sealed class LastAppliedCustom
         {
             public Guid AppliedToInstance { get; set; }
-
-            /// <summary>
-            /// Weak handle to the exact ModItem instance the values were applied
-            /// to, so a direct RemoveCustomModInfoAsync call can strip them from
-            /// the live object without waiting for a subsequent re-apply. Weak
-            /// so a discarded/cached-away ModItem is never kept alive.
-            /// </summary>
             public WeakReference<ModItem>? AppliedToInstanceRef { get; set; }
 
             public List<string> CustomVersions { get; } = new();
             public List<string> AddedTags { get; } = new();
             public List<string> AddedLoadBefore { get; } = new();
             public List<string> AddedLoadAfter { get; } = new();
+            public List<string> AddedIncompatibilities { get; } = new();
+
+            public List<string> SuppressedLoadBefore { get; } = new();
+            public List<string> SuppressedLoadAfter { get; } = new();
+            public Dictionary<string, ModIncompatibilityRule> SuppressedIncompatibilities { get; } = new(StringComparer.OrdinalIgnoreCase);
+            public List<string> SuppressedIncompatibleByVersion { get; } = new();
+
             public bool SetLoadBottom { get; set; }
             public bool PreviousLoadBottom { get; set; }
             public bool SetLoadTop { get; set; }
             public bool PreviousLoadTop { get; set; }
-            public List<string> AddedIncompatibilities { get; } = new();
             public string? AppliedExternalUrl { get; set; }
             public bool AppliedFavorite { get; set; }
         }
@@ -419,8 +518,13 @@ namespace RimSharp.Shared.Services.Implementations
             if (customInfo.LoadAfter?.Count == 0) customInfo.LoadAfter = null!;
             if (customInfo.IncompatibleWith?.Count == 0) customInfo.IncompatibleWith = null!;
             if (customInfo.SupportedVersions?.Count == 0) customInfo.SupportedVersions = null!;
+            if (customInfo.DisabledLoadBefore?.Count == 0) customInfo.DisabledLoadBefore = null!;
+            if (customInfo.DisabledLoadAfter?.Count == 0) customInfo.DisabledLoadAfter = null!;
+            if (customInfo.DisabledIncompatibilities?.Count == 0) customInfo.DisabledIncompatibilities = null!;
             if (customInfo.LoadBottom != null && customInfo.LoadBottom.Value == false) customInfo.LoadBottom = null!;
             if (customInfo.LoadTop != null && customInfo.LoadTop.Value == false) customInfo.LoadTop = null!;
+            if (customInfo.DisableInheritedLoadTop == false) customInfo.DisableInheritedLoadTop = null;
+            if (customInfo.DisableInheritedLoadBottom == false) customInfo.DisableInheritedLoadBottom = null;
             if (customInfo.Favorite == false) customInfo.Favorite = null!;
 
             customInfo.SupportedVersions?.RemoveAll(string.IsNullOrWhiteSpace);

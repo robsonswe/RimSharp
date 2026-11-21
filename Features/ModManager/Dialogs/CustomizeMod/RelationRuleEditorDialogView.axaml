@@ -1,0 +1,129 @@
+<dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+                    xmlns:vm="clr-namespace:RimSharp.Features.ModManager.Dialogs.CustomizeMod"
+                    xmlns:i="https://github.com/projektanker/icons.avalonia"
+                    x:Class="RimSharp.Features.ModManager.Dialogs.CustomizeMod.RelationRuleEditorDialogView"
+                    x:DataType="vm:RelationRuleEditorDialogViewModel"
+                    x:CompileBindings="True"
+                    Classes="dialog-flush"
+                    Width="550"
+                    SizeToContent="Height"
+                    CanResize="False"
+                    Title="{Binding Title}">
+
+    <dialogs:BaseDialog.MainContent>
+        <StackPanel Margin="18,16" Spacing="13">
+            <!-- Target Mod -->
+            <StackPanel Spacing="5">
+                <TextBlock Text="Target Mod (Package ID)" Classes="field-label"/>
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                    <TextBox Grid.Column="0" Text="{Binding PackageId, Mode=TwoWay}"
+                             Classes="input" Height="30"
+                             FontFamily="{DynamicResource RimSharpMonoFontFamily}"
+                             PlaceholderText="e.g. brrainz.harmony"/>
+                    <Button Grid.Column="1" Command="{Binding OpenModSelectorCommand}" Classes="btn" Height="30">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <i:Icon Value="fa-magnifying-glass" FontSize="11"/>
+                            <TextBlock Text="Select Mod..." VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </StackPanel>
+
+            <!-- Relationship Picker -->
+            <StackPanel Spacing="5">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0" Text="Custom Relationship" Classes="field-label"/>
+                    <TextBlock Grid.Column="1" Text="Overrides any inherited rule for this target" FontSize="10.5"
+                               Foreground="{DynamicResource BrushTextPrimary}" Opacity="0.85"/>
+                </Grid>
+
+                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="6">
+                    <RadioButton Grid.Column="0" GroupName="RelKind" Classes="rel-card"
+                                 IsChecked="{Binding IsLoadBefore, Mode=OneWay}"
+                                 IsEnabled="{Binding CanSelectLoadBefore}"
+                                 Command="{Binding SetRelationKindCommand}" CommandParameter="LoadBefore">
+                        <StackPanel Spacing="2" HorizontalAlignment="Center">
+                            <TextBlock Text="Load Before" FontWeight="Bold" FontSize="11.5" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Target later" FontSize="10" Opacity="0.85" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </RadioButton>
+
+                    <RadioButton Grid.Column="1" GroupName="RelKind" Classes="rel-card"
+                                 IsChecked="{Binding IsLoadAfter, Mode=OneWay}"
+                                 IsEnabled="{Binding CanSelectLoadAfter}"
+                                 Command="{Binding SetRelationKindCommand}" CommandParameter="LoadAfter">
+                        <StackPanel Spacing="2" HorizontalAlignment="Center">
+                            <TextBlock Text="Load After" FontWeight="Bold" FontSize="11.5" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Target earlier" FontSize="10" Opacity="0.85" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </RadioButton>
+
+                    <RadioButton Grid.Column="2" GroupName="RelKind" Classes="rel-card"
+                                 IsChecked="{Binding IsSoftIncompat, Mode=OneWay}"
+                                 IsEnabled="{Binding CanSelectSoftIncompat}"
+                                 Command="{Binding SetRelationKindCommand}" CommandParameter="SoftIncompatibility">
+                        <StackPanel Spacing="2" HorizontalAlignment="Center">
+                            <TextBlock Text="Soft Conflict" FontWeight="Bold" FontSize="11.5" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Warning" FontSize="10" Opacity="0.85" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </RadioButton>
+
+                    <RadioButton Grid.Column="3" GroupName="RelKind" Classes="rel-card rel-hard"
+                                 IsChecked="{Binding IsHardIncompat, Mode=OneWay}"
+                                 IsEnabled="{Binding CanSelectHardIncompat}"
+                                 Command="{Binding SetRelationKindCommand}" CommandParameter="HardIncompatibility">
+                        <StackPanel Spacing="2" HorizontalAlignment="Center">
+                            <TextBlock Text="Hard Conflict" FontWeight="Bold" FontSize="11.5" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Critical" FontSize="10" Opacity="0.85" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </RadioButton>
+                </Grid>
+            </StackPanel>
+
+            <!-- Live Constraint / Override Banner -->
+            <Border Classes="alert-box"
+                    Classes.info="{Binding IsStatusInfo}"
+                    Classes.warning="{Binding IsStatusWarning}"
+                    Classes.danger="{Binding IsStatusDanger}"
+                    IsVisible="{Binding HasStatusMessage}">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                    <Panel Grid.Column="0" VerticalAlignment="Top" Margin="0,2,0,0">
+                        <i:Icon Value="fa-circle-info" FontSize="12" IsVisible="{Binding IsStatusInfo}"
+                                Foreground="{DynamicResource BrushTextInfo}"/>
+                        <i:Icon Value="fa-circle-info" FontSize="12" IsVisible="{Binding IsStatusWarning}"
+                                Foreground="{DynamicResource BrushTextBrown950}"/>
+                        <i:Icon Value="fa-triangle-exclamation" FontSize="12" IsVisible="{Binding IsStatusDanger}"
+                                Foreground="{DynamicResource BrushTextError}"/>
+                    </Panel>
+                    <TextBlock Grid.Column="1" Text="{Binding StatusMessage}" FontSize="11.5" TextWrapping="Wrap"
+                               Foreground="{DynamicResource BrushTextBrown950}"/>
+                </Grid>
+            </Border>
+
+            <!-- Display Name & Comment -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <StackPanel Grid.Column="0" Spacing="4">
+                    <TextBlock Text="Display Name" Classes="field-label"/>
+                    <TextBox Text="{Binding DisplayName, Mode=TwoWay}" Classes="input" Height="30"
+                             PlaceholderText="Optional display name"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="4">
+                    <TextBlock Text="Comment / Reason" Classes="field-label"/>
+                    <TextBox Text="{Binding Comment, Mode=TwoWay}" Classes="input" Height="30"
+                             PlaceholderText="Optional reasoning..."/>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </dialogs:BaseDialog.MainContent>
+
+    <dialogs:BaseDialog.ButtonContent>
+        <Border Classes="dialog-footer">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Content="Cancel" Command="{Binding CancelCommand}" Classes="btn" MinWidth="92" Height="31"/>
+                <Button Content="Save Rule" Command="{Binding SaveCommand}" Classes="btn-success" MinWidth="105" Height="31"/>
+            </StackPanel>
+        </Border>
+    </dialogs:BaseDialog.ButtonContent>
+</dialogs:BaseDialog>

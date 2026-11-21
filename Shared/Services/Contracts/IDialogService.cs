@@ -36,7 +36,8 @@ namespace RimSharp.Shared.Services.Contracts
         Task<(MessageDialogResult Result, string Input)> ShowInputDialogAsync(string title, string message, string defaultInput = "");
         Task<(MessageDialogResult Result, string Name, string Url)> ShowRuleSourceEditorDialogAsync(string title, string message, string defaultName, string defaultUrl);
         
-        Task<ModCustomizationResult> ShowCustomizeModDialog(CustomizeModDialogViewModel viewModel);
+        Task<ModCustomizationResult> ShowCustomizeModDialogAsync(ModItem mod);
+        Task<bool> ShowRelationRuleEditorAsync(RelationRuleEditorDialogViewModel viewModel);
         Task<ModFilterDialogResult> ShowModFilterDialogAsync(ModFilterDialogViewModel viewModel);
         ModFilterDialogResult ShowModFilterDialog(ModFilterDialogViewModel viewModel);
         Task<ModReplacementDialogResult> ShowModReplacementDialogAsync(ModReplacementDialogViewModel viewModel);
@@ -48,10 +49,6 @@ namespace RimSharp.Shared.Services.Contracts
         Task<(bool, IEnumerable<string>?)> ShowStripModsDialogAsync(StripDialogViewModel viewModel);
         (bool, IEnumerable<string>?) ShowStripModsDialog(StripDialogViewModel viewModel);
         Task<bool> ShowActiveIssuesDialogAsync(ActiveIssuesDialogViewModel viewModel);
-        Task<bool> ShowDependencyRuleEditorAsync(DependencyRuleEditorDialogViewModel viewModel);
-        bool ShowDependencyRuleEditor(DependencyRuleEditorDialogViewModel viewModel);
-        Task<bool> ShowIncompatibilityRuleEditorAsync(IncompatibilityRuleEditorDialogViewModel viewModel);
-        bool ShowIncompatibilityRuleEditor(IncompatibilityRuleEditorDialogViewModel viewModel);
         Task<bool> ShowIncompatibilityDialogAsync(RimSharp.Features.ModManager.Dialogs.Incompatibilities.ModIncompatibilityDialogViewModel viewModel);
         void ShowIncompatibilityDialog(RimSharp.Features.ModManager.Dialogs.Incompatibilities.ModIncompatibilityDialogViewModel viewModel);
         Task<bool> ShowDuplicateModsDialogAsync(RimSharp.Features.ModManager.Dialogs.DuplicateMods.DuplicateModDialogViewModel viewModel);

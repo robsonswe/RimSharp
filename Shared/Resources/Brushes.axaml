@@ -97,4 +97,14 @@
     <SolidColorBrush x:Key="BrushSelectionAccentMedium" Color="{StaticResource ColorAccentBlueAlpha30}"/>
     <SolidColorBrush x:Key="BrushSelectionAccentSubtle" Color="{StaticResource ColorAccentBlueAlpha10}"/>
 
+    <!-- Alert / Callout & Rule State Brushes -->
+    <SolidColorBrush x:Key="BrushBgInfoWash" Color="{StaticResource ColorBlue700Alpha14}"/>
+    <SolidColorBrush x:Key="BrushBorderInfo" Color="{StaticResource ColorBlue700Alpha30}"/>
+    <SolidColorBrush x:Key="BrushTextInfo" Color="{StaticResource ColorBlue900}"/>
+
+    <SolidColorBrush x:Key="BrushBgDangerWash" Color="{StaticResource ColorRed600Alpha20}"/>
+    <SolidColorBrush x:Key="BrushBgOverridden" Color="{StaticResource ColorBrown400Alpha40}"/>
+    <SolidColorBrush x:Key="BrushBgSoftBadge" Color="{StaticResource ColorAmber300Alpha28}"/>
+    <SolidColorBrush x:Key="BrushBgPickerList" Color="{StaticResource ColorBrown100}"/>
+
 </ResourceDictionary>

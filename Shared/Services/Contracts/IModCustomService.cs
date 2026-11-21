@@ -49,5 +49,6 @@ namespace RimSharp.Shared.Services.Contracts
         /// </summary>
 
         void ApplyCustomInfoToMods(IEnumerable<ModItem> mods);
+        void StripCustomInfoFromMods(IEnumerable<ModItem> mods);
     }
 }

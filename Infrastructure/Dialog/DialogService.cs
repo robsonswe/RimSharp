@@ -58,6 +58,7 @@ namespace RimSharp.Infrastructure.Dialog
         private readonly IModService? _modService;
         private readonly IModDictionaryService? _dictionaryService;
         private readonly ISteamApiClient? _steamApiClient;
+        private readonly IModRulesService? _modRulesService;
         private int _openDialogCount;
         public bool IsAnyDialogOpen => _openDialogCount > 0;
 
@@ -83,7 +84,8 @@ namespace RimSharp.Infrastructure.Dialog
             INoVersionWarningSourceManager? noVersionWarningSourceManager = null,
             IDataUpdateService? dataUpdateService = null,
             IModDictionaryService? dictionaryService = null,
-            ISteamApiClient? steamApiClient = null)
+            ISteamApiClient? steamApiClient = null,
+            IModRulesService? modRulesService = null)
         {
             _appUpdaterService = appUpdaterService;
             _configService = configService;
@@ -105,6 +107,7 @@ namespace RimSharp.Infrastructure.Dialog
             _dataUpdateService = dataUpdateService;
             _dictionaryService = dictionaryService;
             _steamApiClient = steamApiClient;
+            _modRulesService = modRulesService;
         }
 
         private void OnPropertyChanged(string propertyName)
@@ -359,10 +362,21 @@ namespace RimSharp.Infrastructure.Dialog
             return viewModel;
         }
 
-        public async Task<ModCustomizationResult> ShowCustomizeModDialog(CustomizeModDialogViewModel viewModel)
+        public async Task<ModCustomizationResult> ShowCustomizeModDialogAsync(ModItem mod)
         {
+            if (_modService == null) return ModCustomizationResult.Cancel;
+            var customInfo = _modService.GetCustomModInfo(mod.PackageId) ?? new ModCustomInfo();
+            var viewModel = new CustomizeModDialogViewModel(
+                mod, customInfo, _modService, this,
+                _ruleSourceManager?.Registry, _modRulesService, _dictionaryService);
             var dialog = new CustomizeModDialogView(viewModel);
             return await ShowDialogInternalAsync<ModCustomizationResult>(viewModel, dialog);
+        }
+
+        public async Task<bool> ShowRelationRuleEditorAsync(RelationRuleEditorDialogViewModel viewModel)
+        {
+            var dialog = new RelationRuleEditorDialogView(viewModel);
+            return await ShowDialogInternalAsync<bool>(viewModel, dialog);
         }
 
         public async Task<bool> ShowIncompatibilityDialogAsync(RimSharp.Features.ModManager.Dialogs.Incompatibilities.ModIncompatibilityDialogViewModel viewModel)
@@ -565,30 +579,6 @@ namespace RimSharp.Infrastructure.Dialog
         {
             var dialog = new CollectionDialogView(viewModel);
             return ShowDialogInternalAsync<List<string>>(viewModel, dialog).GetAwaiter().GetResult();
-        }
-
-        public async Task<bool> ShowDependencyRuleEditorAsync(DependencyRuleEditorDialogViewModel viewModel)
-        {
-            var dialog = new DependencyRuleEditorDialogView(viewModel);
-            return await ShowDialogInternalAsync<bool>(viewModel, dialog);
-        }
-
-        public bool ShowDependencyRuleEditor(DependencyRuleEditorDialogViewModel viewModel)
-        {
-            var dialog = new DependencyRuleEditorDialogView(viewModel);
-            return ShowDialogInternalAsync<bool>(viewModel, dialog).GetAwaiter().GetResult();
-        }
-
-        public async Task<bool> ShowIncompatibilityRuleEditorAsync(IncompatibilityRuleEditorDialogViewModel viewModel)
-        {
-            var dialog = new IncompatibilityRuleEditorDialogView(viewModel);
-            return await ShowDialogInternalAsync<bool>(viewModel, dialog);
-        }
-
-        public bool ShowIncompatibilityRuleEditor(IncompatibilityRuleEditorDialogViewModel viewModel)
-        {
-            var dialog = new IncompatibilityRuleEditorDialogView(viewModel);
-            return ShowDialogInternalAsync<bool>(viewModel, dialog).GetAwaiter().GetResult();
         }
 
         public async Task<(bool, IEnumerable<string>?)> ShowStripModsDialogAsync(StripDialogViewModel viewModel)

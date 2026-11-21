@@ -22,12 +22,25 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
             RimSharp.Core.Extensions.ThreadHelper.Initialize();
             _mockModService = Substitute.For<IModService>();
             _mockDialogService = Substitute.For<IDialogService>();
+            _mockModService.GetLoadedMods().Returns(new List<ModItem>());
+        }
+
+        private void EditorAdds(string packageId, CustomRelationKind kind = CustomRelationKind.LoadBefore)
+        {
+            _mockDialogService.ShowRelationRuleEditorAsync(Arg.Any<RelationRuleEditorDialogViewModel>())
+                .Returns(x =>
+                {
+                    var editor = x.Arg<RelationRuleEditorDialogViewModel>();
+                    editor.PackageId = packageId;
+                    editor.DisplayName = packageId;
+                    editor.RelationKind = kind;
+                    return Task.FromResult(true);
+                });
         }
 
         [Fact]
         public void Constructor_ShouldInitializePropertiesFromModAndCustomInfo()
         {
-
             var mod = new ModItem { Name = "Test Mod", PackageId = "test.mod", ExternalUrl = "orig.url" };
             var customInfo = new ModCustomInfo { Favorite = true, ExternalUrl = "custom.url" };
 
@@ -38,53 +51,36 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
         }
 
         [Fact]
-        public async Task AddLoadBefore_WhenValid_ShouldAddRule()
+        public async Task AddRelation_WhenEditorConfirms_ShouldAddCustomRule()
         {
-
             var mod = new ModItem { Name = "Test Mod", PackageId = "test.mod" };
             var vm = new CustomizeModDialogViewModel(mod, new ModCustomInfo(), _mockModService, _mockDialogService);
+            EditorAdds("other.mod");
 
-            _mockDialogService.ShowDependencyRuleEditorAsync(Arg.Any<DependencyRuleEditorDialogViewModel>())
-                .Returns(x => 
-                {
-                    var dialogVm = x.Arg<DependencyRuleEditorDialogViewModel>();
-                    dialogVm.PackageId = "other.mod";
-                    return Task.FromResult(true);
-                });
-
-            vm.AddLoadBeforeCommand.Execute(null);
+            vm.AddRelationCommand.Execute(null);
             await Task.Delay(100, TestContext.Current.CancellationToken);
 
-            vm.CustomLoadBefore.Should().HaveCount(1);
-            vm.CustomLoadBefore[0].PackageId.Should().Be("other.mod");
+            vm.Relations.Should().ContainSingle(r => r.IsCustom && r.TargetPackageId == "other.mod");
+            await _mockDialogService.Received(1).ShowRelationRuleEditorAsync(Arg.Any<RelationRuleEditorDialogViewModel>());
         }
 
         [Fact]
-        public async Task AddLoadBefore_WhenPackageIdDuplicated_ShouldShowWarningAndNotAdd()
+        public async Task AddRelation_WhenEditorCancels_ShouldNotAddRule()
         {
-
-            var mod = new ModItem { Name = "Test Mod", PackageId = "test.mod", LoadBefore = new List<string> { "dup.id" } };
+            var mod = new ModItem { Name = "Test Mod", PackageId = "test.mod" };
             var vm = new CustomizeModDialogViewModel(mod, new ModCustomInfo(), _mockModService, _mockDialogService);
+            _mockDialogService.ShowRelationRuleEditorAsync(Arg.Any<RelationRuleEditorDialogViewModel>())
+                .Returns(Task.FromResult(false));
 
-            _mockDialogService.ShowDependencyRuleEditorAsync(Arg.Any<DependencyRuleEditorDialogViewModel>())
-                .Returns(x => 
-                {
-                    var dialogVm = x.Arg<DependencyRuleEditorDialogViewModel>();
-                    dialogVm.PackageId = "dup.id";
-                    return Task.FromResult(true);
-                });
-
-            vm.AddLoadBeforeCommand.Execute(null);
+            vm.AddRelationCommand.Execute(null);
             await Task.Delay(100, TestContext.Current.CancellationToken);
 
-            vm.CustomLoadBefore.Should().BeEmpty();
-            await _mockDialogService.Received(1).ShowWarning(Arg.Any<string>(), Arg.Is<string>(s => s.Contains("already exists")));
+            vm.Relations.Should().BeEmpty();
         }
 
         [Fact]
         public async Task SaveCommand_ShouldCallModService()
         {
-
             var mod = new ModItem { Name = "Test Mod", PackageId = "test.mod" };
             var vm = new CustomizeModDialogViewModel(mod, new ModCustomInfo(), _mockModService, _mockDialogService);
             vm.IsFavorite = true;
@@ -109,7 +105,6 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
 
             var execution = ((AsyncDelegateCommand)vm.SaveCommand).ExecuteAsync();
 
-            // The save is still in flight — the dialog must remain open.
             await Task.Delay(50, TestContext.Current.CancellationToken);
             closed.Should().BeFalse("the dialog must not close before the save completes");
             vm.DialogResultForWindow.Should().NotBeTrue();
@@ -139,7 +134,7 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
         }
 
         [Fact]
-        public void Constructor_ShouldMirrorLoadTopFromCustomInfo()
+        public void Constructor_WhenCustomLoadTop_ShouldSelectForceTop()
         {
             var mod = new ModItem { Name = "Test Mod", PackageId = "test.mod" };
             var customInfo = new ModCustomInfo
@@ -149,30 +144,30 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
 
             var vm = new CustomizeModDialogViewModel(mod, customInfo, _mockModService, _mockDialogService);
 
-            vm.LoadTop.Should().BeTrue();
-            vm.LoadTopComment.Should().Be("tier 1 please");
-            vm.CanCustomizeLoadTop.Should().BeTrue();
+            vm.LoadPosition.Should().Be(CustomLoadPosition.ForceTop);
+            vm.IsPosForceTop.Should().BeTrue();
+            vm.LoadPositionComment.Should().Be("tier 1 please");
         }
 
         [Fact]
-        public void Constructor_WhenModAlreadyLoadsTop_ShouldBlockCustomization()
+        public void Constructor_WhenModAlreadyLoadsTop_ShouldExposeInheritedLoadTop()
         {
             var mod = new ModItem { Name = "Test Mod", PackageId = "test.mod", LoadTop = true };
 
             var vm = new CustomizeModDialogViewModel(mod, new ModCustomInfo(), _mockModService, _mockDialogService);
 
-            vm.HasOriginalLoadTop.Should().BeTrue();
-            vm.CanCustomizeLoadTop.Should().BeFalse();
-            vm.LoadTop.Should().BeFalse();
+            vm.HasInheritedLoadTop.Should().BeTrue();
+            vm.HasInheritedLoadPosition.Should().BeTrue();
+            vm.LoadPosition.Should().Be(CustomLoadPosition.UseInherited);
         }
 
         [Fact]
-        public async Task SaveCommand_ShouldPersistLoadTop()
+        public async Task SaveCommand_ShouldPersistForceTop()
         {
             var mod = new ModItem { Name = "Test Mod", PackageId = "test.mod" };
             var vm = new CustomizeModDialogViewModel(mod, new ModCustomInfo(), _mockModService, _mockDialogService);
-            vm.LoadTop = true;
-            vm.LoadTopComment = "tier 1 please";
+            vm.LoadPosition = CustomLoadPosition.ForceTop;
+            vm.LoadPositionComment = "tier 1 please";
 
             vm.SaveCommand.Execute(null);
             await Task.Delay(100, TestContext.Current.CancellationToken);
@@ -186,19 +181,55 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs
         }
 
         [Fact]
-        public async Task SaveCommand_WhenLoadTopUnchecked_ShouldNotPersistLoadTop()
+        public async Task SaveCommand_WhenNormalOverInheritedLoadTop_ShouldDisableInheritedLoadTop()
         {
-            var mod = new ModItem { Name = "Test Mod", PackageId = "test.mod" };
+            var mod = new ModItem { Name = "Test Mod", PackageId = "test.mod", LoadTop = true };
             var vm = new CustomizeModDialogViewModel(mod, new ModCustomInfo(), _mockModService, _mockDialogService);
+            vm.LoadPosition = CustomLoadPosition.Normal;
 
             vm.SaveCommand.Execute(null);
             await Task.Delay(100, TestContext.Current.CancellationToken);
 
             await _mockModService.Received(1).SaveCustomModInfoAsync(
                 "test.mod",
-                Arg.Is<ModCustomInfo>(info => info.LoadTop == null));
+                Arg.Is<ModCustomInfo>(info => info.DisableInheritedLoadTop == true));
+        }
+
+        [Fact]
+        public async Task ToggleDisabledCommand_OnInheritedRow_ShouldPersistDisabledRule()
+        {
+            var mod = new ModItem { Name = "Test Mod", PackageId = "test.mod" };
+            mod.AboutLoadBefore.Add("other.mod");
+            var vm = new CustomizeModDialogViewModel(mod, new ModCustomInfo(), _mockModService, _mockDialogService);
+
+            var row = vm.Relations.Single(r => r.TargetPackageId == "other.mod" && r.IsInherited);
+            row.CanToggleDisabled.Should().BeTrue();
+            row.ToggleDisabledCommand!.Execute(null);
+            row.IsDisabledByUser.Should().BeTrue();
+
+            vm.SaveCommand.Execute(null);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
+
+            await _mockModService.Received(1).SaveCustomModInfoAsync(
+                "test.mod",
+                Arg.Is<ModCustomInfo>(info => info.DisabledLoadBefore.Contains("other.mod")));
+        }
+
+        [Fact]
+        public async Task ForceTop_WithCustomLoadAfter_ShouldBlockSave()
+        {
+            var mod = new ModItem { Name = "Test Mod", PackageId = "test.mod" };
+            var vm = new CustomizeModDialogViewModel(mod, new ModCustomInfo(), _mockModService, _mockDialogService);
+            EditorAdds("other.mod", CustomRelationKind.LoadAfter);
+
+            vm.AddRelationCommand.Execute(null);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
+
+            vm.LoadPosition = CustomLoadPosition.ForceTop;
+
+            vm.HasLoadPositionContradiction.Should().BeTrue();
+            vm.CanSave.Should().BeFalse();
+            vm.LoadPositionContradictionWarning.Should().Contain("other.mod");
         }
     }
 }
-
-

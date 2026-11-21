@@ -337,7 +337,8 @@ namespace RimSharp.AppDir.AppFiles
                     provider.GetRequiredService<INoVersionWarningSourceManager>(),
                     provider.GetRequiredService<IDataUpdateService>(),
                     provider.GetRequiredService<IModDictionaryService>(),
-                    provider.GetRequiredService<ISteamApiClient>()
+                    provider.GetRequiredService<ISteamApiClient>(),
+                    provider.GetRequiredService<IModRulesService>()
                 ));
             services.AddSingleton<IApplicationNavigationService, ApplicationNavigationService>();
             services.AddSingleton<IGitService, GitService>();

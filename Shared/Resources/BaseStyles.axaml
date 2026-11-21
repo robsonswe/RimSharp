@@ -457,6 +457,70 @@
         <Setter Property="Background" Value="{DynamicResource BrushBgPanel}"/>
     </Style>
 
+    <!-- Warm Picker ListBox (Select Mod) -->
+    <Style Selector="ListBox.list-picker">
+        <Setter Property="Background" Value="{DynamicResource BrushBgPickerList}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        ClipToBounds="True">
+                    <ScrollViewer Focusable="False"
+                                  Padding="{TemplateBinding Padding}"
+                                  AllowAutoHide="False">
+                        <ItemsPresenter/>
+                    </ScrollViewer>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ListBox.list-picker > ListBoxItem">
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderSubtle}"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="RowBg"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}">
+                    <Border x:Name="RowAccent"
+                            BorderBrush="Transparent"
+                            BorderThickness="3,0,0,0"
+                            Padding="10,7,14,7">
+                        <ContentPresenter x:Name="PART_ContentPresenter"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ListBox.list-picker > ListBoxItem:pointerover /template/ Border#RowBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+    </Style>
+    <Style Selector="ListBox.list-picker > ListBoxItem:selected /template/ Border#RowBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+    </Style>
+    <Style Selector="ListBox.list-picker > ListBoxItem:selected /template/ Border#RowAccent">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBgAction}"/>
+    </Style>
+    <Style Selector="ListBox.list-picker > ListBoxItem:selected:pointerover /template/ Border#RowBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+    </Style>
+
     <!-- List header border -->
     <Style Selector="Border.list-header">
         <Setter Property="Background" Value="{DynamicResource BrushBgAccent}"/>
@@ -568,6 +632,12 @@
         <Setter Property="FontSize" Value="10.5"/>
         <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
         <Setter Property="Opacity" Value="0.9"/>
+    </Style>
+
+    <!-- Strikethrough helper for overridden / disabled rules -->
+    <Style Selector="TextBlock.strike">
+        <Setter Property="TextDecorations" Value="Strikethrough"/>
+        <Setter Property="Opacity" Value="0.78"/>
     </Style>
 
     <!-- Password input with built-in RevealPassword eye toggle -->
@@ -844,7 +914,7 @@
     <Style Selector="Border.pill-badge">
         <Setter Property="CornerRadius" Value="3"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="6,1"/>
+        <Setter Property="Padding" Value="7,2"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
     <Style Selector="Border.pill-badge.muted">
@@ -939,6 +1009,14 @@
         <Setter Property="TextElement.Foreground" Value="{DynamicResource BrushTextOnDark}"/>
     </Style>
 
+    <!-- Neutral active segmented option (dark brown fill + white text) -->
+    <Style Selector="RadioButton.tri-btn.tri-neutral:checked /template/ Border#SegBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgAction}"/>
+    </Style>
+    <Style Selector="RadioButton.tri-btn.tri-neutral:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource BrushTextOnDark}"/>
+    </Style>
+
     <!-- Selectable card checkbox (e.g. Mod Types grid) -->
     <Style Selector="CheckBox.check-card">
         <Setter Property="Background" Value="{DynamicResource BrushBgCard}"/>
@@ -1003,6 +1081,216 @@
     </Style>
     <Style Selector="CheckBox.check-card:checked /template/ i|Icon#CheckGlyph">
         <Setter Property="IsVisible" Value="True"/>
+    </Style>
+
+    <!-- ================================================================
+         CUSTOMIZE MOD: RULE CARDS, ALERTS, SEGMENTED PICKERS & FAV TOGGLE
+         ================================================================ -->
+
+    <!-- Alert boxes (.warning, .danger, .info) -->
+    <Style Selector="Border.alert-box">
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="BorderThickness" Value="3,1,1,1"/>
+        <Setter Property="Padding" Value="10,8"/>
+    </Style>
+    <Style Selector="Border.alert-box.warning">
+        <Setter Property="Background" Value="{DynamicResource BrushBgCallout}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+    </Style>
+    <Style Selector="Border.alert-box.danger">
+        <Setter Property="Background" Value="{DynamicResource BrushBgDangerWash}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderError}"/>
+    </Style>
+    <Style Selector="Border.alert-box.info">
+        <Setter Property="Background" Value="{DynamicResource BrushBgInfoWash}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderInfo}"/>
+    </Style>
+
+    <!-- Rule cards (.inherited, .overridden, .disabled) — outer 1px border; inner border handles 3px accent -->
+    <Style Selector="Border.rule-card">
+        <Setter Property="Background" Value="{DynamicResource BrushBgCard}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="ClipToBounds" Value="True"/>
+    </Style>
+    <Style Selector="Border.rule-card.inherited">
+        <Setter Property="Background" Value="{DynamicResource BrushBgCardDisabled}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderMuted}"/>
+    </Style>
+    <Style Selector="Border.rule-card.overridden">
+        <Setter Property="Background" Value="{DynamicResource BrushBgOverridden}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderMuted}"/>
+        <Setter Property="Opacity" Value="0.74"/>
+    </Style>
+    <Style Selector="Border.rule-card.disabled">
+        <Setter Property="Background" Value="{DynamicResource BrushBgCardDisabled}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderMuted}"/>
+        <Setter Property="Opacity" Value="0.56"/>
+    </Style>
+
+    <!-- Additional pill-badge variants -->
+    <Style Selector="Border.pill-badge.db">
+        <Setter Property="Background" Value="{DynamicResource BrushBgBadgeMod}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderBadgeMod}"/>
+    </Style>
+    <Style Selector="Border.pill-badge.custom">
+        <Setter Property="Background" Value="{DynamicResource BrushBgBadgeSuccess}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderBadgeSuccess}"/>
+    </Style>
+    <Style Selector="Border.pill-badge.hard">
+        <Setter Property="Background" Value="{DynamicResource BrushBgDangerWash}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderError}"/>
+    </Style>
+    <Style Selector="Border.pill-badge.soft">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSoftBadge}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderBadgeMuted}"/>
+    </Style>
+    <Style Selector="Border.pill-badge.overridden">
+        <Setter Property="Background" Value="{DynamicResource BrushBgCallout}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+    </Style>
+
+    <!-- Favorite ToggleButton (explicit logical TextBlock + star foreground) -->
+    <Style Selector="ToggleButton.fav-toggle">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSurface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="11,5"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="FavBg"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="{TemplateBinding Padding}">
+                    <ContentPresenter x:Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <!-- The Fluent theme paints a background on the templated ContentPresenter across
+         toggle states; keep it clear so only FavBg supplies the checked surface. -->
+    <Style Selector="ToggleButton.fav-toggle /template/ ContentPresenter#PART_ContentPresenter,
+                     ToggleButton.fav-toggle:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                     ToggleButton.fav-toggle:pressed /template/ ContentPresenter#PART_ContentPresenter,
+                     ToggleButton.fav-toggle:checked /template/ ContentPresenter#PART_ContentPresenter,
+                     ToggleButton.fav-toggle:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+    </Style>
+    <Style Selector="ToggleButton.fav-toggle TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+    </Style>
+    <Style Selector="ToggleButton.fav-toggle i|Icon">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+    </Style>
+    <Style Selector="ToggleButton.fav-toggle:pointerover /template/ Border#FavBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+    </Style>
+    <Style Selector="ToggleButton.fav-toggle:checked /template/ Border#FavBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSuccess}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderSuccess}"/>
+    </Style>
+    <Style Selector="ToggleButton.fav-toggle:checked TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextOnDark}"/>
+    </Style>
+    <Style Selector="ToggleButton.fav-toggle:checked i|Icon">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextHighlight}"/>
+    </Style>
+
+    <!-- Filter Pill RadioButton -->
+    <Style Selector="RadioButton.f-pill">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSurface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Padding" Value="10,4"/>
+        <Setter Property="FontSize" Value="11.5"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="PillBg"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="{TemplateBinding Padding}">
+                    <ContentPresenter x:Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="RadioButton.f-pill /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource BrushTextStrong}"/>
+    </Style>
+    <Style Selector="RadioButton.f-pill:pointerover /template/ Border#PillBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+    </Style>
+    <Style Selector="RadioButton.f-pill:checked /template/ Border#PillBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgAction}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderStrong}"/>
+    </Style>
+    <Style Selector="RadioButton.f-pill:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource BrushTextOnDark}"/>
+    </Style>
+
+    <!-- 4-way Relation Type Card RadioButton (Rule Editor) -->
+    <Style Selector="RadioButton.rel-card">
+        <Setter Property="Background" Value="{DynamicResource BrushBgCard}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderSubtle}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="6,8"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="RelBg"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="{TemplateBinding Padding}">
+                    <ContentPresenter x:Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="RadioButton.rel-card /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource BrushTextBrown950}"/>
+    </Style>
+    <Style Selector="RadioButton.rel-card:pointerover /template/ Border#RelBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+    </Style>
+    <Style Selector="RadioButton.rel-card:checked /template/ Border#RelBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgAction}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderStrong}"/>
+    </Style>
+    <Style Selector="RadioButton.rel-card.rel-hard:checked /template/ Border#RelBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgDanger}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderError}"/>
+    </Style>
+    <Style Selector="RadioButton.rel-card:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource BrushTextOnDark}"/>
+    </Style>
+    <Style Selector="RadioButton.rel-card:disabled">
+        <Setter Property="Opacity" Value="0.42"/>
     </Style>
 
 </Styles>

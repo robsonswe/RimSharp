@@ -56,6 +56,13 @@ namespace RimSharp.Shared.Models
 
         /// </summary>
         public bool? Favorite { get; set; }
+
+        // --- Overrides & disabled inherited rules (additive) ---------------
+        public List<string> DisabledLoadBefore { get; set; } = new();
+        public List<string> DisabledLoadAfter { get; set; } = new();
+        public List<string> DisabledIncompatibilities { get; set; } = new();
+        public bool? DisableInheritedLoadTop { get; set; }
+        public bool? DisableInheritedLoadBottom { get; set; }
     }
 
     /// <summary>

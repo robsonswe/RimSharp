@@ -1,17 +1,16 @@
-using Avalonia;
 using Avalonia.Markup.Xaml;
 using RimSharp.Infrastructure.Dialog;
 
 namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 {
-    public partial class IncompatibilityRuleEditorDialogView : BaseDialog
+    public partial class RelationRuleEditorDialogView : BaseDialog
     {
-        public IncompatibilityRuleEditorDialogView()
+        public RelationRuleEditorDialogView()
         {
             InitializeComponent();
         }
 
-        public IncompatibilityRuleEditorDialogView(IncompatibilityRuleEditorDialogViewModel viewModel) : this()
+        public RelationRuleEditorDialogView(RelationRuleEditorDialogViewModel viewModel) : this()
         {
             SetupViewModel(viewModel);
         }

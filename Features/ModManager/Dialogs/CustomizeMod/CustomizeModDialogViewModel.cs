@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -7,77 +8,122 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using RimSharp.AppDir.AppFiles;
 using RimSharp.AppDir.Dialogs;
+using RimSharp.Features.ModManager.Dialogs.ModSelector;
+using RimSharp.Infrastructure.Mods.Rules;
 using RimSharp.Shared.Models;
 using RimSharp.Shared.Services.Contracts;
 
 namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
 {
-    public class ModDependencyRuleViewModel : ViewModelBase
+    public enum CustomLoadPosition
     {
-        private string _packageId = string.Empty;
-        public string PackageId
-        {
-            get => _packageId;
-            set => SetProperty(ref _packageId, value);
-        }
-
-        private string _displayName = string.Empty;
-        public string DisplayName
-        {
-            get => _displayName;
-            set => SetProperty(ref _displayName, value);
-        }
-
-        private string _comment = string.Empty;
-        public string Comment
-        {
-            get => _comment;
-            set => SetProperty(ref _comment, value);
-        }
-
-        private bool _isOriginal;
-        public bool IsOriginal
-        {
-            get => _isOriginal;
-            set => SetProperty(ref _isOriginal, value);
-        }
+        UseInherited,
+        Normal,
+        ForceTop,
+        ForceBottom
     }
 
-    public class ModIncompatibilityRuleViewModel : ViewModelBase
+    public enum RelationFilterKind
     {
-        private string _packageId = string.Empty;
-        public string PackageId
+        All,
+        LoadBefore,
+        LoadAfter,
+        Incompatibilities,
+        Inactive
+    }
+
+    public enum RuleOriginKind
+    {
+        Official,
+        Database,
+        Custom
+    }
+
+    public sealed class ModRelationRowViewModel : ViewModelBase
+    {
+        public string TargetPackageId { get; }
+        public string DisplayName { get; set; } = string.Empty;
+        public string Comment { get; set; } = string.Empty;
+        public string SourceLabel { get; }
+        public RuleOriginKind OriginKind { get; }
+        public CustomRelationKind RelationKind { get; }
+        public bool IsDependency { get; }
+
+        private bool _isDisabledByUser;
+        public bool IsDisabledByUser
         {
-            get => _packageId;
-            set => SetProperty(ref _packageId, value);
+            get => _isDisabledByUser;
+            set
+            {
+                if (SetProperty(ref _isDisabledByUser, value))
+                    NotifyComputedStates();
+            }
         }
 
-        private string _displayName = string.Empty;
-        public string DisplayName
+        private string? _overriddenByText;
+        public string? OverriddenByText
         {
-            get => _displayName;
-            set => SetProperty(ref _displayName, value);
+            get => _overriddenByText;
+            set
+            {
+                if (SetProperty(ref _overriddenByText, value))
+                    NotifyComputedStates();
+            }
         }
 
-        private string _comment = string.Empty;
-        public string Comment
+        public bool IsCustom => OriginKind == RuleOriginKind.Custom;
+        public bool IsInherited => !IsCustom;
+        public bool IsOfficial => OriginKind == RuleOriginKind.Official;
+        public bool IsDatabase => OriginKind == RuleOriginKind.Database;
+        public bool IsOverriddenByCustom => IsInherited && !string.IsNullOrEmpty(OverriddenByText);
+        public bool IsActiveInherited => IsInherited && !IsDisabledByUser && !IsOverriddenByCustom;
+        public bool IsInactive => IsDisabledByUser || IsOverriddenByCustom;
+        public bool CanToggleDisabled => IsInherited && !IsDependency && !IsOverriddenByCustom;
+        public bool HasComment => !string.IsNullOrWhiteSpace(Comment);
+
+        public bool IsHard => RelationKind == CustomRelationKind.HardIncompatibility;
+        public bool IsSoftOrOrder => !IsHard;
+
+        public string RelationLabel => RelationKind switch
         {
-            get => _comment;
-            set => SetProperty(ref _comment, value);
+            CustomRelationKind.LoadBefore => IsDependency ? "Dependency" : "Load Before · Target later",
+            CustomRelationKind.LoadAfter => IsDependency ? "Dependency · Target earlier" : "Load After · Target earlier",
+            CustomRelationKind.SoftIncompatibility => "Soft Conflict",
+            CustomRelationKind.HardIncompatibility => "Hard Conflict",
+            _ => string.Empty
+        };
+
+        public string ToggleDisableText => IsDisabledByUser ? "Enable" : "Disable";
+
+        public ICommand? ToggleDisabledCommand { get; set; }
+        public ICommand? EditCommand { get; set; }
+        public ICommand? RemoveCommand { get; set; }
+
+        public ModRelationRowViewModel(
+            string targetPackageId,
+            string displayName,
+            string comment,
+            string sourceLabel,
+            RuleOriginKind originKind,
+            CustomRelationKind relationKind,
+            bool isDependency = false)
+        {
+            TargetPackageId = targetPackageId;
+            DisplayName = string.IsNullOrWhiteSpace(displayName) ? targetPackageId : displayName;
+            Comment = comment;
+            SourceLabel = sourceLabel;
+            OriginKind = originKind;
+            RelationKind = relationKind;
+            IsDependency = isDependency;
         }
 
-        private bool _hardIncompatibility;
-        public bool HardIncompatibility
+        private void NotifyComputedStates()
         {
-            get => _hardIncompatibility;
-            set => SetProperty(ref _hardIncompatibility, value);
-        }
-
-        private bool _isOriginal;
-        public bool IsOriginal
-        {
-            get => _isOriginal;
-            set => SetProperty(ref _isOriginal, value);
+            OnPropertyChanged(nameof(IsOverriddenByCustom));
+            OnPropertyChanged(nameof(IsActiveInherited));
+            OnPropertyChanged(nameof(IsInactive));
+            OnPropertyChanged(nameof(CanToggleDisabled));
+            OnPropertyChanged(nameof(ToggleDisableText));
         }
     }
 
@@ -86,32 +132,11 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
         private readonly IModService _modService;
         private readonly IDialogService _dialogService;
         private readonly ModItem _mod;
-        private ModCustomInfo _customInfo;
+        private readonly ModCustomInfo _customInfo;
+        private readonly ModRuleSourceRegistry? _registry;
+        private readonly IModRulesService? _rulesService;
+        private readonly IModDictionaryService? _dictionary;
 
-        private readonly List<string> _originalLoadBefore;
-        private readonly List<string> _originalDependencies;
-        private readonly List<string> _originalLoadAfter;
-        private readonly List<string> _originalIncompatibilities;
-        private readonly bool _originalLoadBottom;
-        private readonly bool _originalLoadTop;
-        private readonly List<string> _originalSupportedVersions;
-        private readonly string? _originalExternalUrl;
-
-// Original mod properties (display-only)
-        public bool HasOriginalLoadBottom => _originalLoadBottom;
-        public bool HasOriginalLoadTop => _originalLoadTop;
-        public List<string> OriginalLoadBeforeItems => _originalLoadBefore;
-        public List<string> OriginalDependenciesItems => _originalDependencies;
-        public List<string> OriginalLoadAfterItems => _originalLoadAfter;
-        public List<string> OriginalIncompatibilityItems => _originalIncompatibilities;
-        public List<string> OriginalSupportedVersions => _originalSupportedVersions;
-        public bool HasOriginalVersions => OriginalSupportedVersions?.Any() ?? false;
-        public bool HasOriginalLoadBefore => OriginalLoadBeforeItems?.Any() ?? false;
-        public bool HasOriginalDependencies => OriginalDependenciesItems?.Any() ?? false;
-        public bool HasOriginalLoadAfter => OriginalLoadAfterItems?.Any() ?? false;
-        public bool HasOriginalIncompatibilities => OriginalIncompatibilityItems?.Any() ?? false;
-
-        // Basic properties for binding
         private bool _isFavorite;
         public bool IsFavorite
         {
@@ -140,254 +165,635 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
             set => SetProperty(ref _supportedVersions, value);
         }
 
-        // LoadBottom custom options
-        public bool CanCustomizeLoadBottom => !HasOriginalLoadBottom;
+        public List<string> OriginalSupportedVersions { get; }
+        public bool HasOriginalVersions => OriginalSupportedVersions.Count > 0;
 
-        private bool _loadBottom;
-        public bool LoadBottom
+        // --- Load Order Position (Mutually Exclusive + Override-aware) ---
+        public bool HasInheritedLoadTop { get; }
+        public bool HasInheritedLoadBottom { get; }
+        public bool HasInheritedLoadPosition => HasInheritedLoadTop || HasInheritedLoadBottom;
+        public string InheritedLoadPositionLabel { get; }
+
+        private CustomLoadPosition _loadPosition = CustomLoadPosition.UseInherited;
+        public CustomLoadPosition LoadPosition
         {
-            get => _loadBottom;
-            set => SetProperty(ref _loadBottom, value);
+            get => _loadPosition;
+            set
+            {
+                if (SetProperty(ref _loadPosition, value))
+                {
+                    OnPropertyChanged(nameof(IsPosUseInherited));
+                    OnPropertyChanged(nameof(IsPosNormal));
+                    OnPropertyChanged(nameof(IsPosForceTop));
+                    OnPropertyChanged(nameof(IsPosForceBottom));
+                    OnPropertyChanged(nameof(CanEditLoadPositionReason));
+                    ReevaluateOverrideAndContradictionStates();
+                }
+            }
         }
 
-        private string _loadBottomComment = string.Empty;
-        public string LoadBottomComment
+        public bool IsPosUseInherited => LoadPosition == CustomLoadPosition.UseInherited;
+        public bool IsPosNormal => LoadPosition == CustomLoadPosition.Normal;
+        public bool IsPosForceTop => LoadPosition == CustomLoadPosition.ForceTop;
+        public bool IsPosForceBottom => LoadPosition == CustomLoadPosition.ForceBottom;
+        public bool CanEditLoadPositionReason => LoadPosition == CustomLoadPosition.ForceTop || LoadPosition == CustomLoadPosition.ForceBottom;
+
+        private string _loadPositionComment = string.Empty;
+        public string LoadPositionComment
         {
-            get => _loadBottomComment;
-            set => SetProperty(ref _loadBottomComment, value);
+            get => _loadPositionComment;
+            set => SetProperty(ref _loadPositionComment, value);
         }
 
-        // LoadTop custom options (mirror of LoadBottom at the other end)
-        public bool CanCustomizeLoadTop => !HasOriginalLoadTop;
-
-        private bool _loadTop;
-        public bool LoadTop
+        private string _loadPositionOverrideNotice = string.Empty;
+        public string LoadPositionOverrideNotice
         {
-            get => _loadTop;
-            set => SetProperty(ref _loadTop, value);
+            get => _loadPositionOverrideNotice;
+            private set
+            {
+                if (SetProperty(ref _loadPositionOverrideNotice, value))
+                    OnPropertyChanged(nameof(HasLoadPositionOverrideNotice));
+            }
+        }
+        public bool HasLoadPositionOverrideNotice => !string.IsNullOrWhiteSpace(LoadPositionOverrideNotice);
+
+        private string _loadPositionContradictionWarning = string.Empty;
+        public string LoadPositionContradictionWarning
+        {
+            get => _loadPositionContradictionWarning;
+            private set
+            {
+                if (SetProperty(ref _loadPositionContradictionWarning, value))
+                {
+                    OnPropertyChanged(nameof(HasLoadPositionContradiction));
+                    OnPropertyChanged(nameof(CanSave));
+                }
+            }
+        }
+        public bool HasLoadPositionContradiction => !string.IsNullOrWhiteSpace(LoadPositionContradictionWarning);
+        public bool CanSave => !HasLoadPositionContradiction;
+
+        // --- Unified Relations ---
+        public ObservableCollection<ModRelationRowViewModel> Relations { get; } = new();
+        public ObservableCollection<ModRelationRowViewModel> FilteredRelations { get; } = new();
+
+        private RelationFilterKind _activeFilter = RelationFilterKind.All;
+        public RelationFilterKind ActiveFilter
+        {
+            get => _activeFilter;
+            set
+            {
+                if (SetProperty(ref _activeFilter, value))
+                {
+                    OnPropertyChanged(nameof(IsFilterAll));
+                    OnPropertyChanged(nameof(IsFilterBefore));
+                    OnPropertyChanged(nameof(IsFilterAfter));
+                    OnPropertyChanged(nameof(IsFilterIncomp));
+                    OnPropertyChanged(nameof(IsFilterInactive));
+                    RefreshFilteredRelations();
+                }
+            }
         }
 
-        private string _loadTopComment = string.Empty;
-        public string LoadTopComment
-        {
-            get => _loadTopComment;
-            set => SetProperty(ref _loadTopComment, value);
-        }
+        public bool IsFilterAll => ActiveFilter == RelationFilterKind.All;
+        public bool IsFilterBefore => ActiveFilter == RelationFilterKind.LoadBefore;
+        public bool IsFilterAfter => ActiveFilter == RelationFilterKind.LoadAfter;
+        public bool IsFilterIncomp => ActiveFilter == RelationFilterKind.Incompatibilities;
+        public bool IsFilterInactive => ActiveFilter == RelationFilterKind.Inactive;
 
-        // Collection properties for rules
-        public ObservableCollection<ModDependencyRuleViewModel> CustomLoadBefore { get; } = new();
-        public ObservableCollection<ModDependencyRuleViewModel> CustomLoadAfter { get; } = new();
-        public ObservableCollection<ModIncompatibilityRuleViewModel> CustomIncompatibilities { get; } = new();
+        public int ActiveRelationsCount => Relations.Count(r => r.IsCustom || r.IsActiveInherited);
+        public bool HasNoFilteredRelations => FilteredRelations.Count == 0;
 
-        private ModDependencyRuleViewModel? _selectedLoadBeforeRule;
-        public ModDependencyRuleViewModel? SelectedLoadBeforeRule
-        {
-            get => _selectedLoadBeforeRule;
-            set => SetProperty(ref _selectedLoadBeforeRule, value);
-        }
-
-        private ModDependencyRuleViewModel? _selectedLoadAfterRule;
-        public ModDependencyRuleViewModel? SelectedLoadAfterRule
-        {
-            get => _selectedLoadAfterRule;
-            set => SetProperty(ref _selectedLoadAfterRule, value);
-        }
-
-        private ModIncompatibilityRuleViewModel? _selectedIncompatibilityRule;
-        public ModIncompatibilityRuleViewModel? SelectedIncompatibilityRule
-        {
-            get => _selectedIncompatibilityRule;
-            set => SetProperty(ref _selectedIncompatibilityRule, value);
-        }
-
-        // Commands
+        public ICommand SetLoadPositionCommand { get; }
+        public ICommand SetRelationFilterCommand { get; }
+        public ICommand AddRelationCommand { get; }
         public ICommand SaveCommand { get; }
         public ICommand CancelCommand { get; }
 
-        // Rule management commands
-        public ICommand AddLoadBeforeCommand { get; }
-        public ICommand EditLoadBeforeCommand { get; }
-        public ICommand RemoveLoadBeforeCommand { get; }
-
-        public ICommand AddLoadAfterCommand { get; }
-        public ICommand EditLoadAfterCommand { get; }
-        public ICommand RemoveLoadAfterCommand { get; }
-
-        public ICommand AddIncompatibilityCommand { get; }
-        public ICommand EditIncompatibilityCommand { get; }
-        public ICommand RemoveIncompatibilityCommand { get; }
-
-        public CustomizeModDialogViewModel(ModItem mod, ModCustomInfo customInfo, IModService modService, IDialogService dialogService)
-            : base($"Customize Mod: {mod.Name}")
+        public CustomizeModDialogViewModel(
+            ModItem mod,
+            ModCustomInfo customInfo,
+            IModService modService,
+            IDialogService dialogService,
+            ModRuleSourceRegistry? registry = null,
+            IModRulesService? rulesService = null,
+            IModDictionaryService? dictionary = null)
+            : base($"Customize Mod: {mod.DisplayName}")
         {
             _mod = mod ?? throw new ArgumentNullException(nameof(mod));
+            _customInfo = customInfo ?? new ModCustomInfo();
             _modService = modService ?? throw new ArgumentNullException(nameof(modService));
             _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
-            _customInfo = customInfo ?? new ModCustomInfo();
-
-            _originalLoadBefore = mod.LoadBefore?
-                .Where(id => !_customInfo.LoadBefore?.ContainsKey(id) ?? true)
-                .ToList() ?? new List<string>();
-
-            _originalDependencies = mod.ModDependencies?.Select(d => d.PackageId).ToList() ?? new List<string>();
-
-            _originalLoadAfter = mod.LoadAfter?
-                .Where(id => !_customInfo.LoadAfter?.ContainsKey(id) ?? true)
-                .ToList() ?? new List<string>();
-
-            _originalIncompatibilities = mod.IncompatibleWith?.Keys
-                .Where(id => !(_customInfo.IncompatibleWith?.ContainsKey(id) ?? false))
-                 .ToList() ?? new List<string>();
-            // and aren't explicitly set in custom info
-            _originalLoadBottom = mod.LoadBottom &&
-                (_customInfo.LoadBottom == null || !_customInfo.LoadBottom.Value);
-
-            _originalLoadTop = mod.LoadTop &&
-                (_customInfo.LoadTop == null || !_customInfo.LoadTop.Value);
-
-            _originalSupportedVersions = mod.SupportedVersionStrings
-                .Where(v => !(_customInfo.SupportedVersions?.Contains(v) ?? false))
-                .ToList();
-
-            _originalExternalUrl = string.IsNullOrEmpty(_customInfo.ExternalUrl) ?
-                mod.ExternalUrl : null;
+            _registry = registry;
+            _rulesService = rulesService;
+            _dictionary = dictionary;
 
             IsFavorite = _customInfo.Favorite ?? false;
-            ExternalUrl = _customInfo.ExternalUrl ?? mod.ExternalUrl ?? "";
-            // The editable Tags box holds ONLY user-defined tags: Steam tags are
-            // read-only, live in the merged view (details panel / tag filter),
-            // and must never leak into this box to be persisted as user data.
-            Tags = _customInfo.Tags ?? "";
+            ExternalUrl = _customInfo.ExternalUrl ?? mod.ExternalUrl ?? string.Empty;
+            Tags = _customInfo.Tags ?? string.Empty;
             SupportedVersions = string.Join(", ", _customInfo.SupportedVersions ?? new List<string>());
 
-            // Setup LoadBottom
-            LoadBottom = !HasOriginalLoadBottom && (_customInfo.LoadBottom?.Value ?? false);
-            LoadBottomComment = string.Join(", ", _customInfo.LoadBottom?.Comment ?? Enumerable.Empty<string>());
+            OriginalSupportedVersions = mod.SupportedVersions
+                .Where(v => v.Source != VersionSource.Custom)
+                .Select(v => v.Version)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
-            // Setup LoadTop (mirror of LoadBottom)
-            LoadTop = !HasOriginalLoadTop && (_customInfo.LoadTop?.Value ?? false);
-            LoadTopComment = string.Join(", ", _customInfo.LoadTop?.Comment ?? Enumerable.Empty<string>());
+            // Determine inherited load position provenance
+            HasInheritedLoadTop = mod.DatabaseLoadTop || (mod.LoadTop && _customInfo.LoadTop?.Value != true);
+            HasInheritedLoadBottom = mod.DatabaseLoadBottom || (mod.LoadBottom && _customInfo.LoadBottom?.Value != true);
 
-            InitializeRuleCollections();
+            if (HasInheritedLoadTop)
+            {
+                var src = string.IsNullOrWhiteSpace(mod.DatabaseLoadTopSource)
+                    ? "Mod / Rules DB"
+                    : RuleProvenanceLabels.GetSourceDisplayName(mod.DatabaseLoadTopSource, _registry);
+                InheritedLoadPositionLabel = $"Inherited: Force Top ({src})";
+            }
+            else if (HasInheritedLoadBottom)
+            {
+                var src = string.IsNullOrWhiteSpace(mod.DatabaseLoadBottomSource)
+                    ? "Mod / Rules DB"
+                    : RuleProvenanceLabels.GetSourceDisplayName(mod.DatabaseLoadBottomSource, _registry);
+                InheritedLoadPositionLabel = $"Inherited: Force Bottom ({src})";
+            }
+            else
+            {
+                InheritedLoadPositionLabel = "Inherited: Normal (Auto)";
+            }
 
-            // Setup commands
-            SaveCommand = CreateAsyncCommand(SaveAsync);
-            CancelCommand = CreateCommand(Cancel);
+            // Initialize LoadPosition choice from CustomInfo
+            if (_customInfo.LoadTop?.Value == true)
+            {
+                _loadPosition = CustomLoadPosition.ForceTop;
+                _loadPositionComment = string.Join(", ", _customInfo.LoadTop.Comment ?? Enumerable.Empty<string>());
+            }
+            else if (_customInfo.LoadBottom?.Value == true)
+            {
+                _loadPosition = CustomLoadPosition.ForceBottom;
+                _loadPositionComment = string.Join(", ", _customInfo.LoadBottom.Comment ?? Enumerable.Empty<string>());
+            }
+            else if ((HasInheritedLoadTop && _customInfo.DisableInheritedLoadTop == true) ||
+                     (HasInheritedLoadBottom && _customInfo.DisableInheritedLoadBottom == true))
+            {
+                _loadPosition = CustomLoadPosition.Normal;
+            }
+            else
+            {
+                _loadPosition = CustomLoadPosition.UseInherited;
+            }
 
-            // Rule management commands with property observation
-            AddLoadBeforeCommand = CreateAsyncCommand(AddLoadBeforeAsync);
-            EditLoadBeforeCommand = CreateAsyncCommand(EditLoadBeforeAsync, CanEditLoadBefore, nameof(SelectedLoadBeforeRule));
-            RemoveLoadBeforeCommand = CreateCommand(RemoveLoadBefore, CanRemoveLoadBefore, nameof(SelectedLoadBeforeRule));
+            SetLoadPositionCommand = CreateCommand<string>(SetLoadPosition);
+            SetRelationFilterCommand = CreateCommand<string>(SetRelationFilter);
+            AddRelationCommand = CreateAsyncCommand(AddRelationAsync);
+            SaveCommand = CreateAsyncCommand(SaveAsync, () => CanSave, nameof(CanSave));
+            CancelCommand = CreateCommand(() => CloseDialog(ModCustomizationResult.Cancel));
 
-            AddLoadAfterCommand = CreateAsyncCommand(AddLoadAfterAsync);
-            EditLoadAfterCommand = CreateAsyncCommand(EditLoadAfterAsync, CanEditLoadAfter, nameof(SelectedLoadAfterRule));
-            RemoveLoadAfterCommand = CreateCommand(RemoveLoadAfter, CanRemoveLoadAfter, nameof(SelectedLoadAfterRule));
-
-            AddIncompatibilityCommand = CreateAsyncCommand(AddIncompatibilityAsync);
-            EditIncompatibilityCommand = CreateAsyncCommand(EditIncompatibilityAsync, CanEditIncompatibility, nameof(SelectedIncompatibilityRule));
-            RemoveIncompatibilityCommand = CreateCommand(RemoveIncompatibility, CanRemoveIncompatibility, nameof(SelectedIncompatibilityRule));
+            BuildRelations();
+            ReevaluateOverrideAndContradictionStates();
+            RefreshFilteredRelations();
         }
 
-        private void InitializeRuleCollections()
+        private void SetLoadPosition(string? param)
         {
+            if (Enum.TryParse<CustomLoadPosition>(param, out var pos))
+                LoadPosition = pos;
+        }
 
-            CustomLoadBefore.Clear();
-            CustomLoadAfter.Clear();
-            CustomIncompatibilities.Clear();
+        private void SetRelationFilter(string? param)
+        {
+            if (Enum.TryParse<RelationFilterKind>(param, out var filter))
+                ActiveFilter = filter;
+        }
 
-            var emptyList = new List<string>(); // Cache an empty list for efficiency
+        private void BuildRelations()
+        {
+            Relations.Clear();
+            var dbRule = _rulesService?.GetRulesForMod(_mod.PackageId);
 
+            var disabledBefore = new HashSet<string>(_customInfo.DisabledLoadBefore ?? Enumerable.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+            var disabledAfter = new HashSet<string>(_customInfo.DisabledLoadAfter ?? Enumerable.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+            var disabledIncomp = new HashSet<string>(_customInfo.DisabledIncompatibilities ?? Enumerable.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+
+            // 1. Dependencies (Official About.xml; LoadAfter direction: target loads earlier)
+            foreach (var dep in _mod.ModDependencies)
+            {
+                if (string.IsNullOrWhiteSpace(dep.PackageId)) continue;
+                var name = string.IsNullOrWhiteSpace(dep.DisplayName) ? ResolveTargetName(dep.PackageId) : dep.DisplayName;
+                AddRelationRow(new ModRelationRowViewModel(
+                    dep.PackageId, name, "Required mod dependency",
+                    "Official", RuleOriginKind.Official, CustomRelationKind.LoadAfter, isDependency: true));
+            }
+
+            // 2. Official & DB LoadBefore
+            foreach (var target in _mod.AboutLoadBefore)
+            {
+                AddRelationRow(new ModRelationRowViewModel(
+                    target, ResolveTargetName(target), string.Empty,
+                    "Official", RuleOriginKind.Official, CustomRelationKind.LoadBefore)
+                { IsDisabledByUser = disabledBefore.Contains(target) });
+            }
+            foreach (var kvp in _mod.DatabaseLoadBefore)
+            {
+                var srcLabel = RuleProvenanceLabels.GetSourceDisplayName(kvp.Value, _registry);
+                var comment = dbRule?.LoadBefore != null && dbRule.LoadBefore.TryGetValue(kvp.Key, out var r)
+                    ? string.Join(", ", r.Comment ?? Enumerable.Empty<string>())
+                    : string.Empty;
+                AddRelationRow(new ModRelationRowViewModel(
+                    kvp.Key, ResolveTargetName(kvp.Key), comment,
+                    srcLabel, RuleOriginKind.Database, CustomRelationKind.LoadBefore)
+                { IsDisabledByUser = disabledBefore.Contains(kvp.Key) });
+            }
+
+            // 3. Official & DB LoadAfter
+            foreach (var target in _mod.AboutLoadAfter)
+            {
+                AddRelationRow(new ModRelationRowViewModel(
+                    target, ResolveTargetName(target), string.Empty,
+                    "Official", RuleOriginKind.Official, CustomRelationKind.LoadAfter)
+                { IsDisabledByUser = disabledAfter.Contains(target) });
+            }
+            foreach (var kvp in _mod.DatabaseLoadAfter)
+            {
+                var srcLabel = RuleProvenanceLabels.GetSourceDisplayName(kvp.Value, _registry);
+                var comment = dbRule?.LoadAfter != null && dbRule.LoadAfter.TryGetValue(kvp.Key, out var r)
+                    ? string.Join(", ", r.Comment ?? Enumerable.Empty<string>())
+                    : string.Empty;
+                AddRelationRow(new ModRelationRowViewModel(
+                    kvp.Key, ResolveTargetName(kvp.Key), comment,
+                    srcLabel, RuleOriginKind.Database, CustomRelationKind.LoadAfter)
+                { IsDisabledByUser = disabledAfter.Contains(kvp.Key) });
+            }
+
+            // 4. Official & DB Incompatibilities
+            foreach (var target in _mod.AboutIncompatibleWith)
+            {
+                var comment = $"Incompatible according to '{_mod.DisplayName}' authors";
+                AddRelationRow(new ModRelationRowViewModel(
+                    target, ResolveTargetName(target), comment,
+                    "Official", RuleOriginKind.Official, CustomRelationKind.HardIncompatibility)
+                { IsDisabledByUser = disabledIncomp.Contains(target) });
+            }
+            foreach (var kvp in _mod.DatabaseIncompatibleWith)
+            {
+                var srcLabel = RuleProvenanceLabels.GetSourceDisplayName(kvp.Value, _registry);
+                ModIncompatibilityRule? ruleObj = null;
+                if (!_mod.IncompatibleWith.TryGetValue(kvp.Key, out ruleObj) || _customInfo.IncompatibleWith?.ContainsKey(kvp.Key) == true)
+                {
+                    dbRule?.Incompatibilities?.TryGetValue(kvp.Key, out ruleObj);
+                }
+                var kind = ruleObj?.HardIncompatibility == true
+                    ? CustomRelationKind.HardIncompatibility
+                    : CustomRelationKind.SoftIncompatibility;
+                var name = ruleObj?.Name?.FirstOrDefault();
+                if (string.IsNullOrWhiteSpace(name)) name = ResolveTargetName(kvp.Key);
+                var comment = string.Join(", ", ruleObj?.Comment ?? Enumerable.Empty<string>());
+
+                AddRelationRow(new ModRelationRowViewModel(
+                    kvp.Key, name, comment,
+                    srcLabel, RuleOriginKind.Database, kind)
+                { IsDisabledByUser = disabledIncomp.Contains(kvp.Key) });
+            }
+
+            // 5. Custom Rules
             if (_customInfo.LoadBefore != null)
             {
-                foreach (var rule in _customInfo.LoadBefore)
+                foreach (var kvp in _customInfo.LoadBefore)
                 {
-
-                    if (!_originalLoadBefore.Contains(rule.Key))
-                    {
-                        CustomLoadBefore.Add(new ModDependencyRuleViewModel
-                        {
-                            PackageId = rule.Key,
-
-                            DisplayName = string.Join(", ", rule.Value.Name ?? emptyList),
-                            Comment = string.Join(", ", rule.Value.Comment ?? emptyList),
-                            IsOriginal = false
-                        });
-                    }
+                    AddRelationRow(CreateCustomRow(kvp.Key, kvp.Value.Name, kvp.Value.Comment, CustomRelationKind.LoadBefore));
                 }
             }
-
-            // Similar logic for LoadAfter
             if (_customInfo.LoadAfter != null)
             {
-                foreach (var rule in _customInfo.LoadAfter)
+                foreach (var kvp in _customInfo.LoadAfter)
                 {
-                    if (!_originalLoadAfter.Contains(rule.Key))
-                    {
-                        CustomLoadAfter.Add(new ModDependencyRuleViewModel
-                        {
-                            PackageId = rule.Key,
-
-                            DisplayName = string.Join(", ", rule.Value.Name ?? emptyList),
-                            Comment = string.Join(", ", rule.Value.Comment ?? emptyList),
-                            IsOriginal = false
-                        });
-                    }
+                    AddRelationRow(CreateCustomRow(kvp.Key, kvp.Value.Name, kvp.Value.Comment, CustomRelationKind.LoadAfter));
                 }
             }
-
-            // Similar logic for Incompatibilities
             if (_customInfo.IncompatibleWith != null)
             {
-                foreach (var rule in _customInfo.IncompatibleWith)
+                foreach (var kvp in _customInfo.IncompatibleWith)
                 {
-                    if (!_originalIncompatibilities.Contains(rule.Key))
-                    {
-                        CustomIncompatibilities.Add(new ModIncompatibilityRuleViewModel
-                        {
-                            PackageId = rule.Key,
-
-                            DisplayName = string.Join(", ", rule.Value.Name ?? emptyList),
-                            Comment = string.Join(", ", rule.Value.Comment ?? emptyList),
-                            HardIncompatibility = rule.Value.HardIncompatibility,
-                            IsOriginal = false
-                        });
-                    }
+                    var kind = kvp.Value.HardIncompatibility
+                        ? CustomRelationKind.HardIncompatibility
+                        : CustomRelationKind.SoftIncompatibility;
+                    AddRelationRow(CreateCustomRow(kvp.Key, kvp.Value.Name, kvp.Value.Comment, kind));
                 }
             }
+        }
+
+        private ModRelationRowViewModel CreateCustomRow(
+            string target,
+            List<string>? names,
+            List<string>? comments,
+            CustomRelationKind kind)
+        {
+            var display = names != null && names.Count > 0 ? string.Join(", ", names) : ResolveTargetName(target);
+            var comment = comments != null && comments.Count > 0 ? string.Join(", ", comments) : string.Empty;
+            return new ModRelationRowViewModel(target, display, comment, "Custom", RuleOriginKind.Custom, kind);
+        }
+
+        private void AddRelationRow(ModRelationRowViewModel row)
+        {
+            if (row.IsCustom)
+            {
+                row.EditCommand = CreateAsyncCommand(() => EditCustomRelationAsync(row));
+                row.RemoveCommand = CreateCommand(() => RemoveCustomRelation(row));
+            }
+            else if (!row.IsDependency)
+            {
+                row.ToggleDisabledCommand = CreateCommand(() =>
+                {
+                    row.IsDisabledByUser = !row.IsDisabledByUser;
+                    ReevaluateOverrideAndContradictionStates();
+                    RefreshFilteredRelations();
+                });
+            }
+            Relations.Add(row);
+        }
+
+        private string ResolveTargetName(string packageId)
+        {
+            var loaded = _modService.GetLoadedMods()
+                .FirstOrDefault(m => string.Equals(m.PackageId, packageId, StringComparison.OrdinalIgnoreCase));
+            if (loaded != null) return loaded.DisplayName;
+
+            var dictEntry = _dictionary?.GetEntryByPackageId(packageId);
+            if (dictEntry != null)
+            {
+                if (!string.IsNullOrWhiteSpace(dictEntry.SteamName)) return dictEntry.SteamName;
+                if (!string.IsNullOrWhiteSpace(dictEntry.AboutName)) return dictEntry.AboutName;
+                if (!string.IsNullOrWhiteSpace(dictEntry.Name)) return dictEntry.Name;
+            }
+            return packageId;
+        }
+
+        private async Task AddRelationAsync()
+        {
+            var editor = new RelationRuleEditorDialogViewModel(
+                "Add Relation Rule",
+                _dialogService,
+                _modService,
+                GetEffectiveCustomPositionForGuard(),
+                BuildTargetContext,
+                BuildSelectorHints());
+
+            if (await _dialogService.ShowRelationRuleEditorAsync(editor))
+            {
+                UpsertCustomRule(editor.PackageId, editor.DisplayName, editor.Comment, editor.RelationKind);
+            }
+        }
+
+        private async Task EditCustomRelationAsync(ModRelationRowViewModel row)
+        {
+            if (!row.IsCustom) return;
+
+            var editor = new RelationRuleEditorDialogViewModel(
+                "Edit Relation Rule",
+                _dialogService,
+                _modService,
+                GetEffectiveCustomPositionForGuard(),
+                BuildTargetContext,
+                BuildSelectorHints(),
+                editingOriginalPackageId: row.TargetPackageId)
+            {
+                PackageId = row.TargetPackageId,
+                DisplayName = row.DisplayName,
+                Comment = row.Comment,
+                RelationKind = row.RelationKind
+            };
+
+            if (await _dialogService.ShowRelationRuleEditorAsync(editor))
+            {
+                Relations.Remove(row);
+                UpsertCustomRule(editor.PackageId, editor.DisplayName, editor.Comment, editor.RelationKind);
+            }
+        }
+
+        private void UpsertCustomRule(string packageId, string displayName, string comment, CustomRelationKind kind)
+        {
+            var existingCustom = Relations.FirstOrDefault(r =>
+                r.IsCustom && string.Equals(r.TargetPackageId, packageId, StringComparison.OrdinalIgnoreCase));
+            if (existingCustom != null)
+                Relations.Remove(existingCustom);
+
+            AddRelationRow(new ModRelationRowViewModel(
+                packageId,
+                string.IsNullOrWhiteSpace(displayName) ? ResolveTargetName(packageId) : displayName,
+                comment,
+                "Custom",
+                RuleOriginKind.Custom,
+                kind));
+
+            ReevaluateOverrideAndContradictionStates();
+            RefreshFilteredRelations();
+        }
+
+        private void RemoveCustomRelation(ModRelationRowViewModel row)
+        {
+            if (!row.IsCustom) return;
+            Relations.Remove(row);
+            ReevaluateOverrideAndContradictionStates();
+            RefreshFilteredRelations();
+        }
+
+        private CustomLoadPosition GetEffectiveCustomPositionForGuard() => LoadPosition switch
+        {
+            CustomLoadPosition.ForceTop => CustomLoadPosition.ForceTop,
+            CustomLoadPosition.ForceBottom => CustomLoadPosition.ForceBottom,
+            _ => CustomLoadPosition.Normal
+        };
+
+        private TargetRelationContext BuildTargetContext(string packageId)
+        {
+            var ctx = new TargetRelationContext
+            {
+                IsSelf = string.Equals(packageId, _mod.PackageId, StringComparison.OrdinalIgnoreCase)
+            };
+
+            foreach (var r in Relations.Where(x => string.Equals(x.TargetPackageId, packageId, StringComparison.OrdinalIgnoreCase)))
+            {
+                if (r.IsDependency)
+                {
+                    ctx.IsDependency = true;
+                }
+                else if (r.IsCustom)
+                {
+                    ctx.HasExistingCustom = true;
+                    ctx.ExistingCustomLabel = r.RelationLabel;
+                }
+                else
+                {
+                    ctx.InheritedKinds.Add(r.RelationKind);
+                    ctx.InheritedDescriptions.Add($"{r.SourceLabel}: {r.RelationLabel}");
+                }
+            }
+            return ctx;
+        }
+
+        private IReadOnlyDictionary<string, ModSelectorHint> BuildSelectorHints()
+        {
+            var dict = new Dictionary<string, ModSelectorHint>(StringComparer.OrdinalIgnoreCase);
+            foreach (var r in Relations)
+            {
+                if (r.IsDependency)
+                {
+                    dict[r.TargetPackageId] = new ModSelectorHint("Mod Dependency", ModSelectorHintKind.Dependency);
+                }
+                else if (r.IsCustom)
+                {
+                    dict[r.TargetPackageId] = new ModSelectorHint($"Custom: {r.RelationLabel}", ModSelectorHintKind.Custom);
+                }
+                else if (!dict.ContainsKey(r.TargetPackageId))
+                {
+                    if (r.IsOverriddenByCustom)
+                        dict[r.TargetPackageId] = new ModSelectorHint($"Overridden ({r.SourceLabel})", ModSelectorHintKind.Overridden);
+                    else if (r.IsDisabledByUser)
+                        dict[r.TargetPackageId] = new ModSelectorHint($"Disabled ({r.SourceLabel})", ModSelectorHintKind.Disabled);
+                    else
+                        dict[r.TargetPackageId] = new ModSelectorHint($"{r.SourceLabel}: {r.RelationLabel}", ModSelectorHintKind.Inherited);
+                }
+            }
+            return dict;
+        }
+
+        private void ReevaluateOverrideAndContradictionStates()
+        {
+            var customByTarget = Relations
+                .Where(r => r.IsCustom)
+                .ToDictionary(r => r.TargetPackageId, r => r, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var row in Relations.Where(r => r.IsInherited))
+            {
+                if (row.IsDependency)
+                {
+                    row.OverriddenByText = null;
+                    continue;
+                }
+
+                if (customByTarget.TryGetValue(row.TargetPackageId, out var customRow))
+                    row.OverriddenByText = $"Overridden by Custom ({customRow.RelationLabel})";
+                else
+                    row.OverriddenByText = null;
+            }
+
+            // Load position override feedback (Inherited vs Custom)
+            if (HasInheritedLoadTop && (LoadPosition == CustomLoadPosition.Normal || LoadPosition == CustomLoadPosition.ForceBottom))
+                LoadPositionOverrideNotice = $"Custom setting overrides the inherited Force Top pinning.";
+            else if (HasInheritedLoadBottom && (LoadPosition == CustomLoadPosition.Normal || LoadPosition == CustomLoadPosition.ForceTop))
+                LoadPositionOverrideNotice = $"Custom setting overrides the inherited Force Bottom pinning.";
+            else
+                LoadPositionOverrideNotice = string.Empty;
+
+            // Custom-vs-Custom contradictions (always prevented)
+            var customAfter = Relations.Where(r => r.IsCustom && r.RelationKind == CustomRelationKind.LoadAfter).ToList();
+            var customBefore = Relations.Where(r => r.IsCustom && r.RelationKind == CustomRelationKind.LoadBefore).ToList();
+
+            if (LoadPosition == CustomLoadPosition.ForceTop && customAfter.Count > 0)
+            {
+                LoadPositionContradictionWarning =
+                    $"Custom Force Top contradicts your Custom Load After rule(s): {string.Join(", ", customAfter.Select(r => r.DisplayName))}.";
+            }
+            else if (LoadPosition == CustomLoadPosition.ForceBottom && customBefore.Count > 0)
+            {
+                LoadPositionContradictionWarning =
+                    $"Custom Force Bottom contradicts your Custom Load Before rule(s): {string.Join(", ", customBefore.Select(r => r.DisplayName))}.";
+            }
+            else
+            {
+                LoadPositionContradictionWarning = string.Empty;
+            }
+
+            OnPropertyChanged(nameof(ActiveRelationsCount));
+        }
+
+        private void RefreshFilteredRelations()
+        {
+            FilteredRelations.Clear();
+            var items = Relations.Where(r => ActiveFilter switch
+            {
+                RelationFilterKind.LoadBefore => r.RelationKind == CustomRelationKind.LoadBefore,
+                RelationFilterKind.LoadAfter => r.RelationKind == CustomRelationKind.LoadAfter,
+                RelationFilterKind.Incompatibilities => r.RelationKind == CustomRelationKind.SoftIncompatibility || r.RelationKind == CustomRelationKind.HardIncompatibility,
+                RelationFilterKind.Inactive => r.IsInactive,
+                _ => true
+            });
+
+            foreach (var item in items)
+                FilteredRelations.Add(item);
+
+            OnPropertyChanged(nameof(HasNoFilteredRelations));
         }
 
         private async Task SaveAsync()
         {
+            if (!CanSave) return;
+
             var customInfo = new ModCustomInfo
             {
-                Favorite = this.IsFavorite ? (bool?)true : null,
+                Favorite = IsFavorite ? true : null,
                 ExternalUrl = ExternalUrl,
                 Tags = Tags,
-                SupportedVersions = ParseCommaSeparatedList(SupportedVersions),
-                LoadBottom = CanCustomizeLoadBottom && LoadBottom
-                    ? new LoadBottomRule
-                    {
-                        Value = true,
-                        Comment = ParseCommaSeparatedList(LoadBottomComment)
-                    }
-                    : null,
-                LoadTop = CanCustomizeLoadTop && LoadTop
-                    ? new LoadBottomRule
-                    {
-                        Value = true,
-                        Comment = ParseCommaSeparatedList(LoadTopComment)
-                    }
-                    : null,
-                LoadBefore = ConvertToDependencyRules(CustomLoadBefore),
-                LoadAfter = ConvertToDependencyRules(CustomLoadAfter),
-                IncompatibleWith = ConvertToIncompatibilityRules(CustomIncompatibilities)
+                SupportedVersions = ParseCommaSeparatedList(SupportedVersions)
             };
+
+            if (LoadPosition == CustomLoadPosition.ForceTop)
+            {
+                customInfo.LoadTop = new LoadBottomRule { Value = true, Comment = ParseCommaSeparatedList(LoadPositionComment) };
+            }
+            else if (LoadPosition == CustomLoadPosition.ForceBottom)
+            {
+                customInfo.LoadBottom = new LoadBottomRule { Value = true, Comment = ParseCommaSeparatedList(LoadPositionComment) };
+            }
+            else if (LoadPosition == CustomLoadPosition.Normal)
+            {
+                if (HasInheritedLoadTop) customInfo.DisableInheritedLoadTop = true;
+                if (HasInheritedLoadBottom) customInfo.DisableInheritedLoadBottom = true;
+            }
+
+            foreach (var r in Relations)
+            {
+                if (r.IsCustom)
+                {
+                    if (r.RelationKind == CustomRelationKind.LoadBefore)
+                    {
+                        customInfo.LoadBefore[r.TargetPackageId] = new ModDependencyRule
+                        {
+                            Name = new List<string> { r.DisplayName },
+                            Comment = ParseCommaSeparatedList(r.Comment)
+                        };
+                    }
+                    else if (r.RelationKind == CustomRelationKind.LoadAfter)
+                    {
+                        customInfo.LoadAfter[r.TargetPackageId] = new ModDependencyRule
+                        {
+                            Name = new List<string> { r.DisplayName },
+                            Comment = ParseCommaSeparatedList(r.Comment)
+                        };
+                    }
+                    else
+                    {
+                        customInfo.IncompatibleWith[r.TargetPackageId] = new ModIncompatibilityRule
+                        {
+                            Name = new List<string> { r.DisplayName },
+                            Comment = ParseCommaSeparatedList(r.Comment),
+                            HardIncompatibility = r.RelationKind == CustomRelationKind.HardIncompatibility
+                        };
+                    }
+                }
+                else if (r.IsDisabledByUser && !r.IsOverriddenByCustom && !r.IsDependency)
+                {
+                    if (r.RelationKind == CustomRelationKind.LoadBefore)
+                        customInfo.DisabledLoadBefore.Add(r.TargetPackageId);
+                    else if (r.RelationKind == CustomRelationKind.LoadAfter)
+                        customInfo.DisabledLoadAfter.Add(r.TargetPackageId);
+                    else
+                        customInfo.DisabledIncompatibilities.Add(r.TargetPackageId);
+                }
+            }
 
             try
             {
-                // Await the write before closing: a fire-and-forget Task.Run could
-                // be cut short when the dialog (and its owner) is torn down, and
-                // left any failure unobserved.
                 await _modService.SaveCustomModInfoAsync(_mod.PackageId, customInfo);
             }
             catch (Exception ex)
@@ -396,349 +802,19 @@ namespace RimSharp.Features.ModManager.Dialogs.CustomizeMod
                 await _dialogService.ShowError(
                     "Could not save custom mod",
                     $"Your changes to '{_mod.Name}' could not be saved: {ex.Message}");
-                // Keep the dialog open so the user can retry; never close on failure.
                 return;
             }
 
             CloseDialog(ModCustomizationResult.Save);
         }
 
-        private Dictionary<string, ModDependencyRule> ConvertToDependencyRules(ObservableCollection<ModDependencyRuleViewModel> viewModels)
+        private static List<string> ParseCommaSeparatedList(string input)
         {
-            var rules = new Dictionary<string, ModDependencyRule>();
-            foreach (var vm in viewModels)
-            {
-                rules[vm.PackageId] = new ModDependencyRule
-                {
-                    Name = ParseCommaSeparatedList(vm.DisplayName),
-                    Comment = ParseCommaSeparatedList(vm.Comment)
-                };
-            }
-            return rules;
-        }
-
-        private Dictionary<string, ModIncompatibilityRule> ConvertToIncompatibilityRules(ObservableCollection<ModIncompatibilityRuleViewModel> viewModels)
-        {
-            var rules = new Dictionary<string, ModIncompatibilityRule>();
-            foreach (var vm in viewModels)
-            {
-                rules[vm.PackageId] = new ModIncompatibilityRule
-                {
-                    Name = ParseCommaSeparatedList(vm.DisplayName),
-                    Comment = ParseCommaSeparatedList(vm.Comment),
-                    HardIncompatibility = vm.HardIncompatibility
-                };
-            }
-            return rules;
-        }
-
-        private List<string> ParseCommaSeparatedList(string input)
-        {
-            if (string.IsNullOrWhiteSpace(input))
-                return new List<string>();
-
+            if (string.IsNullOrWhiteSpace(input)) return new List<string>();
             return input.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
-                       .Select(s => s.Trim())
-                       .ToList();
+                        .Select(s => s.Trim())
+                        .Where(s => !string.IsNullOrEmpty(s))
+                        .ToList();
         }
-
-        private void Cancel()
-        {
-            CloseDialog(ModCustomizationResult.Cancel);
-        }
-
-        #region Validation Methods
-
-        /// <summary>
-
-        /// </summary>
-        private bool IsPackageIdDuplicated(string packageId)
-        {
-
-            if (_originalLoadBefore.Contains(packageId) ||
-                _originalLoadAfter.Contains(packageId) ||
-                _originalIncompatibilities.Contains(packageId))
-                return true;
-
-            if (CustomLoadBefore.Any(x => x.PackageId == packageId) ||
-                CustomLoadAfter.Any(x => x.PackageId == packageId) ||
-                CustomIncompatibilities.Any(x => x.PackageId == packageId))
-                return true;
-
-            return false;
-        }
-
-        /// <summary>
-
-        /// </summary>
-        private bool IsPackageIdInOtherLists(string packageId, string listType)
-        {
-            if (listType != "LoadBefore" &&
-                (_originalLoadBefore.Contains(packageId) || CustomLoadBefore.Any(x => x.PackageId == packageId)))
-                return true;
-            if (listType != "LoadBefore" && _originalDependencies.Contains(packageId))
-                return true;
-            if (listType != "LoadAfter" &&
-                (_originalLoadAfter.Contains(packageId) || CustomLoadAfter.Any(x => x.PackageId == packageId)))
-                return true;
-            if (listType != "IncompatibleWith" &&
-                (_originalIncompatibilities.Contains(packageId) || CustomIncompatibilities.Any(x => x.PackageId == packageId)))
-                return true;
-
-            return false;
-        }
-
-        /// <summary>
-        /// Validates a package ID before adding to LoadBefore
-        /// </summary>
-        private async Task<bool> ValidateLoadBeforeAsync(string packageId)
-        {
-            if (_originalLoadBefore.Contains(packageId) || CustomLoadBefore.Any(x => x.PackageId == packageId))
-            {
-                await _dialogService.ShowWarning("Duplicate Entry", $"Package ID '{packageId}' already exists in the Load Before list.");
-                return false;
-            }
-            if (_originalDependencies.Contains(packageId))
-            {
-                await _dialogService.ShowInformation("Redundant Rule", $"Package ID '{packageId}' is already a dependency. Dependencies are automatically loaded before this mod.");
-                return false;
-            }
-            if (IsPackageIdInOtherLists(packageId, "LoadBefore"))
-            {
-                await _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list (Load After or Incompatible). " +
-                    "A package ID cannot be in multiple lists.");
-                return false;
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// Validates a package ID before adding to LoadAfter
-        /// </summary>
-        private async Task<bool> ValidateLoadAfterAsync(string packageId)
-        {
-            if (_originalLoadAfter.Contains(packageId) || CustomLoadAfter.Any(x => x.PackageId == packageId))
-            {
-                await _dialogService.ShowWarning("Duplicate Entry", $"Package ID '{packageId}' already exists in the Load After list.");
-                return false;
-            }
-            if (_originalDependencies.Contains(packageId))
-            {
-                await _dialogService.ShowError("Rule Conflict", $"Package ID '{packageId}' is a dependency. Dependencies MUST be loaded before this mod, so they cannot be added to the Load After list.");
-                return false;
-            }
-            if (IsPackageIdInOtherLists(packageId, "LoadAfter"))
-            {
-                await _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list (Load Before or Incompatible). " +
-                    "A package ID cannot be in multiple lists.");
-                return false;
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// Validates a package ID before adding to IncompatibleWith
-        /// </summary>
-        private async Task<bool> ValidateIncompatibilityAsync(string packageId)
-        {
-            if (_originalIncompatibilities.Contains(packageId) || CustomIncompatibilities.Any(x => x.PackageId == packageId))
-            {
-                await _dialogService.ShowWarning("Duplicate Entry", $"Package ID '{packageId}' already exists in the Incompatible With list.");
-                return false;
-            }
-            if (_originalDependencies.Contains(packageId))
-            {
-                await _dialogService.ShowError("Rule Conflict", $"Package ID '{packageId}' is a dependency. A required dependency cannot also be marked as incompatible.");
-                return false;
-            }
-            if (IsPackageIdInOtherLists(packageId, "IncompatibleWith"))
-            {
-                await _dialogService.ShowWarning("Rule Conflict", $"Package ID '{packageId}' already exists in another list (Load Before or Load After). " +
-                    "A package ID cannot be in multiple lists.");
-                return false;
-            }
-
-            return true;
-        }
-
-        #endregion
-
-        #region Rule Management Methods
-
-        private async Task AddLoadBeforeAsync()
-        {
-            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Add Load Before Rule", _dialogService, _modService);
-            if (await _dialogService.ShowDependencyRuleEditorAsync(dialogViewModel))
-            {
-
-                if (!await ValidateLoadBeforeAsync(dialogViewModel.PackageId))
-                    return;
-
-                var newRule = new ModDependencyRuleViewModel
-                {
-                    PackageId = dialogViewModel.PackageId,
-                    DisplayName = dialogViewModel.DisplayName,
-                    Comment = dialogViewModel.Comment,
-                    IsOriginal = false
-                };
-                CustomLoadBefore.Add(newRule);
-                SelectedLoadBeforeRule = newRule;
-            }
-        }
-
-        private bool CanEditLoadBefore() => SelectedLoadBeforeRule != null && !SelectedLoadBeforeRule.IsOriginal;
-        private async Task EditLoadBeforeAsync()
-        {
-            if (SelectedLoadBeforeRule == null || SelectedLoadBeforeRule.IsOriginal) return;
-
-            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Edit Load Before Rule", _dialogService, _modService)
-            {
-                PackageId = SelectedLoadBeforeRule.PackageId,
-                DisplayName = SelectedLoadBeforeRule.DisplayName,
-                Comment = SelectedLoadBeforeRule.Comment
-            };
-            if (await _dialogService.ShowDependencyRuleEditorAsync(dialogViewModel))
-            {
-
-                if (dialogViewModel.PackageId != SelectedLoadBeforeRule.PackageId)
-                {
-                    if (!await ValidateLoadBeforeAsync(dialogViewModel.PackageId))
-                        return;
-                }
-
-                SelectedLoadBeforeRule.PackageId = dialogViewModel.PackageId;
-                SelectedLoadBeforeRule.DisplayName = dialogViewModel.DisplayName;
-                SelectedLoadBeforeRule.Comment = dialogViewModel.Comment;
-            }
-        }
-
-        private bool CanRemoveLoadBefore() => SelectedLoadBeforeRule != null && !SelectedLoadBeforeRule.IsOriginal;
-        private void RemoveLoadBefore()
-        {
-            if (SelectedLoadBeforeRule != null)
-            {
-                CustomLoadBefore.Remove(SelectedLoadBeforeRule);
-            }
-        }
-
-        private async Task AddLoadAfterAsync()
-        {
-            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Add Load After Rule", _dialogService, _modService);
-            if (await _dialogService.ShowDependencyRuleEditorAsync(dialogViewModel))
-            {
-
-                if (!await ValidateLoadAfterAsync(dialogViewModel.PackageId))
-                    return;
-
-                var newRule = new ModDependencyRuleViewModel
-                {
-                    PackageId = dialogViewModel.PackageId,
-                    DisplayName = dialogViewModel.DisplayName,
-                    Comment = dialogViewModel.Comment,
-                    IsOriginal = false
-                };
-                CustomLoadAfter.Add(newRule);
-                SelectedLoadAfterRule = newRule;
-            }
-        }
-
-        private bool CanEditLoadAfter() => SelectedLoadAfterRule != null && !SelectedLoadAfterRule.IsOriginal;
-        private async Task EditLoadAfterAsync()
-        {
-            if (SelectedLoadAfterRule == null || SelectedLoadAfterRule.IsOriginal) return;
-
-            var dialogViewModel = new DependencyRuleEditorDialogViewModel("Edit Load After Rule", _dialogService, _modService)
-            {
-                PackageId = SelectedLoadAfterRule.PackageId,
-                DisplayName = SelectedLoadAfterRule.DisplayName,
-                Comment = SelectedLoadAfterRule.Comment
-            };
-            if (await _dialogService.ShowDependencyRuleEditorAsync(dialogViewModel))
-            {
-
-                if (dialogViewModel.PackageId != SelectedLoadAfterRule.PackageId)
-                {
-                    if (!await ValidateLoadAfterAsync(dialogViewModel.PackageId))
-                        return;
-                }
-
-                SelectedLoadAfterRule.PackageId = dialogViewModel.PackageId;
-                SelectedLoadAfterRule.DisplayName = dialogViewModel.DisplayName;
-                SelectedLoadAfterRule.Comment = dialogViewModel.Comment;
-            }
-        }
-
-        private bool CanRemoveLoadAfter() => SelectedLoadAfterRule != null && !SelectedLoadAfterRule.IsOriginal;
-        private void RemoveLoadAfter()
-        {
-            if (SelectedLoadAfterRule != null)
-            {
-                CustomLoadAfter.Remove(SelectedLoadAfterRule);
-            }
-        }
-
-        private async Task AddIncompatibilityAsync()
-        {
-            var dialogViewModel = new IncompatibilityRuleEditorDialogViewModel("Add Incompatibility Rule", _dialogService, _modService);
-            if (await _dialogService.ShowIncompatibilityRuleEditorAsync(dialogViewModel))
-            {
-
-                if (!await ValidateIncompatibilityAsync(dialogViewModel.PackageId))
-                    return;
-
-                var newRule = new ModIncompatibilityRuleViewModel
-                {
-                    PackageId = dialogViewModel.PackageId,
-                    DisplayName = dialogViewModel.DisplayName,
-                    Comment = dialogViewModel.Comment,
-                    HardIncompatibility = dialogViewModel.HardIncompatibility,
-                    IsOriginal = false
-                };
-                CustomIncompatibilities.Add(newRule);
-                SelectedIncompatibilityRule = newRule;
-            }
-        }
-
-        private bool CanEditIncompatibility() => SelectedIncompatibilityRule != null && !SelectedIncompatibilityRule.IsOriginal;
-        private async Task EditIncompatibilityAsync()
-        {
-            if (SelectedIncompatibilityRule == null || SelectedIncompatibilityRule.IsOriginal) return;
-
-            var dialogViewModel = new IncompatibilityRuleEditorDialogViewModel("Edit Incompatibility Rule", _dialogService, _modService)
-            {
-                PackageId = SelectedIncompatibilityRule.PackageId,
-                DisplayName = SelectedIncompatibilityRule.DisplayName,
-                Comment = SelectedIncompatibilityRule.Comment,
-                HardIncompatibility = SelectedIncompatibilityRule.HardIncompatibility
-            };
-            if (await _dialogService.ShowIncompatibilityRuleEditorAsync(dialogViewModel))
-            {
-
-                if (dialogViewModel.PackageId != SelectedIncompatibilityRule.PackageId)
-                {
-                    if (!await ValidateIncompatibilityAsync(dialogViewModel.PackageId))
-                        return;
-                }
-
-                SelectedIncompatibilityRule.PackageId = dialogViewModel.PackageId;
-                SelectedIncompatibilityRule.DisplayName = dialogViewModel.DisplayName;
-                SelectedIncompatibilityRule.Comment = dialogViewModel.Comment;
-                SelectedIncompatibilityRule.HardIncompatibility = dialogViewModel.HardIncompatibility;
-            }
-        }
-
-        private bool CanRemoveIncompatibility() => SelectedIncompatibilityRule != null && !SelectedIncompatibilityRule.IsOriginal;
-        private void RemoveIncompatibility()
-        {
-            if (SelectedIncompatibilityRule != null)
-            {
-                CustomIncompatibilities.Remove(SelectedIncompatibilityRule);
-            }
-        }
-        #endregion
     }
 }
-
-

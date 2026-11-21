@@ -93,6 +93,16 @@
         <Setter Property="Margin" Value="0,1,0,-1"/>
     </Style>
 
+    <Style Selector="Button.btn-success:disabled /template/ Border#ButtonBackground">
+        <Setter Property="Opacity" Value="0.48"/>
+    </Style>
+    <Style Selector="Button.btn-success:disabled /template/ Border#ShadowLayer">
+        <Setter Property="Opacity" Value="0.35"/>
+    </Style>
+    <Style Selector="Button.btn-success:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Opacity" Value="0.75"/>
+    </Style>
+
     <!-- Run Button Style -->
     <Style Selector="Button.btn-danger">
         <Setter Property="Foreground" Value="{DynamicResource BrushTextOnDark}"/>

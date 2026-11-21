@@ -434,6 +434,7 @@ namespace RimSharp.Shared.Services.Implementations
             // recalculate issue badges once this method returns.
             await ThreadHelper.RunOnUIThreadAsync(() =>
             {
+                _customService.StripCustomInfoFromMods(_allMods);
                 _rulesService.ApplyRulesToMods(_allMods);
                 _customService.ApplyCustomInfoToMods(_allMods);
 
