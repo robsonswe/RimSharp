@@ -88,6 +88,53 @@ namespace RimSharp.Tests.Features.ModManager.Dialogs.Strip
             result.Paths.Should().NotBeNull();
             result.Paths!.Should().Contain("full1");
         }
+
+        [AvaloniaFact]
+        public void BulkParentSelection_NotifiesTotalSelectedSizeOnce()
+        {
+            var mod = new StrippableModViewModel(new ModItem { Name = "Bulk Mod" });
+            for (int i = 0; i < 5; i++)
+            {
+                mod.Children.Add(new StrippableItemViewModel(
+                    mod, $"f{i}", $"p{i}", $"full{i}", 100, StrippableItemType.File));
+            }
+
+            var vm = new StripDialogViewModel(new List<StrippableModViewModel> { mod });
+
+            int notifications = 0;
+            vm.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(StripDialogViewModel.TotalSelectedSize))
+                    notifications++;
+            };
+
+            mod.IsSelected = false;
+
+            notifications.Should().Be(1);
+            vm.TotalSelectedSize.Should().Be(0);
+        }
+
+        [AvaloniaFact]
+        public void SearchText_WithUnchangedResult_DoesNotRebuildFilteredMods()
+        {
+            var mod1 = new StrippableModViewModel(new ModItem { Name = "Alpha Mod", PackageId = "alpha" });
+            mod1.Children.Add(new StrippableItemViewModel(mod1, "f1", "p1", "full1", 100, StrippableItemType.File));
+
+            var mod2 = new StrippableModViewModel(new ModItem { Name = "Beta Mod", PackageId = "beta" });
+            mod2.Children.Add(new StrippableItemViewModel(mod2, "f2", "p2", "full2", 200, StrippableItemType.File));
+
+            var vm = new StripDialogViewModel(new List<StrippableModViewModel> { mod1, mod2 });
+
+            int collectionChanges = 0;
+            vm.FilteredMods.CollectionChanged += (s, e) => collectionChanges++;
+
+            // "Mod" matches both display names, so the ordered result is unchanged.
+            vm.SearchText = "Mod";
+
+            collectionChanges.Should().Be(0);
+            vm.FilteredMods.Should().HaveCount(2);
+            vm.SearchText.Should().Be("Mod");
+        }
     }
 }
 

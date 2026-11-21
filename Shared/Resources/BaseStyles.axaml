@@ -1084,8 +1084,8 @@
     </Style>
 
     <!-- ================================================================
-         CUSTOMIZE MOD: RULE CARDS, ALERTS, SEGMENTED PICKERS & FAV TOGGLE
-         ================================================================ -->
+    CUSTOMIZE MOD: RULE CARDS, ALERTS, SEGMENTED PICKERS & FAV TOGGLE
+    ================================================================ -->
 
     <!-- Alert boxes (.warning, .danger, .info) -->
     <Style Selector="Border.alert-box">
@@ -1177,12 +1177,12 @@
         </Setter>
     </Style>
     <!-- The Fluent theme paints a background on the templated ContentPresenter across
-         toggle states; keep it clear so only FavBg supplies the checked surface. -->
+    toggle states; keep it clear so only FavBg supplies the checked surface. -->
     <Style Selector="ToggleButton.fav-toggle /template/ ContentPresenter#PART_ContentPresenter,
-                     ToggleButton.fav-toggle:pointerover /template/ ContentPresenter#PART_ContentPresenter,
-                     ToggleButton.fav-toggle:pressed /template/ ContentPresenter#PART_ContentPresenter,
-                     ToggleButton.fav-toggle:checked /template/ ContentPresenter#PART_ContentPresenter,
-                     ToggleButton.fav-toggle:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    ToggleButton.fav-toggle:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+    ToggleButton.fav-toggle:pressed /template/ ContentPresenter#PART_ContentPresenter,
+    ToggleButton.fav-toggle:checked /template/ ContentPresenter#PART_ContentPresenter,
+    ToggleButton.fav-toggle:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
         <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
@@ -1294,8 +1294,8 @@
     </Style>
 
     <!-- ================================================================
-         REPLACEMENTS DIALOG: COMPARISON COLUMNS, VERSION CHIPS & LINK CHIPS
-         ================================================================ -->
+    REPLACEMENTS DIALOG: COMPARISON COLUMNS, VERSION CHIPS & LINK CHIPS
+    ================================================================ -->
 
     <!-- Side-by-side comparison column inside a card -->
     <Style Selector="Border.cmp-col">
@@ -1379,18 +1379,18 @@
     </Style>
 
     <!-- Fluent's /template/ styles can paint a background on the named presenter
-         across button states; keep it clear so only ChipBg supplies the chip surface. -->
+    across button states; keep it clear so only ChipBg supplies the chip surface. -->
     <Style Selector="Button.link-chip /template/ ContentPresenter#PART_ContentPresenter,
-                     Button.link-chip:pointerover /template/ ContentPresenter#PART_ContentPresenter,
-                     Button.link-chip:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    Button.link-chip:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+    Button.link-chip:pressed /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
     </Style>
 
 
-<!-- ================================================================
-         CONFLICT & DUPLICATE DIALOGS: GROUP CARDS, OPTION CARDS & PILLS
-         ================================================================ -->
+    <!-- ================================================================
+    CONFLICT & DUPLICATE DIALOGS: GROUP CARDS, OPTION CARDS & PILLS
+    ================================================================ -->
 
     <!-- Group card container + header -->
     <Style Selector="Border.group-card">
@@ -1554,10 +1554,10 @@
         </Setter>
     </Style>
     <Style Selector="ToggleButton.ignore-pill /template/ ContentPresenter#PART_ContentPresenter,
-                     ToggleButton.ignore-pill:pointerover /template/ ContentPresenter#PART_ContentPresenter,
-                     ToggleButton.ignore-pill:pressed /template/ ContentPresenter#PART_ContentPresenter,
-                     ToggleButton.ignore-pill:checked /template/ ContentPresenter#PART_ContentPresenter,
-                     ToggleButton.ignore-pill:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    ToggleButton.ignore-pill:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+    ToggleButton.ignore-pill:pressed /template/ ContentPresenter#PART_ContentPresenter,
+    ToggleButton.ignore-pill:checked /template/ ContentPresenter#PART_ContentPresenter,
+    ToggleButton.ignore-pill:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
     </Style>
@@ -1575,5 +1575,143 @@
         <Setter Property="Foreground" Value="{DynamicResource BrushTextOnDark}"/>
     </Style>
 
+    <!-- ================================================================
+    STRIP MODS OUTLINER TREE
+    ================================================================ -->
+
+    <!-- Relative space-share bar on mod rows -->
+    <Style Selector="ProgressBar.size-bar">
+        <Setter Property="Background" Value="{DynamicResource BrushBgBadgeMuted}"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushBgSuccess}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="Height" Value="6"/>
+        <Setter Property="MinHeight" Value="6"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="ClipToBounds" Value="True"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        CornerRadius="3"
+                        ClipToBounds="True">
+                    <Grid x:Name="PART_InternalGrid">
+                        <Border x:Name="PART_Indicator"
+                                Background="{TemplateBinding Foreground}"
+                                CornerRadius="3"
+                                HorizontalAlignment="Left"/>
+                    </Grid>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ProgressBar.size-bar.empty">
+        <Setter Property="Opacity" Value="0.3"/>
+    </Style>
+
+    <!-- Virtualized outliner ListBox (neutralizes ListBoxItem chrome so inner Borders style rows) -->
+    <Style Selector="ListBox.outliner-list">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSurface}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="16,6,16,12"/>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="ScrollViewer.AllowAutoHide" Value="False"/>
+    </Style>
+    <Style Selector="ListBox.outliner-list > ListBoxItem">
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Margin" Value="0"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <ContentPresenter Name="PART_ContentPresenter"
+                                  Content="{TemplateBinding Content}"
+                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"/>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- Collapsible mod header row -->
+    <Style Selector="Border.outliner-parent">
+        <Setter Property="Background" Value="{DynamicResource BrushBgCard}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderSubtle}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="10,7"/>
+        <Setter Property="Margin" Value="0,6,0,0"/>
+    </Style>
+    <Style Selector="Border.outliner-parent:pointerover">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+    </Style>
+    <Style Selector="Border.outliner-parent.expanded">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+        <Setter Property="CornerRadius" Value="4,4,0,0"/>
+    </Style>
+
+    <!-- Flat virtualized child row simulating the connected outliner-children container -->
+    <Style Selector="Border.outliner-child-row">
+        <Setter Property="Background" Value="{DynamicResource BrushBgPickerList}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+        <Setter Property="BorderThickness" Value="1,0,1,0"/>
+        <Setter Property="CornerRadius" Value="0"/>
+        <Setter Property="Padding" Value="20,2,10,2"/>
+    </Style>
+    <Style Selector="Border.outliner-child-row.last">
+        <Setter Property="BorderThickness" Value="1,0,1,1"/>
+        <Setter Property="CornerRadius" Value="0,0,4,4"/>
+        <Setter Property="Padding" Value="20,2,10,7"/>
+    </Style>
+
+    <!-- Hover/unchecked inner container inside outliner-child-row -->
+    <Style Selector="Border.outliner-child">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Padding" Value="6,4"/>
+    </Style>
+    <Style Selector="Border.outliner-child:pointerover">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+    </Style>
+    <Style Selector="Border.outliner-child.unchecked">
+        <Setter Property="Opacity" Value="0.54"/>
+    </Style>
+
+    <!-- L-shaped tree branch connector -->
+    <Style Selector="Border.branch-elbow">
+        <Setter Property="Width" Value="12"/>
+        <Setter Property="Height" Value="16"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderMuted}"/>
+        <Setter Property="BorderThickness" Value="1.5,0,0,1.5"/>
+        <Setter Property="CornerRadius" Value="0,0,0,2"/>
+        <Setter Property="VerticalAlignment" Value="Top"/>
+        <Setter Property="Margin" Value="0,-2,0,0"/>
+    </Style>
+
+    <!-- Transparent expand-button wrapper inside outliner-parent -->
+    <Style Selector="Button.outliner-expand-btn">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="Transparent">
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      HorizontalAlignment="Stretch"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
 
 </Styles>
