@@ -1,85 +1,154 @@
 <dialogs:BaseDialog xmlns="https://github.com/avaloniaui"
-                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-                  xmlns:local="clr-namespace:RimSharp.Features.ModManager.Dialogs.Incompatibilities"
-                  xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
-                  x:Class="RimSharp.Features.ModManager.Dialogs.Incompatibilities.ModIncompatibilityDialogView"
-                  x:DataType="local:ModIncompatibilityDialogViewModel"
-                  mc:Ignorable="d"
-                  Title="Resolve Mod Incompatibilities">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    xmlns:local="clr-namespace:RimSharp.Features.ModManager.Dialogs.Incompatibilities"
+                    xmlns:dialogs="clr-namespace:RimSharp.Infrastructure.Dialog"
+                    xmlns:i="https://github.com/projektanker/icons.avalonia"
+                    x:Class="RimSharp.Features.ModManager.Dialogs.Incompatibilities.ModIncompatibilityDialogView"
+                    x:DataType="local:ModIncompatibilityDialogViewModel"
+                    x:CompileBindings="True"
+                    mc:Ignorable="d"
+                    Classes="dialog-flush"
+                    Width="820"
+                    MaxHeight="640"
+                    SizeToContent="Height"
+                    CanResize="False"
+                    Title="Resolve Mod Incompatibilities">
 
     <dialogs:BaseDialog.MainContent>
-        <StackPanel Spacing="10">
-            <TextBlock Text="Incompatible Mods Detected" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource BrushTextStrong}"/>
-            <TextBlock Text="Select which mod to keep in each incompatibility group." FontSize="13" TextWrapping="Wrap"/>
+        <Grid RowDefinitions="Auto,*">
+            <!-- Header Banner -->
+            <Border Grid.Row="0"
+                    Background="{DynamicResource BrushBgPanel}"
+                    BorderBrush="{DynamicResource BrushBorderDefault}"
+                    BorderThickness="0,0,0,1"
+                    Padding="16,10">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Incompatible Mods Detected" FontSize="14" FontWeight="Bold"
+                                   Foreground="{DynamicResource BrushTextBrown950}"/>
+                        <TextBlock Text="Choose a resolution pill per group and review which mods will be deactivated."
+                                   Classes="field-hint"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <Border Classes="pill-badge hard" IsVisible="{Binding HasHardGroups}">
+                            <TextBlock Text="{Binding HardBadgeText}" FontSize="10.5" FontWeight="Bold"
+                                       Foreground="{DynamicResource BrushTextError}"/>
+                        </Border>
+                        <Border Classes="pill-badge soft" IsVisible="{Binding HasSoftGroups}">
+                            <TextBlock Text="{Binding SoftBadgeText}" FontSize="10.5" FontWeight="Bold"
+                                       Foreground="{DynamicResource BrushTextBrown950}"/>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Border>
 
-            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="600">
-                <ItemsControl ItemsSource="{Binding IncompatibilityGroups}">
+            <!-- Triage Group List -->
+            <ScrollViewer Grid.Row="1"
+                          Background="{DynamicResource BrushBgSurface}"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto"
+                          MaxHeight="470">
+                <ItemsControl ItemsSource="{Binding IncompatibilityGroups}" Margin="16,14">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="local:IncompatibilityGroupViewModel">
-                            <Border Classes="panel" Margin="0,0,0,15" Padding="0">
+                            <Border Classes="group-card" Margin="0,0,0,12">
                                 <StackPanel>
-                                    <Border Background="{DynamicResource BrushBgAccent}" Padding="10,8">
-                                        <TextBlock Text="Incompatibility Group" FontWeight="Bold" FontSize="14"/>
+                                    <!-- Group Header -->
+                                    <Border Classes="group-head">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                            <TextBlock Grid.Column="0" Text="{Binding GroupTitle}"
+                                                       FontWeight="Bold" FontSize="13"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Foreground="{DynamicResource BrushTextBrown950}"
+                                                       VerticalAlignment="Center"/>
+                                            <Border Grid.Column="1" Classes="pill-badge"
+                                                    Classes.hard="{Binding ContainsHardIncompatibility}"
+                                                    Classes.soft="{Binding !ContainsHardIncompatibility}">
+                                                <TextBlock Text="{Binding SeverityBadgeText}" FontSize="10" FontWeight="Bold"
+                                                           Foreground="{DynamicResource BrushTextBrown950}"/>
+                                            </Border>
+                                        </Grid>
                                     </Border>
-                                    <ItemsControl ItemsSource="{Binding ResolutionOptions}" Margin="10">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="local:IncompatibilityResolutionOption">
-                                                <Border Margin="0,0,0,10" Padding="10" Background="{DynamicResource BrushBgSurface}" CornerRadius="3" BorderThickness="1" BorderBrush="{DynamicResource BrushBorderDefault}">
-                                                    <RadioButton IsChecked="{Binding IsSelected}" GroupName="{Binding ParentGroup.GroupName}">
-                                                        <StackPanel Spacing="5">
-                                                            <Panel>
-                                                                <TextBlock IsVisible="{Binding ModToKeep, Converter={StaticResource NullToVisibilityConverter}}" FontWeight="SemiBold" FontSize="13">
-                                                                    <TextBlock.Text>
-                                                                        <MultiBinding StringFormat="Keep: {0}">
-                                                                            <Binding Path="ModToKeep.DisplayName" FallbackValue="Unknown"/>
-                                                                        </MultiBinding>
-                                                                    </TextBlock.Text>
+
+                                    <!-- Decision Pills + Live Impact Box -->
+                                    <StackPanel Margin="12,10" Spacing="8">
+                                        <ItemsControl ItemsSource="{Binding ResolutionOptions}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel Orientation="Horizontal"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="local:IncompatibilityResolutionOption">
+                                                    <RadioButton Content="{Binding PillLabel}"
+                                                                 GroupName="{Binding ParentGroup.GroupName}"
+                                                                 IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                                 Classes="seg-pill"
+                                                                 Classes.soft-pill="{Binding IsKeepAllOption}"/>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <!-- Keep All Info Box -->
+                                        <Border Classes="alert-box info" IsVisible="{Binding SelectedIsKeepAll}">
+                                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                                <i:Icon Grid.Column="0" Value="fa-circle-info" FontSize="12" Margin="0,2,0,0"
+                                                        Foreground="{DynamicResource BrushTextInfo}"/>
+                                                <TextBlock Grid.Column="1" Text="All mods in this group remain active."
+                                                           FontSize="11.5" Foreground="{DynamicResource BrushTextInfo}"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Deactivation Impact Box -->
+                                        <Border Classes="alert-box danger" IsVisible="{Binding SelectedHasRemovals}">
+                                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                                <i:Icon Grid.Column="0" Value="fa-ban" FontSize="12" Margin="0,2,0,0"
+                                                        Foreground="{DynamicResource BrushTextError}"/>
+                                                <StackPanel Grid.Column="1" Spacing="3">
+                                                    <TextBlock Text="Will deactivate:" FontWeight="Bold" FontSize="11.5"
+                                                               Foreground="{DynamicResource BrushTextError}"/>
+                                                    <ItemsControl ItemsSource="{Binding SelectedRemovalSummaries}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate x:DataType="local:IncompatibilityRemovalSummary">
+                                                                <TextBlock FontSize="11.5" TextWrapping="Wrap"
+                                                                           Foreground="{DynamicResource BrushTextError}">
+                                                                    <Run Text="• "/>
+                                                                    <Run Text="{Binding ModName}" FontWeight="Bold"/>
+                                                                    <Run Text=" — "/>
+                                                                    <Run Text="{Binding ReasonText}"/>
                                                                 </TextBlock>
-                                                                <TextBlock IsVisible="{Binding ModToKeep, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Invert}" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource BrushTextSuccess}" Text="Keep all mods (soft incompatibility)"/>
-                                                            </Panel>
-
-                                                            <StackPanel Margin="20,0,0,0" IsVisible="{Binding ModsToRemove.Count}">
-                                                                <TextBlock Text="Will remove the following mods:" FontSize="12"/>
-                                                                                                                                    <ItemsControl ItemsSource="{Binding RemovalReasons}">
-                                                                                                                                    <ItemsControl.ItemTemplate>
-                                                                                                                                        <DataTemplate>
-                                                                                                                                            <StackPanel Margin="0,5">
-                                                                                                                                                <TextBlock FontWeight="Bold" Foreground="{DynamicResource BrushTextError}"
-                                                                                                                                                           Text="{Binding Key.DisplayName, FallbackValue='Unknown', TargetNullValue='Unknown'}"/>
-                                                                                                                                                <ItemsControl ItemsSource="{Binding Value}" Margin="15,0,0,0">
-
-                                                                                    <ItemsControl.ItemTemplate>
-                                                                                        <DataTemplate>
-                                                                                            <TextBlock Text="{Binding Reason, StringFormat='• {0}'}" FontSize="11" TextWrapping="Wrap"/>
-                                                                                        </DataTemplate>
-                                                                                    </ItemsControl.ItemTemplate>
-                                                                                </ItemsControl>
-                                                                            </StackPanel>
-                                                                        </DataTemplate>
-                                                                    </ItemsControl.ItemTemplate>
-                                                                </ItemsControl>
-                                                            </StackPanel>
-                                                        </StackPanel>
-                                                    </RadioButton>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
-        </StackPanel>
+        </Grid>
     </dialogs:BaseDialog.MainContent>
 
     <dialogs:BaseDialog.ButtonContent>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
-            <Button Content="Cancel" Command="{Binding CancelCommand}" IsEnabled="{Binding IsCancelEnabled}" Width="100" Classes="btn"/>
-            <Button Content="Apply Changes" Command="{Binding ApplyResolutionsCommand}" Width="120" Classes="btn-success"/>
-        </StackPanel>
+        <Border Classes="dialog-footer">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="{Binding FooterSummaryText}"
+                           FontSize="12" FontWeight="SemiBold"
+                           Foreground="{DynamicResource BrushTextStrong}"
+                           VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <Button Content="Cancel" Command="{Binding CancelCommand}"
+                            IsEnabled="{Binding IsCancelEnabled}" Classes="btn" MinWidth="96" Height="31"/>
+                    <Button Content="Apply Changes" Command="{Binding ApplyResolutionsCommand}"
+                            Classes="btn-success" MinWidth="125" Height="31"/>
+                </StackPanel>
+            </Grid>
+        </Border>
     </dialogs:BaseDialog.ButtonContent>
 </dialogs:BaseDialog>

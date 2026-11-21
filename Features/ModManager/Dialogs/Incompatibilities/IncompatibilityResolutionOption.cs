@@ -1,16 +1,20 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using RimSharp.AppDir.AppFiles;
 using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
 using RimSharp.Shared.Models;
 
 namespace RimSharp.Features.ModManager.Dialogs.Incompatibilities
 {
-    public class IncompatibilityResolutionOption
+    public class IncompatibilityResolutionOption : ViewModelBase
     {
         public ModItem? ModToKeep { get; }
         public List<ModItem> ModsToRemove { get; } = new List<ModItem>();
         public IncompatibilityGroupViewModel ParentGroup { get; }
+
+        public bool IsKeepAllOption => ModToKeep == null;
+        public string PillLabel => ModToKeep == null ? "Keep All (Ignore)" : $"Keep: {ModToKeep.DisplayName}";
 
         public IncompatibilityResolutionOption(ModItem? modToKeep, IncompatibilityGroupViewModel parentGroup)
         {
@@ -18,16 +22,24 @@ namespace RimSharp.Features.ModManager.Dialogs.Incompatibilities
             ParentGroup = parentGroup ?? throw new ArgumentNullException(nameof(parentGroup));
         }
 
-// Relations grouped by the mod to remove
-
-        public Dictionary<ModItem, List<ModIncompatibilityRelation>> RemovalReasons { get; } = 
+        public Dictionary<ModItem, List<ModIncompatibilityRelation>> RemovalReasons { get; } =
             new Dictionary<ModItem, List<ModIncompatibilityRelation>>();
 
-        public bool IsSelected { get; set; }
+        private bool _isSelected;
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (SetProperty(ref _isSelected, value))
+                {
+                    ParentGroup.NotifySelectionChanged();
+                }
+            }
+        }
 
         public void AddRelation(ModIncompatibilityRelation relation)
         {
-
             if (relation.TargetMod == ModToKeep)
             {
                 AddModToRemove(relation.SourceMod, relation);
@@ -46,7 +58,6 @@ namespace RimSharp.Features.ModManager.Dialogs.Incompatibilities
                 RemovalReasons[modToRemove] = new List<ModIncompatibilityRelation>();
             }
 
-            // Don't add duplicate relations with the same reason
             if (!RemovalReasons[modToRemove].Any(r => r.Reason == relation.Reason))
             {
                 RemovalReasons[modToRemove].Add(relation);
@@ -58,17 +69,12 @@ namespace RimSharp.Features.ModManager.Dialogs.Incompatibilities
             if (!RemovalReasons.ContainsKey(mod) || RemovalReasons[mod].Count == 0)
                 return "Unknown incompatibility";
 
-            // Prioritize direct incompatibilities
             var directIncompatibility = RemovalReasons[mod]
                 .FirstOrDefault(r => r.Reason.StartsWith("Direct incompatibility"));
 
-            if (directIncompatibility != null)
-                return directIncompatibility.Reason;
-
-            // Otherwise return the first reason
-            return RemovalReasons[mod][0].Reason;
+            return directIncompatibility != null
+                ? directIncompatibility.Reason
+                : RemovalReasons[mod][0].Reason;
         }
     }
 }
-
-

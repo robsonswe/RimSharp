@@ -1387,4 +1387,187 @@
         <Setter Property="BorderBrush" Value="Transparent"/>
     </Style>
 
+
+<!-- ================================================================
+         CONFLICT & DUPLICATE DIALOGS: GROUP CARDS, OPTION CARDS & PILLS
+         ================================================================ -->
+
+    <!-- Group card container + header -->
+    <Style Selector="Border.group-card">
+        <Setter Property="Background" Value="{DynamicResource BrushBgCard}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="ClipToBounds" Value="True"/>
+    </Style>
+    <Style Selector="Border.group-head">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSidebar}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="Padding" Value="12,8"/>
+    </Style>
+
+    <!-- Full-width selectable radio option card (Duplicate Mods) -->
+    <Style Selector="RadioButton.opt-card">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSurface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderSubtle}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="OptRoot"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="4"
+                        ClipToBounds="True">
+                    <Border x:Name="OptAccent"
+                            BorderBrush="Transparent"
+                            BorderThickness="3,0,0,0"
+                            Padding="10,9">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                            <Grid Grid.Column="0" Width="16" Height="16" VerticalAlignment="Top" Margin="0,2,0,0">
+                                <Ellipse x:Name="OptCircle"
+                                         Width="16" Height="16"
+                                         Fill="{DynamicResource BrushBgSurface}"
+                                         Stroke="{DynamicResource BrushBorderDefault}"
+                                         StrokeThickness="1.5"/>
+                                <Ellipse x:Name="OptDot"
+                                         Width="6" Height="6"
+                                         Fill="{DynamicResource BrushTextOnDark}"
+                                         IsVisible="False"/>
+                            </Grid>
+                            <ContentPresenter x:Name="PART_ContentPresenter"
+                                              Grid.Column="1"
+                                              Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                              HorizontalAlignment="Stretch"/>
+                        </Grid>
+                    </Border>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="RadioButton.opt-card.will-delete /template/ Border#OptRoot">
+        <Setter Property="Background" Value="{DynamicResource BrushBgCardDisabled}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderError}"/>
+    </Style>
+    <Style Selector="RadioButton.opt-card:pointerover /template/ Border#OptRoot">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+    </Style>
+    <Style Selector="RadioButton.opt-card:checked /template/ Border#OptRoot">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderStrong}"/>
+    </Style>
+    <Style Selector="RadioButton.opt-card:checked /template/ Border#OptAccent">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBgAction}"/>
+    </Style>
+    <Style Selector="RadioButton.opt-card:checked /template/ Ellipse#OptCircle">
+        <Setter Property="Fill" Value="{DynamicResource BrushBgAction}"/>
+        <Setter Property="Stroke" Value="{DynamicResource BrushBorderStrong}"/>
+    </Style>
+    <Style Selector="RadioButton.opt-card:checked /template/ Ellipse#OptDot">
+        <Setter Property="IsVisible" Value="True"/>
+    </Style>
+
+    <!-- Decision pill RadioButton (Concept 3 Incompatibilities) -->
+    <Style Selector="RadioButton.seg-pill">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSurface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Padding" Value="11,5"/>
+        <Setter Property="Margin" Value="0,0,5,5"/>
+        <Setter Property="FontSize" Value="11.5"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="SegPillBg"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="{TemplateBinding Padding}">
+                    <ContentPresenter x:Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="RadioButton.seg-pill /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource BrushTextStrong}"/>
+    </Style>
+    <Style Selector="RadioButton.seg-pill:pointerover /template/ Border#SegPillBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+    </Style>
+    <Style Selector="RadioButton.seg-pill:checked /template/ Border#SegPillBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgAction}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderStrong}"/>
+    </Style>
+    <Style Selector="RadioButton.seg-pill:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource BrushTextOnDark}"/>
+    </Style>
+    <Style Selector="RadioButton.seg-pill.soft-pill:checked /template/ Border#SegPillBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSuccess}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderSuccess}"/>
+    </Style>
+
+    <!-- Ignore ToggleButton in Duplicate group headers -->
+    <Style Selector="ToggleButton.ignore-pill">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSurface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderDefault}"/>
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Padding" Value="10,4"/>
+        <Setter Property="FontSize" Value="11.5"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="IgnBg"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="{TemplateBinding Padding}">
+                    <ContentPresenter x:Name="PART_ContentPresenter"
+                                      Content="{TemplateBinding Content}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ToggleButton.ignore-pill /template/ ContentPresenter#PART_ContentPresenter,
+                     ToggleButton.ignore-pill:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                     ToggleButton.ignore-pill:pressed /template/ ContentPresenter#PART_ContentPresenter,
+                     ToggleButton.ignore-pill:checked /template/ ContentPresenter#PART_ContentPresenter,
+                     ToggleButton.ignore-pill:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+    <Style Selector="ToggleButton.ignore-pill TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextStrong}"/>
+    </Style>
+    <Style Selector="ToggleButton.ignore-pill:pointerover /template/ Border#IgnBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSelected}"/>
+    </Style>
+    <Style Selector="ToggleButton.ignore-pill:checked /template/ Border#IgnBg">
+        <Setter Property="Background" Value="{DynamicResource BrushBgSuccess}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderSuccess}"/>
+    </Style>
+    <Style Selector="ToggleButton.ignore-pill:checked TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource BrushTextOnDark}"/>
+    </Style>
+
+
 </Styles>

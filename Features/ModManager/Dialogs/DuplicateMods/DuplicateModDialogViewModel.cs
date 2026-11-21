@@ -1,4 +1,3 @@
-using RimSharp.Core.Commands;
 using RimSharp.AppDir.Dialogs;
 using RimSharp.Shared.Models;
 using System;
@@ -14,8 +13,17 @@ namespace RimSharp.Features.ModManager.Dialogs.DuplicateMods
 {
     public class DuplicateModDialogViewModel : DialogViewModelBase<bool>
     {
-        public ObservableCollection<DuplicateModGroupViewModel> DuplicateGroups { get; }
-            = new ObservableCollection<DuplicateModGroupViewModel>();
+        public ObservableCollection<DuplicateModGroupViewModel> DuplicateGroups { get; } = new();
+
+        public int TotalDeletionsCount => DuplicateGroups.Sum(g => g.DeletionsCount);
+        public bool HasDeletions => TotalDeletionsCount > 0;
+
+        public string FooterSummaryText => TotalDeletionsCount switch
+        {
+            0 => "No folders will be deleted",
+            1 => "1 duplicate folder will be permanently deleted",
+            _ => $"{TotalDeletionsCount} duplicate folders will be permanently deleted"
+        };
 
         public ICommand ApplyResolutionsCommand { get; }
         public ICommand CancelCommand { get; }
@@ -29,7 +37,7 @@ namespace RimSharp.Features.ModManager.Dialogs.DuplicateMods
             Action cancelCallback)
             : base("Resolve Duplicate Mods")
         {
-            _applyCallback = applyCallback ?? (list => Task.CompletedTask);
+            _applyCallback = applyCallback ?? (_ => Task.CompletedTask);
             _cancelCallback = cancelCallback ?? (() => { });
 
             ApplyResolutionsCommand = CreateCommand(ApplyResolutions);
@@ -43,7 +51,14 @@ namespace RimSharp.Features.ModManager.Dialogs.DuplicateMods
 
             foreach (var group in duplicateGroups)
             {
-                DuplicateGroups.Add(new DuplicateModGroupViewModel(group));
+                var groupVm = new DuplicateModGroupViewModel(group);
+                groupVm.OutcomesChanged += (_, _) =>
+                {
+                    OnPropertyChanged(nameof(TotalDeletionsCount));
+                    OnPropertyChanged(nameof(HasDeletions));
+                    OnPropertyChanged(nameof(FooterSummaryText));
+                };
+                DuplicateGroups.Add(groupVm);
             }
         }
 

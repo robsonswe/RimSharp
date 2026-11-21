@@ -1,7 +1,5 @@
-using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
-using RimSharp.Core.Commands;
-using RimSharp.AppDir.AppFiles;
 using RimSharp.AppDir.Dialogs;
+using RimSharp.Infrastructure.Mods.Validation.Incompatibilities;
 using RimSharp.Shared.Models;
 using System;
 using System.Collections.Generic;
@@ -14,16 +12,31 @@ namespace RimSharp.Features.ModManager.Dialogs.Incompatibilities
 {
     public class ModIncompatibilityDialogViewModel : DialogViewModelBase<bool>
     {
-        public ObservableCollection<IncompatibilityGroupViewModel> IncompatibilityGroups { get; }
-            = new ObservableCollection<IncompatibilityGroupViewModel>();
+        public ObservableCollection<IncompatibilityGroupViewModel> IncompatibilityGroups { get; } = new();
 
         private bool _isCancelEnabled = true;
-
         public bool IsCancelEnabled
         {
             get => _isCancelEnabled;
             set => this.RaiseAndSetIfChanged(ref _isCancelEnabled, value);
         }
+
+        public int HardGroupCount => IncompatibilityGroups.Count(g => g.ContainsHardIncompatibility);
+        public int SoftGroupCount => IncompatibilityGroups.Count - HardGroupCount;
+        public bool HasHardGroups => HardGroupCount > 0;
+        public bool HasSoftGroups => SoftGroupCount > 0;
+        public string HardBadgeText => $"{HardGroupCount} Hard";
+        public string SoftBadgeText => $"{SoftGroupCount} Soft";
+
+        public int TotalDeactivationsCount =>
+            IncompatibilityGroups.SelectMany(g => g.GetSelectedModsToRemove()).Distinct().Count();
+
+        public string FooterSummaryText => TotalDeactivationsCount switch
+        {
+            0 => "No mods will be deactivated",
+            1 => "1 mod will be deactivated from your active list",
+            _ => $"{TotalDeactivationsCount} mods will be deactivated from your active list"
+        };
 
         public ICommand ApplyResolutionsCommand { get; }
         public ICommand CancelCommand { get; }
@@ -46,7 +59,13 @@ namespace RimSharp.Features.ModManager.Dialogs.Incompatibilities
 
             foreach (var group in groups)
             {
-                IncompatibilityGroups.Add(new IncompatibilityGroupViewModel(group));
+                var groupVm = new IncompatibilityGroupViewModel(group);
+                groupVm.SelectionChanged += (_, _) =>
+                {
+                    OnPropertyChanged(nameof(TotalDeactivationsCount));
+                    OnPropertyChanged(nameof(FooterSummaryText));
+                };
+                IncompatibilityGroups.Add(groupVm);
             }
 
             ApplyResolutionsCommand = CreateCommand(ApplyResolutions);
@@ -55,14 +74,12 @@ namespace RimSharp.Features.ModManager.Dialogs.Incompatibilities
 
         private void ApplyResolutions()
         {
-            var modsToRemove = new List<ModItem>();
+            var modsToRemove = IncompatibilityGroups
+                .SelectMany(g => g.GetSelectedModsToRemove())
+                .Distinct()
+                .ToList();
 
-            foreach (var group in IncompatibilityGroups)
-            {
-                modsToRemove.AddRange(group.GetSelectedModsToRemove());
-            }
-
-            _applyCallback?.Invoke(modsToRemove.Distinct().ToList());
+            _applyCallback?.Invoke(modsToRemove);
             CloseDialog(true);
         }
 
